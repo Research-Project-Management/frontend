@@ -43,7 +43,6 @@ export function isProjectScope(scopeId?: string | null): boolean {
   return Boolean(
     scopeId &&
     scopeId !== 'user' &&
-    scopeId !== 'personal' &&
     scopeId !== 'me'
   );
 }

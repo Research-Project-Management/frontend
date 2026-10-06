@@ -30,8 +30,8 @@ export default function CollectionsSection({
   const collections = colState.collections;
   const openModal = useLibraryModalStore((s) => s.openModal);
 
-  // Collect all collection IDs associated with this paper
-  const itemCollectionIds = React.useMemo(() => {
+  // Set of all collection IDs explicitly assigned to this paper
+  const assignedCollectionIdsSet = React.useMemo(() => {
     const ids = new Set<string>();
     if (paper.collectionId) ids.add(paper.collectionId);
     if (Array.isArray(paper.collectionIds)) {
@@ -40,46 +40,90 @@ export default function CollectionsSection({
     if (Array.isArray(paper.collections)) {
       paper.collections.forEach((c) => c?.id && ids.add(c.id));
     }
-    return Array.from(ids);
+    return ids;
   }, [paper.collectionId, paper.collectionIds, paper.collections]);
 
-  // Build collection hierarchy paths for all collections the paper belongs to
-  const assignedCollections = React.useMemo(() => {
-    if (!itemCollectionIds.length || !collections || collections.length === 0) return [];
+  // Build a deduplicated hierarchical tree for all assigned collections and their ancestors
+  const flatNodes = React.useMemo(() => {
+    if (!assignedCollectionIdsSet.size || !collections || collections.length === 0) return [];
 
-    return itemCollectionIds.map((colId) => {
-      const path: Collection[] = [];
-      let currId: string | null = colId;
+    // Map all collections by id for fast lookup
+    const colMap = new Map<string, Collection>();
+    collections.forEach((c: Collection) => colMap.set(c.id, c));
+    (paper.collections || []).forEach((c) => {
+      if (c?.id && !colMap.has(c.id)) {
+        colMap.set(c.id, c as Collection);
+      }
+    });
+
+    // Collect all unique collection IDs that are part of any assigned hierarchy
+    const relevantIds = new Set<string>();
+    assignedCollectionIdsSet.forEach((startId) => {
+      let currId: string | null = startId;
       const visited = new Set<string>();
-
       while (currId && !visited.has(currId)) {
         visited.add(currId);
-        const found = collections.find((c: Collection) => c.id === currId);
-        if (found) {
-          path.unshift(found);
-          currId = found.parentId || null;
-        } else {
-          // Fallback if collection not in current active collections array
-          const fallbackCol = (paper.collections || []).find((c) => c.id === currId);
-          if (fallbackCol) {
-            path.unshift(fallbackCol as Collection);
-          }
-          break;
-        }
+        relevantIds.add(currId);
+        const col = colMap.get(currId);
+        currId = col?.parentId || null;
       }
-      return {
-        id: colId,
-        target: path[path.length - 1] || ({ id: colId, name: 'Collection' } as Collection),
-        path,
-      };
     });
-  }, [itemCollectionIds, collections, paper.collections]);
 
+    // Build tree: identify roots among relevantIds and map parent -> children
+    const childrenMap = new Map<string, string[]>();
+    const roots: string[] = [];
 
+    relevantIds.forEach((id) => {
+      const col = colMap.get(id);
+      const parentId = col?.parentId;
+      if (parentId && relevantIds.has(parentId)) {
+        const list = childrenMap.get(parentId) || [];
+        list.push(id);
+        childrenMap.set(parentId, list);
+      } else {
+        roots.push(id);
+      }
+    });
+
+    // Sort roots and children alphabetically by collection name
+    const sortById = (a: string, b: string) => {
+      const nameA = colMap.get(a)?.name || '';
+      const nameB = colMap.get(b)?.name || '';
+      return nameA.localeCompare(nameB);
+    };
+
+    roots.sort(sortById);
+    childrenMap.forEach((children) => children.sort(sortById));
+
+    // Pre-order traversal to flatten the tree with depth
+    interface FlatCollectionNode {
+      id: string;
+      name: string;
+      depth: number;
+      isDirectlyAssigned: boolean;
+    }
+
+    const result: FlatCollectionNode[] = [];
+    const traverse = (nodeId: string, depth: number) => {
+      const col = colMap.get(nodeId);
+      if (!col) return;
+      result.push({
+        id: nodeId,
+        name: col.name,
+        depth,
+        isDirectlyAssigned: assignedCollectionIdsSet.has(nodeId),
+      });
+      const children = childrenMap.get(nodeId) || [];
+      children.forEach((childId) => traverse(childId, depth + 1));
+    };
+
+    roots.forEach((rootId) => traverse(rootId, 1));
+    return result;
+  }, [assignedCollectionIdsSet, collections, paper.collections]);
 
   const handleRemoveFromCollection = (targetColId: string) => {
     if (!paper.id) return;
-    const remainingIds = itemCollectionIds.filter((id) => id !== targetColId);
+    const remainingIds = Array.from(assignedCollectionIdsSet).filter((id) => id !== targetColId);
     updatePaper(
       paper.id,
       {
@@ -119,51 +163,46 @@ export default function CollectionsSection({
       )}
 
       {/* Primary Library Row (Root) */}
-      <div className="flex items-center gap-2 py-0.5 px-1.5 text-13 rounded-md hover:bg-muted transition-colors group">
-        <div className="size-4 shrink-0 flex items-center justify-center">
-          <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+      <div className="flex items-center gap-1.5 h-6.5 px-1.5 text-12 rounded-md hover:bg-muted transition-colors group">
+        <div className="size-3.5 shrink-0 flex items-center justify-center">
+          <Library className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
         </div>
-        <span className="font-medium text-13 text-foreground tracking-tight break-words">My Library</span>
+        <span className="font-medium text-12 text-foreground tracking-tight truncate select-none">
+          My Library
+        </span>
       </div>
 
-      {/* Collection Tree Rows */}
-      {assignedCollections.map(({ id: colId, path }) => {
+      {/* Deduplicated Collection Tree Rows */}
+      {flatNodes.map((node) => {
+        const indentPx = 4 + node.depth * 10;
         return (
-          <div key={colId} className="flex flex-col gap-0.5">
-            {path.map((col, idx) => {
-              const isLeaf = idx === path.length - 1;
-              const indentPx = 6 + (idx + 1) * 12;
-              return (
-                <div
-                  key={`${colId}-${col.id}-${idx}`}
-                  style={{ paddingLeft: `${indentPx}px` }}
-                  className="flex items-center justify-between gap-1.5 py-0.5 pr-1.5 text-13 rounded-md hover:bg-muted transition-colors group"
-                >
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <div className="size-4 shrink-0 flex items-center justify-center">
-                      <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                    </div>
-                    <span
-                      className="text-13 break-words leading-snug text-foreground font-normal"
-                      title={col.name}
-                    >
-                      {col.name}
-                    </span>
-                  </div>
-                  {isLeaf && canEdit && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveFromCollection(colId)}
-                      className="invisible group-hover:visible size-5 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0"
-                      title={`Remove from "${col.name}"`}
-                      aria-label={`Remove from collection ${col.name}`}
-                    >
-                      <X className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+          <div
+            key={node.id}
+            style={{ paddingLeft: `${indentPx}px` }}
+            className="flex items-center justify-between gap-1.5 h-6.5 pr-1 text-12 rounded-md hover:bg-muted transition-colors group"
+          >
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <div className="size-3.5 shrink-0 flex items-center justify-center">
+                <Folder className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+              </div>
+              <span
+                className="text-12 truncate leading-normal text-foreground font-normal select-none"
+                title={node.name}
+              >
+                {node.name}
+              </span>
+            </div>
+            {node.isDirectlyAssigned && canEdit && (
+              <button
+                type="button"
+                onClick={() => handleRemoveFromCollection(node.id)}
+                className="invisible group-hover:visible size-5 flex items-center justify-center rounded hover:bg-muted text-foreground cursor-pointer shrink-0 transition-opacity"
+                title={`Remove from "${node.name}"`}
+                aria-label={`Remove from collection ${node.name}`}
+              >
+                <X className="size-3 text-foreground shrink-0" strokeWidth={1.5} />
+              </button>
+            )}
           </div>
         );
       })}

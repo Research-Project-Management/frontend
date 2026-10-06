@@ -6,7 +6,12 @@ import { API_BASE_URL } from '@/config/env';
 import { editorCommandBus } from '../core/command-bus/editor-command-bus';
 import type { SidebarPanelName } from '../ports/command-bus.port';
 
-const _inMemoryEventHandlers = new Map<string, Set<(payload: any) => void>>();
+const GLOBAL_EVENT_KEY = Symbol.for('__FLUX_IN_MEMORY_EVENT_HANDLERS__');
+const globalAnyEvents = globalThis as any;
+if (!globalAnyEvents[GLOBAL_EVENT_KEY]) {
+  globalAnyEvents[GLOBAL_EVENT_KEY] = new Map<string, Set<(payload: any) => void>>();
+}
+const _inMemoryEventHandlers: Map<string, Set<(payload: any) => void>> = globalAnyEvents[GLOBAL_EVENT_KEY];
 
 const _inMemoryEventBus = {
   emit(event: string, detail?: any): void {
@@ -172,10 +177,13 @@ export interface ParsedCompileError {
 
 /** Parse pdflatex/xelatex/tectonic log to extract error and warning entries */
 export function parseCompileErrors(log: string): ParsedCompileError[] {
+  if (!log) return [];
   const errors: ParsedCompileError[] = [];
   const lines = log.split("\n");
+  const seen = new Set<string>();
 
   for (let i = 0; i < lines.length; i++) {
+    if (errors.length >= 50) break;
     const line = lines[i];
 
     // File:line error: ./main.tex:14: Undefined control sequence
@@ -184,7 +192,9 @@ export function parseCompileErrors(log: string): ParsedCompileError[] {
       const file = fileLineMatch[1].replace(/^\.\//, '');
       const lineNum = parseInt(fileLineMatch[2], 10);
       const message = fileLineMatch[3].trim();
-      if (!errors.find((e) => e.message === message && e.line === lineNum && e.file === file)) {
+      const key = `f:${file}:${lineNum}:${message}`;
+      if (!seen.has(key)) {
+        seen.add(key);
         errors.push({
           file,
           line: lineNum,
@@ -211,7 +221,9 @@ export function parseCompileErrors(log: string): ParsedCompileError[] {
       }
       if (!context) context = lines.slice(i, i + 4).join("\n");
 
-      if (!errors.find((e) => e.message === message && e.line === errorLine)) {
+      const key = `h:${errorLine ?? ''}:${message}`;
+      if (!seen.has(key)) {
+        seen.add(key);
         errors.push({ line: errorLine, message, context, severity: 'error' });
       }
       continue;
@@ -222,13 +234,15 @@ export function parseCompileErrors(log: string): ParsedCompileError[] {
     if (warnMatch) {
       const warnLine = parseInt(warnMatch[1] || warnMatch[2], 10);
       const message = line.replace(/^(?:LaTeX|Package [^\s]+) Warning:\s*/i, "").trim();
-      if (!errors.find((e) => e.message === message && e.line === warnLine)) {
+      const key = `w:${warnLine}:${message}`;
+      if (!seen.has(key)) {
+        seen.add(key);
         errors.push({ line: warnLine, message, context: line, severity: 'warning' });
       }
     }
   }
 
-  return errors.slice(0, 50);
+  return errors;
 }
 
 // ── Rich Editor Context ────────────────────────────────────────────────────────
@@ -410,6 +424,8 @@ export interface EditorEventMap {
   'flux:compile-progress': { status?: string; logs?: string[] };
   'flux:compile-finished': { success: boolean; aborted?: boolean };
   'flux:insert-citation': { bibKey: string; textInserted?: boolean; entry?: any };
+  'flux:doc-saved': { fileId: string; content?: string };
+  'flux:doc-save-failed': { fileId: string; error?: unknown };
   'flux:open-citation-picker': { initialQuery?: string; initialKey?: string } | undefined;
   'flux:open-table-wizard': { initialSnippet?: string } | undefined;
   'flux:open-figure-wizard': undefined;
@@ -417,6 +433,9 @@ export interface EditorEventMap {
   'flux:focus-editor': undefined;
   'flux:toggle-sidebar': undefined;
   'flux:open-word-count': undefined;
+  'flux:open-deleted-files': undefined;
+  'flux:open-add-files': { initialTab?: 'new-file' | 'upload' | 'project' | 'url' | 'library' } | undefined;
+  'flux:open-template-gallery': undefined;
   'flux:synctex-forward': undefined;
   'flux:synctex-backward': undefined;
   'flux:new-file': undefined;
@@ -579,6 +598,18 @@ export const EditorEventBus = {
       }
       case 'flux:open-word-count': {
         editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'word-count' });
+        break;
+      }
+      case 'flux:open-deleted-files': {
+        editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'deleted-files' });
+        break;
+      }
+      case 'flux:open-add-files': {
+        editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'add-files', payload: detail });
+        break;
+      }
+      case 'flux:open-template-gallery': {
+        editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'template-gallery' });
         break;
       }
       case 'flux:open-citation-picker': {

@@ -19,21 +19,11 @@ export interface ReverseSyncPoint {
   column: number;
 }
 
-export interface ForwardSyncInput {
-  file: string;
-  line: number;
-  column?: number;
-  projectId?: string;
-  pageId?: string;
-}
-
-export interface ReverseSyncInput {
-  page: number;
-  x: number;
-  y: number;
-  projectId?: string;
-  pageId?: string;
-}
+// Derived directly from Zod schemas (Single Source of Truth)
+export type {
+  ForwardSyncInput,
+  ReverseSyncInput,
+} from '../schemas/synctex.schema';
 
 export interface SyncTeXMap {
   [line: number]: SyncPoint[];

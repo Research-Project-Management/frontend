@@ -115,9 +115,16 @@ export const useDocumentCompilerStore = create<DocumentCompilerState>()((set, ge
   },
 
   setPdfUrl(url) {
-    // Revoke the old blob URL before setting the new one to prevent memory leaks
+    // Revoke the old blob URL before setting the new one to prevent memory leaks,
+    // but only when the URL actually changes to avoid invalidating the active PDF.
     const prev = get().pdfUrl;
-    if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
+    if (prev && prev.startsWith('blob:') && prev !== url) {
+      try {
+        URL.revokeObjectURL(prev);
+      } catch {
+        // Ignore revocation errors
+      }
+    }
     set({ pdfUrl: url });
   },
 

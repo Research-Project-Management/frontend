@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Home, PanelLeft, History, Loader2 } from 'lucide-react';
+import { Home, PanelLeft, History, Loader2, Pencil } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { Menubar } from "@/shared/components/ui/menubar";
@@ -21,6 +21,8 @@ import ViewMenu from './view/ViewMenu';
 import InsertMenu from './insert/InsertMenu';
 import FormatMenu from './format/FormatMenu';
 import LayoutSwitcher from './view/LayoutSwitcher';
+import ProjectTitleDropdown from './ProjectTitleDropdown';
+import { SourceVisualSwitcher } from '../editor/subcomponents/SourceVisualSwitcher';
 
 const TemplateGalleryModal = dynamic(
   () => import('@/features/editor/components/modals/TemplateGalleryModal'),
@@ -62,6 +64,7 @@ export default function Topbar() {
       isTemplateModalOpen: s.isTemplateModalOpen,
     }))
   );
+
   const hasDirtyFiles = useCompileStore((s) => s.dirtyContentMap.size > 0);
   const { updateTitle: updateTitleMutation } = usePageActions();
 
@@ -105,7 +108,7 @@ export default function Topbar() {
     <TooltipProvider delayDuration={150}>
       <nav
         aria-label="Editor toolbar"
-        className="flex h-11 items-center justify-between gap-2 px-3 py-1 bg-sidebar shrink-0 z-10 select-none"
+        className="relative flex h-11 items-center justify-between gap-2 px-3 py-1 bg-sidebar shrink-0 z-10 select-none"
       >
         {/* ── Left: Logo (Back to project / Home), Main Menubar ── */}
         <div className="flex items-center min-w-0 shrink-0 gap-1">
@@ -144,6 +147,8 @@ export default function Topbar() {
             </TooltipContent>
           </Tooltip>
 
+          <div className="h-4 w-px bg-border/60 mx-1 shrink-0 hidden sm:block" />
+
           <Menubar className="h-8 border-none bg-transparent p-0 gap-0.5 shadow-none">
             {/* Sub-menu Tabs */}
             <FileMenu />
@@ -154,7 +159,12 @@ export default function Topbar() {
           </Menubar>
         </div>
 
-        {/* ── Right: Save Status, Review, History, Quick Layout Switcher & Settings Trigger ── */}
+        {/* ── Center: Project Title Dropdown ── */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center max-w-[180px] sm:max-w-[280px] md:max-w-[380px] lg:max-w-[480px] pointer-events-auto">
+          <ProjectTitleDropdown />
+        </div>
+
+        {/* ── Right: Save Status, Share, Review, History, Layout Switcher ── */}
         <div className="flex items-center gap-1.5 shrink-0">
           {/* Save Status Indicator: only show when actively saving */}
           {isSaving && (
@@ -168,12 +178,13 @@ export default function Topbar() {
             </div>
           )}
 
+          {/* History Button */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 type="button"
                 onClick={toggleHistory}
-                aria-label="History (Revisions)"
+                aria-label="History (revisions)"
                 className={cn(
                   "flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none",
                   isHistoryOpen
@@ -186,26 +197,26 @@ export default function Topbar() {
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" sideOffset={6}>
-              History (Revisions)
+              History (revisions)
             </TooltipContent>
           </Tooltip>
 
           <LayoutSwitcher />
 
-        {isTemplateModalOpen && <TemplateGalleryModal />}
-        {isShortcutsOpen && (
-          <KeyboardShortcutsModal
-            open={isShortcutsOpen}
-            onOpenChange={setIsShortcutsOpen}
-          />
-        )}
-        {isQuickOpenOpen && (
-          <QuickOpenModal
-            open={isQuickOpenOpen}
-            onOpenChange={setIsQuickOpenOpen}
-          />
-        )}
-      </div>
+          {isTemplateModalOpen && <TemplateGalleryModal />}
+          {isShortcutsOpen && (
+            <KeyboardShortcutsModal
+              open={isShortcutsOpen}
+              onOpenChange={setIsShortcutsOpen}
+            />
+          )}
+          {isQuickOpenOpen && (
+            <QuickOpenModal
+              open={isQuickOpenOpen}
+              onOpenChange={setIsQuickOpenOpen}
+            />
+          )}
+        </div>
     </nav>
   </TooltipProvider>
   );

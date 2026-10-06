@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { Loader2, Tag, Search, X, Check, FileText, Sparkles } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Loader2, Tag, Search, X, Check, ChevronDown } from 'lucide-react';
 import {
   Button,
   Dialog,
@@ -17,6 +17,32 @@ import {
 } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 
+export type PageStatus = 'published' | 'draft' | 'archived';
+
+export const STATUS_CONFIG: Record<
+  PageStatus,
+  { label: string; color: string; bg: string; border: string }
+> = {
+  published: {
+    label: 'Published',
+    color: '#10b981',
+    bg: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+    border: 'border-emerald-500/20',
+  },
+  draft: {
+    label: 'Draft',
+    color: '#f59e0b',
+    bg: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+    border: 'border-amber-500/20',
+  },
+  archived: {
+    label: 'Archived',
+    color: '#64748b',
+    bg: 'bg-slate-500/10 text-slate-700 dark:text-slate-400',
+    border: 'border-slate-500/20',
+  },
+};
+
 export interface ProjectLabelItem {
   id: string;
   name: string;
@@ -29,6 +55,8 @@ interface CreateModalProps {
   setIsOpen: (open: boolean) => void;
   title: string;
   setTitle: (title: string) => void;
+  status?: PageStatus;
+  setStatus?: (status: PageStatus) => void;
   handleCreate: () => void;
   isCreating: boolean;
   projectLabels?: ProjectLabelItem[];
@@ -44,6 +72,8 @@ export function CreateModal({
   setIsOpen,
   title,
   setTitle,
+  status = 'published',
+  setStatus,
   handleCreate,
   isCreating,
   projectLabels = [],
@@ -55,6 +85,20 @@ export function CreateModal({
 }: CreateModalProps) {
   const [labelSearch, setLabelSearch] = useState('');
   const [isLabelPopoverOpen, setIsLabelPopoverOpen] = useState(false);
+  const [internalStatus, setInternalStatus] = useState<PageStatus>('published');
+  const [isStatusPopoverOpen, setIsStatusPopoverOpen] = useState(false);
+
+  const currentStatus = status ?? internalStatus;
+  const handleSetStatus = setStatus ?? setInternalStatus;
+  const currentStatusConfig = STATUS_CONFIG[currentStatus] || STATUS_CONFIG.published;
+
+  useEffect(() => {
+    if (!isOpen) {
+      setLabelSearch('');
+      setIsLabelPopoverOpen(false);
+      setIsStatusPopoverOpen(false);
+    }
+  }, [isOpen]);
 
   const filteredLabels = useMemo(() => {
     if (!labelSearch.trim()) return projectLabels;
@@ -68,10 +112,10 @@ export function CreateModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[460px] rounded-md p-5 gap-4">
+      <DialogContent className="sm:max-w-[440px] rounded-md p-5 gap-4">
         <DialogHeader className="pb-1">
           <DialogTitle className="text-sm font-semibold tracking-tight text-foreground">
-            Create Page
+            Create page
           </DialogTitle>
         </DialogHeader>
 
@@ -79,7 +123,7 @@ export function CreateModal({
           {/* Page Title */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="title" className="text-xs font-medium text-foreground">
-              Page Title <span className="text-destructive">*</span>
+              Page title <span className="text-destructive">*</span>
             </Label>
             <Input
               id="title"
@@ -97,80 +141,10 @@ export function CreateModal({
             />
           </div>
 
-          {/* Starter Template (Overleaf format) */}
+          {/* Status & Labels Row: Button with dropdown/popover + selected chips */}
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs font-medium text-foreground">
-              Starter Template
-            </Label>
-            <div className="grid grid-cols-2 gap-2">
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => setTemplateType?.('blank')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setTemplateType?.('blank');
-                  }
-                }}
-                className={cn(
-                  'flex flex-col gap-1 p-2.5 rounded-md border text-left cursor-pointer transition-all select-none',
-                  templateType === 'blank'
-                    ? 'border-foreground bg-muted/30 shadow-xs'
-                    : 'border-border bg-card hover:bg-muted/40'
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
-                    <FileText className="size-3.5 text-foreground shrink-0" />
-                    Blank Document
-                  </span>
-                  {templateType === 'blank' && (
-                    <span className="size-1.5 rounded-full bg-foreground shrink-0" />
-                  )}
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
-                  Minimal LaTeX structure with project title, author, and date.
-                </p>
-              </div>
-
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => setTemplateType?.('example')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setTemplateType?.('example');
-                  }
-                }}
-                className={cn(
-                  'flex flex-col gap-1 p-2.5 rounded-md border text-left cursor-pointer transition-all select-none',
-                  templateType === 'example'
-                    ? 'border-foreground bg-muted/30 shadow-xs'
-                    : 'border-border bg-card hover:bg-muted/40'
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
-                    <Sparkles className="size-3.5 text-foreground shrink-0" />
-                    Example Project
-                  </span>
-                  {templateType === 'example' && (
-                    <span className="size-1.5 rounded-full bg-foreground shrink-0" />
-                  )}
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
-                  Equations, tables, figures, citations, and companion references.bib.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Labels Row: Button with dropdown/popover + selected chips */}
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground">
-              Labels
+              Status & Labels
             </Label>
             <div className="flex flex-wrap items-center gap-1.5 min-h-[32px]">
               <Popover open={isLabelPopoverOpen} onOpenChange={setIsLabelPopoverOpen}>
@@ -272,6 +246,61 @@ export function CreateModal({
                 </PopoverContent>
               </Popover>
 
+              {/* Status Popover Button (kế bên button label) */}
+              <Popover open={isStatusPopoverOpen} onOpenChange={setIsStatusPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0"
+                  >
+                    <span
+                      className="size-2 rounded-full shrink-0"
+                      style={{ backgroundColor: currentStatusConfig.color }}
+                    />
+                    <span>{currentStatusConfig.label}</span>
+                    <ChevronDown className="size-3 text-foreground/50 shrink-0 ml-0.5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  side="bottom"
+                  sideOffset={4}
+                  className="w-40 p-1 rounded-md border border-border bg-popover z-50 flex flex-col shadow-md text-foreground overflow-hidden"
+                >
+                  {(Object.keys(STATUS_CONFIG) as PageStatus[]).map((st) => {
+                    const cfg = STATUS_CONFIG[st];
+                    const isSelected = currentStatus === st;
+                    return (
+                      <button
+                        key={st}
+                        type="button"
+                        onClick={() => {
+                          handleSetStatus(st);
+                          setIsStatusPopoverOpen(false);
+                        }}
+                        className={cn(
+                          'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors hover:bg-muted/60 cursor-pointer select-none text-left',
+                          isSelected && 'bg-muted/60 font-medium'
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="size-2 rounded-full shrink-0"
+                            style={{ backgroundColor: cfg.color }}
+                          />
+                          <span className="text-foreground">{cfg.label}</span>
+                        </div>
+                        {isSelected && (
+                          <Check className="size-3.5 text-foreground shrink-0" strokeWidth={1.75} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </PopoverContent>
+              </Popover>
+
               {/* Selected Label Chips displayed inline next to the button */}
               {selectedLabels.map((label) => {
                 const color = label.color || '#3b82f6';
@@ -302,23 +331,21 @@ export function CreateModal({
           </div>
         </div>
 
-        <DialogFooter className="mt-4 flex flex-row items-center justify-end gap-2.5 sm:gap-2.5">
+        <DialogFooter className="flex justify-end gap-2 pt-3">
           <Button
             type="button"
-            variant="outline"
-            size="sm"
+            variant="ghost"
             onClick={() => setIsOpen(false)}
             disabled={isCreating}
-            className="h-8 text-xs rounded-md shadow-none cursor-pointer"
+            className="h-8 px-3 text-12 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
           >
             Cancel
           </Button>
           <Button
             type="button"
-            size="sm"
             onClick={handleCreate}
             disabled={!title.trim() || isCreating}
-            className="h-8 text-xs rounded-md shadow-none cursor-pointer font-medium"
+            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md shadow-none"
           >
             {isCreating ? (
               <>
@@ -326,7 +353,7 @@ export function CreateModal({
                 Creating...
               </>
             ) : (
-              'Create Page'
+              'Create page'
             )}
           </Button>
         </DialogFooter>

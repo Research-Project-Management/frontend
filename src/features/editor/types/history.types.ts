@@ -68,19 +68,11 @@ export interface VersionDiffResult {
   };
 }
 
-export interface CreateVersionInput {
-  title?: string;
-  content?: string;
-  label?: string;
-  eventType?: VersionEventType;
-  fileName?: string;
-  projectPageId?: string;
-  projectId?: string;
-}
-
-export interface CreateSnapshotInput {
-  label?: string;
-}
+// Derived directly from Zod schemas (Single Source of Truth)
+export type {
+  CreateVersionInput,
+  CreateSnapshotInput,
+} from '../schemas/history.schema';
 
 export interface VersionLabelItem {
   id: string;

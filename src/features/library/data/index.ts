@@ -17,4 +17,3 @@ export * from './ingestion';
 export * from './citation';
 export * from './search';
 export * from './sync';
-export * from './library-cache-sync';

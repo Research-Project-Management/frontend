@@ -6,6 +6,7 @@ import { LatexCompilerEngine, type SyncTeXMap } from '../../../utils/viewer.util
 import { EditorEventBus } from '../../../utils/editor.util';
 import { editorCommandBus } from '../../../core/command-bus/editor-command-bus';
 import { useEditorInstance } from '../../../core/context/editor-instance.context';
+import { documentSessionCoordinator } from '../../../core';
 import type { CompileError } from '../../../types/compiler.types';
 import { toast } from 'sonner';
 
@@ -68,6 +69,9 @@ export function usePdfCompiler({
       }
       isCompilingRef.current = true;
 
+      // Guaranteed pre-compile flush of all dirty documents to backend database
+      await documentSessionCoordinator.flushAllPending();
+
       EditorEventBus.emit('flux:compile-started');
 
       // Collect dirty file buffers
@@ -96,6 +100,7 @@ export function usePdfCompiler({
         texLiveVersion,
         draft: compileMode === 'draft',
         useCache: options?.forceClean ? false : useCache,
+        forceClean: options?.forceClean,
         stopOnFirstError,
         dirtyFiles,
         onPhaseChange: setCompileStatus,
@@ -267,14 +272,6 @@ export function usePdfCompiler({
     }
   }, [pendingCompile, setPendingCompile, handleCompile]);
 
-  // Cleanup blob object URLs on unmount
-  useEffect(() => {
-    return () => {
-      if (prevPdfUrlRef.current && prevPdfUrlRef.current.startsWith('blob:')) {
-        URL.revokeObjectURL(prevPdfUrlRef.current);
-      }
-    };
-  }, []);
 
   const handleClearCacheAndCompile = useCallback(() => {
     return handleCompile({ forceClean: true });

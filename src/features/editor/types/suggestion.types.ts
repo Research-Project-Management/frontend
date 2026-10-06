@@ -36,19 +36,8 @@ export interface PageSuggestion {
   updatedAt: string;
 }
 
-export interface CreateSuggestionInput {
-  type: SuggestionType;
-  originalText?: string;
-  suggestedText?: string;
-  fromLine: number;
-  fromColumn?: number;
-  toLine: number;
-  toColumn?: number;
-  description?: string;
-  pageId?: string;
-  projectId?: string;
-}
-
-export interface ResolveSuggestionInput {
-  action: 'accept' | 'reject';
-}
+// Derived directly from Zod schemas (Single Source of Truth)
+export type {
+  CreateSuggestionInput,
+  ResolveSuggestionInput,
+} from '../schemas/suggestion.schema';

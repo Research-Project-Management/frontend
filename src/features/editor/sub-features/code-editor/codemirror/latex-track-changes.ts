@@ -12,16 +12,35 @@
  * - Dispatches click and hover events to position and reveal the InlineSuggestionWidget.
  */
 
-import { StateField, RangeSet, StateEffect, Extension } from '@codemirror/state';
+import { StateField, RangeSet, StateEffect, Extension, EditorState, Annotation } from '@codemirror/state';
 import { Decoration, DecorationSet, EditorView } from '@codemirror/view';
 import type { PageSuggestion } from '@/features/editor/types';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
+
+export const externalUpdateAnnotation = Annotation.define<boolean>();
 
 export type TrackChangesViewMode = 'show' | 'changes' | 'clean' | 'original';
 
 export interface SetTrackChangesPayload {
   suggestions: PageSuggestion[];
   viewMode?: TrackChangesViewMode;
+}
+
+export interface TrackChangeRecordPayload {
+  type: 'insert' | 'delete';
+  text: string;
+  originalText?: string;
+  suggestedText?: string;
+  fromLine: number;
+  fromColumn: number;
+  toLine: number;
+  toColumn: number;
+  silent?: boolean;
+}
+
+export interface TrackChangesInterceptorOptions {
+  isReviewMode: () => boolean;
+  onRecordChange: (change: TrackChangeRecordPayload) => void;
 }
 
 export const setTrackChangesEffect = StateEffect.define<SetTrackChangesPayload>();
@@ -163,3 +182,178 @@ export const latexTrackChangesExtension: Extension = [
   trackChangesHighlightField,
   trackChangesClickHandler,
 ];
+
+/**
+ * Creates CodeMirror transaction interceptor for Overleaf 1:1 Track Changes.
+ * - In Review Mode:
+ *   - Backspacing / deleting text cancels document buffer excision and records a 'delete' suggestion.
+ *   - Typing text inserts characters and records an 'insert' suggestion, coalesced via debounce.
+ *   - Typing over a selection records both 'delete' and 'insert'.
+ */
+export function createTrackChangesInterceptor(options: TrackChangesInterceptorOptions): Extension {
+  let pendingInsert: {
+    text: string;
+    fromLine: number;
+    fromColumn: number;
+    toLine: number;
+    toColumn: number;
+    endPos: number;
+    timer: any;
+  } | null = null;
+
+  const flushPendingInsert = () => {
+    if (!pendingInsert) return;
+    if (pendingInsert.timer) {
+      clearTimeout(pendingInsert.timer);
+      pendingInsert.timer = null;
+    }
+    const toSend = { ...pendingInsert };
+    pendingInsert = null;
+
+    if (toSend.text.length > 0) {
+      options.onRecordChange({
+        type: 'insert',
+        text: toSend.text,
+        suggestedText: toSend.text,
+        fromLine: toSend.fromLine,
+        fromColumn: toSend.fromColumn,
+        toLine: toSend.toLine,
+        toColumn: toSend.toColumn,
+        silent: true,
+      });
+    }
+  };
+
+  const filter = EditorState.transactionFilter.of((tr) => {
+    if (!options.isReviewMode()) {
+      if (pendingInsert) flushPendingInsert();
+      return tr;
+    }
+
+    if (!tr.docChanged) return tr;
+
+    // Ignore programmatic updates or undo/redo
+    if (tr.annotation(externalUpdateAnnotation)) return tr;
+    if (tr.isUserEvent('undo') || tr.isUserEvent('redo')) return tr;
+
+    let cancelDeletion = false;
+    let cursorAnchor: number | null = null;
+
+    tr.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+      // 1. Deletion (Backspace or Delete key or selection cut/erasure)
+      if (fromA < toA && inserted.length === 0) {
+        cancelDeletion = true;
+        flushPendingInsert();
+
+        const deletedText = tr.startState.sliceDoc(fromA, toA);
+        const startLine = tr.startState.doc.lineAt(fromA);
+        const endLine = tr.startState.doc.lineAt(toA);
+
+        const fromLine = startLine.number;
+        const fromColumn = fromA - startLine.from + 1; // 1-indexed for backend parity
+        const toLine = endLine.number;
+        const toColumn = toA - endLine.from + 1;
+
+        cursorAnchor = fromA;
+
+        options.onRecordChange({
+          type: 'delete',
+          text: deletedText,
+          originalText: deletedText,
+          fromLine,
+          fromColumn,
+          toLine,
+          toColumn,
+          silent: true,
+        });
+      }
+      // 2. Replacement (Selection typed over)
+      else if (fromA < toA && inserted.length > 0) {
+        flushPendingInsert();
+
+        const deletedText = tr.startState.sliceDoc(fromA, toA);
+        const insertedText = inserted.toString();
+        const startLine = tr.startState.doc.lineAt(fromA);
+        const endLine = tr.startState.doc.lineAt(toA);
+
+        const fromLine = startLine.number;
+        const fromColumn = fromA - startLine.from + 1;
+        const toLine = endLine.number;
+        const toColumn = toA - endLine.from + 1;
+
+        options.onRecordChange({
+          type: 'delete',
+          text: deletedText,
+          originalText: deletedText,
+          fromLine,
+          fromColumn,
+          toLine,
+          toColumn,
+          silent: true,
+        });
+
+        options.onRecordChange({
+          type: 'insert',
+          text: insertedText,
+          suggestedText: insertedText,
+          fromLine,
+          fromColumn,
+          toLine: fromLine,
+          toColumn: fromColumn + insertedText.length,
+          silent: true,
+        });
+      }
+      // 3. Insertion (Standard typing at cursor)
+      else if (fromA === toA && inserted.length > 0) {
+        const insertedText = inserted.toString();
+        const startLine = tr.startState.doc.lineAt(fromA);
+        const lineNum = startLine.number;
+        const colNum = fromA - startLine.from + 1;
+
+        if (
+          pendingInsert &&
+          pendingInsert.endPos === fromA &&
+          pendingInsert.toLine === lineNum &&
+          !insertedText.includes('\n')
+        ) {
+          pendingInsert.text += insertedText;
+          pendingInsert.toColumn += insertedText.length;
+          pendingInsert.endPos = fromA + inserted.length;
+          if (pendingInsert.timer) clearTimeout(pendingInsert.timer);
+          pendingInsert.timer = setTimeout(flushPendingInsert, 500);
+        } else {
+          flushPendingInsert();
+
+          pendingInsert = {
+            text: insertedText,
+            fromLine: lineNum,
+            fromColumn: colNum,
+            toLine: lineNum,
+            toColumn: colNum + insertedText.length,
+            endPos: fromA + inserted.length,
+            timer: setTimeout(flushPendingInsert, 500),
+          };
+        }
+      }
+    });
+
+    if (cancelDeletion) {
+      // In Overleaf, deleted text remains visible in the document buffer with red strikethrough.
+      // We cancel the physical excision of text and place the cursor where the delete occurred.
+      return {
+        selection: { anchor: cursorAnchor ?? tr.startState.selection.main.from },
+      };
+    }
+
+    return tr;
+  });
+
+  const domHandlers = EditorView.domEventHandlers({
+    blur: () => {
+      flushPendingInsert();
+      return false;
+    },
+  });
+
+  return [filter, domHandlers];
+}

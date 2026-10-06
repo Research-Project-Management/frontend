@@ -863,7 +863,7 @@ export function PlaneEmptyState({
       </div>
 
       <div className={cn('max-w-xs space-y-1', isCompact ? 'px-2' : 'px-4')}>
-        <h3 className="text-13 font-semibold text-foreground tracking-tight leading-snug">
+        <h3 className="text-[15px] font-semibold text-foreground tracking-tight leading-snug">
           {title}
         </h3>
         {description && (

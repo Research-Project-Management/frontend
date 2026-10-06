@@ -8,18 +8,25 @@ import {
   FileText,
   BookOpen,
   Paintbrush,
-  Bell,
   Settings,
   Landmark,
   ExternalLink,
-  SpellCheck,
-  Check,
   Plus,
+  Trash2,
+  Download,
+  FileDown,
+  Loader2,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { apiPost, apiDelete } from '@/shared/lib/api';
+import { exportProjectAsZip } from '../../utils/export-zip.util';
 import { useSpellingDictionary } from '../../hooks/use-spelling';
 import { ProjectReferencesTab } from './ProjectReferencesTab';
 import { ProjectGithubTab } from './ProjectGithubTab';
 import { GitHubIcon } from '@/shared/components/icons';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { learnedWordSchema, type LearnedWordFormValues } from './schemas/settings.schema';
 
 import {
   Dialog,
@@ -39,6 +46,7 @@ import { cn } from '@/shared/lib/utils';
 import {
   useSettingsStore,
   usePageStore,
+  useCompilerStore,
   type CompilerEngine,
   type KeybindingMode,
   type EditorTheme,
@@ -51,7 +59,6 @@ import { EditorEventBus } from '@/features/editor/utils/editor.util';
 
 type SettingsTab =
   | 'editor'
-  | 'spelling'
   | 'compiler'
   | 'references'
   | 'github'
@@ -76,26 +83,29 @@ function CodeIconBrackets({ className = 'size-4 shrink-0' }: { className?: strin
   );
 }
 
-// ── Overleaf 1:1 Switch (Green Pill Toggle) ────────────────────────────────────
+// ── Overleaf 1:1 Switch (Toggle) ──────────────────────────────────────────────
 function OverleafSwitch({
   checked,
   onCheckedChange,
   disabled,
+  'aria-label': ariaLabel,
 }: {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   disabled?: boolean;
+  'aria-label'?: string;
 }) {
   return (
     <Switch
       checked={checked}
       onCheckedChange={onCheckedChange}
       disabled={disabled}
+      aria-label={ariaLabel}
       className={cn(
         'cursor-pointer transition-colors',
         'data-[state=checked]:bg-primary',
         'data-[state=unchecked]:bg-muted-foreground/30',
-        'h-[22px] w-[42px]'
+        'h-[22px] w-[40px]'
       )}
     />
   );
@@ -112,10 +122,10 @@ function SettingRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-6 py-3 border-b border-border/40 last:border-b-0">
+    <div className="flex items-center justify-between gap-8 py-3.5 border-b border-border/30 last:border-b-0">
       <div className="min-w-0 flex-1 pr-4">
         <h4 className="text-sm font-medium text-foreground leading-snug">{title}</h4>
-        <p className="text-xs text-muted-foreground mt-0.5 leading-normal">{description}</p>
+        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
       </div>
       <div className="shrink-0 flex items-center">{children}</div>
     </div>
@@ -249,42 +259,141 @@ export default function ProjectSettingsModal() {
     return list;
   }, [projectFiles]);
 
-  const [newWordInput, setNewWordInput] = useState('');
   const {
     userWords,
-    projectWords,
     addWord,
     removeWord,
-  } = useSpellingDictionary(projectId, settingsPanelOpen && activeTab === 'spelling');
+  } = useSpellingDictionary(undefined, settingsPanelOpen && activeTab === 'editor');
 
-  const handleAddWord = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = newWordInput.trim().toLowerCase();
-    if (!trimmed) return;
-    addWord({ word: trimmed, isProject: !!projectId });
-    setNewWordInput('');
+  const {
+    register: registerWord,
+    handleSubmit: handleSubmitWord,
+    reset: resetWord,
+    formState: { errors: wordErrors },
+  } = useForm<LearnedWordFormValues>({
+    resolver: zodResolver(learnedWordSchema),
+    defaultValues: { word: '' },
+  });
+
+  const handleAddWord = (data: LearnedWordFormValues) => {
+    addWord({ word: data.word.toLowerCase(), isProject: false });
+    resetWord();
   };
 
-  const handleRemoveWord = (word: string, isProject: boolean) => {
-    removeWord({ word, isProject });
+  const handleRemoveWord = (word: string) => {
+    removeWord({ word, isProject: false });
+  };
+
+  const pdfUrl = useCompilerStore((s) => s.pdfUrl);
+  const [isClearingCache, setIsClearingCache] = useState(false);
+  const [isExportingZip, setIsExportingZip] = useState(false);
+
+  const handleClearCache = async () => {
+    const effectiveProjectId =
+      (typeof currentPage?.projectId === 'string'
+        ? currentPage.projectId
+        : (currentPage?.projectId as any)?.id) ||
+      projectId ||
+      pageId;
+
+    if (!effectiveProjectId) {
+      toast.info('No active project found to clear cache.');
+      return;
+    }
+
+    setIsClearingCache(true);
+    try {
+      await apiPost(`/api/v1/manuscripts/projects/${effectiveProjectId}/clean-aux`);
+      toast.success('Cached files cleared. Next compilation will start fresh from scratch.');
+      EditorEventBus.emit('flux:trigger-compile', { forceSync: true });
+    } catch {
+      try {
+        await apiDelete(`/api/v1/manuscripts/projects/${effectiveProjectId}/artifacts`);
+        toast.success('Cached files cleared.');
+        EditorEventBus.emit('flux:trigger-compile', { forceSync: true });
+      } catch (err: any) {
+        toast.error(err?.message || 'Failed to clear cached files');
+      }
+    } finally {
+      setIsClearingCache(false);
+    }
+  };
+
+  const handleDownloadZip = async () => {
+    const effectivePageId = pageId || projectId || '';
+    if (!effectivePageId) {
+      toast.error('No project available for download');
+      return;
+    }
+    setIsExportingZip(true);
+    try {
+      toast.loading('Preparing project archive...', { id: 'download-zip' });
+      await exportProjectAsZip({
+        parentPageId: effectivePageId,
+        projectTitle: projectTitle || currentPage?.title || 'project',
+      });
+      toast.success('Project archive downloaded', { id: 'download-zip' });
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to generate ZIP archive', { id: 'download-zip' });
+    } finally {
+      setIsExportingZip(false);
+    }
+  };
+
+  const handleDownloadPdf = () => {
+    if (!pdfUrl) {
+      toast.error('No compiled PDF available to download. Please recompile first.');
+      return;
+    }
+    const filename = `${(projectTitle || currentPage?.title || 'document').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_')}.pdf`;
+    const link = document.createElement('a');
+    link.href = pdfUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('PDF download started');
   };
 
   const navTabs = [
     { id: 'editor' as const, label: 'Editor', icon: CodeIconBrackets },
-    { id: 'spelling' as const, label: 'Spelling and language', icon: SpellCheck },
     { id: 'compiler' as const, label: 'Compiler', icon: FileText },
     { id: 'references' as const, label: 'References', icon: BookOpen },
     { id: 'github' as const, label: 'GitHub Sync', icon: GitHubIcon },
     { id: 'appearance' as const, label: 'Appearance', icon: Paintbrush },
-    { id: 'notifications' as const, label: 'Project notifications', icon: Bell },
   ];
+
+  const handleTabKeyDown = (e: React.KeyboardEvent, currentIndex: number) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const nextIndex = (currentIndex + 1) % navTabs.length;
+      setActiveTab(navTabs[nextIndex].id);
+      document.getElementById(`settings-tab-${navTabs[nextIndex].id}`)?.focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prevIndex = (currentIndex - 1 + navTabs.length) % navTabs.length;
+      setActiveTab(navTabs[prevIndex].id);
+      document.getElementById(`settings-tab-${navTabs[prevIndex].id}`)?.focus();
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      setActiveTab(navTabs[0].id);
+      document.getElementById(`settings-tab-${navTabs[0].id}`)?.focus();
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      setActiveTab(navTabs[navTabs.length - 1].id);
+      document.getElementById(`settings-tab-${navTabs[navTabs.length - 1].id}`)?.focus();
+    }
+  };
 
   return (
     <Dialog open={settingsPanelOpen} onOpenChange={setSettingsPanelOpen}>
-      <DialogContent className="max-w-3xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-300 rounded-lg text-foreground select-none flex flex-col max-h-[85vh] h-[580px]">
-        {/* ── Dialog Header (Overleaf 1:1) ──────────────────────────────────── */}
-        <div className="flex items-center justify-between px-6 py-3.5 border-b border-border bg-background shrink-0">
-          <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">
+      <DialogContent
+        showCloseButton={false}
+        className="sm:max-w-[840px] md:max-w-[880px] lg:max-w-[920px] w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-2xl rounded-xl text-foreground select-none flex flex-col max-h-[88vh] h-[620px]"
+      >
+        {/* ── Dialog Header (Clean, seamless, zero divider lines) ─────────────── */}
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 bg-background shrink-0">
+          <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
             Settings
           </DialogTitle>
           <DialogDescription className="sr-only">
@@ -293,29 +402,37 @@ export default function ProjectSettingsModal() {
           <button
             type="button"
             onClick={() => setSettingsPanelOpen(false)}
-            aria-label="Close"
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Close settings"
+            className="size-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
-            <X className="size-4.5" />
+            <X className="size-4" />
           </button>
         </div>
 
-        {/* ── 2-Column Split: Sidebar Navigation & Content Panel ────────────── */}
-        <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* ── 2-Column Split: Sidebar Navigation & Content Panel (No top border) ── */}
+        <div className="flex flex-col sm:flex-row flex-1 min-h-0 overflow-hidden">
           {/* Left Navigation Sidebar */}
-          <div className="w-56 shrink-0 border-r border-border p-3 flex flex-col gap-1 overflow-y-auto bg-muted/15" role="tablist">
-            {navTabs.map((tab) => {
+          <div
+            className="w-full sm:w-60 shrink-0 border-b sm:border-b-0 sm:border-r border-border/40 p-2.5 sm:p-3.5 flex sm:flex-col flex-row overflow-x-auto sm:overflow-y-auto bg-muted/15 gap-1"
+            role="tablist"
+            aria-label="Settings navigation"
+          >
+            {navTabs.map((tab, idx) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
+                  id={`settings-tab-${tab.id}`}
                   type="button"
                   role="tab"
+                  tabIndex={isActive ? 0 : -1}
                   aria-selected={isActive}
+                  aria-controls={`settings-tabpanel-${tab.id}`}
                   onClick={() => setActiveTab(tab.id)}
+                  onKeyDown={(e) => handleTabKeyDown(e, idx)}
                   className={cn(
-                    'flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors text-left cursor-pointer w-full outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                    'flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors text-left cursor-pointer w-full shrink-0 sm:shrink sm:w-full outline-none focus-visible:ring-1 focus-visible:ring-primary',
                     isActive
                       ? 'bg-primary/10 text-primary font-semibold'
                       : 'text-foreground/80 hover:text-foreground hover:bg-muted/60 font-normal'
@@ -332,29 +449,73 @@ export default function ProjectSettingsModal() {
               );
             })}
 
+            {/* Download Actions (Overleaf 1:1 Parity) */}
+            <div className="h-px bg-border/60 my-1.5 hidden sm:block" />
+            <div className="px-3 py-0.5 text-10 font-semibold uppercase tracking-wider text-muted-foreground/70 hidden sm:block">
+              Download
+            </div>
+            <button
+              type="button"
+              onClick={handleDownloadZip}
+              disabled={isExportingZip}
+              className="hidden sm:flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors text-left cursor-pointer w-full outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50"
+            >
+              {isExportingZip ? (
+                <Loader2 className="size-4 shrink-0 text-muted-foreground animate-spin" />
+              ) : (
+                <Download className="size-4 shrink-0 text-muted-foreground" />
+              )}
+              <span className="truncate">Source (ZIP)</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={!pdfUrl}
+              className="hidden sm:flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors text-left cursor-pointer w-full outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50 disabled:pointer-events-none"
+            >
+              <FileDown className="size-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">PDF</span>
+            </button>
+
             {/* Project Functions / Actions (Overleaf Parity) */}
-            <div className="h-px bg-border/60 my-1.5" />
+            <div className="h-px bg-border/60 my-1.5 hidden sm:block" />
+            <div className="px-3 py-0.5 text-10 font-semibold uppercase tracking-wider text-muted-foreground/70 hidden sm:block">
+              Actions
+            </div>
             <button
               type="button"
               onClick={() => {
                 setSettingsPanelOpen(false);
                 EditorEventBus.emit('flux:open-word-count');
               }}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors text-left cursor-pointer w-full outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="hidden sm:flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors text-left cursor-pointer w-full outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <FileText className="size-4 shrink-0 text-muted-foreground" />
               <span className="truncate">Word count</span>
             </button>
+            <button
+              type="button"
+              onClick={handleClearCache}
+              disabled={isClearingCache}
+              className="hidden sm:flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors text-left cursor-pointer w-full outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50"
+            >
+              {isClearingCache ? (
+                <Loader2 className="size-4 shrink-0 text-muted-foreground animate-spin" />
+              ) : (
+                <Trash2 className="size-4 shrink-0 text-muted-foreground" />
+              )}
+              <span className="truncate">{isClearingCache ? 'Clearing cache...' : 'Clear cached files'}</span>
+            </button>
 
             {/* Separator before external links */}
-            <div className="h-px bg-border/60 my-1.5" />
+            <div className="h-px bg-border/60 my-1.5 hidden sm:block" />
 
             {/* Account Settings Link */}
             <Link
               href="/settings"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors group cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="hidden sm:flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors group cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <Settings className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
               <span className="flex-1 truncate">Account settings</span>
@@ -366,7 +527,7 @@ export default function ProjectSettingsModal() {
               href="/settings/billing"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors group cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="hidden sm:flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors group cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <Landmark className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
               <span className="flex-1 truncate">Subscription</span>
@@ -375,7 +536,13 @@ export default function ProjectSettingsModal() {
           </div>
 
           {/* Right Content Area */}
-          <div className="flex-1 overflow-y-auto p-6 bg-background">
+          <div
+            role="tabpanel"
+            id={`settings-tabpanel-${activeTab}`}
+            aria-labelledby={`settings-tab-${activeTab}`}
+            tabIndex={0}
+            className="flex-1 overflow-y-auto px-5 sm:px-8 py-4 sm:py-5 bg-background outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
+          >
             {/* 1. EDITOR TAB (Matching Overleaf Screenshot 1:1) */}
             {activeTab === 'editor' && (
               <div className="space-y-1">
@@ -386,6 +553,7 @@ export default function ProjectSettingsModal() {
                   <OverleafSwitch
                     checked={autoComplete}
                     onCheckedChange={setAutoComplete}
+                    aria-label="Auto-complete"
                   />
                 </SettingRow>
 
@@ -396,6 +564,7 @@ export default function ProjectSettingsModal() {
                   <OverleafSwitch
                     checked={autoCloseBrackets}
                     onCheckedChange={setAutoCloseBrackets}
+                    aria-label="Auto-close brackets"
                   />
                 </SettingRow>
 
@@ -406,6 +575,7 @@ export default function ProjectSettingsModal() {
                   <OverleafSwitch
                     checked={nonBlinkingCursor}
                     onCheckedChange={setNonBlinkingCursor}
+                    aria-label="Non-blinking cursor"
                   />
                 </SettingRow>
 
@@ -416,6 +586,7 @@ export default function ProjectSettingsModal() {
                   <OverleafSwitch
                     checked={linterEnabled}
                     onCheckedChange={setLinterEnabled}
+                    aria-label="Code check"
                   />
                 </SettingRow>
 
@@ -426,6 +597,7 @@ export default function ProjectSettingsModal() {
                   <OverleafSwitch
                     checked={showEditorTabs}
                     onCheckedChange={setShowEditorTabs}
+                    aria-label="Open files in tabs"
                   />
                 </SettingRow>
 
@@ -436,6 +608,7 @@ export default function ProjectSettingsModal() {
                   <OverleafSwitch
                     checked={previewEditorTabs}
                     onCheckedChange={setPreviewEditorTabs}
+                    aria-label="Preview editor tabs"
                   />
                 </SettingRow>
 
@@ -447,7 +620,10 @@ export default function ProjectSettingsModal() {
                     value={keybinding}
                     onValueChange={(val) => setKeybinding(val as KeybindingMode)}
                   >
-                    <SelectTrigger className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                    <SelectTrigger
+                      aria-label="Keybindings"
+                      className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background"
+                    >
                       <SelectValue placeholder="Keybindings" />
                     </SelectTrigger>
                     <SelectContent>
@@ -472,7 +648,10 @@ export default function ProjectSettingsModal() {
                     value={pdfViewer}
                     onValueChange={(val) => setPdfViewer(val as 'overleaf' | 'browser')}
                   >
-                    <SelectTrigger className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                    <SelectTrigger
+                      aria-label="PDF Viewer"
+                      className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background"
+                    >
                       <SelectValue placeholder="PDF Viewer" />
                     </SelectTrigger>
                     <SelectContent>
@@ -493,6 +672,7 @@ export default function ProjectSettingsModal() {
                   <OverleafSwitch
                     checked={wordWrap}
                     onCheckedChange={setWordWrap}
+                    aria-label="Word wrap"
                   />
                 </SettingRow>
 
@@ -503,6 +683,7 @@ export default function ProjectSettingsModal() {
                   <OverleafSwitch
                     checked={lineNumbers}
                     onCheckedChange={setLineNumbers}
+                    aria-label="Line numbers"
                   />
                 </SettingRow>
 
@@ -514,7 +695,10 @@ export default function ProjectSettingsModal() {
                     value={String(fontSize || 15)}
                     onValueChange={(val) => setFontSize(Number(val))}
                   >
-                    <SelectTrigger className="w-28 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                    <SelectTrigger
+                      aria-label="Font size"
+                      className="w-28 h-8 text-xs font-medium cursor-pointer border-border bg-background"
+                    >
                       <SelectValue placeholder="Font size" />
                     </SelectTrigger>
                     <SelectContent>
@@ -535,7 +719,10 @@ export default function ProjectSettingsModal() {
                     value={fontFamily || 'default'}
                     onValueChange={(val) => setFontFamily(val)}
                   >
-                    <SelectTrigger className="w-40 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                    <SelectTrigger
+                      aria-label="Font family"
+                      className="w-40 h-8 text-xs font-medium cursor-pointer border-border bg-background"
+                    >
                       <SelectValue placeholder="Font family" />
                     </SelectTrigger>
                     <SelectContent>
@@ -566,7 +753,10 @@ export default function ProjectSettingsModal() {
                     value={String(lineHeight || 1.6)}
                     onValueChange={(val) => setLineHeight(Number(val))}
                   >
-                    <SelectTrigger className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                    <SelectTrigger
+                      aria-label="Line height"
+                      className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background"
+                    >
                       <SelectValue placeholder="Line height" />
                     </SelectTrigger>
                     <SelectContent>
@@ -582,34 +772,33 @@ export default function ProjectSettingsModal() {
                     </SelectContent>
                   </Select>
                 </SettingRow>
-              </div>
-            )}
 
-            {/* 2. SPELLING AND LANGUAGE TAB */}
-            {activeTab === 'spelling' && (
-              <div className="space-y-1">
+                {/* ── Spell Check (Overleaf Parity: Single dropdown with Off & Languages) ── */}
                 <SettingRow
                   title="Spell check"
-                  description="Highlight misspelled words as you type in the editor"
-                >
-                  <OverleafSwitch
-                    checked={spellCheck}
-                    onCheckedChange={setSpellCheck}
-                  />
-                </SettingRow>
-
-                <SettingRow
-                  title="Spell check language"
-                  description="Choose default dictionary language for spell checking"
+                  description="Choose spell check language or turn off"
                 >
                   <Select
-                    value={spellCheckLanguage}
-                    onValueChange={setSpellCheckLanguage}
+                    value={!spellCheck ? 'off' : (spellCheckLanguage || 'en_US')}
+                    onValueChange={(val) => {
+                      if (val === 'off') {
+                        setSpellCheck(false);
+                      } else {
+                        setSpellCheck(true);
+                        setSpellCheckLanguage(val);
+                      }
+                    }}
                   >
-                    <SelectTrigger className="w-52 h-8 text-xs font-medium cursor-pointer border-border bg-background">
-                      <SelectValue placeholder="Select language" />
+                    <SelectTrigger
+                      aria-label="Spell check"
+                      className="w-52 h-8 text-xs font-medium cursor-pointer border-border bg-background"
+                    >
+                      <SelectValue placeholder="Spell check" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="off" className="cursor-pointer text-xs">
+                        Off
+                      </SelectItem>
                       <SelectItem value="en_US" className="cursor-pointer text-xs">
                         English (United States)
                       </SelectItem>
@@ -632,43 +821,47 @@ export default function ProjectSettingsModal() {
                   </Select>
                 </SettingRow>
 
-                {/* ── Personal & Project Learned Words (Overleaf Parity) ── */}
-                <div className="pt-4 mt-3 border-t border-border/50">
-                  <h4 className="text-sm font-semibold text-foreground mb-1">
-                    Learned words
-                  </h4>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Words added to your personal and project custom dictionaries will not be flagged as spelling errors.
-                  </p>
+                {/* ── Learned Words (Personal Dictionary) ── */}
+                {spellCheck && (
+                  <div className="pt-4 mt-3 border-t border-border/50">
+                    <h4 className="text-sm font-semibold text-foreground mb-1">
+                      Learned words
+                    </h4>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Words added to your personal dictionary will not be flagged as spelling errors.
+                    </p>
 
-                  {/* Add word input form */}
-                  <form onSubmit={handleAddWord} className="flex items-center gap-2 mb-3">
-                    <input
-                      type="text"
-                      placeholder="Add a custom word..."
-                      value={newWordInput}
-                      onChange={(e) => setNewWordInput(e.target.value)}
-                      className="flex-1 h-8 px-2.5 text-xs rounded-md border border-border bg-background outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!newWordInput.trim()}
-                      className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium inline-flex items-center gap-1 hover:bg-primary-hover disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                    >
-                      <Plus className="size-3.5 shrink-0" />
-                      <span>Add word</span>
-                    </button>
-                  </form>
+                    {/* Add word input form */}
+                    <form onSubmit={handleSubmitWord(handleAddWord)} className="flex flex-col gap-1 mb-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="Add a custom word..."
+                          aria-label="Add a custom word to dictionary"
+                          {...registerWord('word')}
+                          className="flex-1 h-8 px-2.5 text-xs rounded-md border border-border bg-background outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        />
+                        <button
+                          type="submit"
+                          className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium inline-flex items-center gap-1 hover:bg-primary-hover cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        >
+                          <Plus className="size-3.5 shrink-0" />
+                          <span>Add word</span>
+                        </button>
+                      </div>
+                      {wordErrors.word && (
+                        <p className="text-10 text-destructive">{wordErrors.word.message}</p>
+                      )}
+                    </form>
 
-                  {/* Word Badges */}
-                  <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 border border-border/40 rounded-md bg-muted/20">
-                    {userWords.length === 0 && projectWords.length === 0 ? (
-                      <span className="text-xs text-muted-foreground/80 italic p-1">
-                         No learned words in your dictionary yet.
-                      </span>
-                    ) : (
-                      <>
-                        {userWords.map((word) => (
+                    {/* Word Badges */}
+                    <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 border border-border/40 rounded-md bg-muted/20">
+                      {userWords.length === 0 ? (
+                        <span className="text-xs text-muted-foreground/80 italic p-1">
+                          No learned words in your personal dictionary yet.
+                        </span>
+                      ) : (
+                        userWords.map((word) => (
                           <span
                             key={`user-${word}`}
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-background border border-border text-foreground group"
@@ -676,35 +869,19 @@ export default function ProjectSettingsModal() {
                             <span>{word}</span>
                             <button
                               type="button"
-                              onClick={() => handleRemoveWord(word, false)}
+                              onClick={() => handleRemoveWord(word)}
                               title={`Remove "${word}" from dictionary`}
-                              className="size-3.5 rounded-full inline-flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+                              aria-label={`Remove "${word}" from dictionary`}
+                              className="size-3.5 relative rounded-full inline-flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-destructive after:absolute after:-inset-1.5"
                             >
                               <X className="size-2.5" />
                             </button>
                           </span>
-                        ))}
-                        {projectWords.map((word) => (
-                          <span
-                            key={`proj-${word}`}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 border border-primary/20 text-primary group"
-                            title="Project dictionary word"
-                          >
-                            <span>{word}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveWord(word, true)}
-                              title={`Remove "${word}" from project dictionary`}
-                              className="size-3.5 rounded-full inline-flex items-center justify-center text-primary/70 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-destructive"
-                            >
-                              <X className="size-2.5" />
-                            </button>
-                          </span>
-                        ))}
-                      </>
-                    )}
+                        ))
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
@@ -719,7 +896,10 @@ export default function ProjectSettingsModal() {
                     value={engine}
                     onValueChange={(val) => setEngine(val as CompilerEngine)}
                   >
-                    <SelectTrigger className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                    <SelectTrigger
+                      aria-label="Compiler engine"
+                      className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background"
+                    >
                       <SelectValue placeholder="Engine" />
                     </SelectTrigger>
                     <SelectContent>
@@ -744,7 +924,10 @@ export default function ProjectSettingsModal() {
                     value={texLiveVersion}
                     onValueChange={setTexLiveVersion}
                   >
-                    <SelectTrigger className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                    <SelectTrigger
+                      aria-label="TeX Live version"
+                      className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background"
+                    >
                       <SelectValue placeholder="Version" />
                     </SelectTrigger>
                     <SelectContent>
@@ -769,7 +952,10 @@ export default function ProjectSettingsModal() {
                   description="The entrypoint LaTeX document to compile"
                 >
                   <Select value={mainFile} onValueChange={handleMainFileChange}>
-                    <SelectTrigger className="w-44 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                    <SelectTrigger
+                      aria-label="Main document"
+                      className="w-44 h-8 text-xs font-medium cursor-pointer border-border bg-background"
+                    >
                       <SelectValue placeholder="Main file" />
                     </SelectTrigger>
                     <SelectContent>
@@ -789,6 +975,7 @@ export default function ProjectSettingsModal() {
                   <OverleafSwitch
                     checked={autoCompile}
                     onCheckedChange={setAutoCompile}
+                    aria-label="Auto-compile"
                   />
                 </SettingRow>
 
@@ -799,6 +986,7 @@ export default function ProjectSettingsModal() {
                   <OverleafSwitch
                     checked={compileMode === 'draft'}
                     onCheckedChange={(v) => setCompileMode(v ? 'draft' : 'full')}
+                    aria-label="Fast [draft] compile"
                   />
                 </SettingRow>
 
@@ -809,6 +997,7 @@ export default function ProjectSettingsModal() {
                   <OverleafSwitch
                     checked={stopOnFirstError}
                     onCheckedChange={setStopOnFirstError}
+                    aria-label="Stop on first error"
                   />
                 </SettingRow>
 
@@ -819,7 +1008,27 @@ export default function ProjectSettingsModal() {
                   <OverleafSwitch
                     checked={useCache}
                     onCheckedChange={setUseCache}
+                    aria-label="Cache auxiliary files"
                   />
+                </SettingRow>
+
+                <SettingRow
+                  title="Clear cached files"
+                  description="Delete auxiliary files (.aux, .bbl, .log) to resolve build errors and compile from scratch"
+                >
+                  <button
+                    type="button"
+                    onClick={handleClearCache}
+                    disabled={isClearingCache}
+                    className="h-8 px-3 rounded-md border border-border bg-background hover:bg-muted text-xs font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50"
+                  >
+                    {isClearingCache ? (
+                      <Loader2 className="size-3.5 text-muted-foreground animate-spin" />
+                    ) : (
+                      <Trash2 className="size-3.5 text-muted-foreground" />
+                    )}
+                    <span>{isClearingCache ? 'Clearing...' : 'Clear cached files'}</span>
+                  </button>
                 </SettingRow>
               </div>
             )}
@@ -845,7 +1054,10 @@ export default function ProjectSettingsModal() {
                     value={editorTheme}
                     onValueChange={(val) => setEditorTheme(val as EditorTheme)}
                   >
-                    <SelectTrigger className="w-48 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                    <SelectTrigger
+                      aria-label="Editor theme"
+                      className="w-48 h-8 text-xs font-medium cursor-pointer border-border bg-background"
+                    >
                       <SelectValue placeholder="Theme" />
                     </SelectTrigger>
                     <SelectContent>
@@ -863,7 +1075,10 @@ export default function ProjectSettingsModal() {
                   description="Light or Dark mode for the surrounding editor interface"
                 >
                   <Select value={theme} onValueChange={(val: any) => setTheme(val)}>
-                    <SelectTrigger className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                    <SelectTrigger
+                      aria-label="Interface theme"
+                      className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background"
+                    >
                       <SelectValue placeholder="Theme" />
                     </SelectTrigger>
                     <SelectContent>
@@ -888,7 +1103,10 @@ export default function ProjectSettingsModal() {
                     value={String(fontSize)}
                     onValueChange={(val) => setFontSize(Number(val))}
                   >
-                    <SelectTrigger className="w-28 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                    <SelectTrigger
+                      aria-label="Font size"
+                      className="w-28 h-8 text-xs font-medium cursor-pointer border-border bg-background"
+                    >
                       <SelectValue placeholder="Size" />
                     </SelectTrigger>
                     <SelectContent>
@@ -906,7 +1124,10 @@ export default function ProjectSettingsModal() {
                   description="Monospace font family for the code editor"
                 >
                   <Select value={fontFamily} onValueChange={setFontFamily}>
-                    <SelectTrigger className="w-44 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                    <SelectTrigger
+                      aria-label="Font family"
+                      className="w-44 h-8 text-xs font-medium cursor-pointer border-border bg-background"
+                    >
                       <SelectValue placeholder="Font" />
                     </SelectTrigger>
                     <SelectContent>
@@ -941,6 +1162,7 @@ export default function ProjectSettingsModal() {
                   <OverleafSwitch
                     checked={notifyComments}
                     onCheckedChange={setNotifyComments}
+                    aria-label="Comments and mentions"
                   />
                 </SettingRow>
 
@@ -951,6 +1173,7 @@ export default function ProjectSettingsModal() {
                   <OverleafSwitch
                     checked={notifyUpdates}
                     onCheckedChange={setNotifyUpdates}
+                    aria-label="Project activity summary"
                   />
                 </SettingRow>
               </div>

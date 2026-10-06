@@ -1,75 +1,37 @@
 'use client';
 
-import React, { useCallback } from 'react';
-import { cn } from '@/shared/lib/utils';
+import React from 'react';
+import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { useSettingsStore } from '@/features/editor/store';
 
 export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
   const editorMode = useSettingsStore((s) => s.editorMode);
   const setEditorMode = useSettingsStore((s) => s.setEditorMode);
 
-  const handleSwitchMode = useCallback(
-    (mode: 'code' | 'visual') => {
-      if (editorMode === mode) return;
-      setEditorMode(mode);
-    },
-    [editorMode, setEditorMode],
-  );
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'Home') {
-        e.preventDefault();
-        handleSwitchMode('code');
-      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'End') {
-        e.preventDefault();
-        handleSwitchMode('visual');
-      }
-    },
-    [handleSwitchMode],
-  );
-
   return (
-    <div
-      role="radiogroup"
-      aria-label="Editor display mode"
-      onKeyDown={handleKeyDown}
-      className="inline-flex items-center rounded-md bg-muted/80 p-0.5 select-none shrink-0"
+    <Tabs
+      value={editorMode}
+      onValueChange={(val) => setEditorMode(val as 'code' | 'visual')}
+      className="inline-flex select-none shrink-0"
     >
-      <button
-        type="button"
-        role="radio"
-        tabIndex={editorMode === 'code' ? 0 : -1}
-        aria-checked={editorMode === 'code'}
-        aria-label="Code mode"
-        onClick={() => handleSwitchMode('code')}
-        className={cn(
-          'px-2.5 py-1 rounded-sm text-12 transition-colors duration-150 cursor-pointer select-none leading-normal outline-none focus-visible:ring-1 focus-visible:ring-primary',
-          editorMode === 'code'
-            ? 'bg-background text-foreground font-semibold'
-            : 'text-muted-foreground hover:text-foreground font-medium',
-        )}
-        title="Code mode (Ctrl+Shift+V)"
-      >
-        Code
-      </button>
-      <button
-        type="button"
-        role="radio"
-        tabIndex={editorMode === 'visual' ? 0 : -1}
-        aria-checked={editorMode === 'visual'}
-        aria-label="Visual mode"
-        onClick={() => handleSwitchMode('visual')}
-        className={cn(
-          'px-2.5 py-1 rounded-sm text-12 transition-colors duration-150 cursor-pointer select-none leading-normal outline-none focus-visible:ring-1 focus-visible:ring-primary',
-          editorMode === 'visual'
-            ? 'bg-background text-foreground font-semibold'
-            : 'text-muted-foreground hover:text-foreground font-medium',
-        )}
-        title="Visual mode (Ctrl+Shift+V)"
-      >
-        Visual
-      </button>
-    </div>
+      <TabsList className="h-7 p-0.5 bg-muted/80 border border-border/50 rounded-md">
+        <TabsTrigger
+          value="code"
+          className="h-6 px-2.5 text-12 font-medium data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-xs transition-all cursor-pointer rounded-xs"
+          title="Source mode (LaTeX code) (Ctrl+Shift+V)"
+          aria-label="Source mode"
+        >
+          Source
+        </TabsTrigger>
+        <TabsTrigger
+          value="visual"
+          className="h-6 px-2.5 text-12 font-medium data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-xs transition-all cursor-pointer rounded-xs"
+          title="Visual mode (Ctrl+Shift+V)"
+          aria-label="Visual mode"
+        >
+          Visual
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
   );
 });

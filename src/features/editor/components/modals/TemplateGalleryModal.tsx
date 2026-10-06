@@ -17,7 +17,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useTemplateGalleryActions } from './hooks/useTemplateGalleryActions';
 import {
   Dialog,
   DialogContent,
@@ -396,7 +396,7 @@ export default function TemplateGalleryModal() {
 
   const combinedTemplates = useMemo(() => {
     const list: AcademicTemplate[] = [...ACADEMIC_TEMPLATES];
-    serverTemplates.forEach((st) => {
+    serverTemplates.forEach((st: any) => {
       if (!list.some((t) => t.id === st.id)) {
         list.push({
           id: st.id,
@@ -441,80 +441,43 @@ export default function TemplateGalleryModal() {
     }
   };
 
-  const [isScaffolding, setIsScaffolding] = useState(false);
-
-  const handleApplyTemplate = async () => {
-    if (!selectedTemplate) return;
-    try {
-      if (engine) {
-        engine.setContent(selectedTemplate.mainTex);
-        toast.success(`Applied "${selectedTemplate.name}" to ${activeFilePage?.title || 'current document'}`);
-        setIsTemplateModalOpen(false);
-      } else {
-        navigator.clipboard.writeText(selectedTemplate.mainTex);
-        toast.success(`Copied "${selectedTemplate.name}" template code to clipboard`);
-        setIsTemplateModalOpen(false);
-      }
-    } catch {
-      toast.error('Could not apply template');
-    }
-  };
-
-  const handleScaffoldProject = async () => {
-    if (!selectedTemplate) return;
-    if (!projectId) {
-      handleApplyTemplate();
-      return;
-    }
-    setIsScaffolding(true);
-    try {
-      await manuscriptService.templates.scaffold(projectId, selectedTemplate.id);
-      toast.success(`Project scaffolded successfully with "${selectedTemplate.name}"!`);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
-      }
-      setIsTemplateModalOpen(false);
-    } catch (err) {
-      console.warn('[TemplateGallery] Backend scaffolding failed, falling back to active file update:', err);
-      handleApplyTemplate();
-    } finally {
-      setIsScaffolding(false);
-    }
-  };
-
-  const handleCopyCode = () => {
-    const code = previewTab === 'bib' && selectedTemplate.bibTex
-      ? selectedTemplate.bibTex
-      : selectedTemplate.mainTex;
-    navigator.clipboard.writeText(code);
-    toast.success('Template code copied to clipboard');
-  };
+  const {
+    isScaffolding,
+    applyTemplate,
+    scaffoldProject,
+    copyCode,
+  } = useTemplateGalleryActions({
+    selectedTemplate,
+    engine,
+    activeFileTitle: activeFilePage?.title,
+    projectId,
+    previewTab,
+    onClose: () => setIsTemplateModalOpen(false),
+  });
 
   return (
     <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
-      <DialogContent className="max-w-4xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-300 rounded-lg text-foreground select-none">
+      <DialogContent className="sm:max-w-4xl lg:max-w-5xl max-h-[85vh] h-[600px] flex flex-col p-0 overflow-hidden rounded-lg bg-background border border-border/60 shadow-raised-400 text-foreground select-none">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-background">
-          <div>
-            <DialogTitle className="text-base font-semibold flex items-center gap-2">
-              <Sparkles className="size-4 text-primary" />
-              Academic Templates & Starters
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-              Production-ready LaTeX paper templates matching official IEEE, ACM, Springer, and arXiv formats.
-            </DialogDescription>
-          </div>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60 shrink-0">
+          <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
+            Academic templates & starters
+          </DialogTitle>
           <button
             type="button"
             onClick={() => setIsTemplateModalOpen(false)}
-            className="size-7 rounded-sm flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            aria-label="Close"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted focus:outline-hidden transition-colors cursor-pointer"
           >
-            <X className="size-4" />
+            <X className="size-4" strokeWidth={1.5} />
           </button>
         </div>
+        <DialogDescription className="sr-only">
+          Browse and apply academic LaTeX templates and starters
+        </DialogDescription>
 
         {/* Modal Body: 2 Columns */}
-        <div className="flex flex-col md:flex-row h-[520px] divide-y md:divide-y-0 md:divide-x divide-border overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row min-h-0 divide-y md:divide-y-0 md:divide-x divide-border overflow-hidden">
           {/* Left Column: Search & Template List (~340px) */}
           <div className="w-full md:w-84 flex flex-col bg-muted/10 shrink-0 overflow-hidden border-r border-border">
             {/* Search Input */}
@@ -637,7 +600,7 @@ export default function TemplateGalleryModal() {
 
                 <button
                   type="button"
-                  onClick={handleCopyCode}
+                  onClick={copyCode}
                   title="Copy code"
                   className="size-7 rounded-md flex items-center justify-center border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
@@ -654,28 +617,23 @@ export default function TemplateGalleryModal() {
             </div>
 
             {/* Bottom Action Footer */}
-            <div className="px-5 py-3 border-t border-border bg-background flex items-center justify-between">
-              <span className="text-11 text-muted-foreground">
-                Apply template into active document or scaffold complete project files.
-              </span>
-
-              <div className="flex items-center gap-2">
+            <div className="px-5 py-2.5 border-t border-border/60 bg-background flex items-center justify-end gap-2 shrink-0 select-none">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsTemplateModalOpen(false)}
+                className="h-8 px-4 text-12 font-medium"
+              >
+                Close
+              </Button>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setIsTemplateModalOpen(false)}
-                  className="h-8 text-xs font-medium cursor-pointer"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleApplyTemplate}
+                  onClick={applyTemplate}
                   disabled={isScaffolding}
-                  className="h-8 gap-1.5 text-xs font-medium cursor-pointer"
+                  className="h-8 gap-1.5 px-3 text-12 font-medium rounded-md cursor-pointer shadow-none"
                   title="Insert template code into current active file"
                 >
                   <FileText className="size-3.5" />
@@ -684,9 +642,9 @@ export default function TemplateGalleryModal() {
                 <Button
                   type="button"
                   size="sm"
-                  onClick={handleScaffoldProject}
+                  onClick={scaffoldProject}
                   disabled={isScaffolding}
-                  className="h-8 gap-1.5 px-4 text-xs font-medium cursor-pointer"
+                  className="h-8 gap-1.5 px-3.5 text-12 font-medium rounded-md cursor-pointer shadow-none"
                   title="Scaffold complete multi-file project with .bib, style files, and assets"
                 >
                   {isScaffolding ? (
@@ -694,9 +652,8 @@ export default function TemplateGalleryModal() {
                   ) : (
                     <FileCheck className="size-3.5" />
                   )}
-                  <span>{isScaffolding ? 'Scaffolding...' : 'Scaffold Project'}</span>
+                  <span>{isScaffolding ? 'Scaffolding...' : 'Scaffold project'}</span>
                 </Button>
-              </div>
             </div>
           </div>
         </div>

@@ -81,7 +81,7 @@ export function EmptyState({
       ) : null}
 
       {/* Title */}
-      <h3 className="text-13 font-medium text-foreground">{title}</h3>
+      <h3 className="text-[15px] font-semibold text-foreground tracking-tight">{title}</h3>
 
       {/* Body */}
       {body && (

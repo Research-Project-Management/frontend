@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import { useStorageItemActions } from './useFileExplorerActions';
 import {
   BookText,
   Braces,
@@ -39,7 +40,6 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { toast } from 'sonner';
 import { useEditorStorage } from '@/features/editor/hooks/use-storage';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/services/storage.service';
 
@@ -513,40 +513,22 @@ export function StorageFileRow({
   const { deleteFile, renameFile } = useEditorStorage(null, undefined, projectId);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const { copyStorageSnippet, downloadStorageItem } = useStorageItemActions();
 
   const handleCopySnippet = useCallback(
     (e?: React.MouseEvent) => {
       e?.stopPropagation();
-      const ext = item.filename.split('.').pop()?.toLowerCase() ?? '';
-      let snippet = `\\includegraphics[width=\\linewidth]{${item.filename}}`;
-      if (['bib', 'bst'].includes(ext)) {
-        snippet = `\\bibliography{${item.filename.replace(/\.[a-z0-9]+$/i, '')}}`;
-      } else if (['tex', 'ltx'].includes(ext)) {
-        snippet = `\\input{${item.filename.replace(/\.[a-z0-9]+$/i, '')}}`;
-      }
-      navigator.clipboard.writeText(snippet);
-      toast.success(`Copied ${snippet} to clipboard`);
+      copyStorageSnippet(item.filename);
     },
-    [item.filename],
+    [item.filename, copyStorageSnippet],
   );
 
   const handleDownload = useCallback(
     (e?: React.MouseEvent) => {
       e?.stopPropagation();
-      if (item.url) {
-        const a = document.createElement('a');
-        a.href = item.url;
-        a.download = item.filename;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      } else {
-        toast.info('Downloading file...');
-      }
+      downloadStorageItem(item.url, item.filename);
     },
-    [item.url, item.filename],
+    [item.url, item.filename, downloadStorageItem],
   );
 
   const paddingLeft = depth * 14;

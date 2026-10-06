@@ -954,5 +954,93 @@ export function formatAndSanitizeExtraMetadata(
   return [...structuredKeyValLines, ...freeTextNotesLines].join('\n');
 }
 
+// ── Retraction Status & Info Utilities (Self-contained in reader) ────────────
+
+export interface RetractionInfo {
+  nature?: string;
+  reason?: string;
+  formattedReason?: string;
+  title: string;
+  noticeUrl?: string;
+  date?: string;
+}
+
+export function isItemRetracted(item: unknown): boolean {
+  if (!item || typeof item !== 'object') return false;
+  const i = item as Record<string, any>;
+  return Boolean(
+    i.isRetracted || i.retractionStatus === 'retracted' || i.is_retracted,
+  );
+}
+
+export function formatRetractionReason(raw?: string, nature?: string): string {
+  if (!raw || typeof raw !== 'string' || !raw.trim()) {
+    if (nature === 'expression_of_concern') {
+      return 'An expression of concern has been published regarding the integrity of this article.';
+    }
+    if (nature === 'correction') {
+      return 'A publisher correction notice has been issued for this publication.';
+    }
+    return 'This publication has been flagged as retracted or unreliable by academic integrity audits.';
+  }
+  let text = raw.replace(/\r?\n+/g, ' ').trim();
+  text = text.replace(/\bauthors\s+inability\b/gi, "authors' inability");
+  text = text.replace(/\bauthor\s+inability\b/gi, "author's inability");
+  if (text.length > 0) {
+    text = text.charAt(0).toUpperCase() + text.slice(1);
+  }
+  if (text.length > 5 && !/[.!?]$/.test(text)) {
+    text += '.';
+  }
+  return text;
+}
+
+export function getRetractionInfo(item: unknown): RetractionInfo {
+  if (!item || typeof item !== 'object') {
+    return { title: 'Retracted Item' };
+  }
+  const i = item as Record<string, any>;
+  const details =
+    i.retractionDetails && typeof i.retractionDetails === 'object'
+      ? (i.retractionDetails as Record<string, any>)
+      : null;
+
+  const nature =
+    i.retractionNature ||
+    details?.nature ||
+    details?.noticeType ||
+    details?.retractionNature ||
+    (isItemRetracted(item) ? 'retraction' : undefined);
+
+  const rawReason =
+    i.retractionReason ||
+    details?.reason ||
+    details?.retractionReason ||
+    details?.notes;
+
+  const formattedReason = formatRetractionReason(rawReason, nature);
+
+  const noticeUrl =
+    i.noticeUrl ||
+    details?.noticeUrl ||
+    details?.url ||
+    (i.doi ? `https://doi.org/${i.doi}` : undefined);
+
+  const date =
+    i.retractionDate ||
+    details?.retractionDate ||
+    details?.date ||
+    details?.checkedAt;
+
+  return {
+    nature,
+    reason: rawReason,
+    formattedReason,
+    title: i.title || 'Retracted Publication',
+    noticeUrl,
+    date: date ? String(date).slice(0, 10) : undefined,
+  };
+}
+
 
 

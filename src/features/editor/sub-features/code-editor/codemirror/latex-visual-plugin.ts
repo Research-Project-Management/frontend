@@ -21,7 +21,7 @@ import {
   DecorationSet,
   EditorView,
 } from '@codemirror/view';
-import { StateField, Extension, EditorState, Range } from '@codemirror/state';
+import { StateField, Extension, EditorState, Range, Transaction } from '@codemirror/state';
 import { toast } from 'sonner';
 import { renderMathHtml, renderChemHtml } from '../../../utils/latex-converter.util';
 import { TableWidget } from './table-visual-widget';
@@ -855,6 +855,30 @@ function buildVisualDecorations(state: EditorState): DecorationSet {
   }
 }
 
+const STRUCTURAL_TRIGGER_REGEX = /[\$\\\[\]\{\}\%\r\n]/;
+
+/**
+ * Checks whether the transaction modified any structural LaTeX delimiter or command character.
+ * If not, decorations can be safely mapped in O(log N) without re-running regex scans.
+ */
+function hasStructuralLatexChange(tr: Transaction): boolean {
+  let hasTrigger = false;
+  tr.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+    if (hasTrigger) return;
+    if (STRUCTURAL_TRIGGER_REGEX.test(inserted.toString())) {
+      hasTrigger = true;
+      return;
+    }
+    if (toA > fromA) {
+      const deleted = tr.startState.doc.sliceString(fromA, toA);
+      if (STRUCTURAL_TRIGGER_REGEX.test(deleted)) {
+        hasTrigger = true;
+      }
+    }
+  });
+  return hasTrigger;
+}
+
 /**
  * StateField powering Overleaf's Visual Mode on CodeMirror 6.
  * Using StateField + EditorView.decorations.from is the ONLY supported way in CM6
@@ -866,9 +890,12 @@ export const latexVisualField = StateField.define<DecorationSet>({
   },
   update(decorations: DecorationSet, tr): DecorationSet {
     if (tr.docChanged) {
+      if (!hasStructuralLatexChange(tr)) {
+        return decorations.map(tr.changes);
+      }
       return buildVisualDecorations(tr.state);
     }
-    return decorations.map(tr.changes);
+    return decorations;
   },
   provide: (field) => EditorView.decorations.from(field),
 });

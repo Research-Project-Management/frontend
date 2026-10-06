@@ -91,9 +91,9 @@ export const PdfFindBar = React.memo(function PdfFindBar({
         {isSearching ? (
           <Loader2 className="size-3 animate-spin text-muted-foreground" />
         ) : hasQuery && matchesCount === 0 ? (
-          <span className="text-destructive font-medium text-[11px]">No matches</span>
+          <span className="text-destructive font-medium text-11">No matches</span>
         ) : hasQuery && matchesCount > 0 ? (
-          <span className="tabular-nums font-mono text-[11px]">
+          <span className="tabular-nums font-mono text-11">
             {currentMatchIndex + 1}/{matchesCount}
           </span>
         ) : null}

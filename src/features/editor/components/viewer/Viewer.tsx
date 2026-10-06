@@ -21,6 +21,7 @@ import {
   type PdfOutlineItem,
 } from '@/features/editor/utils/pdf-outline.util';
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 
 import Toolbar from './Toolbar';
 import Surface, { type SurfaceHandle } from './Surface';
@@ -190,6 +191,13 @@ export default function Viewer() {
     }
   }, [compileStatus, pdfUrl]);
 
+  // Open Logs panel when editor requests AI fix or suggests fix
+  useEffect(() => {
+    return editorCommandBus.subscribe('editor:suggest-fix', () => {
+      setShowLog(true);
+    });
+  }, []);
+
   const parsedLog = useMemo(
     () => (compileLog ? parseLatexLog(compileLog) : null),
     [compileLog],
@@ -299,6 +307,7 @@ export default function Viewer() {
       {showLog ? (
         <Logs
           log={compileLog || ''}
+          parsedLog={parsedLog || undefined}
           onClose={() => setShowLog(false)}
           onJumpToError={(file, line) =>
             handleJumpToSource(file || null, line, undefined, undefined, undefined, 'error')

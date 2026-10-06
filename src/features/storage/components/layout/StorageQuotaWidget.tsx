@@ -86,7 +86,7 @@ export function StorageQuotaWidget({
           <TooltipContent side="right" className="max-w-xs space-y-1.5 p-3">
             <div className="flex items-center gap-1.5 font-medium text-xs">
               <Cloud className="size-3.5 text-primary" />
-              <span>{isProjectScope ? 'Project Storage' : 'Personal Storage'}</span>
+              <span>{isProjectScope ? 'Project Storage' : 'User Storage'}</span>
             </div>
             {isProjectScope && ownerName && (
               <p className="text-11 text-muted-foreground flex items-center gap-1">
@@ -122,7 +122,7 @@ export function StorageQuotaWidget({
         <div className="flex items-center gap-1.5 min-w-0">
           <Cloud className="size-4 text-primary shrink-0" />
           <span className="text-xs font-semibold tracking-tight text-foreground truncate">
-            {isProjectScope ? 'Project Storage' : 'Personal Storage'}
+            {isProjectScope ? 'Project Storage' : 'User Storage'}
           </span>
         </div>
 
@@ -138,7 +138,7 @@ export function StorageQuotaWidget({
             variant="outline"
             className="text-10 px-1.5 py-0 h-4 border-border text-muted-foreground font-normal shrink-0"
           >
-            Personal
+            User
           </Badge>
         )}
       </div>

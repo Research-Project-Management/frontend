@@ -25,12 +25,16 @@ import {
   Zap,
   FileCheck,
   Sparkles,
+  Check,
 } from 'lucide-react';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useActionsStore } from '@/features/editor/store';
 import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import { spellingService } from '@/features/editor/services/spelling.service';
-import { addSessionLearnedWord } from '@/features/editor/sub-features/code-editor/codemirror/latex-spellcheck';
+import {
+  addSessionLearnedWord,
+  type MisspelledItem,
+} from '@/features/editor/sub-features/code-editor/codemirror/latex-spellcheck';
 import { toast } from 'sonner';
 
 export interface MenuAction {
@@ -57,6 +61,7 @@ export interface UseEditorShortcutsOptions {
   ctxEndLine: number | null;
   ctxSelText: string;
   projectId?: string;
+  ctxMisspelledInfo?: MisspelledItem | null;
 }
 
 export function useEditorShortcuts({
@@ -68,6 +73,7 @@ export function useEditorShortcuts({
   ctxEndLine,
   ctxSelText,
   projectId,
+  ctxMisspelledInfo,
 }: UseEditorShortcutsOptions) {
   const { engine } = useEditorInstance();
   const setPendingComment = useActionsStore((s) => s.setPendingComment);
@@ -107,14 +113,55 @@ export function useEditorShortcuts({
 
   const menuGroups: MenuAction[][] = useMemo(() => {
     const singleWord = ctxSelText?.trim().match(/^[A-Za-z0-9_-]{2,}$/)?.[0];
+    const spellingGroup: MenuAction[] = [];
+
+    // Overleaf Parity: When right-clicking a misspelled word, suggestions and dictionary actions appear first!
+    if (ctxMisspelledInfo) {
+      if (ctxMisspelledInfo.suggestions && ctxMisspelledInfo.suggestions.length > 0) {
+        for (const sugg of ctxMisspelledInfo.suggestions.slice(0, 5)) {
+          spellingGroup.push({
+            icon: Check,
+            label: sugg,
+            action: () => {
+              if (engine?.replaceRange) {
+                engine.replaceRange(sugg, ctxMisspelledInfo.from, ctxMisspelledInfo.to);
+              } else if (engine) {
+                engine.insertText(sugg);
+              }
+              closeMenu();
+            },
+          });
+        }
+      } else {
+        spellingGroup.push({
+          label: '(No spelling suggestions)',
+          disabled: true,
+          action: () => {},
+        });
+      }
+
+      spellingGroup.push({
+        icon: BookOpen,
+        label: `Add "${ctxMisspelledInfo.word}" to dictionary`,
+        action: () => {
+          addSessionLearnedWord(ctxMisspelledInfo.word);
+          spellingService.learnUserWord(ctxMisspelledInfo.word).then(() => {
+            toast.success(`Added "${ctxMisspelledInfo.word}" to dictionary`);
+          });
+          closeMenu();
+        },
+      });
+    }
+
     return [
-    [
-      {
-        icon: Scissors,
-        label: 'Cut',
-        kbd: 'Ctrl+X',
-        action: () => trigger('editor.action.clipboardCutAction'),
-      },
+      ...(spellingGroup.length > 0 ? [spellingGroup] : []),
+      [
+        {
+          icon: Scissors,
+          label: 'Cut',
+          kbd: 'Ctrl+X',
+          action: () => trigger('editor.action.clipboardCutAction'),
+        },
       {
         icon: Copy,
         label: 'Copy',
@@ -271,31 +318,16 @@ export function useEditorShortcuts({
         },
       },
     ],
-    ...(singleWord
+    ...(!ctxMisspelledInfo && singleWord
       ? [
           [
-            ...(projectId
-              ? [
-                  {
-                    icon: BookOpen,
-                    label: `Add "${singleWord}" to Project Dictionary`,
-                    action: () => {
-                      addSessionLearnedWord(singleWord);
-                      spellingService.learnProjectWord(projectId, singleWord).then(() => {
-                        toast.success(`Added "${singleWord}" to project dictionary`);
-                      });
-                      closeMenu();
-                    },
-                  },
-                ]
-              : []),
             {
               icon: BookOpen,
-              label: `Add "${singleWord}" to Personal Dictionary`,
+              label: `Add "${singleWord}" to dictionary`,
               action: () => {
                 addSessionLearnedWord(singleWord);
                 spellingService.learnUserWord(singleWord).then(() => {
-                  toast.success(`Added "${singleWord}" to personal dictionary`);
+                  toast.success(`Added "${singleWord}" to dictionary`);
                 });
                 closeMenu();
               },
@@ -309,6 +341,8 @@ export function useEditorShortcuts({
     ctxEndLine,
     ctxSelText,
     projectId,
+    ctxMisspelledInfo,
+    engine,
   ]);  
 
   return {

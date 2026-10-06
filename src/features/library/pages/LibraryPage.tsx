@@ -20,6 +20,7 @@ import {
   useLibraryModalStore,
   useLibraryUIStore,
   useProcessModalStore,
+  useLibraryPermissions,
 } from '../store';
 import {
   useCollectionsQuery,
@@ -71,12 +72,8 @@ export function ModernLibraryPage({
   const effectiveCollectionId =
     propCollectionId || params?.collectionId || undefined;
 
-  const isPersonalScope = activeScope.type === 'personal';
-  const canEdit =
-    isPersonalScope ||
-    activeScope.role === 'owner' ||
-    activeScope.role === 'coordinator' ||
-    activeScope.role === 'contributor';
+  const isUserScope = activeScope.type === 'user';
+  const { canEditItem: canEdit } = useLibraryPermissions();
 
   const searchParams = useSearchParams();
   const filterParam = searchParams.get('filter');
@@ -127,7 +124,7 @@ export function ModernLibraryPage({
 
   // Breadcrumb navigation with full ancestor chain
   const breadcrumbs = useMemo<BreadcrumbItem[] | undefined>(() => {
-    const rootName = activeScope.type === 'personal' ? 'My Library' : (activeScope.name || 'Library');
+    const rootName = activeScope.type === 'user' ? 'Library' : (activeScope.name || 'Library');
     if (isSavedSearchView && currentSavedSearch) {
       const { label: cleanName } = parseEmojiPrefix(currentSavedSearch.name);
       return [
@@ -285,7 +282,7 @@ export function ModernLibraryPage({
     resolvedTitle ||
     (isSavedSearchView && savedSearchTitle ? savedSearchTitle : undefined) ||
     (currentCollection ? currentCollection.name : undefined) ||
-    (activeScope.type === 'personal' ? 'My Library' : activeScope.name) ||
+    (activeScope.type === 'user' ? 'My Library' : activeScope.name) ||
     'My Library';
 
   return (
@@ -311,9 +308,9 @@ export function ModernLibraryPage({
               ? () => openModal('CREATE_COLLECTION', { parentId: effectiveCollectionId })
               : undefined
           }
-          onImportFromPersonal={
+          onImportFromUser={
             canEdit && activeScope.type === 'project'
-              ? () => openModal('IMPORT_FROM_PERSONAL')
+              ? () => openModal('IMPORT_FROM_USER')
               : undefined
           }
           isSubcollection={Boolean(effectiveCollectionId)}

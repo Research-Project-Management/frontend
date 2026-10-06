@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback, useDeferredValue } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Dialog,
   DialogContent,
@@ -39,9 +40,12 @@ import {
   SearchX,
   Binary,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useCitationPickerActions } from './hooks/useCitationPickerActions';
 import { cn } from '@/shared/lib/utils';
 import { formatCitationSnippet, formatBibEntryToBibtex } from '../../utils/citation.util';
+import { cleanAbstractText } from '../sidebar/citation/utils/citation-display.util';
+import { CitationPickerCard } from './subcomponents/CitationPickerCard';
+import { validateAcademicIdentifier } from './schemas/citation.schema';
 import type { BibEntry } from '@/features/editor/utils/bib-parser.util';
 import { manuscriptService, type BibEntryDto } from '@/features/editor/services/manuscript.service';
 import { useCollections, useRetractedItems } from '@/features/library/data';
@@ -77,46 +81,8 @@ const STYLE_OPTIONS: { id: CitationStyle; label: string; preview: string }[] = [
 interface CollectionNode {
   id: string;
   name: string;
-  keywords?: string[];
   children?: CollectionNode[];
 }
-
-const DEFAULT_COLLECTIONS: CollectionNode[] = [
-  {
-    id: 'col-ml',
-    name: 'Machine Learning',
-    keywords: ['machine learning', 'learning', 'model', 'neural', 'deep', 'network', 'training'],
-    children: [
-      {
-        id: 'col-opt',
-        name: 'Optimization',
-        keywords: ['optimization', 'optimizer', 'stochastic', 'gradient', 'adam', 'sgd', 'decay', 'weight'],
-      },
-      {
-        id: 'col-deep',
-        name: 'Deep Architectures',
-        keywords: ['transformer', 'attention', 'architecture', 'resnet', 'cnn', 'layer', 'diffusion'],
-      },
-    ],
-  },
-  {
-    id: 'col-nlp',
-    name: 'Natural Language Processing',
-    keywords: ['language', 'nlp', 'text', 'llama', 'bert', 'gpt', 'token', 'pre-training'],
-    children: [
-      {
-        id: 'col-llm',
-        name: 'Large Language Models',
-        keywords: ['llama', 'gpt', 'llm', 'few-shot', 'prompt', 'reasoning'],
-      },
-    ],
-  },
-  {
-    id: 'col-cv',
-    name: 'Computer Vision',
-    keywords: ['vision', 'image', 'visual', 'segmentation', 'object', 'detection'],
-  },
-];
 
 export default function CitationPickerModal({
   open,
@@ -134,13 +100,19 @@ export default function CitationPickerModal({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectedNav, setSelectedNav] = useState<string>('all');
   const [activeView, setActiveView] = useState<'tree' | 'list' | 'detail'>('list');
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
-    new Set(['col-ml', 'col-nlp']),
-  );
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [serverItems, setServerItems] = useState<BibEntry[]>([]);
   const [isSearchingServer, setIsSearchingServer] = useState(false);
-  const [isResolving, setIsResolving] = useState(false);
+  const {
+    isResolving,
+    copyCitationSnippet,
+    copyBibtex,
+    copyKey,
+    copyDoi,
+    resolveAcademicIdentifier,
+  } = useCitationPickerActions();
   const [isBibtexOpen, setIsBibtexOpen] = useState(true);
+  const [isAbstractExpanded, setIsAbstractExpanded] = useState(false);
 
   // Copy feedback states
   const [copiedSnippet, setCopiedSnippet] = useState(false);
@@ -242,7 +214,7 @@ export default function CitationPickerModal({
     info: RetractedItemInfo;
   } | null>(null);
 
-  // Built collection tree structure (combining backend collections with defaults)
+  // Built collection tree structure directly from backend database collections
   const collectionTree = useMemo<CollectionNode[]>(() => {
     if (serverCollections && serverCollections.length > 0) {
       const map = new Map<string, CollectionNode>();
@@ -251,9 +223,11 @@ export default function CitationPickerModal({
         if (!c.id) continue;
         map.set(c.id, { id: c.id, name: c.name, children: [] });
       }
-      for (const node of map.values()) {
-        const rawParent = (node as any).parentId || (node as any).parent;
-        if (rawParent && rawParent !== node.id && map.has(rawParent)) {
+      for (const c of serverCollections) {
+        if (!c.id) continue;
+        const node = map.get(c.id)!;
+        const rawParent = (c as any).parentId || (c as any).parent;
+        if (rawParent && rawParent !== c.id && map.has(rawParent)) {
           map.get(rawParent)!.children!.push(node);
         } else {
           roots.push(node);
@@ -261,7 +235,7 @@ export default function CitationPickerModal({
       }
       return roots;
     }
-    return DEFAULT_COLLECTIONS;
+    return [];
   }, [serverCollections]);
 
   // Flat lookup map of all collection nodes by ID
@@ -277,21 +251,10 @@ export default function CitationPickerModal({
     return map;
   }, [collectionTree]);
 
-  // Precomputed lowercase search corpus per entry to eliminate O(N×M) string allocations on every render
-  const entryCorpusMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const entry of allMergedItems) {
-      if (!entry.key) continue;
-      const text = `${entry.title || ''} ${entry.abstract || ''} ${entry.journal || ''} ${entry.booktitle || ''} ${entry.publisher || ''} ${entry.key || ''}`.toLowerCase();
-      map.set(entry.key.toLowerCase(), text);
-    }
-    return map;
-  }, [allMergedItems]);
-
-  // Helper to check if an entry matches a collection node
+  // Helper to check if an entry matches a collection node from database relation
   const entryMatchesCollection = useCallback(
     (entry: BibEntry, node: CollectionNode): boolean => {
-      // Direct collection ID match
+      // Direct collection ID match from database
       const colId = (entry as any).collectionId;
       const colIds = (entry as any).collectionIds as string[] | undefined;
       if (colId === node.id || colIds?.includes(node.id)) return true;
@@ -301,13 +264,9 @@ export default function CitationPickerModal({
         return true;
       }
 
-      // Keyword match based on collection name and keywords
-      const keywords = node.keywords || [node.name.toLowerCase()];
-      const textCorpus = entry.key ? entryCorpusMap.get(entry.key.toLowerCase()) || '' : '';
-
-      return keywords.some((kw) => textCorpus.includes(kw.toLowerCase()));
+      return false;
     },
-    [entryCorpusMap],
+    [],
   );
 
   // Nav counts
@@ -359,9 +318,12 @@ export default function CitationPickerModal({
     }
   }, [allMergedItems, selectedNav, citedKeysSet, collectionNodeMap]);
 
+  // Defer search to keep typing at 60 FPS without UI freezes
+  const deferredSearch = useDeferredValue(search);
+
   // Filtered by search query across fields
   const filteredItems = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = deferredSearch.trim().toLowerCase();
     if (!query) return navFilteredItems;
     return navFilteredItems.filter((entry) => {
       const keyMatch = entry.key?.toLowerCase().includes(query);
@@ -375,7 +337,7 @@ export default function CitationPickerModal({
         entry.publisher?.toLowerCase().includes(query);
       return Boolean(keyMatch || titleMatch || authorMatch || yearMatch || doiMatch || venueMatch);
     });
-  }, [navFilteredItems, search]);
+  }, [navFilteredItems, deferredSearch]);
 
   // Keep a valid selected entry
   useEffect(() => {
@@ -401,57 +363,65 @@ export default function CitationPickerModal({
     );
   }, [allMergedItems, filteredItems, selectedKey]);
 
-  // Check if search query matches DOI or arXiv identifier
+  // Check if search query matches DOI or arXiv identifier via Zod validation helper
   const isIdentifier = useMemo(() => {
-    const trimmed = search.trim();
-    return (
-      /^10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+$/i.test(trimmed) ||
-      /^(arxiv:)?\d{4}\.\d{4,5}(v\d+)?$/i.test(trimmed)
-    );
+    return validateAcademicIdentifier(search).isIdentifier;
   }, [search]);
 
-  const insertCitation = (entry: BibEntry) => {
+  const insertCitation = useCallback((entry: BibEntry) => {
     const snippet = formatCitationSnippet(entry.key, selectedStyle);
     onSelectCitation(snippet, entry.key, entry);
     onOpenChange(false);
-  };
+  }, [selectedStyle, onSelectCitation, onOpenChange]);
 
-  const handleSelectItem = (entry: BibEntry) => {
+  const handleSelectItem = useCallback((entry: BibEntry) => {
     const info = retractedMap.get(entry.key);
     if (info) {
       setPendingRetracted({ entry, info });
       return;
     }
     insertCitation(entry);
-  };
+  }, [retractedMap, insertCitation]);
+
+  const handleSelectCard = useCallback((entry: BibEntry) => {
+    setSelectedKey(entry.key);
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setActiveView('detail');
+    }
+  }, []);
+
+  // Virtualizer for 25+ paper cards
+  const isLargeCardsList = filteredItems.length >= 25;
+  const cardsVirtualizer = useVirtualizer({
+    count: filteredItems.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 85,
+    overscan: 5,
+    enabled: isLargeCardsList,
+  });
 
   const handleCopyCitationSnippet = (entry: BibEntry) => {
     const snippet = formatCitationSnippet(entry.key, selectedStyle);
-    navigator.clipboard.writeText(snippet);
+    copyCitationSnippet(snippet);
     setCopiedSnippet(true);
-    toast.success(`Copied "${snippet}"`);
     setTimeout(() => setCopiedSnippet(false), 1500);
   };
 
   const handleCopyBibtex = (entry: BibEntry) => {
-    const code = formatBibEntryToBibtex(entry);
-    navigator.clipboard.writeText(code);
+    copyBibtex(entry);
     setCopiedBibtex(true);
-    toast.success(`Copied BibTeX for ${entry.key}`);
     setTimeout(() => setCopiedBibtex(false), 1500);
   };
 
   const handleCopyKey = (key: string) => {
-    navigator.clipboard.writeText(key);
+    copyKey(key);
     setCopiedKey(true);
-    toast.success(`Copied citation key "${key}"`);
     setTimeout(() => setCopiedKey(false), 1500);
   };
 
   const handleCopyDoi = (doi: string) => {
-    navigator.clipboard.writeText(doi);
+    copyDoi(doi);
     setCopiedDoi(true);
-    toast.success(`Copied DOI "${doi}"`);
     setTimeout(() => setCopiedDoi(false), 1500);
   };
 
@@ -494,32 +464,10 @@ export default function CitationPickerModal({
 
   const handleResolveIdentifier = async () => {
     if (!projectId || !search.trim()) return;
-    setIsResolving(true);
-    try {
-      const res = await manuscriptService.citations.resolve(projectId, search.trim());
-      if (res?.entry?.key) {
-        toast.success(`Resolved BibTeX for ${res.entry.key}`);
-        const newEntry: BibEntry = {
-          key: res.entry.key,
-          type: res.entry.type || 'article',
-          title: res.entry.title,
-          authors: res.entry.author ? [res.entry.author] : undefined,
-          year: res.entry.year,
-          journal: res.entry.journal,
-          doi: res.entry.doi,
-          raw: res.entry.rawBibtex,
-          source: 'server',
-        };
-        setServerItems((prev) => [newEntry, ...prev]);
-        setSelectedKey(newEntry.key);
-      } else {
-        toast.error('Identifier could not be resolved');
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to resolve academic identifier';
-      toast.error(message);
-    } finally {
-      setIsResolving(false);
+    const newEntry = await resolveAcademicIdentifier(projectId, search.trim());
+    if (newEntry) {
+      setServerItems((prev) => [newEntry, ...prev]);
+      setSelectedKey(newEntry.key);
     }
   };
 
@@ -554,6 +502,14 @@ export default function CitationPickerModal({
       ? selectedEntry.doi
       : `https://doi.org/${selectedEntry.doi}`;
   }, [selectedEntry]);
+
+  const cleanAbstract = useMemo(() => {
+    return cleanAbstractText(selectedEntry?.abstract);
+  }, [selectedEntry?.abstract]);
+
+  useEffect(() => {
+    setIsAbstractExpanded(false);
+  }, [selectedKey]);
 
   // Selected nav label display
   const currentNavLabel = useMemo(() => {
@@ -734,10 +690,11 @@ export default function CitationPickerModal({
               </div>
 
               {/* Collections Tree Section */}
-              <div className="space-y-0.5">
-                <div className="px-2 pb-1 text-11 font-medium text-foreground select-none">
-                  Collections
-                </div>
+              {collectionTree.length > 0 && (
+                <div className="space-y-0.5">
+                  <div className="px-2 pb-1 text-11 font-medium text-foreground select-none">
+                    Collections
+                  </div>
 
                 {collectionTree.map((rootNode) => {
                   const isExpanded = expandedFolders.has(rootNode.id);
@@ -844,8 +801,9 @@ export default function CitationPickerModal({
                   );
                 })}
               </div>
-            </div>
+            )}
           </div>
+        </div>
 
           {/* ══════════════════════════════════════════════════════════════════
               COLUMN 2: Paper Cards List & Search
@@ -952,83 +910,58 @@ export default function CitationPickerModal({
                 </div>
               )}
 
-              {!isSearchingServer &&
-                filteredItems.map((entry, idx) => {
-                  const isSelected = selectedEntry?.key.toLowerCase() === entry.key.toLowerCase();
-                  const authorSummary =
-                    entry.authors && entry.authors.length > 0
-                      ? entry.authors.length <= 2
-                        ? entry.authors.join(' & ')
-                        : `${entry.authors[0]} et al.`
-                      : 'Unknown author';
-                  const isCited = entry.key && citedKeysSet.has(entry.key.toLowerCase());
-
-                  return (
-                    <div
+              {!isSearchingServer && !isLargeCardsList && (
+                <div className="space-y-1">
+                  {filteredItems.map((entry, idx) => (
+                    <CitationPickerCard
                       key={entry.key}
-                      id={`citation-opt-${entry.key}`}
-                      role="option"
-                      tabIndex={0}
-                      data-index={idx}
-                      aria-selected={isSelected}
-                      aria-label={`${entry.title || entry.key} by ${authorSummary}`}
-                      onClick={() => {
-                        setSelectedKey(entry.key);
-                        if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                          setActiveView('detail');
-                        }
-                      }}
-                      onDoubleClick={() => handleSelectItem(entry)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleSelectItem(entry);
-                        }
-                      }}
-                      className={cn(
-                        'group flex flex-col gap-1 p-2.5 rounded-md cursor-pointer transition-colors border text-left select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                        isSelected
-                          ? 'bg-muted border-border text-foreground'
-                          : 'border-transparent hover:bg-muted text-foreground',
-                      )}
-                    >
-                      {/* Title */}
-                      <p className="text-xs font-medium line-clamp-2 leading-snug text-foreground">
-                        {entry.title || entry.key}
-                      </p>
+                      entry={entry}
+                      idx={idx}
+                      isSelected={selectedEntry?.key.toLowerCase() === entry.key.toLowerCase()}
+                      isCited={Boolean(entry.key && citedKeysSet.has(entry.key.toLowerCase()))}
+                      onSelect={handleSelectCard}
+                      onDoubleClick={handleSelectItem}
+                    />
+                  ))}
+                </div>
+              )}
 
-                      {/* Author + Year */}
-                      <p className="text-11 text-muted-foreground truncate leading-normal">
-                        {authorSummary}
-                        {entry.year ? ` (${entry.year})` : ''}
-                      </p>
-
-                      {/* Badges / Key row */}
-                      <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
-                        <span className="font-mono text-10 px-1.5 py-0.5 rounded bg-background border border-border text-foreground truncate max-w-[140px]">
-                          {entry.key}
-                        </span>
-
-                        {entry.source === 'library' && (
-                          <span className="text-10 font-mono px-1.5 py-0.5 rounded bg-muted text-foreground border border-border">
-                            Library
-                          </span>
-                        )}
-                        {entry.source === 'bib' && (
-                          <span className="text-10 font-mono px-1.5 py-0.5 rounded bg-muted text-foreground border border-border">
-                            .bib
-                          </span>
-                        )}
-
-                        {isCited && (
-                          <span className="text-10 font-mono font-medium px-1.5 py-0.5 rounded bg-muted text-foreground border border-border ml-auto">
-                            Cited
-                          </span>
-                        )}
+              {!isSearchingServer && isLargeCardsList && (
+                <div
+                  style={{
+                    height: `${cardsVirtualizer.getTotalSize()}px`,
+                    width: '100%',
+                    position: 'relative',
+                  }}
+                >
+                  {cardsVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const entry = filteredItems[virtualRow.index];
+                    return (
+                      <div
+                        key={entry.key}
+                        data-index={virtualRow.index}
+                        ref={cardsVirtualizer.measureElement}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          transform: `translateY(${virtualRow.start}px)`,
+                        }}
+                      >
+                        <CitationPickerCard
+                          entry={entry}
+                          idx={virtualRow.index}
+                          isSelected={selectedEntry?.key.toLowerCase() === entry.key.toLowerCase()}
+                          isCited={Boolean(entry.key && citedKeysSet.has(entry.key.toLowerCase()))}
+                          onSelect={handleSelectCard}
+                          onDoubleClick={handleSelectItem}
+                        />
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1055,24 +988,64 @@ export default function CitationPickerModal({
               <>
                 {/* ── 1. Paper Header ── */}
                 <div className="space-y-2">
+                  {/* Single metadata strip: Key (with 1-click copy), Type, Year, Source, Cited */}
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-mono text-10 px-2 py-0.5 rounded bg-muted text-foreground border border-border font-medium">
+                    <span className="inline-flex items-center gap-1 font-mono text-11 px-2 py-0.5 rounded bg-muted text-foreground border border-border font-medium">
+                      <span>@{selectedEntry.key}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyKey(selectedEntry.key)}
+                        className="size-3.5 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                        title="Copy citation key"
+                        aria-label="Copy citation key"
+                      >
+                        {copiedKey ? (
+                          <Check className="size-2.5 text-emerald-500" />
+                        ) : (
+                          <Copy className="size-2.5" />
+                        )}
+                      </button>
+                    </span>
+
+                    <span className="font-mono text-10 px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border font-medium">
                       {(selectedEntry.type || 'article').toLowerCase()}
                     </span>
+
+                    {selectedEntry.year && (
+                      <span className="font-mono text-10 px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                        {selectedEntry.year}
+                      </span>
+                    )}
+
+                    {selectedEntry.source === 'library' && (
+                      <span className="text-10 font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                        Library
+                      </span>
+                    )}
+                    {selectedEntry.source === 'bib' && (
+                      <span className="text-10 font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                        .bib
+                      </span>
+                    )}
+                    {selectedEntry.key && citedKeysSet.has(selectedEntry.key.toLowerCase()) && (
+                      <span className="text-10 font-mono px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-medium">
+                        In Document
+                      </span>
+                    )}
                   </div>
 
-                  {/* Title */}
+                  {/* Title (Clean display, never duplicates key) */}
                   <h3 className="text-15 font-semibold text-foreground leading-snug tracking-tight">
-                    {selectedEntry.title || selectedEntry.key}
+                    {selectedEntry.title || 'Untitled reference'}
                   </h3>
 
-                  {/* Authors */}
-                  <div className="text-xs text-muted-foreground leading-relaxed">
-                    <span className="font-medium text-foreground">Authors: </span>
-                    {selectedEntry.authors && selectedEntry.authors.length > 0
-                      ? selectedEntry.authors.join(', ')
-                      : 'Not specified'}
-                  </div>
+                  {/* Authors (Rendered only if defined) */}
+                  {selectedEntry.authors && selectedEntry.authors.length > 0 && (
+                    <div className="text-xs text-muted-foreground leading-relaxed">
+                      <span className="font-medium text-foreground">Authors: </span>
+                      {selectedEntry.authors.join(', ')}
+                    </div>
+                  )}
 
                   {/* Venue / Publication */}
                   {venueString && (
@@ -1101,9 +1074,10 @@ export default function CitationPickerModal({
                             onClick={() => handleCopyDoi(selectedEntry.doi!)}
                             className="p-1 rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
                             title="Copy DOI"
+                            aria-label="Copy DOI"
                           >
                             {copiedDoi ? (
-                              <Check className="size-3 text-foreground" />
+                              <Check className="size-3 text-emerald-500" />
                             ) : (
                               <Copy className="size-3 text-foreground" />
                             )}
@@ -1126,7 +1100,7 @@ export default function CitationPickerModal({
                   )}
                 </div>
 
-                {/* ── 2. Quick Actions Row ── */}
+                {/* ── 2. Quick Actions Row (Citation snippet style selector) ── */}
                 <div className="flex items-center gap-2 pt-2 border-t border-border flex-wrap">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -1134,7 +1108,11 @@ export default function CitationPickerModal({
                         type="button"
                         className="h-7 px-2.5 text-11 rounded border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
-                        {copiedSnippet ? <Check className="size-3 text-foreground" /> : <Code2 className="size-3 text-foreground" />}
+                        {copiedSnippet ? (
+                          <Check className="size-3 text-emerald-500" />
+                        ) : (
+                          <Code2 className="size-3 text-foreground" />
+                        )}
                         <span>Copy {selectedOption.label}</span>
                       </button>
                     </DropdownMenuTrigger>
@@ -1145,8 +1123,7 @@ export default function CitationPickerModal({
                           onClick={() => {
                             setSelectedStyle(opt.id);
                             const snippet = formatCitationSnippet(selectedEntry.key, opt.id);
-                            navigator.clipboard.writeText(snippet);
-                            toast.success(`Copied "${snippet}"`);
+                            copyCitationSnippet(snippet);
                           }}
                           className={cn(
                             'flex items-center justify-between px-2.5 py-1.5 text-xs font-mono rounded-md cursor-pointer text-foreground',
@@ -1159,40 +1136,43 @@ export default function CitationPickerModal({
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
-
-                  <button
-                    type="button"
-                    onClick={() => handleCopyBibtex(selectedEntry)}
-                    className="h-7 px-2.5 text-11 rounded border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    {copiedBibtex ? <Check className="size-3 text-foreground" /> : <FileCode className="size-3 text-foreground" />}
-                    <span>Copy BibTeX</span>
-                  </button>
                 </div>
 
-                {/* ── 3. Abstract Section ── */}
-                <div className="space-y-1.5">
-                  <h4 className="text-12 font-medium text-muted-foreground">
-                    Abstract
-                  </h4>
-                  {selectedEntry.abstract ? (
-                    <div className="text-xs text-foreground/85 leading-relaxed bg-muted/20 p-3 rounded-md border border-border max-h-40 overflow-y-auto whitespace-pre-wrap select-text">
-                      {selectedEntry.abstract}
+                {/* ── 3. Abstract Section (Clean, concise, no lengthy explanations, omitted if empty) ── */}
+                {cleanAbstract && (
+                  <div className="space-y-1.5 pt-2 border-t border-border">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-11 font-medium uppercase tracking-wider text-muted-foreground">
+                        Abstract
+                      </h4>
+                      {cleanAbstract.length > 250 && (
+                        <button
+                          type="button"
+                          onClick={() => setIsAbstractExpanded((prev) => !prev)}
+                          className="text-11 text-primary hover:underline cursor-pointer select-none font-medium"
+                        >
+                          {isAbstractExpanded ? 'Show less' : 'Read more'}
+                        </button>
+                      )}
                     </div>
-                  ) : (
-                    <div className="text-xs text-muted-foreground italic bg-muted/10 p-2.5 rounded-md border border-dashed border-border">
-                      No abstract provided in reference metadata.
-                    </div>
-                  )}
-                </div>
+                    <p
+                      className={cn(
+                        'text-12 text-muted-foreground leading-relaxed select-text font-sans',
+                        !isAbstractExpanded && cleanAbstract.length > 250 && 'line-clamp-4',
+                      )}
+                    >
+                      {cleanAbstract}
+                    </p>
+                  </div>
+                )}
 
-                {/* ── 4. BibTeX Source Section ── */}
-                <div className="space-y-1.5">
+                {/* ── 4. BibTeX Source Section (Sole canonical place for Copy BibTeX) ── */}
+                <div className="space-y-1.5 pt-2 border-t border-border">
                   <div className="flex items-center justify-between">
                     <button
                       type="button"
                       onClick={() => setIsBibtexOpen((prev) => !prev)}
-                      className="text-12 font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors cursor-pointer select-none"
+                      className="text-11 font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors cursor-pointer select-none"
                     >
                       <ChevronRight
                         className={cn(
@@ -1205,14 +1185,23 @@ export default function CitationPickerModal({
                     <button
                       type="button"
                       onClick={() => handleCopyBibtex(selectedEntry)}
-                      className="text-11 text-foreground hover:underline flex items-center gap-1 transition-colors cursor-pointer"
+                      className="h-6 px-2 text-11 rounded border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1 transition-colors cursor-pointer"
                     >
-                      <Copy className="size-3 text-foreground" />
-                      <span>Copy</span>
+                      {copiedBibtex ? (
+                        <>
+                          <Check className="size-3 text-emerald-500" />
+                          <span className="text-emerald-600 dark:text-emerald-400 font-medium">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="size-3 text-foreground" />
+                          <span>Copy BibTeX</span>
+                        </>
+                      )}
                     </button>
                   </div>
                   {isBibtexOpen && (
-                    <pre className="p-3 rounded-md bg-muted/20 border border-border text-11 font-mono leading-relaxed text-foreground overflow-x-auto whitespace-pre select-text max-h-48">
+                    <pre className="p-3 rounded-md bg-muted/20 border border-border text-11 font-mono leading-relaxed text-foreground overflow-x-auto whitespace-pre select-text max-h-48 sidebar-scrollbar">
                       <code>{formatBibEntryToBibtex(selectedEntry)}</code>
                     </pre>
                   )}

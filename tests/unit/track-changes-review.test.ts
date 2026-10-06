@@ -71,7 +71,10 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
       } as any);
 
       const result = await suggestionService.getSuggestions('page-1', 'pending');
-      expect(apiGetSpy).toHaveBeenCalledWith('/api/v1/manuscripts/docs/page-1/suggestions?status=pending');
+      expect(apiGetSpy).toHaveBeenCalledWith(
+        '/api/v1/manuscripts/docs/page-1/suggestions?status=pending',
+        expect.anything(),
+      );
       expect(result).toHaveLength(2);
       expect(result[0].status).toBe('pending');
     });

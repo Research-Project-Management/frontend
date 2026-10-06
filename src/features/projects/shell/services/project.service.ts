@@ -69,6 +69,9 @@ export function createProjectApi(
   return apiPost<ProjectDetailResponse>(`/api/projects`, payload);
 }
 
+export const duplicateProjectApi = (projectId: string) =>
+  apiPost<ProjectDetailResponse>(`/api/projects/${projectId}/duplicate`, {});
+
 export const updateProjectApi = (
   projectId: string,
   data: Partial<UpdateProjectInput>,
@@ -218,10 +221,7 @@ export const updateProjectMemberRole = updateProjectMemberRoleApi;
 export const removeProjectMember = removeProjectMemberApi;
 export const transferOwnership = transferOwnershipApi;
 
-// ── Duplicate, Trash & Permanent Delete ────────────────────────────────────────
-
-export const duplicateProjectApi = (projectId: string) =>
-  apiPost<ProjectDetailResponse>(`/api/projects/${projectId}/duplicate`, {});
+// ── Trash & Permanent Delete ────────────────────────────────────────
 
 export const fetchTrashedProjects = (signal?: AbortSignal) =>
   apiGet<ProjectListResponse>(`/api/projects/trash`, { signal });

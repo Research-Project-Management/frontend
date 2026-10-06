@@ -14,7 +14,7 @@ export interface StorageUsageResult {
 }
 
 export interface StorageQuotaResponse {
-  scope?: 'personal' | 'project';
+  scope?: 'user' | 'project';
   projectId?: string;
   projectIdentifier?: string;
   projectName?: string;

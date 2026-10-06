@@ -19,8 +19,9 @@ const BEGIN_INCOMPLETE_REGEX = /^(\s*)\\begin\{([a-zA-Z0-9*_-]+)$/;
 function hasMatchingEnd(view: EditorView, envName: string, startLineNum: number, maxLookahead = 30): boolean {
   const totalLines = view.state.doc.lines;
   const endLimit = Math.min(totalLines, startLineNum + maxLookahead);
-  const endPattern = new RegExp(`\\\\end\\{${envName.replace('*', '\\*')}\\}`);
-  const beginPattern = new RegExp(`\\\\begin\\{${envName.replace('*', '\\*')}\\}`);
+  const escapedEnv = envName.replace(/[*_]/g, '\\$&');
+  const endPattern = new RegExp(`\\\\end\\{${escapedEnv}\\}`);
+  const beginPattern = new RegExp(`\\\\begin\\{${escapedEnv}\\}`);
 
   let depth = 1;
   for (let i = startLineNum + 1; i <= endLimit; i++) {
@@ -56,18 +57,9 @@ export const handleEnterEnvironment: Command = (view: EditorView) => {
   const envName = match[2];
 
   // If already followed by matching \end{env}, do standard enter
-  const totalLines = state.doc.lines;
-  const endLimit = Math.min(totalLines, line.number + 30);
-  const endPattern = new RegExp(`\\\\end\\{${envName.replace('*', '\\*')}\\}`);
-  let alreadyHasEnd = false;
-  for (let i = line.number + 1; i <= endLimit; i++) {
-    if (endPattern.test(state.doc.line(i).text)) {
-      alreadyHasEnd = true;
-      break;
-    }
+  if (hasMatchingEnd(view, envName, line.number)) {
+    return false;
   }
-
-  if (alreadyHasEnd) return false;
 
   const bodyIndent = indent + '  ';
   const insertText = `\n${bodyIndent}\n${indent}\\end{${envName}}`;

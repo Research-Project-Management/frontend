@@ -6,12 +6,13 @@ import { Users, ChevronRight, Folder, Search } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import type { TreeNode, CollectionActionHandlers } from './sidebar.types';
-import type { Collection, LibraryScope } from '../../types';
+import type { Collection, LibraryScope, ProjectRole } from '../../types';
 import type { SavedSearch } from '../../types/saved-searches.types';
 import { CollectionTree } from './CollectionTree';
 import { SidebarNavItem } from './SidebarNavItem';
 import { SavedSearchContextMenu } from './SavedSearchContextMenu';
 import { parseEmojiPrefix } from '../../utils';
+import { getLibraryPermissions } from '../../domain';
 
 interface ProjectLibrariesSectionProps extends CollectionActionHandlers {
   projects: any[];
@@ -42,15 +43,15 @@ interface ProjectLibrariesSectionProps extends CollectionActionHandlers {
 }
 
 /**
- * Safely resolves the current user's role across the 4 standard roles:
- * 'owner' | 'contributor' | 'commenter' | 'viewer'.
+ * Safely resolves the current user's role across the 4 canonical project roles:
+ * 'owner' | 'coordinator' | 'contributor' | 'reviewer'.
  * The owner is matched when owner = userId (project.userId / createdById / ownerId).
  */
 export function resolveProjectRole(
   project: any,
   currentUserId?: string,
-): 'owner' | 'coordinator' | 'contributor' | 'reviewer' | 'commenter' | 'viewer' {
-  if (!currentUserId || !project) return 'viewer';
+): ProjectRole {
+  if (!currentUserId || !project) return 'reviewer';
 
   // 1. Owner = userId check
   const isOwner =
@@ -71,8 +72,6 @@ export function resolveProjectRole(
     if (norm === 'coordinator') return 'coordinator';
     if (norm === 'contributor' || norm === 'member') return 'contributor';
     if (norm === 'reviewer') return 'reviewer';
-    if (norm === 'commenter') return 'commenter';
-    if (norm === 'viewer') return 'viewer';
   }
 
   // 3. Find matching member in project.members array
@@ -89,12 +88,10 @@ export function resolveProjectRole(
     if (norm === 'coordinator') return 'coordinator';
     if (norm === 'contributor' || norm === 'member') return 'contributor';
     if (norm === 'reviewer') return 'reviewer';
-    if (norm === 'commenter') return 'commenter';
-    if (norm === 'viewer') return 'viewer';
   }
 
   // 4. Default to least privilege
-  return 'viewer';
+  return 'reviewer';
 }
 
 export function ProjectLibrariesSection({
@@ -202,8 +199,7 @@ export function ProjectLibrariesSection({
               const projectCanManageCollections =
                 propCanManageCollections !== undefined
                   ? propCanManageCollections
-                  : isProjectActive &&
-                    (activeScope.role === 'owner' || activeScope.role === 'coordinator' || activeScope.role === 'contributor');
+                  : isProjectActive && getLibraryPermissions(activeScope).canManageCollections;
 
               return (
                 <div key={project.id} className="flex flex-col gap-1 w-full">
@@ -214,6 +210,7 @@ export function ProjectLibrariesSection({
                       onSelectProject({
                         type: 'project',
                         id: project.id,
+                        projectId: project.id,
                         name: project.name,
                         role,
                       });

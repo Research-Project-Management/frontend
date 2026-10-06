@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { PenLine, Search, X, Columns3, AlignJustify, ListFilter, Check, ChevronDown } from 'lucide-react';
+import { PenLine, Search, X, Columns3, AlignJustify, ListFilter, Check } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Checkbox } from '@/shared/components/ui/checkbox';
@@ -43,6 +43,10 @@ export interface TopbarProps {
   onCreateClick: (template?: 'blank' | 'example') => void;
   /** Import an existing LaTeX project (.zip) into the current project. */
   onImportZip?: (file: File) => void;
+  /** Open the document conversion modal for Word (.docx) or Markdown (.md). */
+  onOpenImportDoc?: (format: 'docx' | 'md') => void;
+  /** Open the GitHub repository import modal. */
+  onOpenImportGithub?: () => void;
   /** Open the template gallery modal, optionally pre-filtered by category. */
   onOpenTemplates?: (category: string) => void;
   searchQuery?: string;
@@ -59,8 +63,7 @@ const VIEW_OPTIONS = [
   { id: 'list' as const, label: 'List view', icon: AlignJustify },
 ] as const;
 
-// Entries mirror Overleaf's "New project" menu. Disabled until their backend exists.
-const SOON_IMPORTS = ['Word document', 'Markdown document', 'GitHub repo'] as const;
+
 const OVERLEAF_TEMPLATE_CATEGORIES = [
   { label: 'Journal articles', category: 'journal' },
   { label: 'Books', category: 'book' },
@@ -80,6 +83,8 @@ export function Topbar({
   setViewMode,
   onCreateClick,
   onImportZip,
+  onOpenImportDoc,
+  onOpenImportGithub,
   onOpenTemplates,
   searchQuery = '',
   onSearchChange,
@@ -325,11 +330,26 @@ export function Topbar({
               )}
 
               {projectLabels.length === 0 && (
-                <p className="text-12 text-muted-foreground py-2 text-center">
-                  No labels in this project
+                <p className="text-12 text-muted-foreground py-3 text-center">
+                  No labels assigned
                 </p>
               )}
             </div>
+
+            {activeLabelIds.length > 0 && (
+              <div className="pt-1.5 px-2 border-t border-border mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSelectLabelIds) onSelectLabelIds([]);
+                    else if (onSelectLabelId) onSelectLabelId(null);
+                  }}
+                  className="w-full text-center py-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer rounded-md hover:bg-muted/60 font-medium"
+                >
+                  Clear filter
+                </button>
+              </div>
+            )}
           </PopoverContent>
         </Popover>
 
@@ -400,10 +420,9 @@ export function Topbar({
           <DropdownMenuTrigger asChild>
             <Button
               size="sm"
-              className="h-8 rounded-md px-3 text-xs font-medium cursor-pointer shadow-none gap-1"
+              className="h-8 rounded-md px-3 text-xs font-medium cursor-pointer shadow-none"
             >
-              New
-              <ChevronDown className="size-3.5 shrink-0" strokeWidth={1.75} />
+              Add page
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" sideOffset={6} className="w-56 text-xs">
@@ -414,14 +433,17 @@ export function Topbar({
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-11 font-normal text-muted-foreground">Import</DropdownMenuLabel>
             <DropdownMenuItem className="text-xs cursor-pointer" onSelect={() => zipInputRef.current?.click()}>
-              Existing project (.zip)
+              ZIP archive
             </DropdownMenuItem>
-            {SOON_IMPORTS.map((label) => (
-              <DropdownMenuItem key={label} disabled className="text-xs justify-between">
-                {label}
-                <span className="text-11 text-muted-foreground">Soon</span>
-              </DropdownMenuItem>
-            ))}
+            <DropdownMenuItem className="text-xs cursor-pointer" onSelect={() => onOpenImportDoc?.('docx')}>
+              Word document
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-xs cursor-pointer" onSelect={() => onOpenImportDoc?.('md')}>
+              Markdown document
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-xs cursor-pointer" onSelect={() => onOpenImportGithub?.()}>
+              GitHub repo
+            </DropdownMenuItem>
 
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-11 font-normal text-muted-foreground">Templates</DropdownMenuLabel>

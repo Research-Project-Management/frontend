@@ -26,8 +26,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const isProject = Boolean(
     rawProjectId &&
       rawProjectId !== 'me' &&
-      rawProjectId !== 'user' &&
-      rawProjectId !== 'personal',
+      rawProjectId !== 'user',
   );
   const scopeId = isProject ? rawProjectId! : 'user';
 

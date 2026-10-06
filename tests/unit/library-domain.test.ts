@@ -22,6 +22,9 @@ import {
   // Diff & Merge
   inspectItemDifferences,
   aggregateItemAssets,
+  // Permissions & Scope Policy
+  getLibraryPermissions,
+  getScopeTarget,
 } from '@/features/library/domain';
 import { formatAcademicAuthors } from '@/features/library/utils/academic-text';
 
@@ -419,6 +422,101 @@ describe('Library Domain Layer — Pure Functional Logic', () => {
 
       const sortedByDeletedAt = sortLibraryItems(items, 'deletedAt', 'asc', false);
       expect(sortedByDeletedAt[0].id).toBe('1'); // March < May
+    });
+  });
+
+  describe('Scope & Permissions Domain (library-permissions.policy.ts)', () => {
+    it('should grant full unrestricted ownership capabilities for User Library scope', () => {
+      const userScope = {
+        type: 'user' as const,
+        name: 'My Library',
+      };
+      const perms = getLibraryPermissions(userScope);
+
+      expect(perms.canRead).toBe(true);
+      expect(perms.canCreateItem).toBe(true);
+      expect(perms.canEditItem).toBe(true);
+      expect(perms.canDeleteItem).toBe(true);
+      expect(perms.canManageCollections).toBe(true);
+      expect(perms.canImport).toBe(true);
+      expect(perms.canExport).toBe(true);
+
+      const target = getScopeTarget(userScope);
+      expect(target.isProject).toBe(false);
+      expect(target.projectId).toBeUndefined();
+      expect(target.itemsApiUrl).toBe('/api/v1/library/items');
+    });
+
+    it('should grant full management permissions for Project Owner and Coordinator', () => {
+      const ownerScope = {
+        type: 'project' as const,
+        id: 'proj-123',
+        projectId: 'proj-123',
+        name: 'AI Research',
+        role: 'owner' as const,
+      };
+      const ownerPerms = getLibraryPermissions(ownerScope);
+      expect(ownerPerms.canCreateItem).toBe(true);
+      expect(ownerPerms.canEditItem).toBe(true);
+      expect(ownerPerms.canDeleteItem).toBe(true);
+      expect(ownerPerms.canManageCollections).toBe(true);
+      expect(ownerPerms.canImport).toBe(true);
+      expect(ownerPerms.canExport).toBe(true);
+
+      const coordinatorScope = {
+        type: 'project' as const,
+        id: 'proj-123',
+        projectId: 'proj-123',
+        name: 'AI Research',
+        role: 'coordinator' as const,
+      };
+      const coordPerms = getLibraryPermissions(coordinatorScope);
+      expect(coordPerms.canCreateItem).toBe(true);
+      expect(coordPerms.canEditItem).toBe(true);
+      expect(coordPerms.canDeleteItem).toBe(true);
+      expect(coordPerms.canManageCollections).toBe(true);
+      expect(coordPerms.canImport).toBe(true);
+    });
+
+    it('should allow Contributor to create/edit/manage collections but disallow permanent deletion', () => {
+      const contributorScope = {
+        type: 'project' as const,
+        id: 'proj-456',
+        projectId: 'proj-456',
+        name: 'Quantum Lab',
+        role: 'contributor' as const,
+      };
+      const perms = getLibraryPermissions(contributorScope);
+      expect(perms.canRead).toBe(true);
+      expect(perms.canCreateItem).toBe(true);
+      expect(perms.canEditItem).toBe(true);
+      expect(perms.canDeleteItem).toBe(false); // Only management can permanently delete
+      expect(perms.canManageCollections).toBe(true);
+      expect(perms.canImport).toBe(true);
+      expect(perms.canExport).toBe(true);
+    });
+
+    it('should enforce strict read-only/annotation restrictions for Reviewer role', () => {
+      const reviewerScope = {
+        type: 'project' as const,
+        id: 'proj-789',
+        projectId: 'proj-789',
+        name: 'Review Panel',
+        role: 'reviewer' as const,
+      };
+      const perms = getLibraryPermissions(reviewerScope);
+      expect(perms.canRead).toBe(true);
+      expect(perms.canExport).toBe(true);
+      expect(perms.canCreateItem).toBe(false);
+      expect(perms.canEditItem).toBe(false);
+      expect(perms.canDeleteItem).toBe(false);
+      expect(perms.canManageCollections).toBe(false);
+      expect(perms.canImport).toBe(false);
+
+      const target = getScopeTarget(reviewerScope);
+      expect(target.isProject).toBe(true);
+      expect(target.projectId).toBe('proj-789');
+      expect(target.itemsApiUrl).toBe('/api/v1/projects/proj-789/library/items');
     });
   });
 });

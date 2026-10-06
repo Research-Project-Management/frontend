@@ -4,6 +4,7 @@ import { runLatexLinter } from '@/features/editor/utils/latex-linter.util';
 import {
   isItemRetracted,
   getRetractionInfo,
+  parseRetractionReasonParts,
 } from '@/features/library/utils/retraction';
 
 const retractedItem = {
@@ -69,5 +70,28 @@ describe('buildRetractedCitationMap', () => {
       retractedItemsMap: map,
     });
     expect(diags.some((d) => d.code === 'RETRACTED_CITATION')).toBe(true);
+  });
+});
+
+describe('parseRetractionReasonParts', () => {
+  it('splits retraction date and reason cleanly', () => {
+    const res = parseRetractionReasonParts(
+      "Retracted on June 5, 2020 due to authors' inability to verify authenticity.",
+    );
+    expect(res.prefix).toBe('Retracted on June 5, 2020:');
+    expect(res.body).toBe("Due to authors' inability to verify authenticity.");
+  });
+
+  it('splits standard retraction with colon', () => {
+    const res = parseRetractionReasonParts('Retracted: Data falsification detected.');
+    expect(res.prefix).toBe('Retracted:');
+    expect(res.body).toBe('Data falsification detected.');
+  });
+
+  it('returns whole text as body when no prefix matches', () => {
+    const text = 'This publication has been flagged as retracted.';
+    const res = parseRetractionReasonParts(text);
+    expect(res.prefix).toBeUndefined();
+    expect(res.body).toBe(text);
   });
 });

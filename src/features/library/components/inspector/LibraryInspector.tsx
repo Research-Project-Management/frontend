@@ -20,14 +20,15 @@ import {
 import { normalizeTags } from '../../domain';
 
 /**
- * 7 Inspector Levels counted from bottom icon to top icon:
+ * 8 Inspector Levels counted from bottom icon to top icon:
  * Level 1: 'cite' (1 bar: Citation)
  * Level 2: 'relations' (2 bars: Related, Citation)
  * Level 3: 'tags' (3 bars: Tags, Related, Citation)
  * Level 4: 'collections' (4 bars: Collections, Tags, Related, Citation)
  * Level 5: 'notes' (5 bars: Notes, Collections, Tags, Related, Citation)
  * Level 6: 'files' (6 bars: Attachments, Notes, Collections, Tags, Related, Citation)
- * Level 7: 'info' (7 bars: Details including bibliographic metadata and abstract)
+ * Level 7: 'abstract' (7 bars: Abstract summary)
+ * Level 8: 'info' (8 bars: Details: bibliographic metadata)
  */
 export const INSPECTOR_LEVELS_FROM_BOTTOM: InspectorSectionId[] = [
   'cite',
@@ -36,6 +37,7 @@ export const INSPECTOR_LEVELS_FROM_BOTTOM: InspectorSectionId[] = [
   'collections',
   'notes',
   'files',
+  'abstract',
   'info',
 ];
 
@@ -46,6 +48,7 @@ import { InspectorTabs } from './InspectorTabs';
 
 import dynamic from 'next/dynamic';
 const InfoSection = dynamic(() => import('./InfoSection'), { ssr: false });
+const AbstractSection = dynamic(() => import('./AbstractSection'), { ssr: false });
 const AttachmentsSection = dynamic(() => import('./AttachmentsSection'), {
   ssr: false,
 });
@@ -297,10 +300,10 @@ export function LibraryInspector({
     });
   };
 
-  // Collapsible section state: Only "Details" (info) is expanded by default, all others remain collapsed until user interaction
+  // Collapsible section state: Details and Abstract are expanded by default, others collapsed
   const [expandedSections, setExpandedSections] = useState<Record<InspectorSectionId, boolean>>({
     info: true,
-    abstract: false,
+    abstract: true,
     files: false,
     notes: false,
     collections: false,
@@ -365,6 +368,10 @@ export function LibraryInspector({
     effectiveItem?.filename ||
     (effectiveItem?.attachments && effectiveItem.attachments.length > 0) ||
     effectiveItem?.openAccessPdfUrl
+  );
+  const hasAbstract = Boolean(
+    effectiveItem?.abstract ||
+    (effectiveItem as any)?.abstractNote
   );
   const hasNotes = noteCount > 0 || isAddingNote;
   const hasTags = tagsList.length > 0 || isAddingTag;
@@ -446,7 +453,33 @@ export function LibraryInspector({
                   </InspectorSection>
                 )}
 
-                {/* 2. Attachments (Level 6) */}
+                {/* 2. Abstract (Level 7) */}
+                {visibleSectionIds.has('abstract') && (
+                  <InspectorSection
+                    id="abstract"
+                    title="Abstract"
+                    isExpanded={expandedSections.abstract}
+                    onToggleExpand={() => toggleSection('abstract')}
+                    onAdd={
+                      !hasAbstract && effectiveCanEdit
+                        ? () => {
+                            setExpandedSections((prev) => ({ ...prev, abstract: true }));
+                          }
+                        : undefined
+                    }
+                    contentClassName={hasAbstract ? "px-3 pt-1.5 pb-2.5 flex flex-col gap-2" : "px-3 pt-1.5 pb-2.5"}
+                    canEdit={effectiveCanEdit}
+                  >
+                    <AbstractSection
+                      paper={effectiveItem}
+                      onUpdatePaper={handleUpdatePaper}
+                      canEdit={effectiveCanEdit}
+                      hideHeader
+                    />
+                  </InspectorSection>
+                )}
+
+                {/* 3. Attachments (Level 6) */}
                 {visibleSectionIds.has('files') && (
                   <InspectorSection
                     id="files"

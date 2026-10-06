@@ -28,7 +28,10 @@ export type DialogName =
   | 'new-file'
   | 'new-folder'
   | 'rename-symbol'
-  | 'suggest-edit';
+  | 'suggest-edit'
+  | 'deleted-files'
+  | 'add-files'
+  | 'template-gallery';
 
 export type EditorCommand =
   | { type: 'editor:jump-to-line'; line: number; highlight?: 'error' | 'synctex' }

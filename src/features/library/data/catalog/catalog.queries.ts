@@ -1138,6 +1138,10 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
       queryClient.invalidateQueries({ queryKey: libraryKeys.tags(effectiveScope) });
       if (targetId) {
         queryClient.invalidateQueries({ queryKey: itemKeys.byId(effectiveScope, targetId) });
+        queryClient.invalidateQueries({
+          predicate: (query) =>
+            Array.isArray(query.queryKey) && query.queryKey.includes(targetId),
+        });
       }
       const isSilent = Boolean(
         variables.silent ||

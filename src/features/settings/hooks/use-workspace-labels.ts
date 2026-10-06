@@ -17,7 +17,7 @@ export const userLabelKeys = {
 // Backward compatibility key alias
 export const workspaceLabelKeys = userLabelKeys;
 
-// ── 1. Fetch Labels (Flat Personal / User model) ──────────────────────────────
+// ── 1. Fetch Labels (Flat User model) ──────────────────────────────
 
 export function useUserLabels() {
   return useQuery({

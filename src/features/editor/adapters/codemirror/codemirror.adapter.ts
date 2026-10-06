@@ -93,6 +93,14 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
     this.view.dispatch(this.view.state.replaceSelection(text));
   }
 
+  replaceRange(text: string, from: number, to: number): void {
+    this.view.dispatch({
+      changes: { from, to, insert: text },
+      selection: EditorSelection.cursor(from + text.length),
+    });
+    this.view.focus();
+  }
+
   wrapSelection(prefix: string, suffix: string, placeholder = ''): void {
     const { from, to } = this.view.state.selection.main;
     const selected = this.view.state.sliceDoc(from, to) || placeholder;

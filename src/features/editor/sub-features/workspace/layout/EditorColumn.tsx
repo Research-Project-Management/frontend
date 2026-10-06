@@ -5,9 +5,10 @@ import dynamic from 'next/dynamic';
 import { FileCode2 } from 'lucide-react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import Tabs from '../../../components/editor/Tabs';
+import { EditorBreadcrumbs } from '../../../components/editor/subcomponents/EditorBreadcrumbs';
 import { ImagePanel } from './ImagePanel';
 import { useActiveDocument } from '../../../hooks/use-core';
-import { useCollaborationStream } from '../../../hooks/use-collaboration';
+import { useSettingsStore } from '../../../store';
 
 const Editor = dynamic(() => import('../../../components/editor/Editor'), { ssr: false });
 
@@ -44,7 +45,7 @@ function EmptyEditorState({ onOpenDefaultFile, fileName = 'main.tex' }: EmptyEdi
 function LoadingSkeleton() {
   return (
     <div className="h-full w-full flex flex-col bg-background animate-in fade-in duration-300">
-      <div className="h-10 border-b border-border bg-secondary/40 flex items-center gap-2 px-3">
+      <div className="h-9 border-b border-border bg-secondary/40 flex items-center gap-2 px-3">
         <Skeleton className="h-4 w-4 rounded-sm" />
         <Skeleton className="h-4 w-24" />
         <Skeleton className="h-4 w-16" />
@@ -85,11 +86,10 @@ export function EditorColumn() {
     selectedAsset,
     selectFile,
     parentPage,
+    childFiles,
   } = useActiveDocument();
 
-  // Stream real-time events for active sub-file if different from root page
-  const childPageId = displayPage?.id && displayPage.id !== pageId ? displayPage.id : null;
-  useCollaborationStream(undefined, childPageId);
+  const showEditorTabs = useSettingsStore((s) => s.showEditorTabs);
 
   const handleOpenDefault = React.useCallback(() => {
     if (pageId) {
@@ -109,7 +109,18 @@ export function EditorColumn() {
 
   return (
     <div className="h-full w-full flex flex-col bg-background min-h-0">
-      {pageId && <Tabs rootPageId={pageId} activeFileId={fileId ?? activePage.id ?? ''} />}
+      {showEditorTabs && pageId && (
+        <Tabs
+          rootPageId={pageId}
+          activeFileId={fileId ?? activePage.id ?? ''}
+          availableFiles={childFiles}
+        />
+      )}
+      <EditorBreadcrumbs
+        projectTitle={parentPage?.title || activePage?.title || 'Project'}
+        fileName={displayPage?.title || activePage?.title || 'main.tex'}
+        onNavigateRoot={handleOpenDefault}
+      />
       <div className="flex-1 min-h-0 min-w-0 w-full h-full flex flex-col">
         {isAssetTab ? (
           <ImagePanel asset={selectedAsset!} />
@@ -118,7 +129,7 @@ export function EditorColumn() {
         ) : (
           <EmptyEditorState
             onOpenDefaultFile={handleOpenDefault}
-            fileName={parentPage?.title || 'main.tex'}
+            fileName="main.tex"
           />
         )}
       </div>

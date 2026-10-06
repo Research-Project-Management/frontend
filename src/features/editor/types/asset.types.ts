@@ -18,13 +18,8 @@ export interface DocumentAssetItem {
   updatedAt: string;
 }
 
-export interface UploadAssetInput {
-  filename: string;
-  contentBase64: string;
-  mimeType?: string;
-  path?: string;
-  parentPageId?: string;
-}
+// Derived directly from Zod schemas (Single Source of Truth)
+export type { UploadAssetInput } from '../schemas/asset.schema';
 
 export interface AssetInfo {
   id?: string;

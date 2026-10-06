@@ -148,6 +148,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [toolbarWidth, setToolbarWidth] = useState<number>(600);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuTooltipOpen, setMenuTooltipOpen] = useState(false);
 
   useEffect(() => {
     const el = toolbarRef.current;
@@ -395,7 +396,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
             {/* Shrunk state: [...] button appears when compact (< 580px) and holds scale controls */}
             {collapseScale && (
               <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-                <Tooltip open={isMenuOpen ? false : undefined}>
+                <Tooltip open={isMenuOpen ? false : menuTooltipOpen} onOpenChange={setMenuTooltipOpen}>
                   <TooltipTrigger asChild>
                     <PopoverTrigger asChild>
                       <button
@@ -495,7 +496,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                   {/* Extra View Options if Ultra-Compact */}
                   {isUltraCompact && (
                     <div className="mt-2 pt-2 border-t border-border/60 flex flex-col gap-0.5">
-                      <div className="text-[10px] font-medium text-muted-foreground px-1 pb-1 uppercase tracking-wider">
+                      <div className="text-10 font-medium text-muted-foreground px-1 pb-1 uppercase tracking-wider">
                         View options
                       </div>
                       {onToggleInvertColors && (

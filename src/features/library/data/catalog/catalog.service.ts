@@ -55,9 +55,9 @@ const VALID_ITEM_PAYLOAD_KEYS = new Set([
   'archive', 'archiveLocation', 'callNumber',
   // Extra/custom fields
   'extra', 'extraFields', 'keywords', 'labels', 'tags',
-  // Canonical relation inputs (sent on ingest/create, mapped server-side)
+  // Canonical relation inputs
   'identifiers',
-  // File upload reference — both fileId AND fileUrl must be allowed
+  // File upload reference
   'fileId', 'fileUrl', 'filename', 'mimeType', 'size',
   // Collection targeting
   'collectionId', 'collectionIds',
@@ -218,14 +218,18 @@ function getItemUrl(scopeId?: string, suffix = ''): string {
 
 // ── 1. ItemsService ───────────────────────────────────────────────────────────
 export const ItemsService = {
-  importFromPersonal: (projectId: string, itemIds: string[]) => {
+  importFromUser: (projectId: string, itemIds: string[]) => {
     if (!projectId || projectId === 'user') {
-      throw new Error('Valid target projectId is required for personal library import');
+      throw new Error('Valid target projectId is required for user library import');
     }
     return apiPost<{ success: boolean; importedCount: number }>(
       `/api/v1/projects/${encodeURIComponent(projectId)}/library/items/import`,
       { itemIds },
     );
+  },
+
+  importFromPersonal: (projectId: string, itemIds: string[]) => {
+    return ItemsService.importFromUser(projectId, itemIds);
   },
 
   getCounts: (scopeId?: string) => {
@@ -498,6 +502,17 @@ export const ItemsService = {
     ),
 
   previewConvertType: (
+    scopeId: string,
+    itemId: string,
+    targetType: string,
+    retainUnmappedInExtra: boolean = true,
+  ) =>
+    apiPost<{ success: boolean; preview: unknown; data: unknown }>(
+      getItemUrl(scopeId, `${encodeURIComponent(itemId)}/convert-type/preview`),
+      { targetType, retainUnmappedInExtra },
+    ),
+
+  previewTypeConversion: (
     scopeId: string,
     itemId: string,
     targetType: string,

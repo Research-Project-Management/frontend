@@ -67,7 +67,10 @@ export function ExtraAuditFields({
   }, [paper]);
 
   const handleExtraSave = (savedValue: string) => {
-    onUpdatePaper?.({ extra: savedValue || undefined });
+    onUpdatePaper?.({
+      ...(paper.itemType ? { itemType: paper.itemType } : {}),
+      extra: savedValue || undefined,
+    });
   };
 
   const { data: metadataSourcesData } = useItemMetadataSourcesQuery(

@@ -27,6 +27,7 @@ export interface FileTreeToolbarProps {
   deletedFilesCount: number;
   fileFilter: string;
   onFileFilterChange: (val: string) => void;
+  onClose?: () => void;
 }
 
 export const FileTreeToolbar = React.memo(function FileTreeToolbar({
@@ -39,13 +40,14 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
   deletedFilesCount,
   fileFilter,
   onFileFilterChange,
+  onClose,
 }: FileTreeToolbarProps) {
   return (
     <>
-      {/* ── Header toolbar: Matching Library & Sticky Design System ── */}
+      {/* ── Header toolbar: Standardized h-9, border-b, and close affordance ── */}
       <div
         className={cn(
-          'flex h-9 shrink-0 items-center justify-between px-2 bg-transparent select-none',
+          'flex h-9 shrink-0 items-center justify-between px-2.5 bg-background border-b border-border select-none',
         )}
       >
         <Tooltip delayDuration={300}>
@@ -54,12 +56,12 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
               type="button"
               onClick={onToggleFileTree}
               aria-expanded={isFileTreeOpen}
-              className="flex items-center gap-1.5 font-semibold text-13 tracking-tight text-foreground hover:text-foreground/80 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-foreground rounded-sm py-0.5"
+              className="flex items-center gap-1.5 font-semibold text-13 tracking-tight text-foreground hover:text-foreground/80 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-foreground rounded-sm py-0.5 motion-reduce:transition-none"
               aria-label={isFileTreeOpen ? 'Collapse files' : 'Expand files'}
             >
               <ChevronRight
                 className={cn(
-                  'size-3.5 shrink-0 transition-transform duration-150 text-foreground',
+                  'size-3.5 shrink-0 transition-transform duration-150 text-foreground motion-reduce:transition-none',
                   isFileTreeOpen && 'rotate-90',
                 )}
                 strokeWidth={1.75}
@@ -72,81 +74,102 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
           </TooltipContent>
         </Tooltip>
 
-        {isFileTreeOpen && (
-          <div className="flex items-center gap-0.5">
-            {/* 1. New File */}
-            <Tooltip delayDuration={300}>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={onOpenFileModal}
-                  aria-label="New File"
-                  className="flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground"
-                >
-                  <FilePlus className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-11">New file</TooltipContent>
-            </Tooltip>
+        <div className="flex items-center gap-0.5">
+          {isFileTreeOpen && (
+            <>
+              {/* 1. New File */}
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onOpenFileModal}
+                    aria-label="New File"
+                    className="flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground motion-reduce:transition-none"
+                  >
+                    <FilePlus className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-11">New file</TooltipContent>
+              </Tooltip>
 
-            {/* 2. New Folder */}
-            <Tooltip delayDuration={300}>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={onStartCreateFolder}
-                  aria-label="New Folder"
-                  className="flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground"
-                >
-                  <FolderPlus className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-11">New folder</TooltipContent>
-            </Tooltip>
+              {/* 2. New Folder */}
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onStartCreateFolder}
+                    aria-label="New Folder"
+                    className="flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground motion-reduce:transition-none"
+                  >
+                    <FolderPlus className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-11">New folder</TooltipContent>
+              </Tooltip>
 
-            {/* 3. Upload File */}
-            <Tooltip delayDuration={300}>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={onOpenUploadModal}
-                  aria-label="Upload files"
-                  className="flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground"
-                >
-                  <Upload className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-11">Upload files</TooltipContent>
-            </Tooltip>
+              {/* 3. Upload File */}
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onOpenUploadModal}
+                    aria-label="Upload files"
+                    className="flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground motion-reduce:transition-none"
+                  >
+                    <Upload className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-11">Upload files</TooltipContent>
+              </Tooltip>
 
-            {/* 4. Trash / Deleted Files */}
+              {/* 4. Trash / Deleted Files */}
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onOpenDeletedFilesModal}
+                    aria-label="Trash / Deleted Files"
+                    className="relative flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground motion-reduce:transition-none"
+                  >
+                    <Trash2 className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                    {deletedFilesCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full bg-foreground text-11 font-mono font-semibold text-background leading-none">
+                        {deletedFilesCount > 9 ? '9+' : deletedFilesCount}
+                      </span>
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-11">
+                  Trash ({deletedFilesCount} deleted)
+                </TooltipContent>
+              </Tooltip>
+            </>
+          )}
+
+          {/* 5. Close Panel Affordance */}
+          {onClose && (
             <Tooltip delayDuration={300}>
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={onOpenDeletedFilesModal}
-                  aria-label="Trash / Deleted Files"
-                  className="relative flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground"
+                  onClick={onClose}
+                  aria-label="Close files panel"
+                  className="flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary motion-reduce:transition-none"
                 >
-                  <Trash2 className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-                  {deletedFilesCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full bg-foreground text-11 font-mono font-semibold text-background leading-none">
-                      {deletedFilesCount > 9 ? '9+' : deletedFilesCount}
-                    </span>
-                  )}
+                  <X className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-11">
-                Trash ({deletedFilesCount} deleted)
+                Close
               </TooltipContent>
             </Tooltip>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* ── Search Bar: Full width precision ── */}
       {isFileTreeOpen && (
-        <div className="px-2 pt-0.5 pb-2 shrink-0 bg-transparent select-none">
+        <div className="px-2 pt-1.5 pb-2 shrink-0 bg-transparent select-none">
           <div className="relative flex items-center w-full h-8 rounded-md border border-border bg-background hover:border-foreground/30 focus-within:border-foreground transition-colors">
             <Search
               className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none shrink-0"

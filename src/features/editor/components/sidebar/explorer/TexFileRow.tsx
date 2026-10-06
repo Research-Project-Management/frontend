@@ -30,7 +30,7 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { toast } from 'sonner';
+import { useFileExplorerActions } from './useFileExplorerActions';
 import { IndentGuides, RenameInput, RowActions } from './FileTreeNodes';
 
 export function getFileIcon(filename: string) {
@@ -64,11 +64,16 @@ export function getFileIcon(filename: string) {
   }
 }
 
-export const displayName = (title: string) =>
-  /\.[a-z0-9]+$/i.test(title) ? title : `${title}.tex`;
+export const displayName = (title: string) => {
+  const lower = (title || '').trim().toLowerCase();
+  if (lower === 'flux' || lower === 'flux.tex') {
+    return 'main.tex';
+  }
+  return /\.[a-z0-9]+$/i.test(title) ? title : `${title}.tex`;
+};
 
 export const cleanBasename = (title: string) =>
-  title.replace(/\.[a-z0-9]+$/i, '');
+  displayName(title).replace(/\.[a-z0-9]+$/i, '');
 
 export interface TexFileRowProps {
   file: { id: string; title: string; updatedAt?: string };
@@ -117,20 +122,18 @@ export const TexFileRow = React.memo(function TexFileRow({
   const fullName = displayName(file.title);
   const label = displayLabel || fullName;
 
+  const { copyTexCommand } = useFileExplorerActions();
+
   const handleCopyInput = useCallback(
     (e?: React.MouseEvent) => {
       e?.stopPropagation();
       if (onCopyCommand) {
         onCopyCommand(fullName);
       } else {
-        const base = cleanBasename(fullName);
-        const ext = fullName.split('.').pop()?.toLowerCase();
-        const snippet = ext === 'bib' ? `\\bibliography{${base}}` : `\\input{${base}}`;
-        navigator.clipboard.writeText(snippet);
-        toast.success(`Copied ${snippet} to clipboard`);
+        copyTexCommand(fullName);
       }
     },
-    [fullName, onCopyCommand],
+    [fullName, onCopyCommand, copyTexCommand],
   );
 
   const handleDownload = useCallback(
@@ -165,7 +168,7 @@ export const TexFileRow = React.memo(function TexFileRow({
   const rowContent = (
     <div
       role="button"
-      tabIndex={isActive ? 0 : -1}
+      tabIndex={0}
       aria-label={`File ${label}${isMain ? ', main document' : ''}`}
       onClick={() => onFileClick(file.id, file.title)}
       draggable={!isRenaming}
@@ -181,7 +184,7 @@ export const TexFileRow = React.memo(function TexFileRow({
         }
       }}
       className={cn(
-        'group/row relative flex h-7.5 w-full items-center gap-1.5 rounded-md pl-2 pr-1 transition-colors cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground',
+        'group/row relative flex h-7.5 w-full items-center gap-1.5 rounded-md pl-2 pr-1 transition-colors motion-reduce:transition-none cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground',
         isActive
           ? 'bg-muted text-foreground font-medium'
           : 'text-foreground hover:bg-muted/60 font-normal',

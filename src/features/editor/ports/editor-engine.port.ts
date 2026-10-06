@@ -54,6 +54,9 @@ export interface IEditorEngine {
   /** Inserts raw text or snippet at current cursor position */
   insertText(text: string): void;
 
+  /** Replaces text within an absolute range [from, to] */
+  replaceRange?(text: string, from: number, to: number): void;
+
   /** Wraps current selection (or placeholder) with prefix and suffix */
   wrapSelection(prefix: string, suffix: string, placeholder?: string): void;
 

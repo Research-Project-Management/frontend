@@ -2,8 +2,8 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useParams, useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { useProjectSearchActions } from "./useProjectSearchActions";
 import {
   Search as SearchIcon,
   X,
@@ -22,6 +22,7 @@ import { documentSearchService } from "@/features/editor/services/search.service
 import { useEditorInstance } from "@/features/editor/core/context/editor-instance.context";
 import { editorCommandBus } from "@/features/editor/core/command-bus/editor-command-bus";
 import { PlaneEmptyState, PlaneErrorState } from "@/shared/components/ui";
+import { SidebarPanelHeader } from "../common/SidebarPanelHeader";
 
 interface MatchEntry {
   line: number;
@@ -60,12 +61,26 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   const [wholeWord, setWholeWord] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
-  const [isReplacingAll, setIsReplacingAll] = useState(false);
-  const queryClient = useQueryClient();
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(query, 250);
   const effectiveQuery = instantQuery !== null ? instantQuery : debouncedQuery;
+
+  const {
+    isReplacingAll,
+    handleReplaceAllCurrentFile,
+    handleReplaceAllEverywhere,
+  } = useProjectSearchActions({
+    engine,
+    effectiveQuery,
+    replaceText,
+    useRegex,
+    wholeWord,
+    caseSensitive,
+    rootProjectId,
+    rootPageId,
+    activeFileId: activeFileId ?? null,
+  });
 
   const handleSearch = useCallback(() => {
     setInstantQuery(query);
@@ -259,84 +274,14 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
     [activeFileId, engine, rootPageId, openTab, searchParams, router, pathname],
   );
 
-  // Replace in active file
-  const handleReplaceAllCurrentFile = () => {
-    if (!engine || !effectiveQuery) return;
-    const content = engine.getContent();
-    let pattern = effectiveQuery;
-    if (!useRegex) pattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    if (wholeWord) pattern = `\\b${pattern}\\b`;
-    const flags = caseSensitive ? "g" : "gi";
-
-    let re: RegExp;
-    try {
-      re = new RegExp(pattern, flags);
-    } catch {
-      return;
-    }
-
-    const replaced = content.replace(re, replaceText);
-    if (replaced !== content) {
-      engine.setContent(replaced);
-      engine.focus();
-    }
-    toast.success("Replaced matches in active file");
-  };
-
-  // Replace across all files in project via backend atomic API
-  const handleReplaceAllEverywhere = async () => {
-    if (!effectiveQuery || !rootProjectId) return;
-    setIsReplacingAll(true);
-    try {
-      const res = await documentSearchService.batchReplace(
-        rootProjectId,
-        effectiveQuery,
-        replaceText,
-        {
-          caseSensitive,
-          wholeWord,
-          useRegex,
-        },
-      );
-      toast.success(
-        `Replaced ${res.totalOccurrencesReplaced} occurrence(s) across ${res.totalFilesAffected} file(s)`,
-      );
-      await queryClient.invalidateQueries({
-        queryKey: ["project-document-search"],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: filesQuery(rootPageId).queryKey,
-      });
-      // If active editor file was affected, update local buffer
-      if (res.affectedFileIds.includes(activeFileId || "")) {
-        handleReplaceAllCurrentFile();
-      }
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to replace across project");
-    } finally {
-      setIsReplacingAll(false);
-    }
-  };
-
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground select-none">
       {/* Header */}
-      <div className="flex h-10 shrink-0 items-center justify-between px-3 bg-background border-b border-border">
-        <span className="truncate text-xs font-semibold text-foreground tracking-normal">
-          Search
-        </span>
-        {onClose && (
-          <button
-            type="button"
-            title="Close search"
-            aria-label="Close search"
-            onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors hover:bg-sidebar-hover cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-          >
-            <X className="size-3.5 shrink-0" />
-          </button>
-        )}
-      </div>
+      <SidebarPanelHeader
+        title="Search"
+        onClose={onClose}
+        closeAriaLabel="Close search"
+      />
 
       {/* Search Input Controls */}
       <div className="border-b border-border px-3 pb-3 pt-1 space-y-2 bg-background select-none">

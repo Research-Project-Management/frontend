@@ -439,7 +439,7 @@ export class TableWidget extends WidgetType {
     captionBtn.type = 'button';
     captionBtn.className =
       'h-7 px-2.5 rounded border border-border/60 hover:bg-muted font-medium flex items-center gap-1.5 transition-colors cursor-pointer text-11 text-foreground/80';
-    captionBtn.innerHTML = `<span>${this.parsed.caption ? `Caption: "${this.parsed.caption.slice(0, 14)}..."` : 'No caption'}</span><span class="text-[11px] text-muted-foreground">▾</span>`;
+    captionBtn.innerHTML = `<span>${this.parsed.caption ? `Caption: "${this.parsed.caption.slice(0, 14)}..."` : 'No caption'}</span><span class="text-11 text-muted-foreground">▾</span>`;
     captionBtn.title = 'Edit table caption';
     captionBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -523,7 +523,7 @@ export class TableWidget extends WidgetType {
     widthBtn.className =
       'h-7 px-2 rounded border border-border/60 hover:bg-muted font-medium flex items-center gap-1 transition-colors cursor-pointer text-11 text-foreground/80';
     const activeWidth = this.selectedCol !== null ? this.parsed.colWidths[this.selectedCol] : null;
-    widthBtn.innerHTML = `<span>⟷ ${activeWidth ? activeWidth : 'Auto'}</span><span class="text-[11px] text-muted-foreground">▾</span>`;
+    widthBtn.innerHTML = `<span>⟷ ${activeWidth ? activeWidth : 'Auto'}</span><span class="text-11 text-muted-foreground">▾</span>`;
     widthBtn.title = 'Set column width (Stretch vs Fixed width e.g. 8cm, 0.25\\linewidth)';
     widthBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -726,7 +726,7 @@ export class TableWidget extends WidgetType {
       if (widthVal || isSelected) {
         const pill = document.createElement('div');
         pill.className =
-          'mb-0.5 px-1.5 py-0.5 rounded text-[11px] font-mono bg-muted text-foreground border border-border font-semibold whitespace-nowrap';
+          'mb-0.5 px-1.5 py-0.5 rounded text-11 font-mono bg-muted text-foreground border border-border font-semibold whitespace-nowrap';
         pill.textContent = `|→ ${widthVal || 'auto'}`;
         colWrap.appendChild(pill);
       }

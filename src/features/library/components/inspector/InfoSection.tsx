@@ -172,7 +172,10 @@ export default function InfoSection({
 
   const handleFieldChange = (field: keyof Item | string, value: any) => {
     if (onUpdatePaper) {
-      onUpdatePaper({ [field]: value });
+      onUpdatePaper({
+        ...(paper.itemType ? { itemType: paper.itemType } : {}),
+        [field]: value,
+      });
     }
   };
 
@@ -578,6 +581,10 @@ export default function InfoSection({
       };
     }
 
+    if (paper.itemType) {
+      patch.itemType = paper.itemType;
+    }
+
     onUpdatePaper(patch);
   };
 
@@ -688,31 +695,6 @@ export default function InfoSection({
         canEdit={canEdit}
         onUpdatePaper={onUpdatePaper}
       />
-
-      {/* Abstract */}
-      <div className="grid grid-cols-[84px_1fr] gap-2 items-start py-0.5 group">
-        <span
-          className="text-muted-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate pt-1"
-          title="Abstract"
-        >
-          Abstract
-        </span>
-        <InlineTextarea
-          value={paper.abstract || paper.abstractNote || ''}
-          placeholder={canEdit ? 'Add abstract...' : ''}
-          ariaLabel="Abstract"
-          onSave={(newVal) => {
-            if (onUpdatePaper) {
-              onUpdatePaper({
-                abstract: newVal || '',
-                abstractNote: newVal || '',
-              } as any);
-            }
-          }}
-          readOnly={!canEdit}
-          className="flex-1 w-full"
-        />
-      </div>
 
       {/* Dynamic Schema Fields for Selected Item Type in Canonical Zotero Order */}
       {dynamicFields.map((fieldDef: SchemaFieldDefinition) => {

@@ -14,6 +14,8 @@ import {
 } from "@/shared/components/ui";
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { useSettingsStore } from '@/features/editor/store';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 
 export default function InsertMenu() {
   const { engine } = useEditorInstance();
@@ -75,7 +77,11 @@ export default function InsertMenu() {
           </MenubarSubTrigger>
           <MenubarSubContent className="min-w-48 text-xs">
             <MenubarItem
-              onClick={() => EditorEventBus.emit('flux:upload-file')}
+              onClick={() => {
+                useSettingsStore.getState().setActiveSidebarPanel('Files');
+                editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'add-files', payload: { initialTab: 'upload' } });
+                EditorEventBus.emit('flux:open-add-files', { initialTab: 'upload' });
+              }}
               className="cursor-pointer"
             >
               Upload from computer
@@ -87,7 +93,11 @@ export default function InsertMenu() {
               From project files
             </MenubarItem>
             <MenubarItem
-              onClick={() => EditorEventBus.emit('flux:open-figure-wizard')}
+              onClick={() => {
+                useSettingsStore.getState().setActiveSidebarPanel('Files');
+                editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'add-files', payload: { initialTab: 'project' } });
+                EditorEventBus.emit('flux:open-add-files', { initialTab: 'project' });
+              }}
               className="cursor-pointer"
             >
               From another project

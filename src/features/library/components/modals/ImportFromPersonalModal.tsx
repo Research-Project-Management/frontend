@@ -139,10 +139,10 @@ export default function ImportFromPersonalModal({
     if (!selectedIds.length || !projectId) return;
     setIsImporting(true);
     try {
-      const res = await libraryServices.items.importFromPersonal(projectId, selectedIds);
+      const res = await (libraryServices.items.importFromUser ?? libraryServices.items.importFromPersonal)(projectId, selectedIds);
       toast.success(
         `Imported ${res.importedCount ?? selectedIds.length} reference(s) into ${projectName}`,
-        { id: 'import-personal-refs' }
+        { id: 'import-user-refs' }
       );
       setSelectedIds([]);
       onSuccess?.();
@@ -177,7 +177,7 @@ export default function ImportFromPersonalModal({
               </DialogTitle>
             </div>
             <p className="text-12 text-muted-foreground mt-0.5">
-              Select references from your personal library to collaborate on in{' '}
+              Select references from your user library to collaborate on in{' '}
               <span className="font-semibold text-foreground">{projectName}</span>.
             </p>
           </div>

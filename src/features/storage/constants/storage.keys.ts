@@ -5,7 +5,7 @@
 export const storageKeys = {
   all: ['storage'] as const,
   scoped: (scopeId?: string) => [...storageKeys.all, 'scoped', scopeId || 'me'] as const,
-  // Canonical Drive / Personal Scope Keys
+  // Canonical Drive / User Scope Keys
   driveHomeFiles: (scopeId?: string, parentId?: string | null) =>
     [...storageKeys.scoped(scopeId), 'home', parentId ?? 'root'] as const,
   driveFiles: (scopeId?: string, parentId?: string | null) =>

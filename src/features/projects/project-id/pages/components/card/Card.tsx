@@ -1,11 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   FileText,
   MoreHorizontal,
   ExternalLink,
+  Pencil,
   Link2,
   Copy,
   Trash2,
@@ -25,6 +26,7 @@ import { cn } from '@/shared/lib/utils';
 
 interface CardProps {
   page: Page;
+  onEdit?: (page: Page) => void;
 }
 
 function extractSnippet(content?: any): string | null {
@@ -54,8 +56,9 @@ function extractSnippet(content?: any): string | null {
   return cleaned.length > 0 ? (cleaned.length > 110 ? cleaned.slice(0, 110) + '…' : cleaned) : null;
 }
 
-export function Card({ page }: CardProps) {
+export function Card({ page, onEdit }: CardProps) {
   const router = useRouter();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { deletePage, duplicatePage } = usePageActions();
 
   const projId =
@@ -70,7 +73,7 @@ export function Card({ page }: CardProps) {
   const fileQuery = mainFileStr ? `?file=${mainFileStr}` : '';
   const linkHref = `/projects/${projId}/pages/${page.id}${fileQuery}`;
   const authorName = page.author?.name;
-  const snippet = extractSnippet(page.content);
+  const snippet = page.description || extractSnippet(page.content);
   const status = page.status || 'published';
   const labels = (page.labels as any[]) || [];
 
@@ -117,20 +120,22 @@ export function Card({ page }: CardProps) {
             {/* Paper Header: LaTeX badge & title bar */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-11 font-mono font-medium text-muted-foreground">
-                  <FileText className="size-3 text-muted-foreground" strokeWidth={1.5} />
-                  <span>LaTeX</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 text-11 font-mono font-medium text-muted-foreground">
+                    <FileText className="size-3 text-muted-foreground" strokeWidth={1.5} />
+                    <span>LaTeX</span>
+                  </div>
+                  <span
+                    className={cn(
+                      "text-11 font-mono font-medium px-1.5 py-0.5 rounded-sm capitalize",
+                      status === 'published'
+                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
+                        : "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+                    )}
+                  >
+                    {status}
+                  </span>
                 </div>
-                <span
-                  className={cn(
-                    "text-11 font-mono font-medium px-1.5 py-0.5 rounded-sm capitalize",
-                    status === 'published'
-                      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
-                      : "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
-                  )}
-                >
-                  {status}
-                </span>
               </div>
               <div className="h-1.5 w-3/4 bg-foreground/15 rounded-full" />
               <div className="h-1 w-1/2 bg-foreground/10 rounded-full" />
@@ -156,14 +161,22 @@ export function Card({ page }: CardProps) {
 
         {/* Quick Action Menu Button (Top Right on Hover) */}
         <div
-          className="absolute top-2 right-2 opacity-0 group-hover/card:opacity-100 transition-opacity z-10"
+          className={cn(
+            "absolute top-2 right-2 transition-opacity z-10",
+            isMenuOpen ? "opacity-100" : "opacity-0 group-hover/card:opacity-100"
+          )}
           onClick={(e) => e.stopPropagation()}
         >
-          <DropdownMenu>
+          <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="size-7 rounded-md bg-background/85 hover:bg-background backdrop-blur-sm border border-border/80 flex items-center justify-center text-foreground hover:text-foreground transition-colors shadow-none cursor-pointer outline-none"
+                className={cn(
+                  "size-7 rounded-md flex items-center justify-center transition-colors cursor-pointer outline-none",
+                  isMenuOpen
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
                 aria-label={`Options for ${page.title}`}
               >
                 <MoreHorizontal className="size-3.5" />
@@ -176,6 +189,17 @@ export function Card({ page }: CardProps) {
               >
                 <ExternalLink className="size-3.5 text-muted-foreground" />
                 <span>Open page</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onEdit?.(page);
+                }}
+                className="cursor-pointer gap-2"
+              >
+                <Pencil className="size-3.5 text-muted-foreground" />
+                <span>Edit page</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={handleCopyLink}

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import {
   MenubarMenu,
   MenubarTrigger,
@@ -16,6 +17,8 @@ import { usePageStore, useCompileStore, useSettingsStore } from '@/features/edit
 import { useProjectExport } from '@/features/editor/hooks/use-export';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
+import { duplicateProjectApi } from '@/features/projects/shell/services/project.service';
 
 export default function FileMenu() {
   const params = useParams<{ pageId?: string; projectId?: string }>();
@@ -24,20 +27,35 @@ export default function FileMenu() {
   const { getContent } = useEditorInstance();
   const pdfUrl = useCompileStore((s) => s.pdfUrl);
   const setSettingsPanelOpen = useSettingsStore((s) => s.setSettingsPanelOpen);
-  const toggleHistory = useSettingsStore((s) => s.toggleHistory);
   const setIsTemplateModalOpen = useSettingsStore((s) => s.setIsTemplateModalOpen);
   const [isZipping, setIsZipping] = useState(false);
 
   const handleNewFile = () => {
-    EditorEventBus.emit('flux:new-file');
+    useSettingsStore.getState().setActiveSidebarPanel('Files');
+    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'add-files', payload: { initialTab: 'new-file' } });
+    EditorEventBus.emit('flux:open-add-files', { initialTab: 'new-file' });
   };
 
   const handleNewFolder = () => {
+    useSettingsStore.getState().setActiveSidebarPanel('Files');
     EditorEventBus.emit('flux:new-folder');
   };
 
   const handleUploadFile = () => {
-    EditorEventBus.emit('flux:upload-file');
+    useSettingsStore.getState().setActiveSidebarPanel('Files');
+    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'add-files', payload: { initialTab: 'upload' } });
+    EditorEventBus.emit('flux:open-add-files', { initialTab: 'upload' });
+  };
+
+  const handleDeletedFiles = () => {
+    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'deleted-files' });
+    EditorEventBus.emit('flux:open-deleted-files');
+  };
+
+  const handleTemplateGallery = () => {
+    setIsTemplateModalOpen(true);
+    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'template-gallery' });
+    EditorEventBus.emit('flux:open-template-gallery');
   };
 
   const {
@@ -49,12 +67,35 @@ export default function FileMenu() {
     exportMarkdown,
     exportHtml,
   } = useProjectExport();
+  const router = useRouter();
+  const [isCopying, setIsCopying] = useState(false);
 
-  const handleMakeCopy = () => {
-    downloadCopy(getContent(), activeFilePage?.title || currentPage?.title);
+  const handleMakeCopy = async () => {
+    const projId = params?.projectId || (currentPage as any)?.projectId;
+    const effectiveProjId = typeof projId === 'object' ? projId?.id : projId;
+    if (effectiveProjId) {
+      const toastId = toast.loading('Duplicating project...');
+      setIsCopying(true);
+      try {
+        const res = await duplicateProjectApi(effectiveProjId);
+        const newProjId = (res as any)?.project?.id || (res as any)?.id;
+        toast.success('Project duplicated successfully!', { id: toastId });
+        if (newProjId) {
+          router.push(`/projects/${newProjId}/pages`);
+        }
+      } catch (err: any) {
+        toast.error(err?.message || 'Failed to duplicate project, downloading backup file instead.', { id: toastId });
+        downloadCopy(getContent(), activeFilePage?.title || currentPage?.title);
+      } finally {
+        setIsCopying(false);
+      }
+    } else {
+      downloadCopy(getContent(), activeFilePage?.title || currentPage?.title);
+    }
   };
 
   const handleWordCount = () => {
+    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'word-count' });
     EditorEventBus.emit('flux:open-word-count');
   };
 
@@ -137,21 +178,21 @@ export default function FileMenu() {
         </MenubarItem>
         <MenubarItem
           onClick={handleMakeCopy}
+          disabled={isCopying}
           className="cursor-pointer"
         >
-          Make a copy
+          {isCopying ? 'Duplicating project...' : 'Make a copy'}
         </MenubarItem>
 
-        <MenubarSeparator />
-
         <MenubarItem
-          onClick={toggleHistory}
+          onClick={handleDeletedFiles}
           className="cursor-pointer"
         >
-          Show version history
+          Deleted files
         </MenubarItem>
         <MenubarItem
           onClick={handleWordCount}
+          onSelect={handleWordCount}
           className="cursor-pointer"
         >
           Word count
@@ -160,10 +201,10 @@ export default function FileMenu() {
         <MenubarSeparator />
 
         <MenubarItem
-          onClick={() => setIsTemplateModalOpen(true)}
+          onClick={handleTemplateGallery}
           className="cursor-pointer"
         >
-          Submit
+          Template gallery
         </MenubarItem>
 
         <MenubarSeparator />

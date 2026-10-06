@@ -108,7 +108,7 @@ export default function FormatMenu() {
           className="px-2.5 py-1.5 cursor-pointer text-xs rounded-sm hover:bg-accent hover:text-accent-foreground flex items-center justify-between"
         >
           <span>Bold</span>
-          <MenubarShortcut className="text-[11px] text-muted-foreground/80 font-mono tracking-tight ml-auto">
+          <MenubarShortcut className="text-11 text-muted-foreground/80 font-mono tracking-tight ml-auto">
             {modLabel}B
           </MenubarShortcut>
         </MenubarItem>
@@ -118,7 +118,7 @@ export default function FormatMenu() {
           className="px-2.5 py-1.5 cursor-pointer text-xs rounded-sm hover:bg-accent hover:text-accent-foreground flex items-center justify-between"
         >
           <span>Italics</span>
-          <MenubarShortcut className="text-[11px] text-muted-foreground/80 font-mono tracking-tight ml-auto">
+          <MenubarShortcut className="text-11 text-muted-foreground/80 font-mono tracking-tight ml-auto">
             {modLabel}I
           </MenubarShortcut>
         </MenubarItem>
@@ -157,7 +157,7 @@ export default function FormatMenu() {
         <MenubarSeparator className="my-1 h-px bg-border/70" />
 
         {/* 3. Paragraph styles Section */}
-        <MenubarLabel className="px-2.5 pt-1.5 pb-1 text-[11px] font-medium text-muted-foreground/80 select-none pointer-events-none tracking-tight">
+        <MenubarLabel className="px-2.5 pt-1.5 pb-1 text-11 font-medium text-muted-foreground/80 select-none pointer-events-none tracking-tight">
           Paragraph styles
         </MenubarLabel>
 
@@ -213,7 +213,7 @@ export default function FormatMenu() {
             <BookMarked className="size-3.5 text-foreground" />
             Insert Citation...
           </span>
-          <MenubarShortcut className="text-[11px] text-muted-foreground/80 font-mono tracking-tight ml-auto">
+          <MenubarShortcut className="text-11 text-muted-foreground/80 font-mono tracking-tight ml-auto">
             {modLabel}Shift K
           </MenubarShortcut>
         </MenubarItem>
@@ -226,7 +226,7 @@ export default function FormatMenu() {
             <Sparkles className="size-3.5 text-foreground" />
             Auto-Fix Page Syntax
           </span>
-          <MenubarShortcut className="text-[11px] text-muted-foreground/80 font-mono tracking-tight ml-auto">
+          <MenubarShortcut className="text-11 text-muted-foreground/80 font-mono tracking-tight ml-auto">
             Alt Shift F
           </MenubarShortcut>
         </MenubarItem>

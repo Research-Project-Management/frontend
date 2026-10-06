@@ -8,15 +8,19 @@
  * - Bundling window settings
  */
 
-import { apiGet, apiPost, apiPut } from '@/shared/lib/api';
+import { apiGet } from '@/shared/lib/api';
 import type {
   PendingBundleInfo,
   NotificationDigest,
   NotificationBundlingSettings,
 } from '../utils/notification-digest.util';
 
+// Notification bundling feature is currently disabled (feature not deployed yet)
+const NOTIFICATIONS_BUNDLER_ENABLED = false;
+
 export const notificationBundlerService = {
   getPendingBundles: async (): Promise<PendingBundleInfo[]> => {
+    if (!NOTIFICATIONS_BUNDLER_ENABLED) return [];
     try {
       const data = await apiGet<{ bundles: PendingBundleInfo[] }>(
         '/api/documents/notifications/bundles',
@@ -28,45 +32,25 @@ export const notificationBundlerService = {
   },
 
   flushBundle: async (
-    scopeId?: string,
-    projectId?: string,
+    _scopeId?: string,
+    _projectId?: string,
   ): Promise<NotificationDigest | null> => {
-    const data = await apiPost<{ digest: NotificationDigest | null }>(
-      '/api/documents/notifications/bundles/flush',
-      { scopeId, projectId },
-    );
-    return data.digest;
+    if (!NOTIFICATIONS_BUNDLER_ENABLED) return null;
+    return null;
   },
 
-  getDigestHistory: async (limit = 20): Promise<NotificationDigest[]> => {
-    try {
-      const data = await apiGet<{ digests: NotificationDigest[] }>(
-        `/api/documents/notifications/digests?limit=${limit}`,
-      );
-      return data.digests || [];
-    } catch {
-      return [];
-    }
+  getDigestHistory: async (_limit = 20): Promise<NotificationDigest[]> => {
+    if (!NOTIFICATIONS_BUNDLER_ENABLED) return [];
+    return [];
   },
 
   getSettings: async (): Promise<NotificationBundlingSettings> => {
-    try {
-      const data = await apiGet<{ settings: NotificationBundlingSettings }>(
-        '/api/documents/notifications/settings',
-      );
-      return data.settings;
-    } catch {
-      return { enabled: true, windowMinutes: 10 };
-    }
+    return { enabled: false, windowMinutes: 10 };
   },
 
   updateSettings: async (
-    settings: Partial<NotificationBundlingSettings>,
+    _settings: Partial<NotificationBundlingSettings>,
   ): Promise<NotificationBundlingSettings> => {
-    const data = await apiPut<{ settings: NotificationBundlingSettings }>(
-      '/api/documents/notifications/settings',
-      settings,
-    );
-    return data.settings;
+    return { enabled: false, windowMinutes: 10 };
   },
 };

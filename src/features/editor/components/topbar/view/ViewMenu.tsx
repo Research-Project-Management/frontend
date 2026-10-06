@@ -100,6 +100,8 @@ export default function ViewMenu() {
   const {
     layout,
     setLayout,
+    editorMode,
+    setEditorMode,
     reviewMode,
     setReviewMode,
     showBreadcrumbs,
@@ -112,6 +114,8 @@ export default function ViewMenu() {
     useShallow((s) => ({
       layout: s.layout,
       setLayout: s.setLayout,
+      editorMode: s.editorMode,
+      setEditorMode: s.setEditorMode,
       reviewMode: s.reviewMode,
       setReviewMode: s.setReviewMode,
       showBreadcrumbs: s.showBreadcrumbs,
@@ -254,7 +258,44 @@ export default function ViewMenu() {
           <kbd className="text-11 font-mono text-muted-foreground ml-auto">Ctrl Shift M</kbd>
         </MenubarItem>
 
-        {/* ── Section 2: Editing mode ── */}
+        {/* ── Section 2: Editor display mode (Source vs Visual) ── */}
+        <MenubarSub>
+          <MenubarSubTrigger className="cursor-pointer">
+            <span>Editor display mode</span>
+          </MenubarSubTrigger>
+          <MenubarSubContent className="min-w-44 text-xs">
+            <MenubarItem
+              onClick={() => setEditorMode('code')}
+              className={cn(
+                'flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm cursor-pointer transition-colors text-xs font-medium select-none',
+                editorMode === 'code'
+                  ? 'bg-muted text-foreground font-medium focus:bg-muted focus:text-foreground'
+                  : 'text-foreground hover:bg-muted focus:bg-muted focus:text-foreground',
+              )}
+            >
+              <div className="size-4 flex items-center justify-center shrink-0">
+                {editorMode === 'code' && <Check className="size-3.5 text-primary stroke-[2.5]" />}
+              </div>
+              <span className="flex-1 text-xs">Source (LaTeX)</span>
+            </MenubarItem>
+            <MenubarItem
+              onClick={() => setEditorMode('visual')}
+              className={cn(
+                'flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm cursor-pointer transition-colors text-xs font-medium select-none',
+                editorMode === 'visual'
+                  ? 'bg-muted text-foreground font-medium focus:bg-muted focus:text-foreground'
+                  : 'text-foreground hover:bg-muted focus:bg-muted focus:text-foreground',
+              )}
+            >
+              <div className="size-4 flex items-center justify-center shrink-0">
+                {editorMode === 'visual' && <Check className="size-3.5 text-primary stroke-[2.5]" />}
+              </div>
+              <span className="flex-1 text-xs">Visual (Rich Text)</span>
+            </MenubarItem>
+          </MenubarSubContent>
+        </MenubarSub>
+
+        {/* ── Section 3: Editing mode ── */}
         <MenubarSub>
           <MenubarSubTrigger className="cursor-pointer">
             <span>Editing mode</span>

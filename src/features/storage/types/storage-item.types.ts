@@ -1,6 +1,6 @@
 export type FileType = "folder" | "document" | "image" | "video" | "audio" | "archive" | "other";
 
-export type StorageLevel = "personal" | "project";
+export type StorageLevel = "user" | "project";
 
 export type StorageItem = {
     id: string;

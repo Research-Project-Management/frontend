@@ -43,7 +43,9 @@ export const useCreateSuggestion = () => {
     onSuccess: (_newSug, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
       queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
-      toast.success('Suggestion submitted');
+      if (!variables?.silent) {
+        toast.success('Suggestion submitted');
+      }
     },
     onError: (err: any) => {
       toast.error(err?.message || 'Failed to submit suggestion');
@@ -57,14 +59,32 @@ export const useAcceptSuggestion = () => {
     mutationFn: async ({ pageId, suggestionId }: { pageId: string; suggestionId: string }) => {
       return await suggestionService.acceptSuggestion(pageId, suggestionId);
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
-      queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
-      queryClient.invalidateQueries({ queryKey: ['pages', 'detail', variables.pageId] });
-      toast.success('Suggestion accepted');
+    onMutate: async ({ pageId, suggestionId }) => {
+      await queryClient.cancelQueries({ queryKey: ['page-suggestions', pageId] });
+      const previousData = queryClient.getQueriesData<PageSuggestion[]>({ queryKey: ['page-suggestions', pageId] });
+
+      queryClient.setQueriesData<PageSuggestion[]>(
+        { queryKey: ['page-suggestions', pageId] },
+        (old) => (old ? old.map((s) => (s.id === suggestionId ? { ...s, status: 'accepted' as const } : s)) : old),
+      );
+
+      return { previousData, pageId };
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to accept suggestion');
+    onError: (_err, _vars, context) => {
+      if (context?.previousData) {
+        context.previousData.forEach(([key, val]) => {
+          queryClient.setQueryData(key, val);
+        });
+      }
+      toast.error('Failed to accept suggestion');
+    },
+    onSettled: (_data, _err, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['page-suggestions', vars.pageId] });
+      queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
+      queryClient.invalidateQueries({ queryKey: ['pages', 'detail', vars.pageId] });
+    },
+    onSuccess: () => {
+      toast.success('Suggestion accepted');
     },
   });
 };
@@ -75,13 +95,31 @@ export const useRejectSuggestion = () => {
     mutationFn: async ({ pageId, suggestionId }: { pageId: string; suggestionId: string }) => {
       return await suggestionService.rejectSuggestion(pageId, suggestionId);
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
-      queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
-      toast.info('Suggestion rejected');
+    onMutate: async ({ pageId, suggestionId }) => {
+      await queryClient.cancelQueries({ queryKey: ['page-suggestions', pageId] });
+      const previousData = queryClient.getQueriesData<PageSuggestion[]>({ queryKey: ['page-suggestions', pageId] });
+
+      queryClient.setQueriesData<PageSuggestion[]>(
+        { queryKey: ['page-suggestions', pageId] },
+        (old) => (old ? old.map((s) => (s.id === suggestionId ? { ...s, status: 'rejected' as const } : s)) : old),
+      );
+
+      return { previousData, pageId };
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to reject suggestion');
+    onError: (_err, _vars, context) => {
+      if (context?.previousData) {
+        context.previousData.forEach(([key, val]) => {
+          queryClient.setQueryData(key, val);
+        });
+      }
+      toast.error('Failed to reject suggestion');
+    },
+    onSettled: (_data, _err, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['page-suggestions', vars.pageId] });
+      queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
+    },
+    onSuccess: () => {
+      toast.info('Suggestion rejected');
     },
   });
 };

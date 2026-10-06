@@ -110,6 +110,11 @@ export class YjsSocketIOProvider {
   private destroyed = false;
   private cursorEmitDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private lastEmittedCoords: { row: number; col: number } | null = null;
+  private pendingUpdates: Uint8Array[] = [];
+  private updateBatchTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastCursorEmitTime = 0;
+  private pendingCursorData: { row: number; column: number; selection?: any } | null = null;
+  private cursorThrottleTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     projectId: string,
@@ -308,15 +313,41 @@ export class YjsSocketIOProvider {
       if (origin === 'socket.io' || this.destroyed) return;
       if (!this.socket || !this.socket.connected) return;
 
-      const encoder = encoding.createEncoder();
-      syncProtocol.writeUpdate(encoder, update);
-      const syncMessage = encoding.toUint8Array(encoder);
+      this.pendingUpdates.push(update);
+      if (this.updateBatchTimer) return;
 
-      this.socket.emit('doc:sync-update', {
-        projectId: this.projectId,
-        docId: this.pageId,
-        data: syncMessage,
-      });
+      // 20ms micro-batch window: merges rapid keystrokes/plugins/multi-cursors into 1 network frame
+      this.updateBatchTimer = setTimeout(() => {
+        this.updateBatchTimer = null;
+        this.flushPendingUpdates();
+      }, 20);
+    });
+  }
+
+  /**
+   * Immediately flush all pending local Yjs updates into a single merged binary sync message.
+   */
+  public flushPendingUpdates(): void {
+    if (this.updateBatchTimer) {
+      clearTimeout(this.updateBatchTimer);
+      this.updateBatchTimer = null;
+    }
+    if (this.destroyed || !this.socket || !this.socket.connected || this.pendingUpdates.length === 0) {
+      return;
+    }
+
+    const updatesToEmit = this.pendingUpdates;
+    this.pendingUpdates = [];
+
+    const mergedUpdate = updatesToEmit.length === 1 ? updatesToEmit[0] : Y.mergeUpdates(updatesToEmit);
+    const encoder = encoding.createEncoder();
+    syncProtocol.writeUpdate(encoder, mergedUpdate);
+    const syncMessage = encoding.toUint8Array(encoder);
+
+    this.socket.emit('doc:sync-update', {
+      projectId: this.projectId,
+      docId: this.pageId,
+      data: syncMessage,
     });
   }
 
@@ -613,6 +644,7 @@ export class YjsSocketIOProvider {
 
   /**
    * Explicitly broadcast cursor coordinates to other room collaborators.
+   * Throttled to ~20Hz (50ms) to eliminate network saturation and Redis load.
    */
   public sendCursor(
     row: number,
@@ -622,16 +654,41 @@ export class YjsSocketIOProvider {
       head: { row: number; column: number };
     } | null,
   ): void {
-    if (!this.socket || !this.socket.connected) return;
-    this.socket.emit('doc:cursor', {
-      projectId: this.projectId,
-      docId: this.pageId,
-      cursor: {
-        row,
-        column,
-        selection: selection ?? null,
-      },
-    });
+    if (!this.socket || !this.socket.connected || this.destroyed) return;
+
+    const now = Date.now();
+    const elapsed = now - this.lastCursorEmitTime;
+    const payload = { row, column, selection: selection ?? null };
+
+    if (elapsed >= 50) {
+      if (this.cursorThrottleTimer) {
+        clearTimeout(this.cursorThrottleTimer);
+        this.cursorThrottleTimer = null;
+      }
+      this.lastCursorEmitTime = now;
+      this.pendingCursorData = null;
+      this.socket.emit('doc:cursor', {
+        projectId: this.projectId,
+        docId: this.pageId,
+        cursor: payload,
+      });
+    } else {
+      this.pendingCursorData = payload;
+      if (!this.cursorThrottleTimer) {
+        this.cursorThrottleTimer = setTimeout(() => {
+          this.cursorThrottleTimer = null;
+          if (this.destroyed || !this.socket || !this.socket.connected || !this.pendingCursorData) return;
+          this.lastCursorEmitTime = Date.now();
+          const toEmit = this.pendingCursorData;
+          this.pendingCursorData = null;
+          this.socket.emit('doc:cursor', {
+            projectId: this.projectId,
+            docId: this.pageId,
+            cursor: toEmit,
+          });
+        }, 50 - elapsed);
+      }
+    }
   }
 
   public setLocalUser(user: CollaboratorUser): void {
@@ -645,12 +702,24 @@ export class YjsSocketIOProvider {
   }
 
   public triggerCheckpoint(): void {
-    // No-op for document checkpointing via socket
+    this.flushPendingUpdates();
   }
 
   public destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+
+    this.flushPendingUpdates();
+
+    if (this.cursorThrottleTimer) {
+      clearTimeout(this.cursorThrottleTimer);
+      this.cursorThrottleTimer = null;
+    }
+
+    if (this.updateBatchTimer) {
+      clearTimeout(this.updateBatchTimer);
+      this.updateBatchTimer = null;
+    }
 
     if (this.cursorEmitDebounceTimer) {
       clearTimeout(this.cursorEmitDebounceTimer);
@@ -676,5 +745,7 @@ export class YjsSocketIOProvider {
     }
 
     this.awareness.destroy();
+    this.doc.destroy();
   }
 }
+

@@ -51,3 +51,11 @@ export const historyService = {
 };
 
 export const ProjectHistoryService = historyService;
+
+export const historyKeys = {
+  all: ['project-history'] as const,
+  project: (projectId: string) => ['project-history', projectId] as const,
+  byProject: (projectId: string) => ['project-history', projectId] as const,
+  versions: (projectId: string) => ['project-history', projectId, 'versions'] as const,
+  doc: (docId: string) => ['doc-history', docId] as const,
+};

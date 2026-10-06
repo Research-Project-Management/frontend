@@ -5,16 +5,11 @@
  * Matches backend document/collaboration module.
  */
 
-export interface CursorPosition {
-  line: number;
-  ch: number;
-  selectionEndLine?: number;
-  selectionEndCh?: number;
-}
-
-export interface HeartbeatInput {
-  cursor?: CursorPosition;
-}
+// Derived directly from Zod schemas (Single Source of Truth)
+export type {
+  CursorPositionInput as CursorPosition,
+  HeartbeatInput,
+} from '../schemas/collaboration.schema';
 
 export interface CollaboratorPresence {
   userId: string;

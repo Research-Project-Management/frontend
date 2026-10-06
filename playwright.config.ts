@@ -23,6 +23,15 @@ export default defineConfig({
       dependencies: ['setup'],
     },
     {
+      name: 'word-count',
+      testMatch: '**/word-count.spec.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/owner.json',
+      },
+      dependencies: ['setup'],
+    },
+    {
       name: 'setup',
       testMatch: 'setup/global.setup.ts',
     },

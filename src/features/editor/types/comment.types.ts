@@ -37,22 +37,10 @@ export interface PageComment {
 export type Comment = PageComment;
 export type DocumentComment = PageComment;
 
-export interface CreateCommentInput {
-  content: string;
-  line?: number | null;
-  lineEnd?: number | null;
-  status?: CommentStatus;
-  projectId?: string;
-  pageId?: string;
-}
-
-export interface UpdateCommentInput {
-  content?: string;
-  status?: CommentStatus;
-  projectId?: string;
-}
-
-export interface AddReplyInput {
-  content: string;
-  projectId?: string;
-}
+// Derived directly from Zod schemas (Single Source of Truth)
+export type {
+  CreateCommentInput,
+  UpdateCommentInput,
+  CreateReplyInput,
+  CreateReplyInput as AddReplyInput,
+} from '../schemas/comment.schema';

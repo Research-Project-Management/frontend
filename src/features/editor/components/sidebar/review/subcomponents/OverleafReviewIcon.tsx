@@ -51,4 +51,29 @@ export function OverleafReviewSolidIcon({
   );
 }
 
+/**
+ * Official Overleaf Resolved Comments Icon (Inbox / Archive Tray)
+ * Exact 1:1 replica of the Overleaf resolved comments toggle icon.
+ */
+export function OverleafResolvedCommentsIcon({
+  className = 'size-4',
+  ...props
+}: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+      {...props}
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M 2.5 2.5 C 1.67 2.5 1 3.17 1 4 V 12 C 1 12.83 1.67 13.5 2.5 13.5 H 13.5 C 14.33 13.5 15 12.83 15 12 V 4 C 15 3.17 14.33 2.5 13.5 2.5 H 2.5 Z M 3 4.2 H 13 V 8.5 H 10.85 C 10.5 8.5 10.18 8.68 10 8.95 L 9.15 10.15 C 9.05 10.25 8.9 10.3 8.75 10.3 H 7.25 C 7.1 10.3 6.95 10.25 6.85 10.15 L 6 8.95 C 5.82 8.68 5.5 8.5 5.15 8.5 H 3 V 4.2 Z"
+      />
+    </svg>
+  );
+}
+
 export default OverleafReviewIcon;

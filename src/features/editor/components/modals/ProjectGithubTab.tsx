@@ -8,12 +8,11 @@ import {
   ExternalLink,
   Upload,
   Download,
-  AlertCircle,
-  CheckCircle2,
   Plus,
   RefreshCw,
 } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useIntegrations } from '@/features/integrations/hooks/use-integrations';
 import { useGithubSync } from '../../hooks/use-github-sync';
 import { GitHubIcon } from '@/shared/components/icons';
@@ -27,6 +26,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
+import {
+  pushChangesSchema,
+  linkRepoSchema,
+  createRepoSchema,
+  type PushChangesFormValues,
+  type LinkRepoFormValues,
+  type CreateRepoFormValues,
+} from './schemas/github-sync.schema';
 
 interface ProjectGithubTabProps {
   projectId?: string;
@@ -34,31 +41,17 @@ interface ProjectGithubTabProps {
 }
 
 export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabProps) {
-  const queryClient = useQueryClient();
   const { integrations, connect, isConnecting } = useIntegrations();
 
   const githubIntegration = integrations.find((i) => i.provider === 'github');
   const isGithubConnected =
     githubIntegration?.status === 'connected' && !githubIntegration.needsReconnect;
 
-  // Local states
-  const [selectedRepo, setSelectedRepo] = useState<string>('');
-  const [targetBranch, setTargetBranch] = useState<string>('main');
-  const [commitMessage, setCommitMessage] = useState<string>('Update manuscript from Flux');
   const [isCreatingNew, setIsCreatingNew] = useState<boolean>(false);
-  const [newRepoName, setNewRepoName] = useState<string>(
-    (projectTitle || 'latex-manuscript')
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]/g, '-')
-      .replace(/-+/g, '-'),
-  );
-  const [newRepoPrivate, setNewRepoPrivate] = useState<boolean>(true);
   const [showChangeRepo, setShowChangeRepo] = useState<boolean>(false);
 
   const {
     linkData,
-    isLoadingLink,
-    refetchLink,
     repos: userRepos,
     isLoadingRepos,
     linkMutation,
@@ -71,6 +64,80 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
     onLinkSuccess: () => setShowChangeRepo(false),
     onCreateSuccess: () => setIsCreatingNew(false),
   });
+
+  const linkedRepo = linkData?.link;
+  const isLinked = Boolean(linkedRepo && !showChangeRepo);
+
+  // Push form (react-hook-form + zod)
+  const {
+    register: registerPush,
+    handleSubmit: handleSubmitPush,
+    formState: { errors: pushErrors },
+  } = useForm<PushChangesFormValues>({
+    resolver: zodResolver(pushChangesSchema),
+    defaultValues: {
+      commitMessage: 'Update manuscript from Flux',
+      targetBranch: linkedRepo?.branch || 'main',
+    },
+  });
+
+  // Link existing repo form (react-hook-form + zod)
+  const {
+    register: registerLink,
+    handleSubmit: handleSubmitLink,
+    setValue: setLinkValue,
+    watch: watchLink,
+    formState: { errors: linkErrors },
+  } = useForm<LinkRepoFormValues>({
+    resolver: zodResolver(linkRepoSchema),
+    defaultValues: {
+      selectedRepo: '',
+      targetBranch: 'main',
+    },
+  });
+
+  // Create & link new repo form (react-hook-form + zod)
+  const {
+    register: registerCreate,
+    handleSubmit: handleSubmitCreate,
+    watch: watchCreate,
+    setValue: setCreateValue,
+    formState: { errors: createErrors },
+  } = useForm<CreateRepoFormValues>({
+    resolver: zodResolver(createRepoSchema),
+    defaultValues: {
+      newRepoName: (projectTitle || 'latex-manuscript')
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, '-')
+        .replace(/-+/g, '-'),
+      newRepoPrivate: true,
+    },
+  });
+
+  const selectedRepo = watchLink('selectedRepo');
+  const newRepoPrivate = watchCreate('newRepoPrivate');
+
+  const onPushSubmit = (data: PushChangesFormValues) => {
+    pushMutation.mutate({
+      commitMessage: data.commitMessage,
+      branch: data.targetBranch || linkedRepo?.branch || 'main',
+    });
+  };
+
+  const onLinkSubmit = (data: LinkRepoFormValues) => {
+    linkMutation.mutate({
+      repoFullName: data.selectedRepo,
+      branch: data.targetBranch.trim() || 'main',
+    });
+  };
+
+  const onCreateSubmit = (data: CreateRepoFormValues) => {
+    createAndLinkMutation.mutate({
+      name: data.newRepoName.trim(),
+      isPrivate: data.newRepoPrivate,
+      defaultBranch: 'main',
+    });
+  };
 
   if (!isGithubConnected) {
     return (
@@ -91,7 +158,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
             size="sm"
             onClick={() => connect('github')}
             disabled={isConnecting}
-            className="gap-2 shrink-0"
+            className="gap-2 shrink-0 cursor-pointer"
           >
             {isConnecting && <RefreshCw className="size-3.5 animate-spin" />}
             <GitHubIcon className="size-4" />
@@ -101,9 +168,6 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
       </div>
     );
   }
-
-  const linkedRepo = linkData?.link;
-  const isLinked = Boolean(linkedRepo && !showChangeRepo);
 
   return (
     <div className="space-y-6">
@@ -161,8 +225,11 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
 
           {/* Action Grid: Push & Pull */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Push Card */}
-            <div className="p-4 rounded-md border border-border bg-card flex flex-col justify-between space-y-3">
+            {/* Push Card Form */}
+            <form
+              onSubmit={handleSubmitPush(onPushSubmit)}
+              className="p-4 rounded-md border border-border bg-card flex flex-col justify-between space-y-3"
+            >
               <div>
                 <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
                   <Upload className="size-3.5 text-primary" />
@@ -172,18 +239,20 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                   Commit and push all current project files and figures to branch{' '}
                   <code className="text-foreground">{linkedRepo.branch || 'main'}</code>.
                 </p>
-                <div className="mt-2.5">
+                <div className="mt-2.5 space-y-1">
                   <Input
-                    value={commitMessage}
-                    onChange={(e) => setCommitMessage(e.target.value)}
+                    {...registerPush('commitMessage')}
                     placeholder="Commit message..."
                     className="h-8 text-xs bg-background"
                   />
+                  {pushErrors.commitMessage && (
+                    <p className="text-10 text-destructive">{pushErrors.commitMessage.message}</p>
+                  )}
                 </div>
               </div>
               <Button
+                type="submit"
                 size="sm"
-                onClick={() => pushMutation.mutate({ commitMessage, branch: targetBranch })}
                 disabled={pushMutation.isPending}
                 className="gap-2 w-full h-8 text-xs cursor-pointer"
               >
@@ -194,7 +263,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                 )}
                 Push Changes
               </Button>
-            </div>
+            </form>
 
             {/* Pull Card */}
             <div className="p-4 rounded-md border border-border bg-card flex flex-col justify-between space-y-3">
@@ -216,7 +285,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                       'Are you sure you want to pull from GitHub? This will update project files with remote changes.',
                     )
                   ) {
-                    pullMutation.mutate({ branch: targetBranch });
+                    pullMutation.mutate({ branch: linkedRepo.branch || 'main' });
                   }
                 }}
                 disabled={pullMutation.isPending}
@@ -252,10 +321,16 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
           </div>
 
           {!isCreatingNew ? (
-            <div className="p-4 rounded-md border border-border bg-card space-y-3.5">
+            <form
+              onSubmit={handleSubmitLink(onLinkSubmit)}
+              className="p-4 rounded-md border border-border bg-card space-y-3.5"
+            >
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-foreground">GitHub Repository</label>
-                <Select value={selectedRepo} onValueChange={setSelectedRepo}>
+                <Select
+                  value={selectedRepo}
+                  onValueChange={(val) => setLinkValue('selectedRepo', val, { shouldValidate: true })}
+                >
                   <SelectTrigger className="w-full h-8 text-xs bg-background">
                     <SelectValue placeholder={isLoadingRepos ? 'Loading repositories...' : 'Choose a repository'} />
                   </SelectTrigger>
@@ -267,21 +342,27 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                     ))}
                   </SelectContent>
                 </Select>
+                {linkErrors.selectedRepo && (
+                  <p className="text-10 text-destructive">{linkErrors.selectedRepo.message}</p>
+                )}
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-foreground">Branch</label>
                 <Input
-                  value={targetBranch}
-                  onChange={(e) => setTargetBranch(e.target.value)}
+                  {...registerLink('targetBranch')}
                   placeholder="main"
                   className="h-8 text-xs bg-background"
                 />
+                {linkErrors.targetBranch && (
+                  <p className="text-10 text-destructive">{linkErrors.targetBranch.message}</p>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
                 {showChangeRepo && (
                   <Button
+                    type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => setShowChangeRepo(false)}
@@ -291,13 +372,8 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                   </Button>
                 )}
                 <Button
+                  type="submit"
                   size="sm"
-                  onClick={() =>
-                    linkMutation.mutate({
-                      repoFullName: selectedRepo,
-                      branch: targetBranch.trim() || 'main',
-                    })
-                  }
                   disabled={!selectedRepo || linkMutation.isPending}
                   className="h-8 text-xs gap-1.5 cursor-pointer"
                 >
@@ -305,17 +381,22 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                   Link Repository
                 </Button>
               </div>
-            </div>
+            </form>
           ) : (
-            <div className="p-4 rounded-md border border-border bg-card space-y-3.5">
+            <form
+              onSubmit={handleSubmitCreate(onCreateSubmit)}
+              className="p-4 rounded-md border border-border bg-card space-y-3.5"
+            >
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-foreground">Repository Name</label>
                 <Input
-                  value={newRepoName}
-                  onChange={(e) => setNewRepoName(e.target.value)}
+                  {...registerCreate('newRepoName')}
                   placeholder="paper-manuscript"
                   className="h-8 text-xs bg-background"
                 />
+                {createErrors.newRepoName && (
+                  <p className="text-10 text-destructive">{createErrors.newRepoName.message}</p>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -323,7 +404,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                   type="checkbox"
                   id="private-repo-check"
                   checked={newRepoPrivate}
-                  onChange={(e) => setNewRepoPrivate(e.target.checked)}
+                  onChange={(e) => setCreateValue('newRepoPrivate', e.target.checked)}
                   className="size-3.5 rounded border-border cursor-pointer accent-primary"
                 />
                 <label htmlFor="private-repo-check" className="text-xs text-foreground cursor-pointer">
@@ -334,6 +415,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
                 {showChangeRepo && (
                   <Button
+                    type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => setShowChangeRepo(false)}
@@ -343,15 +425,9 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                   </Button>
                 )}
                 <Button
+                  type="submit"
                   size="sm"
-                  onClick={() =>
-                    createAndLinkMutation.mutate({
-                      name: newRepoName.trim(),
-                      isPrivate: newRepoPrivate,
-                      defaultBranch: 'main',
-                    })
-                  }
-                  disabled={!newRepoName.trim() || createAndLinkMutation.isPending}
+                  disabled={createAndLinkMutation.isPending}
                   className="h-8 text-xs gap-1.5 cursor-pointer"
                 >
                   {createAndLinkMutation.isPending && <RefreshCw className="size-3.5 animate-spin" />}
@@ -359,7 +435,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                   Create & Link
                 </Button>
               </div>
-            </div>
+            </form>
           )}
         </div>
       )}

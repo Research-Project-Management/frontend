@@ -28,11 +28,9 @@ import {
   Sparkles,
   Loader2,
   FileText,
-  BookOpen,
-  ExternalLink,
   Copy,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useLogViewerActions } from './useLogViewerActions';
 import { cn } from '@/shared/lib/utils';
 import {
   Popover,
@@ -91,7 +89,8 @@ export function parseLatexLog(raw: string): ParsedLog {
   const badBoxes: LogEntry[] = [];
   const seen = new Set<string>();
 
-  const tryAdd = (arr: LogEntry[], entry: LogEntry) => {
+  const tryAdd = (arr: LogEntry[], entry: LogEntry, max: number = 300) => {
+    if (arr.length >= max) return;
     const key = `${entry.file ?? ''}|${entry.line ?? ''}|${entry.message}`;
     if (!seen.has(key)) {
       seen.add(key);
@@ -188,6 +187,7 @@ const DEFAULT_OUTPUT_FILES = [
 ];
 
 function EntryRow({
+  id,
   type,
   entry,
   onClick,
@@ -198,6 +198,7 @@ function EntryRow({
   onApplyFix,
   onApplyQuickFix,
 }: {
+  id?: string;
   type: 'error' | 'warning' | 'badbox';
   entry: LogEntry;
   onClick?: () => void;
@@ -215,6 +216,8 @@ function EntryRow({
 
   const activeExplanation = entry.explanation || fetchedExplanation;
 
+  const { copySnippet, fetchErrorExplanation } = useLogViewerActions({});
+
   const handleToggleExplain = async () => {
     if (isExplainOpen) {
       setIsExplainOpen(false);
@@ -226,26 +229,11 @@ function EntryRow({
     }
     setIsExplaining(true);
     try {
-      if (entry.code) {
-        const exp = await manuscriptService.diagnostics.getExplanation(entry.code);
+      const exp = await fetchErrorExplanation(entry);
+      if (exp) {
         setFetchedExplanation(exp);
         setIsExplainOpen(true);
-      } else {
-        const rules = await manuscriptService.diagnostics.getRules();
-        const found = rules.find((r) => {
-          if (r.title && entry.message.toLowerCase().includes(r.title.toLowerCase())) return true;
-          if (r.code && entry.message.toLowerCase().includes(r.code.toLowerCase().replace(/_/g, ' '))) return true;
-          return false;
-        });
-        if (found) {
-          setFetchedExplanation(found);
-          setIsExplainOpen(true);
-        } else {
-          toast.info('No specific Overleaf knowledge base guide matched for this entry.');
-        }
       }
-    } catch {
-      toast.info('Unable to retrieve error explanation.');
     } finally {
       setIsExplaining(false);
     }
@@ -253,6 +241,7 @@ function EntryRow({
 
   return (
     <div
+      id={id}
       role={isClickable ? 'button' : undefined}
       tabIndex={isClickable ? 0 : undefined}
       onClick={isClickable ? onClick : undefined}
@@ -309,12 +298,10 @@ function EntryRow({
                       ? 'bg-primary/15 text-primary border-primary/30 font-semibold'
                       : 'bg-muted/60 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
                   )}
-                  title="View Overleaf Knowledge Base explanation and remedies"
+                  title="View LaTeX error explanation and remedies"
                 >
-                  {isExplaining ? (
+                  {isExplaining && (
                     <Loader2 className="size-3 animate-spin text-primary" />
-                  ) : (
-                    <BookOpen className="size-3" />
                   )}
                   <span>{isExplainOpen ? 'Hide guide' : 'Explain'}</span>
                 </button>
@@ -354,36 +341,28 @@ function EntryRow({
               )}
             </p>
           )}
-          {entry.detail && !/^[@^~.?!\s]+$/.test(entry.detail) && entry.detail.length > 1 && (
-            <p className="text-muted-foreground text-xs mt-0.5 truncate">{entry.detail}</p>
+          {entry.rawExcerpt ? (
+            <div className="mt-1.5 p-2 rounded-md bg-muted/40 border border-border/40 font-mono text-11 text-muted-foreground whitespace-pre-wrap leading-relaxed select-text overflow-x-auto">
+              {entry.rawExcerpt}
+            </div>
+          ) : (
+            entry.detail && !/^[@^~.?!\s]+$/.test(entry.detail) && entry.detail.length > 1 && (
+              <p className="text-muted-foreground text-xs mt-0.5 truncate">{entry.detail}</p>
+            )
           )}
         </div>
       </div>
 
-      {/* Overleaf Knowledge Base Guide Expansion Card */}
+      {/* LaTeX Error Guide Expansion Card */}
       {isExplainOpen && activeExplanation && (
         <div
           onClick={(e) => e.stopPropagation()}
           className="ml-6 mt-2 p-3.5 rounded-md bg-muted/30 border border-border text-xs space-y-2.5 select-text shadow-2xs"
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <BookOpen className="size-3.5 text-primary shrink-0" />
-              <h4 className="font-semibold text-13 text-foreground tracking-tight">
-                {activeExplanation.title || 'LaTeX Error Guide'}
-              </h4>
-            </div>
-            {activeExplanation.documentationUrl && (
-              <a
-                href={activeExplanation.documentationUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-11 text-primary hover:underline flex items-center gap-1 shrink-0 font-medium"
-              >
-                <span>Overleaf Docs</span>
-                <ExternalLink className="size-3" />
-              </a>
-            )}
+            <h4 className="font-semibold text-13 text-foreground tracking-tight">
+              {activeExplanation.title || 'LaTeX Error Guide'}
+            </h4>
           </div>
 
           {activeExplanation.explanation && (
@@ -418,10 +397,7 @@ function EntryRow({
                 <span className="font-medium text-11 text-foreground/80">Example Snippet:</span>
                 <button
                   type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(activeExplanation.exampleSnippet || '');
-                    toast.success('Snippet copied to clipboard');
-                  }}
+                  onClick={() => copySnippet(activeExplanation.exampleSnippet)}
                   className="text-10 text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
                 >
                   <Copy className="size-3" />
@@ -532,6 +508,7 @@ function EntryRow({
 
 export interface LogsProps {
   log: string;
+  parsedLog?: ParsedLog;
   onClose: () => void;
   onJumpToError?: (file: string | undefined, line: number) => void;
   onClearCacheAndCompile?: () => void;
@@ -540,6 +517,7 @@ export interface LogsProps {
 
 export default function Logs({
   log,
+  parsedLog: externalParsedLog,
   onClose,
   onJumpToError,
   onClearCacheAndCompile,
@@ -548,7 +526,10 @@ export default function Logs({
   const { projectId } = usePageStore();
   const compileStatus = useCompileStore((s) => s.compileStatus);
   const { engine } = useEditorInstance();
-  const parsed = useMemo(() => parseLatexLog(log), [log]);
+  const parsed = useMemo(
+    () => externalParsedLog ?? parseLatexLog(log),
+    [externalParsedLog, log],
+  );
 
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [isRawLogsOpen, setIsRawLogsOpen] = useState(false);
@@ -600,29 +581,23 @@ export default function Logs({
     [enrichedReport],
   );
 
+  const {
+    applyQuickFix,
+    applyAiFix,
+    downloadFile,
+    downloadAllArtifacts,
+  } = useLogViewerActions({
+    engine,
+    projectId,
+    onCompile,
+    onClearCacheAndCompile,
+  });
+
   const handleApplyQuickFix = (
     entry: LogEntry,
     quickFix: { description: string; replacementText: string },
   ) => {
-    if (!engine) {
-      toast.error('Editor not ready to apply quick fix');
-      return;
-    }
-    const fullContent = engine.getContent();
-    const lines = fullContent.split('\n');
-    const targetLine = entry.line
-      ? Math.max(1, Math.min(entry.line, lines.length))
-      : 1;
-    if (quickFix.replacementText.startsWith('\\end{')) {
-      lines.splice(targetLine, 0, quickFix.replacementText);
-    } else {
-      lines[targetLine - 1] = quickFix.replacementText;
-    }
-    engine.setContent(lines.join('\n'));
-    engine.focus();
-    toast.success(`Quick fix applied: ${quickFix.description}`);
-    if (onClearCacheAndCompile) onClearCacheAndCompile();
-    else if (onCompile) onCompile();
+    applyQuickFix(entry, quickFix);
   };
 
   // Auxiliary files list
@@ -691,42 +666,38 @@ export default function Logs({
 
   const handleApplyFix = (entry: LogEntry, fix: AiErrorFixResult, index: number) => {
     const key = getEntryKey(entry, index);
-    if (!engine) {
-      toast.error('Editor not ready to apply fix');
-      return;
-    }
-
-    const fullContent = engine.getContent();
-    if (fix.originalSnippet && fix.originalSnippet.trim()) {
-      const next = fullContent.replace(fix.originalSnippet.trim(), fix.fixedSnippet);
-      if (next !== fullContent) {
-        engine.setContent(next);
-        engine.focus();
-        setFixState((prev) => ({
-          ...prev,
-          [key]: { loading: false, applied: true, result: fix },
-        }));
-        toast.success('Fix applied! Recompiling...');
-        if (onClearCacheAndCompile) onClearCacheAndCompile();
-        else if (onCompile) onCompile();
-        return;
-      }
-    }
-
-    const lines = fullContent.split('\n');
-    const targetLine = Math.max(1, Math.min(entry.line || fix.startLine || 1, lines.length));
-    lines[targetLine - 1] = fix.fixedSnippet;
-    engine.setContent(lines.join('\n'));
-    engine.focus();
-
-    setFixState((prev) => ({
-      ...prev,
-      [key]: { loading: false, applied: true, result: fix },
-    }));
-    toast.success('Fix applied! Recompiling...');
-    if (onClearCacheAndCompile) onClearCacheAndCompile();
-    else if (onCompile) onCompile();
+    applyAiFix(entry, fix, () => {
+      setFixState((prev) => ({
+        ...prev,
+        [key]: { loading: false, applied: true, result: fix },
+      }));
+    });
   };
+
+  // Listen for editor:suggest-fix command from editor CodeMirror gutter or tooltip
+  useEffect(() => {
+    return editorCommandBus.subscribe('editor:suggest-fix', (cmd) => {
+      const { error } = cmd;
+      setActiveTab('errors');
+
+        // Locate matching error by line or message
+        const idx = parsed.errors.findIndex(
+          (e) =>
+            (error.line && e.line === error.line) ||
+            (error.message && (e.message.includes(error.message) || error.message.includes(e.message)))
+        );
+
+        const targetIdx = idx !== -1 ? idx : parsed.errors.length > 0 ? 0 : -1;
+        if (targetIdx !== -1) {
+          const entry = enrichEntry(parsed.errors[targetIdx]);
+          handleSuggestFix(entry, targetIdx);
+          setTimeout(() => {
+            const el = document.getElementById(`log-entry-err-${targetIdx}`);
+            el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 120);
+        }
+    });
+  }, [parsed.errors, enrichEntry, handleSuggestFix]);
 
   const handleEntryClick = (entry: LogEntry) => {
     if (entry.line) {
@@ -743,39 +714,11 @@ export default function Logs({
   };
 
   const handleDownloadFile = (fileName: string) => {
-    if (fileName === 'output.log' && log) {
-      const blob = new Blob([log], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'output.log';
-      a.click();
-      URL.revokeObjectURL(url);
-      return;
-    }
-
-    if (projectId) {
-      const url = downloadAuxFileUrl(projectId, fileName);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      a.click();
-    } else {
-      toast.info(`Downloading ${fileName}...`);
-    }
+    downloadFile(fileName);
   };
 
   const handleDownloadAll = () => {
-    if (projectId) {
-      const url = downloadAllArtifactsZipUrl(projectId);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `project-${projectId}-output-files.zip`;
-      a.click();
-    } else {
-      // Fallback: download log as blob
-      handleDownloadFile('output.log');
-    }
+    downloadAllArtifacts();
   };
 
   const totalLogsCount = parsed.errors.length + parsed.warnings.length + parsed.badBoxes.length;
@@ -982,6 +925,7 @@ export default function Logs({
                 return (
                   <EntryRow
                     key={`err-${i}`}
+                    id={`log-entry-err-${i}`}
                     type="error"
                     entry={enriched}
                     onClick={() => handleEntryClick(enriched)}

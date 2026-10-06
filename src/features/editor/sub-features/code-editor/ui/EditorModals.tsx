@@ -40,13 +40,6 @@ const SymbolPaletteModal = dynamic(
   () => import('../../../components/modals/SymbolPaletteModal'),
   { ssr: false }
 );
-const WordCountDialog = dynamic(
-  () =>
-    import('../../../components/editor/subcomponents/WordCountDialog').then(
-      (m) => m.WordCountDialog
-    ),
-  { ssr: false }
-);
 const SuggestEditModal = dynamic(
   () =>
     import('../../../components/editor/subcomponents/SuggestEditModal').then(
@@ -80,11 +73,13 @@ export interface EditorModalsProps {
   setFigureWizardOpen?: (open: boolean) => void;
   symbolPaletteOpen?: boolean;
   setSymbolPaletteOpen?: (open: boolean) => void;
-  wordCountOpen?: boolean;
-  setWordCountOpen?: (open: boolean) => void;
 
   rootPageId: string | null;
   onInsertSnippet?: (snippet: string) => void;
+
+  // Active document and project files context
+  currentPage?: any;
+  projectFiles?: any[];
 
   // Track Changes / Suggestions
   suggestModal: SuggestModalState | null;
@@ -117,11 +112,11 @@ export function EditorModals({
   setFigureWizardOpen: setControlledFigureOpen,
   symbolPaletteOpen: controlledSymbolOpen,
   setSymbolPaletteOpen: setControlledSymbolOpen,
-  wordCountOpen: controlledWordCountOpen,
-  setWordCountOpen: setControlledWordCountOpen,
 
   rootPageId,
   onInsertSnippet,
+  currentPage,
+  projectFiles,
 
   suggestModal,
   setSuggestModal,
@@ -141,7 +136,6 @@ export function EditorModals({
   const [internalTableOpen, setInternalTableOpen] = useState(false);
   const [internalFigureOpen, setInternalFigureOpen] = useState(false);
   const [internalSymbolOpen, setInternalSymbolOpen] = useState(false);
-  const [internalWordCountOpen, setInternalWordCountOpen] = useState(false);
 
   const isTableOpen = controlledTableOpen !== undefined ? controlledTableOpen : internalTableOpen;
   const setIsTableOpen = setControlledTableOpen || setInternalTableOpen;
@@ -151,9 +145,6 @@ export function EditorModals({
 
   const isSymbolOpen = controlledSymbolOpen !== undefined ? controlledSymbolOpen : internalSymbolOpen;
   const setIsSymbolOpen = setControlledSymbolOpen || setInternalSymbolOpen;
-
-  const isWordCountOpen = controlledWordCountOpen !== undefined ? controlledWordCountOpen : internalWordCountOpen;
-  const setIsWordCountOpen = setControlledWordCountOpen || setInternalWordCountOpen;
 
   // Listen directly to CommandBus dialog events
   useEffect(() => {
@@ -168,9 +159,6 @@ export function EditorModals({
         case 'symbol-palette':
           setIsSymbolOpen(true);
           break;
-        case 'word-count':
-          setIsWordCountOpen(true);
-          break;
         default:
           break;
       }
@@ -180,14 +168,12 @@ export function EditorModals({
       if (!cmd.dialog || cmd.dialog === 'table-wizard') setIsTableOpen(false);
       if (!cmd.dialog || cmd.dialog === 'figure-wizard') setIsFigureOpen(false);
       if (!cmd.dialog || cmd.dialog === 'symbol-palette') setIsSymbolOpen(false);
-      if (!cmd.dialog || cmd.dialog === 'word-count') setIsWordCountOpen(false);
     });
 
     // Also support fallback direct event names
     const unsubLegacyTable = EditorEventBus.on('flux:open-table-wizard', () => setIsTableOpen(true));
     const unsubLegacyFigure = EditorEventBus.on('flux:open-figure-wizard', () => setIsFigureOpen(true));
     const unsubLegacySymbol = EditorEventBus.on('flux:open-symbol-palette', () => setIsSymbolOpen(true));
-    const unsubLegacyWordCount = EditorEventBus.on('flux:open-word-count', () => setIsWordCountOpen(true));
 
     return () => {
       unsubOpen();
@@ -195,9 +181,8 @@ export function EditorModals({
       unsubLegacyTable();
       unsubLegacyFigure();
       unsubLegacySymbol();
-      unsubLegacyWordCount();
     };
-  }, [setIsTableOpen, setIsFigureOpen, setIsSymbolOpen, setIsWordCountOpen]);
+  }, [setIsTableOpen, setIsFigureOpen, setIsSymbolOpen]);
 
   const handleInsertSnippet = useCallback(
     (snippet: string) => {
@@ -261,13 +246,7 @@ export function EditorModals({
         />
       )}
 
-      {isWordCountOpen && (
-        <WordCountDialog
-          open={isWordCountOpen}
-          onClose={() => setIsWordCountOpen(false)}
-          content={engine?.getContent() || ''}
-        />
-      )}
+
 
       {Boolean(suggestModal) && (
         <SuggestEditModal

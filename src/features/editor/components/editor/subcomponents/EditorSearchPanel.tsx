@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 import { cn } from '@/shared/lib/utils';
-import { toast } from 'sonner';
+import { useEditorSearchActions } from '../hooks/useEditorSearchActions';
 
 export interface EditorSearchPanelProps {
   isOpen: boolean;
@@ -33,6 +33,7 @@ export const EditorSearchPanel: React.FC<EditorSearchPanelProps> = ({
   initialReplaceOpen = true,
 }) => {
   const { engine } = useEditorInstance();
+  const { notifyReplaceAll } = useEditorSearchActions();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
 
@@ -151,11 +152,7 @@ export const EditorSearchPanel: React.FC<EditorSearchPanelProps> = ({
     if (!engine) return;
     const countBefore = matchCount.total;
     engine.replaceAll?.();
-    toast.success(
-      countBefore > 0
-        ? `Replaced ${countBefore} occurrence${countBefore > 1 ? 's' : ''}`
-        : 'Replaced all occurrences',
-    );
+    notifyReplaceAll(countBefore);
     if (searchTerm && engine.getSearchMatchesCount) {
       setMatchCount(
         engine.getSearchMatchesCount({

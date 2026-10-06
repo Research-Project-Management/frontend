@@ -192,6 +192,7 @@ export class AcademicAiService {
       const token = getAuthToken();
       const systemPrompt = getSystemPrompt(action, customPrompt);
 
+      const promptText = `Text to edit:\n"""\n${maskedText}\n"""`;
       const response = await fetch(`${API_BASE_URL}/api/ai/chat/sync`, {
         method: 'POST',
         headers: {
@@ -199,14 +200,18 @@ export class AcademicAiService {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          message: `Text to edit:\n"""\n${maskedText}\n"""`,
-          systemPrompt,
+          query: promptText,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: promptText },
+          ],
           model: 'fast',
         }),
       });
 
       if (response.ok) {
-        const data = (await response.json()) as Record<string, any>;
+        const json = (await response.json()) as Record<string, any>;
+        const data = json?.data || json;
         const rawAiText = data?.content || data?.message || data?.response || '';
         if (rawAiText && rawAiText.trim().length > 0) {
           suggestedResult = unmask(rawAiText.trim().replace(/^"""\s*|\s*"""$/g, ''));

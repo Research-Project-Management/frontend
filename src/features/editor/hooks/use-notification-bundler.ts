@@ -22,7 +22,9 @@ export function usePendingBundles() {
   return useQuery({
     queryKey: notificationBundlerKeys.bundles(),
     queryFn: () => notificationBundlerService.getPendingBundles(),
-    refetchInterval: 15_000, // Poll every 15s in background
+    enabled: false,
+    refetchInterval: false,
+    initialData: [],
   });
 }
 
@@ -30,6 +32,8 @@ export function useDigestHistory(limit = 20) {
   return useQuery({
     queryKey: [...notificationBundlerKeys.digests(), limit],
     queryFn: () => notificationBundlerService.getDigestHistory(limit),
+    enabled: false,
+    initialData: [],
   });
 }
 
@@ -37,6 +41,8 @@ export function useNotificationSettings() {
   return useQuery({
     queryKey: notificationBundlerKeys.settings(),
     queryFn: () => notificationBundlerService.getSettings(),
+    enabled: false,
+    initialData: { enabled: false, windowMinutes: 10 },
   });
 }
 

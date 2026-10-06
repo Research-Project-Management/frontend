@@ -22,19 +22,32 @@ type ToasterProps = React.ComponentProps<typeof SonnerToaster>;
 export function Toaster({ ...props }: ToasterProps) {
   React.useEffect(() => {
     const sanitizeSonnerStyles = () => {
+      // 1. Sanitize raw style tags injected into head
+      const styleTags = document.querySelectorAll('style');
+      styleTags.forEach((tag) => {
+        if (tag.textContent && (tag.textContent.includes('height 400ms') || tag.textContent.includes('height .4s') || tag.textContent.includes('height 0.4s'))) {
+          tag.textContent = tag.textContent
+            .replace(/,?\s*height\s+(?:\.4s|0?\.4s|400ms)/g, '')
+            .replace(/height\s+(?:\.4s|0?\.4s|400ms),?\s*/g, '');
+        }
+      });
+
+      // 2. Sanitize CSSStyleRules across all stylesheets
       for (const sheet of document.styleSheets) {
         try {
           for (let i = 0; i < sheet.cssRules.length; i++) {
             const rule = sheet.cssRules[i];
             if (
               rule instanceof CSSStyleRule &&
-              rule.selectorText === '[data-sonner-toast]' &&
-              rule.style.transition?.includes('height')
+              (rule.selectorText === '[data-sonner-toast]' || rule.selectorText?.includes('data-sonner'))
             ) {
-              rule.style.transition = rule.style.transition
-                .replace(/height[^,]*,?\s*/g, '')
-                .trim()
-                .replace(/,\s*$/, '');
+              const transitionVal = rule.style.transition;
+              if (transitionVal && transitionVal.includes('height')) {
+                rule.style.transition = transitionVal
+                  .replace(/height[^,]*,?\s*/g, '')
+                  .trim()
+                  .replace(/,\s*$/, '');
+              }
             }
           }
         } catch {

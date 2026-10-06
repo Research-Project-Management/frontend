@@ -1,16 +1,21 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+/**
+ * TableWizardModal.tsx
+ *
+ * Clean presentational modal for LaTeX table insertion:
+ * - State and validation managed by `useTableWizard` (React Hook Form + Zod)
+ * - Toasts and clipboard operations encapsulated within the hook
+ * - Zero direct toast imports in this presentation component
+ */
+
+import React from 'react';
 import {
   Table as TableIcon,
-  FileSpreadsheet,
-  Grid3X3,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  Sparkles,
   Check,
   Copy,
+  Grid3X3,
+  FileSpreadsheet,
 } from 'lucide-react';
 import {
   Dialog,
@@ -30,7 +35,7 @@ import {
   TabsContent,
 } from '@/shared/components/ui/tabs';
 import { cn } from '@/shared/lib/utils';
-import { toast } from 'sonner';
+import { useTableWizard } from './hooks/useTableWizard';
 
 export interface TableWizardModalProps {
   open: boolean;
@@ -38,195 +43,41 @@ export interface TableWizardModalProps {
   onInsert: (latexCode: string) => void;
 }
 
-type TableStyle = 'booktabs' | 'bordered' | 'minimal';
-type ColAlign = 'l' | 'c' | 'r';
-
 export default function TableWizardModal({
   open,
   onOpenChange,
   onInsert,
 }: TableWizardModalProps) {
-  const [activeTab, setActiveTab] = useState<'visual' | 'paste'>('visual');
-
-  // Visual builder state
-  const [rows, setRows] = useState<number>(3);
-  const [cols, setCols] = useState<number>(3);
-  const [hoverRows, setHoverRows] = useState<number>(0);
-  const [hoverCols, setHoverCols] = useState<number>(0);
-
-  // Table options
-  const [tableStyle, setTableStyle] = useState<TableStyle>('booktabs');
-  const [defaultAlign, setDefaultAlign] = useState<ColAlign>('c');
-  const [caption, setCaption] = useState<string>('Summary of results');
-  const [label, setLabel] = useState<string>('tab:results');
-  const [placement, setPlacement] = useState<string>('htbp');
-  const [centering, setCentering] = useState<boolean>(true);
-
-  // Paste Excel/CSV state
-  const [pastedText, setPastedText] = useState<string>('');
-  const [firstRowIsHeader, setFirstRowIsHeader] = useState<boolean>(true);
-
-  // Parse pasted Excel/CSV data
-  const parsedData = useMemo(() => {
-    if (!pastedText.trim()) return [];
-
-    // Auto-detect delimiter: check for Tab first (Excel clipboard uses \t)
-    const sampleLine = pastedText.split(/\r?\n/)[0] || '';
-    let delimiter = '\t';
-    if (!sampleLine.includes('\t')) {
-      if (sampleLine.includes(',')) delimiter = ',';
-      else if (sampleLine.includes(';')) delimiter = ';';
-    }
-
-    const lines = pastedText.trim().split(/\r?\n/);
-    return lines.map((line) => {
-      // Basic CSV splitting (handles quotes reasonably)
-      if (delimiter === ',') {
-        const regex = /(?:,|\n|^)("(?:(?:"")*[^"]*)*"|[^",\n]*|(?:\n|$))/g;
-        const entries: string[] = [];
-        let match;
-        while ((match = regex.exec(line)) !== null) {
-          let val = match[1] ?? '';
-          if (val.startsWith('"') && val.endsWith('"')) {
-            val = val.slice(1, -1).replace(/""/g, '"');
-          }
-          entries.push(val.trim());
-          if (match.index + match[0].length >= line.length) break;
-        }
-        return entries.filter((_, idx, arr) => idx < arr.length || valNotEmpty(arr));
-      }
-      return line.split(delimiter).map((c) => c.trim());
-    });
-  }, [pastedText]);
-
-  function valNotEmpty(arr: string[]) {
-    return arr.some((item) => item.length > 0);
-  }
-
-  // Generate LaTeX Code
-  const generatedLatex = useMemo(() => {
-    const isPaste = activeTab === 'paste' && parsedData.length > 0;
-    const effCols = isPaste ? Math.max(...parsedData.map((r) => r.length), 1) : cols;
-    const effRows = isPaste ? parsedData.length : rows;
-
-    // Build column spec
-    let colSpec = '';
-    if (tableStyle === 'bordered') {
-      colSpec = `|${Array(effCols).fill(defaultAlign).join('|')}|`;
-    } else {
-      colSpec = Array(effCols).fill(defaultAlign).join('');
-    }
-
-    let body = '';
-
-    if (isPaste) {
-      // Build from pasted data
-      parsedData.forEach((row, rIdx) => {
-        // Pad row to effCols
-        const padded = [...row];
-        while (padded.length < effCols) padded.push('');
-        // Escape LaTeX special chars & , % , $
-        const sanitized = padded.map((cell) =>
-          cell.replace(/([%$#&_])/g, '\\$1')
-        );
-
-        if (rIdx === 0 && firstRowIsHeader) {
-          body += `    ${sanitized.join(' & ')} \\\\\n`;
-          if (tableStyle === 'booktabs') {
-            body += `    \\midrule\n`;
-          } else if (tableStyle === 'bordered') {
-            body += `    \\hline\n`;
-          }
-        } else {
-          body += `    ${sanitized.join(' & ')} \\\\\n`;
-          if (tableStyle === 'bordered' && rIdx < effRows - 1) {
-            body += `    \\hline\n`;
-          }
-        }
-      });
-    } else {
-      // Build from grid
-      for (let r = 0; r < effRows; r++) {
-        const cells: string[] = [];
-        for (let c = 0; c < effCols; c++) {
-          if (r === 0) {
-            cells.push(`Header ${c + 1}`);
-          } else {
-            cells.push(`Data ${r},${c + 1}`);
-          }
-        }
-        body += `    ${cells.join(' & ')} \\\\\n`;
-        if (r === 0) {
-          if (tableStyle === 'booktabs') {
-            body += `    \\midrule\n`;
-          } else if (tableStyle === 'bordered') {
-            body += `    \\hline\n`;
-          }
-        } else if (tableStyle === 'bordered' && r < effRows - 1) {
-          body += `    \\hline\n`;
-        }
-      }
-    }
-
-    // Wrap in table environment
-    let result = '';
-    result += `\\begin{table}[${placement}]\n`;
-    if (centering) {
-      result += `  \\centering\n`;
-    }
-    if (caption) {
-      result += `  \\caption{${caption}}\n`;
-    }
-    if (label) {
-      result += `  \\label{${label}}\n`;
-    }
-
-    result += `  \\begin{tabular}{${colSpec}}\n`;
-    if (tableStyle === 'booktabs') {
-      result += `    \\toprule\n`;
-    } else if (tableStyle === 'bordered') {
-      result += `    \\hline\n`;
-    }
-
-    result += body;
-
-    if (tableStyle === 'booktabs') {
-      result += `    \\bottomrule\n`;
-    } else if (tableStyle === 'bordered') {
-      result += `    \\hline\n`;
-    }
-    result += `  \\end{tabular}\n`;
-    result += `\\end{table}\n`;
-
-    return result;
-  }, [
+  const {
     activeTab,
+    setActiveTab,
     rows,
+    setRows,
     cols,
-    tableStyle,
-    defaultAlign,
-    caption,
-    label,
-    placement,
-    centering,
+    setCols,
+    hoverRows,
+    setHoverRows,
+    hoverCols,
+    setHoverCols,
+    pastedText,
+    setPastedText,
     parsedData,
-    firstRowIsHeader,
-  ]);
+    form,
+    values,
+    setValue,
+    generatedLatex,
+    insertTable,
+    copyTableCode,
+  } = useTableWizard({
+    onInsert,
+    onClose: () => onOpenChange(false),
+  });
 
-  const handleInsert = () => {
-    onInsert(generatedLatex);
-    toast.success('Table inserted into document');
-    onOpenChange(false);
-  };
-
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(generatedLatex);
-    toast.info('LaTeX code copied to clipboard');
-  };
+  const { register } = form;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-6 gap-4 text-xs bg-background border border-border shadow-raised-300 rounded-lg">
+      <DialogContent className="max-w-2xl max-h-[92vh] flex flex-col p-6 gap-4 text-xs bg-background border border-border shadow-raised-300 rounded-lg">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <div className="size-8 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -293,7 +144,7 @@ export default function TableWizardModal({
                           'size-4 rounded-xs border transition-colors cursor-pointer',
                           isSelected
                             ? 'bg-primary border-primary'
-                            : 'bg-muted/60 border-border/80 hover:border-primary/60'
+                            : 'bg-muted/60 border-border/80 hover:border-primary/60',
                         )}
                         onMouseEnter={() => {
                           setHoverRows(rIdx + 1);
@@ -362,8 +213,8 @@ export default function TableWizardModal({
             <div className="flex items-center gap-2">
               <Checkbox
                 id="header-row"
-                checked={firstRowIsHeader}
-                onCheckedChange={(checked) => setFirstRowIsHeader(Boolean(checked))}
+                checked={values.firstRowIsHeader}
+                onCheckedChange={(checked) => setValue('firstRowIsHeader', Boolean(checked))}
               />
               <label
                 htmlFor="header-row"
@@ -390,9 +241,9 @@ export default function TableWizardModal({
                           key={rIdx}
                           className={cn(
                             'border-b border-border/50 last:border-none',
-                            rIdx === 0 && firstRowIsHeader
+                            rIdx === 0 && values.firstRowIsHeader
                               ? 'bg-muted/40 font-semibold'
-                              : 'hover:bg-muted/20'
+                              : 'hover:bg-muted/20',
                           )}
                         >
                           {r.map((cell, cIdx) => (
@@ -427,12 +278,12 @@ export default function TableWizardModal({
                   <button
                     key={s.id}
                     type="button"
-                    onClick={() => setTableStyle(s.id as TableStyle)}
+                    onClick={() => setValue('tableStyle', s.id as any)}
                     className={cn(
                       'h-7 px-2 text-11 font-medium rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                      tableStyle === s.id
+                      values.tableStyle === s.id
                         ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background border-border text-foreground hover:bg-muted'
+                        : 'bg-background border-border text-foreground hover:bg-muted',
                     )}
                   >
                     {s.label}
@@ -448,28 +299,24 @@ export default function TableWizardModal({
               </label>
               <div className="grid grid-cols-3 gap-1">
                 {[
-                  { id: 'l', icon: AlignLeft, label: 'Left (l)' },
-                  { id: 'c', icon: AlignCenter, label: 'Center (c)' },
-                  { id: 'r', icon: AlignRight, label: 'Right (r)' },
-                ].map((a) => {
-                  const Icon = a.icon;
-                  return (
-                    <button
-                      key={a.id}
-                      type="button"
-                      onClick={() => setDefaultAlign(a.id as ColAlign)}
-                      className={cn(
-                        'h-7 px-2 text-11 font-medium rounded-sm border flex items-center justify-center gap-1 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                        defaultAlign === a.id
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-background border-border text-foreground hover:bg-muted'
-                      )}
-                    >
-                      <Icon className="size-3" />
-                      <span>{a.id}</span>
-                    </button>
-                  );
-                })}
+                  { id: 'l', label: 'Left' },
+                  { id: 'c', label: 'Center' },
+                  { id: 'r', label: 'Right' },
+                ].map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => setValue('defaultAlign', a.id as any)}
+                    className={cn(
+                      'h-7 px-2 text-11 font-medium rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                      values.defaultAlign === a.id
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background border-border text-foreground hover:bg-muted',
+                    )}
+                  >
+                    {a.label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -481,9 +328,8 @@ export default function TableWizardModal({
                 Caption
               </label>
               <Input
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                placeholder="Table caption"
+                {...register('caption')}
+                placeholder="Table caption description"
                 className="h-8 text-xs rounded-md border-border bg-background"
               />
             </div>
@@ -492,17 +338,56 @@ export default function TableWizardModal({
                 Label (for \ref)
               </label>
               <Input
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="tab:my_table"
+                {...register('label')}
+                placeholder="tab:results"
                 className="h-8 text-xs font-mono rounded-md border-border bg-background"
               />
             </div>
           </div>
+
+          {/* Placement & Centering */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div className="flex items-center gap-2">
+              <label className="text-11 font-medium text-muted-foreground">
+                Placement:
+              </label>
+              <div className="flex items-center gap-1">
+                {['htbp', '!ht', 't', 'b', 'h'].map((spec) => (
+                  <button
+                    key={spec}
+                    type="button"
+                    onClick={() => setValue('placement', spec)}
+                    className={cn(
+                      'px-2 py-0.5 text-11 font-mono rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                      values.placement === spec
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background border-border text-foreground hover:bg-muted',
+                    )}
+                  >
+                    [{spec}]
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="table-centering"
+                checked={values.centering}
+                onCheckedChange={(c) => setValue('centering', Boolean(c))}
+              />
+              <label
+                htmlFor="table-centering"
+                className="text-xs font-medium text-foreground cursor-pointer"
+              >
+                Center table (\centering)
+              </label>
+            </div>
+          </div>
         </div>
 
-        {/* Live Code Preview Accordion */}
-        <div className="border border-border rounded-md bg-muted/10 p-2.5 font-mono text-11 max-h-28 overflow-y-auto select-all">
+        {/* Live Code Preview */}
+        <div className="border border-border rounded-md bg-muted/10 p-2.5 font-mono text-11 max-h-24 overflow-y-auto select-all">
           <pre className="text-foreground leading-relaxed whitespace-pre-wrap">
             {generatedLatex}
           </pre>
@@ -513,7 +398,7 @@ export default function TableWizardModal({
             type="button"
             variant="outline"
             size="sm"
-            onClick={handleCopyCode}
+            onClick={copyTableCode}
             className="gap-1.5 h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <Copy className="size-3.5" />
@@ -534,7 +419,7 @@ export default function TableWizardModal({
               type="button"
               variant="default"
               size="sm"
-              onClick={handleInsert}
+              onClick={insertTable}
               className="gap-1.5 h-8 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <Check className="size-3.5" />

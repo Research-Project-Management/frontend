@@ -145,7 +145,7 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
           />
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border">
+        <DialogFooter className="gap-2 sm:gap-0 pt-3 border-0">
           <Button
             type="button"
             variant="outline"

@@ -5,3 +5,4 @@
  */
 
 export * from './components/CompileButton';
+export * from './hooks/use-pdf-compiler';

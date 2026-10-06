@@ -6,6 +6,7 @@ import {
 } from '@/features/editor/services/compiler.service';
 import { manuscriptService } from '@/features/editor/services/manuscript.service';
 import { parseLatexLog } from '@/features/editor/components/viewer/Logs';
+import { createPdfBlobAndUrl } from '@/features/editor/utils/viewer.util';
 
 describe('Phase 2: Compiler & Artifacts Overleaf Parity', () => {
   beforeEach(() => {
@@ -83,6 +84,61 @@ Underfull \\vbox (badness 10000) has occurred while \\output is active
         w.message.includes('Citation')
       );
       expect(hasCitationWarning).toBe(true);
+    });
+  });
+
+  describe('createPdfBlobAndUrl Helper', () => {
+    it('handles direct HTTP and HTTPS URLs', () => {
+      const res = createPdfBlobAndUrl('https://example.com/doc.pdf');
+      expect(res).not.toBeNull();
+      expect(res?.url).toBe('https://example.com/doc.pdf');
+      expect(res?.blob).toBeNull();
+    });
+
+    it('handles blob URLs directly', () => {
+      const res = createPdfBlobAndUrl('blob:http://localhost:2915/abc-123');
+      expect(res).not.toBeNull();
+      expect(res?.url).toBe('blob:http://localhost:2915/abc-123');
+      expect(res?.blob).toBeNull();
+    });
+
+    it('decodes valid base64 PDF into blob URL', () => {
+      const base64Pdf = 'JVBERi0xLjQKMSAwIG9iago=';
+      const res = createPdfBlobAndUrl(base64Pdf);
+      expect(res).not.toBeNull();
+      expect(res?.url).toMatch(/^blob:/);
+      expect(res?.blob).toBeInstanceOf(Blob);
+    });
+
+    it('strips data:application/pdf;base64 prefix before decoding', () => {
+      const dataUri = 'data:application/pdf;base64,JVBERi0xLjQKMSAwIG9iago=';
+      const res = createPdfBlobAndUrl(dataUri);
+      expect(res).not.toBeNull();
+      expect(res?.url).toMatch(/^blob:/);
+      expect(res?.blob).toBeInstanceOf(Blob);
+    });
+
+    it('strips newlines and spaces from base64 PDF data', () => {
+      const messyBase64 = '  JVBERi0xLjQK\r\nMSAwIG9iago= \n ';
+      const res = createPdfBlobAndUrl(messyBase64);
+      expect(res).not.toBeNull();
+      expect(res?.url).toMatch(/^blob:/);
+      expect(res?.blob).toBeInstanceOf(Blob);
+    });
+
+    it('decodes raw %PDF- ASCII string directly', () => {
+      const rawPdf = '%PDF-1.4\n1 0 obj\n<<>>\nendobj';
+      const res = createPdfBlobAndUrl(rawPdf);
+      expect(res).not.toBeNull();
+      expect(res?.url).toMatch(/^blob:/);
+      expect(res?.blob).toBeInstanceOf(Blob);
+    });
+
+    it('returns null for empty or invalid inputs', () => {
+      expect(createPdfBlobAndUrl('')).toBeNull();
+      expect(createPdfBlobAndUrl('   ')).toBeNull();
+      expect(createPdfBlobAndUrl(null as any)).toBeNull();
+      expect(createPdfBlobAndUrl(undefined as any)).toBeNull();
     });
   });
 });

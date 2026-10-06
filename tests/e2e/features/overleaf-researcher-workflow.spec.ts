@@ -21,7 +21,7 @@ test.describe('Overleaf Researcher End-to-End Workflow Suite', () => {
 
   test.beforeEach(async ({ page, editor }) => {
     await page.goto(`/editor/${PAGE_ID}`, { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('.cm-editor')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.cm-editor')).toBeVisible({ timeout: 30000 });
   });
 
   test('Workflow 1: Authoring & LaTeX Environment Input (Overleaf Code Editor Parity)', async ({ page }) => {

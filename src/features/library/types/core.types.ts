@@ -50,12 +50,53 @@ export type LibraryPagination = z.infer<typeof libraryPaginationSchema>;
 export type CoreStats = LibraryStats;
 export type CoreOverview = LibraryOverview;
 
-// ── Collaborative Dual-Scope Types (My Library vs Project Libraries) ─────────
-export type LibraryScopeType = 'personal' | 'project';
+// ── Canonical Project Roles (4 roles: Owner, Coordinator, Contributor, Reviewer) ──
+export type ProjectRole = 'owner' | 'coordinator' | 'contributor' | 'reviewer';
 
-export interface LibraryScope {
-  type: LibraryScopeType;
-  id: string; // 'user' (if personal) or projectId (UUID)
-  name: string; // "My Library" or Project / Study title
-  role?: 'owner' | 'coordinator' | 'contributor' | 'reviewer' | 'commenter' | 'viewer';
+export type LibraryScopeType = 'user' | 'project';
+
+/**
+ * Canonical Library Permissions across all item, collection, and document actions.
+ * Encapsulated capabilities derived from Scope and Project Module RBAC.
+ */
+export interface LibraryPermissions {
+  readonly canRead: boolean;
+  readonly canCreateItem: boolean;
+  readonly canEditItem: boolean;
+  readonly canDeleteItem: boolean;
+  readonly canManageCollections: boolean;
+  readonly canImport: boolean;
+  readonly canExport: boolean;
 }
+
+/**
+ * User Scope:
+ * Không gian cá nhân của người dùng.
+ * Bản thân user luôn là Chủ sở hữu (Owner) của không gian này, có toàn quyền quản trị và chỉnh sửa.
+ * Không tồn tại khái niệm member hay role trong User scope.
+ */
+export interface UserLibraryScope {
+  type: 'user';
+  id?: string; // Optional identifier ('user')
+  name: string; // "Library"
+  role?: 'owner'; // Optional alias for backward compatibility with legacy checks
+}
+
+/**
+ * Project Scope:
+ * Không gian thư viện cộng tác trong dự án.
+ * Quyền hạn của user được xác định theo đúng 4 role chuẩn của dự án:
+ * 'owner' | 'coordinator' | 'contributor' | 'reviewer' (không có commenter hay viewer).
+ */
+export interface ProjectLibraryScope {
+  type: 'project';
+  id: string; // Project UUID
+  projectId?: string; // Canonical alias for Project UUID
+  name: string; // Project title
+  role: ProjectRole;
+}
+
+/**
+ * Discriminated union of Library scopes.
+ */
+export type LibraryScope = UserLibraryScope | ProjectLibraryScope;

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseSyncTeX,
   resolvePageForLine,
-} from '../../src/features/editor/domain/synctex/synctex-resolver';
+} from '@/features/editor/utils/viewer.util';
 
 describe('Domain: SyncTeX Resolver', () => {
   const sampleSyncTeX = `SyncTeX Version:1

@@ -12,10 +12,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Send, X, Users, Loader2 } from 'lucide-react';
+import { Send, Users, Loader2 } from 'lucide-react';
 import { useProjectChat } from '@/features/editor/hooks/use-project-chat';
 import { cn } from '@/shared/lib/utils';
 import { PlaneEmptyState, PlaneErrorState } from '@/shared/components/ui';
+import { SidebarPanelHeader } from '../common/SidebarPanelHeader';
 
 interface ChatTabProps {
   onClose?: () => void;
@@ -76,20 +77,11 @@ export default function ChatTab({ onClose }: ChatTabProps) {
   return (
     <div className="flex h-full w-full flex-col bg-background text-foreground select-none">
       {/* ── Header ── */}
-      <div className="flex h-10 items-center justify-between border-b border-border px-3.5 shrink-0 bg-background">
-        <span className="text-xs font-semibold text-foreground">Project Chat</span>
-
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close chat"
-            className="flex size-6 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-          >
-            <X className="size-3.5" />
-          </button>
-        )}
-      </div>
+      <SidebarPanelHeader
+        title="Project Chat"
+        onClose={onClose}
+        closeAriaLabel="Close project chat"
+      />
 
       {/* ── Message Stream ── */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
@@ -125,8 +117,8 @@ export default function ChatTab({ onClose }: ChatTabProps) {
                   <div className="flex items-center gap-1.5 mb-1 px-1">
                     {!isSelf && (
                       <div
-                        className="size-4.5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0"
-                        style={{ backgroundColor: msg.userColor || '#6366f1' }}
+                        className="size-4.5 rounded-full flex items-center justify-center text-10 font-semibold text-white shrink-0"
+                        style={{ backgroundColor: msg.userColor || 'var(--primary)' }}
                       >
                         {getInitials(msg.userName)}
                       </div>
@@ -134,7 +126,7 @@ export default function ChatTab({ onClose }: ChatTabProps) {
                     <span className="text-11 font-medium text-muted-foreground">
                       {isSelf ? 'You' : msg.userName}
                     </span>
-                    <span className="text-[10px] text-muted-foreground/60">
+                    <span className="text-10 text-muted-foreground/60">
                       {formatTime(msg.createdAt)}
                     </span>
                   </div>

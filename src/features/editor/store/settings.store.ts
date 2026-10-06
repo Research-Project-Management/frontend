@@ -51,6 +51,7 @@ export interface DocumentSettingsState {
   trackChangesViewMode: TrackChangesViewMode;
   activeSidebarPanel: EditorSidebarTab | null;
   isHistoryOpen: boolean;
+  isReviewOpen: boolean;
   isTemplateModalOpen: boolean;
   spellCheck: boolean;
   spellCheckLanguage: string;
@@ -102,6 +103,8 @@ export interface DocumentSettingsState {
   toggleSidebarPanel: (panel: EditorSidebarTab) => void;
   setIsHistoryOpen: (open: boolean) => void;
   toggleHistory: () => void;
+  setIsReviewOpen: (open: boolean) => void;
+  toggleReviewOpen: () => void;
   setIsTemplateModalOpen: (open: boolean) => void;
   toggleTemplateModal: () => void;
   setMainFile: (mainFile: string) => void;
@@ -157,6 +160,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       trackChangesViewMode: 'changes',
       activeSidebarPanel: 'Files',
       isHistoryOpen: false,
+      isReviewOpen: false,
       isTemplateModalOpen: false,
       spellCheck: true,
       spellCheckLanguage: 'en_US',
@@ -204,6 +208,19 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
         })),
       setIsHistoryOpen: (isHistoryOpen) => set({ isHistoryOpen }),
       toggleHistory: () => set((s) => ({ isHistoryOpen: !s.isHistoryOpen })),
+      setIsReviewOpen: (isReviewOpen) =>
+        set((s) => ({
+          isReviewOpen,
+          activeSidebarPanel: isReviewOpen ? 'Review' : s.activeSidebarPanel === 'Review' ? null : s.activeSidebarPanel,
+        })),
+      toggleReviewOpen: () =>
+        set((s) => {
+          const next = s.activeSidebarPanel === 'Review' ? null : 'Review';
+          return {
+            isReviewOpen: next === 'Review',
+            activeSidebarPanel: next,
+          };
+        }),
       setIsTemplateModalOpen: (isTemplateModalOpen) => set({ isTemplateModalOpen }),
       toggleTemplateModal: () => set((s) => ({ isTemplateModalOpen: !s.isTemplateModalOpen })),
       setMainFile: (mainFile) => set({ mainFile }),

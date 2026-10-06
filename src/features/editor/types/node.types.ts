@@ -21,22 +21,9 @@ export interface NodeTreeItem {
   children?: NodeTreeItem[];
 }
 
-export interface MoveNodeInput {
-  targetParentId?: string | null;
-  rank?: number;
-}
-
-import type { DocumentContent } from './core.types';
-
-export interface CreateChildNodeInput {
-  title: string;
-  parentPageId?: string;
-  content?: DocumentContent;
-  rank?: number;
-  icon?: string;
-  isFolder?: boolean;
-}
-
-export interface SetMainNodeInput {
-  mainFileId: string;
-}
+// Derived directly from Zod schemas (Single Source of Truth)
+export type {
+  MoveNodeInput,
+  CreateChildNodeInput,
+  SetMainNodeInput,
+} from '../schemas/node.schema';

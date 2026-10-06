@@ -29,6 +29,7 @@ export const compilePreview = manuscriptService.compiler.preview;
 export const listAuxFiles = manuscriptService.compiler.listAuxFiles;
 export const downloadAuxFileUrl = manuscriptService.compiler.downloadAuxFileUrl;
 export const downloadAllArtifactsZipUrl = manuscriptService.compiler.downloadAllArtifactsZipUrl;
+export const cleanAuxFiles = manuscriptService.compiler.cleanAuxFiles;
 
 export const compileService = {
   flushPageContent,
@@ -39,6 +40,7 @@ export const compileService = {
   listAuxFiles,
   downloadAuxFileUrl,
   downloadAllArtifactsZipUrl,
+  cleanAuxFiles,
 };
 
 export const DocumentCompileService = compileService;

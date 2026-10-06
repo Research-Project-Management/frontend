@@ -308,8 +308,8 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
     }
   };
 
-  // 4. Import from Personal Library Modal (When in Project Scope)
-  const isImportFromPersonalOpen = activeModal === 'IMPORT_FROM_PERSONAL';
+  // 4. Import from User Library Modal (When in Project Scope)
+  const isImportFromUserOpen = activeModal === 'IMPORT_FROM_USER' || activeModal === 'IMPORT_FROM_PERSONAL';
 
   // 5. Convert Item Type Modal
   const isConvertOpen = activeModal === 'CONVERT_ITEM_TYPE';
@@ -379,9 +379,9 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
         />
       )}
 
-      {isImportFromPersonalOpen && (
+      {isImportFromUserOpen && (
         <ImportFromPersonalModal
-          open={isImportFromPersonalOpen}
+          open={isImportFromUserOpen}
           onOpenChange={(open) => !open && closeModal()}
           projectId={effectiveScope}
           projectName={activeScope?.name || 'Project'}

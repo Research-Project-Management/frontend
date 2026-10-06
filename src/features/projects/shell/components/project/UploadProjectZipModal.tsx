@@ -357,7 +357,7 @@ export function UploadProjectZipModal({
                   autoFocus
                 />
                 <p className="text-11 text-muted-foreground">
-                  This project will be initialized in your personal workspace.
+                  This project will be initialized in your user workspace.
                 </p>
               </div>
             </div>

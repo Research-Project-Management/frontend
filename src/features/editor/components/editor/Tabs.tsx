@@ -24,14 +24,14 @@ const TabItem = React.memo(function TabItem({ tab, isActive, rootPageId, onActiv
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       onActivate();
-    } else if (!isRoot && (e.key === 'Delete' || (e.key === 'w' && (e.ctrlKey || e.metaKey)))) {
+    } else if (e.key === 'Delete' || (e.key === 'w' && (e.ctrlKey || e.metaKey))) {
       e.preventDefault();
       onCloseTab();
     }
   };
 
   const handleAuxClick = (e: React.MouseEvent) => {
-    if (e.button === 1 && !isRoot) {
+    if (e.button === 1) {
       e.preventDefault();
       onCloseTab();
     }
@@ -62,21 +62,19 @@ const TabItem = React.memo(function TabItem({ tab, isActive, rootPageId, onActiv
       {/* Title */}
       <span className="text-12 font-mono truncate leading-normal min-w-0">{tab.title}</span>
 
-      {/* Close button (only on non-root tabs, hidden until hovered) */}
-      {!isRoot && (
-        <button
-          type="button"
-          aria-label={`Close file ${tab.title}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onCloseTab();
-          }}
-          onAuxClick={(e) => e.preventDefault()}
-          className="ml-auto shrink-0 size-4 flex items-center justify-center rounded-xs transition-opacity outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer opacity-0 group-hover/tab:opacity-70 group-hover/tab:hover:opacity-100 hover:bg-muted text-foreground"
-        >
-          <X className="size-3 shrink-0" />
-        </button>
-      )}
+      {/* Close button (visible on hover across all tabs, including root / sole tab) */}
+      <button
+        type="button"
+        aria-label={`Close file ${tab.title}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onCloseTab();
+        }}
+        onAuxClick={(e) => e.preventDefault()}
+        className="ml-auto shrink-0 size-4 flex items-center justify-center rounded-xs transition-opacity outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer opacity-0 group-hover/tab:opacity-70 group-hover/tab:hover:opacity-100 hover:bg-muted text-foreground"
+      >
+        <X className="size-3 shrink-0" />
+      </button>
     </div>
   );
 });
@@ -88,9 +86,10 @@ const EMPTY_TABS: EditorTab[] = [];
 export interface TabsProps {
   rootPageId: string;
   activeFileId: string;
+  availableFiles?: { id: string; title: string }[];
 }
 
-export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
+export default function Tabs({ rootPageId, activeFileId, availableFiles }: TabsProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -99,23 +98,35 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
   const rawTabs = useTabsStore((s) => s.tabsByProject[rootPageId] ?? EMPTY_TABS);
   const closeTab = useTabsStore((s) => s.closeTab);
 
-  // Guarantee no duplicate tabs are rendered for the root document
+  // Guarantee no duplicate tabs are rendered, prune ghost tabs, and normalize root to main.tex
   const tabs = useMemo(() => {
     const isRootDoc = (t: EditorTab) =>
       t.id === rootPageId ||
       t.id === `${rootPageId}-main`;
 
+    const availableIds = availableFiles ? new Set(availableFiles.map((f) => f.id)) : null;
+
     const seen = new Set<string>();
     const result: EditorTab[] = [];
     for (const t of rawTabs) {
-      const key = isRootDoc(t) ? '__root__' : (t.id || t.title.toLowerCase());
+      const isRoot = isRootDoc(t);
+      // Prune ghost tabs: if availableFiles is loaded, non-root tabs must exist in project files or be an asset
+      if (availableIds && !isRoot && !t.id.startsWith('asset:') && !availableIds.has(t.id)) {
+        continue;
+      }
+      const key = isRoot ? '__root__' : (t.id || t.title.toLowerCase());
       if (!seen.has(key)) {
         seen.add(key);
-        result.push(t);
+        // Canonical Overleaf standard: root LaTeX entrypoint is always named main.tex
+        const normalizedTitle =
+          isRoot && (t.title.toLowerCase() === 'flux' || t.title.toLowerCase() === 'flux.tex' || !t.title.includes('.'))
+            ? 'main.tex'
+            : t.title;
+        result.push({ ...t, title: normalizedTitle });
       }
     }
     return result;
-  }, [rawTabs, rootPageId]);
+  }, [rawTabs, rootPageId, availableFiles]);
 
   const updateQueryParams = useCallback((newFile: string | null) => {
     const params = new URLSearchParams(searchParams.toString());

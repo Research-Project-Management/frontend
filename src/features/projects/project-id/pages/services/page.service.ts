@@ -61,9 +61,20 @@ export const PageService = {
     return res;
   },
 
-  updateTitle: async (pageId: string, title: string, _oldTitle?: string) => {
-    const res = await apiPut<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${pageId}`, { title });
+  updatePage: async (
+    pageId: string,
+    data: {
+      title?: string;
+      status?: 'draft' | 'published' | 'archived';
+      description?: string;
+    },
+  ) => {
+    const res = await apiPut<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${pageId}`, data);
     return res.page;
+  },
+
+  updateTitle: async (pageId: string, title: string, _oldTitle?: string) => {
+    return PageService.updatePage(pageId, { title });
   },
 };
 

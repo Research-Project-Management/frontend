@@ -71,8 +71,14 @@ class EditorCommandBusImpl implements IEditorCommandBus {
   }
 }
 
+const GLOBAL_BUS_KEY = Symbol.for('__FLUX_EDITOR_COMMAND_BUS__');
+const globalAny = globalThis as any;
+if (!globalAny[GLOBAL_BUS_KEY]) {
+  globalAny[GLOBAL_BUS_KEY] = new EditorCommandBusImpl();
+}
+
 /** Singleton instance for application runtime */
-export const editorCommandBus: IEditorCommandBus = new EditorCommandBusImpl();
+export const editorCommandBus: IEditorCommandBus = globalAny[GLOBAL_BUS_KEY];
 
 /** Factory function for isolated test instances */
 export function createEditorCommandBus(): IEditorCommandBus {

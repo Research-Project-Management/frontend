@@ -25,8 +25,25 @@ const PANDOC_BRACKET_REGEX = /\[([^\]]*@[a-zA-Z0-9_:-]+[^\]]*)\]/g;
 const INLINE_CITEKEY_REGEX = /(?:^|[^\w\\])@([a-zA-Z0-9_:-]+)/g;
 
 /**
+ * Strips LaTeX comments (% ...) while preserving escaped percent signs (\%).
+ */
+export function stripLatexComments(raw: string): string {
+  if (!raw) return '';
+  return raw.replace(/(^|[^\\])%.*$/gm, '$1');
+}
+
+/**
+ * Strips fenced markdown code blocks (```...```) to avoid scanning citation examples in code snippets.
+ */
+export function stripCodeBlocks(raw: string): string {
+  if (!raw) return '';
+  return raw.replace(/```[\s\S]*?```/g, '');
+}
+
+/**
  * Extract all unique citation keys from a LaTeX or Markdown document text.
  * Handles single citations, comma/semicolon separated multi-citations, and optional prefixes/suffixes.
+ * Automatically ignores commented LaTeX lines (% \cite{...}) and code snippets.
  *
  * @example
  * extractCitationKeys('\\cite{vaswani2017attention, devlin2018bert}')
@@ -39,12 +56,15 @@ const INLINE_CITEKEY_REGEX = /(?:^|[^\w\\])@([a-zA-Z0-9_:-]+)/g;
 export function extractCitationKeys(text: string): string[] {
   if (!text || typeof text !== 'string') return [];
 
+  // Sanitize document text to eliminate false positives from comments & code blocks
+  const sanitizedText = stripLatexComments(stripCodeBlocks(text));
+
   const foundKeys = new Set<string>();
 
   // 1. Scan LaTeX citation commands
   let match: RegExpExecArray | null;
   LATEX_CITE_REGEX.lastIndex = 0;
-  while ((match = LATEX_CITE_REGEX.exec(text)) !== null) {
+  while ((match = LATEX_CITE_REGEX.exec(sanitizedText)) !== null) {
     const rawKeys = match[1];
     if (rawKeys) {
       const splitKeys = rawKeys.split(',');
@@ -59,7 +79,7 @@ export function extractCitationKeys(text: string): string[] {
 
   // 2. Scan Pandoc / Markdown bracketed citations
   PANDOC_BRACKET_REGEX.lastIndex = 0;
-  while ((match = PANDOC_BRACKET_REGEX.exec(text)) !== null) {
+  while ((match = PANDOC_BRACKET_REGEX.exec(sanitizedText)) !== null) {
     const bracketContent = match[1];
     if (bracketContent) {
       INLINE_CITEKEY_REGEX.lastIndex = 0;
@@ -75,7 +95,7 @@ export function extractCitationKeys(text: string): string[] {
 
   // 3. Scan standalone @citekey in markdown prose
   INLINE_CITEKEY_REGEX.lastIndex = 0;
-  while ((match = INLINE_CITEKEY_REGEX.exec(text)) !== null) {
+  while ((match = INLINE_CITEKEY_REGEX.exec(sanitizedText)) !== null) {
     const key = match[1]?.trim();
     if (key && isValidCitekey(key)) {
       foundKeys.add(key);

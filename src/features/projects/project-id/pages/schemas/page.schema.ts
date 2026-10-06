@@ -5,6 +5,7 @@ import { z } from 'zod';
 export const pageSchema = z.object({
   id: z.string(),
   title: z.string(),
+  description: z.string().optional(),
   content: z.any().optional(),
   status: z.enum(['draft', 'published', 'archived']).optional(),
   pdfThumbnail: z.string().optional(),

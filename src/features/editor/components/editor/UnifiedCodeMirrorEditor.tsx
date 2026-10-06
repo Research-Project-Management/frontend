@@ -7,80 +7,68 @@
  * - KaTeX in-place math popover editor.
  * - Native Vim mode keybindings via @replit/codemirror-vim (:w / :write save & compile).
  * - Real-time multiplayer CRDT collaboration via y-codemirror.next (yCollab).
+ * - DocumentModelManager integration for 0ms tab switching and persistent cursor/scroll retention.
  * - Plugs into IEditorEngine via CodeMirrorEngineAdapter.
  */
 
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { EditorState, Compartment, Annotation } from '@codemirror/state';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { EditorState } from '@codemirror/state';
 import {
   EditorView,
-  lineNumbers,
-  highlightActiveLineGutter,
-  highlightActiveLine,
   keymap,
   rectangularSelection,
   crosshairCursor,
 } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, toggleComment } from '@codemirror/commands';
-import { foldGutter, foldKeymap, bracketMatching } from '@codemirror/language';
+import { foldKeymap, bracketMatching } from '@codemirror/language';
 import { search, searchKeymap, gotoLine } from '@codemirror/search';
-import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap, startCompletion } from '@codemirror/autocomplete';
-import { forceLinting, linter, lintGutter, type Diagnostic } from '@codemirror/lint';
-import { useRetractedItems } from '@/features/library/data';
-import { buildRetractedCitationMap } from '../../utils/retracted-citations.util';
-import type { RetractedItemInfo } from '../../utils/latex-linter.util';
-import { vim, Vim } from '@replit/codemirror-vim';
-import { yCollab } from 'y-codemirror.next';
+import { closeBracketsKeymap, completionKeymap, startCompletion } from '@codemirror/autocomplete';
+import { forceLinting } from '@codemirror/lint';
 import type * as Y from 'yjs';
 
+import { useRetractedItems } from '@/features/library/data';
+import { buildRetractedCitationMap } from '../../utils/retracted-citations.util';
 import { useEditorInstance } from '../../core/context/editor-instance.context';
 import { CodeMirrorEngineAdapter } from '../../adapters/codemirror/codemirror.adapter';
-import { getEditorTheme } from '../../sub-features/code-editor/codemirror/theme';
-import {
-  latexLanguage,
-  lineHighlightField,
-} from '../../sub-features/code-editor/codemirror/latex-language';
-import { createLatexCompletionSource } from '../../sub-features/code-editor/codemirror/latex-autocomplete';
-import { runLatexLinter } from '../../utils/latex-linter.util';
-import {
-  latexVisualPlugin,
-  visualPasteHandler,
-  setMathEditCallback,
-  type MathPopoverTrigger,
-} from '../../sub-features/code-editor/codemirror/latex-visual-plugin';
+import { lineHighlightField } from '../../sub-features/code-editor/codemirror/latex-language';
 import { MathInlinePopover } from '../../sub-features/code-editor/codemirror/MathInlinePopover';
 import { EditorEventBus } from '../../utils/editor.util';
-import { editorCommandBus } from '../../core/command-bus/editor-command-bus';
-import { useSettingsStore } from '../../store';
+import { useSettingsStore, useCompileStore } from '../../store';
 import { cn } from '@/shared/lib/utils';
-import { toast } from 'sonner';
-import { manuscriptService } from '../../services/manuscript.service';
+import { useEditorDiagnosticsListener } from './hooks/useEditorDiagnosticsListener';
+import { documentModelManager } from '../../core/models/document-model-manager';
 
 import type { PageComment, PageSuggestion } from '@/features/editor/types';
-import {
-  latexCommentsExtension,
-  setCommentsEffect,
-} from '../../sub-features/code-editor/codemirror/latex-comments';
+import { latexCommentsExtension } from '../../sub-features/code-editor/codemirror/latex-comments';
 import {
   latexTrackChangesExtension,
-  setTrackChangesEffect,
+  externalUpdateAnnotation,
   type TrackChangesViewMode,
+  type TrackChangeRecordPayload,
 } from '../../sub-features/code-editor/codemirror/latex-track-changes';
 import {
   InlineSuggestionWidget,
-  type InlineSuggestionWidgetData,
 } from './subcomponents/InlineSuggestionWidget';
-import { emacsKeymap } from '../../sub-features/code-editor/codemirror/emacs-keymap';
-import { createLatexSpellcheckExtension } from '../../sub-features/code-editor/codemirror/latex-spellcheck';
+import type { SelFloating } from './subcomponents/EditorFloatingBar';
+import type { MisspelledItem } from '../../sub-features/code-editor/codemirror/latex-spellcheck';
 import { latexAutoCloseExtension } from '../../sub-features/code-editor/codemirror/latex-auto-close';
 
-export const externalUpdateAnnotation = Annotation.define<boolean>();
+import { useEditorCompartments } from '../../sub-features/code-editor/codemirror/hooks/useEditorCompartments';
+import { useEditorInteractions } from '../../sub-features/code-editor/codemirror/hooks/useEditorInteractions';
+import {
+  createSelectionUpdateHandler,
+  createContextMenuHandler,
+} from '../../sub-features/code-editor/codemirror/hooks/useEditorSelectionBar';
+
+export { externalUpdateAnnotation };
 
 export interface UnifiedCodeMirrorEditorProps {
   value: string;
   onChange: (value: string) => void;
+  fileId?: string;
+  filePath?: string;
   isDarkTheme?: boolean;
   readOnly?: boolean;
   bibEntries?: any[];
@@ -96,93 +84,24 @@ export interface UnifiedCodeMirrorEditorProps {
   trackChangesViewMode?: TrackChangesViewMode;
   onAcceptSuggestion?: (suggestion: PageSuggestion) => void;
   onRejectSuggestion?: (suggestion: PageSuggestion) => void;
-}
-
-function getTypographyExtension(fontSize = 15, fontFamily = 'default', lineHeight = 1.6) {
-  const fontMap: Record<string, string> = {
-    default: 'var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)',
-    menlo: 'Menlo, Monaco, "Courier New", monospace',
-    consolas: 'Consolas, "Lucida Console", monospace',
-    fira: '"Fira Code", monospace',
-    'source-code': '"Source Code Pro", monospace',
-  };
-  const resolvedFont = fontMap[fontFamily] || fontMap.default;
-
-  return EditorView.theme({
-    '&': {
-      fontSize: `${fontSize}px`,
-    },
-    '&.cm-focused': {
-      outline: 'none',
-    },
-    '.cm-scroller': {
-      fontFamily: resolvedFont,
-      lineHeight: `${lineHeight}`,
-      outline: 'none',
-    },
-    '.cm-content': {
-      outline: 'none',
-    },
-  });
-}
-
-function createLatexLinterExtension(
-  getRetractedMap?: () => Map<string, RetractedItemInfo> | undefined,
-) {
-  return [
-    lintGutter(),
-    linter(
-      (view) => {
-        const doc = view.state.doc;
-        const text = doc.toString();
-        const rawDiags = runLatexLinter(text, {
-          retractedItemsMap: getRetractedMap?.(),
-        });
-
-        const diagnostics: Diagnostic[] = [];
-
-        for (const d of rawDiags) {
-          const startLineNum = Math.min(Math.max(1, d.startLineNumber), doc.lines);
-          const endLineNum = Math.min(Math.max(1, d.endLineNumber), doc.lines);
-
-          const startLine = doc.line(startLineNum);
-          const endLine = doc.line(endLineNum);
-
-          const from = Math.min(startLine.from + Math.max(0, d.startColumn - 1), startLine.to);
-          const to = Math.min(endLine.from + Math.max(0, d.endColumn - 1), endLine.to);
-
-          const actions =
-            d.suggestions && d.suggestions.length > 0
-              ? d.suggestions.map((sug) => ({
-                  name: `Fix: ${sug}`,
-                  apply: (editorView: EditorView, aFrom: number, aTo: number) => {
-                    editorView.dispatch({
-                      changes: { from: aFrom, to: aTo, insert: sug },
-                    });
-                  },
-                }))
-              : undefined;
-
-          diagnostics.push({
-            from: Math.min(from, to),
-            to: Math.max(from, to, from + 1),
-            severity: d.severity,
-            message: d.message,
-            source: 'LaTeX Code Check',
-            actions,
-          });
-        }
-
-        return diagnostics;
-      },
-      { delay: 1000 },
-    ),
-  ];
+  reviewMode?: boolean;
+  onCreateSuggestion?: (change: TrackChangeRecordPayload) => void;
+  onSelectionFloating?: (floating: SelFloating | null) => void;
+  onContextMenu?: (data: {
+    x: number;
+    y: number;
+    startLine: number;
+    endLine: number;
+    text: string;
+    misspelledInfo?: MisspelledItem | null;
+  }) => void;
 }
 
 export default function UnifiedCodeMirrorEditor({
   value,
   onChange,
+  fileId,
+  filePath,
   isDarkTheme = false,
   readOnly = false,
   bibEntries = [],
@@ -198,6 +117,10 @@ export default function UnifiedCodeMirrorEditor({
   trackChangesViewMode = 'show',
   onAcceptSuggestion,
   onRejectSuggestion,
+  reviewMode,
+  onCreateSuggestion,
+  onSelectionFloating,
+  onContextMenu,
 }: UnifiedCodeMirrorEditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -205,6 +128,17 @@ export default function UnifiedCodeMirrorEditor({
   const lastSyncedValueRef = useRef(value);
   const { setEngine } = useEditorInstance();
 
+  const onSelectionFloatingRef = useRef(onSelectionFloating);
+  onSelectionFloatingRef.current = onSelectionFloating;
+  const onContextMenuRef = useRef(onContextMenu);
+  onContextMenuRef.current = onContextMenu;
+
+  const reviewModeRef = useRef(reviewMode);
+  reviewModeRef.current = reviewMode;
+  const onCreateSuggestionRef = useRef(onCreateSuggestion);
+  onCreateSuggestionRef.current = onCreateSuggestion;
+
+  // Settings from global store
   const editorMode = useSettingsStore((s) => s.editorMode);
   const storeKeybinding = useSettingsStore((s) => s.keybinding);
   const fontSize = useSettingsStore((s) => s.fontSize);
@@ -219,53 +153,32 @@ export default function UnifiedCodeMirrorEditor({
   const spellCheck = useSettingsStore((s) => s.spellCheck);
   const spellCheckLanguage = useSettingsStore((s) => s.spellCheckLanguage);
 
-  const [mathTrigger, setMathTrigger] = useState<MathPopoverTrigger | null>(null);
+  const compileErrors = useCompileStore((s) => s.compileErrors);
+  const compileErrorsRef = useRef(compileErrors);
+  compileErrorsRef.current = compileErrors;
 
-  // Compartments for dynamic reconfiguration without recreating editor
-  const modeCompartmentRef = useRef(new Compartment());
-  const themeCompartmentRef = useRef(new Compartment());
-  const typographyCompartmentRef = useRef(new Compartment());
-  const readOnlyCompartmentRef = useRef(new Compartment());
-  const keybindingCompartmentRef = useRef(new Compartment());
-  const collabCompartmentRef = useRef(new Compartment());
-  const wordWrapCompartmentRef = useRef(new Compartment());
-  const lineNumbersCompartmentRef = useRef(new Compartment());
-  const bracketsCompartmentRef = useRef(new Compartment());
-  const autocompleteCompartmentRef = useRef(new Compartment());
-  const cursorBlinkCompartmentRef = useRef(new Compartment());
-  const linterCompartmentRef = useRef(new Compartment());
-  const spellcheckCompartmentRef = useRef(new Compartment());
+  const linterEnabledRef = useRef(linterEnabled);
+  linterEnabledRef.current = linterEnabled;
 
-  // Listen for math widget clicks
-  useEffect(() => {
-    setMathEditCallback((trigger) => {
-      setMathTrigger(trigger);
-    });
-    return () => {
-      setMathEditCallback(null);
-    };
-  }, []);
+  const effectiveKeybinding = keybinding || storeKeybinding;
 
-  // Register Vim Ex commands (:w, :write, :wq to compile & save)
-  useEffect(() => {
-    try {
-      Vim.defineEx('write', 'w', () => {
-        editorCommandBus.dispatch({ type: 'compiler:trigger' });
-      });
-      Vim.defineEx('wq', 'wq', () => {
-        editorCommandBus.dispatch({ type: 'compiler:trigger' });
-      });
-    } catch {
-      // Ex commands already defined in shared namespace
-    }
-  }, []);
-
+  // Shared project / bib references
   const bibEntriesRef = useRef(bibEntries);
   useEffect(() => {
     bibEntriesRef.current = bibEntries;
   }, [bibEntries]);
 
-  // Zotero-style: warn on \cite of a retracted work (matched by DOI).
+  const projectFilesRef = useRef(projectFiles);
+  useEffect(() => {
+    projectFilesRef.current = projectFiles;
+  }, [projectFiles]);
+
+  const valueRef = useRef(value);
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
+  // Zotero-style: warn on \cite of a retracted work (matched by DOI)
   const { data: retractedItems } = useRetractedItems(projectId, Boolean(linterEnabled));
   const retractedMap = useMemo(
     () => buildRetractedCitationMap(bibEntries, retractedItems),
@@ -278,34 +191,101 @@ export default function UnifiedCodeMirrorEditor({
     if (view) forceLinting(view);
   }, [retractedMap]);
 
-  const projectFilesRef = useRef(projectFiles);
+  // Force re-linting immediately when compiler errors or linter setting updates
   useEffect(() => {
-    projectFilesRef.current = projectFiles;
-  }, [projectFiles]);
+    if (viewRef.current) {
+      forceLinting(viewRef.current);
+    }
+  }, [compileErrors, linterEnabled]);
 
-  const valueRef = useRef(value);
+  // ── CodeMirror Compartments & Dynamic Reconfigurations ─────────────────────
+  const { getInitialExtensions } = useEditorCompartments({
+    viewRef,
+    editorMode,
+    isDarkTheme,
+    fontSize,
+    fontFamily,
+    lineHeight,
+    readOnly,
+    effectiveKeybinding,
+    spellCheck,
+    spellCheckLanguage,
+    projectId,
+    yText,
+    awareness,
+    valueRef,
+    wordWrap,
+    lineNumbersSetting,
+    reviewModeRef,
+    onCreateSuggestionRef,
+    autoCloseBrackets,
+    autoComplete,
+    nonBlinkingCursor,
+    retractedMapRef,
+    compileErrorsRef,
+    linterEnabledRef,
+    comments,
+    activeCommentId,
+    suggestions,
+    trackChangesViewMode,
+    bibEntriesRef,
+    projectFilesRef,
+  });
+
+  // ── Editor Interactions & In-place Widgets ────────────────────────────────
+  const {
+    mathTrigger,
+    setMathTrigger,
+    activeSuggestionWidget,
+    setActiveSuggestionWidget,
+    handleApplyMath,
+    handleDoubleClick,
+  } = useEditorInteractions({
+    viewRef,
+    suggestions,
+    onSyncTexReverse,
+  });
+
+  // ── Global Editor Commands: AutoFix & Project Lint ─────────────────────────
+  useEditorDiagnosticsListener({ viewRef, retractedMapRef });
+
+  // ── Register In-Memory Virtual Document Model ──────────────────────────────
   useEffect(() => {
-    valueRef.current = value;
-  }, [value]);
+    if (fileId) {
+      documentModelManager.registerModel(fileId, {
+        filePath: filePath || fileId,
+        content: value,
+        yText,
+      });
+    }
+  }, [fileId, filePath, yText]);
 
-  // ── Mount CodeMirror 6 ───────────────────────────────────────────────────
+  // ── Mount CodeMirror 6 ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const latexCompletion = autocompletion({
-      override: [
-        createLatexCompletionSource(
-          () => bibEntriesRef.current,
-          () => projectFilesRef.current || []
-        ),
-      ],
-    });
-
-    const isVisual = editorMode === 'visual';
-    const isVim = (keybinding || storeKeybinding) === 'vim';
-    const isEmacs = (keybinding || storeKeybinding) === 'emacs';
+    let changeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const flushPendingChange = () => {
+      if (changeDebounceTimer) {
+        clearTimeout(changeDebounceTimer);
+        changeDebounceTimer = null;
+        const view = viewRef.current;
+        if (view) {
+          const nextText = view.state.doc.toString();
+          if (nextText !== lastSyncedValueRef.current) {
+            lastSyncedValueRef.current = nextText;
+            if (fileId) {
+              documentModelManager.updateContent(fileId, nextText, true);
+            }
+            onChange(nextText);
+          }
+        }
+      }
+    };
 
     const initialDoc = (yText && yText.length > 0 ? yText.toString() : value) ?? '';
+    const selectionUpdateHandler = createSelectionUpdateHandler(onSelectionFloatingRef);
+
     const startState = EditorState.create({
       doc: initialDoc,
       extensions: [
@@ -320,40 +300,6 @@ export default function UnifiedCodeMirrorEditor({
         EditorState.allowMultipleSelections.of(true),
         rectangularSelection(),
         crosshairCursor(),
-
-        // Dynamic Settings Compartments
-        wordWrapCompartmentRef.current.of((wordWrap || isVisual) ? [EditorView.lineWrapping] : []),
-        linterCompartmentRef.current.of(
-          linterEnabled && !isVisual ? createLatexLinterExtension(() => retractedMapRef.current) : []
-        ),
-        spellcheckCompartmentRef.current.of(
-          spellCheck ? createLatexSpellcheckExtension(projectId, () => spellCheckLanguage) : []
-        ),
-        lineNumbersCompartmentRef.current.of(
-          lineNumbersSetting ? [lineNumbers(), highlightActiveLineGutter()] : []
-        ),
-        bracketsCompartmentRef.current.of(autoCloseBrackets ? [closeBrackets()] : []),
-        autocompleteCompartmentRef.current.of(
-          autoComplete ? [latexCompletion] : []
-        ),
-        cursorBlinkCompartmentRef.current.of(
-          nonBlinkingCursor ? [EditorView.theme({ '.cm-cursor': { animation: 'none' } })] : []
-        ),
-
-        // Update listener
-        EditorView.updateListener.of((update) => {
-          if (adapterRef.current) {
-            adapterRef.current.handleViewUpdate(update);
-          }
-          if (update.docChanged) {
-            const isExternal = update.transactions.some((tr) => tr.annotation(externalUpdateAnnotation));
-            if (!isExternal) {
-              const nextText = update.state.doc.toString();
-              lastSyncedValueRef.current = nextText;
-              onChange(nextText);
-            }
-          }
-        }),
 
         // Keymaps (Overleaf 1:1 Parity)
         keymap.of([
@@ -375,42 +321,53 @@ export default function UnifiedCodeMirrorEditor({
           { key: 'Alt-Shift-F', run: () => { EditorEventBus.emit('flux:autofix'); return true; } },
         ]),
 
-        // Keybinding compartment (Vim vs Emacs vs Standard)
-        keybindingCompartmentRef.current.of(
-          isVim
-            ? [vim({ status: true })]
-            : isEmacs
-            ? [keymap.of(emacsKeymap)]
-            : []
-        ),
+        // Context menu handler (Overleaf parity right-click spellcheck & editor actions)
+        createContextMenuHandler(onContextMenuRef),
 
-        // Yjs Multiplayer Collaboration compartment
-        collabCompartmentRef.current.of(
-          yText && awareness ? [yCollab(yText, awareness)] : []
-        ),
+        // Update listener
+        EditorView.updateListener.of((update) => {
+          if (adapterRef.current) {
+            adapterRef.current.handleViewUpdate(update);
+          }
 
-        // Typography compartment (Font size, family, line height)
-        typographyCompartmentRef.current.of(
-          getTypographyExtension(fontSize, fontFamily, lineHeight)
-        ),
+          selectionUpdateHandler(update);
 
-        // Theme compartment
-        themeCompartmentRef.current.of(getEditorTheme(isDarkTheme)),
+          if (fileId && (update.selectionSet || update.geometryChanged)) {
+            const mainSel = update.state.selection.main;
+            const scroller = update.view.scrollDOM;
+            documentModelManager.updateViewState(
+              fileId,
+              { anchor: mainSel.anchor, head: mainSel.head },
+              { top: scroller.scrollTop, left: scroller.scrollLeft }
+            );
+          }
 
-        // ReadOnly compartment
-        readOnlyCompartmentRef.current.of(EditorState.readOnly.of(readOnly)),
+          if (update.docChanged) {
+            const isExternal = update.transactions.some((tr) => tr.annotation(externalUpdateAnnotation));
+            if (!isExternal) {
+              // Micro-debounce stringification (75ms): eliminates megabyte rope re-allocations on every single keystroke
+              if (changeDebounceTimer) {
+                clearTimeout(changeDebounceTimer);
+              }
+              changeDebounceTimer = setTimeout(() => {
+                changeDebounceTimer = null;
+                const view = viewRef.current;
+                if (!view) return;
+                const nextText = view.state.doc.toString();
+                if (nextText !== lastSyncedValueRef.current) {
+                  lastSyncedValueRef.current = nextText;
+                  if (fileId) {
+                    documentModelManager.updateContent(fileId, nextText, true);
+                  }
+                  onChange(nextText);
+                }
+              }, 75);
+            }
+          }
+        }),
 
-        // Mode compartment: Code vs Visual (Overleaf 0ms dynamic toggle)
-        modeCompartmentRef.current.of(
-          isVisual
-            ? [latexVisualPlugin]
-            : [
-                highlightActiveLine(),
-                foldGutter(),
-                latexLanguage,
-                visualPasteHandler,
-              ]
-        ),
+        // Compartments
+        ...getInitialExtensions(),
       ],
     });
 
@@ -424,7 +381,44 @@ export default function UnifiedCodeMirrorEditor({
     adapterRef.current = adapter;
     setEngine(adapter);
 
+    // 0ms Instant View State Restoration from Virtual Document Model
+    if (fileId) {
+      const cached = documentModelManager.getModel(fileId);
+      if (cached?.selection) {
+        const maxLen = view.state.doc.length;
+        const anchor = Math.min(cached.selection.anchor, maxLen);
+        const head = Math.min(cached.selection.head, maxLen);
+        view.dispatch({
+          selection: { anchor, head },
+          scrollIntoView: false,
+        });
+      }
+      if (cached?.scrollViewport) {
+        requestAnimationFrame(() => {
+          if (view.scrollDOM) {
+            view.scrollDOM.scrollTop = cached.scrollViewport!.top;
+            view.scrollDOM.scrollLeft = cached.scrollViewport!.left;
+          }
+        });
+      }
+    }
+
+    const unsubCompile = EditorEventBus.on('flux:compile-started', flushPendingChange);
+    view.contentDOM.addEventListener('blur', flushPendingChange);
+
     return () => {
+      if (fileId && viewRef.current) {
+        const mainSel = viewRef.current.state.selection.main;
+        const scroller = viewRef.current.scrollDOM;
+        documentModelManager.updateViewState(
+          fileId,
+          { anchor: mainSel.anchor, head: mainSel.head },
+          { top: scroller.scrollTop, left: scroller.scrollLeft }
+        );
+      }
+      flushPendingChange();
+      unsubCompile();
+      view.contentDOM.removeEventListener('blur', flushPendingChange);
       adapter.onDestroy();
       setEngine(null);
       view.destroy();
@@ -432,298 +426,6 @@ export default function UnifiedCodeMirrorEditor({
       adapterRef.current = null;
     };
   }, []); // Mount once
-
-  // ── Dynamic Comments Highlighting Switching ────────────────────────────────
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    view.dispatch({
-      effects: setCommentsEffect.of({
-        comments: comments || [],
-        activeCommentId,
-      }),
-    });
-  }, [comments, activeCommentId]);
-
-  // ── Dynamic Track Changes / Suggestions Highlighting ───────────────────────
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    view.dispatch({
-      effects: setTrackChangesEffect.of({
-        suggestions: suggestions || [],
-        viewMode: trackChangesViewMode || 'show',
-      }),
-    });
-  }, [suggestions, trackChangesViewMode]);
-
-  // ── Track Changes Floating Widget State & Listener ─────────────────────────
-  const [activeSuggestionWidget, setActiveSuggestionWidget] = useState<InlineSuggestionWidgetData | null>(null);
-
-  useEffect(() => {
-    const unsub = EditorEventBus.on('flux:open-suggestion-widget', (detail: any) => {
-      if (detail && detail.suggestionId) {
-        const found = (suggestions || []).find((s) => s.id === detail.suggestionId);
-        if (found) {
-          setActiveSuggestionWidget({
-            suggestion: found,
-            x: detail.x ?? 120,
-            y: detail.y ?? 120,
-          });
-        }
-      }
-    });
-    return () => unsub();
-  }, [suggestions]);
-
-  // ── Dynamic Theme Switching ───────────────────────────────────────────────
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    view.dispatch({
-      effects: themeCompartmentRef.current.reconfigure(getEditorTheme(isDarkTheme)),
-    });
-  }, [isDarkTheme]);
-
-  // ── Dynamic Typography Switching (Font size, family, line height) ─────────
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    view.dispatch({
-      effects: typographyCompartmentRef.current.reconfigure(
-        getTypographyExtension(fontSize, fontFamily, lineHeight)
-      ),
-    });
-  }, [fontSize, fontFamily, lineHeight]);
-
-  // ── Dynamic ReadOnly Switching ────────────────────────────────────────────
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    view.dispatch({
-      effects: readOnlyCompartmentRef.current.reconfigure(EditorState.readOnly.of(readOnly)),
-    });
-  }, [readOnly]);
-
-  // ── Dynamic Keybinding Switching (Vim & Emacs modes) ──────────────────────
-  const effectiveKeybinding = keybinding || storeKeybinding;
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    const isVim = effectiveKeybinding === 'vim';
-    const isEmacs = effectiveKeybinding === 'emacs';
-    view.dispatch({
-      effects: keybindingCompartmentRef.current.reconfigure(
-        isVim
-          ? [vim({ status: true })]
-          : isEmacs
-          ? [keymap.of(emacsKeymap)]
-          : []
-      ),
-    });
-  }, [effectiveKeybinding]);
-
-  // ── Dynamic Spellcheck Switching ──────────────────────────────────────────
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    view.dispatch({
-      effects: spellcheckCompartmentRef.current.reconfigure(
-        spellCheck ? createLatexSpellcheckExtension(projectId, () => spellCheckLanguage) : []
-      ),
-    });
-  }, [spellCheck, spellCheckLanguage, projectId]);
-
-  // ── Dynamic Yjs Multiplayer Collaboration Switching ────────────────────────
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-
-    if (!yText || !awareness) {
-      view.dispatch({
-        effects: collabCompartmentRef.current.reconfigure([]),
-      });
-      return;
-    }
-
-    const currentVal = valueRef.current;
-    // Seed yText if empty and we have a valid initial value
-    if (yText.length === 0 && currentVal && currentVal.length > 0) {
-      yText.doc?.transact(() => {
-        if (yText.length === 0) {
-          yText.insert(0, currentVal);
-        }
-      });
-    }
-
-    const currentDoc = view.state.doc.toString();
-    const yContent = yText.toString();
-    if (yContent.length > 0 && currentDoc !== yContent) {
-      view.dispatch({
-        changes: { from: 0, to: currentDoc.length, insert: yContent },
-        effects: collabCompartmentRef.current.reconfigure([yCollab(yText, awareness)]),
-      });
-      return;
-    }
-
-    view.dispatch({
-      effects: collabCompartmentRef.current.reconfigure([yCollab(yText, awareness)]),
-    });
-  }, [yText, awareness]);
-
-  // ── 0ms Instant Mode Toggle (Code <-> Visual) ─────────────────────────────
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-
-    const isVisual = editorMode === 'visual';
-    const modeExtensions = isVisual
-      ? [latexVisualPlugin]
-      : [
-          highlightActiveLine(),
-          foldGutter(),
-          latexLanguage,
-          visualPasteHandler,
-        ];
-
-    view.dispatch({
-      effects: modeCompartmentRef.current.reconfigure(modeExtensions),
-    });
-  }, [editorMode]);
-
-  // ── Dynamic Word Wrap Switching ───────────────────────────────────────────
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    const isVisual = editorMode === 'visual';
-    view.dispatch({
-      effects: wordWrapCompartmentRef.current.reconfigure(
-        (wordWrap || isVisual) ? [EditorView.lineWrapping] : []
-      ),
-    });
-  }, [wordWrap, editorMode]);
-
-  // ── Dynamic Line Numbers Switching (Code & Visual modes) ──────────────────
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    view.dispatch({
-      effects: lineNumbersCompartmentRef.current.reconfigure(
-        lineNumbersSetting ? [lineNumbers(), highlightActiveLineGutter()] : []
-      ),
-    });
-  }, [lineNumbersSetting]);
-
-  // ── Dynamic Auto-close Brackets Switching ─────────────────────────────────
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    view.dispatch({
-      effects: bracketsCompartmentRef.current.reconfigure(autoCloseBrackets ? [closeBrackets()] : []),
-    });
-  }, [autoCloseBrackets]);
-
-  // ── Dynamic Auto-complete Switching (Code & Visual modes) ─────────────────
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    const latexCompletion = autocompletion({
-      override: [
-        createLatexCompletionSource(
-          () => bibEntriesRef.current,
-          () => projectFilesRef.current || []
-        ),
-      ],
-    });
-    view.dispatch({
-      effects: autocompleteCompartmentRef.current.reconfigure(
-        autoComplete ? [latexCompletion] : []
-      ),
-    });
-  }, [autoComplete]);
-
-  // ── Dynamic Non-blinking Cursor Switching ─────────────────────────────────
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    view.dispatch({
-      effects: cursorBlinkCompartmentRef.current.reconfigure(
-        nonBlinkingCursor ? [EditorView.theme({ '.cm-cursor': { animation: 'none' } })] : []
-      ),
-    });
-  }, [nonBlinkingCursor]);
-
-  // ── Dynamic Code Check / Linter Switching ─────────────────────────────────
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    const isVisual = editorMode === 'visual';
-    view.dispatch({
-      effects: linterCompartmentRef.current.reconfigure(
-        linterEnabled && !isVisual ? createLatexLinterExtension(() => retractedMapRef.current) : []
-      ),
-    });
-  }, [linterEnabled, editorMode]);
-
-  // ── Global Editor Commands: AutoFix & Project Lint ─────────────────────────
-  useEffect(() => {
-    const unsubAutoFix = EditorEventBus.on('flux:autofix', async () => {
-      const view = viewRef.current;
-      if (!view) return;
-      const content = view.state.doc.toString();
-      if (!content.trim()) return;
-
-      try {
-        toast.loading('Applying LaTeX syntax fixes...', { id: 'flux:autofix' });
-        const res = await manuscriptService.diagnostics.autoFix(content);
-        if (res && res.fixedSource && res.fixedSource !== content) {
-          view.dispatch({
-            changes: { from: 0, to: view.state.doc.length, insert: res.fixedSource },
-          });
-          const count = res.appliedFixes?.length ?? 1;
-          toast.success(
-            `Applied ${count} LaTeX syntax fix(es)!`,
-            { id: 'flux:autofix' }
-          );
-        } else {
-          toast.info('No common LaTeX syntax issues found to fix', { id: 'flux:autofix' });
-        }
-      } catch (err: any) {
-        toast.error(err?.message || 'Failed to auto-fix document', { id: 'flux:autofix' });
-      }
-    });
-
-    const unsubLint = EditorEventBus.on('flux:lint-page', async () => {
-      const view = viewRef.current;
-      if (!view) return;
-      const content = view.state.doc.toString();
-      if (!content.trim()) return;
-
-      try {
-        toast.loading('Checking page LaTeX syntax...', { id: 'flux:lint' });
-        const diags = runLatexLinter(content, {
-          retractedItemsMap: retractedMapRef.current,
-        });
-        const errs = diags.filter((d) => d.severity === 'error').length;
-        const warns = diags.filter((d) => d.severity === 'warning').length;
-        if (diags.length > 0) {
-          toast.warning(
-            `Page check found ${errs} error(s) and ${warns} warning(s)`,
-            { id: 'flux:lint' }
-          );
-        } else {
-          toast.success('Page passed static LaTeX check with no issues!', { id: 'flux:lint' });
-        }
-      } catch (err: any) {
-        toast.error(err?.message || 'Failed to check page syntax', { id: 'flux:lint' });
-      }
-    });
-
-    return () => {
-      unsubAutoFix();
-      unsubLint();
-    };
-  }, []);
 
   // ── Sync External Value (e.g. Page Switch or Remote Sync) ──────────────────
   useEffect(() => {
@@ -743,41 +445,6 @@ export default function UnifiedCodeMirrorEditor({
     }
   }, [value, yText]);
 
-  // ── In-place Math Popover Save ─────────────────────────────────────────────
-  const handleApplyMath = useCallback(
-    (newFormula: string, from: number, to: number, isDisplay: boolean) => {
-      const view = viewRef.current;
-      if (!view) return;
-
-      const replacement = isDisplay ? `$$\n${newFormula}\n$$` : `$${newFormula}$`;
-      view.dispatch({
-        changes: { from, to, insert: replacement },
-      });
-      view.focus();
-    },
-    []
-  );
-
-  // ── Reverse SyncTeX on Double Click or Ctrl+Click ─────────────────────────
-  const handleDoubleClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      const view = viewRef.current;
-      if (!view) return;
-
-      const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
-      if (pos !== null) {
-        const line = view.state.doc.lineAt(pos);
-        const col = pos - line.from + 1;
-
-        if (onSyncTexReverse) {
-          onSyncTexReverse(line.number, col);
-        }
-        editorCommandBus.dispatch({ type: 'viewer:jump-to-line', line: line.number });
-      }
-    },
-    [onSyncTexReverse]
-  );
-
   return (
     <div className="flex-1 w-full min-w-0 max-w-full h-full relative min-h-0 overflow-hidden">
       {/* CodeMirror DOM Container */}
@@ -790,7 +457,7 @@ export default function UnifiedCodeMirrorEditor({
           '[&_.cm-scroller]:h-full [&_.cm-scroller]:w-full [&_.cm-scroller]:max-w-full [&_.cm-scroller]:min-w-0',
           '[&_.cm-editor]:outline-none [&_.cm-editor.cm-focused]:outline-none [&_.cm-scroller]:outline-none [&_.cm-content]:outline-none',
           '[&_.cm-ySelectionCaret]:border-l-2 [&_.cm-ySelectionCaret]:border-r-0 [&_.cm-ySelectionCaret]:transition-all',
-          '[&_.cm-ySelectionInfo]:font-sans [&_.cm-ySelectionInfo]:rounded-xs [&_.cm-ySelectionInfo]:px-1.5 [&_.cm-ySelectionInfo]:py-0.5 [&_.cm-ySelectionInfo]:text-[10px] [&_.cm-ySelectionInfo]:font-semibold [&_.cm-ySelectionInfo]:tracking-normal',
+          '[&_.cm-ySelectionInfo]:font-sans [&_.cm-ySelectionInfo]:rounded-xs [&_.cm-ySelectionInfo]:px-1.5 [&_.cm-ySelectionInfo]:py-0.5 [&_.cm-ySelectionInfo]:text-10 [&_.cm-ySelectionInfo]:font-semibold [&_.cm-ySelectionInfo]:tracking-normal',
           editorMode === 'visual' &&
             '[&_.cm-content]:font-sans [&_.cm-content]:text-base [&_.cm-content]:px-6 [&_.cm-content]:py-3'
         )}

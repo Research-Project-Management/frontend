@@ -10,12 +10,16 @@ import { useProjects, useProject } from '@/features/projects/shell/hooks/use-pro
 import { Topbar } from './components/layout/Topbar';
 import { PagesEmptyState } from './components/layout/PagesEmptyState';
 import { CreateModal } from './components/modals/CreateModal';
+import { EditModal } from './components/modals/EditModal';
 import { TemplatePickerDialog } from './components/modals/TemplatePickerDialog';
+import { ImportDocumentModal } from './components/modals/ImportDocumentModal';
+import { ImportGithubModal } from './components/modals/ImportGithubModal';
 import { GridView } from './components/views/GridView';
 import { ListView } from './components/views/ListView';
-import type { PagesViewMode } from './types/page.types';
+import type { Page, PagesViewMode, PageStatus } from './types/page.types';
 import { useProjectLabels } from '../settings/hooks/use-label';
 import { PageLayout, PageContent } from '@/shared/components/layout';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 
 export function ProjectPagesView({ projectId: propProjectId }: { projectId?: string } = {}) {
   const router = useRouter();
@@ -64,9 +68,14 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
   }, [projectFromList, projectState?.project, projectId]);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingPage, setEditingPage] = useState<Page | null>(null);
   const [isTemplatePickerOpen, setIsTemplatePickerOpen] = useState(false);
   const [templatePickerCategory, setTemplatePickerCategory] = useState<string>('all');
+  const [isImportDocModalOpen, setIsImportDocModalOpen] = useState(false);
+  const [importDocFormat, setImportDocFormat] = useState<'docx' | 'md'>('docx');
+  const [isImportGithubOpen, setIsImportGithubOpen] = useState(false);
   const [title, setTitle] = useState('');
+  const [status, setStatus] = useState<PageStatus>('published');
   const [templateType, setTemplateType] = useState<'blank' | 'example'>('blank');
   const [createSelectedLabelIds, setCreateSelectedLabelIds] = useState<string[]>([]);
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
@@ -82,18 +91,62 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
 
   const { data: projectLabels = [] } = useProjectLabels(projectId);
 
+  // Extract only labels that are actually assigned to at least one page in this project
+  const assignedLabels = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; color?: string }>();
+    for (const page of pages) {
+      if (Array.isArray(page.labels)) {
+        for (const l of page.labels) {
+          if (!l) continue;
+          if (typeof l === 'string') {
+            const matched = projectLabels.find((pl: any) => pl.id === l || pl.name === l);
+            const id = matched?.id || l;
+            const name = matched?.name || l;
+            const color = matched?.color || '#3b82f6';
+            if (!map.has(id)) {
+              map.set(id, { id, name, color });
+            }
+          } else if (typeof l === 'object') {
+            const id = (l as any).id || (l as any).name;
+            const matched = projectLabels.find((pl: any) => pl.id === id || pl.name === (l as any).name);
+            const name = matched?.name || (l as any).name || (l as any).title || id;
+            const color = (l as any).color || matched?.color || '#3b82f6';
+            if (id && !map.has(id)) {
+              map.set(id, { id, name, color });
+            }
+          }
+        }
+      }
+    }
+
+    // Also include any currently selected label so the user can see and uncheck it
+    if (selectedLabelIds.length > 0) {
+      for (const id of selectedLabelIds) {
+        if (!map.has(id)) {
+          const matched = projectLabels.find((pl: any) => pl.id === id || pl.name === id);
+          if (matched) {
+            map.set(id, matched);
+          }
+        }
+      }
+    }
+
+    return Array.from(map.values());
+  }, [pages, projectLabels, selectedLabelIds]);
+
   const selectedLabels = useMemo(
-    () => projectLabels.filter((l: any) => selectedLabelIds.includes(l.id)),
-    [projectLabels, selectedLabelIds]
+    () => assignedLabels.filter((l: any) => selectedLabelIds.includes(l.id)),
+    [assignedLabels, selectedLabelIds]
   );
 
   const filteredPages = useMemo(() => {
     let result = pages;
     if (selectedLabelIds.length > 0) {
       result = result.filter((page) =>
-        (page.labels as any[])?.some(
-          (label) => selectedLabelIds.includes(label.id || label)
-        )
+        (page.labels as any[])?.some((label) => {
+          const lid = typeof label === 'string' ? label : (label?.id || label?.name);
+          return selectedLabelIds.includes(lid);
+        })
       );
     }
     if (searchQuery.trim()) {
@@ -119,11 +172,13 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
       const data = await createPage.mutateAsync({
         projectId,
         title: trimmedTitle,
+        status,
         labels: createSelectedLabelIds,
         templateType,
       });
       setIsCreateModalOpen(false);
       setTitle('');
+      setStatus('published');
       setCreateSelectedLabelIds([]);
       setTemplateType('blank');
       const mainFileId =
@@ -164,13 +219,18 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
           setIsCreateModalOpen(true);
         }}
         onImportZip={handleImportZip}
+        onOpenImportDoc={(fmt) => {
+          setImportDocFormat(fmt);
+          setIsImportDocModalOpen(true);
+        }}
+        onOpenImportGithub={() => setIsImportGithubOpen(true)}
         onOpenTemplates={(category) => {
           setTemplatePickerCategory(category);
           setIsTemplatePickerOpen(true);
         }}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        projectLabels={projectLabels}
+        projectLabels={assignedLabels}
         selectedLabelIds={selectedLabelIds}
         onSelectLabelIds={setSelectedLabelIds}
       />
@@ -258,9 +318,9 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
             onClearFilter={() => setSelectedLabelIds([])}
           />
         ) : viewMode === 'grid' ? (
-          <GridView pages={filteredPages} />
+          <GridView pages={filteredPages} onEdit={setEditingPage} />
         ) : (
-          <ListView pages={filteredPages} />
+          <ListView pages={filteredPages} onEdit={setEditingPage} />
         )}
       </PageContent>
 
@@ -269,6 +329,8 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
         setIsOpen={setIsCreateModalOpen}
         title={title}
         setTitle={setTitle}
+        status={status}
+        setStatus={setStatus}
         handleCreate={handleCreate}
         isCreating={createPage.isPending}
         projectLabels={projectLabels}
@@ -279,11 +341,34 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
         setTemplateType={setTemplateType}
       />
 
+      <EditModal
+        isOpen={!!editingPage}
+        setIsOpen={(open) => {
+          if (!open) setEditingPage(null);
+        }}
+        page={editingPage}
+        projectId={projectId}
+        projectLabels={projectLabels}
+      />
+
       <TemplatePickerDialog
         isOpen={isTemplatePickerOpen}
         setIsOpen={setIsTemplatePickerOpen}
         projectId={projectId}
         initialCategory={templatePickerCategory}
+      />
+
+      <ImportDocumentModal
+        isOpen={isImportDocModalOpen}
+        setIsOpen={setIsImportDocModalOpen}
+        projectId={projectId}
+        initialFormat={importDocFormat}
+      />
+
+      <ImportGithubModal
+        isOpen={isImportGithubOpen}
+        setIsOpen={setIsImportGithubOpen}
+        projectId={projectId}
       />
     </PageLayout>
   );

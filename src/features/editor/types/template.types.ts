@@ -17,23 +17,9 @@ export interface DocumentTemplate {
   isSystem?: boolean;
 }
 
-export interface CreateTemplateInput {
-  name: string;
-  slug?: string;
-  description?: string;
-  category?: string;
-  thumbnail?: string;
-  content?: unknown;
-  files?: Record<string, string>;
-  isSystem?: boolean;
-}
-
-export interface ApplyTemplateInput {
-  title?: string;
-}
-
-export interface SaveAsTemplateInput {
-  name: string;
-  description?: string;
-  category?: string;
-}
+// Derived directly from Zod schemas (Single Source of Truth)
+export type {
+  CreateTemplateInput,
+  ApplyTemplateInput,
+  SaveAsTemplateInput,
+} from '../schemas/template.schema';

@@ -153,21 +153,32 @@ export function useActiveDocument() {
       setCurrentPage?.(parentPage);
       setActivePageId?.(parentPage.id);
 
-      const resolvedTitle = parentPage.title || 'main.tex';
+      const rawTitle = parentPage.title || '';
+      const resolvedTitle =
+        rawTitle.toLowerCase() === 'flux' || rawTitle.toLowerCase() === 'flux.tex' || !rawTitle.includes('.')
+          ? 'main.tex'
+          : rawTitle;
 
       if (pageId) {
-        openTab(pageId, {
-          id: parentPage.id,
-          title: resolvedTitle,
-        });
-        setActive(pageId, parentPage.id);
+        const existingTabs = useTabsStore.getState().tabsByProject[pageId];
+        // Only seed tab if project tabs are completely uninitialized
+        if (existingTabs === undefined) {
+          openTab(pageId, {
+            id: parentPage.id,
+            title: resolvedTitle,
+          });
+          setActive(pageId, parentPage.id);
+        }
       }
       if (projectId && projectId !== pageId) {
-        openTab(projectId, {
-          id: parentPage.id,
-          title: resolvedTitle,
-        });
-        setActive(projectId, parentPage.id);
+        const existingTabs = useTabsStore.getState().tabsByProject[projectId];
+        if (existingTabs === undefined) {
+          openTab(projectId, {
+            id: parentPage.id,
+            title: resolvedTitle,
+          });
+          setActive(projectId, parentPage.id);
+        }
       }
     } else if (activeFile) {
       setCurrentPage?.(activeFile);

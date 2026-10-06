@@ -142,6 +142,8 @@ export interface CitationValidationDto {
   totalEntries: number;
 }
 
+export type CitationValidationResult = CitationValidationDto;
+
 export interface TemplateSummaryDto {
   id: string;
   name: string;
@@ -254,6 +256,18 @@ export const MANUSCRIPTS_API_BASE =
   process.env.NEXT_PUBLIC_MANUSCRIPT_SERVICE_URL ||
   '/api/v1/manuscripts';
 
+export function getManuscriptsBaseUrl(): string {
+  if (MANUSCRIPTS_API_BASE.startsWith('http://') || MANUSCRIPTS_API_BASE.startsWith('https://')) {
+    return MANUSCRIPTS_API_BASE;
+  }
+  if (typeof window !== 'undefined' && !process.env.VITEST) {
+    return MANUSCRIPTS_API_BASE;
+  }
+  const base = getEffectiveBaseUrl().replace(/\/$/, '');
+  const path = MANUSCRIPTS_API_BASE.startsWith('/') ? MANUSCRIPTS_API_BASE : `/${MANUSCRIPTS_API_BASE}`;
+  return `${base}${path}`;
+}
+
 // ─── Type Definitions ────────────────────────────────────────────────────────
 
 export interface CompilerDiagnostic {
@@ -276,6 +290,8 @@ export interface CompileLatexPayload {
   texLiveVersion?: string;
   draft: boolean;
   use_cache: boolean;
+  force_clean?: boolean;
+  forceClean?: boolean;
   stop_on_first_error?: boolean;
   timeout_ms?: number;
   timeoutMs?: number;
@@ -303,6 +319,9 @@ export interface WordCountResponse {
     floats: number;
     mathInlines: number;
     mathDisplayed: number;
+    totalWords?: number;
+    charactersWithSpaces?: number;
+    charactersNoSpaces?: number;
   };
   error?: string;
 }
@@ -361,6 +380,8 @@ export interface CreateSuggestionPayload {
   toLine: number;
   toColumn?: number;
   description?: string;
+  projectId?: string;
+  silent?: boolean;
 }
 
 export interface DiffChunk {
@@ -636,7 +657,7 @@ const docs = {
   getRawDoc: async (projectId: string, docId: string): Promise<string> => {
     try {
       const token = getAuthToken();
-      const res = await fetch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/doc/${docId}/raw`, {
+      const res = await fetch(`${getManuscriptsBaseUrl()}/projects/${projectId}/docs/doc/${docId}/raw`, {
         headers: {
           Authorization: token ? `Bearer ${token}` : '',
         },
@@ -687,6 +708,9 @@ const compiler = {
   compile: async (payload: CompileLatexPayload, signal?: AbortSignal): Promise<CompileLatexResponse> => {
     const effectiveSignal = signal || payload.signal;
     const { signal: _unused, ...body } = payload;
+    if (!body.timeout_ms) {
+      body.timeout_ms = 120000;
+    }
     try {
       if (body.project_id) {
         try {
@@ -695,7 +719,10 @@ const compiler = {
           // Non-fatal if offline/syncing
         }
       }
-      return await apiPost<CompileLatexResponse>(`${MANUSCRIPTS_API_BASE}/compile`, body, { signal: effectiveSignal });
+      return await apiPost<CompileLatexResponse>(`${MANUSCRIPTS_API_BASE}/compile`, body, {
+        signal: effectiveSignal,
+        timeout: 120000,
+      });
     } catch (err: any) {
       return {
         success: false,
@@ -771,7 +798,7 @@ const compiler = {
     if (!projectId) return [];
     try {
       const token = getAuthToken();
-      const res = await fetch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/artifacts`, {
+      const res = await fetch(`${getManuscriptsBaseUrl()}/projects/${projectId}/artifacts`, {
         headers: {
           Authorization: token ? `Bearer ${token}` : '',
         },
@@ -804,6 +831,18 @@ const compiler = {
       );
     } catch {
       return { success: false, cancelled: false };
+    }
+  },
+
+  cleanAuxFiles: async (projectId: string): Promise<{ success: boolean }> => {
+    if (!projectId) return { success: false };
+    try {
+      return await apiPost<{ success: boolean }>(
+        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/clean-aux`,
+        {},
+      );
+    } catch {
+      return { success: false };
     }
   },
 
@@ -877,6 +916,7 @@ const comments = {
       content: string;
       line?: number;
       lineEnd?: number;
+      projectId?: string;
     },
   ): Promise<PageComment> => {
     const data = await apiPost<{ comment: PageComment }>(
@@ -1375,7 +1415,7 @@ const exportDocs = {
     if (options.cleanArxiv) params.append('cleanArxiv', 'true');
     if (options.projectName) params.append('projectName', options.projectName);
     const queryString = params.toString() ? `?${params.toString()}` : '';
-    const res = await fetch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/export/zip${queryString}`, {
+    const res = await fetch(`${getManuscriptsBaseUrl()}/projects/${projectId}/export/zip${queryString}`, {
       headers: {
         Authorization: token ? `Bearer ${token}` : '',
       },
@@ -1389,7 +1429,7 @@ const exportDocs = {
     formData.append('file', file);
     const query = preferredRootDoc ? `?preferredRootDoc=${encodeURIComponent(preferredRootDoc)}` : '';
     const token = getAuthToken();
-    const res = await fetch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/import/zip${query}`, {
+    const res = await fetch(`${getManuscriptsBaseUrl()}/projects/${projectId}/import/zip${query}`, {
       method: 'POST',
       headers: {
         Authorization: token ? `Bearer ${token}` : '',
@@ -1402,6 +1442,29 @@ const exportDocs = {
 
   scaffoldTemplate: async (projectId: string, templateId: string): Promise<any> => {
     return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/templates/${templateId}/scaffold`, {});
+  },
+
+  convertDocument: async (
+    projectId: string,
+    file: File | Blob,
+    format?: 'docx' | 'md',
+  ): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const query = format ? `?format=${encodeURIComponent(format)}` : '';
+    const token = getAuthToken();
+    const res = await fetch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/import/convert${query}`, {
+      method: 'POST',
+      headers: {
+        Authorization: token ? `Bearer ${token}` : '',
+      },
+      body: formData,
+    });
+    if (!res.ok) {
+      const errJson = (await res.json().catch(() => null)) as { message?: string } | null;
+      throw new Error(errJson?.message || `Document conversion failed: ${res.statusText}`);
+    }
+    return await res.json();
   },
 };
 
@@ -1658,13 +1721,19 @@ const citations = {
 // ─── 14. TEMPLATES & GALLERY CLIENT ─────────────────────────────────────────
 
 const templates = {
-  list: async (query?: { category?: string; search?: string; limit?: number; skip?: number }): Promise<TemplateSummaryDto[]> => {
+  list: async (query?: { category?: string; search?: string; limit?: number; skip?: number }): Promise<any[]> => {
     const params: Record<string, string> = {};
     if (query?.category) params.category = query.category;
     if (query?.search) params.search = query.search;
     if (query?.limit) params.limit = String(query.limit);
     if (query?.skip) params.skip = String(query.skip);
-    return await apiGet<TemplateSummaryDto[]>(`${MANUSCRIPTS_API_BASE}/templates`, { params });
+    try {
+      const res = await apiGet<any>(`${MANUSCRIPTS_API_BASE}/projects/templates`, { params });
+      return Array.isArray(res) ? res : res?.templates || [];
+    } catch {
+      const res = await apiGet<any>(`${MANUSCRIPTS_API_BASE}/templates`, { params });
+      return Array.isArray(res) ? res : res?.templates || [];
+    }
   },
 
   search: async (query: { q?: string; category?: string; tags?: string[] }): Promise<any> => {
@@ -1675,7 +1744,11 @@ const templates = {
   },
 
   getById: async (id: string): Promise<any> => {
-    return await apiGet<any>(`${MANUSCRIPTS_API_BASE}/templates/${id}`);
+    try {
+      return await apiGet<any>(`${MANUSCRIPTS_API_BASE}/projects/templates/${id}`);
+    } catch {
+      return await apiGet<any>(`${MANUSCRIPTS_API_BASE}/templates/${id}`);
+    }
   },
 
   instantiate: async (templateId: string, projectName: string): Promise<any> => {

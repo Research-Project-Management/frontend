@@ -42,7 +42,7 @@ import {
   OverleafListIcon,
   OverleafMoreHorizontalIcon,
 } from './OverleafToolbarIcons';
-import { toast } from 'sonner';
+import { useFormatToolbarActions } from '../hooks/useFormatToolbarActions';
 import { cn } from '@/shared/lib/utils';
 import {
   DropdownMenu,
@@ -71,8 +71,6 @@ import { convertLatexTableToHtml } from '../../../utils/latex-converter.util';
 import { useSettingsStore } from '../../../store';
 import type { LatexFormatType } from '../../../ports/editor-engine.port';
 import { MathSymbolPalette } from '@/features/editor/components/editor/subcomponents/MathSymbolPalette';
-import { InsertTableModal } from '@/features/editor/components/editor/subcomponents/InsertTableModal';
-import { InsertImageModal } from '@/features/editor/components/editor/subcomponents/InsertImageModal';
 
 interface ToolbarButtonProps {
   onClick: () => void;
@@ -133,10 +131,10 @@ const ToolbarButton = React.memo(function ToolbarButton({
 
 export const FormatToolbar = React.memo(function FormatToolbar() {
   const editorMode = useSettingsStore((s) => s.editorMode);
+  const { notifyFigureInserted, notifyAiTablePrompt } = useFormatToolbarActions();
 
-  const [tableModalOpen, setTableModalOpen] = useState(false);
-  const [imageModalOpen, setImageModalOpen] = useState(false);
   const [overflowOpen, setOverflowOpen] = useState(false);
+  const [overflowTooltipOpen, setOverflowTooltipOpen] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number | null>(null);
@@ -217,7 +215,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
       handleInsert(
         `\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\linewidth]{figures/${cleanName}}\n  \\caption{Figure Caption}\n  \\label{fig:${cleanName.split('.')[0] || 'figure'}}\n\\end{figure}`,
       );
-      toast.success(`Inserted figure for ${file.name}`);
+      notifyFigureInserted(file.name);
       e.target.value = '';
     },
     [handleInsert],
@@ -492,14 +490,14 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                 <span>Upload from computer</span>
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => setImageModalOpen(true)}
+                onClick={() => EditorEventBus.emit('flux:open-figure-wizard')}
                 className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
               >
                 <ImageIcon className="size-4 text-foreground shrink-0" />
                 <span>From project files</span>
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => setImageModalOpen(true)}
+                onClick={() => EditorEventBus.emit('flux:open-figure-wizard')}
                 className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
               >
                 <Folder className="size-4 text-foreground shrink-0" />
@@ -551,7 +549,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
               <DropdownMenuItem
                 onClick={() => {
                   editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'AI' });
-                  toast.info('Ask AI to generate a table from text or image');
+                  notifyAiTablePrompt();
                 }}
                 className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-2.5 transition-colors outline-none"
               >
@@ -559,7 +557,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
               </DropdownMenuItem>
               <DropdownMenuSeparator className="my-1" />
               <DropdownMenuItem
-                onClick={() => setTableModalOpen(true)}
+                onClick={() => EditorEventBus.emit('flux:open-table-wizard')}
                 className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground transition-colors outline-none"
               >
                 <span>Select size</span>
@@ -625,7 +623,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
         {/* 14. Responsive Overflow: Horizontal 3-dots [...] with pure Overleaf icon tools (no text lines) */}
         {level > 0 && (
           <Popover open={overflowOpen} onOpenChange={setOverflowOpen}>
-            <Tooltip open={overflowOpen ? false : undefined}>
+            <Tooltip open={overflowOpen ? false : overflowTooltipOpen} onOpenChange={setOverflowTooltipOpen}>
               <TooltipTrigger asChild>
                 <PopoverTrigger asChild>
                   <button
@@ -919,7 +917,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => {
-                          setImageModalOpen(true);
+                          EditorEventBus.emit('flux:open-figure-wizard');
                           setOverflowOpen(false);
                         }}
                         className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
@@ -929,7 +927,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => {
-                          setImageModalOpen(true);
+                          EditorEventBus.emit('flux:open-figure-wizard');
                           setOverflowOpen(false);
                         }}
                         className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
@@ -982,7 +980,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                       <DropdownMenuItem
                         onClick={() => {
                           editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'AI' });
-                          toast.info('Ask AI to generate a table from text or image');
+                          notifyAiTablePrompt();
                           setOverflowOpen(false);
                         }}
                         className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-2.5 transition-colors outline-none"
@@ -993,7 +991,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                       <DropdownMenuSeparator className="my-1" />
                       <DropdownMenuItem
                         onClick={() => {
-                          setTableModalOpen(true);
+                          EditorEventBus.emit('flux:open-table-wizard');
                           setOverflowOpen(false);
                         }}
                         className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground transition-colors outline-none"
@@ -1051,17 +1049,6 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
         accept="image/*"
         className="hidden"
         onChange={handleFileUpload}
-      />
-
-      <InsertTableModal
-        open={tableModalOpen}
-        onClose={() => setTableModalOpen(false)}
-        onInsert={handleInsert}
-      />
-      <InsertImageModal
-        open={imageModalOpen}
-        onClose={() => setImageModalOpen(false)}
-        onInsert={handleInsert}
       />
     </div>
   );

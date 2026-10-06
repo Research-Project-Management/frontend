@@ -38,6 +38,7 @@ export const INITIAL_FIELD_LABELS: Record<string, string> = {
   archiveLocation: 'Loc. in Archive',
   artworkMedium: 'Medium',
   artworkSize: 'Artwork Size',
+  assignee: 'Assignee',
   audioFileType: 'File Type',
   audioRecordingFormat: 'Format',
   billNumber: 'Bill Number',
@@ -47,8 +48,10 @@ export const INITIAL_FIELD_LABELS: Record<string, string> = {
   caseName: 'Case Name',
   citationKey: 'Citation Key',
   code: 'Code',
+  codeNumber: 'Code Number',
   codePages: 'Code Pages',
   codeVolume: 'Code Volume',
+  committee: 'Committee',
   company: 'Company',
   conferenceName: 'Conference Name',
   country: 'Country',
@@ -64,6 +67,7 @@ export const INITIAL_FIELD_LABELS: Record<string, string> = {
   edition: 'Edition',
   encyclopediaTitle: 'Encyclopedia Title',
   episodeNumber: 'Episode Number',
+  eventPlace: 'Event Place',
   extra: 'Extra',
   filingDate: 'Filing Date',
   firstPage: 'First Page',
@@ -164,48 +168,116 @@ export const FIELD_LABELS: Record<string, string> = {
  * Full mappings for all 37 types are dynamically populated from backend schema.
  */
 export const INITIAL_ITEM_TYPE_FIELDS_MAP: Record<string, string[]> = {
-  journalArticle: [
-    'title', 'abstractNote', 'publicationTitle', 'volume', 'issue', 'pages',
-    'date', 'series', 'seriesTitle', 'seriesText', 'journalAbbreviation',
-    'DOI', 'ISSN', 'url', 'accessDate', 'archive', 'archiveLocation',
-    'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  artwork: [
+    'title', 'abstractNote', 'artworkMedium', 'artworkSize', 'date', 'eventPlace', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  audioRecording: [
+    'title', 'abstractNote', 'audioRecordingFormat', 'seriesTitle', 'volume', 'numberOfVolumes', 'label', 'place', 'date', 'runningTime', 'ISBN', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  bill: [
+    'title', 'abstractNote', 'billNumber', 'code', 'codeVolume', 'section', 'codePages', 'legislativeBody', 'session', 'history', 'date', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  blogPost: [
+    'title', 'abstractNote', 'blogTitle', 'websiteType', 'date', 'DOI', 'citationKey', 'url', 'accessDate', 'ISSN', 'shortTitle', 'language', 'rights', 'extra',
   ],
   book: [
-    'title', 'abstractNote', 'series', 'seriesNumber', 'volume', 'numberOfVolumes',
-    'edition', 'place', 'publisher', 'date', 'numPages', 'ISBN', 'url',
-    'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language',
-    'libraryCatalog', 'callNumber', 'rights', 'extra',
+    'title', 'abstractNote', 'series', 'seriesNumber', 'volume', 'numberOfVolumes', 'edition', 'date', 'publisher', 'place', 'originalDate', 'originalPublisher', 'originalPlace', 'format', 'numPages', 'ISBN', 'DOI', 'citationKey', 'url', 'accessDate', 'ISSN', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
   ],
   bookSection: [
-    'title', 'abstractNote', 'bookTitle', 'series', 'seriesNumber', 'volume',
-    'numberOfVolumes', 'edition', 'place', 'publisher', 'date', 'pages', 'ISBN',
-    'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language',
-    'libraryCatalog', 'callNumber', 'rights', 'extra',
+    'title', 'abstractNote', 'bookTitle', 'series', 'seriesNumber', 'volume', 'numberOfVolumes', 'edition', 'date', 'publisher', 'place', 'originalDate', 'originalPublisher', 'originalPlace', 'format', 'pages', 'ISBN', 'DOI', 'citationKey', 'url', 'accessDate', 'ISSN', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  case: [
+    'caseName', 'abstractNote', 'court', 'dateDecided', 'docketNumber', 'reporter', 'reporterVolume', 'firstPage', 'history', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  computerProgram: [
+    'title', 'abstractNote', 'seriesTitle', 'versionNumber', 'date', 'system', 'company', 'place', 'programmingLanguage', 'rights', 'citationKey', 'url', 'accessDate', 'DOI', 'ISBN', 'archive', 'archiveLocation', 'libraryCatalog', 'callNumber', 'shortTitle', 'extra',
   ],
   conferencePaper: [
-    'title', 'abstractNote', 'proceedingsTitle', 'conferenceName', 'place',
-    'publisher', 'volume', 'pages', 'series', 'date', 'DOI', 'ISBN', 'url',
-    'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language',
-    'libraryCatalog', 'callNumber', 'rights', 'extra',
+    'title', 'abstractNote', 'proceedingsTitle', 'conferenceName', 'publisher', 'place', 'date', 'eventPlace', 'volume', 'issue', 'numberOfVolumes', 'pages', 'series', 'seriesNumber', 'DOI', 'ISBN', 'citationKey', 'url', 'accessDate', 'ISSN', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  dataset: [
+    'title', 'abstractNote', 'identifier', 'type', 'versionNumber', 'date', 'repository', 'repositoryLocation', 'format', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  dictionaryEntry: [
+    'title', 'abstractNote', 'dictionaryTitle', 'series', 'seriesNumber', 'volume', 'numberOfVolumes', 'edition', 'date', 'publisher', 'place', 'pages', 'ISBN', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  document: [
+    'title', 'abstractNote', 'type', 'date', 'publisher', 'place', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  email: [
+    'subject', 'abstractNote', 'date', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  encyclopediaArticle: [
+    'title', 'abstractNote', 'encyclopediaTitle', 'series', 'seriesNumber', 'volume', 'numberOfVolumes', 'edition', 'date', 'publisher', 'place', 'pages', 'ISBN', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  film: [
+    'title', 'abstractNote', 'distributor', 'place', 'date', 'genre', 'videoRecordingFormat', 'runningTime', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  forumPost: [
+    'title', 'abstractNote', 'forumTitle', 'postType', 'date', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  hearing: [
+    'title', 'abstractNote', 'committee', 'publisher', 'numberOfVolumes', 'documentNumber', 'pages', 'legislativeBody', 'session', 'history', 'date', 'place', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  instantMessage: [
+    'title', 'abstractNote', 'date', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  interview: [
+    'title', 'abstractNote', 'interviewMedium', 'date', 'publisher', 'place', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  journalArticle: [
+    'title', 'abstractNote', 'publicationTitle', 'publisher', 'place', 'date', 'volume', 'issue', 'section', 'partNumber', 'partTitle', 'pages', 'series', 'seriesTitle', 'seriesText', 'journalAbbreviation', 'DOI', 'citationKey', 'url', 'accessDate', 'PMID', 'PMCID', 'ISSN', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  letter: [
+    'title', 'abstractNote', 'letterType', 'date', 'eventPlace', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  magazineArticle: [
+    'title', 'abstractNote', 'publicationTitle', 'publisher', 'place', 'date', 'volume', 'issue', 'pages', 'ISSN', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  manuscript: [
+    'title', 'abstractNote', 'manuscriptType', 'institution', 'place', 'date', 'numPages', 'number', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  map: [
+    'title', 'abstractNote', 'mapType', 'scale', 'seriesTitle', 'edition', 'publisher', 'place', 'date', 'DOI', 'ISBN', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  newspaperArticle: [
+    'title', 'abstractNote', 'publicationTitle', 'publisher', 'place', 'date', 'volume', 'issue', 'edition', 'section', 'pages', 'ISSN', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  patent: [
+    'title', 'abstractNote', 'place', 'country', 'assignee', 'issuingAuthority', 'patentNumber', 'filingDate', 'pages', 'applicationNumber', 'priorityNumbers', 'issueDate', 'priorityDate', 'references', 'legalStatus', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  podcast: [
+    'title', 'abstractNote', 'seriesTitle', 'episodeNumber', 'audioFileType', 'date', 'publisher', 'place', 'runningTime', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
   ],
   preprint: [
-    'title', 'abstractNote', 'genre', 'repository', 'archiveID', 'place', 'date',
-    'series', 'seriesNumber', 'DOI', 'citationKey', 'url', 'accessDate', 'archive',
-    'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+    'title', 'abstractNote', 'genre', 'repository', 'archiveID', 'place', 'date', 'series', 'seriesNumber', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
   ],
-  thesis: [
-    'title', 'abstractNote', 'thesisType', 'university', 'place', 'date', 'numPages',
-    'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language',
-    'libraryCatalog', 'callNumber', 'rights', 'extra',
+  presentation: [
+    'title', 'abstractNote', 'presentationType', 'date', 'meetingName', 'place', 'series', 'sessionTitle', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  radioBroadcast: [
+    'title', 'abstractNote', 'programTitle', 'episodeNumber', 'audioRecordingFormat', 'network', 'place', 'date', 'runningTime', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
   ],
   report: [
-    'title', 'abstractNote', 'reportNumber', 'reportType', 'seriesTitle', 'place',
-    'institution', 'date', 'pages', 'url', 'accessDate', 'archive', 'archiveLocation',
-    'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+    'title', 'abstractNote', 'reportNumber', 'reportType', 'institution', 'place', 'date', 'seriesTitle', 'seriesNumber', 'pages', 'DOI', 'ISBN', 'citationKey', 'url', 'accessDate', 'ISSN', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  standard: [
+    'title', 'abstractNote', 'organization', 'committee', 'type', 'number', 'versionNumber', 'edition', 'status', 'date', 'publisher', 'place', 'partNumber', 'partTitle', 'ISBN', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'numPages', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  statute: [
+    'nameOfAct', 'abstractNote', 'code', 'codeNumber', 'publicLawNumber', 'dateEnacted', 'pages', 'section', 'session', 'history', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  thesis: [
+    'title', 'abstractNote', 'thesisType', 'university', 'place', 'date', 'series', 'seriesNumber', 'numPages', 'DOI', 'ISBN', 'citationKey', 'url', 'accessDate', 'ISSN', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  tvBroadcast: [
+    'title', 'abstractNote', 'programTitle', 'episodeNumber', 'videoRecordingFormat', 'network', 'place', 'date', 'runningTime', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  videoRecording: [
+    'title', 'abstractNote', 'videoRecordingFormat', 'seriesTitle', 'volume', 'numberOfVolumes', 'studio', 'place', 'date', 'runningTime', 'ISBN', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
   ],
   webpage: [
-    'title', 'abstractNote', 'websiteTitle', 'websiteType', 'date', 'url',
-    'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+    'title', 'abstractNote', 'websiteTitle', 'websiteType', 'date', 'publisher', 'place', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
   ],
 };
 

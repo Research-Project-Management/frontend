@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, ExternalLink, RotateCw, X, Trash2, RotateCcw } from 'lucide-react';
+import { ShieldAlert, X, Trash2, RotateCcw } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import {
   useUpdateLibraryItemMutation,
@@ -11,6 +11,7 @@ import {
 } from '../../data';
 import type { Item } from '../../types/library.types';
 import { isItemRetracted, getRetractionInfo } from '../../utils/retraction';
+import { RetractionNoticeModal } from '../modals/RetractionNoticeModal';
 
 interface InspectorHeaderProps {
   item: Item;
@@ -26,6 +27,7 @@ export function InspectorHeader({
   onClose,
 }: InspectorHeaderProps) {
   const [titleDraft, setTitleDraft] = useState(item.title || '');
+  const [isRetractionModalOpen, setIsRetractionModalOpen] = useState(false);
 
   const isTrash = Boolean(item.deletedAt);
   const effectiveCanEdit = canEdit && !isTrash;
@@ -33,13 +35,12 @@ export function InspectorHeader({
   const updateMutation = useUpdateLibraryItemMutation(scopeId);
   const restoreMutation = useBatchRestoreItemsMutation(scopeId);
   const purgeMutation = useBatchPurgeItemsMutation(scopeId);
-  const { unflagItem, checkItem, isCheckingItem, isUnflagging } = useRetraction(scopeId);
+  const { unflagItem, isUnflagging } = useRetraction(scopeId);
 
   const isRetracted = isItemRetracted(item);
   const {
-    noticeUrl,
-    reason: retractionReason,
-    date: retractionDate,
+    nature: retractionNature,
+    title: retractionTitle,
   } = getRetractionInfo(item);
 
   useEffect(() => {
@@ -95,6 +96,23 @@ export function InspectorHeader({
           )}
           title={titleDraft || 'Untitled Document'}
         />
+
+        {/* 🚨 Sleek Retraction Badge on Header (Click to open Retraction Notice Modal) */}
+        {isRetracted && (
+          <button
+            type="button"
+            onClick={() => setIsRetractionModalOpen(true)}
+            className="h-6.5 px-2 text-11 font-medium bg-destructive/10 text-destructive border border-destructive/25 rounded-md hover:bg-destructive/20 hover:border-destructive/40 transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1.5 select-none"
+            title={`${retractionTitle}. Click to view details.`}
+            aria-label="View retraction notice details"
+          >
+            <ShieldAlert className="size-3.5 text-destructive shrink-0" strokeWidth={1.5} />
+            <span className="font-medium whitespace-nowrap">
+              {retractionNature === 'expression_of_concern' ? 'Concern' : 'Retracted'}
+            </span>
+          </button>
+        )}
+
         {onClose && (
           <button
             type="button"
@@ -156,75 +174,16 @@ export function InspectorHeader({
         </div>
       )}
 
-      {/* ⚠️ Retraction Warning Alert Banner (Rendered below the continuous h-11 line) */}
-      {isRetracted && (
-        <div className="p-3 border-b border-border bg-destructive/5 shrink-0 select-none animate-in fade-in duration-200">
-          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive flex items-start gap-2.5 select-none">
-            <ShieldAlert className="size-4 text-destructive shrink-0 mt-0.5" strokeWidth={1.5} />
-            <div className="flex-1 min-w-0 space-y-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold text-destructive text-12">
-                  This item has been retracted
-                </span>
-                {retractionDate && (
-                  <span className="text-10 text-destructive/80 font-mono">
-                    {retractionDate}
-                  </span>
-                )}
-              </div>
-              {retractionReason && (
-                <p className="text-11 text-destructive/90 leading-snug break-words">
-                  {retractionReason}
-                </p>
-              )}
-              <div className="flex items-center justify-between gap-2 pt-1">
-                {noticeUrl ? (
-                  <a
-                    href={noticeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-11 font-medium text-destructive hover:underline"
-                  >
-                    <span>View Retraction Notice</span>
-                    <ExternalLink className="size-3 shrink-0" strokeWidth={1.5} />
-                  </a>
-                ) : item.doi ? (
-                  <a
-                    href={`https://doi.org/${item.doi}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-11 font-medium text-destructive hover:underline"
-                  >
-                    <span>View Publication DOI</span>
-                    <ExternalLink className="size-3 shrink-0" strokeWidth={1.5} />
-                  </a>
-                ) : <div />}
-
-                {canEdit && (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      className="h-5 px-1.5 text-10 font-medium text-destructive hover:bg-destructive/20 rounded cursor-pointer flex items-center transition-colors"
-                      disabled={isCheckingItem}
-                      onClick={() => checkItem(item.id)}
-                    >
-                      <RotateCw className={`size-2.5 mr-1 ${isCheckingItem ? 'animate-spin' : ''}`} strokeWidth={1.5} />
-                      Re-check
-                    </button>
-                    <button
-                      type="button"
-                      className="h-5 px-1.5 text-10 font-medium border border-destructive/40 text-destructive hover:bg-destructive/20 rounded cursor-pointer transition-colors"
-                      disabled={isUnflagging}
-                      onClick={() => unflagItem(item.id)}
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* 🚨 Retraction Notice Modal Dialog */}
+      {isRetracted && isRetractionModalOpen && (
+        <RetractionNoticeModal
+          open={isRetractionModalOpen}
+          onOpenChange={setIsRetractionModalOpen}
+          item={item}
+          canEdit={effectiveCanEdit}
+          onDismiss={() => unflagItem(item.id)}
+          isDismissing={isUnflagging}
+        />
       )}
     </div>
   );

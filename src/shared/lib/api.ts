@@ -212,11 +212,20 @@ export async function rawFetch(
     params,
     headers: extraHeaders,
     signal,
-    timeout = 15000,
+    timeout: customTimeout,
     idempotencyKey,
     skipAuth = false,
     ...rest
   } = options;
+
+  // Heavy compilation and export operations require sufficient time (120s)
+  const isHeavyOperation =
+    path.includes('/compile') ||
+    path.includes('/export') ||
+    path.includes('/synctex') ||
+    path.includes('/import') ||
+    path.includes('/word-count');
+  const timeout = customTimeout ?? (isHeavyOperation ? 120000 : 15000);
 
   const url = buildUrl(path, params);
   const token = !skipAuth ? getAuthToken() : null;

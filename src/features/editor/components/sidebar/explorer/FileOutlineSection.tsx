@@ -10,28 +10,57 @@ import { useEditorInstance } from '@/features/editor/core/context/editor-instanc
 export interface FileOutlineSectionProps {
   isFileTreeOpen: boolean;
   docContent: string;
+  activeFileName?: string;
 }
 
 export const FileOutlineSection = React.memo(function FileOutlineSection({
   isFileTreeOpen,
   docContent,
+  activeFileName,
 }: FileOutlineSectionProps) {
   const { engine } = useEditorInstance();
   const [isOutlineOpen, setIsOutlineOpen] = useState(false);
   const [outlineHeight, setOutlineHeight] = useState(200);
   const [activeLine, setActiveLine] = useState<number>(1);
+  const [content, setContent] = useState<string>(docContent);
   const activeItemRef = useRef<HTMLButtonElement | null>(null);
 
-  // Sync cursor position from CodeMirror engine
+  // Sync with prop changes when active file changes
+  useEffect(() => {
+    setContent(docContent);
+  }, [docContent]);
+
+  // Subscribe to real-time keystrokes and cursor updates from the active editor engine
   useEffect(() => {
     if (!engine) return;
+
     const initialPos = engine.getCursorPosition();
     if (initialPos) {
       setActiveLine(initialPos.line);
     }
-    return engine.onCursorChange((line) => {
+
+    const currentText = engine.getContent();
+    if (currentText) {
+      setContent(currentText);
+    }
+
+    const unsubCursor = engine.onCursorChange((line) => {
       setActiveLine(line);
     });
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const unsubContent = engine.onContentChange((latestContent) => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        setContent(latestContent);
+      }, 300);
+    });
+
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      unsubCursor();
+      unsubContent();
+    };
   }, [engine]);
 
   const startResizeOutline = useCallback(
@@ -62,8 +91,8 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
   );
 
   const outline = useMemo(
-    () => (isOutlineOpen ? parseDocumentOutline(docContent) : []),
-    [docContent, isOutlineOpen],
+    () => (isOutlineOpen ? parseDocumentOutline(content) : []),
+    [content, isOutlineOpen],
   );
 
   // Active section heading containing the current cursor position
@@ -80,9 +109,24 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
     return currentIdx >= 0 ? currentIdx : 0;
   }, [outline, activeLine]);
 
-  const handleOutlineClick = useCallback((line: number) => {
-    editorCommandBus.dispatch({ type: 'editor:jump-to-line', line, highlight: 'synctex' });
-  }, []);
+  // Scroll active item into view
+  useEffect(() => {
+    if (activeItemRef.current) {
+      activeItemRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [activeSectionIndex]);
+
+  const handleOutlineClick = useCallback(
+    (line: number) => {
+      if (engine) {
+        engine.jumpToLine(line, 'synctex');
+        engine.focus();
+      } else {
+        editorCommandBus.dispatch({ type: 'editor:jump-to-line', line, highlight: 'synctex' });
+      }
+    },
+    [engine],
+  );
 
   return (
     <div
@@ -110,7 +154,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
         <div className="flex items-center gap-1.5 min-w-0">
           <ChevronRight
             className={cn(
-              'size-3.5 shrink-0 transition-transform duration-150 text-foreground',
+              'size-3.5 shrink-0 transition-transform duration-150 text-foreground motion-reduce:transition-none',
               isOutlineOpen && 'rotate-90',
             )}
             strokeWidth={1.75}
@@ -138,20 +182,27 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
               <p className="text-12 text-muted-foreground font-normal">
                 No sections or subsections found in this document.
               </p>
+              {activeFileName && (
+                <p className="mt-1.5 text-11 font-mono text-muted-foreground/60 tracking-tight">
+                  {activeFileName}
+                </p>
+              )}
             </div>
           ) : (
             outline.map((entry, index) => {
               const isActive = index === activeSectionIndex;
+              const indent = OUTLINE_INDENT[entry.level] ?? (entry.level * 10);
               return (
                 <button
                   key={`${entry.line}-${index}`}
+                  ref={isActive ? activeItemRef : undefined}
                   type="button"
                   onClick={() => handleOutlineClick(entry.line)}
                   style={{
-                    paddingLeft: `${16 + OUTLINE_INDENT[entry.level]}px`,
+                    paddingLeft: `${16 + indent}px`,
                   }}
                   className={cn(
-                    'flex h-7.5 w-full items-center gap-2 pr-2 text-left text-13 tracking-tight transition-colors cursor-pointer outline-none focus-visible:bg-muted focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-inset select-none',
+                    'flex h-7.5 w-full items-center gap-2 pr-2 text-left text-13 tracking-tight transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:bg-muted focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-inset select-none',
                     isActive
                       ? 'bg-primary/10 text-primary font-medium border-l-2 border-primary'
                       : 'hover:bg-muted/60 text-foreground/85 font-normal',

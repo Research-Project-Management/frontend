@@ -1,4 +1,7 @@
+import { useMemo } from 'react';
 import { useLibraryUIStore } from './library-ui.store';
+import { getLibraryPermissions } from '../domain/library-permissions.policy';
+import type { LibraryPermissions } from '../types/core.types';
 
 /**
  * Granular Selectors - Performance Optimization Engine
@@ -51,3 +54,9 @@ export const useActiveModal = () =>
 
 export const useModalProps = () =>
   useLibraryUIStore((state) => state.modalProps);
+
+// ── Permission & Capability Selectors ─────────────────────────────────────────
+export const useLibraryPermissions = (): LibraryPermissions => {
+  const activeScope = useLibraryUIStore((state) => state.activeScope);
+  return useMemo(() => getLibraryPermissions(activeScope), [activeScope]);
+};

@@ -216,116 +216,110 @@ const SideBar = React.memo(function SideBar({
   const currentTabId = (activePanel || "Files").toLowerCase();
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-sidebar">
+    <div className="flex h-full w-full overflow-hidden">
       <TooltipProvider delayDuration={150}>
         {/* Icon strip */}
-        <ul
-          role="tablist"
-          aria-label="Sidebar navigation"
-          className="flex h-full w-11 shrink-0 flex-col items-center gap-1.5 border-r border-border bg-sidebar py-2.5 pb-3 select-none"
-        >
-          {sideBarItems.map((item) => {
-            const isOpen = activePanel === item.name;
-            const isReview = item.name === 'Review';
-            const isChat = item.name === 'Chat';
-            const showBadge = (isReview && totalReviewItems > 0) || (isChat && unreadChatCount > 0);
-            const badgeCount = isReview ? totalReviewItems : unreadChatCount;
-            const tabId = `sidebar-tab-${item.name.toLowerCase()}`;
-            const panelId = `sidebar-panel-${item.name.toLowerCase()}`;
+        <div className="flex h-full w-11 shrink-0 flex-col items-center gap-1.5 border-r border-border bg-sidebar py-2.5 pb-4 select-none">
+          <ul
+            role="tablist"
+            aria-label="Sidebar navigation"
+            className="flex flex-col items-center gap-1.5 w-full"
+          >
+            {sideBarItems.map((item) => {
+              const isReview = item.name === 'Review';
+              const isOpen = activePanel === item.name;
+              const isChat = item.name === 'Chat';
+              const showBadge = (isReview && totalReviewItems > 0) || (isChat && unreadChatCount > 0);
+              const badgeCount = isReview ? totalReviewItems : unreadChatCount;
+              const tabId = `sidebar-tab-${item.name.toLowerCase()}`;
+              const panelId = `sidebar-panel-${item.name.toLowerCase()}`;
 
-            return (
-              <li key={item.name} role="none" className="relative">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      role="tab"
-                      id={tabId}
-                      aria-controls={panelId}
-                      onClick={() => togglePanel(item.name)}
-                      aria-label={`${item.name} panel`}
-                      aria-selected={isOpen}
-                      className={cn(
-                        "group relative flex size-8 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer",
-                        isOpen
-                          ? "bg-sidebar-accent text-foreground font-medium"
-                          : "text-foreground/75 hover:text-foreground hover:bg-sidebar-hover",
-                      )}
-                    >
-                      <item.icon className="size-4 shrink-0 text-foreground" strokeWidth={1.75} />
-                      {showBadge && (
-                        <span
-                          className={cn(
-                            "absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full text-11 font-mono font-semibold text-white leading-tight",
-                            isChat ? "bg-primary" : "bg-warning"
-                          )}
-                        >
-                          {badgeCount > 99 ? '99+' : badgeCount}
-                        </span>
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    {item.name}
-                    {showBadge ? ` (${badgeCount})` : ''}
-                  </TooltipContent>
-                </Tooltip>
-              </li>
-            );
-          })}
+              return (
+                <li key={item.name} role="none" className="relative">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        role="tab"
+                        id={tabId}
+                        aria-controls={panelId}
+                        onClick={() => togglePanel(item.name)}
+                        aria-label={`${item.name} panel`}
+                        aria-selected={isOpen}
+                        className={cn(
+                          "group relative flex size-8 items-center justify-center rounded-md transition-colors motion-reduce:transition-none outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer",
+                          isOpen
+                            ? "bg-sidebar-accent text-foreground font-medium"
+                            : "text-foreground/75 hover:text-foreground hover:bg-sidebar-hover",
+                        )}
+                      >
+                        <item.icon className="size-4 shrink-0 text-foreground" strokeWidth={1.75} />
+                        {showBadge && (
+                          <span
+                            className={cn(
+                              "absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full text-11 font-mono font-semibold leading-tight shadow-xs",
+                              isChat ? "bg-primary text-primary-foreground" : "bg-warning text-warning-foreground"
+                            )}
+                          >
+                            {badgeCount > 99 ? '99+' : badgeCount}
+                          </span>
+                        )}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      {item.name}
+                      {showBadge ? ` (${badgeCount})` : ''}
+                    </TooltipContent>
+                  </Tooltip>
+                </li>
+              );
+            })}
+          </ul>
 
-          {/* Sticky Trigger like workspace sidebar */}
-          <li role="none" className="mt-auto">
+          {/* Bottom dock & settings actions (separated from tablist for valid ARIA) */}
+          <div className="mt-auto flex flex-col items-center gap-1.5 w-full">
             <StickyDock />
-          </li>
 
-          {/* Overleaf Settings Icon at Bottom of Sidebar */}
-          <li role="none">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
                   onClick={toggleSettingsPanel}
                   aria-label="Settings"
+                  aria-haspopup="dialog"
+                  aria-expanded={settingsPanelOpen}
                   className={cn(
-                    "flex size-8 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer",
+                    "flex size-8 items-center justify-center rounded-md transition-colors motion-reduce:transition-none outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer",
                     settingsPanelOpen
                       ? "bg-sidebar-accent text-foreground font-medium"
                       : "text-foreground/75 hover:text-foreground hover:bg-sidebar-hover",
                   )}
                 >
-                  <Settings className="size-4 shrink-0" strokeWidth={1.75} />
+                  <Settings className="size-4 shrink-0 text-foreground" strokeWidth={1.75} />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">Settings</TooltipContent>
             </Tooltip>
-          </li>
-        </ul>
+          </div>
+        </div>
       </TooltipProvider>
 
-      {/* Stacked panels */}
-      <div
-        role="tabpanel"
-        id={`sidebar-panel-${currentTabId}`}
-        aria-labelledby={`sidebar-tab-${currentTabId}`}
-        className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background"
-      >
-        {!mounted ? (
+      {/* Stacked panels (rendered only when open or mounting to avoid empty tabpanel DOM) */}
+      {(!mounted || activePanel !== null) && (
+        <div
+          role="tabpanel"
+          id={`sidebar-panel-${currentTabId}`}
+          aria-labelledby={`sidebar-tab-${currentTabId}`}
+          className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background"
+        >
           <div className="flex min-h-0 flex-1 flex-col">
             <PanelContent
-              tab={"Files"}
+              tab={!mounted ? "Files" : (activePanel as SidebarTab)}
               onClose={handleClosePanel}
             />
           </div>
-        ) : activePanel === null ? null : (
-          <div className="flex min-h-0 flex-1 flex-col">
-            <PanelContent
-              tab={activePanel}
-              onClose={handleClosePanel}
-            />
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 });

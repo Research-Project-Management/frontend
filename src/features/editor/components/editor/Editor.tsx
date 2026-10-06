@@ -17,7 +17,7 @@ import {
 } from '@/features/editor/store';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
-import { Lock, Search } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { OverleafSearchIcon } from '@/features/editor/sub-features/code-editor/components/OverleafToolbarIcons';
 import { useTheme } from '@/shared/providers';
 import { cn } from '@/shared/lib/utils';
@@ -54,6 +54,7 @@ import { useEditorCollaborators } from './hooks/use-editor-collaborators';
 
 import { EditorFloatingOverlay } from '../../sub-features/code-editor/ui/EditorFloatingOverlay';
 import { EditorModals } from '../../sub-features/code-editor/ui/EditorModals';
+import type { MisspelledItem } from '../../sub-features/code-editor/codemirror/latex-spellcheck';
 import { useEditorInstance } from '../../core/context/editor-instance.context';
 import { editorCommandBus } from '../../core/command-bus/editor-command-bus';
 
@@ -237,10 +238,30 @@ export default function Editor({ page }: EditorProps) {
   // Local popup states
   const [ctxMenu, setCtxMenu] = useState<CtxPos | null>(null);
   const [ctxPos, setCtxPos] = useState<CtxPos | null>(null);
-  const [ctxStartLine] = useState<number | null>(null);
-  const [ctxEndLine] = useState<number | null>(null);
-  const [ctxSelText] = useState('');
+  const [ctxStartLine, setCtxStartLine] = useState<number | null>(null);
+  const [ctxEndLine, setCtxEndLine] = useState<number | null>(null);
+  const [ctxSelText, setCtxSelText] = useState('');
+  const [ctxMisspelledInfo, setCtxMisspelledInfo] = useState<MisspelledItem | null>(null);
   const ctxMenuRef = useRef<HTMLDivElement>(null);
+
+  const handleEditorContextMenu = useCallback(
+    (data: {
+      x: number;
+      y: number;
+      startLine: number;
+      endLine: number;
+      text: string;
+      misspelledInfo?: MisspelledItem | null;
+    }) => {
+      setCtxMenu({ x: data.x, y: data.y });
+      setCtxPos(null);
+      setCtxStartLine(data.startLine);
+      setCtxEndLine(data.endLine);
+      setCtxSelText(data.text);
+      setCtxMisspelledInfo(data.misspelledInfo || null);
+    },
+    [],
+  );
 
   const [selFloating, setSelFloating] = useState<SelFloating | null>(null);
   const selFloatingRef = useRef<HTMLDivElement>(null);
@@ -302,6 +323,7 @@ export default function Editor({ page }: EditorProps) {
     ctxEndLine,
     ctxSelText,
     projectId: projectScopeId,
+    ctxMisspelledInfo,
   });
 
   // Global keyboard shortcuts
@@ -358,6 +380,18 @@ export default function Editor({ page }: EditorProps) {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [selFloating]);
+
+  // Close context menu on outside click
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (!ctxMenuRef.current?.contains(e.target as Node)) {
+        setCtxMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [ctxMenu]);
 
   // Auto-focus input when rename dialog opens
   useEffect(() => {
@@ -491,114 +525,6 @@ export default function Editor({ page }: EditorProps) {
         </div>
       )}
 
-      {reviewMode && !isReadOnly && (
-        <div className="w-full bg-amber-500/10 border-b border-amber-500/30 px-3 py-1.5 flex items-center justify-between text-xs text-amber-800 dark:text-amber-300 select-none shrink-0 animate-in fade-in duration-200">
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
-            </span>
-            <span className="font-semibold">Track Changes (Review Mode)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="inline-flex items-center rounded-md bg-amber-500/15 p-0.5 text-11 font-medium border border-amber-500/30">
-              <span className="text-11 text-amber-800/80 dark:text-amber-300/80 px-1.5 uppercase font-semibold">View:</span>
-              <button
-                type="button"
-                onClick={() => setTrackChangesViewMode('changes')}
-                className={cn(
-                  'px-1.5 py-0.5 rounded-sm text-11 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                  trackChangesViewMode === 'changes'
-                    ? 'bg-amber-600 text-white font-semibold'
-                    : 'text-amber-900/80 dark:text-amber-300/80 hover:text-amber-900 hover:bg-amber-500/20',
-                )}
-                title="Diff view"
-              >
-                Changes
-              </button>
-              <button
-                type="button"
-                onClick={() => setTrackChangesViewMode('clean')}
-                className={cn(
-                  'px-1.5 py-0.5 rounded-sm text-11 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                  trackChangesViewMode === 'clean'
-                    ? 'bg-amber-600 text-white font-semibold'
-                    : 'text-amber-900/80 dark:text-amber-300/80 hover:text-amber-900 hover:bg-amber-500/20',
-                )}
-                title="Clean preview"
-              >
-                Clean
-              </button>
-              <button
-                type="button"
-                onClick={() => setTrackChangesViewMode('original')}
-                className={cn(
-                  'px-1.5 py-0.5 rounded-sm text-11 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                  trackChangesViewMode === 'original'
-                    ? 'bg-amber-600 text-white font-semibold'
-                    : 'text-amber-900/80 dark:text-amber-300/80 hover:text-amber-900 hover:bg-amber-500/20',
-                )}
-                title="Original view"
-              >
-                Original
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                const sel = engine?.getSelection();
-                const text = engine?.getSelectedText() ?? '';
-                const hasSel = Boolean(text);
-                const startL = sel?.startLine ?? 1;
-                const endL = sel?.endLine ?? startL;
-                setSuggestModal({
-                  originalText: text,
-                  suggestedText: text,
-                  fromLine: startL,
-                  toLine: endL,
-                  type: hasSel ? 'replace' : 'insert',
-                  description: '',
-                });
-              }}
-              className="px-2 py-0.5 rounded-sm text-11 font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-200 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-            >
-              New suggestion
-            </button>
-            {suggestions.some((s) => s.status === 'pending') && (
-              <>
-                <button
-                  type="button"
-                  disabled={acceptAllSuggestionsMutation.isPending}
-                  onClick={() => acceptAllSuggestionsMutation.mutate({ pageId: page.id })}
-                  className="px-2 py-0.5 rounded-sm text-11 font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50"
-                  title="Accept all pending suggestions"
-                >
-                  Accept All
-                </button>
-                <button
-                  type="button"
-                  disabled={rejectAllSuggestionsMutation.isPending}
-                  onClick={() => rejectAllSuggestionsMutation.mutate({ pageId: page.id })}
-                  className="px-2 py-0.5 rounded-sm text-11 font-medium bg-rose-600 hover:bg-rose-700 text-white transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50"
-                  title="Reject all pending suggestions"
-                >
-                  Reject All
-                </button>
-              </>
-            )}
-            <button
-              type="button"
-              onClick={() => toggleReviewMode()}
-              className="px-2 py-0.5 rounded-sm text-11 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-              title="Exit Review mode"
-            >
-              Exit
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Editor surface area */}
       <div
         id="editor-surface"
@@ -606,6 +532,8 @@ export default function Editor({ page }: EditorProps) {
       >
         <UnifiedCodeMirrorEditor
           key={page.id}
+          fileId={page.id}
+          filePath={page.title || (page as any).name || page.id}
           value={currentContent}
           onChange={handleContentChange}
           isDarkTheme={isDarkTheme}
@@ -620,6 +548,25 @@ export default function Editor({ page }: EditorProps) {
           activeCommentId={activeCommentId}
           suggestions={suggestions}
           trackChangesViewMode={trackChangesViewMode}
+          reviewMode={reviewMode}
+          onCreateSuggestion={(change) => {
+            if (page?.id) {
+              createSuggestionMutation.mutate({
+                pageId: page.id,
+                projectId: effectiveProjectId,
+                type: change.type,
+                originalText: change.originalText || (change.type === 'delete' ? change.text : undefined),
+                suggestedText: change.suggestedText || (change.type === 'insert' ? change.text : undefined),
+                fromLine: change.fromLine,
+                fromColumn: change.fromColumn,
+                toLine: change.toLine,
+                toColumn: change.toColumn,
+                silent: change.silent ?? true,
+              });
+            }
+          }}
+          onSelectionFloating={setSelFloating}
+          onContextMenu={handleEditorContextMenu}
           onAcceptSuggestion={(sug) =>
             acceptSuggestionMutation.mutate({ pageId: page.id, suggestionId: sug.id })
           }
@@ -659,15 +606,15 @@ export default function Editor({ page }: EditorProps) {
             aria-label="Emacs mode status bar"
           >
             <div className="flex items-center gap-2">
-              <span className="px-1.5 py-0.5 rounded-sm bg-ai/10 text-ai border border-ai/20 text-11 font-semibold tracking-normal">
-                Emacs
+              <span className="px-1.5 py-0.5 rounded-sm bg-ai/10 text-ai border border-ai/20 text-11 font-medium tracking-normal">
+                emacs
               </span>
               <span className="text-foreground font-medium text-xs">
-                {emacsStatus || 'Ready'}
+                {emacsStatus || 'ready'}
               </span>
             </div>
             <span className="text-11 text-muted-foreground">
-              C-x C-s to save · C-g to quit
+              c-x c-s to save · c-g to quit
             </span>
           </div>
         )}
@@ -717,6 +664,8 @@ export default function Editor({ page }: EditorProps) {
         initialCitationKey={initialCitationKey}
         citedKeys={citedKeys}
         rootPageId={rootPageId}
+        currentPage={page}
+        projectFiles={pageFiles}
         suggestModal={suggestModal}
         setSuggestModal={setSuggestModal}
         isCreatingSuggestion={false}

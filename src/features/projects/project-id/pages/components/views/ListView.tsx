@@ -8,6 +8,7 @@ import {
   ArrowDown,
   MoreHorizontal,
   ExternalLink,
+  Pencil,
   Link2,
   Copy,
   Trash2,
@@ -27,9 +28,10 @@ import { cn } from '@/shared/lib/utils';
 
 interface ListViewProps {
   pages: Page[];
+  onEdit?: (page: Page) => void;
 }
 
-export function ListView({ pages }: ListViewProps) {
+export function ListView({ pages, onEdit }: ListViewProps) {
   const router = useRouter();
   const [sortColumn, setSortColumn] = useState<'title' | 'author' | 'updatedAt' | 'status'>('updatedAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -114,7 +116,6 @@ export function ListView({ pages }: ListViewProps) {
             >
               <div className="flex items-center gap-1.5">
                 <span>Page</span>
-                <span className="text-11 font-mono text-muted-foreground font-normal">({sortedPages.length})</span>
                 {renderSortIndicator('title')}
               </div>
             </th>
@@ -194,9 +195,6 @@ export function ListView({ pages }: ListViewProps) {
                       title={page.title}
                     >
                       {page.title}
-                    </span>
-                    <span className="text-11 font-mono text-muted-foreground/60 shrink-0 font-normal">
-                      .tex
                     </span>
                   </div>
                 </td>
@@ -300,7 +298,7 @@ export function ListView({ pages }: ListViewProps) {
                       <DropdownMenuTrigger asChild>
                         <button
                           type="button"
-                          className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
+                          className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-muted data-[state=open]:text-foreground transition-all outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
                           aria-label={`Options for ${page.title}`}
                         >
                           <MoreHorizontal className="size-3.5 shrink-0" />
@@ -313,6 +311,17 @@ export function ListView({ pages }: ListViewProps) {
                         >
                           <ExternalLink className="size-3.5 text-muted-foreground" />
                           <span>Open page</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onEdit?.(page);
+                          }}
+                          className="cursor-pointer gap-2"
+                        >
+                          <Pencil className="size-3.5 text-muted-foreground" />
+                          <span>Edit page</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleCopyLink(linkHref)}

@@ -27,7 +27,7 @@ import {
   TabsContent,
 } from '@/shared/components/ui/tabs';
 import { cn } from '@/shared/lib/utils';
-import { toast } from 'sonner';
+import { useSymbolPalette } from './hooks/useSymbolPalette';
 
 export interface SymbolPaletteModalProps {
   open: boolean;
@@ -173,8 +173,13 @@ export default function SymbolPaletteModal({
 }: SymbolPaletteModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<string>('all');
-  const [keepOpen, setKeepOpen] = useState(true);
-  const [lastInserted, setLastInserted] = useState<string | null>(null);
+
+  const {
+    lastInserted,
+    keepOpen,
+    setKeepOpen,
+    insertSymbol,
+  } = useSymbolPalette({ onInsert, onOpenChange });
 
   const filteredSymbols = useMemo(() => {
     let list = SYMBOLS;
@@ -192,16 +197,6 @@ export default function SymbolPaletteModal({
     }
     return list;
   }, [activeTab, searchQuery]);
-
-  const handleSymbolClick = (sym: MathSymbol) => {
-    onInsert(`${sym.command} `);
-    setLastInserted(sym.command);
-    toast.success(`Inserted ${sym.command}`, { duration: 1200 });
-
-    if (!keepOpen) {
-      onOpenChange(false);
-    }
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -234,7 +229,9 @@ export default function SymbolPaletteModal({
           />
           {searchQuery && (
             <button
+              type="button"
               onClick={() => setSearchQuery('')}
+              aria-label="Clear search"
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
             >
               <X className="size-3.5" />
@@ -272,7 +269,7 @@ export default function SymbolPaletteModal({
                     <button
                       key={sym.command}
                       type="button"
-                      onClick={() => handleSymbolClick(sym)}
+                      onClick={() => insertSymbol(sym)}
                       title={`${sym.command} (${sym.name})`}
                       className={cn(
                         'group flex flex-col items-center justify-center h-12 rounded-sm border transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset',

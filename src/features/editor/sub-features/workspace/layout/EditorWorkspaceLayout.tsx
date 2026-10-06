@@ -10,10 +10,12 @@
  * - Settings drawer and presentation integration
  */
 
-import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { filesQuery } from '../../../hooks/use-core';
 
 import SideBar, { type SidebarTab } from '../../../components/sidebar/SideBar';
 import Topbar from '../../../components/topbar/Topbar';
@@ -21,13 +23,17 @@ const ProjectSettingsModal = dynamic(
   () => import('../../../components/modals/ProjectSettingsModal'),
   { ssr: false }
 );
+const DeletedFilesModal = dynamic(
+  () => import('../../../components/modals/DeletedFilesModal'),
+  { ssr: false }
+);
 import { ResizeHandle } from './ResizeHandle';
 import { EditorColumn } from './EditorColumn';
+import { WordCountDialog } from '../../../components/editor/subcomponents/WordCountDialog';
 
 import { useShallow } from 'zustand/react/shallow';
 import { usePageStore, useSettingsStore } from '../../../store';
 import { EditorEventBus } from '../../../utils/editor.util';
-import { useCollaborationStream } from '../../../hooks/use-collaboration';
 import { useEditorInstance } from '../../../core/context/editor-instance.context';
 import { editorCommandBus } from '../../../core/command-bus/editor-command-bus';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
@@ -47,9 +53,6 @@ export function EditorWorkspaceLayout() {
   const rawProjectId = routeProjectId || storeProjectId || undefined;
   const projectId = rawProjectId || undefined;
   const rootPageId = pageId ?? draftId ?? null;
-
-  // Stream real-time SSE events for the root document (suggestions, comments, page updates)
-  useCollaborationStream(projectId ?? null, rootPageId);
 
   const { resolvedTheme } = useTheme();
   const { engine } = useEditorInstance();
@@ -83,6 +86,74 @@ export function EditorWorkspaceLayout() {
       setActiveSidebarPanel: s.setActiveSidebarPanel,
     }))
   );
+
+  const [wordCountOpen, setWordCountOpen] = useState(false);
+  const [deletedFilesOpen, setDeletedFilesOpen] = useState(false);
+  const currentPage = usePageStore((s) => s.currentPage);
+  const activeFilePage = usePageStore((s) => s.activeFilePage);
+  const currentDoc = activeFilePage || currentPage;
+
+  const { data: serverFiles = [] } = useQuery({
+    ...filesQuery(rootPageId || ''),
+    enabled: Boolean(rootPageId),
+  });
+
+  const combinedProjectFiles = useMemo(() => {
+    const currentDocContent =
+      engine?.getContent() ||
+      (currentDoc?.content
+        ? typeof currentDoc.content === 'string'
+          ? currentDoc.content
+          : (currentDoc.content as any).source || ''
+        : (currentDoc as any)?.docContent || '');
+
+    const currentDocItem = {
+      id: currentDoc?.id || 'current',
+      title: currentDoc?.title || 'main.tex',
+      content: currentDocContent,
+    };
+
+    const list: any[] = (serverFiles as any[]).map((f: any) => ({
+      id: f.id,
+      title: f.title || f.name,
+      content: f.id === currentDoc?.id ? currentDocContent : f.content,
+    }));
+
+    if (!list.some((f) => f.id === currentDocItem.id || f.title === currentDocItem.title)) {
+      list.unshift(currentDocItem);
+    }
+    return list;
+  }, [serverFiles, currentDoc, engine]);
+
+  useEffect(() => {
+    const unsubCmd = editorCommandBus.subscribe('dialog:open', (cmd) => {
+      if (cmd.dialog === 'word-count') {
+        setWordCountOpen(true);
+      } else if (cmd.dialog === 'deleted-files') {
+        setDeletedFilesOpen(true);
+      }
+    });
+    const unsubClose = editorCommandBus.subscribe('dialog:close', (cmd) => {
+      if (!cmd.dialog || cmd.dialog === 'word-count') {
+        setWordCountOpen(false);
+      }
+      if (!cmd.dialog || cmd.dialog === 'deleted-files') {
+        setDeletedFilesOpen(false);
+      }
+    });
+    const unsubLegacy = EditorEventBus.on('flux:open-word-count', () => {
+      setWordCountOpen(true);
+    });
+    const unsubLegacyDel = EditorEventBus.on('flux:open-deleted-files', () => {
+      setDeletedFilesOpen(true);
+    });
+    return () => {
+      unsubCmd();
+      unsubClose();
+      unsubLegacy();
+      unsubLegacyDel();
+    };
+  }, []);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const sidebarColRef = useRef<HTMLDivElement>(null);
@@ -562,8 +633,8 @@ export function EditorWorkspaceLayout() {
           ref={sidebarColRef}
           style={{ width: isNarrowScreen ? '100%' : (isSidebarCollapsed ? 44 : localSidebarWidth) }}
           className={cn(
-            "shrink-0 bg-sidebar flex flex-col h-full overflow-hidden",
-            isSidebarCollapsed && "border-r border-border",
+            "shrink-0 flex flex-col h-full overflow-hidden",
+            isSidebarCollapsed && "border-r border-border bg-sidebar",
             isNarrowScreen && "hidden",
           )}
         >
@@ -578,18 +649,7 @@ export function EditorWorkspaceLayout() {
               onClick={() => setActiveSidebarPanel(null)}
               aria-label="Close drawer"
             />
-            <div className="relative z-10 w-[85vw] max-w-[340px] h-full bg-muted border-r border-border flex flex-col">
-              <header className="flex items-center justify-between px-3 h-11 border-b border-border bg-muted shrink-0">
-                <span className="text-xs font-semibold text-foreground">Explorer & Tools</span>
-                <button
-                  type="button"
-                  onClick={() => setActiveSidebarPanel(null)}
-                  aria-label="Close sidebar"
-                  className="p-1 rounded-md hover:bg-sidebar-hover text-foreground transition-colors cursor-pointer"
-                >
-                  <X className="size-4 shrink-0" />
-                </button>
-              </header>
+            <div className="relative z-10 w-[90vw] max-w-[380px] h-full bg-background border-r border-border flex flex-col shadow-xl">
               <div className="flex-1 overflow-hidden">
                 <SideBar activePanel={activeSidebarPanel} onActivePanelChange={setActiveSidebarPanel} />
               </div>
@@ -743,6 +803,35 @@ export function EditorWorkspaceLayout() {
 
         {/* Settings Panel */}
         {settingsPanelOpen && <ProjectSettingsModal />}
+
+        {/* Word Count Dialog (Overleaf 1:1 Parity) */}
+        {wordCountOpen && (
+          <WordCountDialog
+            open={wordCountOpen}
+            onClose={() => setWordCountOpen(false)}
+            content={
+              engine?.getContent() ||
+              (currentDoc?.content
+                ? typeof currentDoc.content === 'string'
+                  ? currentDoc.content
+                  : (currentDoc.content as any).source || ''
+                : (currentDoc as any)?.docContent || '')
+            }
+            selectedText={engine?.getSelectedText() || ''}
+            activeFileName={currentDoc?.title || 'main.tex'}
+            projectFiles={combinedProjectFiles}
+            onInsertSnippet={(snippet) => engine?.insertText(snippet)}
+          />
+        )}
+
+        {/* Deleted Files Modal */}
+        {deletedFilesOpen && (
+          <DeletedFilesModal
+            open={deletedFilesOpen}
+            onOpenChange={setDeletedFilesOpen}
+            pageId={rootPageId || (currentPage as any)?.id || ''}
+          />
+        )}
       </div>
     </div>
   );

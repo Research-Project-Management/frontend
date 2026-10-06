@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/shared/components/ui/dropdown-menu';
 import {
@@ -46,19 +47,20 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
     <button
       type="button"
       className={cn(
-        'relative inline-flex items-center justify-center gap-1 h-7 px-2 py-1 rounded-sm text-xs font-medium transition-colors cursor-pointer outline-none select-none text-foreground hover:bg-muted after:absolute after:-inset-1 after:content-[\'\']',
-        reviewMode && 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/40 hover:bg-amber-500/20',
+        'relative inline-flex items-center justify-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer outline-none select-none text-foreground border border-transparent hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary',
+        reviewMode && 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/15 font-semibold',
         isReviewerOnly && 'cursor-default opacity-90',
         className,
       )}
       aria-label={`Editor Mode: ${reviewMode ? 'Reviewing' : 'Editing'}`}
       title={reviewMode ? 'Reviewing mode' : 'Editing mode'}
     >
-      <OverleafPenIcon className={cn('size-3.5 shrink-0', reviewMode ? 'text-amber-500 dark:text-amber-400' : 'text-foreground')} />
+      <OverleafPenIcon className={cn('size-3.5 shrink-0', reviewMode ? 'text-amber-600 dark:text-amber-400' : 'text-foreground')} />
+      <span className="text-12 font-medium hidden sm:inline">{reviewMode ? 'Reviewing' : 'Editing'}</span>
       {isReviewerOnly ? (
-        <Lock className="size-2.5 shrink-0 text-amber-400" />
+        <Lock className="size-2.5 shrink-0 text-amber-500" />
       ) : (
-        <OverleafCaretDownIcon className="h-2 w-auto opacity-70 ml-0.5 shrink-0" />
+        <OverleafCaretDownIcon className="h-2 w-auto opacity-70 shrink-0" />
       )}
     </button>
   );
@@ -124,9 +126,9 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
         {reviewMode && (
           <>
             <DropdownMenuSeparator className="my-1" />
-            <div className="px-2 py-1 text-11 font-semibold text-muted-foreground tracking-normal">
+            <DropdownMenuLabel className="px-2 py-1 text-11 font-semibold text-muted-foreground tracking-normal">
               Display Mode
-            </div>
+            </DropdownMenuLabel>
             <DropdownMenuItem
               onClick={() => setTrackChangesViewMode('changes')}
               className={cn(

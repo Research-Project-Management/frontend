@@ -103,8 +103,10 @@ export function UploadConflictDialog({
                     </span>
                   </div>
                   <button
+                    type="button"
                     onClick={() => onRemoveItem(i)}
-                    className="text-muted-foreground hover:bg-muted rounded-sm p-0.5 transition-colors shrink-0"
+                    aria-label="Remove file"
+                    className="text-muted-foreground hover:bg-muted rounded-sm p-0.5 transition-colors shrink-0 cursor-pointer"
                   >
                     <X className="size-3.5 shrink-0" />
                   </button>

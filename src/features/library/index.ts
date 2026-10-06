@@ -36,4 +36,4 @@ export * from './data';
 export * from './domain';
 export * from './components';
 export * from './utils';
-export * from './hooks/use-quick-copy';
+export * from './hooks';

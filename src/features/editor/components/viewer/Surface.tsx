@@ -262,6 +262,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
   const approxHeightRef = useRef<number>(0);
   const [clickIndicator, setClickIndicator] = useState<ClickIndicator | null>(null);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [docLoadError, setDocLoadError] = useState<Error | null>(null);
   setupPdfWorker();
   useEffect(() => {
     setupPdfWorker();
@@ -280,6 +281,10 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
       if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    setDocLoadError(null);
+  }, [pdfUrl]);
 
   const triggerClickIndicator = useCallback(
     (page: number, x: number, y: number, w?: number, h?: number) => {
@@ -333,9 +338,23 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
   }));
 
   const handleDocumentLoadSuccess = useCallback((pdf: any) => {
+    setDocLoadError(null);
     onNumPagesChange?.(pdf.numPages);
     parentOnLoadSuccess?.(pdf);
   }, [onNumPagesChange, parentOnLoadSuccess]);
+
+  const handleDocumentLoadError = useCallback((error: unknown) => {
+    logger.warn('[Surface] Document load error', { error });
+    setDocLoadError(
+      error instanceof Error
+        ? error
+        : new Error(
+            typeof error === 'object' && error !== null && 'message' in error
+              ? String((error as { message: unknown }).message)
+              : 'The compiled PDF document could not be decoded by the viewer engine.',
+          ),
+    );
+  }, []);
 
   // SyncTeX inverse search (PDF double-click -> LaTeX source jump)
   const handleDoubleClickPage = useCallback((
@@ -417,9 +436,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
             file={pdfUrl}
             options={documentOptions}
             onLoadSuccess={handleDocumentLoadSuccess}
-            onLoadError={(error) => {
-              logger.warn('[Surface] Document load error', { error });
-            }}
+            onLoadError={handleDocumentLoadError}
             loading={
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="size-8 animate-spin text-primary shrink-0" />
@@ -429,7 +446,8 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
               <PlaneErrorState
                 title="Failed to load PDF file"
                 description="An issue occurred while rendering the compiled document canvas."
-                error={new Error('The compiled PDF document could not be decoded by the viewer engine.')}
+                error={docLoadError ?? new Error('The compiled PDF document could not be decoded by the viewer engine.')}
+                reset={() => onCompile?.()}
               />
             }
           >

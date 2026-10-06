@@ -5,19 +5,8 @@
  * Matches backend document/export module.
  */
 
-export type DocumentExportFormat =
-  | 'pdf'
-  | 'docx'
-  | 'markdown'
-  | 'md'
-  | 'latex-source'
-  | 'latex-bundle'
-  | 'zip'
-  | 'arxiv-zip'
-  | 'log'
-  | 'bbl';
-
-export interface ExportDocumentInput {
-  format: DocumentExportFormat;
-  includeChildren?: boolean;
-}
+// Derived directly from Zod schemas (Single Source of Truth)
+export type {
+  DocumentExportFormat,
+  ExportDocumentInput,
+} from '../schemas/export.schema';

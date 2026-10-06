@@ -44,35 +44,11 @@ export interface WordCountResult {
   mathFormulas?: number;
 }
 
-export interface CompileLatexInput {
-  projectId?: string;
-  pageId?: string;
-  mainFile?: string;
-  source?: string;
-  engine?: CompilerEngine;
-  draft?: boolean;
-  useCache?: boolean;
-  stopOnFirstError?: boolean;
-  files?: Record<string, string>;
-}
-
-export interface WordCountInput {
-  source: string;
-  pageId?: string;
-  projectId?: string;
-}
-
-export interface SyncIncrementalInput {
-  dirtyFileIds?: string[];
-  forceAll?: boolean;
-  projectId?: string;
-}
-
-import type { DocumentContent } from './core.types';
-
-export interface SaveAndSyncInput {
-  title?: string;
-  content?: DocumentContent;
-  createSnapshot?: boolean;
-  versionDescription?: string;
-}
+// Derived directly from Zod schemas (Single Source of Truth)
+export type {
+  CompileLatexInput,
+  WordCountInput,
+  SyncIncrementalInput,
+  SaveAndSyncInput,
+  CompileDocumentInput,
+} from '../schemas/compiler.schema';

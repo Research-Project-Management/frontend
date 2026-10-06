@@ -226,9 +226,9 @@ export function DuplicatesPage() {
     toast.success('Dismissed duplicate group', { id: 'duplicate-group-action' });
   };
 
-  const isPersonalScope = activeScope.type === 'personal';
+  const isUserScope = activeScope.type === 'user';
   const canEdit =
-    isPersonalScope ||
+    isUserScope ||
     activeScope.role === 'owner' ||
     activeScope.role === 'coordinator' ||
     activeScope.role === 'contributor';

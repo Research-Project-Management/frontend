@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   extractPdfBookmarks,
   extractOutlineFromContent,
+  parseDocumentOutline,
 } from '@/features/editor/utils/pdf-outline.util';
 
 describe('pdf-outline.util', () => {
@@ -158,6 +159,76 @@ How data was gathered.
     it('should return empty array for empty or non-LaTeX content', () => {
       expect(extractOutlineFromContent('')).toEqual([]);
       expect(extractOutlineFromContent('Just some plain text without sections')).toEqual([]);
+    });
+  });
+
+  describe('parseDocumentOutline (File Outline Accordion)', () => {
+    it('should parse Beamer presentation frames and frametitles', () => {
+      const beamerTex = `
+\\documentclass{beamer}
+\\begin{document}
+\\begin{frame}
+  \\titlepage
+\\end{frame}
+\\begin{frame}{Motivation: Non-Convex Landscapes}
+  Slide content
+\\end{frame}
+\\begin{frame}
+  \\frametitle{The Adam Update Equations}
+  Equations
+\\end{frame}
+\\end{document}
+      `;
+
+      const outline = parseDocumentOutline(beamerTex);
+      expect(outline).toHaveLength(3);
+      expect(outline[0]).toMatchObject({
+        level: 2,
+        levelName: 'Slide',
+        title: 'Slide',
+        line: 4,
+      });
+      expect(outline[1]).toMatchObject({
+        level: 2,
+        levelName: 'Slide',
+        title: 'Motivation: Non-Convex Landscapes',
+        line: 7,
+      });
+      expect(outline[2]).toMatchObject({
+        level: 2,
+        levelName: 'Slide',
+        title: 'The Adam Update Equations',
+        line: 10,
+      });
+    });
+
+    it('should ignore commented-out headings and clean nested formatting macros', () => {
+      const tex = `
+% \\section{Hidden Old Section}
+\\section{Analysis of \\textbf{Stochastic} \\textit{Gradients} in $\\mathcal{O}(d)$}
+\\subsection{Derivation of \\underline{Bias Correction}}
+      `;
+
+      const outline = parseDocumentOutline(tex);
+      expect(outline).toHaveLength(2);
+      expect(outline[0].title).toBe('Analysis of Stochastic Gradients in O(d)');
+      expect(outline[0].line).toBe(3);
+      expect(outline[1].title).toBe('Derivation of Bias Correction');
+      expect(outline[1].line).toBe(4);
+    });
+
+    it('should parse multi-line section titles', () => {
+      const tex = `
+\\section{This is a very long
+section title that spans
+across multiple lines}
+      `;
+
+      const outline = parseDocumentOutline(tex);
+      expect(outline).toHaveLength(1);
+      expect(outline[0].title).toBe(
+        'This is a very long section title that spans across multiple lines',
+      );
     });
   });
 });

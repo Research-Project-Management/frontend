@@ -26,7 +26,7 @@ export const EditorContextMenu = React.memo(function EditorContextMenu({
       ref={ctxMenuRef}
       role="menu"
       aria-label="Editor context menu"
-      className="fixed z-50 w-52 rounded-md border border-border bg-popover py-1 overflow-hidden shadow-raised-200"
+      className="fixed z-50 w-60 rounded-md border border-border bg-popover py-1 overflow-hidden shadow-raised-200 select-none animate-in fade-in-0 zoom-in-95 duration-100"
       style={{
         left: ctxPos?.x ?? ctxMenu.x,
         top: ctxPos?.y ?? ctxMenu.y,
@@ -40,22 +40,24 @@ export const EditorContextMenu = React.memo(function EditorContextMenu({
             const Icon = item.icon;
             return (
               <button
+                type="button"
                 key={item.label}
                 role="menuitem"
                 disabled={item.disabled}
                 onClick={item.action}
                 className={cn(
-                  'group w-full flex items-center gap-2.5 px-2.5 py-1.5 text-xs cursor-pointer',
+                  'group w-full flex items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer',
                   'hover:bg-muted text-foreground transition-colors outline-none focus-visible:bg-muted',
-                  'disabled:opacity-40 disabled:cursor-not-allowed',
+                  'disabled:opacity-50 disabled:cursor-default disabled:hover:bg-transparent',
+                  item.disabled && 'italic text-muted-foreground',
                 )}
               >
                 {Icon ? (
-                  <Icon className="size-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />
+                  <Icon className="size-3.5 shrink-0 text-muted-foreground group-hover:text-foreground group-disabled:text-muted-foreground" />
                 ) : (
                   <span className="size-3.5 shrink-0" />
                 )}
-                <span className="flex-1 text-left">{item.label}</span>
+                <span className="flex-1 text-left truncate">{item.label}</span>
                 {item.kbd && (
                   <kbd className="text-xs text-muted-foreground font-mono tracking-tight">
                     {item.kbd}

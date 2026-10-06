@@ -34,7 +34,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { toast } from 'sonner';
+import { useAiChatActions } from './useAiChatActions';
 import { AIIcon } from '@/shared/components/icons';
 
 import { usePageStore } from '@/features/editor/store';
@@ -279,6 +279,18 @@ export default function AiTab({ onClose }: AiTabProps) {
   const params = useParams<{ projectId?: string; pageId?: string; draftId?: string }>();
   const { currentPage } = usePageStore();
   const { engine, getContent } = useEditorInstance();
+  const {
+    insertAtCursor,
+    replaceSelection,
+    copyCode,
+    notifyFileAttached,
+    notifyFileError,
+    notifyChatError,
+    notifyChatCleared,
+    notifyLibraryAttached,
+    notifyStorageAttached,
+    notifyDocumentsAttached,
+  } = useAiChatActions({ engine });
 
   const currentProjectId =
     params?.projectId ||
@@ -342,10 +354,10 @@ export default function AiTab({ onClose }: AiTabProps) {
           ...prev,
           { id: doc.id, name: doc.name || file.name, size: doc.size || file.size },
         ]);
-        toast.success(`Attached "${file.name}"`);
+        notifyFileAttached(file.name);
       } catch (err: any) {
         setUploadingFiles((prev) => prev.filter((item) => item.id !== tempId));
-        toast.error(err.message || `Failed to upload "${file.name}"`);
+        notifyFileError(file.name, err.message);
       }
     }
   };
@@ -422,36 +434,20 @@ export default function AiTab({ onClose }: AiTabProps) {
 
   // Editor Actions: Insert at cursor
   const handleInsertAtCursor = (text: string) => {
-    if (!engine) {
-      toast.error('Editor not ready');
-      return;
-    }
-    engine.insertText(text);
-    engine.focus();
-    toast.success('Inserted code into document');
+    insertAtCursor(text);
   };
 
   // Editor Actions: Replace current selection
   const handleReplaceSelection = (text: string) => {
-    if (!engine) {
-      toast.error('Editor not ready');
-      return;
-    }
-    engine.insertText(text);
-    engine.focus();
-    toast.success('Replaced selection with AI code');
+    replaceSelection(text);
   };
 
   // Copy code snippet
   const handleCopyCode = async (code: string, id: string) => {
-    try {
-      await navigator.clipboard.writeText(code);
+    copyCode(code, () => {
       setCopiedIndex(id);
       setTimeout(() => setCopiedIndex(null), 2000);
-      toast.success('Copied to clipboard');
-    } catch {
-      toast.error('Failed to copy to clipboard');
-    }
+    });
   };
 
   // Stop streaming
@@ -524,7 +520,7 @@ export default function AiTab({ onClose }: AiTabProps) {
       setSelectionContext(null);
     } catch (err: any) {
       if (err.name !== 'AbortError') {
-        toast.error(err.message || 'Failed to send message to AI');
+        notifyChatError(err.message);
         setMessages((prev) => [
           ...prev,
           {
@@ -552,7 +548,7 @@ export default function AiTab({ onClose }: AiTabProps) {
     setMessages([]);
     setStreamingMessage('');
     setSelectionContext(null);
-    toast.success('Conversation history cleared');
+    notifyChatCleared();
   };
 
   // Custom markdown code renderer with interactive Editor bridge buttons
@@ -623,8 +619,8 @@ export default function AiTab({ onClose }: AiTabProps) {
   return (
     <TooltipProvider delayDuration={150}>
       <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground select-none">
-      {/* ── Top Header (Unified with Project Shell / AiCompanionSidebar: h-11, text-13, SquarePen, X) ── */}
-      <header className="flex h-11 items-center justify-between px-2.5 sm:px-3 border-b border-border bg-transparent shrink-0 select-none">
+      {/* ── Top Header (Unified with Workspace Toolbars: h-9, text-13, SquarePen, X) ── */}
+      <header className="flex h-9 items-center justify-between px-2.5 sm:px-3 border-b border-border bg-transparent shrink-0 select-none">
         {/* Left: Title */}
         <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
           <span className="font-semibold text-13 text-foreground tracking-tight truncate">
@@ -1122,7 +1118,7 @@ export default function AiTab({ onClose }: AiTabProps) {
               .map((it) => ({ id: it.id, name: it.name, size: it.size }));
             return [...prev, ...newOnes];
           });
-          toast.success(`Attached ${items.length} item(s) from Library`);
+          notifyLibraryAttached(items.length);
         }}
       />
 
@@ -1138,7 +1134,7 @@ export default function AiTab({ onClose }: AiTabProps) {
               .map((it) => ({ id: it.id, name: it.name, size: it.size }));
             return [...prev, ...newOnes];
           });
-          toast.success(`Attached ${items.length} file(s) from Storage`);
+          notifyStorageAttached(items.length);
         }}
       />
 
@@ -1154,7 +1150,7 @@ export default function AiTab({ onClose }: AiTabProps) {
               .map((it) => ({ id: it.id, name: it.name, size: it.size }));
             return [...prev, ...newOnes];
           });
-          toast.success(`Selected ${items.length} uploaded document(s)`);
+          notifyDocumentsAttached(items.length);
         }}
       />
     </div>

@@ -317,7 +317,7 @@ export function PresentationModeModal({
           }}
         >
           {/* Main glowing laser dot */}
-          <div className="size-3.5 rounded-full bg-red-500 shadow-[0_0_12px_3px_#ff0000,0_0_24px_6px_rgba(255,0,0,0.5)] animate-pulse" />
+          <div className="size-3.5 rounded-full bg-red-500 shadow-[0_0_12px_3px_rgba(239,68,68,0.9),0_0_24px_6px_rgba(239,68,68,0.5)] animate-pulse" />
         </div>
       )}
 

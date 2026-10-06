@@ -227,11 +227,12 @@ export async function suggestLatexFix(params: AiErrorFixParams): Promise<AiError
       return heuristicFallback(params);
     }
 
-    const data = (await res.json()) as any;
+    const json = (await res.json()) as any;
+    const data = json?.data || json;
     const rawContent: string =
       typeof data === 'string'
         ? data
-        : (data?.content || data?.reply || '');
+        : (data?.content || data?.reply || data?.message || '');
 
     // Clean JSON text (strip markdown code blocks if returned)
     const jsonText = rawContent

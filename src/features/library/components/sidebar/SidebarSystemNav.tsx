@@ -13,14 +13,16 @@ interface SidebarSystemNavProps {
   basePath: string;
   pathname: string;
   currentFilter: string | null;
-  isPersonalScope: boolean;
+  isUserScope?: boolean;
+  isPersonalScope?: boolean;
   navId: string;
   savedSearches?: SavedSearch[] | Array<{ id: string; name: string }>;
   currentSavedSearchId?: string | null;
   retractedCount?: number;
   stats?: SystemNavStats;
   onDropItems?: (itemIds: string[], targetCollectionId: string | null) => void;
-  onSelectPersonalScope: () => void;
+  onSelectUserScope?: () => void;
+  onSelectPersonalScope?: () => void;
   onDeleteSavedSearch?: (id: string) => void;
   onEditSavedSearch?: (savedSearch: SavedSearch) => void;
   onStartRenameSavedSearch?: (id: string, name: string) => void;
@@ -36,6 +38,7 @@ export function SidebarSystemNav({
   basePath,
   pathname,
   currentFilter,
+  isUserScope: propIsUserScope,
   isPersonalScope,
   navId,
   savedSearches,
@@ -43,6 +46,7 @@ export function SidebarSystemNav({
   retractedCount,
   stats,
   onDropItems,
+  onSelectUserScope: propOnSelectUserScope,
   onSelectPersonalScope,
   onDeleteSavedSearch,
   onEditSavedSearch,
@@ -54,13 +58,16 @@ export function SidebarSystemNav({
   renameSavedSearchValue = '',
   children,
 }: SidebarSystemNavProps) {
+  const isUserScope = propIsUserScope ?? isPersonalScope ?? false;
+  const onSelectUserScope = propOnSelectUserScope ?? onSelectPersonalScope ?? (() => {});
+
   const isRecentReadActive =
-    isPersonalScope &&
+    isUserScope &&
     (pathname === `${basePath}/recently-read` ||
       (pathname === basePath && currentFilter === 'recent-read'));
 
   const hasSavedSearches = Boolean(
-    isPersonalScope && savedSearches && savedSearches.length > 0,
+    isUserScope && savedSearches && savedSearches.length > 0,
   );
 
   return (
@@ -72,21 +79,21 @@ export function SidebarSystemNav({
         label="Recently Read"
         isActive={isRecentReadActive}
         navId={navId}
-        onClick={onSelectPersonalScope}
+        onClick={onSelectUserScope}
       />
 
       {/* User Collections Tree */}
       {children}
 
       {/* 2. Saved Searches (Only rendered when items exist) */}
-      {isPersonalScope && savedSearches && savedSearches.length > 0 && (
+      {isUserScope && savedSearches && savedSearches.length > 0 && (
         <div className="my-1 flex flex-col gap-0.5 border-t border-border pt-1">
           <div className="px-6 py-1 text-11 font-medium text-foreground">
             <span>Saved Searches</span>
           </div>
           {savedSearches.map((ss) => {
             const isSSActive =
-              isPersonalScope &&
+              isUserScope &&
               currentFilter === 'saved-search' &&
               currentSavedSearchId === ss.id;
 
@@ -124,7 +131,7 @@ export function SidebarSystemNav({
                     label={cleanName}
                     isActive={isSSActive}
                     navId={navId}
-                    onClick={onSelectPersonalScope}
+                    onClick={onSelectUserScope}
                   />
                 </div>
                 <div className="absolute right-1.5 z-20">
@@ -150,7 +157,7 @@ export function SidebarSystemNav({
         )}
       >
         {SYSTEM_BOTTOM_NAV_ITEMS.map((item) => {
-          const isActive = item.isActive(pathname, currentFilter, isPersonalScope, basePath);
+          const isActive = item.isActive(pathname, currentFilter, isUserScope, basePath);
 
           return (
             <SidebarNavItem
@@ -160,7 +167,7 @@ export function SidebarSystemNav({
               label={item.label}
               isActive={isActive}
               navId={navId}
-              onClick={onSelectPersonalScope}
+              onClick={onSelectUserScope}
               onDropItems={item.id === 'unfiled' ? (ids) => onDropItems?.(ids, null) : undefined}
             />
           );

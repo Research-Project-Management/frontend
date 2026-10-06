@@ -9,6 +9,7 @@ import {
   updateCachedFields,
   saveSchemaCache,
   loadSchemaCache,
+  humanizeFieldName,
 } from './item-fields.constants';
 
 export {
@@ -17,6 +18,7 @@ export {
   updateCachedFields,
   saveSchemaCache,
   loadSchemaCache,
+  humanizeFieldName,
 };
 
 

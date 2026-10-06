@@ -349,6 +349,7 @@ export function CreatorFields({
       if (onUpdatePaper) {
         onUpdatePaper(
           {
+            ...(paper.itemType ? { itemType: paper.itemType } : {}),
             authors: finalAuthors.length ? finalAuthors : undefined,
             creators: updatedCreators.length ? toItemCreators(updatedCreators) : undefined,
             silent: true,

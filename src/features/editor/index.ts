@@ -16,5 +16,6 @@ export { useCompilerStore } from './store/compiler.store';
 export { useSettingsStore } from './store/settings.store';
 export { useCollaborationStore } from './store/collaboration.store';
 
-// Types
-export type * from './types/core.types';
+// Types & Schemas (Single Source of Truth)
+export * from './types';
+export * from './schemas';

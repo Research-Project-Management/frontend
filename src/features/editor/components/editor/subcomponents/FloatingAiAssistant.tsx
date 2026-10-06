@@ -20,7 +20,7 @@ import {
   type AcademicAiActionType,
   type AcademicAiActionResult,
 } from '@/features/editor/services/ai-academic-assistant.service';
-import { toast } from 'sonner';
+import { useFloatingAiActions } from '../hooks/useFloatingAiActions';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
@@ -50,6 +50,8 @@ export function FloatingAiAssistant({
   const [result, setResult] = useState<AcademicAiActionResult | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const { copySuggestion, applySuggestion, notifyAiError } = useFloatingAiActions();
+
   // Reset or run initial action on open
   useEffect(() => {
     if (isOpen && selectedText) {
@@ -72,7 +74,7 @@ export function FloatingAiAssistant({
       });
       setResult(res);
     } catch {
-      toast.error('Failed to generate AI suggestion');
+      notifyAiError('Failed to generate AI suggestion');
     } finally {
       setIsLoading(false);
     }
@@ -80,17 +82,15 @@ export function FloatingAiAssistant({
 
   const handleCopy = () => {
     if (!result?.suggestedText) return;
-    navigator.clipboard.writeText(result.suggestedText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success('Copied suggestion to clipboard');
+    copySuggestion(result.suggestedText, () => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   const handleApply = (mode: 'replace' | 'insert-below') => {
     if (!result?.suggestedText) return;
-    onApplyEdit(result.suggestedText, mode);
-    toast.success(mode === 'replace' ? 'Selection replaced!' : 'Inserted below selection!');
-    onClose();
+    applySuggestion(result.suggestedText, mode, onApplyEdit, onClose);
   };
 
   if (!isOpen || typeof document === 'undefined') return null;

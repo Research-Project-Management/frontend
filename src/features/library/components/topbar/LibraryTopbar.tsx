@@ -67,6 +67,7 @@ import {
   useLibraryViewStore,
   useLibraryModalStore,
   useLibraryUIStore,
+  useLibraryPermissions,
 } from '../../store';
 import type { Item } from '../../types/library.types';
 
@@ -97,6 +98,7 @@ export interface TopbarProps {
   onDirectFolderUpload?: (files: File[], folderName: string) => void;
   onAddCollection?: () => void;
   onAddLink?: () => void;
+  onImportFromUser?: () => void;
   onImportFromPersonal?: () => void;
   isSubcollection?: boolean;
   onNavigateCrumb?: (crumbId?: string) => void;
@@ -140,6 +142,7 @@ export function LibraryTopbar({
   onDirectFolderUpload,
   onAddCollection,
   onAddLink,
+  onImportFromUser: propOnImportFromUser,
   onImportFromPersonal,
   isSubcollection = false,
   onNavigateCrumb,
@@ -151,6 +154,7 @@ export function LibraryTopbar({
   children,
   className,
 }: TopbarProps) {
+  const onImportFromUser = propOnImportFromUser || onImportFromPersonal;
   const {
     isOpen,
     toggle,
@@ -159,12 +163,8 @@ export function LibraryTopbar({
     activeScope,
   } = useLibrarySidebarStore();
   const handleToggleSidebar = onToggleSidebar || toggle;
-  const isEffectiveCanEdit =
-    canEdit &&
-    (activeScope.type === 'personal' ||
-      (activeScope.role !== 'reviewer' &&
-        activeScope.role !== 'viewer' &&
-        activeScope.role !== 'commenter'));
+  const { canEditItem } = useLibraryPermissions();
+  const isEffectiveCanEdit = canEdit && canEditItem;
   const activeItemId = useLibraryViewStore((s) => s.activeItemId);
   const openModal = useLibraryModalStore((s) => s.openModal);
   const storeDisplayOptions = useLibraryUIStore((s) => s.displayOptions);
@@ -184,7 +184,7 @@ export function LibraryTopbar({
 
   const displayTitle =
     title ||
-    (activeScope.type === 'personal' ? 'Library' : activeScope.name) ||
+    (activeScope.type === 'user' ? 'Library' : activeScope.name) ||
     'Library';
 
   const Icon = propIcon !== undefined ? propIcon : (isTrash ? Trash2 : LibraryIcon);
@@ -510,13 +510,13 @@ export function LibraryTopbar({
                 </span>
               </DropdownMenuItem>
 
-              {onImportFromPersonal && (
+              {onImportFromUser && (
                 <DropdownMenuItem
-                  onClick={onImportFromPersonal}
+                  onClick={onImportFromUser}
                   className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                 >
                   <FolderInput className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                  <span className="text-foreground">Import from My Library</span>
+                  <span className="text-foreground">Import from User Library</span>
                 </DropdownMenuItem>
               )}
 

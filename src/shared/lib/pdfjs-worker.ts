@@ -6,7 +6,14 @@ import { pdfjs } from 'react-pdf';
  */
 export function setupPdfWorker(): void {
   if (typeof window !== 'undefined' && pdfjs?.GlobalWorkerOptions) {
-    pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+    try {
+      const origin = window.location?.origin;
+      pdfjs.GlobalWorkerOptions.workerSrc = origin
+        ? `${origin}/pdf.worker.min.mjs`
+        : '/pdf.worker.min.mjs';
+    } catch {
+      pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+    }
   }
 }
 

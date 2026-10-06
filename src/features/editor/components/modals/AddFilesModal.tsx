@@ -13,7 +13,17 @@ import {
   Loader2,
   Search,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useAddFilesActions } from './hooks/useAddFilesActions';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  newFileModalSchema,
+  urlImportModalSchema,
+  libraryBibtexModalSchema,
+  type NewFileModalFormValues,
+  type UrlImportModalFormValues,
+  type LibraryBibtexModalFormValues,
+} from './schemas/add-files.schema';
 
 import {
   Dialog,
@@ -21,6 +31,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Badge } from '@/shared/components/ui/badge';
@@ -122,10 +133,19 @@ export default function AddFilesModal({
   const { uploadFile } = useEditorStorage(parentPageId, undefined);
   const queryClient = useQueryClient();
 
-  // ── 1. New File State ─────────────────────────────────────────────────────
-  const [newFileName, setNewFileName] = useState('');
+  // ── 1. New File State & Form ───────────────────────────────────────────────
   const [isCreatingNewFile, setIsCreatingNewFile] = useState(false);
   const newFileInputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    register: registerNewFile,
+    handleSubmit: handleSubmitNewFile,
+    reset: resetNewFile,
+    formState: { errors: newFileErrors },
+  } = useForm<NewFileModalFormValues>({
+    resolver: zodResolver(newFileModalSchema),
+    defaultValues: { fileName: '' },
+  });
 
   useEffect(() => {
     if (open && activeTab === 'new-file') {
@@ -134,9 +154,8 @@ export default function AddFilesModal({
     }
   }, [open, activeTab]);
 
-  const handleCreateNewFile = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    const raw = newFileName.trim();
+  const handleCreateNewFile = (data: NewFileModalFormValues) => {
+    const raw = data.fileName.trim();
     if (!raw || !parentPageId) return;
 
     const title = /\.[a-z0-9]+$/i.test(raw) ? raw : `${raw}.tex`;
@@ -150,7 +169,7 @@ export default function AddFilesModal({
       {
         onSuccess: (created) => {
           setSearchParams({ file: created.id });
-          setNewFileName('');
+          resetNewFile();
           onOpenChange(false);
         },
         onSettled: () => {
@@ -273,111 +292,61 @@ export default function AddFilesModal({
     }
   };
 
-  // ── 4. From External URL State ────────────────────────────────────────────
-  const [fetchUrl, setFetchUrl] = useState('');
-  const [urlFileName, setUrlFileName] = useState('');
-  const [isFetchingUrl, setIsFetchingUrl] = useState(false);
+  // ── 4. From External URL State & Form ─────────────────────────────────────
+  const effectiveProjectId = projectId || parentPageId || '';
+  const { isFetchingUrl, importFromUrl } = useAddFilesActions({
+    parentPageId,
+    effectiveProjectId,
+    createFile,
+    uploadFile,
+    setSearchParams,
+    onClose: () => onOpenChange(false),
+  });
 
-  const handleUrlChange = (val: string) => {
-    setFetchUrl(val);
+  const {
+    register: registerUrl,
+    handleSubmit: handleSubmitUrl,
+    setValue: setUrlValue,
+    watch: watchUrl,
+    reset: resetUrl,
+    formState: { errors: urlErrors },
+  } = useForm<UrlImportModalFormValues>({
+    resolver: zodResolver(urlImportModalSchema),
+    defaultValues: { url: '', fileName: '' },
+  });
+
+  const handleUrlInputChange = (val: string) => {
+    setUrlValue('url', val, { shouldValidate: true });
     try {
       const urlObj = new URL(val);
       const cleanPath = urlObj.pathname.split('/').filter(Boolean).pop();
-      if (cleanPath && !urlFileName) {
-        setUrlFileName(decodeURIComponent(cleanPath));
+      if (cleanPath && !watchUrl('fileName')) {
+        setUrlValue('fileName', decodeURIComponent(cleanPath), { shouldValidate: true });
       }
     } catch {
       // not valid full URL yet
     }
   };
 
-  const handleFetchFromUrl = async () => {
-    const rawUrl = fetchUrl.trim();
-    if (!rawUrl || !parentPageId) return;
-
-    let targetName = urlFileName.trim();
-    if (!targetName) {
-      try {
-        const u = new URL(rawUrl);
-        targetName = u.pathname.split('/').pop() || 'downloaded.tex';
-      } catch {
-        targetName = 'downloaded.tex';
-      }
-    }
-
-    setIsFetchingUrl(true);
-    const effectiveProjectId = projectId || parentPageId;
-
-    try {
-      // 1. Primary path: Use backend Linked Files service (SSRF-protected, automated fetching & persistence)
-      try {
-        await manuscriptService.linkedFiles.create(effectiveProjectId, {
-          name: targetName,
-          url: rawUrl,
-          providerType: 'URL',
-          provider: 'url',
-        });
-        toast.success(`Linked and imported ${targetName} from URL`);
-        queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
-        queryClient.invalidateQueries({ queryKey: ['storage-files', parentPageId] });
-        EditorEventBus.emit('flux:upload-file');
-        onOpenChange(false);
-        return;
-      } catch (backendErr: any) {
-        console.warn('Backend linked-file create failed, falling back to direct browser fetch:', backendErr);
-        // 2. Fallback path: Direct browser fetch if backend route is unavailable
-        const response = await fetch(rawUrl);
-        if (!response.ok) {
-          throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
-        }
-
-        const contentType = response.headers.get('content-type') || '';
-        const isText =
-          contentType.includes('text/') ||
-          contentType.includes('json') ||
-          contentType.includes('javascript') ||
-          /\.(tex|bib|sty|cls|dtx|ltx|txt|md|csv|tsv|json)$/i.test(targetName);
-
-        if (isText) {
-          const textContent = await response.text();
-          const created = await createFile.mutateAsync({
-            parentPageId,
-            title: targetName,
-            content: textContent,
-          });
-          setSearchParams({ file: created.id });
-        } else {
-          const blob = await response.blob();
-          const file = new File([blob], targetName, {
-            type: blob.type || 'application/octet-stream',
-          });
-          await uploadFile.mutateAsync({
-            file,
-            projectId: effectiveProjectId,
-            pageId: parentPageId,
-          });
-        }
-        queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
-        queryClient.invalidateQueries({ queryKey: ['storage-files', parentPageId] });
-        EditorEventBus.emit('flux:upload-file');
-        onOpenChange(false);
-      }
-    } catch (err: any) {
-      console.error('External URL fetch error:', err);
-      toast.error(
-        err?.message ||
-          'Could not fetch file directly. If this domain blocks cross-origin requests (CORS), please download the file to your computer and upload it via the Upload tab.',
-      );
-    } finally {
-      setIsFetchingUrl(false);
-    }
+  const handleFetchFromUrl = async (data: UrlImportModalFormValues) => {
+    if (!parentPageId) return;
+    await importFromUrl(data.url, data.fileName);
+    resetUrl();
   };
 
-  // ── 5. From Library State ─────────────────────────────────────────────────
-  const [bibFileName, setBibFileName] = useState('references.bib');
+  // ── 5. From Library State & Form ───────────────────────────────────────────
   const [librarySearch, setLibrarySearch] = useState('');
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [isExportingBib, setIsExportingBib] = useState(false);
+
+  const {
+    register: registerLibraryBibtex,
+    handleSubmit: handleSubmitLibraryBibtex,
+    formState: { errors: libraryBibtexErrors },
+  } = useForm<LibraryBibtexModalFormValues>({
+    resolver: zodResolver(libraryBibtexModalSchema),
+    defaultValues: { fileName: 'references.bib' },
+  });
 
   const { data: libraryData, isLoading: isLoadingLibrary } = useViewItems(
     'user',
@@ -410,9 +379,9 @@ export default function AddFilesModal({
     });
   };
 
-  const handleExportFromLibrary = () => {
+  const handleExportFromLibrary = (data: LibraryBibtexModalFormValues) => {
     if (!parentPageId || selectedItemIds.size === 0) return;
-    const targetName = bibFileName.trim() || 'references.bib';
+    const targetName = data.fileName.trim() || 'references.bib';
     const chosenItems = libraryItems.filter((i) => selectedItemIds.has(i.id));
 
     setIsExportingBib(true);
@@ -467,23 +436,23 @@ export default function AddFilesModal({
           className="hidden"
         />
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3.5 border-b border-border bg-background">
-          <DialogTitle className="text-base font-semibold text-foreground">
-            Add files
+        {/* ── Dialog Header (Only Title and Close Icon) ─────────────────────── */}
+        <div className="flex items-center justify-between px-6 py-3.5 border-b border-border bg-background shrink-0">
+          <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
+            Add Files
           </DialogTitle>
-          <DialogDescription className="sr-only">
-            Add or upload files into this LaTeX project
-          </DialogDescription>
           <button
             type="button"
             onClick={() => onOpenChange(false)}
             aria-label="Close"
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted focus:outline-hidden transition-colors cursor-pointer"
           >
-            <X className="size-4" />
+            <X className="size-4" strokeWidth={1.5} />
           </button>
         </div>
+        <DialogDescription className="sr-only">
+          Add or upload files into this LaTeX project
+        </DialogDescription>
 
         {/* Modal Body: Left sidebar + Right form pane */}
         <div className="flex min-h-[420px]">
@@ -499,7 +468,7 @@ export default function AddFilesModal({
                   aria-selected={isActive}
                   onClick={() => setActiveTab(id)}
                   className={cn(
-                    'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium text-left transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                    'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-12 font-medium text-left transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                     isActive
                       ? 'bg-background text-foreground font-semibold border border-border/60'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/60',
@@ -510,6 +479,7 @@ export default function AddFilesModal({
                       'size-4 shrink-0',
                       isActive ? 'text-primary' : 'text-muted-foreground',
                     )}
+                    strokeWidth={1.5}
                   />
                   <span>{label}</span>
                 </button>
@@ -522,56 +492,50 @@ export default function AddFilesModal({
             {/* 1. New File Tab */}
             {activeTab === 'new-file' && (
               <form
-                onSubmit={handleCreateNewFile}
+                onSubmit={handleSubmitNewFile(handleCreateNewFile)}
                 className="flex-1 flex flex-col justify-between"
               >
                 <div className="space-y-4">
-                  <div>
-                    <h3 className="text-base font-semibold text-foreground">
-                      Create a new file
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Enter a name for the file you want to create.
-                    </p>
-                  </div>
-
-                  <div className="space-y-1.5 pt-2">
-                    <label className="text-xs font-medium text-foreground">
+                  <div className="space-y-1.5 pt-1">
+                    <label className="text-12 font-medium text-foreground">
                       File name
                     </label>
                     <Input
-                      ref={newFileInputRef}
-                      value={newFileName}
-                      onChange={(e) => setNewFileName(e.target.value)}
+                      {...registerNewFile('fileName')}
                       placeholder="e.g. section1.tex, appendix.tex"
-                      className="h-9 text-xs"
+                      className="h-8 text-12 bg-muted/40 rounded-md border-border/60 focus:bg-background"
                       autoFocus
                     />
+                    {newFileErrors.fileName && (
+                      <p className="text-11 text-destructive">{newFileErrors.fileName.message}</p>
+                    )}
                     <p className="text-11 text-muted-foreground">
-                      Files ending in .tex, .bib, .cls, .sty, or .md will be
-                      opened in the editor.
+                      Files ending in .tex, .bib, .cls, .sty, or .md will be opened in the editor.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-border mt-6">
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => onOpenChange(false)}
-                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground shadow-none"
                   >
-                    Cancel
-                  </button>
-                  <button
+                    Close
+                  </Button>
+                  <Button
                     type="submit"
-                    disabled={!newFileName.trim() || isCreatingNewFile}
-                    className="h-8 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    size="sm"
+                    disabled={isCreatingNewFile}
+                    className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none gap-1.5"
                   >
                     {isCreatingNewFile && (
-                      <Loader2 className="size-3.5 animate-spin" />
+                      <Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} />
                     )}
-                    Create
-                  </button>
+                    <span>Create</span>
+                  </Button>
                 </div>
               </form>
             )}
@@ -579,17 +543,7 @@ export default function AddFilesModal({
             {/* 2. Upload Tab */}
             {activeTab === 'upload' && (
               <div className="flex-1 flex flex-col justify-between">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-base font-semibold text-foreground">
-                      Upload files
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Upload files or whole folders from your computer into this
-                      project.
-                    </p>
-                  </div>
-
+                <div className="space-y-4 pt-1">
                   <div
                     onDragOver={(e) => {
                       e.preventDefault();
@@ -607,46 +561,50 @@ export default function AddFilesModal({
                         : 'border-border/80 hover:border-foreground/30 bg-muted/10',
                     )}
                   >
-                    <div className="size-11 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                      <Upload className="size-5" />
+                    <div className="size-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                      <Upload className="size-5" strokeWidth={1.5} />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs font-medium text-foreground">
+                      <p className="text-12 font-medium text-foreground">
                         Drag and drop files here, or
                       </p>
                       <p className="text-11 text-muted-foreground">
-                        Maximum file size: 50MB. LaTeX files, images, PDFs, and
-                        folders are supported.
+                        Maximum file size: 50MB. LaTeX files, images, PDFs, and folders are supported.
                       </p>
                     </div>
 
                     <div className="flex items-center gap-2 pt-1">
-                      <button
+                      <Button
                         type="button"
+                        size="sm"
                         onClick={() => fileInputRef.current?.click()}
-                        className="h-8 px-3.5 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        className="h-8 px-3.5 text-12 font-medium cursor-pointer rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none"
                       >
                         Select files
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={() => folderInputRef.current?.click()}
-                        className="h-8 px-3.5 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        className="h-8 px-3.5 text-12 font-medium cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground shadow-none"
                       >
                         Select a folder
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-end pt-4 border-t border-border mt-6">
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => onOpenChange(false)}
-                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground shadow-none"
                   >
-                    Cancel
-                  </button>
+                    Close
+                  </Button>
                 </div>
               </div>
             )}
@@ -654,359 +612,342 @@ export default function AddFilesModal({
             {/* 3. From Another Project Tab */}
             {activeTab === 'project' && (
               <div className="flex-1 flex flex-col justify-between">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-base font-semibold text-foreground">
-                      Add file from another project
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Copy a file from one of your other projects into this
-                      project.
-                    </p>
+                <div className="space-y-3 pt-1">
+                  {/* Select Project */}
+                  <div className="space-y-1">
+                    <label className="text-12 font-medium text-foreground">
+                      Project
+                    </label>
+                    {isLoadingProjects ? (
+                      <div className="flex items-center gap-2 text-12 text-muted-foreground py-2">
+                        <Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} />
+                        Loading projects...
+                      </div>
+                    ) : availableProjects.length === 0 ? (
+                      <p className="text-12 text-muted-foreground py-1">
+                        No other projects found in your workspace.
+                      </p>
+                    ) : (
+                      <Select
+                        value={selectedProjectId}
+                        onValueChange={(val) => {
+                          setSelectedProjectId(val);
+                          setSelectedFileId('');
+                          setProjectTargetName('');
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-12 bg-muted/40 rounded-md border-border/60">
+                          <SelectValue placeholder="Select a project" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableProjects.map((p: any) => (
+                            <SelectItem
+                              key={p.id}
+                              value={p.id}
+                              className="text-12"
+                            >
+                              {p.name || p.title || 'Untitled Project'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
 
-                  <div className="space-y-3 pt-1">
-                    {/* Select Project */}
+                  {/* Select File from Chosen Project */}
+                  {selectedProjectId && (
                     <div className="space-y-1">
-                      <label className="text-xs font-medium text-foreground">
-                        Project
+                      <label className="text-12 font-medium text-foreground">
+                        File to copy
                       </label>
-                      {isLoadingProjects ? (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                          <Loader2 className="size-3.5 animate-spin" />
-                          Loading projects...
+                      {isLoadingOtherPages ? (
+                        <div className="flex items-center gap-2 text-12 text-muted-foreground py-2">
+                          <Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} />
+                          Loading files...
                         </div>
-                      ) : availableProjects.length === 0 ? (
-                        <p className="text-xs text-muted-foreground py-1">
-                          No other projects found in your workspace.
+                      ) : otherProjectPages.length === 0 ? (
+                        <p className="text-12 text-muted-foreground py-1">
+                          No files found in selected project.
                         </p>
                       ) : (
                         <Select
-                          value={selectedProjectId}
+                          value={selectedFileId}
                           onValueChange={(val) => {
-                            setSelectedProjectId(val);
-                            setSelectedFileId('');
-                            setProjectTargetName('');
+                            setSelectedFileId(val);
+                            const target = otherProjectPages.find(
+                              (f: any) => f.id === val,
+                            );
+                            if (target) setProjectTargetName(target.title);
                           }}
                         >
-                          <SelectTrigger className="h-9 text-xs">
-                            <SelectValue placeholder="Select a project" />
+                          <SelectTrigger className="h-8 text-12 bg-muted/40 rounded-md border-border/60">
+                            <SelectValue placeholder="Select a file" />
                           </SelectTrigger>
                           <SelectContent>
-                            {availableProjects.map((p: any) => (
+                            {otherProjectPages.map((f: any) => (
                               <SelectItem
-                                key={p.id}
-                                value={p.id}
-                                className="text-xs"
+                                key={f.id}
+                                value={f.id}
+                                className="text-12"
                               >
-                                {p.name || p.title || 'Untitled Project'}
+                                {f.title}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       )}
                     </div>
+                  )}
 
-                    {/* Select File from Chosen Project */}
-                    {selectedProjectId && (
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium text-foreground">
-                          File to copy
-                        </label>
-                        {isLoadingOtherPages ? (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                            <Loader2 className="size-3.5 animate-spin" />
-                            Loading files...
-                          </div>
-                        ) : otherProjectPages.length === 0 ? (
-                          <p className="text-xs text-muted-foreground py-1">
-                            No files found in selected project.
-                          </p>
-                        ) : (
-                          <Select
-                            value={selectedFileId}
-                            onValueChange={(val) => {
-                              setSelectedFileId(val);
-                              const target = otherProjectPages.find(
-                                (f: any) => f.id === val,
-                              );
-                              if (target) setProjectTargetName(target.title);
-                            }}
-                          >
-                            <SelectTrigger className="h-9 text-xs">
-                              <SelectValue placeholder="Select a file" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {otherProjectPages.map((f: any) => (
-                                <SelectItem
-                                  key={f.id}
-                                  value={f.id}
-                                  className="text-xs"
-                                >
-                                  {f.title}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Target File Name in this project */}
-                    {selectedFileId && (
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium text-foreground">
-                          File name in this project
-                        </label>
-                        <Input
-                          value={projectTargetName}
-                          onChange={(e) => setProjectTargetName(e.target.value)}
-                          placeholder="File name"
-                          className="h-9 text-xs"
-                        />
-                      </div>
-                    )}
-                  </div>
+                  {/* Target File Name in this project */}
+                  {selectedFileId && (
+                    <div className="space-y-1">
+                      <label className="text-12 font-medium text-foreground">
+                        File name in this project
+                      </label>
+                      <Input
+                        value={projectTargetName}
+                        onChange={(e) => setProjectTargetName(e.target.value)}
+                        placeholder="File name"
+                        className="h-8 text-12 bg-muted/40 rounded-md border-border/60 focus:bg-background"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-border mt-6">
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => onOpenChange(false)}
-                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground shadow-none"
                   >
-                    Cancel
-                  </button>
-                  <button
+                    Close
+                  </Button>
+                  <Button
                     type="button"
+                    size="sm"
                     disabled={
                       !selectedFileId ||
                       !projectTargetName.trim() ||
                       isCopyingFromProject
                     }
                     onClick={handleCopyFromProject}
-                    className="h-8 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none gap-1.5"
                   >
                     {isCopyingFromProject && (
-                      <Loader2 className="size-3.5 animate-spin" />
+                      <Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} />
                     )}
-                    Create
-                  </button>
+                    <span>Create</span>
+                  </Button>
                 </div>
               </div>
             )}
 
             {/* 4. From External URL Tab */}
             {activeTab === 'url' && (
-              <div className="flex-1 flex flex-col justify-between">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-base font-semibold text-foreground">
-                      Add file from external URL
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Fetch and import a file directly from a public URL.
-                    </p>
+              <form
+                onSubmit={handleSubmitUrl(handleFetchFromUrl)}
+                className="flex-1 flex flex-col justify-between"
+              >
+                <div className="space-y-3 pt-1">
+                  <div className="space-y-1">
+                    <label className="text-12 font-medium text-foreground">
+                      URL to fetch
+                    </label>
+                    <Input
+                      {...registerUrl('url')}
+                      onChange={(e) => handleUrlInputChange(e.target.value)}
+                      placeholder="https://example.com/dataset.csv or raw GitHub URL"
+                      className="h-8 text-12 bg-muted/40 rounded-md border-border/60 focus:bg-background"
+                    />
+                    {urlErrors.url && (
+                      <p className="text-11 text-destructive">{urlErrors.url.message}</p>
+                    )}
                   </div>
 
-                  <div className="space-y-3 pt-1">
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-foreground">
-                        URL to fetch
-                      </label>
-                      <Input
-                        value={fetchUrl}
-                        onChange={(e) => handleUrlChange(e.target.value)}
-                        placeholder="https://example.com/dataset.csv or raw GitHub URL"
-                        className="h-9 text-xs"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-foreground">
-                        File name in this project
-                      </label>
-                      <Input
-                        value={urlFileName}
-                        onChange={(e) => setUrlFileName(e.target.value)}
-                        placeholder="e.g. data.csv, imported.tex"
-                        className="h-9 text-xs"
-                      />
-                    </div>
-
-                    <p className="text-11 text-muted-foreground">
-                      Note: The URL must allow direct public access. For files on
-                      GitHub, use the raw content URL (e.g. raw.githubusercontent.com).
-                    </p>
+                  <div className="space-y-1">
+                    <label className="text-12 font-medium text-foreground">
+                      File name in this project
+                    </label>
+                    <Input
+                      {...registerUrl('fileName')}
+                      placeholder="e.g. data.csv, imported.tex"
+                      className="h-8 text-12 bg-muted/40 rounded-md border-border/60 focus:bg-background"
+                    />
+                    {urlErrors.fileName && (
+                      <p className="text-11 text-destructive">{urlErrors.fileName.message}</p>
+                    )}
                   </div>
+
+                  <p className="text-11 text-muted-foreground">
+                    Note: The URL must allow direct public access. For files on GitHub, use the raw content URL.
+                  </p>
                 </div>
 
                 <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-border mt-6">
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => onOpenChange(false)}
-                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground shadow-none"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!fetchUrl.trim() || isFetchingUrl}
-                    onClick={handleFetchFromUrl}
-                    className="h-8 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    Close
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={isFetchingUrl}
+                    className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none gap-1.5"
                   >
                     {isFetchingUrl && (
-                      <Loader2 className="size-3.5 animate-spin" />
+                      <Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} />
                     )}
-                    Create
-                  </button>
+                    <span>Create</span>
+                  </Button>
                 </div>
-              </div>
+              </form>
             )}
 
             {/* 5. From Library Tab */}
             {activeTab === 'library' && (
               <div className="flex-1 flex flex-col justify-between">
-                <div className="space-y-3">
-                  <div>
-                    <h3 className="text-base font-semibold text-foreground">
-                      Add references from your library
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Export items from your Flux Library into a BibTeX (.bib) file.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2.5 pt-1">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 space-y-1">
-                        <label className="text-xs font-medium text-foreground">
-                          BibTeX file name
-                        </label>
+                <div className="space-y-3 pt-1">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 space-y-1">
+                      <label className="text-12 font-medium text-foreground">
+                        BibTeX file name
+                      </label>
+                      <Input
+                        {...registerLibraryBibtex('fileName')}
+                        placeholder="references.bib"
+                        className="h-8 text-12 bg-muted/40 rounded-md border-border/60 focus:bg-background"
+                      />
+                      {libraryBibtexErrors.fileName && (
+                        <p className="text-11 text-destructive">{libraryBibtexErrors.fileName.message}</p>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <label className="text-12 font-medium text-foreground">
+                        Search library
+                      </label>
+                      <div className="relative">
+                        <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" strokeWidth={1.5} />
                         <Input
-                          value={bibFileName}
-                          onChange={(e) => setBibFileName(e.target.value)}
-                          placeholder="references.bib"
-                          className="h-8 text-xs"
+                          value={librarySearch}
+                          onChange={(e) => setLibrarySearch(e.target.value)}
+                          placeholder="Filter papers..."
+                          className="h-8 text-12 pl-8 bg-muted/40 rounded-md border-border/60 focus:bg-background"
                         />
                       </div>
-                      <div className="flex-1 space-y-1">
-                        <label className="text-xs font-medium text-foreground">
-                          Search library
+                    </div>
+                  </div>
+
+                  {/* Library items list with open hairlines */}
+                  <div className="space-y-1 pt-1">
+                    <div className="flex items-center justify-between text-11 pb-1.5 px-1 border-b border-border/60 text-muted-foreground font-medium">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="select-all"
+                          checked={
+                            libraryItems.length > 0 &&
+                            selectedItemIds.size === libraryItems.length
+                          }
+                          onCheckedChange={handleToggleSelectAll}
+                        />
+                        <label
+                          htmlFor="select-all"
+                          className="text-11 font-medium cursor-pointer text-foreground"
+                        >
+                          Select all
                         </label>
-                        <div className="relative">
-                          <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                          <Input
-                            value={librarySearch}
-                            onChange={(e) => setLibrarySearch(e.target.value)}
-                            placeholder="Filter papers..."
-                            className="h-8 text-xs pl-8"
-                          />
-                        </div>
                       </div>
+                      <span>
+                        {selectedItemIds.size} of {libraryItems.length} selected
+                      </span>
                     </div>
 
-                    {/* Library items select list */}
-                    <div className="border border-border rounded-md p-2 bg-muted/10 space-y-2">
-                      <div className="flex items-center justify-between text-xs pb-1 border-b border-border/60">
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            id="select-all"
-                            checked={
-                              libraryItems.length > 0 &&
-                              selectedItemIds.size === libraryItems.length
-                            }
-                            onCheckedChange={handleToggleSelectAll}
-                          />
-                          <label
-                            htmlFor="select-all"
-                            className="text-xs font-medium cursor-pointer"
-                          >
-                            Select all
-                          </label>
+                    <div className="max-h-48 overflow-y-auto divide-y divide-border/60 px-1 thin-scrollbar">
+                      {isLoadingLibrary ? (
+                        <div className="flex items-center justify-center py-6 text-12 text-muted-foreground gap-2">
+                          <Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} />
+                          <span>Loading library items...</span>
                         </div>
-                        <span className="text-muted-foreground text-11">
-                          {selectedItemIds.size} of {libraryItems.length} selected
-                        </span>
-                      </div>
-
-                      <div className="max-h-44 overflow-y-auto space-y-1 pr-1">
-                        {isLoadingLibrary ? (
-                          <div className="flex items-center justify-center py-6 text-xs text-muted-foreground gap-2">
-                            <Loader2 className="size-4 animate-spin" />
-                            Loading library items...
-                          </div>
-                        ) : libraryItems.length === 0 ? (
-                          <div className="text-center py-6 text-xs text-muted-foreground">
-                            No references found in your library.
-                          </div>
-                        ) : (
-                          libraryItems.map((item) => {
-                            const isSelected = selectedItemIds.has(item.id);
-                            return (
-                              <div
-                                key={item.id}
-                                onClick={() => handleToggleItem(item.id)}
-                                className={cn(
-                                  'flex items-start gap-2 p-1.5 rounded-md hover:bg-muted/60 transition-colors cursor-pointer text-xs',
-                                  isSelected && 'bg-muted/40',
-                                )}
-                              >
-                                <Checkbox
-                                  checked={isSelected}
-                                  onCheckedChange={() => handleToggleItem(item.id)}
-                                  className="mt-0.5"
-                                />
-                                <div className="min-w-0 flex-1">
-                                  <div className="font-medium text-foreground truncate">
-                                    {item.title || 'Untitled Reference'}
-                                  </div>
-                                  <div className="text-11 text-muted-foreground flex items-center gap-2">
-                                    {item.citationKey && (
-                                      <Badge
-                                        variant="outline"
-                                        className="text-10 px-1 py-0 h-4 font-mono font-normal"
-                                      >
-                                        {item.citationKey}
-                                      </Badge>
-                                    )}
-                                    {item.date && (
-                                      <span>
-                                        {typeof item.date === 'string'
-                                          ? item.date.slice(0, 4)
-                                          : ''}
-                                      </span>
-                                    )}
-                                  </div>
+                      ) : libraryItems.length === 0 ? (
+                        <div className="text-center py-6 text-12 text-muted-foreground">
+                          No references found in your library.
+                        </div>
+                      ) : (
+                        libraryItems.map((item) => {
+                          const isSelected = selectedItemIds.has(item.id);
+                          return (
+                            <div
+                              key={item.id}
+                              onClick={() => handleToggleItem(item.id)}
+                              className={cn(
+                                'flex items-start gap-2.5 py-2 px-1 hover:bg-muted/20 transition-colors cursor-pointer text-12',
+                                isSelected && 'bg-muted/15',
+                              )}
+                            >
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => handleToggleItem(item.id)}
+                                className="mt-0.5"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="font-medium text-foreground truncate">
+                                  {item.title || 'Untitled Reference'}
+                                </div>
+                                <div className="text-11 text-muted-foreground flex items-center gap-2 mt-0.5">
+                                  {item.citationKey && (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-10 px-1 py-0 h-4 font-mono font-normal"
+                                    >
+                                      {item.citationKey}
+                                    </Badge>
+                                  )}
+                                  {item.date && (
+                                    <span>
+                                      {typeof item.date === 'string'
+                                        ? item.date.slice(0, 4)
+                                        : ''}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
-                            );
-                          })
-                        )}
-                      </div>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-border mt-4">
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => onOpenChange(false)}
-                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground shadow-none"
                   >
-                    Cancel
-                  </button>
-                  <button
+                    Close
+                  </Button>
+                  <Button
                     type="button"
+                    size="sm"
                     disabled={selectedItemIds.size === 0 || isExportingBib}
-                    onClick={handleExportFromLibrary}
-                    className="h-8 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    onClick={handleSubmitLibraryBibtex(handleExportFromLibrary)}
+                    className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none gap-1.5"
                   >
                     {isExportingBib && (
-                      <Loader2 className="size-3.5 animate-spin" />
+                      <Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} />
                     )}
-                    Create
-                  </button>
+                    <span>Create</span>
+                  </Button>
                 </div>
               </div>
             )}

@@ -14,10 +14,8 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/shared/components/ui/dialog';
 import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
@@ -205,32 +203,40 @@ export default function KeyboardShortcutsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-2xl rounded-lg text-foreground select-none">
+      <DialogContent className="max-w-2xl w-full p-0 gap-0 overflow-hidden bg-background border border-border/60 shadow-raised-400 rounded-lg text-foreground select-none">
         {/* Header */}
-        <DialogHeader className="px-6 py-4 border-b border-border bg-background">
-          <DialogTitle className="text-base font-semibold flex items-center gap-2">
-            <Keyboard className="size-4 text-foreground" />
-            Keyboard Shortcuts Cheat Sheet
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60 shrink-0">
+          <DialogTitle className="text-14 font-semibold text-foreground tracking-tight flex items-center gap-2">
+            <Keyboard className="size-4 text-foreground" strokeWidth={1.5} />
+            Keyboard Shortcuts
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-            Quick reference for productivity hotkeys matching Overleaf and modern LaTeX IDEs.
-          </DialogDescription>
-        </DialogHeader>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            aria-label="Close"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted focus:outline-hidden transition-colors cursor-pointer"
+          >
+            <X className="size-4" strokeWidth={1.5} />
+          </button>
+        </div>
+        <DialogDescription className="sr-only">
+          Keyboard shortcuts reference
+        </DialogDescription>
 
         {/* Search & Category Filter */}
-        <div className="p-4 border-b border-border bg-background flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="px-5 py-3 border-b border-border/60 bg-background flex flex-col sm:flex-row gap-3 items-center justify-between shrink-0">
           <div className="relative w-full sm:w-72">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" strokeWidth={1.5} />
             <Input
               type="text"
               placeholder="Search shortcut or action..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-8 pl-8 pr-2 text-xs rounded-md border-border"
+              className="h-8 pl-8 pr-2 text-12 bg-muted/40 rounded-md border-border/60 focus:bg-background"
             />
           </div>
 
-          <div className="flex items-center rounded-md bg-muted p-0.5 border border-border text-11 w-full sm:w-auto overflow-x-auto">
+          <div className="flex items-center rounded-md bg-muted/50 p-0.5 border border-border/60 text-11 w-full sm:w-auto overflow-x-auto shrink-0">
             {(['All', 'Compilation', 'Editing', 'Navigation', 'Layout'] as const).map((cat) => (
               <button
                 key={cat}
@@ -239,7 +245,7 @@ export default function KeyboardShortcutsModal({
                 className={cn(
                   'px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-primary',
                   activeCategory === cat
-                    ? 'bg-background text-foreground font-semibold'
+                    ? 'bg-background text-foreground shadow-xs font-semibold'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -249,8 +255,8 @@ export default function KeyboardShortcutsModal({
           </div>
         </div>
 
-        {/* Shortcuts List */}
-        <div className="max-h-[380px] overflow-y-auto p-4 space-y-2">
+        {/* Shortcuts List: Open Hairlines without outer box */}
+        <div className="max-h-[380px] overflow-y-auto px-5 divide-y divide-border/60">
           {filtered.length === 0 ? (
             <div className="py-12 text-center text-xs text-muted-foreground">
               No shortcuts matching "{search}"
@@ -259,14 +265,14 @@ export default function KeyboardShortcutsModal({
             filtered.map((s) => (
               <div
                 key={s.id}
-                className="flex items-center justify-between p-2.5 rounded-md border border-border/60 hover:border-border hover:bg-muted/30 transition-colors"
+                className="flex items-center justify-between py-2.5 px-1 hover:bg-muted/30 transition-colors"
               >
                 <div className="min-w-0 pr-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-foreground">
+                    <span className="text-12 font-medium text-foreground">
                       {s.label}
                     </span>
-                    <Badge variant="outline" className="text-10 px-1 py-0 font-mono text-muted-foreground">
+                    <Badge variant="outline" className="text-10 px-1 py-0 font-mono text-muted-foreground border-border/60">
                       {s.category}
                     </Badge>
                   </div>
@@ -280,7 +286,7 @@ export default function KeyboardShortcutsModal({
                 <div className="flex items-center gap-1 shrink-0 font-mono text-xs">
                   {s.keys.map((k, i) => (
                     <React.Fragment key={k}>
-                      <kbd className="px-2 py-0.5 rounded-sm bg-muted border border-border text-11 font-semibold text-foreground">
+                      <kbd className="px-2 py-0.5 rounded-sm bg-muted/70 border border-border/60 text-11 font-medium text-foreground shadow-2xs">
                         {k}
                       </kbd>
                       {i < s.keys.length - 1 && (
@@ -294,15 +300,14 @@ export default function KeyboardShortcutsModal({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-3 bg-background border-t border-border flex items-center justify-between text-11 text-muted-foreground">
-          <span>Tip: On macOS, use ⌘ Command instead of Ctrl.</span>
+        {/* Footer: Only Close button */}
+        <div className="px-5 py-2.5 bg-background border-t border-border/60 flex items-center justify-end shrink-0">
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="h-7 text-xs font-medium cursor-pointer"
+            className="h-8 px-4 text-12 font-medium"
           >
             Close
           </Button>

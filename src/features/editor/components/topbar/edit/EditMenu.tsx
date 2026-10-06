@@ -3,6 +3,7 @@
 import React from 'react';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from "@/shared/components/ui";
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { Sparkles, ShieldCheck } from 'lucide-react';
 
@@ -12,7 +13,10 @@ export default function EditMenu() {
   const handleUndo = () => engine?.undo();
   const handleRedo = () => engine?.redo();
   const handleSelectAll = () => engine?.selectAll();
-  const handleFind = () => engine?.openFind();
+  const handleFind = () => {
+    editorCommandBus.dispatch({ type: 'editor:find', open: true });
+    engine?.focus();
+  };
   const handleAutoFix = () => EditorEventBus.emit('flux:autofix');
   const handleLintPage = () => EditorEventBus.emit('flux:lint-page');
 

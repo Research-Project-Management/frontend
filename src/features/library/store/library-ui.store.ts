@@ -95,10 +95,9 @@ export const useLibraryUIStore = create<LibraryUIState>()(
     (set) => ({
       // Defaults
       activeScope: {
-        type: 'personal',
+        type: 'user',
         id: 'user',
         name: 'Library',
-        role: 'owner',
       },
       isOpen: true,
       isSidebarOpen: true,

@@ -66,6 +66,11 @@ export function useUpdateReaderItem(scopeId?: string) {
       queryClient.invalidateQueries({
         queryKey: readerQueryKeys.item(scopeId, variables.itemId),
       });
+      // Decoupled cross-feature cache invalidation: ensures any UI surface tracking this itemId is refreshed
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) && query.queryKey.includes(variables.itemId),
+      });
     },
     onError: (error: Error) => {
       toast.error(`Update failed: ${error.message}`, { id: 'reader-item-update' });

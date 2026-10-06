@@ -1,15 +1,22 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+/**
+ * FigureWizardModal.tsx
+ *
+ * Clean presentational modal for LaTeX figure insertion:
+ * - State and validation managed by `useFigureWizard` (React Hook Form + Zod)
+ * - Toasts and clipboard operations encapsulated within the hook
+ * - Zero direct toast imports in this presentation component
+ */
+
+import React, { useRef, useEffect } from 'react';
 import {
   Image as ImageIcon,
   Upload,
   Check,
   Copy,
-  FolderOpen,
   FileImage,
   Loader2,
-  AlertCircle,
 } from 'lucide-react';
 import {
   Dialog,
@@ -23,9 +30,9 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
-import { toast } from 'sonner';
 import { useEditorStorage } from '@/features/editor/hooks/use-storage';
 import { resolveFileUrl } from '@/features/editor/utils/editor.util';
+import { useFigureWizard } from './hooks/useFigureWizard';
 
 export interface FigureWizardModalProps {
   open: boolean;
@@ -53,7 +60,7 @@ export default function FigureWizardModal({
   const { files, isLoading, uploadFile } = useEditorStorage(parentPageId, undefined);
 
   // Filter for image files
-  const imageFiles = useMemo(() => {
+  const imageFiles = React.useMemo(() => {
     if (!files) return [];
     return files.filter((f) => {
       if (f.isFolder) return false;
@@ -62,31 +69,29 @@ export default function FigureWizardModal({
     });
   }, [files]);
 
-  const [selectedFilename, setSelectedFilename] = useState<string>('');
-  const [caption, setCaption] = useState<string>('Figure caption');
-  const [label, setLabel] = useState<string>('fig:my_figure');
-  const [width, setWidth] = useState<string>('0.8\\linewidth');
-  const [placement, setPlacement] = useState<string>('htbp');
-  const [centering, setCentering] = useState<boolean>(true);
+  const {
+    form,
+    values,
+    generatedLatex,
+    handleSelectImage,
+    insertFigure,
+    copyFigureCode,
+  } = useFigureWizard({
+    onInsert,
+    onClose: () => onOpenChange(false),
+  });
+
+  const { register, setValue } = form;
 
   // Auto-select first image if none selected
   useEffect(() => {
-    if (imageFiles.length > 0 && !selectedFilename) {
-      const first = imageFiles[0];
-      setSelectedFilename(first.filename);
-      const stem = first.filename.replace(/\.[^/.]+$/, '').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
-      setLabel(`fig:${stem}`);
+    if (imageFiles.length > 0 && !values.selectedFilename) {
+      handleSelectImage(imageFiles[0].filename);
     }
-  }, [imageFiles, selectedFilename]);
+  }, [imageFiles, values.selectedFilename, handleSelectImage]);
 
   // Upload handler
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const handleSelectImage = (filename: string) => {
-    setSelectedFilename(filename);
-    const stem = filename.replace(/\.[^/.]+$/, '').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
-    setLabel(`fig:${stem}`);
-  };
 
   const handleFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const pickedFiles = e.target.files;
@@ -102,40 +107,10 @@ export default function FigureWizardModal({
         handleSelectImage(uploadedName);
       }
     } catch {
-      // Error already toasted by uploadFile mutation hook
+      // Error already handled by uploadFile mutation hook
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  };
-
-  // Generate LaTeX figure snippet
-  const generatedLatex = useMemo(() => {
-    const imgName = selectedFilename || 'example-image.png';
-
-    let code = `\\begin{figure}[${placement}]\n`;
-    if (centering) {
-      code += `  \\centering\n`;
-    }
-    code += `  \\includegraphics[width=${width}]{${imgName}}\n`;
-    if (caption) {
-      code += `  \\caption{${caption}}\n`;
-    }
-    if (label) {
-      code += `  \\label{${label}}\n`;
-    }
-    code += `\\end{figure}\n`;
-    return code;
-  }, [selectedFilename, placement, centering, width, caption, label]);
-
-  const handleInsert = () => {
-    onInsert(generatedLatex);
-    toast.success('Figure inserted into document');
-    onOpenChange(false);
-  };
-
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(generatedLatex);
-    toast.info('LaTeX code copied to clipboard');
   };
 
   return (
@@ -206,7 +181,7 @@ export default function FigureWizardModal({
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 max-h-44 overflow-y-auto p-1.5 border border-border rounded-md bg-muted/10">
               {imageFiles.map((img) => {
-                const isSelected = selectedFilename === img.filename;
+                const isSelected = values.selectedFilename === img.filename;
                 const url = resolveFileUrl(img.url);
                 return (
                   <div
@@ -224,7 +199,7 @@ export default function FigureWizardModal({
                       'group relative rounded-md border p-1.5 flex flex-col items-center gap-1.5 cursor-pointer transition-all outline-none focus-visible:ring-1 focus-visible:ring-primary',
                       isSelected
                         ? 'bg-primary/10 border-primary'
-                        : 'bg-background border-border hover:border-border hover:bg-muted/40'
+                        : 'bg-background border-border hover:border-border hover:bg-muted/40',
                     )}
                   >
                     <div className="w-full h-16 rounded-sm bg-muted flex items-center justify-center overflow-hidden">
@@ -266,12 +241,12 @@ export default function FigureWizardModal({
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => setWidth(p.id)}
+                  onClick={() => setValue('width', p.id, { shouldValidate: true })}
                   className={cn(
                     'h-7 px-2 text-11 font-medium rounded-sm border truncate text-center transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                    width === p.id
+                    values.width === p.id
                       ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background border-border text-foreground hover:bg-muted'
+                      : 'bg-background border-border text-foreground hover:bg-muted',
                   )}
                 >
                   {p.label}
@@ -287,8 +262,7 @@ export default function FigureWizardModal({
                 Caption
               </label>
               <Input
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
+                {...register('caption')}
                 placeholder="Figure caption description"
                 className="h-8 text-xs rounded-md border-border bg-background"
               />
@@ -298,8 +272,7 @@ export default function FigureWizardModal({
                 Label (for \ref)
               </label>
               <Input
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
+                {...register('label')}
                 placeholder="fig:my_figure"
                 className="h-8 text-xs font-mono rounded-md border-border bg-background"
               />
@@ -317,12 +290,12 @@ export default function FigureWizardModal({
                   <button
                     key={spec}
                     type="button"
-                    onClick={() => setPlacement(spec)}
+                    onClick={() => setValue('placement', spec, { shouldValidate: true })}
                     className={cn(
                       'px-2 py-0.5 text-11 font-mono rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                      placement === spec
+                      values.placement === spec
                         ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background border-border text-foreground hover:bg-muted'
+                        : 'bg-background border-border text-foreground hover:bg-muted',
                     )}
                   >
                     [{spec}]
@@ -334,8 +307,8 @@ export default function FigureWizardModal({
             <div className="flex items-center gap-2">
               <Checkbox
                 id="figure-centering"
-                checked={centering}
-                onCheckedChange={(c) => setCentering(Boolean(c))}
+                checked={values.centering}
+                onCheckedChange={(c) => setValue('centering', Boolean(c))}
               />
               <label
                 htmlFor="figure-centering"
@@ -359,7 +332,7 @@ export default function FigureWizardModal({
             type="button"
             variant="outline"
             size="sm"
-            onClick={handleCopyCode}
+            onClick={copyFigureCode}
             className="gap-1.5 h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <Copy className="size-3.5" />
@@ -380,7 +353,7 @@ export default function FigureWizardModal({
               type="button"
               variant="default"
               size="sm"
-              onClick={handleInsert}
+              onClick={insertFigure}
               className="gap-1.5 h-8 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <Check className="size-3.5" />

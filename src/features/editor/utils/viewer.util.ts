@@ -37,6 +37,75 @@ export interface SyncTeXMap {
 }
 
 /**
+ * Memory-efficient zero-allocation line scanner for large text streams.
+ */
+export function forEachLine(text: string, callback: (line: string) => void): void {
+  let start = 0;
+  const len = text.length;
+  while (start < len) {
+    let end = text.indexOf('\n', start);
+    if (end === -1) end = len;
+    let lineEnd = end;
+    if (lineEnd > start && text.charCodeAt(lineEnd - 1) === 13 /* \r */) {
+      lineEnd--;
+    }
+    callback(text.substring(start, lineEnd));
+    start = end + 1;
+  }
+}
+
+/**
+ * Resolves the page number for a given line, with tag matching and O(log M) binary search fallback.
+ */
+export function resolvePageForLine(
+  synctexMap: SyncTeXMap | null | undefined,
+  line: number,
+  tag?: number,
+  maxTolerance: number = 5,
+): number | null {
+  if (!synctexMap) return null;
+
+  if (tag !== undefined) {
+    const key = `${tag}:${line}`;
+    if (synctexMap.tagLineToPage.has(key)) {
+      return synctexMap.tagLineToPage.get(key)!;
+    }
+  }
+
+  if (synctexMap.lineToPage.has(line)) {
+    return synctexMap.lineToPage.get(line)!;
+  }
+
+  const sorted = synctexMap.sortedLines;
+  if (!sorted || sorted.length === 0) return null;
+
+  // Binary search for nearest preceding line (<= line)
+  let low = 0;
+  let high = sorted.length - 1;
+  let bestCandidate: number | null = null;
+
+  while (low <= high) {
+    const mid = (low + high) >> 1;
+    const midVal = sorted[mid];
+    if (midVal === line) {
+      bestCandidate = midVal;
+      break;
+    } else if (midVal < line) {
+      bestCandidate = midVal;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  if (bestCandidate !== null && (line - bestCandidate) <= maxTolerance) {
+    return synctexMap.lineToPage.get(bestCandidate) ?? null;
+  }
+
+  return null;
+}
+
+/**
  * Parse a decompressed SyncTeX text into a coordinate-aware map.
  */
 export function parseSyncTeX(text: string): SyncTeXMap {
@@ -49,9 +118,9 @@ export function parseSyncTeX(text: string): SyncTeXMap {
   const pathToTag = new Map<string, number>();
   let currentPage = 0;
 
-  for (const raw of text.split("\n")) {
+  forEachLine(text, (raw) => {
     const s = raw.trimEnd();
-    if (!s) continue;
+    if (!s) return;
 
     if (s.startsWith("Input:")) {
       const parts = s.split(":");
@@ -66,7 +135,7 @@ export function parseSyncTeX(text: string): SyncTeXMap {
         pathToTag.set(normalized, tag);
         pathToTag.set(normalized.replace(/^\.\//, ''), tag);
       }
-      continue;
+      return;
     }
 
     const first = s.charCodeAt(0);
@@ -78,10 +147,10 @@ export function parseSyncTeX(text: string): SyncTeXMap {
         if (!pageToLines.has(currentPage)) pageToLines.set(currentPage, []);
         if (!pageToNodes.has(currentPage)) pageToNodes.set(currentPage, []);
       }
-      continue;
+      return;
     }
 
-    if (first === 125 /* } */ || currentPage === 0) continue;
+    if (first === 125 /* } */ || currentPage === 0) return;
 
     const m = s.match(/^([\[\(\)hvgxk$])(\d+)[:,\.](\d+)(?:[:,\.](\d+))?:(-?\d+),(-?\d+)(?::(-?\d+),(-?\d+))?/);
     if (m) {
@@ -118,10 +187,15 @@ export function parseSyncTeX(text: string): SyncTeXMap {
         tagLineToNode.set(tagKey, node);
       }
     }
-  }
+  });
 
   for (const [page, lines] of pageToLines.entries()) {
     pageToLines.set(page, Array.from(new Set(lines)).sort((a, b) => a - b));
+  }
+
+  // Pre-sort nodes per page by y-coordinate ascending for O(log N) binary search & branch-and-bound pruning
+  for (const [page, nodes] of pageToNodes.entries()) {
+    pageToNodes.set(page, nodes.sort((a, b) => a.y - b.y));
   }
 
   const sortedLines = Array.from(lineToPage.keys()).sort((a, b) => a - b);
@@ -163,6 +237,72 @@ export async function generateThumbnail(pdfBlob: Blob): Promise<string | null> {
   }
 }
 
+/**
+ * Decodes raw PDF data from various representations (direct URL, Data URI, raw PDF binary, or Base64)
+ * into a renderable URL and Blob instance for the PDF viewer.
+ */
+export function createPdfBlobAndUrl(rawPdf: string): { url: string; blob: Blob | null } | null {
+  if (!rawPdf || typeof rawPdf !== 'string') return null;
+  const trimmed = rawPdf.trim();
+  if (trimmed.length === 0) return null;
+
+  // 1. Direct URLs (HTTP, HTTPS, relative path, or existing blob)
+  if (
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('/') ||
+    trimmed.startsWith('blob:')
+  ) {
+    return { url: trimmed, blob: null };
+  }
+
+  // 2. Raw PDF binary text (starts with %PDF-)
+  if (trimmed.startsWith('%PDF-')) {
+    try {
+      const len = trimmed.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = trimmed.charCodeAt(i) & 0xff;
+      }
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      return { url: URL.createObjectURL(blob), blob };
+    } catch (e) {
+      logger.debug('[LatexCompilerEngine] Raw PDF binary decode error', { error: e });
+    }
+  }
+
+  // 3. Base64 string or Data URI (e.g. data:application/pdf;base64,...)
+  try {
+    let base64 = trimmed;
+    if (base64.startsWith('data:')) {
+      const commaIdx = base64.indexOf(',');
+      if (commaIdx !== -1) {
+        base64 = base64.slice(commaIdx + 1);
+      }
+    }
+    // Remove all whitespace (newlines, carriage returns, spaces, tabs)
+    base64 = base64.replace(/\s+/g, '');
+
+    // Ensure valid base64 padding
+    while (base64.length % 4 !== 0) {
+      base64 += '=';
+    }
+
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    return { url: URL.createObjectURL(blob), blob };
+  } catch (e) {
+    logger.debug('[LatexCompilerEngine] Base64 PDF decode notice', { error: e });
+  }
+
+  return null;
+}
+
 // ── Compile Engine Execution Types ───────────────────────────────────────────
 
 export interface DirtyFileItem {
@@ -178,6 +318,7 @@ export interface CompileExecutionOptions {
   texLiveVersion?: string;
   draft: boolean;
   useCache: boolean;
+  forceClean?: boolean;
   stopOnFirstError?: boolean;
   dirtyFiles: DirtyFileItem[];
   source?: string;
@@ -190,7 +331,7 @@ export type CompileExecutionResult =
   | {
       success: true;
       pdfUrl: string;
-      pdfBlob: Blob;
+      pdfBlob?: Blob;
       synctexMap: SyncTeXMap | null;
       rawSynctex?: string | null;
       logs: string;
@@ -295,20 +436,29 @@ export const LatexCompilerEngine = {
       texLiveVersion: opts.texLiveVersion,
       draft,
       use_cache: useCache,
+      force_clean: opts.forceClean,
       stop_on_first_error: opts.stopOnFirstError,
     };
 
     try {
       const data = await compileLatex(payload, currentSignal);
 
-      if (data?.pdf && typeof data.pdf === "string" && data.pdf.trim().length > 20) {
-        const pdfBytes = Uint8Array.from(atob(data.pdf.trim()), (c) => c.charCodeAt(0));
-        if (pdfBytes.length > 0) {
-          const blob = new Blob([pdfBytes], { type: "application/pdf" });
-          const url = URL.createObjectURL(blob);
+      // Overleaf parity: Support data.pdf as base64 string, direct URL, or from Overleaf outputFiles
+      const rawPdf =
+        data?.pdf ||
+        (data as any)?.compile?.outputFiles?.find(
+          (f: any) => f.type === 'pdf' || f.path === 'output.pdf',
+        )?.url;
+
+      if (rawPdf && typeof rawPdf === 'string' && rawPdf.trim().length > 0) {
+        const decoded = createPdfBlobAndUrl(rawPdf);
+        const url = decoded?.url || null;
+        const blob = decoded?.blob || null;
+
+        if (url) {
           const synctexMap = data.synctex ? parseSyncTeX(data.synctex) : null;
 
-          if (onThumbnailGenerated) {
+          if (blob && onThumbnailGenerated) {
             generateThumbnail(blob).then((base64) => {
               if (base64) onThumbnailGenerated(base64);
             });
@@ -317,10 +467,10 @@ export const LatexCompilerEngine = {
           return {
             success: true,
             pdfUrl: url,
-            pdfBlob: blob,
+            pdfBlob: blob || undefined,
             synctexMap,
             rawSynctex: data.synctex || null,
-            logs: data.logs || "",
+            logs: data.logs || '',
             compiledAt: new Date(),
             diagnostics: data.diagnostics,
             flushedFileIds,
@@ -456,10 +606,10 @@ export const LatexCompilerEngine = {
     }
 
     if (targetPage === null) {
-      targetPage = synctexMap.lineToPage.get(line) ?? null;
+      targetPage = resolvePageForLine(synctexMap, line);
       if (targetPage !== null) {
         const pNodes = synctexMap.pageToNodes?.get(targetPage);
-        targetNode = pNodes?.find((n) => n.line === line) || null;
+        targetNode = pNodes?.find((n) => n.line === line) || pNodes?.[0] || null;
       }
     }
 
@@ -490,6 +640,7 @@ export const LatexCompilerEngine = {
 
   /**
    * SyncTeX reverse resolution (PDF double-click -> LaTeX source line and file)
+   * Employs O(log N) binary search on y-sorted nodes with branch-and-bound geometric pruning.
    */
   resolveReverse(
     clickFraction: number,
@@ -500,17 +651,55 @@ export const LatexCompilerEngine = {
   ): { sourcePath: string | null; line: number } | null {
     if (!synctexMap) return null;
 
-    // 1. Direct page node mapping (nearest coordinate)
+    // 1. Direct page node mapping (nearest coordinate with O(log N) binary search + pruning)
     const nodes = synctexMap.pageToNodes?.get(pageNum);
     if (nodes && nodes.length > 0) {
       const targetY = ptY !== undefined ? ptY * 65536 : clickFraction * 842 * 65536;
       const targetX = ptX !== undefined ? ptX * 65536 : undefined;
 
-      let bestNode = nodes[0];
-      let bestDist = Infinity;
+      // Binary search for node closest in y-coordinate
+      let low = 0;
+      let high = nodes.length - 1;
+      let mid = 0;
+      while (low <= high) {
+        mid = (low + high) >> 1;
+        if (nodes[mid].y < targetY) {
+          low = mid + 1;
+        } else if (nodes[mid].y > targetY) {
+          high = mid - 1;
+        } else {
+          break;
+        }
+      }
+      mid = Math.max(0, Math.min(nodes.length - 1, mid));
 
-      for (const n of nodes) {
+      let bestNode = nodes[mid];
+      const initDy = bestNode.y - targetY;
+      const initDx = targetX !== undefined ? bestNode.x - targetX : 0;
+      let bestDist = initDy * initDy + 0.1 * (initDx * initDx);
+
+      // Search downward (decreasing y): prune as soon as dy^2 >= bestDist
+      for (let i = mid - 1; i >= 0; i--) {
+        const n = nodes[i];
+        const dy = targetY - n.y;
+        if (dy * dy >= bestDist) {
+          break;
+        }
+        const dx = targetX !== undefined ? n.x - targetX : 0;
+        const dist = dy * dy + 0.1 * (dx * dx);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestNode = n;
+        }
+      }
+
+      // Search upward (increasing y): prune as soon as dy^2 >= bestDist
+      for (let i = mid + 1; i < nodes.length; i++) {
+        const n = nodes[i];
         const dy = n.y - targetY;
+        if (dy * dy >= bestDist) {
+          break;
+        }
         const dx = targetX !== undefined ? n.x - targetX : 0;
         const dist = dy * dy + 0.1 * (dx * dx);
         if (dist < bestDist) {

@@ -45,7 +45,7 @@ export interface TIllustrationAssetProps {
 /**
  * Shared 3D Isometric Base Slabs (3 Depth Levels)
  */
-function BaseSlabs() {
+export function BaseSlabs() {
   return (
     <>
       {/* Base Slab 1 (Bottom) - opacity 0.2 */}

@@ -63,10 +63,13 @@ export interface PageFile {
   deletedAt?: string | null;
 }
 
-export interface SetMainFileInput {
-  mainFileId: string;
-}
-
-export interface UpdateThumbnailInput {
-  pdfThumbnail: string;
-}
+// Derived directly from Zod schemas (Single Source of Truth)
+export type {
+  CreateFileInput,
+  CreateFolderInput,
+  RenameItemInput,
+  CreatePageInput,
+  UpdatePageInput,
+  SetMainFileInput,
+  UpdateThumbnailInput,
+} from '../schemas/core.schema';

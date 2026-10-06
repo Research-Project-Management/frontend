@@ -213,6 +213,83 @@ export type LatexFileInput =
       title?: string;
     };
 
+export interface NormalizedCiteItem {
+  key: string;
+  title?: string;
+  authors: string[];
+  authorStr?: string;
+  year?: string;
+  journal?: string;
+  source: 'bib' | 'library' | 'server';
+}
+
+interface DocScanCache {
+  text: string;
+  bibItems: NormalizedCiteItem[];
+  labels: string[];
+  macros: Completion[];
+}
+
+let cachedDocTokens: DocScanCache | null = null;
+
+function scanDocumentTokens(docText: string): DocScanCache {
+  if (cachedDocTokens && cachedDocTokens.text === docText) {
+    return cachedDocTokens;
+  }
+
+  // 1. \bibitem entries
+  const bibItems: NormalizedCiteItem[] = [];
+  const bibitemRegex = /\\bibitem(?:\[[^\]]*\])?\{([^}]+)\}/g;
+  let bMatch: RegExpExecArray | null;
+  while ((bMatch = bibitemRegex.exec(docText)) !== null) {
+    const key = bMatch[1]?.trim();
+    if (key) {
+      bibItems.push({
+        key,
+        authors: [],
+        authorStr: 'Document bibliography',
+        source: 'bib',
+      });
+    }
+  }
+
+  // 2. Cross-reference \label entries
+  const labels = new Set<string>();
+  const labelRegex = /\\label\{([^}]+)\}/g;
+  let lMatch: RegExpExecArray | null;
+  while ((lMatch = labelRegex.exec(docText)) !== null) {
+    labels.add(lMatch[1]);
+  }
+
+  // 3. User macros (\newcommand, \DeclareMathOperator, \def)
+  const macros: Completion[] = [];
+  const macroRegex =
+    /\\(?:(?:re)?newcommand\*?|DeclareMathOperator\*?)\s*(?:\{?\\([a-zA-Z]+)\}?)|\\def\\([a-zA-Z]+)/g;
+  let mMatch: RegExpExecArray | null;
+  const seenMacros = new Set<string>();
+  while ((mMatch = macroRegex.exec(docText)) !== null) {
+    const macroName = mMatch[1] || mMatch[2];
+    if (macroName && !seenMacros.has(macroName)) {
+      seenMacros.add(macroName);
+      macros.push({
+        label: `\\${macroName}`,
+        type: 'function',
+        detail: 'User-defined macro',
+        section: { name: 'USER DEFINED', rank: 0 },
+        boost: 3,
+      });
+    }
+  }
+
+  cachedDocTokens = {
+    text: docText,
+    bibItems,
+    labels: Array.from(labels),
+    macros,
+  };
+  return cachedDocTokens;
+}
+
 export function createLatexCompletionSource(
   bibSource: LatexBibEntryInput[] | (() => LatexBibEntryInput[]) = [],
   fileSource: LatexFileInput[] | (() => LatexFileInput[]) = [],
@@ -221,6 +298,7 @@ export function createLatexCompletionSource(
     const rawKeys = typeof bibSource === 'function' ? bibSource() : bibSource;
     const rawFiles = typeof fileSource === 'function' ? fileSource() : fileSource;
     const docText = context.state.doc.toString();
+    const docTokens = scanDocumentTokens(docText);
 
     // 1. Check for \begin{...}
     const beginMatch = context.matchBefore(/\\begin\{[a-zA-Z0-9*_-]*/);
@@ -246,16 +324,6 @@ export function createLatexCompletionSource(
       const leadingSpaces = afterSep.length - afterSep.trimStart().length;
       const searchQuery = afterSep.trimStart().toLowerCase();
       const from = citeMatch.from + lastSep + 1 + leadingSpaces;
-
-      interface NormalizedCiteItem {
-        key: string;
-        title?: string;
-        authors: string[];
-        authorStr?: string;
-        year?: string;
-        journal?: string;
-        source: 'bib' | 'library' | 'server';
-      }
 
       const allBibItems = new Map<string, NormalizedCiteItem>();
 
@@ -294,18 +362,11 @@ export function createLatexCompletionSource(
         }
       }
 
-      // Also extract any \bibitem{...} from the document
-      const bibitemRegex = /\\bibitem(?:\[[^\]]*\])?\{([^}]+)\}/g;
-      let bMatch: RegExpExecArray | null;
-      while ((bMatch = bibitemRegex.exec(docText)) !== null) {
-        const key = bMatch[1]?.trim();
-        if (key && !allBibItems.has(key.toLowerCase())) {
-          allBibItems.set(key.toLowerCase(), {
-            key,
-            authors: [],
-            authorStr: 'Document bibliography',
-            source: 'bib',
-          });
+      // Merge cached document bibitems
+      for (const b of docTokens.bibItems) {
+        const lowerKey = b.key.toLowerCase();
+        if (!allBibItems.has(lowerKey)) {
+          allBibItems.set(lowerKey, b);
         }
       }
 
@@ -352,16 +413,19 @@ export function createLatexCompletionSource(
       const options: Completion[] = matchedItems.map(({ item }) => {
         const isProject = item.source === 'bib';
         const authorYear = [item.authorStr, item.year ? `(${item.year})` : ''].filter(Boolean).join(' ');
-        const detail = authorYear || (isProject ? 'Project Reference' : 'Library Reference');
+        const detail = authorYear
+          ? `${authorYear}${isProject ? '' : ' · [Library]'}`
+          : isProject
+          ? 'Project Reference'
+          : 'Library Reference';
 
         return {
           label: item.key,
           type: isProject ? 'constant' : 'variable',
           detail,
-          info: item.title ? `${item.title}${item.journal ? `\n\nVenue: ${item.journal}` : ''}` : undefined,
-          section: isProject
-            ? { name: 'FROM YOUR PROJECT', rank: 1 }
-            : { name: 'FROM LIBRARY', rank: 2 },
+          info: item.title
+            ? `${item.title}${item.journal ? `\n\nVenue: ${item.journal}` : ''}${!isProject ? '\n\nSource: Workspace Library (auto-adds to references.bib)' : ''}`
+            : undefined,
           boost: isProject ? 2 : 1,
           apply: (view: EditorView, _completion: Completion, applyFrom: number, applyTo: number) => {
             const nextChar = view.state.doc.sliceString(applyTo, applyTo + 1);
@@ -389,14 +453,7 @@ export function createLatexCompletionSource(
     const refMatch = context.matchBefore(/\\(?:eq|page|auto|c|C|name)?ref\{[a-zA-Z0-9:_-]*/);
     if (refMatch) {
       const from = refMatch.text.lastIndexOf('{') + refMatch.from + 1;
-      const labels = new Set<string>();
-      const labelRegex = /\\label\{([^}]+)\}/g;
-      let lMatch: RegExpExecArray | null;
-      while ((lMatch = labelRegex.exec(docText)) !== null) {
-        labels.add(lMatch[1]);
-      }
-
-      const options: Completion[] = Array.from(labels).map((lbl) => ({
+      const options: Completion[] = docTokens.labels.map((lbl) => ({
         label: lbl,
         type: 'variable',
         apply: (view: EditorView, _completion: Completion, applyFrom: number, applyTo: number) => {
@@ -478,24 +535,7 @@ export function createLatexCompletionSource(
       return null;
     }
 
-    // Scan document for user-defined macros: \newcommand{\name}, \renewcommand{\name}, \DeclareMathOperator{\name}, \def\name
-    const userMacros: Completion[] = [];
-    const macroRegex = /\\(?:(?:re)?newcommand\*?|DeclareMathOperator\*?)\s*(?:\{?\\([a-zA-Z]+)\}?)|\\def\\([a-zA-Z]+)/g;
-    let mMatch: RegExpExecArray | null;
-    const seenMacros = new Set<string>();
-    while ((mMatch = macroRegex.exec(docText)) !== null) {
-      const macroName = mMatch[1] || mMatch[2];
-      if (macroName && !seenMacros.has(macroName)) {
-        seenMacros.add(macroName);
-        userMacros.push({
-          label: `\\${macroName}`,
-          type: 'function',
-          detail: 'User-defined macro',
-          section: { name: 'USER DEFINED', rank: 0 },
-          boost: 3,
-        });
-      }
-    }
+    const userMacros = docTokens.macros;
 
     return {
       from: slashMatch.from,

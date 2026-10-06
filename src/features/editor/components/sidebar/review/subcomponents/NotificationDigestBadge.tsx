@@ -102,7 +102,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
         : '');
 
     return (
-      <div className="mb-3 rounded-md border border-amber-200/60 dark:border-amber-900/40 bg-gradient-to-r from-amber-50/70 to-orange-50/40 dark:from-amber-950/20 dark:to-orange-950/10 p-2.5 text-xs transition-colors">
+      <div className="mb-3 rounded-md border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs transition-colors">
         <div className="flex items-center justify-between gap-2">
           <div
             className="flex items-center gap-2 cursor-pointer select-none flex-1 min-w-0"
@@ -116,10 +116,10 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 font-medium text-amber-900 dark:text-amber-200 truncate">
                 <span>
-                  {activeBundleInfo.itemCount} review update
+                  <span className="font-mono">{activeBundleInfo.itemCount}</span> review update
                   {activeBundleInfo.itemCount > 1 ? 's' : ''} buffered
                 </span>
-                <span className="text-10 text-amber-600/80 dark:text-amber-400/80 font-normal">
+                <span className="text-11 font-mono text-amber-600/80 dark:text-amber-400/80 font-normal">
                   ({formatRemainingTime(remainingSecs)})
                 </span>
               </div>
@@ -174,7 +174,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
                     <span className="font-semibold text-foreground truncate">
                       {item.authorName}
                     </span>
-                    <span className="text-10 text-muted-foreground capitalize">
+                    <span className="text-11 text-muted-foreground capitalize">
                       {item.type}
                     </span>
                   </div>

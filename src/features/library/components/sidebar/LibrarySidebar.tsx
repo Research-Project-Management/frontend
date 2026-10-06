@@ -17,7 +17,7 @@ import {
   useRetraction,
   useSavedSearches,
 } from '../../data';
-import { useLibrarySidebarStore } from '../../store';
+import { useLibrarySidebarStore, useLibraryPermissions } from '../../store';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 
@@ -56,12 +56,12 @@ export function LibrarySidebar() {
   const openModal = useLibrarySidebarStore((s) => s.openModal);
   const effectiveScopeId = activeScope.type === 'project' ? activeScope.id : 'user';
 
-  const personalCollectionService = useCollections('user');
+  const userCollectionService = useCollections('user');
   const projectCollectionService = useCollections(
     activeScope.type === 'project' ? activeScope.id : undefined,
   );
   const collectionService =
-    activeScope.type === 'project' ? projectCollectionService : personalCollectionService;
+    activeScope.type === 'project' ? projectCollectionService : userCollectionService;
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -84,14 +84,10 @@ export function LibrarySidebar() {
   const { user } = useAuth();
   const currentUserId = user?.id;
 
-  const isPersonalScope = activeScope.type === 'personal';
-  const isLibraryActive = isPersonalScope && pathname === basePath && !currentFilter && !activeId;
+  const isUserScope = activeScope.type === 'user';
+  const isLibraryActive = isUserScope && pathname === basePath && !currentFilter && !activeId;
 
-  const canManageCollections =
-    activeScope.type === 'personal' ||
-    activeScope.role === 'owner' ||
-    activeScope.role === 'coordinator' ||
-    activeScope.role === 'contributor';
+  const { canManageCollections } = useLibraryPermissions();
 
   // Synchronize active project role with server-provided project list
   useEffect(() => {
@@ -174,9 +170,9 @@ export function LibrarySidebar() {
     [unfiledCount, starredCount, duplicateCount, retractionStats?.retractedCount],
   );
 
-  const personalCollections = useMemo(
-    () => personalCollectionService.state.collections ?? [],
-    [personalCollectionService.state.collections],
+  const userCollections = useMemo(
+    () => userCollectionService.state.collections ?? [],
+    [userCollectionService.state.collections],
   );
 
   const projectCollections = useMemo(
@@ -185,13 +181,13 @@ export function LibrarySidebar() {
   );
 
   const collections = useMemo(
-    () => (activeScope.type === 'project' ? projectCollections : personalCollections),
-    [activeScope.type, projectCollections, personalCollections],
+    () => (activeScope.type === 'project' ? projectCollections : userCollections),
+    [activeScope.type, projectCollections, userCollections],
   );
 
-  const personalTree = useMemo(
-    () => buildTree(filterCollections(personalCollections, searchQuery)),
-    [personalCollections, searchQuery],
+  const userTree = useMemo(
+    () => buildTree(filterCollections(userCollections, searchQuery)),
+    [userCollections, searchQuery],
   );
 
   const projectTree = useMemo(
@@ -255,10 +251,9 @@ export function LibrarySidebar() {
                   href={basePath}
                   onClick={() => {
                     setActiveScope({
-                      type: 'personal',
+                      type: 'user',
                       id: 'user',
                       name: 'Library',
-                      role: 'owner',
                     });
                     handleMobileLinkClick();
                   }}
@@ -328,18 +323,18 @@ export function LibrarySidebar() {
                     basePath={basePath}
                     pathname={pathname}
                     currentFilter={currentFilter}
-                    isPersonalScope={isPersonalScope}
+                    isUserScope={isUserScope}
                     navId={id}
                     savedSearches={savedSearches}
                     currentSavedSearchId={currentSavedSearchId}
                     stats={systemStats}
                     retractedCount={retractionStats?.retractedCount}
                     onDropItems={(ids, targetColId) => itemActions.batchMoveItems(ids, targetColId)}
-                    onSelectPersonalScope={() => {
+                    onSelectUserScope={() => {
                       setActiveScope({
-                        type: 'personal',
+                        type: 'user',
                         id: 'user',
-                        name: 'My Library',
+                        name: 'Library',
                         role: 'owner',
                       });
                       handleMobileLinkClick();
@@ -355,8 +350,8 @@ export function LibrarySidebar() {
                   >
                     {/* User Collections Tree */}
                     <CollectionTree
-                      tree={personalTree}
-                      allCollections={personalCollections}
+                      tree={userTree}
+                      allCollections={userCollections}
                       basePath={basePath}
                       activeId={activeId ?? null}
                       navId={id}

@@ -220,7 +220,7 @@ export function Switcher({
         >
           {/* User Email Header */}
           <div className='px-4 pt-3.5 pb-2.5 text-xs font-normal text-muted-foreground bg-background truncate'>
-            {user?.email || 'Personal Account'}
+            {user?.email || 'User Account'}
           </div>
 
           {/* Current Active Project Card */}

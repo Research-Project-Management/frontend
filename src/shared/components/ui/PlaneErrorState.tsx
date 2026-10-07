@@ -253,6 +253,7 @@ export interface PlaneErrorStateProps {
   title?: string;
   description?: string;
   error?: Error | { message?: string; digest?: string; [key: string]: any } | string | null;
+  /** @deprecated Error states do not render buttons per project design standards */
   reset?: () => void;
   resetLabel?: string;
   homeHref?: string;
@@ -264,21 +265,15 @@ export interface PlaneErrorStateProps {
 
 /**
  * PlaneErrorState
- * Flat Precision SaaS Error Screen matching Plane.so architecture:
+ * Flat Precision SaaS Error Screen:
  * - 3D Isometric spatial illustration
  * - Clean seamless default canvas (zero harsh red alert boxes)
- * - Restrained typography and discrete collapsible error logs
- * - Standard action/reload button matching PlaneEmptyState design tokens
+ * - Restrained typography and direct technical error diagnostics without action buttons
  */
 export function PlaneErrorState({
   title = 'An unexpected error occurred',
   description = 'This view encountered an issue while loading data. Navigation and other workspaces remain safe.',
   error,
-  reset: _reset,
-  resetLabel: _resetLabel,
-  homeHref: _homeHref,
-  homeLabel: _homeLabel,
-  action: _action,
   className,
   isFullPage = false,
 }: PlaneErrorStateProps) {

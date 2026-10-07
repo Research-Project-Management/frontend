@@ -129,11 +129,11 @@ export default function ProcessModal({
               e.stopPropagation();
               onClose();
             }}
-            className="size-4 p-0.5 rounded-xs hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center ml-0.5 cursor-pointer outline-none"
+            className="size-4 p-0.5 rounded-xs hover:bg-muted text-foreground inline-flex items-center justify-center ml-0.5 cursor-pointer outline-none"
             title="Dismiss"
             aria-label="Dismiss"
           >
-            <X className="size-3" />
+            <X className="size-3 text-foreground" />
           </button>
         )}
       </div>,
@@ -214,7 +214,7 @@ export default function ProcessModal({
           {items.length > 0 && (
             <div className="pt-1">
               {/* Column Headers with subtle line */}
-              <div className="grid grid-cols-[45%_55%] px-1 pb-2 border-b border-border text-11 font-medium text-muted-foreground select-none">
+              <div className="grid grid-cols-[45%_55%] px-1 pb-2 border-b border-border text-11 font-medium text-foreground select-none">
                 <span>Attachment Name</span>
                 <span>Item Name</span>
               </div>
@@ -266,7 +266,7 @@ export default function ProcessModal({
                             {item.itemName || item.title}
                           </span>
                         ) : isItemProcessing ? (
-                          <span className="text-muted-foreground text-12 font-normal flex items-center gap-1.5">
+                          <span className="text-foreground text-12 font-normal flex items-center gap-1.5">
                             {(item.status as string) === 'UPLOADING' ? 'Uploading file...' : 'Extracting metadata...'}
                           </span>
                         ) : isItemFailed ? (
@@ -277,7 +277,7 @@ export default function ProcessModal({
                             {item.error || 'Extraction failed'}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground text-12 font-normal">-</span>
+                          <span className="text-foreground text-12 font-normal">-</span>
                         )}
                       </div>
                     </div>

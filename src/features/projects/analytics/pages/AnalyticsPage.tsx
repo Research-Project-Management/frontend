@@ -217,8 +217,6 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
               title={selectedProjectId ? `Unable to load analytics for ${selectedProject?.name || 'project'}` : "Unable to load workspace analytics"}
               description={selectedProjectId ? "We couldn't fetch metrics and workflow distribution for this project." : "An error occurred while compiling workspace performance and asset metrics."}
               error={currentError}
-              homeHref={selectedProjectId ? "/projects/analytics" : undefined}
-              homeLabel={selectedProjectId ? "Back to Workspace Overview" : undefined}
             />
           </div>
         ) : (

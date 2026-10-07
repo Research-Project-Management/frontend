@@ -55,10 +55,12 @@ export function useQuickCopyShortcuts({
           text = res.bibliography || res.inText || '';
         } else {
           const res = await libraryService.citations.batchFormat(scopeId, itemIds, style);
-          text = res.citations
-            .map((c) => c.citation?.bibliography)
-            .filter(Boolean)
-            .join('\n\n');
+          text =
+            res.bibliographyText ||
+            res.citations
+              .map((c) => c.citation?.bibliography)
+              .filter(Boolean)
+              .join('\n\n');
         }
 
         if (!text.trim()) {
@@ -102,17 +104,12 @@ export function useQuickCopyShortcuts({
           text = res.inText || (res as { citation?: string }).citation || '';
         } else {
           const res = await libraryService.citations.batchFormat(scopeId, itemIds, style);
-          const inTexts = res.citations
-            .map((c) => c.citation?.inText)
-            .filter(Boolean);
-
-          // If standard parenthetical citations, combine them: (Author 1, 2020; Author 2, 2021)
-          if (inTexts.every((t) => t.startsWith('(') && t.endsWith(')'))) {
-            const stripped = inTexts.map((t) => t.slice(1, -1));
-            text = `(${stripped.join('; ')})`;
-          } else {
-            text = inTexts.join('; ');
-          }
+          text =
+            res.combinedInText ||
+            res.citations
+              .map((c) => c.citation?.inText)
+              .filter(Boolean)
+              .join('; ');
         }
 
         if (!text.trim()) {

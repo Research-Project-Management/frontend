@@ -118,6 +118,10 @@ export class DiagnosticsCoordinatorRegistry {
     return this.fileIndex.get(key) || [];
   }
 
+  public getFileDiagnostics(fileIdOrPath: string): IndexedDiagnosticItem[] {
+    return this.getDiagnosticsForFile(fileIdOrPath);
+  }
+
   public findDiagnosticsAtLine(fileIdOrPath: string, targetLine: number): IndexedDiagnosticItem[] {
     const items = this.getDiagnosticsForFile(fileIdOrPath);
     if (items.length === 0 || targetLine < 1) return [];

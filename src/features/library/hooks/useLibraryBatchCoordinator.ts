@@ -276,10 +276,12 @@ export function useLibraryBatchCoordinator({
       if (itemIds.length > 0) {
         try {
           const res = await libraryServices.citations.batchFormat(effectiveScope, itemIds, style);
-          const text = res.citations
-            .map((c) => c.citation?.bibliography)
-            .filter(Boolean)
-            .join('\n\n');
+          const text =
+            res.bibliographyText ||
+            res.citations
+              .map((c) => c.citation?.bibliography)
+              .filter(Boolean)
+              .join('\n\n');
           if (text) {
             await copyWithToast(
               text,
@@ -288,12 +290,11 @@ export function useLibraryBatchCoordinator({
             return;
           }
         } catch {
-          // Fallback to citation keys
+          toast.error('Không thể định dạng trích dẫn cho tài liệu đã chọn.');
+          return;
         }
       }
-      const keys = selectedItems.map((p) => generateCitationKey(p)).filter(Boolean);
-      const citeCmd = `\\cite{${keys.join(', ')}}`;
-      await copyWithToast(citeCmd, `Copied ${citeCmd} to clipboard`);
+      toast.error('Không tìm thấy tài liệu hợp lệ để tạo trích dẫn.');
     },
     [warnIfRetractedPresent, selectedItems, effectiveScope, copyWithToast],
   );
@@ -306,22 +307,19 @@ export function useLibraryBatchCoordinator({
       if (itemIds.length > 0) {
         try {
           const res = await libraryServices.citations.batchFormat(effectiveScope, itemIds, style);
-          const inTexts = res.citations.map((c) => c.citation?.inText).filter(Boolean);
-          let text = '';
-          if (inTexts.every((t) => t.startsWith('(') && t.endsWith(')'))) {
-            const stripped = inTexts.map((t) => t.slice(1, -1));
-            text = `(${stripped.join('; ')})`;
-          } else {
-            text = inTexts.join('; ');
-          }
+          const text =
+            res.combinedInText ||
+            res.citations.map((c) => c.citation?.inText).filter(Boolean).join('; ');
           if (text) {
             await copyWithToast(text, `Copied in-text citation (${itemIds.length} items)`);
             return;
           }
         } catch {
-          // Fallback
+          toast.error('Không thể định dạng trích dẫn trong bài cho tài liệu đã chọn.');
+          return;
         }
       }
+      toast.error('Không tìm thấy tài liệu hợp lệ để tạo trích dẫn.');
     },
     [warnIfRetractedPresent, selectedItems, effectiveScope, copyWithToast],
   );

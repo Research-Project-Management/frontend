@@ -163,6 +163,10 @@ export class LRUDocumentCache {
     return model;
   }
 
+  public get(fileId: string): DocumentModelState | undefined {
+    return this.getModel(fileId);
+  }
+
   /**
    * Hydrates a model from Tier 2 Storage (IndexedDB) if it was evicted from RAM.
    */

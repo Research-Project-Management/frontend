@@ -57,8 +57,9 @@ export const useCreateComment = () => {
 
       const optimisticComment: PageComment = {
         id: `temp-${Date.now()}`,
-        pageId,
-        userId: 'current-user',
+        page: pageId,
+        projectPageId: pageId,
+        author: { id: 'current-user', name: 'You' },
         content,
         line: line ?? null,
         lineEnd: lineEnd ?? null,

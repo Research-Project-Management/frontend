@@ -302,7 +302,6 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
             title="Unable to load pages"
             description="An issue occurred while loading pages for this project. Other features and workspaces remain safe."
             error={error}
-            reset={() => refetch()}
           />
         ) : filteredPages.length === 0 ? (
           <PagesEmptyState

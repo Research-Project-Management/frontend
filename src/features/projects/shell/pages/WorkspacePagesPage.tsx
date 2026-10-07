@@ -157,7 +157,6 @@ export function WorkspacePagesPage() {
             title="Unable to load workspace pages"
             description="An issue occurred while loading documents for this project. Other workspaces remain safe."
             error={pagesError}
-            reset={() => refetchPages()}
           />
         ) : isPagesLoading ? (
           <div className="p-6 md:p-8 space-y-6">

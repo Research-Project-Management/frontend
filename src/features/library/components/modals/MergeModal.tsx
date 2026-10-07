@@ -250,13 +250,13 @@ export function MergeModal({
                   {items.length} Records
                 </Badge>
                 {isLoadingFull && (
-                  <span className="flex items-center gap-1 text-11 text-muted-foreground animate-pulse">
+                  <span className="flex items-center gap-1 text-11 text-foreground animate-pulse">
                     <Loader2 className="size-3 animate-spin" />
                     <span>Hydrating details...</span>
                   </span>
                 )}
               </div>
-              <DialogDescription className="text-12 text-muted-foreground line-clamp-1">
+              <DialogDescription className="text-12 text-foreground line-clamp-1">
                 Select the authoritative master version and review conflicting bibliographic fields. Notes, files, and tags will be merged.
               </DialogDescription>
             </div>
@@ -278,8 +278,8 @@ export function MergeModal({
               )}
 
               <div className="flex items-center gap-2 px-2.5 py-1 rounded-md border border-border bg-background">
-                <SlidersHorizontal className="size-3 text-muted-foreground shrink-0" />
-                <Label htmlFor="diff-filter-toggle" className="text-11 font-medium cursor-pointer text-muted-foreground select-none">
+                <SlidersHorizontal className="size-3 text-foreground shrink-0" />
+                <Label htmlFor="diff-filter-toggle" className="text-11 font-medium cursor-pointer text-foreground select-none">
                   Conflicts only ({inspection.conflictCount})
                 </Label>
                 <Switch
@@ -298,7 +298,7 @@ export function MergeModal({
             <AlertTriangle className="size-4 shrink-0 mt-0.5 text-warning" />
             <div className="space-y-0.5">
               <p className="font-semibold">Items of different types cannot be merged</p>
-              <p className="text-11 text-muted-foreground leading-normal">
+              <p className="text-11 text-foreground leading-normal">
                 Selected items have different item types ({itemTypes.join(', ')}). In accordance with Zotero standards, change their item types to match before merging.
               </p>
             </div>
@@ -310,10 +310,10 @@ export function MergeModal({
           {/* 1. Master Version Rail */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-11 font-medium text-muted-foreground">
+              <span className="text-11 font-medium text-foreground">
                 Step 1: Choose Master Record (Base Version)
               </span>
-              <span className="text-10 text-muted-foreground">
+              <span className="text-10 text-foreground">
                 All unselected fields default to this record
               </span>
             </div>
@@ -550,7 +550,7 @@ export function MergeModal({
                 size="sm"
                 onClick={handleDismissNotDuplicates}
                 disabled={isDismissing || isMerging}
-                className="h-8 px-2.5 text-13 font-medium text-muted-foreground hover:text-foreground hover:bg-muted gap-1.5 rounded-md"
+                className="h-8 px-2.5 text-13 font-medium text-foreground hover:bg-muted gap-1.5 rounded-md"
                 title="Mark this pair as false positive so they are not grouped as duplicates again"
               >
                 {isDismissing ? (

@@ -67,7 +67,7 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
     }
 
     editorCommandBus.dispatch({
-      type: 'editor:insert',
+      type: 'editor:insert-text',
       text: `${action.snippet.prefix}${action.snippet.suffix}`,
     });
   };

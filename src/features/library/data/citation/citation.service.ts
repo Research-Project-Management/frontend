@@ -177,7 +177,10 @@ export const CitationService = {
     return apiPost<{
       style: CslStyle;
       total: number;
-      citations: Array<{ paperId: string; citation: FormattedCitation }>;
+      combinedInText?: string;
+      bibliographyText?: string;
+      bibliographyHtml?: string;
+      citations: Array<{ paperId: string; itemId?: string; citation: FormattedCitation }>;
     }>(
       `/api/v1/library/citation/batch-items`,
       {

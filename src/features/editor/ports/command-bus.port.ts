@@ -79,7 +79,7 @@ export type EditorCommand =
   | { type: 'workspace:move-file'; fileId: string; targetFolderId: string | null }
   | { type: 'navigation:open-tab'; fileId: string; title: string; path?: string }
   | { type: 'navigation:close-tab'; fileId: string }
-  | { type: 'navigation:jump-to-line'; fileId?: string; line: number; column?: number; highlight?: 'error' | 'synctex' }
+  | { type: 'navigation:jump-to-line'; fileId?: string; filePath?: string; line: number; column?: number; highlight?: 'error' | 'synctex' }
   | { type: 'navigation:next-error' }
   | { type: 'navigation:prev-error' }
   | { type: 'ai:request-completion'; prompt: string; context?: any }

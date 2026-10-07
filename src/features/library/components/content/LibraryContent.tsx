@@ -369,15 +369,15 @@ export function LibraryContent({
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/85 backdrop-blur-sm border-2 border-dashed border-primary pointer-events-none animate-in fade-in-50 duration-150">
           <UploadCloud className="size-10 text-primary animate-pulse mb-2" strokeWidth={1.5} />
           <p className="text-14 font-semibold text-foreground">Drop files to upload</p>
-          <p className="text-12 text-muted-foreground">PDF, BibTeX, RIS will be uploaded directly</p>
+          <p className="text-12 text-foreground">PDF, BibTeX, RIS will be uploaded directly</p>
         </div>
       )}
 
       {/* Informative Trash Notice Banner */}
       {isTrash && (
-        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-muted/40 border-b border-border text-xs text-muted-foreground select-none shrink-0">
+        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-muted/40 border-b border-border text-xs text-foreground select-none shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            <Trash2 className="size-3.5 text-muted-foreground shrink-0" />
+            <Trash2 className="size-3.5 text-foreground shrink-0" />
             <span className="truncate">
               Items in Trash will be removed permanently when emptied. References can be restored back to your library at any time.
             </span>
@@ -426,7 +426,7 @@ export function LibraryContent({
               className={cn(
                 'inline-flex items-center justify-center size-7 rounded-md text-xs font-medium transition-colors relative before:absolute before:-inset-2 md:before:hidden',
                 nav.page <= 1
-                  ? 'text-muted-foreground/30 cursor-not-allowed pointer-events-none'
+                  ? 'text-foreground/30 cursor-not-allowed pointer-events-none'
                   : 'text-foreground hover:bg-muted cursor-pointer',
               )}
             >
@@ -438,7 +438,7 @@ export function LibraryContent({
                 return (
                   <span
                     key={`ellipsis-${idx}`}
-                    className="inline-flex items-center justify-center size-7 text-xs text-muted-foreground select-none"
+                    className="inline-flex items-center justify-center size-7 text-xs text-foreground select-none"
                   >
                     …
                   </span>
@@ -458,7 +458,7 @@ export function LibraryContent({
                     'inline-flex items-center justify-center size-7 rounded-md text-xs font-medium transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden',
                     isCurrent
                       ? 'bg-muted text-foreground font-semibold border border-border shadow-xs'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/60',
+                      : 'text-foreground hover:bg-muted/60',
                   )}
                 >
                   {p}
@@ -477,7 +477,7 @@ export function LibraryContent({
               className={cn(
                 'inline-flex items-center justify-center size-7 rounded-md text-xs font-medium transition-colors relative before:absolute before:-inset-2 md:before:hidden',
                 nav.page >= totalPages
-                  ? 'text-muted-foreground/30 cursor-not-allowed pointer-events-none'
+                  ? 'text-foreground/30 cursor-not-allowed pointer-events-none'
                   : 'text-foreground hover:bg-muted cursor-pointer',
               )}
             >

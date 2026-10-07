@@ -117,11 +117,11 @@ export function InspectorHeader({
           <button
             type="button"
             onClick={onClose}
-            className="md:hidden size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden"
+            className="md:hidden size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden"
             title="Close inspector"
             aria-label="Close inspector"
           >
-            <X className="size-4 shrink-0 text-foreground" />
+            <X className="size-4 shrink-0" />
           </button>
         )}
       </div>
@@ -129,7 +129,7 @@ export function InspectorHeader({
       {/* 🗑️ Trash Notice Alert Banner */}
       {isTrash && (
         <div className="p-3 border-b border-border bg-muted/30 shrink-0 select-none animate-in fade-in duration-200">
-          <div className="rounded-md border border-border bg-background p-2.5 text-xs text-muted-foreground flex items-start gap-2.5 select-none shadow-xs">
+          <div className="rounded-md border border-border bg-background p-2.5 text-xs text-foreground flex items-start gap-2.5 select-none shadow-xs">
             <Trash2 className="size-4 text-muted-foreground shrink-0 mt-0.5" strokeWidth={1.5} />
             <div className="flex-1 min-w-0 space-y-1.5">
               <div className="flex items-center justify-between gap-2">

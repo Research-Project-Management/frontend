@@ -78,7 +78,7 @@ export default function InboxView() {
           </div>
           <h1 className="text-14 font-semibold text-foreground tracking-tight">Inbox</h1>
           {unreadCount > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-10 font-bold tabular-nums">
+            <span className="px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-10 font-semibold tabular-nums">
               {unreadCount}
             </span>
           )}

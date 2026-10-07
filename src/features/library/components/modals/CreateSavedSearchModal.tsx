@@ -351,7 +351,7 @@ export interface FieldCategory {
   fields: {
     value: SavedSearchField;
     label: string;
-    icon: React.ComponentType<{ className?: string }>;
+    icon: React.ComponentType<{ className?: string; strokeWidth?: number | string }>;
   }[];
 }
 
@@ -406,7 +406,7 @@ export const FIELD_CATEGORIES: FieldCategory[] = [
   },
 ];
 
-export const FIELD_ICONS: Record<SavedSearchField, React.ComponentType<{ className?: string }>> = {
+export const FIELD_ICONS: Record<SavedSearchField, React.ComponentType<{ className?: string; strokeWidth?: number | string }>> = {
   title: Type,
   creator: User,
   year: Calendar,
@@ -478,13 +478,13 @@ export function ConditionFieldSelect({
           role="combobox"
           aria-expanded={open}
           aria-label={ariaLabel || 'Select field'}
-          className="w-full sm:w-[155px] h-8 px-2.5 flex items-center justify-between gap-1.5 text-12 font-medium text-foreground bg-background border border-border rounded-md hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors shrink-0 select-none cursor-pointer"
+          className="w-full sm:w-[155px] h-8 px-2.5 flex items-center justify-between gap-1.5 text-13 font-normal text-foreground bg-background border border-border rounded-md hover:border-foreground/30 focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 transition-colors shrink-0 select-none cursor-pointer"
         >
           <span className="flex items-center gap-1.5 min-w-0 truncate">
-            <ActiveIcon className="size-3.5 text-muted-foreground shrink-0" />
+            <ActiveIcon className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
             <span className="truncate">{activeConfig.label}</span>
           </span>
-          <ChevronsUpDown className="size-3.5 text-muted-foreground/60 shrink-0 ml-1" />
+          <ChevronsUpDown className="size-3.5 text-foreground shrink-0 ml-1" strokeWidth={1.5} />
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -493,8 +493,8 @@ export function ConditionFieldSelect({
         className="w-[230px] p-0 rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-300 overflow-hidden z-50"
       >
         <div className="p-1.5 border-b border-border/50">
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/40 border border-border/60 text-12">
-            <Search className="size-3.5 text-muted-foreground shrink-0" />
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/40 border border-border/60 text-13">
+            <Search className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
             <input
               ref={inputRef}
               type="text"
@@ -512,16 +512,16 @@ export function ConditionFieldSelect({
                   }
                 }
               }}
-              className="w-full bg-transparent text-12 text-foreground placeholder:text-muted-foreground/60 outline-none"
+              className="w-full bg-transparent text-13 text-foreground placeholder:text-foreground/50 outline-none"
             />
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch('')}
-                className="text-muted-foreground hover:text-foreground p-0.5 rounded cursor-pointer"
+                className="text-foreground hover:bg-muted p-0.5 rounded cursor-pointer flex items-center justify-center"
                 aria-label="Clear filter"
               >
-                <X className="size-3" />
+                <X className="size-3 text-foreground shrink-0" strokeWidth={1.5} />
               </button>
             )}
           </div>
@@ -529,13 +529,13 @@ export function ConditionFieldSelect({
 
         <div className="max-h-[260px] overflow-y-auto scrollbar-thin p-1 space-y-1.5">
           {filteredCategories.length === 0 ? (
-            <div className="py-6 text-center text-11 text-muted-foreground select-none">
+            <div className="py-6 text-center text-11 text-foreground select-none">
               No matching fields
             </div>
           ) : (
             filteredCategories.map((group) => (
               <div key={group.group} className="space-y-0.5">
-                <div className="px-2 pt-1 pb-0.5 text-10 font-semibold uppercase tracking-wider text-muted-foreground/70 select-none">
+                <div className="px-2 pt-1 pb-0.5 text-10 font-semibold text-foreground select-none">
                   {group.group}
                 </div>
                 {group.fields.map((field) => {
@@ -550,18 +550,18 @@ export function ConditionFieldSelect({
                         setOpen(false);
                       }}
                       className={cn(
-                        'w-full h-7 px-2 py-1 flex items-center justify-between gap-2 rounded-sm text-12 text-left transition-colors cursor-pointer select-none',
+                        'w-full h-7 px-2 py-1 flex items-center justify-between gap-2 rounded-sm text-13 text-left transition-colors cursor-pointer select-none',
                         isSelected
                           ? 'bg-muted font-medium text-foreground'
                           : 'text-foreground/80 hover:bg-muted/70 hover:text-foreground',
                       )}
                     >
                       <span className="flex items-center gap-2 truncate">
-                        <Icon className="size-3.5 text-muted-foreground shrink-0" />
+                        <Icon className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                         <span className="truncate">{field.label}</span>
                       </span>
                       {isSelected && (
-                        <Check className="size-3.5 text-foreground shrink-0 ml-1" />
+                        <Check className="size-3.5 text-foreground shrink-0 ml-1" strokeWidth={1.5} />
                       )}
                     </button>
                   );
@@ -914,7 +914,7 @@ export function CreateSavedSearchModal({
                 }}
                 placeholder="Saved search name..."
                 autoFocus
-                className="h-8 text-12 text-foreground focus:border-foreground focus:ring-1 focus:ring-foreground/20 rounded-md border-border placeholder:text-muted-foreground/50 bg-background"
+                className="h-8 text-13 text-foreground bg-background hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md border-border placeholder:text-foreground/50"
               />
             </div>
 
@@ -925,8 +925,9 @@ export function CreateSavedSearchModal({
               <Select value={targetScope} onValueChange={(val) => setTargetScope(val)}>
                 <SelectTrigger
                   id="search-in-library-select"
+                  size="sm"
                   aria-label="Search in library"
-                  className="w-full h-8 text-12 text-foreground rounded-md border-border bg-background"
+                  className="w-full text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
                 >
                   <SelectValue placeholder="Select library..." />
                 </SelectTrigger>
@@ -935,17 +936,17 @@ export function CreateSavedSearchModal({
                   sideOffset={4}
                   className="max-h-56 min-w-[200px] p-1 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md"
                 >
-                  <SelectItem value="user" className="text-12 h-7 py-1 px-2 rounded-sm cursor-pointer focus:bg-muted">
+                  <SelectItem value="user" className="text-13 py-1.5 px-2 rounded-sm cursor-pointer focus:bg-muted">
                     <span className="flex items-center gap-1.5">
-                      <Library className="size-3.5 text-foreground shrink-0" />
-                      <span>My Library</span>
+                      <Library className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                      <span className="text-foreground">My Library</span>
                     </span>
                   </SelectItem>
                   {projects.map((p: any) => (
-                    <SelectItem key={p.id} value={p.id} className="text-12 h-7 py-1 px-2 rounded-sm cursor-pointer focus:bg-muted">
+                    <SelectItem key={p.id} value={p.id} className="text-13 py-1.5 px-2 rounded-sm cursor-pointer focus:bg-muted">
                       <span className="flex items-center gap-1.5 truncate">
-                        <Users className="size-3.5 text-foreground shrink-0" />
-                        <span className="truncate">{p.name}</span>
+                        <Users className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                        <span className="truncate text-foreground">{p.name}</span>
                       </span>
                     </SelectItem>
                   ))}
@@ -956,12 +957,12 @@ export function CreateSavedSearchModal({
 
           {/* 2. Match Criteria Header */}
           <div className="flex items-center justify-between pt-1">
-            <div className="flex items-center gap-2 text-11 text-foreground">
+            <div className="flex items-center gap-2 text-12 text-foreground">
               <span className="font-medium text-foreground">Match</span>
               <div
                 role="radiogroup"
                 aria-label="Match criteria"
-                className="inline-flex rounded-md bg-muted p-0.5 border border-border"
+                className="inline-flex rounded-md bg-muted/60 p-0.5 border border-border"
               >
                 <button
                   type="button"
@@ -972,7 +973,7 @@ export function CreateSavedSearchModal({
                     'px-2.5 py-0.5 rounded text-11 transition-colors cursor-pointer',
                     conjunction === 'AND'
                       ? 'bg-background text-foreground font-medium shadow-xs'
-                      : 'text-muted-foreground hover:text-foreground',
+                      : 'text-foreground hover:bg-muted/40',
                   )}
                 >
                   All
@@ -986,13 +987,13 @@ export function CreateSavedSearchModal({
                     'px-2.5 py-0.5 rounded text-11 transition-colors cursor-pointer',
                     conjunction === 'OR'
                       ? 'bg-background text-foreground font-medium shadow-xs'
-                      : 'text-muted-foreground hover:text-foreground',
+                      : 'text-foreground hover:bg-muted/40',
                   )}
                 >
                   Any
                 </button>
               </div>
-              <span className="text-muted-foreground">of the following conditions:</span>
+              <span className="text-foreground">of the following conditions:</span>
             </div>
           </div>
 
@@ -1027,8 +1028,9 @@ export function CreateSavedSearchModal({
                         }
                       >
                         <SelectTrigger
+                          size="sm"
                           aria-label={`Operator for condition ${idx + 1}`}
-                          className="w-full sm:w-[135px] h-8 text-12 text-foreground rounded-md border-border shrink-0 bg-background"
+                          className="w-full sm:w-[135px] text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md shrink-0"
                         >
                           <SelectValue placeholder="Operator" />
                         </SelectTrigger>
@@ -1041,7 +1043,7 @@ export function CreateSavedSearchModal({
                             <SelectItem
                               key={op.value}
                               value={op.value}
-                              className="text-12 h-7 py-1 px-2 rounded-sm cursor-pointer focus:bg-muted"
+                              className="text-13 py-1.5 px-2 rounded-sm cursor-pointer focus:bg-muted"
                             >
                               {op.label}
                             </SelectItem>
@@ -1060,8 +1062,9 @@ export function CreateSavedSearchModal({
                               onValueChange={(val) => handleValueChange(cond.id, val)}
                             >
                               <SelectTrigger
+                                size="sm"
                                 aria-label={`Item type for condition ${idx + 1}`}
-                                className="w-full h-8 text-12 text-foreground rounded-md border-border bg-background"
+                                className="w-full text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
                               >
                                 <SelectValue placeholder="Select item type" />
                               </SelectTrigger>
@@ -1074,7 +1077,7 @@ export function CreateSavedSearchModal({
                                   <SelectItem
                                     key={opt.value}
                                     value={opt.value}
-                                    className="text-12 h-7 py-1 px-2 rounded-sm cursor-pointer focus:bg-muted"
+                                    className="text-13 py-1.5 px-2 rounded-sm cursor-pointer focus:bg-muted"
                                   >
                                     {opt.label}
                                   </SelectItem>
@@ -1089,8 +1092,9 @@ export function CreateSavedSearchModal({
                               onValueChange={(val) => handleValueChange(cond.id, val)}
                             >
                               <SelectTrigger
+                                size="sm"
                                 aria-label={`Collection for condition ${idx + 1}`}
-                                className="w-full h-8 text-12 text-foreground rounded-md border-border bg-background"
+                                className="w-full text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
                               >
                                 <SelectValue placeholder="Select collection..." />
                               </SelectTrigger>
@@ -1100,7 +1104,7 @@ export function CreateSavedSearchModal({
                                 className="max-h-56 p-1 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md"
                               >
                                 {collections.length === 0 ? (
-                                  <div className="p-2 text-11 text-muted-foreground text-center">
+                                  <div className="p-2 text-11 text-foreground text-center">
                                     No collections found
                                   </div>
                                 ) : (
@@ -1108,10 +1112,10 @@ export function CreateSavedSearchModal({
                                     <SelectItem
                                       key={col.id}
                                       value={col.id}
-                                      className="text-12 h-7 py-1 px-2 rounded-sm cursor-pointer focus:bg-muted"
+                                      className="text-13 py-1.5 px-2 rounded-sm cursor-pointer focus:bg-muted"
                                     >
                                       <span className="flex items-center gap-1.5 truncate">
-                                        <Folder className="size-3.5 text-foreground shrink-0" />
+                                        <Folder className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                                         <span className="truncate">{col.name}</span>
                                       </span>
                                     </SelectItem>
@@ -1128,7 +1132,7 @@ export function CreateSavedSearchModal({
                               onChange={(e) => handleValueChange(cond.id, e.target.value)}
                               placeholder="Enter tag name..."
                               aria-label={`Tag for condition ${idx + 1}`}
-                              className="h-8 text-12 text-foreground rounded-md border-border placeholder:text-muted-foreground/50 bg-background"
+                              className="h-8 text-13 text-foreground bg-background hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md border-border placeholder:text-foreground/50"
                             />
                             <datalist id={`tag-suggestions-${cond.id}`}>
                               {tagList.map((tag) => (
@@ -1143,7 +1147,7 @@ export function CreateSavedSearchModal({
                             onChange={(e) => handleValueChange(cond.id, e.target.value)}
                             placeholder="YYYY"
                             aria-label={`Year for condition ${idx + 1}`}
-                            className="flex-1 min-w-0 h-8 text-12 text-foreground rounded-md border-border placeholder:text-muted-foreground/50 bg-background"
+                            className="flex-1 min-w-0 h-8 text-13 text-foreground bg-background hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md border-border placeholder:text-foreground/50"
                           />
                         ) : cond.field === 'readStatus' ? (
                           <div className="flex-1 min-w-0">
@@ -1152,8 +1156,9 @@ export function CreateSavedSearchModal({
                               onValueChange={(val) => handleValueChange(cond.id, val)}
                             >
                               <SelectTrigger
+                                size="sm"
                                 aria-label={`Reading status for condition ${idx + 1}`}
-                                className="w-full h-8 text-12 text-foreground rounded-md border-border bg-background"
+                                className="w-full text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
                               >
                                 <SelectValue placeholder="Select reading status..." />
                               </SelectTrigger>
@@ -1166,7 +1171,7 @@ export function CreateSavedSearchModal({
                                   <SelectItem
                                     key={opt.value}
                                     value={opt.value}
-                                    className="text-12 h-7 py-1 px-2 rounded-sm cursor-pointer focus:bg-muted"
+                                    className="text-13 py-1.5 px-2 rounded-sm cursor-pointer focus:bg-muted"
                                   >
                                     {opt.label}
                                   </SelectItem>
@@ -1181,8 +1186,9 @@ export function CreateSavedSearchModal({
                               onValueChange={(val) => handleValueChange(cond.id, val)}
                             >
                               <SelectTrigger
+                                size="sm"
                                 aria-label={`Rating for condition ${idx + 1}`}
-                                className="w-full h-8 text-12 text-foreground rounded-md border-border bg-background"
+                                className="w-full text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
                               >
                                 <SelectValue placeholder="Select rating..." />
                               </SelectTrigger>
@@ -1195,7 +1201,7 @@ export function CreateSavedSearchModal({
                                   <SelectItem
                                     key={opt.value}
                                     value={opt.value}
-                                    className="text-12 h-7 py-1 px-2 rounded-sm cursor-pointer focus:bg-muted"
+                                    className="text-13 py-1.5 px-2 rounded-sm cursor-pointer focus:bg-muted"
                                   >
                                     {opt.label}
                                   </SelectItem>
@@ -1210,8 +1216,9 @@ export function CreateSavedSearchModal({
                               onValueChange={(val) => handleValueChange(cond.id, val)}
                             >
                               <SelectTrigger
+                                size="sm"
                                 aria-label={`Attachment filter for condition ${idx + 1}`}
-                                className="w-full h-8 text-12 text-foreground rounded-md border-border bg-background"
+                                className="w-full text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
                               >
                                 <SelectValue placeholder="Select attachment status..." />
                               </SelectTrigger>
@@ -1224,7 +1231,7 @@ export function CreateSavedSearchModal({
                                   <SelectItem
                                     key={opt.value}
                                     value={opt.value}
-                                    className="text-12 h-7 py-1 px-2 rounded-sm cursor-pointer focus:bg-muted"
+                                    className="text-13 py-1.5 px-2 rounded-sm cursor-pointer focus:bg-muted"
                                   >
                                     {opt.label}
                                   </SelectItem>
@@ -1238,11 +1245,11 @@ export function CreateSavedSearchModal({
                             onChange={(e) => handleValueChange(cond.id, e.target.value)}
                             placeholder={activeConfig.placeholder}
                             aria-label={`${activeConfig.label} for condition ${idx + 1}`}
-                            className="flex-1 min-w-0 h-8 text-12 text-foreground rounded-md border-border placeholder:text-muted-foreground/50 bg-background"
+                            className="flex-1 min-w-0 h-8 text-13 text-foreground bg-background hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md border-border placeholder:text-foreground/50"
                           />
                         )
                       ) : (
-                        <div className="flex-1 min-w-0 h-8 flex items-center px-3 text-12 text-muted-foreground italic rounded-md border border-dashed border-border bg-muted/20">
+                        <div className="flex-1 min-w-0 h-8 flex items-center px-3 text-13 text-foreground italic rounded-md border border-dashed border-border bg-muted/20">
                           No value required
                         </div>
                       )}
@@ -1256,9 +1263,9 @@ export function CreateSavedSearchModal({
                           onClick={() => handleAddCondition(idx)}
                           title="Add condition below"
                           aria-label={`Add condition after condition ${idx + 1}`}
-                          className="size-8 text-foreground hover:bg-muted border border-border rounded-md cursor-pointer flex items-center justify-center shrink-0"
+                          className="size-8 text-foreground hover:bg-muted border border-border hover:border-foreground/30 rounded-md cursor-pointer flex items-center justify-center shrink-0 transition-colors"
                         >
-                          <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                          <Plus className="size-3.5 shrink-0" strokeWidth={1.5} />
                         </Button>
                         <Button
                           type="button"
@@ -1268,9 +1275,9 @@ export function CreateSavedSearchModal({
                           disabled={conditions.length <= 1}
                           title="Remove condition"
                           aria-label={`Remove condition ${idx + 1}`}
-                          className="size-8 text-foreground hover:bg-muted border border-border rounded-md cursor-pointer disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center shrink-0"
+                          className="size-8 text-foreground hover:bg-muted border border-border hover:border-foreground/30 rounded-md cursor-pointer disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center shrink-0 transition-colors"
                         >
-                          <Minus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                          <Minus className="size-3.5 shrink-0" strokeWidth={1.5} />
                         </Button>
                       </div>
                     </div>
@@ -1286,25 +1293,22 @@ export function CreateSavedSearchModal({
               <Checkbox
                 checked={searchSubcollections}
                 onCheckedChange={(c) => setSearchSubcollections(!!c)}
-                className="size-3.5 rounded"
               />
-              <span className="text-11 text-foreground">Search subcollections</span>
+              <span className="text-12 text-foreground font-normal">Search subcollections</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <Checkbox
                 checked={showOnlyTopLevel}
                 onCheckedChange={(c) => setShowOnlyTopLevel(!!c)}
-                className="size-3.5 rounded"
               />
-              <span className="text-11 text-foreground">Show only top-level items</span>
+              <span className="text-12 text-foreground font-normal">Show only top-level items</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <Checkbox
                 checked={includeParentAndChild}
                 onCheckedChange={(c) => setIncludeParentAndChild(!!c)}
-                className="size-3.5 rounded"
               />
-              <span className="text-11 text-foreground">Include parent and child items</span>
+              <span className="text-12 text-foreground font-normal">Include parent and child items</span>
             </label>
           </div>
 
@@ -1315,12 +1319,12 @@ export function CreateSavedSearchModal({
               <div className="flex items-center gap-2" role="status" aria-live="polite">
                 <span className="font-medium text-foreground">Preview results</span>
                 {isPreviewLoading ? (
-                  <span className="flex items-center gap-1 text-muted-foreground font-normal">
+                  <span className="flex items-center gap-1 text-foreground font-normal">
                     <Loader2 className="size-3 animate-spin text-foreground" aria-hidden="true" />
                     Searching...
                   </span>
                 ) : previewCount !== null ? (
-                  <span className="text-muted-foreground font-normal">
+                  <span className="text-foreground font-normal">
                     ({previewCount} {previewCount === 1 ? 'item' : 'items'} found)
                   </span>
                 ) : null}
@@ -1328,34 +1332,36 @@ export function CreateSavedSearchModal({
 
               {/* Sort controls */}
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-muted-foreground text-11 flex items-center gap-1 shrink-0">
-                  <ArrowUpDown className="size-3 text-foreground shrink-0" aria-hidden="true" />
+                <span className="text-foreground text-12 flex items-center gap-1 shrink-0">
+                  <ArrowUpDown className="size-3 text-foreground shrink-0" aria-hidden="true" strokeWidth={1.5} />
                   Sort:
                 </span>
                 <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
                   <SelectTrigger
+                    size="sm"
                     aria-label="Sort by field"
-                    className="w-[110px] h-8 px-2.5 gap-1.5 [&_svg]:size-3 text-12 text-foreground rounded-md border-border bg-background shrink-0"
+                    className="w-[120px] text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md shrink-0"
                   >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
-                    <SelectItem value="dateAdded" className="text-12 cursor-pointer">Date Added</SelectItem>
-                    <SelectItem value="year" className="text-12 cursor-pointer">Year</SelectItem>
-                    <SelectItem value="title" className="text-12 cursor-pointer">Title</SelectItem>
-                    <SelectItem value="creator" className="text-12 cursor-pointer">Author</SelectItem>
+                    <SelectItem value="dateAdded" className="text-13 py-1.5 px-2 rounded-sm cursor-pointer">Date Added</SelectItem>
+                    <SelectItem value="year" className="text-13 py-1.5 px-2 rounded-sm cursor-pointer">Year</SelectItem>
+                    <SelectItem value="title" className="text-13 py-1.5 px-2 rounded-sm cursor-pointer">Title</SelectItem>
+                    <SelectItem value="creator" className="text-13 py-1.5 px-2 rounded-sm cursor-pointer">Author</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={sortOrder} onValueChange={(val: any) => setSortOrder(val)}>
                   <SelectTrigger
+                    size="sm"
                     aria-label="Sort direction"
-                    className="w-[110px] h-8 px-2.5 gap-1.5 [&_svg]:size-3 text-12 text-foreground rounded-md border-border bg-background shrink-0"
+                    className="w-[115px] text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md shrink-0"
                   >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
-                    <SelectItem value="desc" className="text-12 cursor-pointer">Descending</SelectItem>
-                    <SelectItem value="asc" className="text-12 cursor-pointer">Ascending</SelectItem>
+                    <SelectItem value="desc" className="text-13 py-1.5 px-2 rounded-sm cursor-pointer">Descending</SelectItem>
+                    <SelectItem value="asc" className="text-13 py-1.5 px-2 rounded-sm cursor-pointer">Ascending</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1369,7 +1375,7 @@ export function CreateSavedSearchModal({
                   aria-label="Matching search preview publications"
                 >
                   <thead>
-                    <tr className="border-b border-border/60 text-11 font-medium text-muted-foreground">
+                    <tr className="border-b border-border/60 text-11 font-medium text-foreground">
                       <th scope="col" className="py-1.5 pr-3">Title</th>
                       <th scope="col" className="py-1.5 px-3 w-40">Creator</th>
                       <th scope="col" className="py-1.5 px-3 w-28 hidden sm:table-cell">Type</th>
@@ -1385,13 +1391,13 @@ export function CreateSavedSearchModal({
                             <span className="truncate">{item.title || 'Untitled'}</span>
                           </span>
                         </td>
-                        <td className="py-1.5 px-3 truncate text-muted-foreground" title={item.authors?.join(', ') || ''}>
+                        <td className="py-1.5 px-3 truncate text-foreground" title={item.authors?.join(', ') || ''}>
                           {item.authors?.[0] ? `${item.authors[0]}${item.authors.length > 1 ? ' et al.' : ''}` : '—'}
                         </td>
-                        <td className="py-1.5 px-3 truncate text-muted-foreground capitalize hidden sm:table-cell">
+                        <td className="py-1.5 px-3 truncate text-foreground capitalize hidden sm:table-cell">
                           {item.itemType || 'document'}
                         </td>
-                        <td className="py-1.5 pl-3 text-right text-muted-foreground font-mono">
+                        <td className="py-1.5 pl-3 text-right text-foreground font-mono">
                           {item.year || '—'}
                         </td>
                       </tr>
@@ -1399,7 +1405,7 @@ export function CreateSavedSearchModal({
                   </tbody>
                 </table>
               ) : (
-                <div className="h-24 flex flex-col items-center justify-center text-center p-4 text-muted-foreground">
+                <div className="h-24 flex flex-col items-center justify-center text-center p-4 text-foreground">
                   {isPreviewLoading ? (
                     <p className="text-11">Searching publications...</p>
                   ) : previewCount === 0 ? (
@@ -1412,7 +1418,7 @@ export function CreateSavedSearchModal({
             </div>
 
             {previewCount !== null && previewCount > previewSamples.length && (
-              <div className="pt-1.5 border-t border-border/40 text-11 text-muted-foreground text-center">
+              <div className="pt-1.5 border-t border-border/40 text-11 text-foreground text-center">
                 + {previewCount - previewSamples.length} more publications match this search
               </div>
             )}
@@ -1432,14 +1438,14 @@ export function CreateSavedSearchModal({
               variant="ghost"
               onClick={() => onOpenChange(false)}
               disabled={isPending}
-              className="h-8 px-3 text-12 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
+              className="h-8 px-3 text-13 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isPending}
-              className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md shadow-none"
+              className="h-8 px-4 text-13 font-medium cursor-pointer rounded-md shadow-none"
             >
               {isPending
                 ? 'Saving...'
@@ -1455,3 +1461,4 @@ export function CreateSavedSearchModal({
 }
 
 export default CreateSavedSearchModal;
+      

@@ -84,7 +84,7 @@ export default function DeleteModal({
               {title}
             </DialogTitle>
             {description && (
-              <DialogDescription className="mt-1 text-12 text-muted-foreground leading-normal">
+              <DialogDescription className="mt-1 text-12 text-foreground leading-normal">
                 {description}
               </DialogDescription>
             )}
@@ -105,7 +105,7 @@ export default function DeleteModal({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isDeleting}
-            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md hover:bg-muted"
+            className="h-8 px-3 text-13 font-medium cursor-pointer rounded-md hover:bg-muted"
           >
             {cancelLabel}
           </Button>
@@ -115,7 +115,7 @@ export default function DeleteModal({
             size="sm"
             onClick={handleConfirm}
             disabled={isDeleting}
-            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md"
+            className="h-8 px-3 text-13 font-medium cursor-pointer rounded-md"
           >
             {isDeleting ? (
               <span className="inline-flex items-center gap-1.5">

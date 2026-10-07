@@ -122,10 +122,10 @@ export function TopbarSearch({
       <Search
         strokeWidth={1.5}
         className={cn(
-          'absolute top-1/2 -translate-y-1/2 size-3.5 transition-colors duration-150 z-10 shrink-0 text-muted-foreground',
+          'absolute top-1/2 -translate-y-1/2 size-3.5 transition-colors duration-150 z-10 shrink-0 text-muted-foreground group-hover:text-foreground',
           active
             ? 'left-2 translate-x-0'
-            : 'left-1/2 -translate-x-1/2 group-hover:text-foreground'
+            : 'left-1/2 -translate-x-1/2'
         )}
       />
       <Input
@@ -147,7 +147,7 @@ export function TopbarSearch({
           }
         }}
         className={cn(
-          'h-full text-12 font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground placeholder:font-normal transition-opacity duration-200 pl-7 pr-6 text-foreground',
+          'h-full text-13 font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground placeholder:font-normal transition-opacity duration-200 pl-7 pr-6 text-foreground',
           active ? 'opacity-100' : 'opacity-0 pointer-events-none'
         )}
       />
@@ -156,7 +156,7 @@ export function TopbarSearch({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={handleClear}
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2 md:before:hidden"
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center size-5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary/20 before:absolute before:-inset-2 md:before:hidden"
           aria-label="Clear search"
         >
           <X className="size-3 shrink-0" />

@@ -98,26 +98,36 @@ export function useActiveDocument() {
       : (parentPage?.mainFile as Page | undefined)?.id ||
         (parentPage as { mainFileId?: string })?.mainFileId;
 
+  const activeTabId = useTabsStore((s) =>
+    (pageId ? s.activeByProject[pageId] : null) ||
+    (projectId ? s.activeByProject[projectId] : null) ||
+    null
+  );
+
+  // Synchronously resolve active file ID: in-memory active tab takes precedence, falling back to searchParams (?file=...)
+  const resolvedFileId = activeTabId || fileId;
+
   const isMainFile =
-    !fileId ||
-    fileId === pageId ||
-    fileId === parentPage?.id ||
-    Boolean(mainId && fileId === mainId);
+    !resolvedFileId ||
+    resolvedFileId === pageId ||
+    resolvedFileId === `${pageId}-main` ||
+    resolvedFileId === parentPage?.id ||
+    Boolean(mainId && resolvedFileId === mainId);
 
   // When a child file is active, query its complete content from server
-  const activeFileId = !isMainFile && fileId ? fileId : null;
+  const activeFileId = !isMainFile && resolvedFileId ? resolvedFileId : null;
   const { data: activeFileDoc, isLoading: fileLoading } = useQuery({
     ...pageQuery(activeFileId || ''),
     enabled: Boolean(activeFileId),
   });
 
   const activeFile = useMemo(() => {
-    if (!fileId || isMainFile) return undefined;
+    if (!resolvedFileId || isMainFile) return undefined;
     if (activeFileDoc) return activeFileDoc;
-    const meta = childFiles.find((f) => f.id === fileId || f.title === fileId);
+    const meta = childFiles.find((f) => f.id === resolvedFileId || f.title === resolvedFileId);
     if (meta && typeof meta.content === 'string' && meta.content.length > 0) return meta;
     return undefined;
-  }, [fileId, isMainFile, activeFileDoc, childFiles]);
+  }, [resolvedFileId, isMainFile, activeFileDoc, childFiles]);
 
   const setCurrentPage = usePageStore((s) => s.setCurrentPage);
   const setFileHierarchy = usePageStore((s) => s.setFileHierarchy);
@@ -201,7 +211,7 @@ export function useActiveDocument() {
     }
   }, [
     isMainFile,
-    fileId,
+    resolvedFileId,
     pageId,
     projectId,
     parentPage,
@@ -213,26 +223,39 @@ export function useActiveDocument() {
   ]);
 
   const selectFile = useCallback((targetFileId: string) => {
-    const params = new URLSearchParams(searchParams.toString());
     const isTargetMain =
       targetFileId === pageId ||
       targetFileId === parentPage?.id ||
       (mainId && targetFileId === mainId);
 
-    if (isTargetMain) {
-      params.delete('file');
-    } else {
-      params.set('file', targetFileId);
-    }
-    const query = params.toString();
-    router.push(`${pathname}${query ? `?${query}` : ''}`);
-  }, [searchParams, pageId, parentPage?.id, mainId, router, pathname]);
+    const targetTabId = isTargetMain ? pageId : targetFileId;
+    const targetFile = isTargetMain
+      ? parentPage
+      : childFiles.find((f) => f.id === targetFileId || f.title === targetFileId);
 
-  const activeTabId = useTabsStore((s) =>
-    (pageId ? s.activeByProject[pageId] : null) ||
-    (projectId ? s.activeByProject[projectId] : null) ||
-    null
-  );
+    const targetTitle = targetFile?.title || (isTargetMain ? 'main.tex' : targetFileId);
+
+    if (pageId) {
+      openTab(pageId, { id: targetTabId, title: targetTitle });
+      setActive(pageId, targetTabId);
+    }
+    if (projectId && projectId !== pageId) {
+      openTab(projectId, { id: targetTabId, title: targetTitle });
+      setActive(projectId, targetTabId);
+    }
+
+    // Shallow history URL update: 0ms latency, eliminates Next.js router transitions
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (isTargetMain) {
+        url.searchParams.delete('file');
+      } else {
+        url.searchParams.set('file', targetFileId);
+      }
+      window.history.replaceState(window.history.state, '', url.pathname + url.search);
+    }
+  }, [pageId, parentPage, mainId, childFiles, openTab, setActive, projectId]);
+
   const selectedAsset = usePageStore((s) => s.selectedAsset);
   const isAssetTab = activeTabId?.startsWith('asset:') || false;
   const activePage = isMainFile ? parentPage : (activeFile || null);
@@ -252,7 +275,7 @@ export function useActiveDocument() {
     selectFile,
     activePageId,
     pageId,
-    fileId,
+    fileId: resolvedFileId,
     isAssetTab,
     selectedAsset,
     projectId: effectiveProjectId,

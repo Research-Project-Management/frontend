@@ -131,14 +131,14 @@ export default function AddLinkModal({
           <form onSubmit={handleSubmit(onValidSubmit)} className="space-y-4 pt-1">
             {/* Identifier / Link Field */}
             <div className="space-y-1.5">
-              <Label htmlFor="link-url-input" className="text-11 font-medium text-muted-foreground">
+              <Label htmlFor="link-url-input" className="text-11 font-medium text-foreground">
                 Identifier or URL
               </Label>
               <Input
                 id="link-url-input"
                 {...register('url')}
                 placeholder="Enter DOI, ISBN, arXiv ID, PubMed ID, or URL..."
-                className="h-8 text-12 font-mono text-foreground rounded-md border-border"
+                className="h-8 text-13 font-mono text-foreground placeholder:text-foreground/50 rounded-md border-border/80 hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20"
                 autoFocus
               />
               {errors.url && (
@@ -148,14 +148,14 @@ export default function AddLinkModal({
 
             {/* Title Field (Optional) */}
             <div className="space-y-1.5">
-              <Label htmlFor="link-title-input" className="text-11 font-medium text-muted-foreground">
+              <Label htmlFor="link-title-input" className="text-11 font-medium text-foreground">
                 Title (Optional)
               </Label>
               <Input
                 id="link-title-input"
                 placeholder="Leave blank to auto-detect title"
                 {...register('title')}
-                className="h-8 text-12 text-foreground rounded-md border-border"
+                className="h-8 text-13 text-foreground placeholder:text-foreground/50 rounded-md border-border/80 hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20"
               />
             </div>
 
@@ -166,14 +166,14 @@ export default function AddLinkModal({
                 variant="ghost"
                 onClick={() => handleOpenChange(false)}
                 disabled={isPending}
-                className="h-8 px-3 text-12 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
+                className="h-8 px-3 text-13 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isPending}
-                className="h-8 px-3 text-12 font-medium cursor-pointer min-w-[90px] rounded-md shadow-none"
+                className="h-8 px-3 text-13 font-medium cursor-pointer min-w-[90px] rounded-md shadow-none"
               >
                 {isPending ? (
                   <Loader2 className="size-3.5 animate-spin text-primary-foreground shrink-0" />

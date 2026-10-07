@@ -1,10 +1,11 @@
 /**
  * AiTab.tsx
  *
- * Primary Sidebar AI Research Assistant Viewlet (Block 6: UI Features Layer).
+ * Canonical Primary Sidebar AI Research Assistant Viewlet (Block 6: UI Features Layer).
  * Location: `features/editor/ui/features/sidebar/AiTab.tsx`
  *
- * Integrates directly into the Left Primary Sidebar.
+ * Direct export from canonical `./ai/AiTab`.
  */
 
-export { default as AiTab, default } from '../../../components/sidebar/ai/AiTab';
+export { default as AiTab, default } from './ai/AiTab';
+export * from './ai/useAiChatActions';

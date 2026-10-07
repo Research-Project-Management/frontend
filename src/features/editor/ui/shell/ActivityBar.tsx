@@ -100,7 +100,7 @@ export function ActivityBar() {
 
                     {/* Unread badge */}
                     {showBadge && (
-                      <span className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full text-[10px] font-mono font-bold bg-primary text-primary-foreground">
+                      <span className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full text-[10px] font-mono font-semibold bg-primary text-primary-foreground">
                         {unreadChatCount > 99 ? '99+' : unreadChatCount}
                       </span>
                     )}

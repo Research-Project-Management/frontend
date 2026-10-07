@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { Sparkles, Check } from 'lucide-react';
+import { Bot, Check } from 'lucide-react';
 import { Button, Textarea, Switch, Skeleton } from "@/shared/components/ui";
 import { toast } from 'sonner';
 import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
@@ -81,7 +81,7 @@ export default function AiPage() {
   if (isLoading) {
     return (
       <PageLayout>
-        <PageHeader title="AI Assistant" icon={Sparkles} />
+        <PageHeader title="AI Assistant" icon={Bot} />
         <PageContent maxWidth="md">
           <div className="space-y-6">
             <Skeleton className="h-44 w-full rounded-md" />
@@ -95,7 +95,7 @@ export default function AiPage() {
   if (isError || !project) {
     return (
       <PageLayout>
-        <PageHeader title="AI Assistant" icon={Sparkles} />
+        <PageHeader title="AI Assistant" icon={Bot} />
         <PageContent maxWidth="md">
           <div className="text-12 text-muted-foreground">
             Error loading project AI settings.
@@ -120,7 +120,7 @@ export default function AiPage() {
     <PageLayout>
       <PageHeader
         title="AI Assistant"
-        icon={Sparkles}
+        icon={Bot}
         actions={topBarActions}
       />
 

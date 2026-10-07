@@ -10,7 +10,7 @@ import {
   Network,
   Quote,
   PanelRight,
-  Sparkles,
+  Bot,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
@@ -52,7 +52,7 @@ export function InspectorTabs({
     { id: 'info', label: 'Details', icon: Info },
     { id: 'files', label: 'Attachments', icon: Paperclip, badge: attachmentCount },
     { id: 'notes', label: 'Notes', icon: StickyNote, badge: noteCount },
-    { id: 'ai', label: 'Paper AI Copilot', icon: Sparkles },
+    { id: 'ai', label: 'Paper AI Copilot', icon: Bot },
     { id: 'collections', label: 'Collections', icon: FolderTree },
     { id: 'tags', label: 'Tags', icon: Tag },
     { id: 'relations', label: 'Related', icon: Network },

@@ -172,12 +172,12 @@ export default function ImportFromPersonalModal({
         <DialogHeader className="px-5 py-3.5 border-b border-border flex flex-row items-center justify-between shrink-0 bg-background">
           <div>
             <div className="flex items-center gap-2">
-              <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              <Library className="size-4 text-primary shrink-0" strokeWidth={1.5} />
               <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
                 Import from My Library
               </DialogTitle>
             </div>
-            <DialogDescription className="text-12 text-muted-foreground mt-0.5">
+            <DialogDescription className="text-12 text-foreground mt-0.5">
               Select references from your user library to collaborate on in{' '}
               <span className="font-semibold text-foreground">{projectName}</span>.
             </DialogDescription>
@@ -187,8 +187,8 @@ export default function ImportFromPersonalModal({
         {/* Modal Body: 2 Columns */}
         <div className="flex-1 flex min-h-0 overflow-hidden">
           {/* Left Column: My Library Collections Tree */}
-          <aside className="w-64 shrink-0 border-r border-border bg-muted flex flex-col overflow-hidden">
-            <div className="px-3 py-2 text-11 font-medium text-muted-foreground tracking-tight border-b border-border select-none">
+          <aside className="w-64 shrink-0 border-r border-border bg-muted/30 flex flex-col overflow-hidden">
+            <div className="px-3 py-2 text-11 font-medium text-foreground tracking-tight border-b border-border select-none">
               Personal Collections
             </div>
 
@@ -201,14 +201,14 @@ export default function ImportFromPersonalModal({
                   "w-full h-8 px-2.5 flex items-center justify-between rounded-md text-12 transition-colors text-left cursor-pointer",
                   selectedScope === 'all'
                     ? "bg-muted text-foreground font-medium"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground font-normal"
+                    : "text-foreground hover:bg-muted font-normal"
                 )}
               >
                 <div className="flex items-center gap-2 truncate">
                   <Library className="size-3.5 shrink-0" strokeWidth={1.5} />
                   <span className="truncate">All References</span>
                 </div>
-                <span className="text-10 font-mono text-muted-foreground tabular-nums shrink-0">
+                <span className="text-10 font-mono text-foreground tabular-nums shrink-0">
                   {collectionCounts.all}
                 </span>
               </button>
@@ -226,7 +226,7 @@ export default function ImportFromPersonalModal({
                       "w-full h-8 px-2.5 flex items-center justify-between rounded-md text-12 transition-colors text-left cursor-pointer",
                       isSelected
                         ? "bg-muted text-foreground font-medium"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground font-normal"
+                        : "text-foreground hover:bg-muted font-normal"
                     )}
                   >
                     <div className="flex items-center gap-2 truncate">
@@ -237,7 +237,7 @@ export default function ImportFromPersonalModal({
                       )}
                       <span className="truncate">{col.name}</span>
                     </div>
-                    <span className="text-10 font-mono text-muted-foreground tabular-nums shrink-0">
+                    <span className="text-10 font-mono text-foreground tabular-nums shrink-0">
                       {count}
                     </span>
                   </button>
@@ -253,14 +253,14 @@ export default function ImportFromPersonalModal({
                     "w-full h-8 px-2.5 flex items-center justify-between rounded-md text-12 transition-colors text-left cursor-pointer",
                     selectedScope === 'unfiled'
                       ? "bg-muted text-foreground font-medium"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground font-normal"
+                      : "text-foreground hover:bg-muted font-normal"
                   )}
                 >
                   <div className="flex items-center gap-2 truncate">
                     <FileText className="size-3.5 shrink-0" strokeWidth={1.5} />
                     <span className="truncate">Unfiled Items</span>
                   </div>
-                  <span className="text-10 font-mono text-muted-foreground tabular-nums shrink-0">
+                  <span className="text-10 font-mono text-foreground tabular-nums shrink-0">
                     {collectionCounts.unfiled}
                   </span>
                 </button>
@@ -273,20 +273,20 @@ export default function ImportFromPersonalModal({
             {/* Search Bar & Select All Action */}
             <div className="p-3 border-b border-border bg-background flex items-center justify-between gap-3 shrink-0">
               <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-foreground pointer-events-none" />
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search references by title, author, year, DOI..."
-                  className="h-8 pl-8 pr-7 text-12 rounded-md bg-background focus-visible:ring-1"
+                  className="h-8 pl-8 pr-7 text-13 text-foreground placeholder:text-foreground/50 rounded-md bg-background border-border/80 hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20"
                 />
                 {search && (
                   <button
                     type="button"
                     onClick={() => setSearch('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded cursor-pointer"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center text-foreground hover:bg-muted rounded-xs cursor-pointer"
                   >
-                    <X className="size-3" />
+                    <X className="size-3 shrink-0" />
                   </button>
                 )}
               </div>
@@ -297,7 +297,7 @@ export default function ImportFromPersonalModal({
                   variant="outline"
                   size="sm"
                   onClick={toggleSelectAll}
-                  className="h-8 text-12 font-medium whitespace-nowrap cursor-pointer hover:bg-muted rounded-md"
+                  className="h-8 text-13 font-medium whitespace-nowrap cursor-pointer hover:bg-muted rounded-md text-foreground"
                 >
                   {isAllSelectableSelected ? 'Deselect All' : `Select All (${selectableItems.length})`}
                 </Button>
@@ -307,15 +307,15 @@ export default function ImportFromPersonalModal({
             {/* References Table / List */}
             <div className="flex-1 overflow-y-auto divide-y divide-border/60 thin-scrollbar">
               {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                <div className="flex flex-col items-center justify-center py-20 text-foreground">
                   <Loader2 className="size-5 animate-spin mb-2" />
                   <span className="text-12 font-medium">Loading personal library...</span>
                 </div>
               ) : filteredItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground px-4">
+                <div className="flex flex-col items-center justify-center py-20 text-center text-foreground px-4">
                   <Library className="size-6 mb-2 opacity-60" strokeWidth={1.5} />
-                  <p className="text-12 font-medium text-foreground">No references found</p>
-                  <p className="text-11 text-muted-foreground mt-0.5 max-w-xs">
+                  <p className="text-13 font-medium text-foreground">No references found</p>
+                  <p className="text-12 text-foreground mt-0.5 max-w-xs">
                     {search.trim()
                       ? 'No items match your search filter.'
                       : 'There are no references in this collection.'}
@@ -350,22 +350,22 @@ export default function ImportFromPersonalModal({
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 min-w-0">
-                          <p className="text-12 font-medium text-foreground truncate leading-tight flex-1">
+                          <p className="text-13 font-medium text-foreground truncate leading-tight flex-1">
                             {item.title || 'Untitled Reference'}
                           </p>
                           {isAlreadyInProject && (
-                            <span className="text-10 font-mono text-muted-foreground bg-muted border border-border px-1.5 py-0.2 rounded-sm shrink-0">
+                            <span className="text-10 font-mono text-foreground bg-muted border border-border px-1.5 py-0.2 rounded-sm shrink-0">
                               Already in project
                             </span>
                           )}
                           {colName && (
-                            <span className="text-10 font-mono text-muted-foreground bg-muted border border-border px-1.5 py-0.2 rounded-sm shrink-0 truncate max-w-[120px]">
+                            <span className="text-10 font-mono text-foreground bg-muted border border-border px-1.5 py-0.2 rounded-sm shrink-0 truncate max-w-[120px]">
                               {colName}
                             </span>
                           )}
                         </div>
 
-                        <p className="text-11 text-muted-foreground truncate mt-0.5">
+                        <p className="text-12 text-foreground truncate mt-0.5">
                           {authorText ? `${authorText} ` : ''}
                           {item.year ? `(${item.year})` : ''}
                           {item.publicationTitle ? ` · ${item.publicationTitle}` : ''}
@@ -381,7 +381,7 @@ export default function ImportFromPersonalModal({
 
         {/* Footer */}
         <DialogFooter className="px-5 py-3 border-t border-border bg-background flex items-center justify-between sm:justify-between shrink-0">
-          <span className="text-11 text-muted-foreground font-mono">
+          <span className="text-11 text-foreground font-mono">
             {selectedIds.length} reference(s) selected
           </span>
           <div className="flex items-center gap-2">
@@ -390,7 +390,7 @@ export default function ImportFromPersonalModal({
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="h-8 text-12 font-medium cursor-pointer hover:bg-muted rounded-md"
+              className="h-8 text-13 font-medium cursor-pointer hover:bg-muted rounded-md"
             >
               Cancel
             </Button>
@@ -399,7 +399,7 @@ export default function ImportFromPersonalModal({
               size="sm"
               onClick={handleImport}
               disabled={selectedIds.length === 0 || isImporting}
-              className="h-8 text-12 font-medium gap-1.5 cursor-pointer rounded-md shadow-none"
+              className="h-8 text-13 font-medium gap-1.5 cursor-pointer rounded-md shadow-none"
             >
               {isImporting && <Loader2 className="size-3.5 animate-spin shrink-0" />}
               <span>Import to Project ({selectedIds.length})</span>

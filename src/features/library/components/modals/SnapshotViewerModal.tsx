@@ -44,7 +44,7 @@ export default function SnapshotViewerModal({
       <DialogContent
         className="max-w-6xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-background border border-border rounded-lg shadow-raised-200"
       >
-        <DialogHeader className="px-4 py-3 border-b border-border flex flex-row items-center justify-between shrink-0 m-0">
+        <DialogHeader className="px-4 py-3 pr-12 border-b border-border flex flex-row items-center justify-between shrink-0 m-0">
           <div className="flex items-center gap-2 min-w-0 flex-1 mr-4">
             <div className="size-6 rounded-md flex items-center justify-center bg-primary/10 text-primary shrink-0">
               <Globe className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -53,7 +53,7 @@ export default function SnapshotViewerModal({
               <DialogTitle className="text-14 font-semibold text-foreground truncate tracking-tight">
                 {title || 'Web Snapshot Reader'}
               </DialogTitle>
-              <DialogDescription className="text-11 text-muted-foreground truncate font-mono">
+              <DialogDescription className="text-11 text-foreground truncate font-mono">
                 {sourceUrl ? `Source: ${sourceUrl}` : 'Archived web page snapshot viewer'}
               </DialogDescription>
             </div>

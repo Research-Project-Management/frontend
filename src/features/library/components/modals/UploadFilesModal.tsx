@@ -145,8 +145,8 @@ export default function UploadFilesModal({
 
         <div className="space-y-4 min-h-0 flex-1">
           {/* Target Collection Selector */}
-          <div className="flex items-center gap-2.5 text-12">
-            <span className="text-muted-foreground font-medium shrink-0">
+          <div className="flex items-center gap-2.5">
+            <span className="text-11 font-medium text-foreground shrink-0">
               Target Collection:
             </span>
             <Select
@@ -155,16 +155,16 @@ export default function UploadFilesModal({
             >
               <SelectTrigger
                 aria-label="Collection"
-                className="h-8 text-12 text-foreground w-auto min-w-[150px] max-w-[240px] justify-between rounded-md border-border/80 bg-background shadow-none hover:border-foreground/30 cursor-pointer"
+                className="h-8 text-13 text-foreground w-auto min-w-[150px] max-w-[240px] justify-between rounded-md border-border/80 bg-background shadow-none hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 cursor-pointer"
               >
                 <SelectValue placeholder={rootLibraryName} />
               </SelectTrigger>
               <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
-                <SelectItem value="root" className="rounded-md text-12">
+                <SelectItem value="root" className="rounded-md text-13 py-1.5 px-2">
                   {rootLibraryName}
                 </SelectItem>
                 {collections.map((c: Collection) => (
-                  <SelectItem key={c.id} value={c.id} className="rounded-md text-12">
+                  <SelectItem key={c.id} value={c.id} className="rounded-md text-13 py-1.5 px-2">
                     {c.name}
                   </SelectItem>
                 ))}
@@ -182,7 +182,7 @@ export default function UploadFilesModal({
               'border border-dashed rounded-lg transition-all text-center cursor-pointer select-none py-10 px-6',
               isDragging
                 ? 'border-primary bg-primary/5 ring-2 ring-primary/20 scale-[0.99]'
-                : 'border-border/80 hover:border-muted-foreground/60 hover:bg-muted/20',
+                : 'border-border/80 hover:border-foreground/30 hover:bg-muted/20',
             )}
           >
             <input
@@ -195,14 +195,14 @@ export default function UploadFilesModal({
             />
             <div className="flex flex-col items-center justify-center gap-2.5">
               <UploadCloud
-                className="size-8 text-muted-foreground/70 transition-colors"
+                className="size-8 text-foreground transition-colors"
                 strokeWidth={1.5}
               />
               <div className="space-y-1">
                 <p className="text-13 font-medium text-foreground">
                   Drag and drop files here, or <span className="text-primary underline-offset-2 hover:underline">browse</span>
                 </p>
-                <p className="text-11 text-muted-foreground pt-0.5">
+                <p className="text-11 text-foreground pt-0.5">
                   Supported formats: PDF, BibTeX, RIS • max 100MB
                 </p>
               </div>
@@ -217,7 +217,7 @@ export default function UploadFilesModal({
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="text-12 h-8 px-3.5 cursor-pointer"
+            className="text-13 h-8 px-3.5 cursor-pointer"
           >
             Cancel
           </Button>

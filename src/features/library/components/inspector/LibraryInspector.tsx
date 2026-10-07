@@ -668,13 +668,13 @@ export function LibraryInspector({
                   </button>
                 )}
               </div>
-              <div className="flex flex-1 flex-col items-center justify-center p-6 text-center text-muted-foreground gap-2">
+              <div className="flex flex-1 flex-col items-center justify-center p-6 text-center text-foreground gap-2">
                 {isLoading ? (
-                  <p className="text-13 text-muted-foreground">Loading item details...</p>
+                  <p className="text-13 text-foreground">Loading item details...</p>
                 ) : (
                   <>
                     <p className="text-13 font-semibold text-foreground">No item selected</p>
-                    <p className="text-13 text-muted-foreground leading-relaxed max-w-[240px]">
+                    <p className="text-13 text-foreground leading-relaxed max-w-[240px]">
                       Select an item from the list to view its details, attachments, and citation metadata.
                     </p>
                   </>

@@ -203,6 +203,25 @@ export class LRUDocumentCache {
   }
 
   /**
+   * Finds a cached model by matching its filePath (case-insensitive & relative path normalized).
+   */
+  public findByPath(targetPath: string): DocumentModelState | undefined {
+    if (!targetPath) return undefined;
+    const cleanTarget = targetPath.replace(/^\.?\//, '').trim().toLowerCase();
+    for (const model of this.models.values()) {
+      const cleanPath = (model.filePath || model.fileId).replace(/^\.?\//, '').trim().toLowerCase();
+      if (
+        cleanPath === cleanTarget ||
+        cleanPath.endsWith(`/${cleanTarget}`) ||
+        cleanTarget.endsWith(`/${cleanPath}`)
+      ) {
+        return model;
+      }
+    }
+    return undefined;
+  }
+
+  /**
    * Updates content and dirty flag for an existing model.
    */
   public updateContent(fileId: string, content: string, isDirty = true): void {

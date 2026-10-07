@@ -374,8 +374,8 @@
   --foreground: #212121;
   --text-primary: #212121;
   --text-secondary: #595959;
-  --text-muted: #525252;
-  --muted-foreground: #525252;
+  --text-muted: #6E6E6E;
+  --muted-foreground: #6E6E6E;
   --text-placeholder: #BDBDBD;
 
   /* System Blue (The Dual-Engine Separation Rule) */
@@ -627,6 +627,15 @@
 
   * {
     @apply border-border;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   :focus-visible {

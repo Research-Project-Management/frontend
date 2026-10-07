@@ -318,7 +318,7 @@ export function ModernLibraryPage({
           <LibraryContent
             scopeId={effectiveScopeId}
             collectionId={effectiveCollectionId}
-            savedSearchId={isSavedSearchView ? savedSearchId : undefined}
+            savedSearchId={isSavedSearchView ? nav.savedSearchId : undefined}
             view={effectiveView}
             canEdit={canEdit}
             onDirectFilesUpload={canEdit ? handleDirectFilesUpload : undefined}

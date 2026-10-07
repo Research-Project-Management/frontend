@@ -2,8 +2,12 @@ export * from './LibraryModals';
 export { default as CreateCollectionModal } from './CreateCollectionModal';
 export { default as DeleteModal, type DeleteModalConfig } from './DeleteModal';
 export { default as TrashModal } from './TrashModal';
-export { default as ConvertModal } from './ConvertModal';
-export { default as TypeConversionModal } from './TypeConversionModal';
+export {
+  default as TypeConversionModal,
+  default as ConvertModal,
+  type TypeConversionModalProps,
+  type ConvertModalProps,
+} from './TypeConversionModal';
 export { default as SnapshotViewerModal } from './SnapshotViewerModal';
 export { default as AddLinkModal } from './AddLinkModal';
 export { default as MergeModal } from './MergeModal';

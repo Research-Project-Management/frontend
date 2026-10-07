@@ -55,6 +55,7 @@ export class NavigationCoordinatorRegistry {
     editorCommandBus.subscribe('navigation:jump-to-line', (cmd) => {
       this.jumpToLine({
         fileId: cmd.fileId,
+        filePath: cmd.filePath,
         line: cmd.line,
         column: cmd.column,
         highlight: cmd.highlight,
@@ -101,6 +102,21 @@ export class NavigationCoordinatorRegistry {
       parentId: null,
     } as any);
 
+    // 3b. Synchronize shallow URL history (0ms latency, zero page refresh)
+    if (typeof window !== 'undefined') {
+      try {
+        const rootPageId = pageStore.currentPage?.id || pageStore.projectId;
+        const isRoot = fileId === rootPageId || fileId === `${rootPageId}-main`;
+        const url = new URL(window.location.href);
+        if (isRoot) {
+          url.searchParams.delete('file');
+        } else {
+          url.searchParams.set('file', fileId);
+        }
+        window.history.replaceState(window.history.state, '', url.pathname + url.search);
+      } catch {}
+    }
+
     // 4. If target coordinates are specified, jump to line
     if (line !== undefined) {
       setTimeout(() => {
@@ -140,6 +156,13 @@ export class NavigationCoordinatorRegistry {
       const rootPage = pageStore.currentPage;
       if (rootPage) {
         pageStore.setActiveFilePage(rootPage);
+        if (typeof window !== 'undefined') {
+          try {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('file');
+            window.history.replaceState(window.history.state, '', url.pathname + url.search);
+          } catch {}
+        }
       }
     }
   }
@@ -149,18 +172,42 @@ export class NavigationCoordinatorRegistry {
    */
   public jumpToLine(options: {
     fileId?: string;
+    filePath?: string;
     line: number;
     column?: number;
     highlight?: 'error' | 'synctex';
   }): void {
-    const { fileId, line, highlight = 'synctex' } = options;
-    const activePage = usePageStore.getState().activeFilePage;
+    const { fileId, filePath, line, highlight = 'synctex' } = options;
+    const pageStore = usePageStore.getState();
+    const activePage = pageStore.activeFilePage || pageStore.currentPage;
 
-    // If fileId differs from active file, open it first
-    if (fileId && activePage && fileId !== activePage.id) {
+    // Resolve target fileId & title if filePath was provided
+    let resolvedFileId = fileId;
+    let resolvedTitle = filePath || fileId || 'main.tex';
+
+    if (!resolvedFileId && filePath) {
+      const model = lruDocumentCache.findByPath(filePath);
+      if (model) {
+        resolvedFileId = model.fileId;
+        resolvedTitle = model.filePath;
+      } else {
+        const tabs = useTabsStore.getState().tabs;
+        const matchingTab = tabs.find(
+          (t) => t.path === filePath || t.title === filePath || t.id === filePath
+        );
+        if (matchingTab) {
+          resolvedFileId = matchingTab.id;
+          resolvedTitle = matchingTab.title;
+        }
+      }
+    }
+
+    // If target file differs from currently active file, open it first
+    if (resolvedFileId && activePage && resolvedFileId !== activePage.id) {
       this.openDocument({
-        fileId,
-        title: fileId,
+        fileId: resolvedFileId,
+        title: resolvedTitle,
+        path: filePath || resolvedTitle,
         line,
         highlight,
       });

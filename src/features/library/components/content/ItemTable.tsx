@@ -199,17 +199,8 @@ export const ItemTable = React.memo(function ItemTable({
     [items, onSortChange, sortColumn, sortDirection],
   );
 
-  // Dynamic row height estimate based on density for smooth virtualization
-  const estimatedRowHeight = useMemo(() => {
-    switch (displayOptions.density) {
-      case 'compact':
-        return 32;
-      case 'comfortable':
-        return 48;
-      default:
-        return 38;
-    }
-  }, [displayOptions.density]);
+  // Precise row height estimate (32px / h-8) adhering strictly to Flat Precision SaaS rhythm
+  const estimatedRowHeight = 32;
 
   // TanStack Virtual instance
   const rowVirtualizer = useVirtualizer({

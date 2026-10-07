@@ -137,7 +137,7 @@ export default function CslStyleSearchModal({
           <DialogClose asChild>
             <button
               type="button"
-              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted focus:outline-hidden transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
+              className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted focus:outline-hidden transition-colors cursor-pointer"
               aria-label="Close"
             >
               <X className="size-4" strokeWidth={1.5} />
@@ -149,7 +149,7 @@ export default function CslStyleSearchModal({
         <div className="px-4 pb-2.5 bg-background">
           <div className="relative">
             <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-foreground pointer-events-none"
               strokeWidth={1.5}
             />
             <Input
@@ -171,20 +171,20 @@ export default function CslStyleSearchModal({
                 }
               }}
               placeholder="Search by journal name or keyword..."
-              className="h-9 pl-9 pr-9 text-12 bg-background border-border rounded-md shadow-none font-normal text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary transition-colors"
+              className="h-8 pl-8 pr-8 text-13 bg-background border-border/80 rounded-md shadow-none font-normal text-foreground placeholder:text-foreground/50 hover:border-foreground/30 focus-visible:ring-1 focus-visible:border-primary focus-visible:ring-primary/20 transition-colors"
               autoFocus
             />
             {searchQuery ? (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 size-6 flex items-center justify-center text-muted-foreground hover:text-foreground rounded-sm cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center text-foreground hover:bg-muted rounded-xs cursor-pointer transition-colors"
                 aria-label="Clear search"
               >
                 <X className="size-3.5" strokeWidth={1.5} />
               </button>
             ) : isLoading ? (
-              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground animate-spin shrink-0" strokeWidth={1.5} />
+              <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-foreground animate-spin shrink-0" strokeWidth={1.5} />
             ) : null}
           </div>
         </div>
@@ -192,14 +192,14 @@ export default function CslStyleSearchModal({
         {/* Scrollable Styles Results List - Aligned px-4 container with comfortable item padding */}
         <div className="h-[340px] overflow-y-auto px-4 pb-2 space-y-1 thin-scrollbar select-none border-b border-border/40">
           {isLoading && styles.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center gap-2 text-center text-muted-foreground text-12 py-12">
+            <div className="h-full flex flex-col items-center justify-center gap-2 text-center text-foreground text-12 py-12">
               <Loader2 className="size-4 animate-spin text-foreground shrink-0" strokeWidth={1.5} />
               <span>Searching citation styles...</span>
             </div>
           ) : styles.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center gap-1.5 text-center text-muted-foreground text-12 px-6 py-12">
+            <div className="h-full flex flex-col items-center justify-center gap-1.5 text-center text-foreground text-12 px-6 py-12">
               <p className="font-medium text-foreground">No citation styles found</p>
-              <p className="text-11 text-muted-foreground max-w-[320px]">
+              <p className="text-11 text-foreground max-w-[320px]">
                 {debouncedQuery
                   ? `No matches found for "${debouncedQuery}". Try another journal name or keyword.`
                   : 'No citation styles available. Try typing a journal name or keyword.'}
@@ -241,17 +241,17 @@ export default function CslStyleSearchModal({
                   )}
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-12 font-medium text-foreground truncate leading-snug">
+                    <p className="text-13 font-medium text-foreground truncate leading-snug">
                       {item.title}
                     </p>
-                    <p className="text-11 text-muted-foreground font-mono truncate mt-0.5">
+                    <p className="text-11 text-foreground font-mono truncate mt-0.5">
                       {item.id}
                     </p>
                   </div>
 
                   <div className="shrink-0 flex items-center pr-1">
                     {isSelected && (
-                      <Check className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                      <Check className="size-4 text-primary shrink-0" strokeWidth={1.5} />
                     )}
                   </div>
                 </div>
@@ -267,7 +267,7 @@ export default function CslStyleSearchModal({
             variant="ghost"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="h-8 px-3 text-12 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
+            className="h-8 px-3 text-13 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
           >
             Cancel
           </Button>
@@ -276,7 +276,7 @@ export default function CslStyleSearchModal({
             size="sm"
             disabled={!selectedStyle || selectedStyle.id === currentStyleId}
             onClick={handleConfirm}
-            className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md shadow-none"
+            className="h-8 px-4 text-13 font-medium cursor-pointer rounded-md shadow-none"
           >
             Confirm
           </Button>

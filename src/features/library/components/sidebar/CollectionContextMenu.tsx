@@ -21,9 +21,10 @@ import {
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
-} from "@/shared/components/ui";
+} from '@/shared/components/ui';
 import type { TreeNode } from './sidebar.types';
 import type { Collection } from '../../types/library.types';
+import { useLibrarySidebarStore } from '../../store';
 
 interface CollectionContextMenuProps {
   node: TreeNode;
@@ -52,6 +53,9 @@ export function CollectionContextMenu({
   onDelete,
   onDeleteWithItems,
 }: CollectionContextMenuProps) {
+  const activeScope = useLibrarySidebarStore((s) => s.activeScope);
+  const isProjectScope = activeScope.type === 'project';
+  const rootLibraryName = isProjectScope ? (activeScope.name || 'Project') : 'My Library';
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -100,8 +104,12 @@ export function CollectionContextMenu({
                   onClick={() => onMove(node.id, null)}
                   className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                 >
-                  <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                  <span>My Library</span>
+                  {isProjectScope ? (
+                    <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  ) : (
+                    <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  )}
+                  <span>{rootLibraryName}</span>
                 </DropdownMenuItem>
                 {validMoveTargets.map((target) => (
                   <DropdownMenuItem
@@ -126,8 +134,12 @@ export function CollectionContextMenu({
                   onClick={() => onCopy(node.id, null)}
                   className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                 >
-                  <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                  <span>My Library</span>
+                  {isProjectScope ? (
+                    <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  ) : (
+                    <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  )}
+                  <span>{rootLibraryName}</span>
                 </DropdownMenuItem>
                 {validMoveTargets.map((target) => (
                   <DropdownMenuItem

@@ -208,7 +208,7 @@ export function CollectionPickerPopover({
       >
         {/* Search Header */}
         <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border/70 bg-muted/20">
-          <Search className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
+          <Search className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
           <input
             type="text"
             placeholder="Search or add collection..."
@@ -220,14 +220,14 @@ export function CollectionPickerPopover({
                 handleQuickCreateAndAssign();
               }
             }}
-            className="w-full bg-transparent text-12 text-foreground placeholder:text-muted-foreground/60 outline-none"
+            className="w-full bg-transparent text-12 text-foreground placeholder:text-foreground/50 outline-none"
             autoFocus
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="text-muted-foreground hover:text-foreground p-0.5 rounded cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
+              className="text-foreground hover:bg-muted p-0.5 rounded cursor-pointer shrink-0"
               title="Clear search"
               aria-label="Clear search"
             >
@@ -239,7 +239,7 @@ export function CollectionPickerPopover({
         {/* Collections List with Checkbox Selection */}
         <div className="max-h-56 overflow-y-auto p-1 flex flex-col gap-0.5">
           {filteredCollections.length === 0 ? (
-            <div className="py-4 px-2 text-center text-11 text-muted-foreground">
+            <div className="py-4 px-2 text-center text-11 text-foreground">
               {searchQuery ? `No collections matching "${searchQuery}"` : 'No collections available'}
             </div>
           ) : (
@@ -262,7 +262,7 @@ export function CollectionPickerPopover({
                   <Folder className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                   <div className="min-w-0 flex-1 flex flex-col justify-center">
                     {path && (
-                      <span className="text-10 text-muted-foreground truncate leading-none mb-0.5">
+                      <span className="text-10 text-foreground truncate leading-none mb-0.5">
                         {path}
                       </span>
                     )}
@@ -298,7 +298,7 @@ export function CollectionPickerPopover({
         )}
 
         {/* Footer info & global create modal trigger */}
-        <div className="p-1 border-t border-border/50 flex items-center justify-between px-2.5 py-1 text-11 text-muted-foreground bg-muted/20">
+        <div className="p-1 border-t border-border/50 flex items-center justify-between px-2.5 py-1 text-11 text-foreground bg-muted/20">
           <span>
             {collections.length} {collections.length === 1 ? 'collection' : 'collections'}
           </span>
@@ -462,7 +462,7 @@ export default function CollectionsSection({
             <CollectionPickerPopover paper={paper} scopeId={effectiveScope} canEdit={canEdit}>
               <button
                 type="button"
-                className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden"
+                className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
                 title="Add to collection"
                 aria-label="Add to collection"
               >
@@ -493,7 +493,7 @@ export default function CollectionsSection({
         </div>
 
         {assignedCollectionIdsSet.size === 0 ? (
-          <span className="text-11 px-1.5 py-0.2 rounded bg-muted text-muted-foreground font-normal shrink-0">
+          <span className="text-11 px-1.5 py-0.2 rounded bg-muted text-foreground font-normal shrink-0">
             Unfiled
           </span>
         ) : (
@@ -505,7 +505,7 @@ export default function CollectionsSection({
 
       {/* When Unfiled: Clean, non-intrusive empty callout with Add button */}
       {assignedCollectionIdsSet.size === 0 && (
-        <div className="flex flex-col gap-1.5 px-2.5 py-2 rounded-md bg-muted/40 border border-border/50 text-11 text-muted-foreground mt-0.5">
+        <div className="flex flex-col gap-1.5 px-2.5 py-2 rounded-md bg-muted/40 border border-border/50 text-11 text-foreground mt-0.5">
           <span className="leading-snug">
             This item is in your library root and is not filed in any collection.
           </span>
@@ -518,7 +518,7 @@ export default function CollectionsSection({
             >
               <button
                 type="button"
-                className="inline-flex items-center gap-1 text-11 font-medium text-primary hover:text-primary/80 transition-colors w-fit cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden"
+                className="inline-flex items-center gap-1 text-11 font-medium text-primary hover:text-primary/80 transition-colors w-fit cursor-pointer"
               >
                 <Plus className="size-3" strokeWidth={2} />
                 Add to a collection
@@ -545,7 +545,7 @@ export default function CollectionsSection({
               </div>
               <div className="min-w-0 flex-1 flex flex-col justify-center">
                 {col.path && (
-                  <span className="text-10 text-muted-foreground/75 leading-none truncate mb-0.5">
+                  <span className="text-10 text-foreground leading-none truncate mb-0.5">
                     {col.path}
                   </span>
                 )}
@@ -566,7 +566,7 @@ export default function CollectionsSection({
                   e.stopPropagation();
                   handleRemoveFromCollection(col.id);
                 }}
-                className="invisible group-hover:visible max-md:visible size-5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer shrink-0 transition-colors relative before:absolute before:-inset-2.5 md:before:hidden"
+                className="invisible group-hover:visible max-md:visible size-5 flex items-center justify-center rounded hover:bg-muted text-foreground cursor-pointer shrink-0 transition-colors"
                 title={`Remove from "${col.name}" (item will remain in library)`}
                 aria-label={`Remove from collection ${col.name}, item will remain in library`}
               >
@@ -588,7 +588,7 @@ export default function CollectionsSection({
           >
             <button
               type="button"
-              className="inline-flex items-center gap-1 text-11 text-muted-foreground hover:text-foreground transition-colors cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden"
+              className="inline-flex items-center gap-1 text-11 text-foreground hover:text-foreground/80 transition-colors cursor-pointer"
             >
               <Plus className="size-3" strokeWidth={1.5} />
               Add to another collection

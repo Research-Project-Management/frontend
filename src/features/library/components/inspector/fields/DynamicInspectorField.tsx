@@ -119,7 +119,7 @@ export function DynamicInspectorField({
   return (
     <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5 group">
       <span
-        className="text-muted-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate"
+        className="text-muted-foreground text-right font-medium select-none pr-1 text-11 leading-normal whitespace-nowrap truncate"
         title={fieldDef.label}
       >
         {fieldDef.label}
@@ -155,7 +155,7 @@ export function DynamicInspectorField({
                 align="start"
                 sideOffset={6}
                 alignOffset={2}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
+                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
               >
                 Open DOI
               </TooltipContent>
@@ -175,7 +175,7 @@ export function DynamicInspectorField({
                   aria-label="Copy citation key"
                 >
                   {copiedKey === 'Citation Key' ? (
-                    <CheckCircle2 className="size-3.5 text-foreground shrink-0" aria-hidden="true" strokeWidth={1.5} />
+                    <CheckCircle2 className="size-3.5 text-primary shrink-0" aria-hidden="true" strokeWidth={1.5} />
                   ) : (
                     <Copy className="size-3.5 shrink-0" aria-hidden="true" strokeWidth={1.5} />
                   )}
@@ -186,7 +186,7 @@ export function DynamicInspectorField({
                 align="start"
                 sideOffset={6}
                 alignOffset={2}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
+                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
               >
                 Copy citation key
               </TooltipContent>
@@ -218,7 +218,7 @@ export function DynamicInspectorField({
                 align="start"
                 sideOffset={6}
                 alignOffset={2}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
+                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
               >
                 Open in PubMed
               </TooltipContent>
@@ -246,7 +246,7 @@ export function DynamicInspectorField({
                 align="start"
                 sideOffset={6}
                 alignOffset={2}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
+                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
               >
                 Open in arXiv
               </TooltipContent>
@@ -279,7 +279,7 @@ export function DynamicInspectorField({
                   align="start"
                   sideOffset={6}
                   alignOffset={2}
-                  className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
+                  className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
                 >
                   Open {fieldDef.label.toLowerCase()} link
                 </TooltipContent>

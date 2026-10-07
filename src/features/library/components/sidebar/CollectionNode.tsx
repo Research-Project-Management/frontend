@@ -161,20 +161,6 @@ export function CollectionNode({
             </Link>
 
             <div className="flex items-center gap-0.5 shrink-0 ml-auto">
-              {((node.recursiveItemCount ?? 0) > 0 || (node.itemCount ?? 0) > 0) && (
-                <span
-                  className="text-11 text-muted-foreground font-mono tabular-nums opacity-60 group-hover/node:opacity-100 transition-opacity mr-1 select-none"
-                  title={
-                    node.recursiveItemCount !== undefined && node.recursiveItemCount !== node.itemCount
-                      ? `${node.itemCount} direct, ${node.recursiveItemCount} total with subcollections`
-                      : `${node.itemCount} items`
-                  }
-                >
-                  {node.recursiveItemCount !== undefined && node.recursiveItemCount !== node.itemCount
-                    ? `${node.itemCount} (${node.recursiveItemCount})`
-                    : node.itemCount}
-                </span>
-              )}
               <CollectionContextMenu
                 node={node}
                 validMoveTargets={validMoveTargets}
@@ -216,7 +202,7 @@ export function CollectionNode({
                     align="start"
                     sideOffset={6}
                     alignOffset={2}
-                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
+                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
                   >
                     {effectiveIsOpen ? 'Collapse' : 'Expand'}
                   </TooltipContent>

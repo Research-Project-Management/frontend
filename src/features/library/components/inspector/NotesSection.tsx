@@ -232,7 +232,7 @@ export default function NotesSection({
             <button
               type="button"
               onClick={() => setIsAdding(true)}
-              className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden"
+              className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
               title="Add note"
               aria-label="Add note"
             >
@@ -264,9 +264,9 @@ export default function NotesSection({
               }
             }}
             rows={2}
-            className="text-xs resize-none w-full max-h-36 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-muted-foreground"
+            className="text-xs resize-none w-full max-h-36 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-foreground/50"
           />
-          <div className="flex items-center justify-between text-10 font-normal text-muted-foreground select-none pt-1 border-t border-border font-mono">
+          <div className="flex items-center justify-between text-10 font-normal text-foreground select-none pt-1 border-t border-border font-mono">
             <span>Shift + Enter for new line</span>
             <span>Enter to save · Esc to cancel</span>
           </div>
@@ -277,7 +277,7 @@ export default function NotesSection({
       {potentialCommentText && !hasCommentInNotes && canEdit && (
         <div className="flex items-center justify-between gap-2 p-2 bg-muted/40 rounded-md border border-border/50 text-xs">
           <div className="space-y-0.5 min-w-0 flex-1">
-            <span className="text-10 font-medium text-muted-foreground block">
+            <span className="text-10 font-medium text-foreground block">
               Publication Comment
             </span>
             <p className="text-11 text-foreground/80 line-clamp-1 italic select-text">
@@ -300,7 +300,7 @@ export default function NotesSection({
 
       {/* Flat Notes List */}
       {notes.length === 0 && !isAdding ? (
-        <div className="py-2 px-2.5 text-center text-11 text-muted-foreground flex flex-col items-center justify-center gap-1.5 font-sans">
+        <div className="py-2 px-2.5 text-center text-11 text-foreground flex flex-col items-center justify-center gap-1.5 font-sans">
           <span>No notes for this reference.</span>
           {canEdit && (
             <Button
@@ -339,9 +339,9 @@ export default function NotesSection({
                     }
                   }}
                   rows={2}
-                  className="text-xs resize-none w-full max-h-36 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-muted-foreground"
+                  className="text-xs resize-none w-full max-h-36 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-foreground/50"
                 />
-                <div className="flex items-center justify-between text-10 font-normal text-muted-foreground select-none pt-1 border-t border-border font-mono">
+                <div className="flex items-center justify-between text-10 font-normal text-foreground select-none pt-1 border-t border-border font-mono">
                   <span>Shift + Enter for new line</span>
                   <span>Enter to save · Esc to cancel</span>
                 </div>

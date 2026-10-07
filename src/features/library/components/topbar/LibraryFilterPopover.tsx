@@ -596,14 +596,14 @@ export function LibraryFilterPopover({
       >
         {/* 1. Main Search Header at Top - Fixed, Flat, No Shadow (Matches Project Standard) */}
         <div role="presentation" className="relative flex items-center mb-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-foreground pointer-events-none shrink-0" strokeWidth={1.5} />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none shrink-0" strokeWidth={1.5} />
           <input
             ref={searchInputRef}
             type="text"
             placeholder="Search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-7.5 w-full pl-8 pr-7 text-12 bg-background border border-border rounded-md outline-none focus:outline-none focus:border-foreground/40 focus:ring-0 text-foreground placeholder:text-muted-foreground placeholder:font-normal shadow-none"
+            className="h-8 w-full pl-8 pr-7 text-13 bg-background border border-border/80 hover:border-foreground/30 rounded-md outline-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-foreground placeholder:text-muted-foreground placeholder:font-normal shadow-none transition-colors"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           />
@@ -611,7 +611,7 @@ export function LibraryFilterPopover({
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-foreground cursor-pointer rounded-md"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground cursor-pointer rounded-md"
               aria-label="Clear filter search"
             >
               <X className="size-3 shrink-0" />

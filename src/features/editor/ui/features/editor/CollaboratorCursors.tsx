@@ -100,7 +100,7 @@ export function CollaboratorCursors({
               key={c.id}
               title={`${c.name} (${c.isOnline ? 'Online' : 'Idle'})`}
               style={{ borderColor: c.color }}
-              className="size-5 rounded-full border flex items-center justify-center text-[9px] font-bold text-white bg-slate-800 shrink-0"
+              className="size-5 rounded-full border flex items-center justify-center text-[9px] font-semibold text-white bg-slate-800 shrink-0"
             >
               {c.avatar ? (
                 <img src={c.avatar} alt={c.name} className="size-full rounded-full object-cover" />

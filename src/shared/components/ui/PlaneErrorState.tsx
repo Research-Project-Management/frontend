@@ -1,10 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { RefreshCw } from 'lucide-react';
+import React from 'react';
 import { cn } from '@/shared/lib/utils';
-import { Button } from './button';
 
 const ILLUSTRATION_COLOR_TOKEN_MAP = {
   fill: {
@@ -277,15 +274,14 @@ export function PlaneErrorState({
   title = 'An unexpected error occurred',
   description = 'This view encountered an issue while loading data. Navigation and other workspaces remain safe.',
   error,
-  reset,
-  resetLabel,
-  homeHref,
-  homeLabel,
-  action,
+  reset: _reset,
+  resetLabel: _resetLabel,
+  homeHref: _homeHref,
+  homeLabel: _homeLabel,
+  action: _action,
   className,
   isFullPage = false,
 }: PlaneErrorStateProps) {
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   // Extract human-readable or technical error details robustly across Error, Axios, or API response objects
   const errorMessage = (() => {
@@ -343,87 +339,19 @@ export function PlaneErrorState({
         {description}
       </p>
 
-      {/* Action Buttons (Retry / Home / Custom Action) */}
-      {action ? (
-        <div className="mt-1 mb-4 flex items-center justify-center gap-2">{action}</div>
-      ) : (reset || homeHref) ? (
-        <div className="mt-1 mb-4 flex items-center justify-center gap-2">
-          {reset && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={reset}
-              className="h-8 px-3.5 text-xs font-medium rounded-md gap-1.5 cursor-pointer shadow-xs border-border hover:bg-muted text-foreground"
-            >
-              <RefreshCw className="size-3.5 shrink-0" />
-              <span>{resetLabel || 'Reload page'}</span>
-            </Button>
-          )}
-          {homeHref && (
-            <Button
-              size="sm"
-              variant="ghost"
-              asChild
-              className="h-8 px-3 text-xs font-medium rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              <Link href={homeHref}>{homeLabel || 'Go to Overview'}</Link>
-            </Button>
-          )}
-        </div>
-      ) : null}
-
-      {/* Optional Technical Error Diagnostics (Polished Interactive Disclosure) */}
+      {/* Technical Error Diagnostics (Direct, clean display without buttons) */}
       {errorMessage && (
-        <div className="flex flex-col items-center max-w-lg w-full mt-1">
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => setIsDetailsOpen((prev) => !prev)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                setIsDetailsOpen((prev) => !prev);
-              }
-            }}
-            className="inline-flex items-center gap-1.5 py-1 px-3 rounded-md border border-border/70 bg-muted/40 hover:bg-muted/80 hover:border-border text-11 text-foreground/85 dark:text-muted-foreground hover:text-foreground font-mono transition-colors duration-150 cursor-pointer select-none focus:outline-hidden focus:ring-1 focus:ring-primary/40"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={cn(
-                'size-3 shrink-0 text-foreground/80 dark:text-muted-foreground transition-transform duration-200',
-                isDetailsOpen && 'rotate-180'
-              )}
-            >
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-            <span>Error details</span>
-            {errorDigest && (
-              <span className="text-10 px-1.5 py-0.5 rounded-md bg-muted font-mono border border-border/70 text-muted-foreground">
-                #{String(errorDigest).slice(0, 8)}
-              </span>
-            )}
-          </div>
-
-          {isDetailsOpen && (
-            <div className="mt-3 w-full overflow-hidden rounded-md border border-border/80 bg-muted/40 backdrop-blur-xs text-left animate-in fade-in-50 zoom-in-98 duration-150">
-              <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/60 bg-muted/60 text-10 font-mono text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <span className="size-1.5 rounded-full bg-destructive/80" />
-                  <span>Runtime Exception</span>
-                </div>
-                {errorDigest && <span className="opacity-75">ID: {String(errorDigest)}</span>}
-              </div>
-              <div className="p-3 text-11 font-mono text-muted-foreground overflow-x-auto max-h-36 leading-relaxed select-text font-normal whitespace-pre-wrap break-all">
-                {errorMessage}
-              </div>
+        <div className="mt-3 w-full max-w-lg overflow-hidden rounded-md border border-border/80 bg-muted/40 backdrop-blur-xs text-left animate-in fade-in-50 zoom-in-98 duration-150">
+          <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/60 bg-muted/60 text-10 font-mono text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <span className="size-1.5 rounded-full bg-destructive/80" />
+              <span>Runtime Exception</span>
             </div>
-          )}
+            {errorDigest && <span className="opacity-75">ID: {String(errorDigest)}</span>}
+          </div>
+          <div className="p-3 text-11 font-mono text-muted-foreground overflow-x-auto max-h-36 leading-relaxed select-text font-normal whitespace-pre-wrap break-all">
+            {errorMessage}
+          </div>
         </div>
       )}
     </div>

@@ -20,7 +20,6 @@ export default function ProjectsPagesRouteError({
       title="Workspace pages are currently unavailable"
       description="An issue occurred while loading workspace documents. Other project data and modules remain safe."
       error={error}
-      reset={reset}
     />
   );
 }

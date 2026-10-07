@@ -12,6 +12,7 @@ import {
 } from '../../store';
 import {
   useCreateCollectionMutation,
+  useCollectionsQuery,
   useDeleteLibraryItemsMutation,
   useBatchPurgeItemsMutation,
   useSavedSearches,
@@ -27,7 +28,10 @@ const CreateSavedSearchModal = dynamic(() => import('./CreateSavedSearchModal'),
 const DeleteModal = dynamic(() => import('./DeleteModal'), { ssr: false });
 const AddLinkModal = dynamic(() => import('./AddLinkModal'), { ssr: false });
 const ImportFromPersonalModal = dynamic(() => import('./ImportFromPersonalModal'), { ssr: false });
-const ConvertModal = dynamic(() => import('./ConvertModal'), { ssr: false });
+const TypeConversionModal = dynamic(
+  () => import('./TypeConversionModal').then((m) => m.TypeConversionModal),
+  { ssr: false },
+);
 const MergeModal = dynamic(() => import('./MergeModal'), { ssr: false });
 const UploadFilesModal = dynamic(() => import('./UploadFilesModal'), { ssr: false });
 const ProcessModal = dynamic(() => import('./ProcessModal'), { ssr: false });
@@ -54,6 +58,9 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
   const addProcessingItem = useProcessModalStore((s) => s.addProcessingItem);
   const dismissProcessingItem = useProcessModalStore((s) => s.dismissProcessingItem);
 
+  // Collections & Queries
+  const { data: collections = [] } = useCollectionsQuery(effectiveScope);
+
   // Mutations
   const createCollectionMutation = useCreateCollectionMutation(effectiveScope);
   const deleteItemsMutation = useDeleteLibraryItemsMutation(effectiveScope);
@@ -74,7 +81,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
       name: data.name,
       description: data.description,
       color: data.color,
-      parentId: payload?.parentId || data.parentId || null,
+      parentId: data.parentId !== undefined ? data.parentId : (payload?.parentId ?? null),
     });
     closeModal();
   };
@@ -350,7 +357,10 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           onOpenChange={(open) => !open && closeModal()}
           onSubmit={handleCreateCollection}
           isPending={createCollectionMutation.isPending}
+          collections={collections}
           defaultParentId={payload?.parentId || null}
+          rootLabel={activeScope.type === 'project' ? (activeScope.name || 'Project') : 'My Library'}
+          rootType={activeScope.type === 'project' ? 'project' : 'user'}
         />
       )}
 
@@ -395,7 +405,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
       )}
 
       {isConvertOpen && (
-        <ConvertModal
+        <TypeConversionModal
           open={isConvertOpen}
           onOpenChange={(open) => !open && closeModal()}
           item={payload?.item}

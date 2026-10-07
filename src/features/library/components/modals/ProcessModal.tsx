@@ -115,7 +115,7 @@ export default function ProcessModal({
                   : 'Processing'}
           </span>
           {isRunning && (
-            <span className="font-mono text-11 tabular-nums text-muted-foreground font-normal">
+            <span className="font-mono text-11 tabular-nums text-foreground font-normal">
               ({percentage}%)
             </span>
           )}
@@ -129,7 +129,7 @@ export default function ProcessModal({
               e.stopPropagation();
               onClose();
             }}
-            className="size-4 p-0.5 rounded-xs hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center ml-0.5 cursor-pointer outline-none relative before:absolute before:-inset-2 md:before:hidden"
+            className="size-4 p-0.5 rounded-xs hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center ml-0.5 cursor-pointer outline-none"
             title="Dismiss"
             aria-label="Dismiss"
           >
@@ -166,7 +166,7 @@ export default function ProcessModal({
                 Metadata Retrieval
               </DialogTitle>
               {state.isComplete && !state.error && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-11 font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-11 font-medium bg-success/10 text-success">
                   <CheckCircle2 className="size-3" />
                   Completed
                 </span>
@@ -214,7 +214,7 @@ export default function ProcessModal({
           {items.length > 0 && (
             <div className="pt-1">
               {/* Column Headers with subtle line */}
-              <div className="grid grid-cols-[45%_55%] px-1 pb-2 border-b border-border text-12 font-medium text-muted-foreground select-none">
+              <div className="grid grid-cols-[45%_55%] px-1 pb-2 border-b border-border text-11 font-medium text-muted-foreground select-none">
                 <span>Attachment Name</span>
                 <span>Item Name</span>
               </div>
@@ -240,7 +240,7 @@ export default function ProcessModal({
                       {/* Column 1: Attachment Name */}
                       <div className="flex items-center gap-2.5 min-w-0">
                         {isItemSuccess ? (
-                          <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <CheckCircle2 className="size-4 text-success shrink-0" />
                         ) : isItemProcessing ? (
                           <RefreshCw className="size-3.5 text-primary animate-spin [animation-duration:2s] shrink-0" />
                         ) : isItemFailed ? (
@@ -277,7 +277,7 @@ export default function ProcessModal({
                             {item.error || 'Extraction failed'}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground/60 text-12 font-normal">-</span>
+                          <span className="text-muted-foreground text-12 font-normal">-</span>
                         )}
                       </div>
                     </div>
@@ -295,7 +295,7 @@ export default function ProcessModal({
             variant={isRunning ? 'outline' : 'default'}
             size="sm"
             onClick={isRunning ? (onMinimize || onClose) : onClose}
-            className="h-8 px-4 text-12 font-medium rounded-md cursor-pointer"
+            className="h-8 px-4 text-13 font-medium rounded-md cursor-pointer"
           >
             {isRunning ? 'Minimize' : 'Close'}
           </Button>

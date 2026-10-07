@@ -294,7 +294,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
               item.authors.length === 0 ||
               item.authors[0] === 'Processing metadata...' ||
               item.authors[0] === 'Uploading raw file...') ? (
-              <span className="text-muted-foreground text-12 italic">Extracting authors...</span>
+              <span className="text-foreground text-12 italic">Extracting authors...</span>
             ) : (
               <span title={authorTooltip}>
                 {formatAcademicAuthors(
@@ -320,7 +320,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         {columns.publication !== false && (
           <td className="px-3 h-8 py-0 align-middle truncate text-12 font-serif italic text-foreground/85 font-normal">
             {isProcessing && !item.publicationTitle ? (
-              <span className="text-muted-foreground text-12 italic">Recognizing venue...</span>
+              <span className="text-foreground text-12 italic">Recognizing venue...</span>
             ) : (
               <span title={cleanAcademicText(item.publicationTitle || item.journal || item.publisher || '')}>
                 {cleanAcademicText(

@@ -44,7 +44,7 @@ export const RECOMMENDED_VIEW_TEMPLATES: ViewTemplatePreset[] = [
     layout: 'table',
     access: 'private',
     badge: 'User',
-    badgeColor: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+    badgeColor: 'bg-primary/10 text-primary border-primary/20',
     filters: {
       state_group: ['unstarted', 'started'],
     },

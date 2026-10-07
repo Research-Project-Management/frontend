@@ -20,7 +20,6 @@ export default function ProjectPagesRouteError({
       title="Project pages are currently unavailable"
       description="An issue occurred while loading documents for this project. Other project data and modules remain safe."
       error={error}
-      reset={reset}
     />
   );
 }

@@ -77,7 +77,7 @@ export function GeneralFields({
       {/* Item Type Selector */}
       <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5">
         <span
-          className="text-muted-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate"
+          className="text-muted-foreground text-right font-medium select-none pr-1 text-11 leading-normal whitespace-nowrap truncate"
           id="label-item-type"
           title="Item Type"
         >
@@ -89,7 +89,7 @@ export function GeneralFields({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="w-full h-7 text-left px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary data-[state=open]:border-primary data-[state=open]:bg-muted text-12 leading-normal font-normal text-foreground bg-transparent cursor-pointer outline-none select-none flex items-center justify-between"
+                  className="w-full h-7 text-left px-2 py-1 rounded-md border border-transparent hover:bg-muted/40 focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary/20 data-[state=open]:border-primary data-[state=open]:bg-muted text-13 leading-normal font-normal text-foreground bg-transparent cursor-pointer outline-none select-none flex items-center justify-between"
                   aria-label="Item Type"
                 >
                   <div className="flex items-center gap-1.5 min-w-0 truncate">
@@ -119,13 +119,13 @@ export function GeneralFields({
                         setIsConversionDialogOpen(true);
                       }}
                       className={cn(
-                        'flex items-center justify-between h-7.5 px-2.5 text-xs font-normal rounded-md cursor-pointer text-foreground hover:bg-muted select-none transition-colors',
+                        'flex items-center justify-between h-7.5 px-2.5 text-13 font-normal rounded-md cursor-pointer text-foreground hover:bg-muted select-none transition-colors',
                         isSelected && 'bg-muted text-foreground font-medium',
                       )}
                     >
                       <span className="truncate pr-2">{t.label}</span>
                       {isSelected && (
-                        <Check className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                        <Check className="size-3.5 text-primary shrink-0" strokeWidth={1.5} />
                       )}
                     </DropdownMenuItem>
                   );
@@ -133,7 +133,7 @@ export function GeneralFields({
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <div className="w-full h-7 text-left px-2 py-1 text-12 leading-normal font-normal text-foreground flex items-center select-text font-sans truncate">
+            <div className="w-full h-7 text-left px-2 py-1 text-13 leading-normal font-normal text-foreground flex items-center select-text font-sans truncate">
               <span className="truncate whitespace-nowrap">
                 {effectiveItemTypes.find((t) => t.value === currentItemType)?.label ||
                   typeDefinition.label ||
@@ -147,7 +147,7 @@ export function GeneralFields({
       {/* Title */}
       <div className="grid grid-cols-[84px_1fr] gap-2 items-start py-0.5">
         <span
-          className="text-muted-foreground text-right font-normal select-none pr-1 pt-1 text-12 leading-normal whitespace-nowrap truncate"
+          className="text-muted-foreground text-right font-medium select-none pr-1 pt-1 text-11 leading-normal whitespace-nowrap truncate"
           id="label-title"
           title="Title"
         >
@@ -157,7 +157,7 @@ export function GeneralFields({
           value={cleanPaperTitle(cleanValue(paper.title))}
           ariaLabel="Item Title"
           onSave={handleTitleChange}
-          className="font-normal text-foreground text-12 leading-normal"
+          className="font-normal text-foreground text-13 leading-normal"
           rows={1}
           readOnly={!canEdit}
         />

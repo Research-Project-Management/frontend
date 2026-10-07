@@ -14,7 +14,10 @@ import {
 import dynamic from 'next/dynamic';
 import { InlineTextarea } from './InlineTextarea';
 
-const ConvertModal = dynamic(() => import('../../modals/ConvertModal'), { ssr: false });
+const TypeConversionModal = dynamic(
+  () => import('@/features/library/components/modals/TypeConversionModal').then((m) => m.TypeConversionModal),
+  { ssr: false },
+);
 
 export interface GeneralFieldsProps {
   paper: Item;
@@ -160,7 +163,7 @@ export function GeneralFields({
 
       {/* Item Type Conversion Modal */}
       {isConversionDialogOpen && (
-        <ConvertModal
+        <TypeConversionModal
           open={isConversionDialogOpen}
           onOpenChange={setIsConversionDialogOpen}
           paper={paper}

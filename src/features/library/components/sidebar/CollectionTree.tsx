@@ -43,7 +43,7 @@ export function CollectionTree({
 }: CollectionTreeProps) {
   if (isSearching && tree.length === 0) {
     return (
-      <div className="py-6 px-3 text-center text-xs text-muted-foreground select-none">
+      <div className="py-6 px-3 text-center text-xs text-foreground select-none">
         No collections matching &ldquo;{searchQuery}&rdquo;
       </div>
     );

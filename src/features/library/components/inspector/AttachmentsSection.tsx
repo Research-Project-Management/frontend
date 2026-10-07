@@ -104,7 +104,7 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
       className="relative w-full rounded-md border border-border bg-background overflow-hidden shadow-none flex flex-col items-center justify-center min-h-[220px] cursor-pointer group"
     >
       {pdfLoading ? (
-        <div className="h-60 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+        <div className="h-60 flex flex-col items-center justify-center gap-2 text-foreground">
           <Loader2 className="size-5 animate-spin text-foreground shrink-0" />
           <span className="text-xs font-medium">Loading document...</span>
         </div>
@@ -116,13 +116,13 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
             setCurrentPage(1);
           }}
           loading={
-            <div className="h-60 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+            <div className="h-60 flex flex-col items-center justify-center gap-2 text-foreground">
               <Loader2 className="size-5 animate-spin text-foreground shrink-0" />
               <span className="text-xs font-medium">Loading preview...</span>
             </div>
           }
           error={
-            <div className="h-60 flex flex-col items-center justify-center p-4 text-center text-xs text-muted-foreground">
+            <div className="h-60 flex flex-col items-center justify-center p-4 text-center text-xs text-foreground">
               <span>Document preview unavailable</span>
             </div>
           }
@@ -135,7 +135,7 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
           />
         </Document>
       ) : (
-        <div className="h-60 flex flex-col items-center justify-center gap-2 px-4 text-center text-xs text-muted-foreground">
+        <div className="h-60 flex flex-col items-center justify-center gap-2 px-4 text-center text-xs text-foreground">
           <span>{pdfError || 'Preview unavailable'}</span>
           <button
             type="button"
@@ -164,7 +164,7 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
               setCurrentPage((p) => Math.max(1, p - 1));
             }}
             aria-label="Previous page"
-            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none transition-colors relative before:absolute before:-inset-1.5 md:before:hidden"
+            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none transition-colors"
           >
             <ChevronLeft className="size-4 shrink-0" />
           </button>
@@ -176,7 +176,7 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
               setCurrentPage((p) => Math.min(numPages, p + 1));
             }}
             aria-label="Next page"
-            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none transition-colors relative before:absolute before:-inset-1.5 md:before:hidden"
+            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none transition-colors"
           >
             <ChevronRight className="size-4 shrink-0" />
           </button>
@@ -191,7 +191,7 @@ const PdfPagePreview = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-60 flex flex-col items-center justify-center gap-2 text-muted-foreground border border-border rounded-md bg-card">
+      <div className="h-60 flex flex-col items-center justify-center gap-2 text-foreground border border-border rounded-md bg-card">
         <Loader2 className="size-5 animate-spin text-foreground shrink-0" />
         <span className="text-xs font-medium">Loading preview...</span>
       </div>
@@ -401,7 +401,7 @@ export default function AttachmentsSection({
 
   if (!paperUrl && otherAttachments.length === 0 && !paper.url) {
     return (
-      <div className="py-2 px-1.5 text-center text-11 text-muted-foreground flex flex-col items-center justify-center gap-1.5 font-sans">
+      <div className="py-2 px-1.5 text-center text-11 text-foreground flex flex-col items-center justify-center gap-1.5 font-sans">
         <input
           ref={fileInputRef}
           type="file"
@@ -446,7 +446,7 @@ export default function AttachmentsSection({
                 <button
                   type="button"
                   disabled={isUploadingFile}
-                  className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden"
+                  className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
                   title="Add attachment"
                   aria-label="Add attachment"
                 >
@@ -505,7 +505,7 @@ export default function AttachmentsSection({
                   {primaryAttachment?.title || paper.filename || (paper.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
                 </p>
                 {primaryAttachment?.title && paper.filename && primaryAttachment.title !== paper.filename && (
-                  <p className="text-10 text-muted-foreground truncate" title={paper.filename}>
+                  <p className="text-10 text-foreground truncate" title={paper.filename}>
                     {paper.filename}
                   </p>
                 )}
@@ -617,7 +617,7 @@ export default function AttachmentsSection({
                   <p className="text-xs font-medium text-foreground break-all leading-snug" title={att.title || att.filename || att.name}>
                     {att.title || att.filename || att.name}
                   </p>
-                  <p className="text-10 text-muted-foreground flex items-center gap-1.5 truncate">
+                  <p className="text-10 text-foreground flex items-center gap-1.5 truncate">
                     {att.title && (att.filename || att.name) && att.title !== (att.filename || att.name) && (
                       <span className="truncate max-w-[140px]" title={att.filename || att.name}>
                         {att.filename || att.name} •

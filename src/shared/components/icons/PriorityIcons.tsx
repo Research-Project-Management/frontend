@@ -9,7 +9,7 @@ export interface PriorityIconProps {
 
 export function UrgentPriorityBoxIcon({ className }: PriorityIconProps) {
   return (
-    <svg viewBox="0 0 16 16" fill="none" className={cn("size-3.5 shrink-0 text-red-500", className)}>
+    <svg viewBox="0 0 16 16" fill="none" className={cn("size-3.5 shrink-0 text-destructive", className)}>
       <rect x="1.5" y="1.5" width="13" height="13" rx="3" stroke="currentColor" strokeWidth="1.2" />
       <line x1="8" y1="4.5" x2="8" y2="8.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       <circle cx="8" cy="11" r="0.75" fill="currentColor" stroke="none" />
@@ -19,7 +19,7 @@ export function UrgentPriorityBoxIcon({ className }: PriorityIconProps) {
 
 export function HighPriorityBoxIcon({ className }: PriorityIconProps) {
   return (
-    <svg viewBox="0 0 16 16" fill="none" className={cn("size-3.5 shrink-0 text-orange-500", className)}>
+    <svg viewBox="0 0 16 16" fill="none" className={cn("size-3.5 shrink-0 text-warning", className)}>
       <rect x="1.5" y="1.5" width="13" height="13" rx="3" stroke="currentColor" strokeWidth="1.2" />
       <line x1="5.5" y1="11" x2="5.5" y2="9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       <line x1="8" y1="11" x2="8" y2="6.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -30,7 +30,7 @@ export function HighPriorityBoxIcon({ className }: PriorityIconProps) {
 
 export function MediumPriorityBoxIcon({ className }: PriorityIconProps) {
   return (
-    <svg viewBox="0 0 16 16" fill="none" className={cn("size-3.5 shrink-0 text-amber-500", className)}>
+    <svg viewBox="0 0 16 16" fill="none" className={cn("size-3.5 shrink-0 text-warning", className)}>
       <rect x="1.5" y="1.5" width="13" height="13" rx="3" stroke="currentColor" strokeWidth="1.2" />
       <line x1="6.5" y1="11" x2="6.5" y2="9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       <line x1="9.5" y1="11" x2="9.5" y2="6.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -40,7 +40,7 @@ export function MediumPriorityBoxIcon({ className }: PriorityIconProps) {
 
 export function LowPriorityBoxIcon({ className }: PriorityIconProps) {
   return (
-    <svg viewBox="0 0 16 16" fill="none" className={cn("size-3.5 shrink-0 text-blue-500", className)}>
+    <svg viewBox="0 0 16 16" fill="none" className={cn("size-3.5 shrink-0 text-primary", className)}>
       <rect x="1.5" y="1.5" width="13" height="13" rx="3" stroke="currentColor" strokeWidth="1.2" />
       <line x1="8" y1="11" x2="8" y2="9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>

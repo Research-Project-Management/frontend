@@ -13,4 +13,5 @@ export * from './latex-converter.util';
 export * from './viewer.util';
 export * from './export-document.util';
 export * from './latex-dependency.util';
+export { stripLatexComments } from './citation.util';
 

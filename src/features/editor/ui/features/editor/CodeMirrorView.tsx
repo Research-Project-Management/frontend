@@ -21,7 +21,13 @@ import { EditorView } from '@codemirror/view';
 import { forceLinting } from '@codemirror/lint';
 import type * as Y from 'yjs';
 
-import { createCodeMirrorPreset } from '../../../engines/codemirror-preset';
+import {
+  createCodeMirrorPreset,
+  reconfigureLineNumbers,
+  reconfigureLineWrapping,
+  reconfigureVimMode,
+  reconfigureReadOnly,
+} from '../../../engines/codemirror-preset';
 import { YjsCodeMirrorAdapter } from '../../../engines/yjs-codemirror-adapter';
 import { CodeMirrorEngineAdapter } from '../../../adapters/codemirror/codemirror.adapter';
 import { lruDocumentCache } from '../../../domain/lru-document-cache';
@@ -63,7 +69,10 @@ export function CodeMirrorView({
   const collabAdapter = useMemo(() => new YjsCodeMirrorAdapter(), []);
 
   const { setEngine } = useEditorInstance();
-  const { keybinding, lineNumbers, wordWrap } = useSettingsStore();
+  // Narrow selectors to prevent useless re-renders when other settings mutate
+  const keybinding = useSettingsStore((s) => s.keybinding);
+  const lineNumbers = useSettingsStore((s) => s.lineNumbers);
+  const wordWrap = useSettingsStore((s) => s.wordWrap);
 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -211,7 +220,28 @@ export function CodeMirrorView({
       view.destroy();
       viewRef.current = null;
     };
-  }, [fileId, filePath, readOnly, setEngine]);
+  }, [fileId, filePath, setEngine]);
+
+  // ── 0ms Dynamic Compartment Reconfigurations (No View Re-mount) ───────────
+  useEffect(() => {
+    if (!viewRef.current) return;
+    reconfigureLineNumbers(viewRef.current, lineNumbers);
+  }, [lineNumbers]);
+
+  useEffect(() => {
+    if (!viewRef.current) return;
+    reconfigureLineWrapping(viewRef.current, wordWrap);
+  }, [wordWrap]);
+
+  useEffect(() => {
+    if (!viewRef.current) return;
+    reconfigureVimMode(viewRef.current, keybinding === 'vim');
+  }, [keybinding]);
+
+  useEffect(() => {
+    if (!viewRef.current) return;
+    reconfigureReadOnly(viewRef.current, readOnly);
+  }, [readOnly]);
 
   // Reconfigure Yjs collab extension on prop change
   useEffect(() => {

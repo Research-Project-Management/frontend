@@ -422,8 +422,7 @@ export function UploadedDocumentsModal({
                   <PlaneErrorState
                     error={error || new Error('Internal Server Error')}
                     title="Failed to load documents"
-                    description={typeof error === 'string' ? error : 'An error occurred while loading documents. Please try again.'}
-                    reset={loadDocuments}
+                    description={typeof error === 'string' ? error : 'An error occurred while loading documents.'}
                     className="min-h-0 py-8 px-4"
                   />
                 ) : filteredDocs.length === 0 ? (

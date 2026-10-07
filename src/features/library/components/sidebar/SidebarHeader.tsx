@@ -41,8 +41,8 @@ export function SidebarHeader({
   return (
     <div className="mb-3 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground select-none">
       {isSearchExpanded || searchQuery ? (
-        <div className="relative flex items-center transition-all duration-300 ease-in-out w-full h-8 rounded-md border border-border bg-background overflow-hidden group font-normal text-11 hover:border-foreground/30">
-          <Search className="absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 left-2 translate-x-0 text-foreground pointer-events-none shrink-0" strokeWidth={1.5} />
+        <div className="relative flex items-center transition-all duration-300 ease-in-out w-full h-8 rounded-md border border-border/80 bg-background overflow-hidden group font-normal text-12 hover:border-foreground/30 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
+          <Search className="absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 left-2 translate-x-0 text-muted-foreground pointer-events-none shrink-0" strokeWidth={1.5} />
           <Input
             ref={searchInputRef}
             autoFocus
@@ -61,7 +61,7 @@ export function SidebarHeader({
                 setIsSearchExpanded(false);
               }
             }}
-            className="h-full text-11 font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-foreground placeholder:font-normal transition-opacity duration-200 pl-7 pr-7 text-foreground"
+            className="h-full text-12 font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground placeholder:font-normal transition-opacity duration-200 pl-7 pr-7 text-foreground"
           />
           <Tooltip delayDuration={700}>
             <TooltipTrigger asChild>
@@ -72,10 +72,10 @@ export function SidebarHeader({
                   e.stopPropagation();
                 }}
                 onClick={handleClearSearch}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-md relative before:absolute before:-inset-2 md:before:hidden"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center size-5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary/20 before:absolute before:-inset-2 md:before:hidden"
                 aria-label="Clear search"
               >
-                <X className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                <X className="size-3 shrink-0" strokeWidth={1.5} />
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" align="start" sideOffset={6} alignOffset={2}>

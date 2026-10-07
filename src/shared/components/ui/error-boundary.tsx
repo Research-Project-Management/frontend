@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
-import { AlertTriangle, RefreshCw, ChevronRight } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { logger } from '@/shared/lib/logger';
 import { cn } from '@/shared/lib/utils';
 import { PlaneErrorState } from './PlaneErrorState';
@@ -121,14 +121,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
               {featureName ? `Unable to load ${featureName}` : 'An unexpected error occurred'}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={this.reset}
-            className="inline-flex items-center gap-1 shrink-0 px-2 py-1 rounded bg-background hover:bg-muted text-foreground font-medium border border-border transition-colors cursor-pointer text-xs"
-          >
-            <RefreshCw className="size-3 shrink-0" />
-            Retry
-          </button>
         </div>
       );
     }
@@ -161,15 +153,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
               {error.message}
             </div>
           )}
-
-          <button
-            type="button"
-            onClick={this.reset}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-foreground bg-primary hover:bg-primary/90 rounded-md transition-colors cursor-pointer"
-          >
-            <RefreshCw className="size-3.5 shrink-0" />
-            Reload module
-          </button>
         </div>
       );
     }

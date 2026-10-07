@@ -279,7 +279,7 @@ export function MergeModal({
 
               <div className="flex items-center gap-2 px-2.5 py-1 rounded-md border border-border bg-background">
                 <SlidersHorizontal className="size-3 text-muted-foreground shrink-0" />
-                <Label htmlFor="diff-filter-toggle" className="text-11 font-medium cursor-pointer text-foreground select-none">
+                <Label htmlFor="diff-filter-toggle" className="text-11 font-medium cursor-pointer text-muted-foreground select-none">
                   Conflicts only ({inspection.conflictCount})
                 </Label>
                 <Switch
@@ -294,8 +294,8 @@ export function MergeModal({
         </DialogHeader>
 
         {hasTypeMismatch && (
-          <div className="mx-6 mt-3 flex items-start gap-2 p-3 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-12">
-            <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+          <div className="mx-6 mt-3 flex items-start gap-2 p-3 rounded-md border border-warning/30 bg-warning/10 text-warning text-12">
+            <AlertTriangle className="size-4 shrink-0 mt-0.5 text-warning" />
             <div className="space-y-0.5">
               <p className="font-semibold">Items of different types cannot be merged</p>
               <p className="text-11 text-muted-foreground leading-normal">
@@ -339,7 +339,7 @@ export function MergeModal({
                   >
                     <div className="space-y-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-10 font-mono text-muted-foreground">
+                        <span className="text-10 font-mono text-foreground">
                           Version {idx + 1}
                         </span>
                         {isMaster ? (
@@ -347,7 +347,7 @@ export function MergeModal({
                             Master
                           </Badge>
                         ) : (
-                          <span className="text-10 text-muted-foreground hover:text-foreground">
+                          <span className="text-10 text-foreground hover:underline">
                             Set as Master
                           </span>
                         )}
@@ -357,12 +357,12 @@ export function MergeModal({
                         {item.title || 'Untitled Item'}
                       </h4>
 
-                      <p className="text-11 text-muted-foreground truncate" title={authorList}>
+                      <p className="text-11 text-foreground truncate" title={authorList}>
                         {authorList}
                       </p>
                     </div>
 
-                    <div className="pt-2 border-t border-border/60 flex items-center justify-between text-10 font-mono text-muted-foreground">
+                    <div className="pt-2 border-t border-border/60 flex items-center justify-between text-10 font-mono text-foreground">
                       <span>{item.itemType || 'article'}</span>
                       <span>{item.year ? `Year: ${item.year}` : 'Year: -'}</span>
                     </div>
@@ -374,27 +374,27 @@ export function MergeModal({
 
           {/* 2. Non-Destructive Assets Union Banner */}
           <div className="p-3 rounded-md border border-border bg-muted/40 flex items-start gap-3">
-            <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+            <ShieldCheck className="size-4 text-success shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0 space-y-1">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-11 font-medium text-foreground">
                 <span className="flex items-center gap-1.5">
-                  <Paperclip className="size-3 text-muted-foreground" />
+                  <Paperclip className="size-3 text-foreground" />
                   <strong>{assetsSummary.totalFiles}</strong> File(s) preserved
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <FileText className="size-3 text-muted-foreground" />
+                  <FileText className="size-3 text-foreground" />
                   <strong>{assetsSummary.totalNotes}</strong> Note(s) combined
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Tag className="size-3 text-muted-foreground" />
+                  <Tag className="size-3 text-foreground" />
                   <strong>{assetsSummary.totalTags}</strong> Tag(s) merged
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Folder className="size-3 text-muted-foreground" />
+                  <Folder className="size-3 text-foreground" />
                   <strong>{assetsSummary.totalCollections}</strong> Collection(s) preserved
                 </span>
               </div>
-              <p className="text-11 text-muted-foreground leading-relaxed">
+              <p className="text-11 text-foreground leading-relaxed">
                 Non-destructive accumulation: All PDF attachments, literature notes, tags, and collection memberships from both records will be retained and attached to the master item.
               </p>
             </div>
@@ -403,10 +403,10 @@ export function MergeModal({
           {/* 3. Side-by-Side Field Diff Matrix */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-11 font-medium text-muted-foreground">
+              <span className="text-11 font-medium text-foreground">
                 Step 2: Resolve Field Discrepancies (Click a cell to override)
               </span>
-              <span className="text-10 text-muted-foreground">
+              <span className="text-10 text-foreground">
                 Showing {visibleFields.length} of {inspection.fields.length} fields
               </span>
             </div>
@@ -414,7 +414,7 @@ export function MergeModal({
             <div className="rounded-md border border-border overflow-hidden bg-background">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-border bg-muted/30 text-11 text-muted-foreground font-medium">
+                  <tr className="border-b border-border bg-muted/30 text-11 text-foreground font-medium">
                     <th className="w-36 px-3.5 py-2 shrink-0">Field</th>
                     {items.map((item, idx) => {
                       const isMaster = item.id === selectedMasterId;
@@ -443,23 +443,23 @@ export function MergeModal({
                         key={field.key}
                         className={`transition-colors ${
                           field.hasConflict
-                            ? 'bg-amber-500/[0.02] hover:bg-amber-500/[0.05]'
+                            ? 'bg-warning/[0.04] hover:bg-warning/[0.08]'
                             : 'hover:bg-muted/20'
                         }`}
                       >
                         {/* Field Label Column */}
-                        <td className="px-3.5 py-2.5 align-top font-medium text-11 text-muted-foreground">
+                        <td className="px-3.5 py-2.5 align-top font-medium text-11 text-foreground">
                           <div className="space-y-1">
                             <span className="text-foreground block">{field.label}</span>
                             {field.hasConflict ? (
                               <Badge
                                 variant="outline"
-                                className="text-10 h-4 px-1.5 rounded-md border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10"
+                                className="text-10 h-4 px-1.5 rounded-md border-warning/30 text-warning bg-warning/10"
                               >
                                 Conflict
                               </Badge>
                             ) : (
-                              <span className="text-10 text-muted-foreground font-mono">
+                              <span className="text-10 text-foreground font-mono">
                                 identical
                               </span>
                             )}
@@ -495,13 +495,13 @@ export function MergeModal({
                                 className={`p-2 rounded-md border text-12 transition-colors flex flex-col justify-between gap-1.5 min-h-[44px] ${
                                   isSelected
                                     ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/20'
-                                    : 'border-border/60 bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground'
+                                    : 'border-border/60 bg-muted/20 text-foreground hover:bg-muted'
                                 }`}
                               >
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="line-clamp-4 break-words leading-relaxed text-12 font-normal">
                                     {opt.isEmpty ? (
-                                      <span className="italic text-muted-foreground/70 text-11">
+                                      <span className="italic text-foreground/70 text-11">
                                         (Empty)
                                       </span>
                                     ) : (
@@ -550,7 +550,7 @@ export function MergeModal({
                 size="sm"
                 onClick={handleDismissNotDuplicates}
                 disabled={isDismissing || isMerging}
-                className="h-8 px-2.5 text-12 font-medium text-muted-foreground hover:text-foreground hover:bg-muted gap-1.5 rounded-md"
+                className="h-8 px-2.5 text-13 font-medium text-muted-foreground hover:text-foreground hover:bg-muted gap-1.5 rounded-md"
                 title="Mark this pair as false positive so they are not grouped as duplicates again"
               >
                 {isDismissing ? (
@@ -571,7 +571,7 @@ export function MergeModal({
               size="sm"
               onClick={() => onOpenChange(false)}
               disabled={isMerging}
-              className="h-8 px-3 text-12 font-medium text-foreground rounded-md border-border hover:bg-muted"
+              className="h-8 px-3 text-13 font-medium text-foreground rounded-md border-border hover:bg-muted"
             >
               Cancel
             </Button>
@@ -581,7 +581,7 @@ export function MergeModal({
               size="sm"
               onClick={handleConfirmMerge}
               disabled={isMerging || !masterPaper || hasTypeMismatch}
-              className="h-8 px-3 text-12 font-medium gap-1.5 rounded-md bg-primary text-primary-foreground shadow-none hover:bg-primary/90 disabled:opacity-50"
+              className="h-8 px-3 text-13 font-medium gap-1.5 rounded-md bg-primary text-primary-foreground shadow-none hover:bg-primary/90 disabled:opacity-50"
             >
               {isMerging ? (
                 <Loader2 className="size-3.5 animate-spin shrink-0" />

@@ -14,7 +14,6 @@ import {
   SlidersHorizontal,
   Maximize2,
   X,
-  Sparkles,
   AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
@@ -157,10 +156,10 @@ export function DuplicateMergeInspector({
     return (
       <div className="flex h-full w-full flex-col bg-background border-l border-border select-none text-foreground">
         <div className="h-11 px-4 border-b border-border flex items-center shrink-0 bg-background/95 backdrop-blur-xs">
-          <span className="text-12 font-medium text-muted-foreground">Duplicate Merge</span>
+          <span className="text-12 font-medium text-foreground">Duplicate Merge</span>
         </div>
-        <div className="flex flex-1 flex-col items-center justify-center p-6 text-center text-muted-foreground">
-          <GitMerge className="h-8 w-8 mb-2 opacity-50" />
+        <div className="flex flex-1 flex-col items-center justify-center p-6 text-center text-foreground">
+          <GitMerge className="h-8 w-8 mb-2 opacity-50 text-foreground" />
           <p className="text-12 font-medium">Select a duplicate group to compare & merge</p>
         </div>
       </div>
@@ -194,7 +193,7 @@ export function DuplicateMergeInspector({
               variant="ghost"
               size="icon"
               onClick={onOpenModal}
-              className="size-7 text-muted-foreground hover:text-foreground"
+              className="size-7 text-foreground hover:bg-muted"
               title="Open full-screen comparison workbench"
             >
               <Maximize2 className="size-3.5" />
@@ -205,7 +204,7 @@ export function DuplicateMergeInspector({
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="size-7 text-muted-foreground hover:text-foreground"
+              className="size-7 text-foreground hover:bg-muted"
               title="Close duplicate inspector"
             >
               <X className="size-3.5" />
@@ -235,11 +234,11 @@ export function DuplicateMergeInspector({
         )}
 
         {hasTypeMismatch && (
-          <div className="flex items-start gap-2 p-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-11">
-            <AlertTriangle className="size-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+          <div className="flex items-start gap-2 p-2.5 rounded-md border border-warning/30 bg-warning/10 text-warning text-11">
+            <AlertTriangle className="size-3.5 shrink-0 mt-0.5 text-warning" />
             <div className="space-y-0.5">
               <p className="font-medium">Items of different types cannot be merged</p>
-              <p className="text-10 text-muted-foreground leading-normal">
+              <p className="text-10 text-foreground leading-normal">
                 Selected items have different item types ({itemTypes.join(', ')}). In accordance with Zotero standards, change their item types to match before merging.
               </p>
             </div>
@@ -260,8 +259,8 @@ export function DuplicateMergeInspector({
               <span>Recommend Best</span>
             </Button>
           ) : (
-            <span className="text-11 text-muted-foreground flex items-center gap-1 font-mono">
-              <Check className="size-3 text-emerald-500" />
+            <span className="text-11 text-foreground flex items-center gap-1 font-mono">
+              <Check className="size-3 text-success" />
               All fields identical
             </span>
           )}
@@ -269,7 +268,7 @@ export function DuplicateMergeInspector({
           <div className="flex items-center gap-1.5">
             <Label
               htmlFor="insp-conflicts-toggle"
-              className="text-10 text-muted-foreground cursor-pointer select-none"
+              className="text-10 text-foreground cursor-pointer select-none"
             >
               Conflicts only ({inspection.conflictCount})
             </Label>
@@ -289,7 +288,7 @@ export function DuplicateMergeInspector({
         <div className="p-3 space-y-2">
           <div className="flex items-center justify-between text-11">
             <span className="font-semibold text-foreground">1. Master Record</span>
-            <span className="text-10 text-muted-foreground">Default base item</span>
+            <span className="text-10 text-foreground">Default base item</span>
           </div>
 
           <div className="space-y-1.5">
@@ -313,7 +312,7 @@ export function DuplicateMergeInspector({
                   )}
                 >
                   <div className="flex items-center justify-between gap-1 mb-1">
-                    <span className="text-10 font-mono text-muted-foreground">
+                    <span className="text-10 font-mono text-foreground">
                       Version {idx + 1}
                     </span>
                     {isMaster ? (
@@ -321,7 +320,7 @@ export function DuplicateMergeInspector({
                         Master
                       </Badge>
                     ) : (
-                      <span className="text-10 text-muted-foreground hover:text-foreground">
+                      <span className="text-10 text-foreground hover:underline">
                         Set as Master
                       </span>
                     )}
@@ -331,7 +330,7 @@ export function DuplicateMergeInspector({
                     {item.title || 'Untitled Item'}
                   </p>
 
-                  <div className="flex items-center gap-2 mt-1 text-10 text-muted-foreground truncate">
+                  <div className="flex items-center gap-2 mt-1 text-10 text-foreground truncate">
                     <span className="truncate">{authorStr}</span>
                     {item.year && <span>• {item.year}</span>}
                   </div>
@@ -344,10 +343,10 @@ export function DuplicateMergeInspector({
         {/* Step 2: Preserved Assets Union */}
         <div className="p-3 bg-muted/15 space-y-1">
           <div className="flex items-center gap-1.5 text-11 font-medium text-foreground">
-            <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <ShieldCheck className="size-3.5 text-success shrink-0" />
             <span>Preserved Attachments & Notes</span>
           </div>
-          <p className="text-10 text-muted-foreground leading-normal">
+          <p className="text-10 text-foreground leading-normal">
             {assetsSummary.totalFiles} files, {assetsSummary.totalNotes} notes, and{' '}
             {assetsSummary.totalTags} tags will be safely combined into the master item.
           </p>
@@ -357,7 +356,7 @@ export function DuplicateMergeInspector({
         <div className="p-3 space-y-3">
           <div className="flex items-center justify-between text-11">
             <span className="font-semibold text-foreground">2. Field Comparison</span>
-            <span className="text-10 text-muted-foreground font-mono">
+            <span className="text-10 text-foreground font-mono">
               {visibleFields.length} fields
             </span>
           </div>
@@ -373,7 +372,7 @@ export function DuplicateMergeInspector({
                   className={cn(
                     'p-2.5 rounded-md border text-11 transition-colors',
                     field.hasConflict
-                      ? 'border-amber-500/30 bg-amber-500/[0.02]'
+                      ? 'border-warning/30 bg-warning/[0.03]'
                       : 'border-border/60 bg-muted/10',
                   )}
                 >
@@ -382,12 +381,12 @@ export function DuplicateMergeInspector({
                     {field.hasConflict ? (
                       <Badge
                         variant="outline"
-                        className="text-9 h-3.5 px-1 rounded-sm border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 font-normal"
+                        className="text-9 h-3.5 px-1 rounded-sm border-warning/30 text-warning bg-warning/10 font-normal"
                       >
                         Conflict
                       </Badge>
                     ) : (
-                      <span className="text-9 text-muted-foreground font-mono">
+                      <span className="text-9 text-foreground font-mono">
                         Identical
                       </span>
                     )}
@@ -420,12 +419,12 @@ export function DuplicateMergeInspector({
                             'p-2 rounded-sm border cursor-pointer transition-colors flex items-start justify-between gap-2',
                             isSelected
                               ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/20'
-                              : 'border-border/50 bg-background text-muted-foreground hover:bg-muted hover:text-foreground',
+                              : 'border-border/50 bg-background text-foreground hover:bg-muted',
                           )}
                         >
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 mb-0.5">
-                              <span className="text-9 font-mono text-muted-foreground">
+                              <span className="text-9 font-mono text-foreground">
                                 V{opt.sourceItemIndex + 1}
                               </span>
                               {opt.isMaster && (
@@ -434,14 +433,14 @@ export function DuplicateMergeInspector({
                                 </span>
                               )}
                               {isRecommended && (
-                                <span className="flex items-center gap-0.5 text-9 text-amber-700 dark:text-amber-300 font-medium">
+                                <span className="flex items-center gap-0.5 text-9 text-warning font-medium">
                                   <Check className="size-2.5" /> Best
                                 </span>
                               )}
                             </div>
                             <div className="text-11 leading-snug line-clamp-3 break-words">
                               {opt.isEmpty ? (
-                                <span className="italic text-muted-foreground/60">(Empty)</span>
+                                <span className="italic text-foreground/50">(Empty)</span>
                               ) : (
                                 opt.displayValue
                               )}
@@ -477,7 +476,7 @@ export function DuplicateMergeInspector({
             size="sm"
             onClick={handleDismiss}
             disabled={isDismissing || isMerging}
-            className="h-7 px-2 text-11 font-medium text-muted-foreground hover:text-foreground gap-1.5"
+            className="h-7 px-2 text-11 font-medium text-foreground hover:bg-muted gap-1.5"
             title="Mark as false positive duplicate"
           >
             {isDismissing ? (
@@ -488,7 +487,7 @@ export function DuplicateMergeInspector({
             <span>Not Duplicates</span>
           </Button>
 
-          <span className="text-10 text-muted-foreground">
+          <span className="text-10 text-foreground">
             {inspection.conflictCount} conflict(s)
           </span>
         </div>

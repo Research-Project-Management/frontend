@@ -96,7 +96,7 @@ export function TrashModal({
               Move to trash
             </DialogTitle>
             {description && (
-              <DialogDescription className="mt-1 text-12 text-muted-foreground leading-normal">
+              <DialogDescription className="mt-1 text-12 text-foreground leading-normal">
                 {description}
               </DialogDescription>
             )}
@@ -116,7 +116,7 @@ export function TrashModal({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={loading}
-            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md hover:bg-muted"
+            className="h-8 px-3 text-13 font-medium cursor-pointer rounded-md hover:bg-muted"
           >
             Cancel
           </Button>
@@ -126,7 +126,7 @@ export function TrashModal({
             size="sm"
             onClick={handleConfirm}
             disabled={loading}
-            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md"
+            className="h-8 px-3 text-13 font-medium cursor-pointer rounded-md"
           >
             {loading ? (
               <span className="inline-flex items-center gap-1.5">

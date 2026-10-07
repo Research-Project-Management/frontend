@@ -8,7 +8,6 @@ import {
   AlertTriangle,
   PlusCircle,
   Archive,
-  Sparkles,
   ShieldCheck,
   RefreshCw,
 } from 'lucide-react';
@@ -42,12 +41,12 @@ export interface TypeConversionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Accept either item or paper for flexible caller integration */
-  item?: Item | null;
-  paper?: Item | null;
+  item?: any;
+  paper?: any;
   targetType: string;
   scopeId?: string;
   initialPreview?: TypeConversionPreview | null;
-  onSuccess?: (updatedItem: Item) => void;
+  onSuccess?: (updatedItem: any) => void;
 }
 
 export type ConvertModalProps = TypeConversionModalProps;
@@ -230,17 +229,17 @@ export function TypeConversionModal({
               <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
                 Convert Item Type
               </DialogTitle>
-              <Badge variant="outline" className="text-11 font-mono px-1.5 py-0 border-primary/30 text-primary bg-primary/5">
+              <Badge variant="outline" className="text-11 font-mono px-1.5 py-0 border-border text-muted-foreground bg-muted/40">
                 Zotero v42 Schema
               </Badge>
             </div>
             {/* Transformation Path */}
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="font-medium text-muted-foreground px-2 py-0.5 rounded bg-muted">
+              <span className="font-medium text-foreground px-2 py-0.5 rounded bg-muted">
                 {sourceTypeName}
               </span>
               <ArrowRight className="size-3.5 text-muted-foreground shrink-0" />
-              <span className="font-semibold text-foreground px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+              <span className="font-semibold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
                 {targetTypeName}
               </span>
             </div>
@@ -257,7 +256,7 @@ export function TypeConversionModal({
             onClick={() => setMobileTab('retained')}
             className={cn(
               'flex-1 py-1 px-2 rounded-md font-medium transition-colors text-center cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden',
-              mobileTab === 'retained' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground',
+              mobileTab === 'retained' ? 'bg-background text-foreground shadow-sm' : 'text-foreground',
             )}
           >
             Retained ({totalRetainedCount})
@@ -267,7 +266,7 @@ export function TypeConversionModal({
             onClick={() => setMobileTab('extra')}
             className={cn(
               'flex-1 py-1 px-2 rounded-md font-medium transition-colors text-center cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden',
-              mobileTab === 'extra' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground',
+              mobileTab === 'extra' ? 'bg-background text-foreground shadow-sm' : 'text-foreground',
             )}
           >
             Extra ({droppedWithValues.length})
@@ -277,7 +276,7 @@ export function TypeConversionModal({
             onClick={() => setMobileTab('new')}
             className={cn(
               'flex-1 py-1 px-2 rounded-md font-medium transition-colors text-center cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden',
-              mobileTab === 'new' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground',
+              mobileTab === 'new' ? 'bg-background text-foreground shadow-sm' : 'text-foreground',
             )}
           >
             New Fields ({newAvailableFields.length})
@@ -291,7 +290,7 @@ export function TypeConversionModal({
               <Loader2 className="size-6 animate-spin text-primary shrink-0" />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-foreground">Computing Schema Compatibility</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-foreground">
                   Resolving semantic base mappings, extra buffer fields, and contributor roles…
                 </p>
               </div>
@@ -324,7 +323,7 @@ export function TypeConversionModal({
               >
                 <div className="flex items-center justify-between pb-2 border-b border-border/50">
                   <div className="flex items-center gap-1.5">
-                    <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <CheckCircle2 className="size-4 text-success shrink-0" />
                     <span className="text-xs font-semibold text-foreground">Retained & Mapped</span>
                   </div>
                   <Badge variant="secondary" className="text-11 h-5 px-1.5 font-normal">
@@ -336,27 +335,27 @@ export function TypeConversionModal({
                   {/* Semantic Mappings */}
                   {mappedFields.length > 0 && (
                     <div className="space-y-1.5">
-                      <span className="text-11 font-medium text-muted-foreground uppercase tracking-wider block">
+                      <span className="text-11 font-medium text-foreground tracking-normal block">
                         Mapped Base Fields
                       </span>
                       {mappedFields.map((m, idx) => (
                         <div
                           key={`map-${m.fromField}-${idx}`}
-                          className="p-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 space-y-1"
+                          className="p-2 rounded-md bg-success/10 border border-success/20 space-y-1"
                         >
                           <div className="flex items-center justify-between font-medium">
-                            <span className="text-emerald-700 dark:text-emerald-300">
+                            <span className="text-success">
                               {resolveFieldLabel(m.fromField)}
                             </span>
-                            <ArrowRight className="size-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                            <span className="text-emerald-700 dark:text-emerald-300">
+                            <ArrowRight className="size-3 text-success shrink-0" />
+                            <span className="text-success">
                               {resolveFieldLabel(m.toField)}
                             </span>
                           </div>
-                          <p className="text-11 text-muted-foreground truncate" title={formatValue(m.value)}>
+                          <p className="text-11 text-foreground truncate" title={formatValue(m.value)}>
                             &ldquo;{formatValue(m.value)}&rdquo;
                           </p>
-                          <Badge variant="outline" className="text-10 h-4 px-1 py-0 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                          <Badge variant="outline" className="text-10 h-4 px-1 py-0 text-success border-success/30">
                             {m.rule === 'base-semantic' ? 'BaseField Mapping' : 'Special rule'}
                           </Badge>
                         </div>
@@ -367,7 +366,7 @@ export function TypeConversionModal({
                   {/* Creator Role Adjustments */}
                   {creatorRoleChanges.length > 0 && (
                     <div className="space-y-1.5 pt-1">
-                      <span className="text-11 font-medium text-muted-foreground uppercase tracking-wider block">
+                      <span className="text-11 font-medium text-foreground tracking-normal block">
                         Contributor Roles
                       </span>
                       {creatorRoleChanges.map((c, idx) => (
@@ -376,11 +375,11 @@ export function TypeConversionModal({
                           className="p-2 rounded-md bg-muted/60 border border-border/60 text-11 space-y-0.5"
                         >
                           <div className="flex items-center justify-between font-medium">
-                            <span className="capitalize text-muted-foreground">{c.fromRole}</span>
-                            <ArrowRight className="size-3 text-muted-foreground shrink-0" />
+                            <span className="capitalize text-foreground">{c.fromRole}</span>
+                            <ArrowRight className="size-3 text-foreground shrink-0" />
                             <span className="capitalize text-foreground font-semibold">{c.toRole}</span>
                           </div>
-                          <p className="text-muted-foreground text-10">
+                          <p className="text-foreground text-10">
                             {c.reason === 'primary-fallback' ? 'Primary role adaptation' : 'Role preserved in schema'}
                           </p>
                         </div>
@@ -390,7 +389,7 @@ export function TypeConversionModal({
 
                   {/* Preserved Fields */}
                   <div className="space-y-1.5 pt-1">
-                    <span className="text-11 font-medium text-muted-foreground uppercase tracking-wider block">
+                    <span className="text-11 font-medium text-foreground tracking-normal block">
                       Preserved Attributes
                     </span>
                     <div className="max-h-[220px] overflow-y-auto space-y-1 thin-scrollbar pr-1">
@@ -403,13 +402,13 @@ export function TypeConversionModal({
                             <span className="font-medium text-foreground truncate pr-2" title={f.label}>
                               {f.label}
                             </span>
-                            <span className="text-muted-foreground text-11 font-mono truncate max-w-[130px]" title={f.value}>
+                            <span className="text-foreground text-11 font-mono truncate max-w-[130px]" title={f.value}>
                               {f.value || '—'}
                             </span>
                           </div>
                         ))
                       ) : (
-                        <p className="text-muted-foreground italic text-center py-2">
+                        <p className="text-foreground italic text-center py-2">
                           No direct fields
                         </p>
                       )}
@@ -427,7 +426,7 @@ export function TypeConversionModal({
               >
                 <div className="flex items-center justify-between pb-2 border-b border-border/50">
                   <div className="flex items-center gap-1.5">
-                    <Archive className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <Archive className="size-4 text-warning shrink-0" />
                     <span className="text-xs font-semibold text-foreground">Overflow to Extra</span>
                   </div>
                   <Badge
@@ -435,8 +434,8 @@ export function TypeConversionModal({
                     className={cn(
                       'text-11 h-5 px-1.5 font-normal',
                       droppedWithValues.length > 0
-                        ? 'text-amber-700 bg-amber-500/10 border-amber-500/30 dark:text-amber-300'
-                        : 'text-muted-foreground',
+                        ? 'text-warning bg-warning/10 border-warning/30'
+                        : 'text-foreground',
                     )}
                   >
                     {droppedWithValues.length} {droppedWithValues.length === 1 ? 'field' : 'fields'}
@@ -446,7 +445,7 @@ export function TypeConversionModal({
                 <div className="space-y-3 text-xs flex-1 flex flex-col">
                   {droppedWithValues.length > 0 ? (
                     <>
-                      <p className="text-muted-foreground leading-relaxed text-11">
+                      <p className="text-foreground leading-relaxed text-11">
                         Fields not present in <span className="font-medium text-foreground">{targetTypeName}</span> schema.
                       </p>
 
@@ -459,7 +458,7 @@ export function TypeConversionModal({
                                 <td className="py-1 px-2.5 font-medium text-foreground w-1/2 truncate" title={d.label || d.field}>
                                   {d.label || resolveFieldLabel(d.field)}
                                 </td>
-                                <td className="py-1 px-2.5 text-muted-foreground font-mono text-11 w-1/2 truncate" title={formatValue(d.value)}>
+                                <td className="py-1 px-2.5 text-foreground font-mono text-11 w-1/2 truncate" title={formatValue(d.value)}>
                                   {formatValue(d.value)}
                                 </td>
                               </tr>
@@ -484,7 +483,7 @@ export function TypeConversionModal({
                             >
                               Safely buffer in Extra note
                             </Label>
-                            <p className="text-10 text-muted-foreground leading-normal">
+                            <p className="text-10 text-foreground leading-normal">
                               Appends <code className="font-mono text-10">Key: Value</code> lines into Extra, compliant with Zotero and Citeproc CSL.
                             </p>
                           </div>
@@ -493,7 +492,7 @@ export function TypeConversionModal({
                         {/* Monospace Extra preview */}
                         {retainUnmapped ? (
                           <div className="p-2 rounded-md bg-muted font-mono text-11 text-foreground/90 border border-border space-y-0.5 max-h-[120px] overflow-y-auto thin-scrollbar">
-                            <span className="text-10 font-sans font-medium text-muted-foreground block mb-1">
+                            <span className="text-10 font-sans font-medium text-foreground block mb-1">
                               Will append to Extra:
                             </span>
                             {extraBufferLines.map((line, idx) => (
@@ -511,11 +510,11 @@ export function TypeConversionModal({
                       </div>
                     </>
                   ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-4 space-y-2 text-muted-foreground">
-                      <ShieldCheck className="size-8 text-emerald-600 dark:text-emerald-400 stroke-[1.5]" />
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-4 space-y-2 text-foreground">
+                      <ShieldCheck className="size-8 text-success stroke-[1.5]" />
                       <div className="space-y-0.5">
                         <p className="text-xs font-semibold text-foreground">Zero Schema Loss</p>
-                        <p className="text-11 text-muted-foreground">
+                        <p className="text-11 text-foreground">
                           All fields fit directly or mapped into {targetTypeName}. No values will overflow to Extra.
                         </p>
                       </div>
@@ -533,16 +532,16 @@ export function TypeConversionModal({
               >
                 <div className="flex items-center justify-between pb-2 border-b border-border/50">
                   <div className="flex items-center gap-1.5">
-                    <PlusCircle className="size-4 text-sky-600 dark:text-sky-400 shrink-0" />
+                    <PlusCircle className="size-4 text-primary shrink-0" />
                     <span className="text-xs font-semibold text-foreground">New Available Fields</span>
                   </div>
-                  <Badge variant="outline" className="text-11 h-5 px-1.5 font-normal text-sky-700 dark:text-sky-300 border-sky-500/30">
+                  <Badge variant="outline" className="text-11 h-5 px-1.5 font-normal text-primary border-primary/30">
                     {newAvailableFields.length} {newAvailableFields.length === 1 ? 'field' : 'fields'}
                   </Badge>
                 </div>
 
                 <div className="space-y-2 text-xs flex-1 flex flex-col">
-                  <p className="text-muted-foreground leading-relaxed text-11">
+                  <p className="text-foreground leading-relaxed text-11">
                     Fields unlocked by <span className="font-medium text-foreground">{targetTypeName}</span> schema ready for curation:
                   </p>
 
@@ -556,14 +555,14 @@ export function TypeConversionModal({
                           <span className="font-medium text-foreground truncate pr-2" title={f.label}>
                             {f.label}
                           </span>
-                          <span className="text-10 uppercase font-mono text-muted-foreground px-1 py-0.5 rounded bg-background border border-border/50">
+                          <span className="text-10 font-mono text-foreground px-1 py-0.5 rounded bg-background border border-border/50">
                             {f.category || f.type}
                           </span>
                         </div>
                       ))
                     ) : (
-                      <div className="flex-1 flex flex-col items-center justify-center text-center p-4 space-y-1 text-muted-foreground">
-                        <Sparkles className="size-6 text-muted-foreground/60 stroke-1" />
+                      <div className="flex-1 flex flex-col items-center justify-center text-center p-4 space-y-1 text-foreground">
+                        <CheckCircle2 className="size-6 text-foreground/60 stroke-1" />
                         <p className="text-xs">No additional fields in target schema</p>
                       </div>
                     )}
@@ -577,7 +576,7 @@ export function TypeConversionModal({
         {/* Footer */}
         <DialogFooter className="gap-2 pt-2 border-t border-border/60 shrink-0 sm:justify-between items-center">
           <div className="text-11 text-muted-foreground hidden sm:flex items-center gap-1.5">
-            <span className="inline-block size-1.5 rounded-full bg-emerald-500" />
+            <span className="inline-block size-1.5 rounded-full bg-success" />
             <span>Lossless conversion with optimistic locking</span>
           </div>
 
@@ -588,7 +587,7 @@ export function TypeConversionModal({
               size="sm"
               onClick={() => onOpenChange(false)}
               disabled={isConverting}
-              className="h-8 px-3 text-xs font-normal"
+              className="h-8 px-3 text-13 font-medium"
             >
               Cancel
             </Button>
@@ -597,7 +596,7 @@ export function TypeConversionModal({
               size="sm"
               onClick={handleConfirm}
               disabled={isConverting || isLoadingPreview || Boolean(previewError)}
-              className="h-8 px-4 text-xs font-medium gap-1.5"
+              className="h-8 px-4 text-13 font-medium gap-1.5"
             >
               {isConverting ? (
                 <>

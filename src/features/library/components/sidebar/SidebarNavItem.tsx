@@ -14,6 +14,7 @@ export interface SidebarNavItemProps {
   isActive: boolean;
   navId: string;
   badge?: React.ReactNode;
+  action?: React.ReactNode;
   onClick?: () => void;
   onDropItems?: (itemIds: string[]) => void;
 }
@@ -26,6 +27,7 @@ export function SidebarNavItem({
   isActive,
   navId,
   badge,
+  action,
   onClick,
   onDropItems,
 }: SidebarNavItemProps) {
@@ -70,45 +72,53 @@ export function SidebarNavItem({
   };
 
   return (
-    <Link
-      href={href}
-      onClick={onClick}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className={cn(
-        "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
-        isActive
-          ? "bg-muted text-foreground font-medium"
-          : "text-foreground hover:bg-muted group-hover/item:bg-muted group-hover/root:bg-muted has-[[data-state=open]]:bg-muted font-normal",
-        isDragOverTarget && "bg-primary/15 text-primary font-medium ring-1 ring-primary/40 ring-inset"
-      )}
-    >
-      {isActive && (
-        <motion.div
-          layoutId={`library-nav-active-${navId}`}
-          className="absolute inset-0 rounded-md bg-muted"
-          initial={false}
-          transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-        />
-      )}
-      {customIcon ? (
-        <span className="relative z-10 flex size-4 shrink-0 items-center justify-center text-13 leading-none select-none">
-          {customIcon}
+    <div className="group/item relative flex items-center w-full">
+      <Link
+        href={href}
+        onClick={onClick}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={cn(
+          "relative flex h-8 w-full items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
+          action && "pr-8",
+          isActive
+            ? "bg-muted text-foreground font-medium"
+            : "text-foreground hover:bg-muted group-hover/item:bg-muted has-[[data-state=open]]:bg-muted font-normal",
+          isDragOverTarget && "bg-primary/15 text-primary font-medium ring-1 ring-primary/40 ring-inset"
+        )}
+      >
+        {isActive && (
+          <motion.div
+            layoutId={`library-nav-active-${navId}`}
+            className="absolute inset-0 rounded-md bg-muted"
+            initial={false}
+            transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+          />
+        )}
+        {customIcon ? (
+          <span className="relative z-10 flex size-4 shrink-0 items-center justify-center text-13 leading-none select-none">
+            {customIcon}
+          </span>
+        ) : Icon ? (
+          <Icon
+            className="relative z-10 size-4 shrink-0 text-foreground"
+            strokeWidth={1.5}
+          />
+        ) : null}
+        <span className={cn(
+          "relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground",
+          isActive ? "font-medium" : "font-normal"
+        )}>
+          {label}
         </span>
-      ) : Icon ? (
-        <Icon
-          className="relative z-10 size-4 shrink-0 text-foreground"
-          strokeWidth={1.5}
-        />
-      ) : null}
-      <span className={cn(
-        "relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground",
-        isActive ? "font-medium" : "font-normal"
-      )}>
-        {label}
-      </span>
-      {badge}
-    </Link>
+        {badge}
+      </Link>
+      {action && (
+        <div className="absolute right-1.5 z-20 flex items-center">
+          {action}
+        </div>
+      )}
+    </div>
   );
 }

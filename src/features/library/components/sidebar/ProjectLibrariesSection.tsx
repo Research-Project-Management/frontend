@@ -168,7 +168,7 @@ export function ProjectLibrariesSection({
                 setIsProjectsExpanded((v) => !v);
               }}
               aria-label={isProjectsExpanded ? 'Collapse Project Libraries' : 'Expand Project Libraries'}
-              className="absolute right-2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-foreground/10 active:bg-foreground/20 transition-colors duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="absolute right-1.5 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-foreground/10 active:bg-foreground/20 transition-colors duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <ChevronRight
                 className={cn(
@@ -184,7 +184,7 @@ export function ProjectLibrariesSection({
             align="start"
             sideOffset={6}
             alignOffset={2}
-            className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
+            className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
           >
             {isProjectsExpanded ? 'Collapse' : 'Expand'}
           </TooltipContent>
@@ -243,7 +243,7 @@ export function ProjectLibrariesSection({
 
                   {/* Project Contents (Rendered when this project is active) */}
                   {isProjectActive && (
-                    <div className="flex flex-col gap-1 w-full pl-2">
+                    <div className="flex flex-col gap-1 w-full">
                       {projectTree.length > 0 && (
                         <CollectionTree
                           tree={projectTree}
@@ -272,7 +272,7 @@ export function ProjectLibrariesSection({
                       )}
 
                       {savedSearches && savedSearches.length > 0 && (
-                        <div className="my-1 flex flex-col gap-0.5 border-t border-border pt-1">
+                        <div className="my-1 flex flex-col gap-0.5">
                           <div className="px-6 py-1 text-11 font-medium text-foreground flex items-center justify-between">
                             <span>Saved Searches</span>
                           </div>
@@ -305,18 +305,15 @@ export function ProjectLibrariesSection({
                             }
 
                             return (
-                              <div key={ss.id} className="group/item relative flex items-center w-full has-[[data-state=open]]:bg-muted rounded-md">
-                                <div className="flex-1 min-w-0">
-                                  <SidebarNavItem
-                                    href={`${basePath}?filter=saved-search&savedSearchId=${ss.id}`}
-                                    icon={Search}
-                                    label={cleanName}
-                                    isActive={isSSActive}
-                                    navId={navId}
-                                    onClick={onLinkClick}
-                                  />
-                                </div>
-                                <div className="absolute right-1.5 z-20">
+                              <SidebarNavItem
+                                key={ss.id}
+                                href={`${basePath}?filter=saved-search&savedSearchId=${ss.id}`}
+                                icon={Search}
+                                label={cleanName}
+                                isActive={isSSActive}
+                                navId={navId}
+                                onClick={onLinkClick}
+                                action={
                                   <SavedSearchContextMenu
                                     savedSearch={ss as SavedSearch}
                                     onEdit={onEditSavedSearch || (() => {})}
@@ -324,15 +321,15 @@ export function ProjectLibrariesSection({
                                     onDuplicate={onDuplicateSavedSearch || (() => {})}
                                     onDelete={onDeleteSavedSearch || (() => {})}
                                   />
-                                </div>
-                              </div>
+                                }
+                              />
                             );
                           })}
                         </div>
                       )}
 
                       {/* Project Duplicate Items Nav Item (Zotero Group Library parity) */}
-                      <div className="my-1 flex flex-col gap-0.5 border-t border-border pt-1">
+                      <div className="my-1 flex flex-col gap-0.5">
                         <SidebarNavItem
                           href={`${basePath}/duplicates`}
                           icon={Files}
@@ -340,13 +337,6 @@ export function ProjectLibrariesSection({
                           isActive={pathname === `${basePath}/duplicates` || (pathname === basePath && currentFilter === 'duplicates')}
                           navId={navId}
                           onClick={onLinkClick}
-                          badge={
-                            duplicateCount ? (
-                              <span className="relative z-10 ml-auto rounded-full bg-muted-foreground/15 px-1.5 py-0.2 text-10 font-medium tabular-nums text-muted-foreground">
-                                {duplicateCount}
-                              </span>
-                            ) : null
-                          }
                         />
                       </div>
                     </div>

@@ -8,7 +8,7 @@ import {
   Settings,
   Users,
   LayoutGrid,
-  Sparkles,
+  Bot,
   Tag,
   CircleDot,
   type LucideIcon,
@@ -54,7 +54,7 @@ export default function Sidebar() {
         { id: 'general', label: 'General', icon: Settings, to: base, exact: true },
         { id: 'members', label: 'Members', icon: Users, to: `${base}/members` },
         { id: 'modules', label: 'Modules', icon: LayoutGrid, to: `${base}/modules` },
-        { id: 'ai', label: 'AI Assistant', icon: Sparkles, to: `${base}/ai` },
+        { id: 'ai', label: 'AI Assistant', icon: Bot, to: `${base}/ai` },
       ],
     },
     {

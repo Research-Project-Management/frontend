@@ -9,4 +9,3 @@ export * from '../../services/synctex.service';
 export * from '../../services/manuscript.service';
 export * from '../../services/search.service';
 export * from '../../services/history.service';
-export * from '../../services/citation.service';

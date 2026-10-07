@@ -29,21 +29,15 @@ import { useEditorInstance } from '../../core/context/editor-instance.context';
 import { editorCommandBus } from '../../coordinators/command-bus';
 
 export function StatusBar() {
-  const {
-    bottomPanelOpen,
-    toggleBottomPanel,
-    openBottomTab,
-  } = useLayoutStore();
+  const bottomPanelOpen = useLayoutStore((s) => s.bottomPanelOpen);
+  const toggleBottomPanel = useLayoutStore((s) => s.toggleBottomPanel);
+  const openBottomTab = useLayoutStore((s) => s.openBottomTab);
 
-  const {
-    compileStatus,
-    compileErrors,
-  } = useCompilerStore();
+  const compileStatus = useCompilerStore((s) => s.compileStatus);
+  const compileErrors = useCompilerStore((s) => s.compileErrors);
 
-  const {
-    keybinding,
-    latexEngine,
-  } = useSettingsStore();
+  const keybinding = useSettingsStore((s) => s.keybinding);
+  const latexEngine = useSettingsStore((s) => (s as any).latexEngine || s.engine);
 
   const { engine } = useEditorInstance();
 
@@ -110,7 +104,7 @@ export function StatusBar() {
             <span>Compiling...</span>
           </div>
         ) : (
-          <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+          <div className="flex items-center gap-1 text-success">
             <Check className="size-3 shrink-0" />
             <span>Ready</span>
           </div>
@@ -121,7 +115,7 @@ export function StatusBar() {
       <div className="flex items-center gap-3">
         {/* Vim Mode indicator (if enabled) */}
         {keybinding === 'vim' && (
-          <span className="px-1.5 py-0.2 rounded-xs bg-primary/20 text-primary font-bold tracking-wider text-[10px]">
+          <span className="px-1.5 py-0.2 rounded-xs bg-primary/20 text-primary font-semibold tracking-wider text-[10px]">
             {vimMode}
           </span>
         )}

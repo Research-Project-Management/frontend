@@ -42,7 +42,7 @@ function InlineDiffView({ items }: { items: Item[] }) {
 
   return (
     <div className="p-4 bg-muted/20 border-t border-border space-y-2.5">
-      <div className="flex items-center justify-between text-11 text-muted-foreground font-medium">
+      <div className="flex items-center justify-between text-11 text-foreground font-medium">
         <span className="flex items-center gap-1.5 font-semibold text-foreground">
           <Columns className="size-3.5 text-primary" />
           Field-by-Field Comparison
@@ -73,7 +73,7 @@ function InlineDiffView({ items }: { items: Item[] }) {
         <div className="max-h-72 overflow-y-auto">
           <table className="w-full text-left border-collapse text-11">
             <thead className="sticky top-0 bg-muted/90 backdrop-blur-xs z-10 border-b border-border">
-              <tr className="text-muted-foreground font-medium">
+              <tr className="text-foreground font-medium">
                 <th className="w-36 px-3 py-1.5">Field</th>
                 {items.map((it, idx) => (
                   <th key={it.id || idx} className="px-3 py-1.5">
@@ -101,7 +101,7 @@ function InlineDiffView({ items }: { items: Item[] }) {
                           conflict
                         </span>
                       ) : (
-                        <span className="block text-9 text-muted-foreground/70 font-mono">
+                        <span className="block text-9 text-foreground/70 font-mono">
                           identical
                         </span>
                       )}
@@ -110,11 +110,11 @@ function InlineDiffView({ items }: { items: Item[] }) {
                   {field.options.map((opt) => (
                     <td
                       key={opt.itemId}
-                      className="px-3 py-2 align-top text-muted-foreground"
+                      className="px-3 py-2 align-top text-foreground"
                     >
                       <div className="line-clamp-3 leading-relaxed text-11">
                         {opt.isEmpty ? (
-                          <span className="italic text-muted-foreground/60">(Empty)</span>
+                          <span className="italic text-foreground/60">(Empty)</span>
                         ) : (
                           opt.displayValue
                         )}
@@ -259,7 +259,7 @@ export function DuplicatesPage() {
               <h3 className="text-16 font-semibold text-foreground mb-2 tracking-tight">
                 No duplicate items
               </h3>
-              <p className="text-13 text-muted-foreground max-w-[420px] leading-relaxed font-normal">
+              <p className="text-13 text-foreground max-w-[420px] leading-relaxed font-normal">
                 Your library is completely clean. No duplicate papers or matching identifiers detected.
               </p>
             </div>
@@ -275,7 +275,7 @@ export function DuplicatesPage() {
                     <h2 className="text-13 font-semibold text-foreground">
                       Detected {activeGroups.length} duplicate {activeGroups.length === 1 ? 'group' : 'groups'}
                     </h2>
-                    <p className="text-12 text-muted-foreground">
+                    <p className="text-12 text-foreground">
                       Found {totalDuplicatePapers} items with matching identifiers or titles.
                     </p>
                   </div>
@@ -318,14 +318,14 @@ export function DuplicatesPage() {
                           </Badge>
                           <Badge
                             variant="outline"
-                            className="text-10 text-muted-foreground font-normal h-5 rounded-md"
+                            className="text-10 text-foreground font-normal h-5 rounded-md"
                           >
                             {items.length} {items.length === 1 ? 'item' : 'items'}
                           </Badge>
                           {hasMismatchedTypes && (
                             <Badge
                               variant="outline"
-                              className="text-10 text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 font-normal h-5 rounded-md"
+                              className="text-10 text-warning border-warning/30 bg-warning/10 font-normal h-5 rounded-md"
                               title="Items in this group have different item types and must match before merging"
                             >
                               Type Mismatch
@@ -342,7 +342,7 @@ export function DuplicatesPage() {
                               'h-8 px-2.5 text-12 gap-1.5 transition-colors cursor-pointer',
                               isDiffExpanded
                                 ? 'bg-primary/10 text-primary font-medium'
-                                : 'text-muted-foreground hover:text-foreground',
+                                : 'text-foreground hover:bg-muted',
                             )}
                             title="Toggle inline side-by-side diff comparison"
                           >
@@ -357,7 +357,7 @@ export function DuplicatesPage() {
                               e.stopPropagation();
                               handleDismissGroup(groupKey);
                             }}
-                            className="h-8 px-2.5 text-12 text-muted-foreground hover:text-foreground cursor-pointer"
+                            className="h-8 px-2.5 text-12 text-foreground hover:bg-muted cursor-pointer"
                           >
                             Dismiss
                           </Button>
@@ -411,12 +411,12 @@ export function DuplicatesPage() {
                               )}
                             >
                               <div className="flex items-center gap-3 min-w-0 flex-1">
-                                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <FileText className="h-4 w-4 text-foreground shrink-0" />
                                 <div className="min-w-0 flex-1">
                                   <div className="font-medium text-foreground truncate">
                                     {item.title || 'Untitled item'}
                                   </div>
-                                  <div className="flex items-center gap-2 text-11 text-muted-foreground mt-0.5 truncate">
+                                  <div className="flex items-center gap-2 text-11 text-foreground mt-0.5 truncate">
                                     {authorStr && <span>{authorStr}</span>}
                                     {item.year && (
                                       <span className="flex items-center gap-0.5">
@@ -425,7 +425,7 @@ export function DuplicatesPage() {
                                     )}
                                     {item.journal && <span>• {item.journal}</span>}
                                     {item.doi && (
-                                      <span className="font-mono text-10 text-primary">
+                                      <span className="font-mono text-10 text-foreground">
                                         • DOI: {item.doi}
                                       </span>
                                     )}
@@ -442,13 +442,13 @@ export function DuplicatesPage() {
                                     e.stopPropagation();
                                     router.push(`/library/papers/${item.id}`);
                                   }}
-                                  className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
+                                  className="size-7 text-foreground hover:bg-muted cursor-pointer"
                                   title="Open in Reader"
                                   aria-label="Open in Reader"
                                 >
                                   <ExternalLink className="h-3.5 w-3.5" />
                                 </Button>
-                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                <ChevronRight className="h-4 w-4 text-foreground" />
                               </div>
                             </div>
                           );

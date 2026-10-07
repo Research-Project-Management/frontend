@@ -11,7 +11,7 @@
  * - Overleaf-compatible keymap presets.
  */
 
-import { type Extension } from '@codemirror/state';
+import { type Extension, Compartment, EditorState } from '@codemirror/state';
 import {
   EditorView,
   lineNumbers,
@@ -56,10 +56,30 @@ export interface CodeMirrorPresetOptions {
 }
 
 /**
+ * Isolated Compartments for 0ms Dynamic Reconfiguration.
+ * Allows toggling editor features without unmounting EditorView or losing undo history.
+ */
+export const editorCompartments = {
+  readOnly: new Compartment(),
+  lineNumbers: new Compartment(),
+  lineWrapping: new Compartment(),
+  vimMode: new Compartment(),
+  bracketMatching: new Compartment(),
+  highlightActiveLine: new Compartment(),
+  autocomplete: new Compartment(),
+  linter: new Compartment(),
+  mathPreview: new Compartment(),
+  inlineDiff: new Compartment(),
+  folding: new Compartment(),
+  errorLens: new Compartment(),
+};
+
+/**
  * Generates an immutable Extension[] array for CodeMirror 6 EditorState creation.
  */
 export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): Extension[] {
   const {
+    readOnly = false,
     lineNumbers: showLineNumbers = true,
     lineWrapping = true,
     bracketMatching: enableBracketMatching = true,
@@ -128,52 +148,69 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
         },
       },
     ]),
+
+    // 4. Dynamic Compartments (Zero-cost reconfiguration)
+    editorCompartments.readOnly.of(EditorState.readOnly.of(readOnly)),
+    editorCompartments.vimMode.of(vimMode ? vim() : []),
+    editorCompartments.lineNumbers.of(
+      showLineNumbers ? [lineNumbers(), highlightActiveLineGutter(), foldGutter()] : []
+    ),
+    editorCompartments.lineWrapping.of(lineWrapping ? EditorView.lineWrapping : []),
+    editorCompartments.bracketMatching.of(
+      enableBracketMatching ? [bracketMatching(), closeBrackets()] : []
+    ),
+    editorCompartments.highlightActiveLine.of(
+      enableHighlightActive ? highlightActiveLine() : []
+    ),
+    editorCompartments.autocomplete.of(
+      enableAutocomplete ? createLatexAutocompleteExtension() : []
+    ),
+    editorCompartments.linter.of(
+      enableLinter ? createLatexLinterExtension() : []
+    ),
+    editorCompartments.mathPreview.of(
+      enableMathPreview ? latexMathHoverTooltip : []
+    ),
+    editorCompartments.inlineDiff.of(
+      enableInlineDiff ? createInlineDiffExtension() : []
+    ),
+    editorCompartments.folding.of(
+      enableFolding ? createLatexFoldExtension() : []
+    ),
+    editorCompartments.errorLens.of(
+      enableErrorLens ? createLatexErrorLensExtension() : []
+    ),
   ];
 
-  // Optional extensions based on options
-  if (vimMode) {
-    extensions.unshift(vim());
-  }
-
-  if (enableAutocomplete) {
-    extensions.push(createLatexAutocompleteExtension());
-  }
-
-  if (enableLinter) {
-    extensions.push(createLatexLinterExtension());
-  }
-
-  if (enableMathPreview) {
-    extensions.push(latexMathHoverTooltip);
-  }
-
-  if (enableInlineDiff) {
-    extensions.push(...createInlineDiffExtension());
-  }
-
-  if (enableFolding) {
-    extensions.push(createLatexFoldExtension());
-  }
-
-  if (enableErrorLens) {
-    extensions.push(...createLatexErrorLensExtension());
-  }
-
-  if (showLineNumbers) {
-    extensions.push(lineNumbers(), highlightActiveLineGutter(), foldGutter());
-  }
-
-  if (enableHighlightActive) {
-    extensions.push(highlightActiveLine());
-  }
-
-  if (enableBracketMatching) {
-    extensions.push(bracketMatching(), closeBrackets());
-  }
-
-  if (lineWrapping) {
-    extensions.push(EditorView.lineWrapping);
-  }
-
   return extensions;
+}
+
+// ── Compartment Reconfiguration Helpers (0ms Runtime Mutations) ───────────────
+
+export function reconfigureLineNumbers(view: EditorView, show: boolean): void {
+  view.dispatch({
+    effects: editorCompartments.lineNumbers.reconfigure(
+      show ? [lineNumbers(), highlightActiveLineGutter(), foldGutter()] : []
+    ),
+  });
+}
+
+export function reconfigureLineWrapping(view: EditorView, wrap: boolean): void {
+  view.dispatch({
+    effects: editorCompartments.lineWrapping.reconfigure(
+      wrap ? EditorView.lineWrapping : []
+    ),
+  });
+}
+
+export function reconfigureVimMode(view: EditorView, enabled: boolean): void {
+  view.dispatch({
+    effects: editorCompartments.vimMode.reconfigure(enabled ? vim() : []),
+  });
+}
+
+export function reconfigureReadOnly(view: EditorView, readOnly: boolean): void {
+  view.dispatch({
+    effects: editorCompartments.readOnly.reconfigure(EditorState.readOnly.of(readOnly)),
+  });
 }

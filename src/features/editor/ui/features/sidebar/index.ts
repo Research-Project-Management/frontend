@@ -5,6 +5,7 @@
 
 export { PrimarySidebar } from './PrimarySidebar';
 export { default as FilesTab } from './FilesTab';
+export { default as OutlineTab, OutlineTab as OutlineViewlet } from './OutlineTab';
 export { default as SearchTab } from './SearchTab';
 export { default as CitationTab } from './CitationTab';
 export { default as ReviewTab } from './ReviewTab';

@@ -25,4 +25,5 @@ export const exportDocumentSchema = z.object({
   includeChildren: z.boolean().default(true).optional(),
 });
 
+export type DocumentExportFormat = z.infer<typeof documentExportFormatSchema>;
 export type ExportDocumentInput = z.infer<typeof exportDocumentSchema>;

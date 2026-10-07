@@ -201,7 +201,7 @@ function DefaultLibraryEmptyState({
       </h2>
 
       {/* Description */}
-      <p className="text-13 text-foreground/80 dark:text-muted-foreground max-w-[420px] leading-relaxed font-normal">
+      <p className="text-13 text-muted-foreground max-w-[420px] leading-relaxed font-normal">
         {config.description}
       </p>
     </div>

@@ -16,6 +16,7 @@ import {
   CheckSquare,
   Square,
   AlertCircle,
+  Search,
 } from 'lucide-react';
 import { Button } from "@/shared/components/ui";
 import { Skeleton } from "@/shared/components/ui";
@@ -59,15 +60,15 @@ export function ArchivePage() {
 
   const tabParam = searchParams.get('tab') as ArchiveTab | null;
   const initialTab: ArchiveTab =
-    tabParam && ['projects', 'work-items', 'pages', 'views'].includes(tabParam)
+    tabParam && ['work-items', 'projects', 'pages', 'views'].includes(tabParam)
       ? tabParam
-      : 'projects';
+      : 'work-items';
 
   const [activeTab, setActiveTab] = useState<ArchiveTab>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    if (tabParam && ['projects', 'work-items', 'pages', 'views'].includes(tabParam)) {
+    if (tabParam && ['work-items', 'projects', 'pages', 'views'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [tabParam]);
@@ -245,21 +246,21 @@ export function ArchivePage() {
 
   const archiveTabs = useMemo(() => [
     {
-      key: 'projects' as const,
-      label: 'Projects',
-      count: archivedProjects.length,
-    },
-    {
       key: 'work-items' as const,
       label: 'Work items',
       count: archivedItems.length,
+    },
+    {
+      key: 'projects' as const,
+      label: 'Projects',
+      count: archivedProjects.length,
     },
     {
       key: 'pages' as const,
       label: 'Pages',
       count: archivedPages.length,
     },
-  ], [archivedProjects.length, archivedItems.length, archivedPages.length]);
+  ], [archivedItems.length, archivedProjects.length, archivedPages.length]);
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden select-none">
@@ -273,8 +274,20 @@ export function ArchivePage() {
           <h1 className="text-13 font-semibold text-foreground tracking-tight">Archives</h1>
         </div>
 
-        {/* Project Selector */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        {/* Search & Project Selector */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Instant Search Bar */}
+          <div className="relative flex items-center">
+            <Search className="size-3.5 text-muted-foreground absolute left-2.5 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search archives..."
+              className="h-8 w-36 sm:w-48 pl-8 pr-2.5 rounded-md border border-border bg-background text-12 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+            />
+          </div>
+
           {/* Project selector dropdown (for pages, work items, views) */}
           {(activeTab === 'pages' || activeTab === 'work-items' || activeTab === 'views') && (
             <DropdownMenu>
@@ -321,7 +334,7 @@ export function ArchivePage() {
       {/* ── Subheader Navigation Tabs (Matching Your Work toolbar pattern) ── */}
       <nav
         aria-label="Archives Navigation"
-        className="flex items-center justify-between border-b border-border px-6 bg-background select-none shrink-0 h-10 overflow-x-auto"
+        className="flex items-center justify-between border-b border-border px-6 bg-background select-none shrink-0 h-10 min-h-10"
         style={{ paddingLeft: 'max(1.5rem, var(--header-offset, 0px))' }}
       >
         <div className="flex items-center gap-1 h-full">
@@ -336,7 +349,7 @@ export function ArchivePage() {
                   setSelectedItemIds(new Set());
                 }}
                 className={cn(
-                  'relative flex h-full items-center gap-2 px-3.5 text-12 font-medium transition-colors outline-none cursor-pointer shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                  'relative flex h-full items-center gap-2 px-3.5 text-13 font-medium transition-colors outline-none cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                   isActive
                     ? 'text-primary'
                     : 'text-muted-foreground hover:text-foreground'
@@ -346,7 +359,7 @@ export function ArchivePage() {
                 {typeof tab.count === 'number' && tab.count > 0 && (
                   <span
                     className={cn(
-                      'text-11 px-1.5 py-0.5 rounded-full font-mono font-medium leading-none tabular-nums',
+                      'text-11 px-1.5 py-0.5 rounded-full font-medium leading-none tabular-nums',
                       isActive
                         ? 'bg-primary/10 text-primary'
                         : 'bg-muted text-muted-foreground'
@@ -356,7 +369,7 @@ export function ArchivePage() {
                   </span>
                 )}
                 {isActive && (
-                  <div className="absolute -bottom-[1px] left-0 right-0 h-[2px] bg-primary" />
+                  <div className="absolute -bottom-[1px] left-0 right-0 h-[2px] bg-primary z-10" />
                 )}
               </button>
             );

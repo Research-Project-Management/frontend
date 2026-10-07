@@ -269,7 +269,7 @@ export const ItemsService = {
     return apiGet<PaginatedItemsResponse>(
       getItemUrl(scopeId),
       {
-        params: formattedParams as Record<string, string | number | boolean | null | undefined>,
+        params: formattedParams as unknown as Record<string, string | number | boolean | null | undefined>,
         signal: options?.signal,
       },
     ).then((res) => {

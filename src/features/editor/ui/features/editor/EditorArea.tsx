@@ -60,7 +60,7 @@ function EmptyEditorState({ onOpenDefaultFile, fileName = 'main.tex' }: EmptyEdi
 
 function LoadingSkeleton() {
   return (
-    <div className="h-full w-full flex flex-col bg-canvas animate-in fade-in duration-300">
+    <div className="h-full w-full flex flex-col bg-canvas">
       <div className="h-9 border-b border-border bg-secondary/40 flex items-center gap-2 px-3">
         <Skeleton className="h-4 w-4 rounded-sm" />
         <Skeleton className="h-4 w-24" />

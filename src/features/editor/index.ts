@@ -11,13 +11,16 @@ export { ModernWorkbenchLayout } from './ui/shell/ModernWorkbenchLayout';
 export { Topbar } from './ui/shell/Topbar';
 export { ActivityBar } from './ui/shell/ActivityBar';
 export { StatusBar } from './ui/shell/StatusBar';
-export { default as StandaloneViewerPage } from './pages/StandaloneViewerPage';
-export { default as ClientStandaloneViewer } from './pages/ClientStandaloneViewer';
+export { default as StandaloneViewerPage } from './ui/shell/StandaloneViewerPage';
+export { default as ClientStandaloneViewer } from './ui/shell/ClientStandaloneViewer';
 
 // Block 6: UI Features
 export { EditorArea } from './ui/features/editor/EditorArea';
 export { CodeMirrorView } from './ui/features/editor/CodeMirrorView';
 export { EditorToolbar } from './ui/features/editor/EditorToolbar';
+export { EditorTabs } from './ui/features/editor/EditorTabs';
+export { EditorBreadcrumbs } from './ui/features/editor/EditorBreadcrumbs';
+export { SourceVisualSwitcher } from './ui/features/editor/SourceVisualSwitcher';
 export { CollaboratorCursors } from './ui/features/editor/CollaboratorCursors';
 export { createDiagnosticsGutter } from './ui/features/editor/DiagnosticsGutter';
 export { PdfViewer } from './ui/features/preview/PdfViewer';

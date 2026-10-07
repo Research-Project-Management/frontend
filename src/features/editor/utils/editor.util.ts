@@ -4,6 +4,7 @@
 
 import { API_BASE_URL } from '@/config/env';
 import { editorCommandBus } from '../core/command-bus/editor-command-bus';
+import type { SidebarPanelName } from '../ports/command-bus.port';
 
 const GLOBAL_EVENT_KEY = Symbol.for('__FLUX_IN_MEMORY_EVENT_HANDLERS__');
 const globalAnyEvents = globalThis as any;

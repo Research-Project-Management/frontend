@@ -218,7 +218,7 @@ export function LibraryTopbar({
     if (onAddCollection) {
       onAddCollection();
     } else {
-      openModal('CREATE_COLLECTION');
+      openModal('CREATE_COLLECTION', { parentId: params?.collectionId || null });
     }
   };
 
@@ -251,7 +251,7 @@ export function LibraryTopbar({
                 side="bottom"
                 align="start"
                 sideOffset={6}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
+                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
               >
                 Expand sidebar
               </TooltipContent>
@@ -267,7 +267,7 @@ export function LibraryTopbar({
                 return (
                   <React.Fragment key={crumb.id || idx}>
                     {idx > 0 && (
-                      <ChevronRight className="size-3.5 text-muted-foreground/50 shrink-0" strokeWidth={1.5} />
+                      <ChevronRight className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                     )}
                     <div className="flex items-center justify-center shrink-0">
                       <MoreHorizontal className="size-4 text-foreground shrink-0" />
@@ -281,7 +281,7 @@ export function LibraryTopbar({
               return (
                 <React.Fragment key={crumb.id || idx}>
                   {idx > 0 && (
-                    <ChevronRight className="size-3.5 text-muted-foreground/50 shrink-0" strokeWidth={1.5} />
+                    <ChevronRight className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                   )}
                   {!isLast && onNavigateCrumb ? (
                     <button
@@ -361,7 +361,7 @@ export function LibraryTopbar({
             className={cn(
               "h-8 px-3 rounded-md font-medium text-13 inline-flex items-center justify-center transition-colors",
               count === 0
-                ? "opacity-50 cursor-not-allowed border-border text-muted-foreground"
+                ? "opacity-50 cursor-not-allowed border-border text-foreground/50"
                 : "cursor-pointer text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/60"
             )}
           >
@@ -566,7 +566,7 @@ export function LibraryTopbar({
                 side="bottom"
                 align="end"
                 sideOffset={6}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
+                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
               >
                 Expand panel
               </TooltipContent>

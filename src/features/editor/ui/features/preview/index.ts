@@ -5,8 +5,26 @@
 
 export { PdfViewer } from './PdfViewer';
 export { PdfToolbar } from './PdfToolbar';
-export { PdfSurface } from './PdfSurface';
-export { CompilerLogs } from './CompilerLogs';
+export {
+  PdfSurface,
+  Surface,
+  default as DefaultPdfSurface,
+  type SurfaceHandle,
+  type PdfSurfaceHandle,
+  type SurfaceProps,
+  type PdfSurfaceProps,
+} from './PdfSurface';
+export {
+  CompilerLogs,
+  Logs,
+  LogPanel,
+  default as DefaultCompilerLogs,
+  parseLatexLog,
+  type LogEntry,
+  type ParsedLog,
+  type CompilerLogsProps,
+  type LogsProps,
+} from './CompilerLogs';
 export { PdfFindBar } from './PdfFindBar';
 export { CompileButton } from './CompileButton';
 export { PdfPaginationControls } from './PdfPaginationControls';
@@ -18,3 +36,4 @@ export * from './hooks/use-pdf-zoom';
 export * from './hooks/use-viewer-synctex';
 export * from './hooks/use-viewer-popout';
 export * from './hooks/use-pdf-search';
+export * from './hooks/useLogViewerActions';

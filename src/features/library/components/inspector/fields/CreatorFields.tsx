@@ -413,7 +413,7 @@ export function CreatorFields({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="w-full min-h-7 h-auto flex items-center justify-end pr-1 rounded-md text-12 leading-normal font-normal text-muted-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-right truncate"
+                  className="w-full min-h-7 h-auto flex items-center justify-end pr-1 rounded-md text-11 leading-normal font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary/20 select-none text-right truncate"
                   aria-label={`Change role for ${roleLabel.toLowerCase()} ${originalIndex + 1}`}
                 >
                   <span
@@ -442,14 +442,14 @@ export function CreatorFields({
                   >
                     <span className="text-foreground">{creatorTypeItem.label}</span>
                     {creatorEntry.creatorType === creatorTypeItem.creatorType && (
-                      <Check className="size-3 text-foreground shrink-0" aria-hidden="true" />
+                      <Check className="size-3 text-primary shrink-0" aria-hidden="true" />
                     )}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <div className="w-full min-h-7 h-auto flex items-center justify-end pr-1 text-12 leading-normal font-normal text-muted-foreground select-text text-right truncate">
+            <div className="w-full min-h-7 h-auto flex items-center justify-end pr-1 text-11 leading-normal font-medium text-muted-foreground select-text text-right truncate">
               <span
                 className="truncate whitespace-nowrap leading-normal"
                 title={roleLabel}
@@ -518,7 +518,7 @@ export function CreatorFields({
                     handleAddCreator(originalIndex);
                   }
                 }}
-                className="flex-1 min-w-0 h-7 bg-transparent px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-12 leading-normal outline-none font-normal font-sans"
+                className="flex-1 min-w-0 h-7 bg-transparent px-2 py-1 rounded-md border border-transparent hover:bg-muted/40 focus:border-primary focus:ring-1 focus:ring-primary/20 focus:bg-background text-foreground text-13 leading-normal outline-none font-normal font-sans placeholder:text-muted-foreground"
               />
 
               {/* Optional Short Name / Acronym when in single-field institutional mode */}
@@ -539,7 +539,7 @@ export function CreatorFields({
                         setLocalCreators(updatedCreators);
                       }}
                       onBlur={() => syncCreatorsToParent(localCreators)}
-                      className="w-24 sm:w-28 h-7 bg-transparent px-2 py-1 rounded-md border border-border/50 focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-11 placeholder:text-muted-foreground/60 leading-normal outline-none font-normal font-sans shrink-0"
+                      className="w-24 sm:w-28 h-7 bg-transparent px-2 py-1 rounded-md border border-border/50 hover:border-foreground/30 focus:border-primary focus:ring-1 focus:ring-primary/20 focus:bg-background text-foreground text-12 placeholder:text-muted-foreground leading-normal outline-none font-normal font-sans shrink-0"
                     />
                   </TooltipTrigger>
                   <TooltipContent
@@ -547,7 +547,7 @@ export function CreatorFields({
                     align="start"
                     sideOffset={6}
                     alignOffset={2}
-                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
+                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
                   >
                     Short name
                   </TooltipContent>
@@ -562,10 +562,10 @@ export function CreatorFields({
                     <button
                       type="button"
                       onClick={() => handleAddCreator(originalIndex)}
-                      className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none relative before:absolute before:-inset-2 md:before:hidden"
+                      className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none relative before:absolute before:-inset-2 md:before:hidden"
                       aria-label={`Add ${roleLabel.toLowerCase()}`}
                     >
-                      <Plus className="size-3.5 text-foreground shrink-0" aria-hidden="true" strokeWidth={1.5} />
+                      <Plus className="size-3.5 shrink-0" aria-hidden="true" strokeWidth={1.5} />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent
@@ -573,7 +573,7 @@ export function CreatorFields({
                     align="start"
                     sideOffset={6}
                     alignOffset={2}
-                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
+                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
                   >
                     Add {roleLabel.toLowerCase()}
                   </TooltipContent>
@@ -585,10 +585,10 @@ export function CreatorFields({
                       <button
                         type="button"
                         onClick={() => handleRemoveCreator(originalIndex)}
-                        className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none relative before:absolute before:-inset-2 md:before:hidden"
+                        className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none relative before:absolute before:-inset-2 md:before:hidden"
                         aria-label={`Remove ${roleLabel.toLowerCase()}`}
                       >
-                        <Minus className="size-3.5 text-foreground shrink-0" aria-hidden="true" strokeWidth={1.5} />
+                        <Minus className="size-3.5 shrink-0" aria-hidden="true" strokeWidth={1.5} />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent
@@ -596,7 +596,7 @@ export function CreatorFields({
                       align="start"
                       sideOffset={6}
                       alignOffset={2}
-                      className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
+                      className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
                     >
                       Remove {roleLabel.toLowerCase()}
                     </TooltipContent>
@@ -608,7 +608,7 @@ export function CreatorFields({
             <div className="flex-1 min-h-7 h-auto px-2 py-1 text-foreground text-12 leading-snug min-w-0 font-normal font-sans break-words select-text flex items-center gap-1.5">
               <span>{creatorEntry.name}</span>
               {creatorEntry.shortName && (
-                <span className="text-11 text-muted-foreground font-mono">
+                <span className="text-11 text-foreground font-mono">
                   ({creatorEntry.shortName})
                 </span>
               )}
@@ -625,7 +625,7 @@ export function CreatorFields({
         canEdit ? (
           <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5">
             <span
-              className="text-muted-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate"
+              className="text-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate"
               title={typeDefinition.creatorTypes[0]?.label || 'Author'}
             >
               {typeDefinition.creatorTypes[0]?.label || 'Author'}
@@ -724,7 +724,7 @@ export function CreatorFields({
               <button
                 type="button"
                 onClick={() => setIsAuthorsExpanded(!isAuthorsExpanded)}
-                className="flex items-center gap-1.5 text-11 text-muted-foreground hover:text-foreground font-medium cursor-pointer py-0.5 px-2 hover:bg-muted focus-visible:outline-none rounded-md w-fit transition-colors select-none relative before:absolute before:-inset-1.5 md:before:hidden"
+                className="flex items-center gap-1.5 text-11 text-foreground font-medium cursor-pointer py-0.5 px-2 hover:bg-muted focus-visible:outline-none rounded-md w-fit transition-colors select-none relative before:absolute before:-inset-1.5 md:before:hidden"
                 aria-expanded={isAuthorsExpanded}
               >
                 {isAuthorsExpanded ? (

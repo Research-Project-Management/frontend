@@ -109,7 +109,7 @@ export default function AbstractSection({
             "p-2 bg-transparent border-0 focus:outline-none focus:ring-0",
             canEdit && "cursor-text",
             !canEdit && "cursor-default",
-            !draft && "placeholder:font-sans placeholder:text-12 placeholder:text-muted-foreground/60"
+            !draft && "placeholder:font-sans placeholder:text-12 placeholder:text-foreground/50"
           )}
         />
       </div>

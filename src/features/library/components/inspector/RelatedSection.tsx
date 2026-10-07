@@ -263,7 +263,7 @@ export default function RelatedSection({
             <button
               type="button"
               onClick={() => setModalOpen(true)}
-              className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden"
+              className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
               aria-label="Add related item"
             >
               <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -274,7 +274,7 @@ export default function RelatedSection({
 
       {/* Loading state */}
       {isLoading && (
-        <div className="p-3 text-center text-muted-foreground flex items-center justify-center gap-2">
+        <div className="p-3 text-center text-foreground flex items-center justify-center gap-2">
           <Loader2 className="size-3.5 animate-spin shrink-0" strokeWidth={1.5} />
           <span className="text-11">Loading related items...</span>
         </div>
@@ -303,8 +303,8 @@ export default function RelatedSection({
                   title={cleanTitle}
                 >
                   {/* Left document icon - neutral, does not change color on hover */}
-                  <div className="size-6 rounded bg-muted/60 text-muted-foreground flex items-center justify-center shrink-0 mt-0.5">
-                    <FileText className="size-3.5" strokeWidth={1.5} />
+                  <div className="size-6 rounded bg-muted/60 text-foreground flex items-center justify-center shrink-0 mt-0.5">
+                    <FileText className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                   </div>
 
                   {/* Main reference info - paper title only */}
@@ -327,7 +327,7 @@ export default function RelatedSection({
                             href={`https://doi.org/${encodeURIComponent(item.doi)}`}
                             target="_blank"
                             rel="noreferrer noopener"
-                            className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
+                            className="size-6 flex items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
                             aria-label={`Open DOI: ${item.doi}`}
                           >
                             <ExternalLink className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -346,7 +346,7 @@ export default function RelatedSection({
                           <button
                             type="button"
                             onClick={(e) => handleUnlink(item.id, e)}
-                            className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
+                            className="size-6 flex items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
                             aria-label="Unlink reference"
                           >
                             <X className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -376,8 +376,8 @@ export default function RelatedSection({
             <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
               Add Related References
             </DialogTitle>
-            <DialogDescription className="text-11 text-muted-foreground leading-normal flex items-center gap-1.5 min-w-0">
-              <span className="shrink-0 text-muted-foreground/80">Linking with:</span>
+            <DialogDescription className="text-11 text-foreground leading-normal flex items-center gap-1.5 min-w-0">
+              <span className="shrink-0 text-foreground">Linking with:</span>
               <span
                 className="font-medium text-foreground truncate max-w-[500px]"
                 title={currentPaperCleanTitle}
@@ -391,9 +391,9 @@ export default function RelatedSection({
           <div className="flex-1 flex flex-col sm:flex-row min-h-0 overflow-hidden">
             {/* Collections: Horizontal scroll on mobile, Left Sidebar on desktop */}
             <div className="w-full sm:w-56 shrink-0 border-b sm:border-b-0 sm:border-r border-border/50 bg-muted/20 flex flex-col min-h-0 select-none">
-              <div className="px-3 pt-2.5 pb-1 sm:pt-3 sm:pb-1.5 text-11 font-medium text-muted-foreground flex items-center justify-between">
+              <div className="px-3 pt-2.5 pb-1 sm:pt-3 sm:pb-1.5 text-11 font-medium text-foreground flex items-center justify-between">
                 <span>Collections</span>
-                <span className="sm:hidden text-10 text-muted-foreground/70">Swipe to filter</span>
+                <span className="sm:hidden text-10 text-foreground">Swipe to filter</span>
               </div>
 
               <div className="flex flex-row sm:flex-col overflow-x-auto sm:overflow-y-auto p-1.5 gap-1 sm:gap-0.5 thin-scrollbar shrink-0">
@@ -406,15 +406,15 @@ export default function RelatedSection({
                     'text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none shrink-0 sm:shrink sm:w-full',
                     selectedCollectionFilter === 'all'
                       ? 'bg-muted text-foreground font-medium shadow-2xs'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 font-normal',
+                      : 'text-foreground hover:bg-muted/40 font-normal',
                   )}
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
-                    <Library className="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+                    <Library className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
                     <span className="truncate">All Items</span>
                   </div>
                   {collectionCounts.all > 0 && (
-                    <span className="text-10 font-mono text-muted-foreground tabular-nums shrink-0 ml-1">
+                    <span className="text-10 font-mono text-foreground tabular-nums shrink-0 ml-1">
                       {collectionCounts.all}
                     </span>
                   )}
@@ -435,21 +435,20 @@ export default function RelatedSection({
                         'text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none shrink-0 sm:shrink sm:w-full',
                         isSelected
                           ? 'bg-muted text-foreground font-medium shadow-2xs'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 font-normal',
+                          : 'text-foreground hover:bg-muted/40 font-normal',
                       )}
                       title={col.name}
                       aria-label={`${col.name} (${count} items)`}
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
                         <Folder
-                          className="size-3.5 shrink-0"
-                          style={{ color: col.color || 'var(--muted-foreground)' }}
+                          className="size-3.5 shrink-0 text-foreground"
                           strokeWidth={1.5}
                         />
                         <span className="truncate">{col.name}</span>
                       </div>
                       {count > 0 && (
-                        <span className="text-10 font-mono text-muted-foreground tabular-nums shrink-0 ml-1">
+                        <span className="text-10 font-mono text-foreground tabular-nums shrink-0 ml-1">
                           {count}
                         </span>
                       )}
@@ -465,7 +464,7 @@ export default function RelatedSection({
               <div className="px-3.5 pt-3 pb-2 flex items-center shrink-0">
                 <div className="relative w-full max-w-md flex items-center">
                   <Search
-                    className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/60 pointer-events-none"
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-foreground pointer-events-none"
                     strokeWidth={1.5}
                   />
                   <Input
@@ -474,13 +473,13 @@ export default function RelatedSection({
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search by title, author, venue, year..."
                     aria-label="Search references"
-                    className="w-full h-8.5 pl-9 pr-9 text-13 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/35 focus:bg-background focus:border-border text-foreground placeholder:text-muted-foreground/60 outline-none transition-all shadow-none"
+                    className="w-full h-8.5 pl-9 pr-9 text-13 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/35 focus:bg-background focus:border-border text-foreground placeholder:text-foreground/50 outline-none transition-all shadow-none"
                   />
                   {searchQuery && (
                     <button
                       type="button"
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-1 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center text-muted-foreground/60 hover:text-foreground cursor-pointer transition-colors rounded-md"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors rounded-md"
                       title="Clear search"
                       aria-label="Clear search"
                     >
@@ -501,13 +500,13 @@ export default function RelatedSection({
                 className="flex-1 overflow-y-auto px-2.5 py-2 min-h-0 thin-scrollbar"
               >
                 {availableItems.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground space-y-2 text-center px-4">
+                  <div className="flex flex-col items-center justify-center py-12 text-foreground space-y-2 text-center px-4">
                     <div className="size-9 rounded-full bg-muted flex items-center justify-center">
-                      <FileText className="size-4 text-muted-foreground" strokeWidth={1.5} />
+                      <FileText className="size-4 text-foreground" strokeWidth={1.5} />
                     </div>
                     <div className="space-y-0.5">
                       <p className="text-12 font-medium text-foreground">No references available</p>
-                      <p className="text-12 text-muted-foreground max-w-[280px]">
+                      <p className="text-12 text-foreground max-w-[280px]">
                         {searchQuery || selectedCollectionFilter !== 'all'
                           ? 'No items match your search in this collection.'
                           : 'All available items in this collection are already linked.'}
@@ -571,7 +570,7 @@ export default function RelatedSection({
                             {/* Right: Year Badge */}
                             {targetItem.year ? (
                               <div className="shrink-0 pl-2">
-                                <span className="px-1.5 py-0.5 rounded text-11 font-mono text-muted-foreground bg-muted/40 border border-border/30 tabular-nums">
+                                <span className="px-1.5 py-0.5 rounded text-11 font-mono text-foreground bg-muted/40 border border-border/30 tabular-nums">
                                   {targetItem.year}
                                 </span>
                               </div>
@@ -606,7 +605,7 @@ export default function RelatedSection({
               variant="default"
               disabled={selectedTargetIds.size === 0 || isLinking}
               onClick={handleLinkConfirm}
-              className="h-8 px-4 text-12 font-medium rounded-md cursor-pointer shadow-none flex items-center gap-1.5 disabled:opacity-50 disabled:bg-muted disabled:text-muted-foreground disabled:border-transparent disabled:pointer-events-none"
+              className="h-8 px-4 text-12 font-medium rounded-md cursor-pointer shadow-none flex items-center gap-1.5 disabled:opacity-50 disabled:bg-muted disabled:text-foreground disabled:border-transparent disabled:pointer-events-none"
             >
               {isLinking && <Loader2 className="size-3.5 animate-spin shrink-0" strokeWidth={1.5} />}
               <span>

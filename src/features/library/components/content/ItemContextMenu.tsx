@@ -125,7 +125,7 @@ export function ItemContextMenu({
                 <Star
                   className={cn(
                     'size-3.5 text-foreground',
-                    isStarred && 'fill-amber-400 text-amber-400',
+                    isStarred && 'fill-warning text-warning',
                   )}
                 />
                 {isStarred ? 'Remove from Starred' : 'Add to Starred'}

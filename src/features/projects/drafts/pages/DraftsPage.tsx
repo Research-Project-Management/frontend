@@ -168,9 +168,8 @@ export default function DraftsPage() {
         ) : isError ? (
           <PlaneErrorState
             title="Failed to load drafts"
-            description="We encountered an issue fetching your drafts. Please check your connection or try again."
+            description="We encountered an issue fetching your drafts. Please check your network connection."
             error={error}
-            reset={() => refetch()}
           />
         ) : drafts.length === 0 ? (
           <EmptyState onCreateDraft={handleOpenCreate} />

@@ -43,18 +43,16 @@ export class YjsCodeMirrorAdapter {
       return [];
     }
 
+    const collabOptions = undoManager !== undefined ? { undoManager } : {};
+
     if (awareness) {
       return [
-        yCollab(yText, awareness, {
-          undoManager: undoManager ?? undefined,
-        }),
+        yCollab(yText, awareness, collabOptions),
       ];
     }
 
     return [
-      yCollab(yText, null, {
-        undoManager: undoManager ?? undefined,
-      }),
+      yCollab(yText, null, collabOptions),
     ];
   }
 }

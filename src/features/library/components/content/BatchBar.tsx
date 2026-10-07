@@ -16,6 +16,7 @@ import {
 
 import { libraryServices } from '../../data';
 import { generateCitationKey } from '../../domain';
+import { useLibrarySidebarStore } from '../../store';
 import { useParams } from 'next/navigation';
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/shared/components/ui";
 import type { Collection, Item, CslStyle } from '../../types/library.types';
@@ -56,6 +57,10 @@ export function BatchBar({
   const params = useParams() as { projectId?: string };
   const effectiveScopeId =
     propsScopeId || propsProjectId || params?.projectId || 'user';
+
+  const activeScope = useLibrarySidebarStore((s) => s.activeScope);
+  const isProjectScope = activeScope.type === 'project';
+  const rootLibraryName = isProjectScope ? (activeScope.name || 'Project') : 'My Library';
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -293,7 +298,7 @@ export function BatchBar({
                   <span>{retractedSelected.length} retracted</span>
                 </span>
               </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-1 rounded-md border border-destructive/30 bg-popover text-foreground shadow-md">
+              <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-1 rounded-md border border-destructive/30 bg-popover text-foreground shadow-sm">
                 Warning: {retractedSelected.length} selected item(s) have retraction notices
               </TooltipContent>
             </Tooltip>
@@ -331,8 +336,12 @@ export function BatchBar({
                 onClick={() => onBatchMove(null)}
                 className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
               >
-                <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                <span>My Library</span>
+                {isProjectScope ? (
+                  <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                ) : (
+                  <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                )}
+                <span>{rootLibraryName}</span>
               </DropdownMenuItem>
               {collections.map((c) => (
                 <DropdownMenuItem
@@ -540,7 +549,7 @@ export function BatchBar({
                     variant="ghost"
                     size="sm"
                     disabled={isAllProcessingSelected}
-                    onClick={onBatchDetach}
+                    onClick={() => onBatchDetach()}
                     className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
                   >
                     <FolderMinus className="size-3.5 shrink-0 text-foreground" />

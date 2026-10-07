@@ -80,7 +80,7 @@ export function InspectorTabs({
               <PanelRight className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="left" sideOffset={6} className="text-12 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md">
+          <TooltipContent side="left" sideOffset={6} className="text-12 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm">
             {isInspectorOpen ? 'Collapse inspector' : 'Expand inspector'}
           </TooltipContent>
         </Tooltip>

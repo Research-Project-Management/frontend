@@ -54,7 +54,7 @@ export function RetractionNoticeModal({
               <DialogTitle className="text-14 font-semibold text-destructive tracking-tight">
                 {retractionInfo.title || 'Retracted Publication'}
               </DialogTitle>
-              <DialogDescription className="text-12 text-muted-foreground mt-0.5">
+              <DialogDescription className="text-12 text-foreground mt-0.5">
                 Flagged by Retraction Watch and Crossref academic integrity databases.
               </DialogDescription>
             </div>
@@ -64,7 +64,7 @@ export function RetractionNoticeModal({
         <div className="space-y-3.5 text-12">
           {/* Paper Title Box */}
           <div className="rounded-md bg-muted/40 border border-border p-2.5">
-            <span className="text-11 text-muted-foreground block mb-0.5 font-normal">
+            <span className="text-11 text-foreground block mb-0.5 font-normal">
               Publication Title
             </span>
             <div className="font-medium text-foreground leading-snug break-words">
@@ -75,7 +75,7 @@ export function RetractionNoticeModal({
           {/* Metadata badges row */}
           <div className="grid grid-cols-2 gap-2 text-11">
             <div className="rounded border border-border bg-background p-2">
-              <span className="text-muted-foreground block text-10">Status / Nature</span>
+              <span className="text-foreground block text-10">Status / Nature</span>
               <span className="font-medium text-destructive capitalize">
                 {retractionInfo.nature
                   ? retractionInfo.nature.replace(/_/g, ' ')
@@ -83,7 +83,7 @@ export function RetractionNoticeModal({
               </span>
             </div>
             <div className="rounded border border-border bg-background p-2">
-              <span className="text-muted-foreground block text-10">Retraction Date</span>
+              <span className="text-foreground block text-10">Retraction Date</span>
               <span className="font-mono text-foreground font-medium">
                 {retractionInfo.date || 'Unspecified'}
               </span>
@@ -92,7 +92,7 @@ export function RetractionNoticeModal({
 
           {/* Official Reason Alert Card */}
           <div className="rounded-md border border-destructive/25 bg-destructive/10 p-3 space-y-2">
-            <div className="text-11 font-semibold text-destructive uppercase tracking-wide flex items-center gap-1.5">
+            <div className="text-11 font-semibold text-destructive tracking-wide flex items-center gap-1.5">
               <AlertTriangle className="size-3.5 shrink-0" strokeWidth={1.5} />
               <span>Official Reason</span>
             </div>
@@ -120,8 +120,8 @@ export function RetractionNoticeModal({
           </div>
 
           {/* Academic Rigor Notice */}
-          <div className="text-11 text-muted-foreground bg-muted/30 rounded p-2.5 border border-border/60 leading-normal">
-            <strong>Citation Warning:</strong> Including retracted papers in your bibliography may compromise the validity of your research results.
+          <div className="text-11 text-foreground bg-muted/30 rounded p-2.5 border border-border/60 leading-normal">
+            <strong className="text-foreground">Citation Warning:</strong> Including retracted papers in your bibliography may compromise the validity of your research results.
           </div>
         </div>
 
@@ -133,7 +133,7 @@ export function RetractionNoticeModal({
               size="sm"
               onClick={handleDismiss}
               disabled={isDismissing}
-              className="text-12 font-medium h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 px-3 cursor-pointer"
+              className="text-13 font-medium h-8 text-foreground hover:text-destructive hover:bg-destructive/10 px-3 cursor-pointer"
             >
               Dismiss warning
             </Button>
@@ -146,7 +146,7 @@ export function RetractionNoticeModal({
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="text-12 font-medium h-8 px-3.5 min-w-[70px] cursor-pointer"
+            className="text-13 font-medium h-8 px-3.5 min-w-[70px] cursor-pointer"
           >
             Close
           </Button>

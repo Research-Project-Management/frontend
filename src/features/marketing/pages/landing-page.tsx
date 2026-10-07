@@ -254,7 +254,7 @@ export default function LandingPage() {
             <FeatureCard
               icon={<BookOpen className='size-5 shrink-0' aria-hidden='true' />}
               title='Academic library'
-              description='Automatic GROBID PDF extraction, DOI resolution, and 2-way sync with Zotero and Mendeley. Manage references effortlessly.'
+              description='Multi-tier in-process PDF extraction, direct DOI resolution, and 2-way sync with Zotero and Mendeley. Manage references effortlessly.'
               reduced={isReduced}
             />
             <FeatureCard

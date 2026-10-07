@@ -294,7 +294,7 @@ export function LibrarySidebar() {
                         setIsLibraryExpanded((v) => !v);
                       }}
                       aria-label={isLibraryExpanded ? 'Collapse My Library' : 'Expand My Library'}
-                      className="absolute right-2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-foreground/10 active:bg-foreground/20 cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-2 md:before:hidden"
+                      className="absolute right-1.5 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-foreground/10 active:bg-foreground/20 cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-2 md:before:hidden"
                     >
                       <ChevronRight
                         className={cn(
@@ -310,7 +310,7 @@ export function LibrarySidebar() {
                     align="start"
                     sideOffset={6}
                     alignOffset={2}
-                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
+                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
                   >
                     {isLibraryExpanded ? 'Collapse' : 'Expand'}
                   </TooltipContent>
@@ -449,6 +449,8 @@ export function LibrarySidebar() {
           isPending={collectionService.state.isCreating}
           collections={collections}
           defaultParentId={modals.createParentId}
+          rootLabel={activeScope.type === 'project' ? (activeScope.name || 'Project') : 'My Library'}
+          rootType={activeScope.type === 'project' ? 'project' : 'user'}
         />
 
         <TrashModal

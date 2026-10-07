@@ -87,7 +87,7 @@ export function SidebarSystemNav({
 
       {/* 2. Saved Searches (Only rendered when items exist) */}
       {isUserScope && savedSearches && savedSearches.length > 0 && (
-        <div className="my-1 flex flex-col gap-0.5 border-t border-border pt-1">
+        <div className="my-1 flex flex-col gap-0.5">
           <div className="px-6 py-1 text-11 font-medium text-foreground">
             <span>Saved Searches</span>
           </div>
@@ -123,18 +123,15 @@ export function SidebarSystemNav({
             }
 
             return (
-              <div key={ss.id} className="group/item relative flex items-center w-full has-[[data-state=open]]:bg-muted rounded-md">
-                <div className="flex-1 min-w-0">
-                  <SidebarNavItem
-                    href={`${basePath}?filter=saved-search&savedSearchId=${ss.id}`}
-                    icon={Search}
-                    label={cleanName}
-                    isActive={isSSActive}
-                    navId={navId}
-                    onClick={onSelectUserScope}
-                  />
-                </div>
-                <div className="absolute right-1.5 z-20">
+              <SidebarNavItem
+                key={ss.id}
+                href={`${basePath}?filter=saved-search&savedSearchId=${ss.id}`}
+                icon={Search}
+                label={cleanName}
+                isActive={isSSActive}
+                navId={navId}
+                onClick={onSelectUserScope}
+                action={
                   <SavedSearchContextMenu
                     savedSearch={ss as SavedSearch}
                     onEdit={onEditSavedSearch || (() => {})}
@@ -142,23 +139,17 @@ export function SidebarSystemNav({
                     onDuplicate={onDuplicateSavedSearch || (() => {})}
                     onDelete={onDeleteSavedSearch || (() => {})}
                   />
-                </div>
-              </div>
+                }
+              />
             );
           })}
         </div>
       )}
 
       {/* 3. System Bottom Filters */}
-      <div
-        className={cn(
-          'my-1 flex flex-col gap-0.5',
-          hasSavedSearches && 'border-t border-border pt-1',
-        )}
-      >
+      <div className="my-1 flex flex-col gap-0.5">
         {SYSTEM_BOTTOM_NAV_ITEMS.map((item) => {
           const isActive = item.isActive(pathname, currentFilter, isUserScope, basePath);
-          const badgeCount = item.getBadge?.(stats ?? {});
 
           return (
             <SidebarNavItem
@@ -170,13 +161,6 @@ export function SidebarSystemNav({
               navId={navId}
               onClick={onSelectUserScope}
               onDropItems={item.id === 'unfiled' ? (ids) => onDropItems?.(ids, null) : undefined}
-              badge={
-                badgeCount ? (
-                  <span className="relative z-10 ml-auto rounded-full bg-muted-foreground/15 px-1.5 py-0.2 text-10 font-medium tabular-nums text-muted-foreground">
-                    {badgeCount}
-                  </span>
-                ) : null
-              }
             />
           );
         })}

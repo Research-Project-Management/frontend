@@ -65,7 +65,7 @@ export function InlineField({
     return (
       <div
         className={cn(
-          'w-full h-7 text-foreground px-2 py-1 rounded-md text-12 leading-normal font-normal truncate whitespace-nowrap select-text flex items-center font-sans',
+          'w-full h-7 text-foreground px-2 py-1 rounded-md text-13 leading-normal font-normal truncate whitespace-nowrap select-text flex items-center font-sans',
           mono && 'font-mono text-11 tabular-nums tracking-normal',
           className,
         )}
@@ -85,8 +85,8 @@ export function InlineField({
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       className={cn(
-        'w-full flex-1 min-w-0 h-7 bg-transparent text-foreground px-2 py-1 rounded-md border border-transparent outline-none text-12 leading-normal font-normal truncate transition-colors font-sans',
-        'hover:bg-muted/40 focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary focus:hover:bg-background',
+        'w-full flex-1 min-w-0 h-7 bg-transparent text-foreground px-2 py-1 rounded-md border border-transparent outline-none text-13 leading-normal font-normal truncate transition-colors font-sans',
+        'hover:bg-muted/40 focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary/20 focus:hover:bg-background',
         mono && 'font-mono text-11 tabular-nums tracking-normal',
         className,
       )}

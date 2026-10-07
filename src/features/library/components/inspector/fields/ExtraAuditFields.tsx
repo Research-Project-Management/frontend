@@ -86,7 +86,7 @@ export function ExtraAuditFields({
       {(canEdit || isValidValue(formattedExtraMetadata)) && (
         <div className="grid grid-cols-[84px_1fr] gap-2 items-start py-0.5">
           <span
-            className="text-muted-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate pt-1"
+            className="text-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate pt-1"
             id="label-extra"
             title="Extra"
           >
@@ -109,7 +109,7 @@ export function ExtraAuditFields({
       {isValidValue(paper.createdAt) && (
         <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5">
           <span
-            className="text-muted-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate"
+            className="text-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate"
             title="Date Added"
           >
             Date Added
@@ -124,7 +124,7 @@ export function ExtraAuditFields({
       {isValidValue(paper.updatedAt) && (
         <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5">
           <span
-            className="text-muted-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate"
+            className="text-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate"
             title="Modified"
           >
             Modified
@@ -139,7 +139,7 @@ export function ExtraAuditFields({
       {sources.length > 0 && (
         <div className="grid grid-cols-[84px_1fr] gap-2 items-start py-0.5">
           <span
-            className="text-muted-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate pt-1"
+            className="text-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate pt-1"
             id="label-sources"
             title="Sources"
           >
@@ -150,7 +150,7 @@ export function ExtraAuditFields({
               <span
                 key={s.id}
                 title={`Fetched at ${formatAuditDate(s.fetchedAt)} via ${s.sourceProvider}`}
-                className="inline-flex items-center rounded-md bg-muted border border-border px-1.5 py-0.5 text-10 font-medium text-muted-foreground"
+                className="inline-flex items-center rounded-md bg-muted border border-border px-1.5 py-0.5 text-10 font-medium text-foreground"
               >
                 {s.sourceProvider}
               </span>

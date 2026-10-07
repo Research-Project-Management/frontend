@@ -347,7 +347,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
               onClick={() => setIsSearchModalOpen(true)}
               className="h-7.5 px-2 text-xs cursor-pointer rounded-md hover:bg-muted text-foreground font-medium flex items-center gap-1.5"
             >
-              <Search className="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+              <Search className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
               <span>Search more styles...</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -362,7 +362,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
           className="flex items-center justify-between px-2.5 py-1 rounded-md border border-border bg-transparent hover:border-border/80 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors text-12 cursor-text"
         >
           <div className="flex items-center gap-1.5 min-w-0 pr-2">
-            <span className="text-muted-foreground text-11 shrink-0 font-medium">In-text:</span>
+            <span className="text-foreground text-11 shrink-0 font-medium">In-text:</span>
             <span className="font-mono text-12 text-foreground break-words leading-snug select-text">
               {inTextPreview}
             </span>
@@ -480,7 +480,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
               }}
             />
           ) : (
-            <div className="text-muted-foreground text-xs italic select-none py-1">
+            <div className="text-foreground text-xs italic select-none py-1">
               Citation data unavailable.
             </div>
           )}

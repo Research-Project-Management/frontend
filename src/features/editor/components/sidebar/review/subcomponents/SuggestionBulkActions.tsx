@@ -29,7 +29,7 @@ export function SuggestionBulkActions({
           type="button"
           onClick={onRejectAll}
           disabled={isRejecting || isAccepting}
-          className="px-2.5 py-1 rounded text-xs text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 transition-colors cursor-pointer disabled:opacity-50"
+          className="px-2.5 py-1 rounded text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer disabled:opacity-50"
         >
           Reject All
         </button>

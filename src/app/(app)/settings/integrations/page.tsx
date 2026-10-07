@@ -1,15 +1,11 @@
-import React, { Suspense } from 'react';
-import { IntegrationsHub } from '@/features/integrations/components/IntegrationsHub';
+import type { Metadata } from 'next';
+import IntegrationsPage from '@/features/settings/pages/IntegrationsPage';
 
-export const metadata = {
-  title: 'Integrations & Connected Apps | Flux',
+export const metadata: Metadata = {
+  title: 'Integrations & Connected Apps · Flux',
   description: 'Manage third-party integrations with Zotero, Mendeley, ORCID, and GitHub.',
 };
 
 export default function IntegrationsSettingsPage() {
-  return (
-    <Suspense fallback={null}>
-      <IntegrationsHub />
-    </Suspense>
-  );
+  return <IntegrationsPage />;
 }

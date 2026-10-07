@@ -21,7 +21,7 @@ export function WorkloadCards({
 
   return (
     <div className="space-y-2">
-      <h2 className="text-sm font-semibold text-foreground tracking-tight mb-2.5">
+      <h2 className="text-13 font-semibold text-foreground tracking-tight mb-2.5">
         Workload
       </h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -35,7 +35,7 @@ export function WorkloadCards({
                 className="size-2.5 rounded-xs shrink-0"
                 style={{ backgroundColor: state.hex }}
               />
-              <span className="text-xs font-normal text-muted-foreground truncate">
+              <span className="text-12 font-normal text-muted-foreground truncate">
                 {state.label}
               </span>
             </div>

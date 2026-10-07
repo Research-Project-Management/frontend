@@ -49,14 +49,14 @@ const Card = memo(
         {/* Top accent bar + drag handle */}
         <div
           tabIndex={0}
-          className="h-9 shrink-0 flex items-center justify-between px-3.5 cursor-grab active:cursor-grabbing active:outline-0 select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          className="h-9 shrink-0 flex items-center justify-between px-3.5 cursor-grab active:cursor-grabbing active:outline-0 select-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset"
           style={topAccentStyle}
           aria-label="Drag to move sticky"
           aria-roledescription="draggable card handle"
           {...dragHandleProps}
         >
           <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
-            <div className="text-xs opacity-50 font-medium">
+            <div className="text-12 opacity-50 font-medium">
               {sticky.updatedAt ? new Date(sticky.updatedAt).toLocaleDateString() : ""}
             </div>
           </div>

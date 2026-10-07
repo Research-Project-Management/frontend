@@ -21,11 +21,11 @@ export function ActivityFeedList({
   return (
     <div className="rounded-md bg-muted/30 overflow-hidden divide-y divide-border/40 shadow-none">
       {isLoading ? (
-        <div className="p-8 text-center text-xs text-muted-foreground">
+        <div className="p-8 text-center text-12 text-muted-foreground">
           Loading recent activities...
         </div>
       ) : items.length === 0 ? (
-        <div className={`text-center ${emptyPadding} text-muted-foreground text-xs font-medium italic`}>
+        <div className={`text-center ${emptyPadding} text-muted-foreground text-12 font-medium italic`}>
           No activity yet.
         </div>
       ) : (

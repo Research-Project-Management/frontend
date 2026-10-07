@@ -344,7 +344,7 @@ export function CreateProjectModal({
     <Dialog open={isModalOpen} onOpenChange={handleOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="w-[94vw] sm:max-w-[780px] md:max-w-[820px] p-0 overflow-hidden rounded-lg border border-border bg-background gap-0 z-50 duration-150"
+        className="w-[94vw] sm:max-w-[780px] md:max-w-[820px] p-0 overflow-hidden rounded-lg border border-border bg-background gap-0 z-50 duration-150 shadow-raised-200"
       >
         <DialogTitle className="sr-only">
           {step === 1 ? 'Create Project' : 'Projects and work items'}
@@ -373,7 +373,7 @@ export function CreateProjectModal({
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="absolute top-3 right-3 size-7 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-xs flex items-center justify-center transition-colors cursor-pointer z-10"
+                  className="absolute top-3 right-3 size-7 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-xs flex items-center justify-center transition-colors cursor-pointer z-10 relative before:absolute before:-inset-1.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   aria-label="Close dialog"
                 >
                   <X className="size-4 shrink-0" />
@@ -507,7 +507,7 @@ export function CreateProjectModal({
                     <PopoverTrigger asChild>
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-12 font-medium text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-12 font-medium text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       >
                         <ActivePriorityIcon className="size-3.5 shrink-0" />
                         <span>{activePriorityOption.label}</span>
@@ -515,7 +515,7 @@ export function CreateProjectModal({
                     </PopoverTrigger>
                     <PopoverContent
                       align="start"
-                      className="w-44 p-1 rounded-md border border-border bg-popover z-100 space-y-0.5 shadow-md"
+                      className="w-44 p-1 rounded-md border border-border bg-popover z-100 space-y-0.5 shadow-overlay"
                     >
                       {PROJECT_PRIORITY_OPTIONS.map((opt) => {
                         const isSelected = priority === opt.value;
@@ -552,7 +552,7 @@ export function CreateProjectModal({
                       <button
                         type="button"
                         className={cn(
-                          'inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-12 font-normal text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                          'inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-12 font-normal text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
                           startDate && 'font-medium'
                         )}
                       >
@@ -575,7 +575,7 @@ export function CreateProjectModal({
                     </PopoverTrigger>
                     <PopoverContent
                       align="start"
-                      className="w-auto p-0 rounded-md border border-border bg-popover z-100 shadow-md"
+                      className="w-auto p-0 rounded-md border border-border bg-popover z-100 shadow-overlay"
                     >
                       <Calendar
                         mode="single"
@@ -595,7 +595,7 @@ export function CreateProjectModal({
                       <button
                         type="button"
                         className={cn(
-                          'inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-12 font-normal text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                          'inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-12 font-normal text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
                           targetDate && 'font-medium'
                         )}
                       >
@@ -618,7 +618,7 @@ export function CreateProjectModal({
                     </PopoverTrigger>
                     <PopoverContent
                       align="start"
-                      className="w-auto p-0 rounded-md border border-border bg-popover z-100 shadow-md"
+                      className="w-auto p-0 rounded-md border border-border bg-popover z-100 shadow-overlay"
                     >
                       <Calendar
                         mode="single"
@@ -642,7 +642,7 @@ export function CreateProjectModal({
                 variant="outline"
                 size="sm"
                 onClick={handleClose}
-                className="h-8.5 px-3.5 text-13 font-medium rounded-md cursor-pointer border border-border hover:bg-muted text-foreground transition-colors"
+                className="h-8 px-3 text-12 font-medium rounded-md cursor-pointer border border-border hover:bg-muted text-foreground transition-colors relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 Cancel
               </Button>
@@ -651,7 +651,7 @@ export function CreateProjectModal({
                 type="submit"
                 size="sm"
                 disabled={createMutation.isPending}
-                className="h-8.5 px-4 text-13 font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none cursor-pointer transition-colors"
+                className="h-8 px-3.5 text-12 font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none cursor-pointer transition-colors relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 {createMutation.isPending && (
                   <Loader2 className="mr-2 size-3.5 animate-spin shrink-0" />
@@ -717,7 +717,7 @@ export function CreateProjectModal({
                   variant="outline"
                   size="sm"
                   onClick={handleClose}
-                  className="h-8.5 px-3.5 text-13 font-medium rounded-md cursor-pointer border border-border hover:bg-muted text-foreground transition-colors"
+                  className="h-8 px-3 text-12 font-medium rounded-md cursor-pointer border border-border hover:bg-muted text-foreground transition-colors relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   Close
                 </Button>
@@ -725,7 +725,7 @@ export function CreateProjectModal({
                   type="button"
                   size="sm"
                   onClick={handleOpenProject}
-                  className="h-8.5 px-4 text-13 font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none cursor-pointer transition-colors"
+                  className="h-8 px-3.5 text-12 font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none cursor-pointer transition-colors relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   Open project
                 </Button>

@@ -25,7 +25,7 @@ export function Filter({ currentRole, onSelectRole }: FilterProps) {
         <button
           type="button"
           className={cn(
-            'h-8 px-3 rounded-md border border-border bg-background hover:bg-muted text-xs font-medium text-foreground flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0',
+            'relative h-8 px-3 rounded-md border border-border bg-background hover:bg-muted text-12 font-medium text-foreground flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0 before:absolute before:-inset-1 md:before:hidden',
             currentRole && 'border-primary/50 text-primary'
           )}
         >
@@ -34,7 +34,7 @@ export function Filter({ currentRole, onSelectRole }: FilterProps) {
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-36 p-1 rounded-md">
+      <DropdownMenuContent align="end" className="w-36 p-1 rounded-md shadow-overlay">
         {ROLES.map((r) => {
           const isSelected = currentRole === r.id;
           return (
@@ -42,7 +42,7 @@ export function Filter({ currentRole, onSelectRole }: FilterProps) {
               key={r.label}
               onClick={() => onSelectRole(r.id)}
               className={cn(
-                'flex items-center justify-between px-2.5 py-1.5 text-xs rounded-md cursor-pointer',
+                'flex items-center justify-between px-2.5 py-1.5 text-12 rounded-md cursor-pointer',
                 isSelected && 'bg-muted font-medium text-foreground'
               )}
             >

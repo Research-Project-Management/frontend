@@ -60,6 +60,7 @@ export interface UseEditorCompartmentsParams {
   trackChangesViewMode?: TrackChangesViewMode;
   bibEntriesRef: React.RefObject<any[]>;
   projectFilesRef: React.RefObject<any[]>;
+  filePath?: string;
 }
 
 export function useEditorCompartments(params: UseEditorCompartmentsParams) {
@@ -94,7 +95,11 @@ export function useEditorCompartments(params: UseEditorCompartmentsParams) {
     trackChangesViewMode,
     bibEntriesRef,
     projectFilesRef,
+    filePath,
   } = params;
+
+  const filePathRef = useRef(filePath);
+  filePathRef.current = filePath;
 
   // Compartment references
   const modeCompartmentRef = useRef(new Compartment());
@@ -115,6 +120,23 @@ export function useEditorCompartments(params: UseEditorCompartmentsParams) {
   const isVisual = editorMode === 'visual';
   const isVim = effectiveKeybinding === 'vim';
   const isEmacs = effectiveKeybinding === 'emacs';
+
+  // State change tracking refs to avoid redundant reconfigurations on initial mount
+  const lastThemeRef = useRef(isDarkTheme);
+  const lastFontSizeRef = useRef(fontSize);
+  const lastFontFamilyRef = useRef(fontFamily);
+  const lastLineHeightRef = useRef(lineHeight);
+  const lastReadOnlyRef = useRef(readOnly);
+  const lastKeybindingRef = useRef(effectiveKeybinding);
+  const lastSpellCheckRef = useRef(spellCheck);
+  const lastSpellCheckLangRef = useRef(spellCheckLanguage);
+  const lastEditorModeRef = useRef(editorMode);
+  const lastWordWrapRef = useRef(wordWrap || isVisual);
+  const lastLineNumbersRef = useRef(lineNumbersSetting);
+  const lastAutoCloseBracketsRef = useRef(autoCloseBrackets);
+  const lastAutoCompleteRef = useRef(autoComplete);
+  const lastNonBlinkingCursorRef = useRef(nonBlinkingCursor);
+  const lastLinterVisualRef = useRef(isVisual);
 
   /**
    * Builds initial compartment extensions bundle for EditorState.create()
@@ -137,6 +159,7 @@ export function useEditorCompartments(params: UseEditorCompartmentsParams) {
               () => retractedMapRef.current,
               () => compileErrorsRef.current,
               () => linterEnabledRef.current,
+              () => filePathRef.current,
             )
           : []
       ),
@@ -217,6 +240,8 @@ export function useEditorCompartments(params: UseEditorCompartmentsParams) {
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+    if (lastThemeRef.current === isDarkTheme) return;
+    lastThemeRef.current = isDarkTheme;
     view.dispatch({
       effects: themeCompartmentRef.current.reconfigure(getEditorTheme(isDarkTheme)),
     });
@@ -226,6 +251,16 @@ export function useEditorCompartments(params: UseEditorCompartmentsParams) {
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+    if (
+      lastFontSizeRef.current === fontSize &&
+      lastFontFamilyRef.current === fontFamily &&
+      lastLineHeightRef.current === lineHeight
+    ) {
+      return;
+    }
+    lastFontSizeRef.current = fontSize;
+    lastFontFamilyRef.current = fontFamily;
+    lastLineHeightRef.current = lineHeight;
     view.dispatch({
       effects: typographyCompartmentRef.current.reconfigure(
         getTypographyExtension(fontSize, fontFamily, lineHeight)
@@ -237,6 +272,8 @@ export function useEditorCompartments(params: UseEditorCompartmentsParams) {
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+    if (lastReadOnlyRef.current === readOnly) return;
+    lastReadOnlyRef.current = readOnly;
     view.dispatch({
       effects: readOnlyCompartmentRef.current.reconfigure(EditorState.readOnly.of(readOnly)),
     });
@@ -246,6 +283,8 @@ export function useEditorCompartments(params: UseEditorCompartmentsParams) {
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+    if (lastKeybindingRef.current === effectiveKeybinding) return;
+    lastKeybindingRef.current = effectiveKeybinding;
     const vimActive = effectiveKeybinding === 'vim';
     const emacsActive = effectiveKeybinding === 'emacs';
     view.dispatch({
@@ -263,6 +302,14 @@ export function useEditorCompartments(params: UseEditorCompartmentsParams) {
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+    if (
+      lastSpellCheckRef.current === spellCheck &&
+      lastSpellCheckLangRef.current === spellCheckLanguage
+    ) {
+      return;
+    }
+    lastSpellCheckRef.current = spellCheck;
+    lastSpellCheckLangRef.current = spellCheckLanguage;
     view.dispatch({
       effects: spellcheckCompartmentRef.current.reconfigure(
         spellCheck ? createLatexSpellcheckExtension(projectId, () => spellCheckLanguage) : []
@@ -310,6 +357,8 @@ export function useEditorCompartments(params: UseEditorCompartmentsParams) {
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+    if (lastEditorModeRef.current === editorMode) return;
+    lastEditorModeRef.current = editorMode;
 
     const visual = editorMode === 'visual';
     const modeExtensions = visual
@@ -331,9 +380,13 @@ export function useEditorCompartments(params: UseEditorCompartmentsParams) {
     const view = viewRef.current;
     if (!view) return;
     const visual = editorMode === 'visual';
+    const effectiveWrap = wordWrap || visual;
+    if (lastWordWrapRef.current === effectiveWrap) return;
+    lastWordWrapRef.current = effectiveWrap;
+
     view.dispatch({
       effects: wordWrapCompartmentRef.current.reconfigure(
-        (wordWrap || visual) ? [EditorView.lineWrapping] : []
+        effectiveWrap ? [EditorView.lineWrapping] : []
       ),
     });
   }, [wordWrap, editorMode, viewRef]);
@@ -342,6 +395,9 @@ export function useEditorCompartments(params: UseEditorCompartmentsParams) {
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+    if (lastLineNumbersRef.current === lineNumbersSetting) return;
+    lastLineNumbersRef.current = lineNumbersSetting;
+
     view.dispatch({
       effects: lineNumbersCompartmentRef.current.reconfigure(
         lineNumbersSetting ? [lineNumbers(), highlightActiveLineGutter()] : []
@@ -369,6 +425,9 @@ export function useEditorCompartments(params: UseEditorCompartmentsParams) {
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+    if (lastAutoCloseBracketsRef.current === autoCloseBrackets) return;
+    lastAutoCloseBracketsRef.current = autoCloseBrackets;
+
     view.dispatch({
       effects: bracketsCompartmentRef.current.reconfigure(autoCloseBrackets ? [closeBrackets()] : []),
     });
@@ -378,6 +437,9 @@ export function useEditorCompartments(params: UseEditorCompartmentsParams) {
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+    if (lastAutoCompleteRef.current === autoComplete) return;
+    lastAutoCompleteRef.current = autoComplete;
+
     const latexCompletion = autocompletion({
       override: [
         createLatexCompletionSource(
@@ -397,6 +459,9 @@ export function useEditorCompartments(params: UseEditorCompartmentsParams) {
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+    if (lastNonBlinkingCursorRef.current === nonBlinkingCursor) return;
+    lastNonBlinkingCursorRef.current = nonBlinkingCursor;
+
     view.dispatch({
       effects: cursorBlinkCompartmentRef.current.reconfigure(
         nonBlinkingCursor ? [EditorView.theme({ '.cm-cursor': { animation: 'none' } })] : []
@@ -409,6 +474,9 @@ export function useEditorCompartments(params: UseEditorCompartmentsParams) {
     const view = viewRef.current;
     if (!view) return;
     const visual = editorMode === 'visual';
+    if (lastLinterVisualRef.current === visual) return;
+    lastLinterVisualRef.current = visual;
+
     view.dispatch({
       effects: linterCompartmentRef.current.reconfigure(
         !visual

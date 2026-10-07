@@ -158,6 +158,7 @@ export function SidebarSystemNav({
       >
         {SYSTEM_BOTTOM_NAV_ITEMS.map((item) => {
           const isActive = item.isActive(pathname, currentFilter, isUserScope, basePath);
+          const badgeCount = item.getBadge?.(stats ?? {});
 
           return (
             <SidebarNavItem
@@ -169,6 +170,13 @@ export function SidebarSystemNav({
               navId={navId}
               onClick={onSelectUserScope}
               onDropItems={item.id === 'unfiled' ? (ids) => onDropItems?.(ids, null) : undefined}
+              badge={
+                badgeCount ? (
+                  <span className="relative z-10 ml-auto rounded-full bg-muted-foreground/15 px-1.5 py-0.2 text-10 font-medium tabular-nums text-muted-foreground">
+                    {badgeCount}
+                  </span>
+                ) : null
+              }
             />
           );
         })}

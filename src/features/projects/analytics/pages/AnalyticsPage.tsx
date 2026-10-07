@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   BarChart3,
@@ -31,12 +31,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
+import { PlaneEmptyState, PlaneErrorState } from '@/shared/components/ui';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { AnalyticsService } from '../services/analytics.service';
 import type { AnalyticsPageProps } from '../types/analytics.types';
 import { cn } from '@/shared/lib/utils';
 
 export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
+  const router = useRouter();
   const params = useParams() as { projectId?: string };
   const searchParams = useSearchParams();
   const urlProjectId = initialProjectId || params?.projectId || searchParams?.get('projectId') || '';
@@ -50,6 +52,8 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
   const {
     data: workspaceData,
     isLoading: isWorkspaceLoading,
+    isError: isWorkspaceError,
+    error: workspaceError,
     refetch: refetchWorkspace,
   } = useQuery({
     queryKey: ['workspace-analytics'],
@@ -61,6 +65,8 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
   const {
     data: projectDist,
     isLoading: isProjectDistLoading,
+    isError: isProjectDistError,
+    error: projectDistError,
     refetch: refetchProject,
   } = useQuery({
     queryKey: ['project-analytics-dist', selectedProjectId],
@@ -73,6 +79,9 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
   const {
     data: projectOverviewData,
     isLoading: isProjectOverviewLoading,
+    isError: isProjectOverviewError,
+    error: projectOverviewError,
+    refetch: refetchProjectOverview,
   } = useQuery({
     queryKey: ['project-overview-stats', selectedProjectId],
     queryFn: () => AnalyticsService.getProjectOverview(selectedProjectId),
@@ -99,9 +108,15 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
 
   const completionRate = totalWorkItems > 0 ? Math.round((completedWorkItems / totalWorkItems) * 100) : 0;
 
+  const isError = selectedProjectId
+    ? isProjectDistError || isProjectOverviewError
+    : isWorkspaceError;
+  const currentError = (selectedProjectId ? (projectDistError || projectOverviewError) : workspaceError) as Error;
+
   const handleRefresh = () => {
     if (selectedProjectId) {
       refetchProject();
+      refetchProjectOverview();
     } else {
       refetchWorkspace();
     }
@@ -113,14 +128,14 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
     <div className="flex flex-col flex-1 h-full min-h-0 bg-background overflow-hidden select-none">
       {/* ── Topbar Header ── */}
       <header
-        className="flex items-center justify-between px-6 h-11 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-10 shrink-0"
+        className="flex items-center justify-between px-6 h-11 border-b border-border bg-background sticky top-0 z-10 shrink-0"
         style={{ paddingLeft: 'max(1.5rem, var(--header-offset, 0px))' }}
       >
         <div className="flex items-center gap-2.5 min-w-0">
           <BarChart3 className="size-4 text-primary shrink-0" />
-          <h1 className="text-sm font-semibold text-foreground tracking-tight">Analytics</h1>
-          <span className="text-xs text-muted-foreground hidden sm:inline">·</span>
-          <span className="text-xs text-muted-foreground hidden sm:inline truncate">
+          <h1 className="text-13 font-semibold text-foreground tracking-tight">Analytics</h1>
+          <span className="text-12 text-muted-foreground hidden sm:inline">·</span>
+          <span className="text-12 text-muted-foreground hidden sm:inline truncate">
             {selectedProject ? selectedProject.name : 'Workspace Overview'}
           </span>
         </div>
@@ -132,7 +147,7 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-2.5 text-xs gap-2 text-foreground hover:bg-muted font-normal cursor-pointer"
+                className="relative h-8 px-2.5 text-12 font-medium gap-2 text-foreground hover:bg-muted cursor-pointer shadow-none focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
               >
                 {selectedProject ? (
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -148,10 +163,10 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
                 <ChevronDown className="size-3 text-muted-foreground shrink-0" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 p-1 text-xs">
+            <DropdownMenuContent align="end" className="w-56 p-1 text-12 shadow-overlay bg-popover">
               <DropdownMenuItem
                 onClick={() => setSelectedProjectId('')}
-                className={cn('cursor-pointer font-medium flex items-center justify-between', !selectedProjectId && 'bg-muted font-semibold')}
+                className={cn('cursor-pointer font-medium flex items-center justify-between text-12', !selectedProjectId && 'bg-muted font-semibold')}
               >
                 <div className="flex items-center gap-2">
                   <Layers className="size-3.5 text-muted-foreground shrink-0" />
@@ -168,7 +183,7 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
                   <DropdownMenuItem
                     key={p.id}
                     onClick={() => setSelectedProjectId(p.id)}
-                    className={cn('cursor-pointer font-medium flex items-center justify-between', isSelected && 'bg-muted font-semibold')}
+                    className={cn('cursor-pointer font-medium flex items-center justify-between text-12', isSelected && 'bg-muted font-semibold')}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <ProjectAvatar avatar={p.avatar} name={p.name} id={p.id} size="xs" />
@@ -186,7 +201,7 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
             variant="ghost"
             size="icon"
             onClick={handleRefresh}
-            className="size-8 text-muted-foreground hover:text-foreground cursor-pointer"
+            className="relative size-8 text-muted-foreground hover:text-foreground cursor-pointer focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
             title="Refresh analytics data"
           >
             <RotateCcw className="size-3.5 shrink-0" />
@@ -196,13 +211,25 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
 
       {/* ── Main Content Area ── */}
       <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
-        {/* Title and Scope Banner */}
+        {!isLoading && isError ? (
+          <div className="h-full min-h-[380px] flex items-center justify-center">
+            <PlaneErrorState
+              title={selectedProjectId ? `Unable to load analytics for ${selectedProject?.name || 'project'}` : "Unable to load workspace analytics"}
+              description={selectedProjectId ? "We couldn't fetch metrics and workflow distribution for this project." : "An error occurred while compiling workspace performance and asset metrics."}
+              error={currentError}
+              homeHref={selectedProjectId ? "/projects/analytics" : undefined}
+              homeLabel={selectedProjectId ? "Back to Workspace Overview" : undefined}
+            />
+          </div>
+        ) : (
+          <>
+            {/* Title and Scope Banner */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
           <div>
-            <h2 className="text-2xl font-semibold text-foreground tracking-tight">
+            <h2 className="text-20 font-semibold text-foreground tracking-tight">
               {selectedProject ? `${selectedProject.name} Insights` : 'Workspace Performance Insights'}
             </h2>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-13 text-muted-foreground mt-1">
               {selectedProject
                 ? `Detailed metrics, workflow status, priority allocation, and team workload for ${selectedProject.name}.`
                 : 'Aggregated analytics across all projects, team members, and research artifacts.'}
@@ -214,7 +241,7 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-3 text-xs gap-1.5 rounded-md cursor-pointer text-muted-foreground hover:text-foreground"
+                className="relative h-8 px-3 text-12 font-medium gap-1.5 rounded-md cursor-pointer text-muted-foreground hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
                 onClick={() => setSelectedProjectId('')}
               >
                 <span>← All Projects Overview</span>
@@ -223,7 +250,7 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
                 asChild
                 variant="outline"
                 size="sm"
-                className="h-8 px-3 text-xs gap-1.5 rounded-md cursor-pointer shrink-0"
+                className="relative h-8 px-3 text-12 font-medium gap-1.5 rounded-md cursor-pointer shrink-0 focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
               >
                 <Link href={`/projects/${selectedProjectId}/work-items`}>
                   <span>Go to Work Items</span>
@@ -237,14 +264,14 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Card 1: Total Projects or Work Items */}
           <div className="p-4 rounded-lg border border-border bg-card space-y-2">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center justify-between text-12 text-muted-foreground">
               <span>{selectedProjectId ? 'Total Work Items' : 'Total Projects'}</span>
               {selectedProjectId ? <Layers className="size-4 text-primary" /> : <Folder className="size-4 text-primary" />}
             </div>
             {isLoading ? (
               <Skeleton className="h-7 w-16 rounded" />
             ) : (
-              <div className="text-2xl font-semibold text-foreground font-mono">
+              <div className="text-20 font-semibold text-foreground font-mono">
                 {selectedProjectId ? totalWorkItems : stats?.projects || projects.length}
               </div>
             )}
@@ -255,14 +282,14 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
 
           {/* Card 2: Work Items Completion or Total Work Items */}
           <div className="p-4 rounded-lg border border-border bg-card space-y-2">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center justify-between text-12 text-muted-foreground">
               <span>{selectedProjectId ? 'Completion Rate' : 'Total Work Items'}</span>
-              <CheckCircle2 className="size-4 text-emerald-500" />
+              <CheckCircle2 className="size-4 text-success" />
             </div>
             {isLoading ? (
               <Skeleton className="h-7 w-16 rounded" />
             ) : (
-              <div className="text-2xl font-semibold text-foreground font-mono">
+              <div className="text-20 font-semibold text-foreground font-mono">
                 {selectedProjectId ? `${completionRate}%` : stats?.workItems || 0}
               </div>
             )}
@@ -275,14 +302,14 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
 
           {/* Card 3: Team Members */}
           <div className="p-4 rounded-lg border border-border bg-card space-y-2">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center justify-between text-12 text-muted-foreground">
               <span>Contributors</span>
               <Users className="size-4 text-primary" />
             </div>
             {isLoading ? (
               <Skeleton className="h-7 w-16 rounded" />
             ) : (
-              <div className="text-2xl font-semibold text-foreground font-mono">
+              <div className="text-20 font-semibold text-foreground font-mono">
                 {selectedProjectId
                   ? (projectDist?.assignee?.length || selectedProject?.members?.length || 1)
                   : (stats?.members || 1)}
@@ -293,14 +320,14 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
 
           {/* Card 4: Artifacts / Documents */}
           <div className="p-4 rounded-lg border border-border bg-card space-y-2">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center justify-between text-12 text-muted-foreground">
               <span>Artifacts & Files</span>
-              <FileText className="size-4 text-amber-500" />
+              <FileText className="size-4 text-warning" />
             </div>
             {isLoading ? (
               <Skeleton className="h-7 w-16 rounded" />
             ) : (
-              <div className="text-2xl font-semibold text-foreground font-mono">
+              <div className="text-20 font-semibold text-foreground font-mono">
                 {(stats?.pages || 0) + (stats?.files || 0) + (stats?.stickies || 0)}
               </div>
             )}
@@ -310,17 +337,30 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
 
         {/* ── Conditional Views: Single Project vs Workspace (All Projects) ── */}
         {selectedProjectId ? (
-          <>
-            {/* ── Workflow Status & Priority Breakdown (Dual Column) ── */}
+          !isLoading && totalWorkItems === 0 ? (
+            <div className="p-8 rounded-lg border border-border bg-card">
+              <PlaneEmptyState
+                variant="review"
+                title={`No work items in ${selectedProject?.name || 'this project'}`}
+                description="This project doesn't have any tracked tasks or workflow states yet. Create work items to view status distributions and team workloads."
+                action={{
+                  label: 'Open Work Items',
+                  onClick: () => router.push(`/projects/${selectedProjectId}/work-items`),
+                }}
+              />
+            </div>
+          ) : (
+            <>
+              {/* ── Workflow Status & Priority Breakdown (Dual Column) ── */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Status Distribution */}
               <div className="p-5 rounded-lg border border-border bg-card space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="size-4 text-foreground" />
-                    <h3 className="text-sm font-semibold text-foreground">Workflow Distribution</h3>
+                    <h3 className="text-13 font-semibold text-foreground">Workflow Distribution</h3>
                   </div>
-                  <span className="text-xs text-muted-foreground font-mono">By state</span>
+                  <span className="text-12 text-muted-foreground font-mono">By state</span>
                 </div>
 
                 {isLoading ? (
@@ -332,11 +372,11 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
                 ) : (
                   <div className="space-y-3 pt-1">
                     {projectDist?.state && Object.keys(projectDist.state).length > 0 ? (
-                      Object.entries(projectDist.state).map(([stateKey, count]) => {
+                       Object.entries(projectDist.state).map(([stateKey, count]) => {
                         const pct = totalWorkItems > 0 ? Math.round((count / totalWorkItems) * 100) : 0;
                         return (
                           <div key={stateKey} className="space-y-1.5">
-                            <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center justify-between text-12">
                               <span className="capitalize font-medium text-foreground">{stateKey.replace('_', ' ')}</span>
                               <span className="text-muted-foreground font-mono">
                                 {count} ({pct}%)
@@ -347,7 +387,7 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
                                 className={cn(
                                   'h-full rounded-full transition-all duration-300',
                                   stateKey === 'done'
-                                    ? 'bg-emerald-500'
+                                    ? 'bg-success'
                                     : stateKey === 'in_progress' || stateKey === 'in-progress'
                                       ? 'bg-primary'
                                       : stateKey === 'cancelled'
@@ -361,7 +401,7 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
                         );
                       })
                     ) : (
-                      <div className="py-8 text-center text-xs text-muted-foreground">
+                      <div className="py-8 text-center text-12 text-muted-foreground">
                         No state distribution data available for this project.
                       </div>
                     )}
@@ -374,9 +414,9 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <AlertCircle className="size-4 text-foreground" />
-                    <h3 className="text-sm font-semibold text-foreground">Priority Breakdown</h3>
+                    <h3 className="text-13 font-semibold text-foreground">Priority Breakdown</h3>
                   </div>
-                  <span className="text-xs text-muted-foreground font-mono">Severity</span>
+                  <span className="text-12 text-muted-foreground font-mono">Severity</span>
                 </div>
 
                 {isLoading ? (
@@ -392,18 +432,18 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
                         const pct = totalWorkItems > 0 ? Math.round((count / totalWorkItems) * 100) : 0;
                         const prioColor =
                           prioKey === 'urgent'
-                            ? 'bg-red-500'
+                            ? 'bg-destructive'
                             : prioKey === 'high'
-                              ? 'bg-orange-500'
+                              ? 'bg-warning'
                               : prioKey === 'medium'
-                                ? 'bg-amber-500'
+                                ? 'bg-warning/80'
                                 : prioKey === 'low'
-                                  ? 'bg-blue-500'
+                                  ? 'bg-primary'
                                   : 'bg-muted-foreground/40';
 
                         return (
                           <div key={prioKey} className="space-y-1.5">
-                            <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center justify-between text-12">
                               <span className="capitalize font-medium text-foreground">{prioKey}</span>
                               <span className="text-muted-foreground font-mono">
                                 {count} ({pct}%)
@@ -416,7 +456,7 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
                         );
                       })
                     ) : (
-                      <div className="py-8 text-center text-xs text-muted-foreground">
+                      <div className="py-8 text-center text-12 text-muted-foreground">
                         No priority distribution data available for this project.
                       </div>
                     )}
@@ -430,9 +470,9 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Users className="size-4 text-foreground" />
-                  <h3 className="text-sm font-semibold text-foreground">Team Workload Distribution</h3>
+                  <h3 className="text-13 font-semibold text-foreground">Team Workload Distribution</h3>
                 </div>
-                <span className="text-xs text-muted-foreground font-mono">Work items per contributor</span>
+                <span className="text-12 text-muted-foreground font-mono">Work items per contributor</span>
               </div>
 
               {isLoading ? (
@@ -455,24 +495,25 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
                           </AvatarFallback>
                         </Avatar>
                         <div className="truncate min-w-0">
-                          <p className="text-xs font-medium text-foreground truncate">{member.name || 'Unassigned'}</p>
+                          <p className="text-12 font-medium text-foreground truncate">{member.name || 'Unassigned'}</p>
                           <p className="text-10 text-muted-foreground">Collaborator</p>
                         </div>
                       </div>
-                      <span className="text-xs font-mono font-semibold text-foreground px-2 py-0.5 rounded bg-muted">
+                      <span className="text-12 font-mono font-medium text-foreground px-2 py-0.5 rounded bg-muted">
                         {member.count}
                       </span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="py-8 text-center text-xs text-muted-foreground">
+                <div className="py-8 text-center text-12 text-muted-foreground">
                   No active assignees recorded for this project.
                 </div>
               )}
             </div>
           </>
-        ) : (
+        )
+      ) : (
           /* ── Workspace Overview: Cross-Project Portfolio & Knowledge Assets ── */
           <div className="space-y-6">
             {/* Project Portfolio Table */}
@@ -480,9 +521,9 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Folder className="size-4 text-foreground" />
-                  <h3 className="text-sm font-semibold text-foreground">Projects Portfolio</h3>
+                  <h3 className="text-13 font-semibold text-foreground">Projects Portfolio</h3>
                 </div>
-                <span className="text-xs text-muted-foreground font-mono">
+                <span className="text-12 text-muted-foreground font-mono">
                   {projects.length} project{projects.length !== 1 ? 's' : ''} in workspace
                 </span>
               </div>
@@ -507,7 +548,7 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
                           <ProjectAvatar avatar={p.avatar} name={p.name} id={p.id} size="sm" />
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-semibold text-foreground truncate">{p.name}</span>
+                              <span className="text-12 font-medium text-foreground truncate">{p.name}</span>
                               {(p.identifier || p.key) && (
                                 <span className="text-10 font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                                   {p.identifier || p.key}
@@ -527,7 +568,7 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
                           <Button
                             variant="secondary"
                             size="sm"
-                            className="h-7 text-xs px-2.5 cursor-pointer"
+                            className="relative h-7 text-12 font-medium px-2.5 cursor-pointer focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
                             onClick={() => setSelectedProjectId(p.id)}
                           >
                             <BarChart3 className="size-3 mr-1 text-primary" />
@@ -537,7 +578,7 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
                             asChild
                             variant="ghost"
                             size="sm"
-                            className="h-7 text-xs px-2.5 cursor-pointer text-muted-foreground hover:text-foreground"
+                            className="relative h-7 text-12 font-medium px-2.5 cursor-pointer text-muted-foreground hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
                           >
                             <Link href={projectUrl}>
                               <span>Work Items</span>
@@ -549,8 +590,13 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
                   })}
                 </div>
               ) : (
-                <div className="py-10 text-center text-xs text-muted-foreground">
-                  No projects created in this workspace yet.
+                <div className="py-8 flex items-center justify-center">
+                  <PlaneEmptyState
+                    variant="files"
+                    title="No projects in workspace"
+                    description="Create research projects in this workspace to track workloads, cycle progress, and team insights."
+                    isCompact
+                  />
                 </div>
               )}
             </div>
@@ -558,30 +604,32 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
             {/* Knowledge Assets Breakdown */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="p-4 rounded-lg border border-border bg-card space-y-1.5">
-                <div className="text-xs text-muted-foreground font-medium">Pages & Notes</div>
-                <div className="text-xl font-semibold font-mono text-foreground">{stats?.pages || 0}</div>
+                <div className="text-12 text-muted-foreground font-medium">Pages & Notes</div>
+                <div className="text-18 font-semibold font-mono text-foreground">{stats?.pages || 0}</div>
                 <p className="text-10 text-muted-foreground">Knowledge documentation</p>
               </div>
               <div className="p-4 rounded-lg border border-border bg-card space-y-1.5">
-                <div className="text-xs text-muted-foreground font-medium">Uploaded Files</div>
-                <div className="text-xl font-semibold font-mono text-foreground">{stats?.files || 0}</div>
+                <div className="text-12 text-muted-foreground font-medium">Uploaded Files</div>
+                <div className="text-18 font-semibold font-mono text-foreground">{stats?.files || 0}</div>
                 <p className="text-10 text-muted-foreground">Cloud storage assets</p>
               </div>
               <div className="p-4 rounded-lg border border-border bg-card space-y-1.5">
-                <div className="text-xs text-muted-foreground font-medium">Research Papers</div>
-                <div className="text-xl font-semibold font-mono text-foreground">{stats?.papers || 0}</div>
+                <div className="text-12 text-muted-foreground font-medium">Research Papers</div>
+                <div className="text-18 font-semibold font-mono text-foreground">{stats?.papers || 0}</div>
                 <p className="text-10 text-muted-foreground">Synthesized research</p>
               </div>
               <div className="p-4 rounded-lg border border-border bg-card space-y-1.5">
-                <div className="text-xs text-muted-foreground font-medium">Stickies & Quick Notes</div>
-                <div className="text-xl font-semibold font-mono text-foreground">{stats?.stickies || 0}</div>
+                <div className="text-12 text-muted-foreground font-medium">Stickies & Quick Notes</div>
+                <div className="text-18 font-semibold font-mono text-foreground">{stats?.stickies || 0}</div>
                 <p className="text-10 text-muted-foreground">Interactive boards</p>
               </div>
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </>
+    )}
+  </div>
+</div>
   );
 }
 

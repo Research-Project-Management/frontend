@@ -70,15 +70,15 @@ export function Item({
   const dateFormatted = formatDate(joinedAt);
 
   return (
-    <tr className="group border-b border-border hover:bg-muted transition-colors text-xs">
+    <tr className="group border-b border-border hover:bg-muted transition-colors text-12">
       {/* Full name & Avatar */}
-      <td className="py-3 px-4">
+      <td className="py-2.5 px-4">
         <div className="flex items-center gap-3">
-          <Avatar className="size-8 rounded-full border border-border shrink-0">
+          <Avatar className="size-7 rounded-full border border-border shrink-0">
             {user.avatar && (
               <AvatarImage src={user.avatar} className="object-cover" />
             )}
-            <AvatarFallback className="text-xs bg-muted text-muted-foreground font-semibold">
+            <AvatarFallback className="text-11 bg-muted text-muted-foreground font-semibold">
               {user.name
                 .split(' ')
                 .map((n) => n[0])
@@ -87,36 +87,36 @@ export function Item({
                 .toUpperCase() || 'U'}
             </AvatarFallback>
           </Avatar>
-          <span className="font-medium text-foreground text-xs truncate max-w-[160px]">
+          <span className="font-medium text-foreground text-12 truncate max-w-[160px]">
             {user.name}
           </span>
         </div>
       </td>
 
       {/* Display name */}
-      <td className="py-3 px-4 text-muted-foreground font-normal truncate max-w-[150px]">
+      <td className="py-2.5 px-4 text-muted-foreground font-normal truncate max-w-[150px]">
         {displayName}
       </td>
 
       {/* Email */}
-      <td className="py-3 px-4 text-muted-foreground font-normal truncate max-w-[200px]">
+      <td className="py-2.5 px-4 text-muted-foreground font-normal truncate max-w-[200px]">
         {user.email || '-'}
       </td>
 
       {/* Role */}
-      <td className="py-3 px-4">
+      <td className="py-2.5 px-4">
         {canManage && !isCurrentUser && role.toLowerCase() !== 'owner' ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="inline-flex items-center gap-1 font-semibold text-foreground hover:underline transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none"
+                className="inline-flex items-center gap-1 font-semibold text-foreground hover:underline transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-0.5 select-none relative before:absolute before:-inset-1 md:before:hidden"
               >
                 <span>{roleLabel}</span>
                 <ChevronDown className="size-3 text-muted-foreground shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52 p-1 rounded-md">
+            <DropdownMenuContent align="start" className="w-52 p-1 rounded-md shadow-overlay">
               <DropdownMenuRadioGroup
                 value={role.toLowerCase()}
                 onValueChange={(val) => {
@@ -130,18 +130,18 @@ export function Item({
                 {isOwner && onTransferOwnership && (
                   <DropdownMenuRadioItem
                     value="owner"
-                    className="text-xs cursor-pointer text-amber-600 dark:text-amber-400 font-medium"
+                    className="text-12 cursor-pointer text-warning font-medium"
                   >
                     Owner (Transfer ownership)
                   </DropdownMenuRadioItem>
                 )}
-                <DropdownMenuRadioItem value="coordinator" className="text-xs cursor-pointer">
+                <DropdownMenuRadioItem value="coordinator" className="text-12 cursor-pointer">
                   Coordinator
                 </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="contributor" className="text-xs cursor-pointer">
+                <DropdownMenuRadioItem value="contributor" className="text-12 cursor-pointer">
                   Contributor
                 </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="reviewer" className="text-xs cursor-pointer">
+                <DropdownMenuRadioItem value="reviewer" className="text-12 cursor-pointer">
                   Reviewer (Advisor / Reviewer)
                 </DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
@@ -153,28 +153,28 @@ export function Item({
       </td>
 
       {/* Joining date */}
-      <td className="py-3 px-4 text-muted-foreground font-normal whitespace-nowrap">
+      <td className="py-2.5 px-4 text-muted-foreground font-normal whitespace-nowrap">
         {dateFormatted}
       </td>
 
       {/* Actions (hover) */}
-      <td className="py-3 px-2 text-right w-10 pr-4">
+      <td className="py-2.5 px-2 text-right w-10 pr-4">
         {canManage && !isCurrentUser && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
                 aria-label="Member options"
-                className="size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                className="size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100 transition-opacity cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2 md:before:hidden"
               >
                 <MoreHorizontal className="size-4 shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44 p-1 rounded-md">
+            <DropdownMenuContent align="end" className="w-44 p-1 rounded-md shadow-overlay">
               {isOwner && onTransferOwnership && (
                 <DropdownMenuItem
                   onClick={onTransferOwnership}
-                  className="text-xs font-medium cursor-pointer rounded-md flex items-center gap-2 text-amber-600 dark:text-amber-400 focus:text-amber-600 focus:bg-muted"
+                  className="text-12 font-medium cursor-pointer rounded-md flex items-center gap-2 text-warning focus:text-warning focus:bg-muted"
                 >
                   <Crown className="size-3.5 shrink-0" />
                   <span>Transfer ownership</span>
@@ -182,7 +182,7 @@ export function Item({
               )}
               <DropdownMenuItem
                 onClick={onRemove}
-                className="text-xs font-medium cursor-pointer rounded-md flex items-center gap-2 text-destructive focus:text-destructive focus:bg-muted"
+                className="text-12 font-medium cursor-pointer rounded-md flex items-center gap-2 text-destructive focus:text-destructive focus:bg-muted"
               >
                 <Trash2 className="size-3.5 shrink-0" />
                 <span>Remove member</span>

@@ -105,7 +105,7 @@ export function HistoryChangedFiles({
                             'px-1.5 py-0.5 rounded-md leading-tight font-medium',
                             isSelected
                               ? 'bg-primary-foreground/20 text-primary-foreground'
-                              : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+                              : 'bg-success/15 text-success',
                           )}
                         >
                           +{file.additions || 1}
@@ -129,7 +129,7 @@ export function HistoryChangedFiles({
                                 'px-1 py-0.5 rounded-md leading-tight font-medium',
                                 isSelected
                               ? 'bg-primary-foreground/20 text-primary-foreground'
-                              : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+                              : 'bg-success/15 text-success',
                               )}
                             >
                               +{file.additions}

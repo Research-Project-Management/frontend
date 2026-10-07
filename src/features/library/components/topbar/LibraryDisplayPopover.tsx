@@ -200,7 +200,7 @@ export function LibraryDisplayPopover({
               <button
                 type="button"
                 onClick={toggleOrderDirection}
-                className="p-0.5 text-foreground hover:bg-muted rounded cursor-pointer transition-colors"
+                className="p-0.5 text-foreground hover:bg-muted rounded cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden"
                 title={orderDirection === 'asc' ? 'Ascending (A to Z / Low to High)' : 'Descending (Z to A / High to Low)'}
                 aria-label="Toggle sort direction"
               >
@@ -214,7 +214,7 @@ export function LibraryDisplayPopover({
               <button
                 type="button"
                 onClick={() => setOrderByOpen(!orderByOpen)}
-                className="p-0.5 text-foreground hover:bg-muted rounded cursor-pointer transition-colors"
+                className="p-0.5 text-foreground hover:bg-muted rounded cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden"
                 aria-label={orderByOpen ? "Collapse order by" : "Expand order by"}
               >
                 {orderByOpen ? (
@@ -294,6 +294,25 @@ export function LibraryDisplayPopover({
               })}
             </div>
           )}
+        </div>
+
+        <div className="border-t border-border my-0.5" />
+
+        {/* 4. Subcollection Items */}
+        <div className="pt-0.5">
+          <label className="flex w-full items-center justify-between py-1 px-1.5 rounded-md text-12 text-foreground transition-colors cursor-pointer select-none hover:bg-muted font-medium">
+            <span>Show items from subcollections</span>
+            <Checkbox
+              checked={options.includeSubcollections ?? true}
+              onCheckedChange={(checked) =>
+                onOptionsChange({
+                  ...options,
+                  includeSubcollections: Boolean(checked),
+                })
+              }
+              className="size-3.5 border-border data-[state=checked]:border-primary cursor-pointer shrink-0"
+            />
+          </label>
         </div>
       </PopoverContent>
     </Popover>

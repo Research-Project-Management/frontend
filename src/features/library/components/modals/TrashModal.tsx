@@ -92,7 +92,7 @@ export function TrashModal({
           </div>
 
           <div className="min-w-0 flex-1">
-            <DialogTitle className="text-14 font-medium text-foreground">
+            <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
               Move to trash
             </DialogTitle>
             {description && (

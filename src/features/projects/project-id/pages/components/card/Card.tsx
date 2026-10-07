@@ -107,7 +107,7 @@ export function Card({ page, onEdit }: CardProps) {
       className="group/card relative flex flex-col rounded-md border border-border bg-card text-card-foreground hover:border-foreground/30 transition-colors duration-150 cursor-pointer overflow-hidden select-none"
     >
       {/* ── Document Cover / LaTeX Paper Sheet Preview ── */}
-      <div className="relative aspect-[16/9] w-full bg-[#FCFCFB] dark:bg-[#1A1A22] border-b border-border p-3.5 flex flex-col justify-between overflow-hidden select-none">
+      <div className="relative aspect-[16/9] w-full bg-canvas border-b border-border p-3.5 flex flex-col justify-between overflow-hidden select-none">
         {page.pdfThumbnail ? (
           <img
             src={page.pdfThumbnail}
@@ -129,8 +129,8 @@ export function Card({ page, onEdit }: CardProps) {
                     className={cn(
                       "text-11 font-mono font-medium px-1.5 py-0.5 rounded-sm capitalize",
                       status === 'published'
-                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
-                        : "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+                        ? "bg-success/10 text-success border border-success/20"
+                        : "bg-warning/10 text-warning border border-warning/20"
                     )}
                   >
                     {status}
@@ -163,7 +163,7 @@ export function Card({ page, onEdit }: CardProps) {
         <div
           className={cn(
             "absolute top-2 right-2 transition-opacity z-10",
-            isMenuOpen ? "opacity-100" : "opacity-0 group-hover/card:opacity-100"
+            isMenuOpen ? "opacity-100" : "opacity-100 sm:opacity-0 sm:group-hover/card:opacity-100"
           )}
           onClick={(e) => e.stopPropagation()}
         >
@@ -172,7 +172,7 @@ export function Card({ page, onEdit }: CardProps) {
               <button
                 type="button"
                 className={cn(
-                  "size-7 rounded-md flex items-center justify-center transition-colors cursor-pointer outline-none",
+                  "relative size-7 rounded-md flex items-center justify-center transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none relative before:absolute before:-inset-2 md:before:hidden",
                   isMenuOpen
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -182,10 +182,10 @@ export function Card({ page, onEdit }: CardProps) {
                 <MoreHorizontal className="size-3.5" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 text-xs z-50">
+            <DropdownMenuContent align="end" className="w-48 text-12 shadow-overlay">
               <DropdownMenuItem
                 onClick={() => router.push(linkHref)}
-                className="cursor-pointer gap-2"
+                className="cursor-pointer gap-2 text-12"
               >
                 <ExternalLink className="size-3.5 text-muted-foreground" />
                 <span>Open page</span>
@@ -196,21 +196,21 @@ export function Card({ page, onEdit }: CardProps) {
                   e.stopPropagation();
                   onEdit?.(page);
                 }}
-                className="cursor-pointer gap-2"
+                className="cursor-pointer gap-2 text-12"
               >
                 <Pencil className="size-3.5 text-muted-foreground" />
                 <span>Edit page</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={handleCopyLink}
-                className="cursor-pointer gap-2"
+                className="cursor-pointer gap-2 text-12"
               >
                 <Link2 className="size-3.5 text-muted-foreground" />
                 <span>Copy link</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={handleDuplicate}
-                className="cursor-pointer gap-2"
+                className="cursor-pointer gap-2 text-12"
               >
                 <Copy className="size-3.5 text-muted-foreground" />
                 <span>Duplicate</span>
@@ -218,7 +218,7 @@ export function Card({ page, onEdit }: CardProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={handleDelete}
-                className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                className="cursor-pointer gap-2 text-12 text-destructive focus:text-destructive"
               >
                 <Trash2 className="size-3.5" />
                 <span>Delete</span>
@@ -233,7 +233,7 @@ export function Card({ page, onEdit }: CardProps) {
         <div className="space-y-1.5">
           <div className="flex items-start justify-between gap-2">
             <h3
-              className="font-semibold text-13.5 leading-snug text-foreground group-hover/card:text-foreground transition-colors line-clamp-1"
+              className="font-semibold text-13 leading-snug text-foreground group-hover/card:text-foreground transition-colors line-clamp-1"
               title={page.title}
             >
               {page.title}
@@ -251,7 +251,7 @@ export function Card({ page, onEdit }: CardProps) {
             {labels.slice(0, 2).map((label: any) => {
               const labelId = label.id ?? label;
               const labelName = label.name ?? label;
-              const labelColor = label.color ?? '#3b82f6';
+              const labelColor = label.color ?? '#0969DA';
               return (
                 <span
                   key={labelId}
@@ -286,7 +286,7 @@ export function Card({ page, onEdit }: CardProps) {
                 className="size-4.5 rounded-full object-cover shrink-0 ring-1 ring-border/50"
               />
             ) : (
-              <span className="size-4.5 rounded-full bg-muted text-muted-foreground ring-1 ring-border/50 text-11 font-mono font-medium flex items-center justify-center shrink-0">
+              <span className="size-4.5 rounded-full bg-muted text-muted-foreground ring-1 ring-border/50 text-10 font-mono font-medium flex items-center justify-center shrink-0">
                 {(authorName || 'A').charAt(0).toUpperCase()}
               </span>
             )}

@@ -11,9 +11,13 @@ import {
   type PdfOutlineItem,
 } from '@/features/editor/utils/pdf-outline.util';
 import { parseSyncTeX, type SyncTeXMap } from '@/features/editor/utils/viewer.util';
-import Toolbar from '../components/viewer/Toolbar';
-import Surface, { type SurfaceHandle } from '../components/viewer/Surface';
-import Logs, { parseLatexLog } from '../components/viewer/Logs';
+import {
+  PdfToolbar,
+  PdfSurface as Surface,
+  CompilerLogs as Logs,
+  parseLatexLog,
+  type SurfaceHandle,
+} from '../ui/features/preview';
 import type { CompileStatus, LaTeXEngine } from '@/features/editor/store';
 
 export default function StandaloneViewerPage() {
@@ -228,7 +232,7 @@ export default function StandaloneViewerPage() {
   return (
     <div className="h-screen w-screen flex flex-col bg-background select-none overflow-hidden">
       {/* Top Toolbar */}
-      <Toolbar
+      <PdfToolbar
         compileStatus={compileStatus}
         engine={engine}
         compileMode={compileMode}

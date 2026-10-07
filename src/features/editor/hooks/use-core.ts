@@ -262,7 +262,7 @@ export function useActiveDocument() {
 // ── 4. Page Actions Hook ─────────────────────────────────────────────────────
 
 export function usePageActions() {
-  const { isLocked } = useSettingsStore();
+  const isLocked = useSettingsStore((s) => s.isLocked);
   const setCurrentPage = usePageStore((s) => s.setCurrentPage);
   const queryClient = useQueryClient();
 
@@ -295,6 +295,18 @@ export function usePageActions() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.detail(variables.pageId) });
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+
+      // Synchronize open tabs across projects
+      const tabsState = useTabsStore.getState();
+      Object.keys(tabsState.tabsByProject).forEach((projId) => {
+        tabsState.updateTabTitle(projId, variables.pageId, variables.title);
+      });
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+      }
       toast.success(`Renamed to "${variables.title}"`);
     },
     onError: (err: unknown) => {
@@ -369,7 +381,7 @@ export function usePageActions() {
 // ── 5. File Actions Hook ─────────────────────────────────────────────────────
 
 export function useFileActions() {
-  const { isLocked } = useSettingsStore();
+  const isLocked = useSettingsStore((s) => s.isLocked);
   const queryClient = useQueryClient();
 
   const createFileMutation = useMutation({
@@ -394,7 +406,7 @@ export function useFileActions() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.detail(variables.pageId) });
-      queryClient.invalidateQueries({ queryKey: ['files', variables.pageId] });
+      queryClient.invalidateQueries({ queryKey: pageKeys.files(variables.pageId) });
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('flux:filetree-updated'));

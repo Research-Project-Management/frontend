@@ -263,7 +263,7 @@ export default function RelatedSection({
             <button
               type="button"
               onClick={() => setModalOpen(true)}
-              className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden"
               aria-label="Add related item"
             >
               <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -327,7 +327,7 @@ export default function RelatedSection({
                             href={`https://doi.org/${encodeURIComponent(item.doi)}`}
                             target="_blank"
                             rel="noreferrer noopener"
-                            className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                            className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
                             aria-label={`Open DOI: ${item.doi}`}
                           >
                             <ExternalLink className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -346,7 +346,7 @@ export default function RelatedSection({
                           <button
                             type="button"
                             onClick={(e) => handleUnlink(item.id, e)}
-                            className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                            className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
                             aria-label="Unlink reference"
                           >
                             <X className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />

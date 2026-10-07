@@ -56,6 +56,7 @@ const CiteSection = dynamic(() => import('./CiteSection'), { ssr: false });
 const NotesSection = dynamic(() => import('./NotesSection'), { ssr: false });
 const TagsSection = dynamic(() => import('./TagsSection'), { ssr: false });
 const CollectionsSection = dynamic(() => import('./CollectionsSection'), { ssr: false });
+import { CollectionPickerPopover } from './CollectionsSection';
 const RelatedSection = dynamic(() => import('./RelatedSection'), { ssr: false });
 
 import { cn } from '@/shared/lib/utils';
@@ -116,7 +117,7 @@ function InspectorSection({
         </button>
 
         {/* Right Corner Action Cluster: [ + ] [ > / v ] */}
-        <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div role="presentation" className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
           {actionSlot ? (
             actionSlot
           ) : onAdd && canEdit ? (
@@ -129,7 +130,7 @@ function InspectorSection({
                 }
                 onAdd();
               }}
-              className="size-5 rounded flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors"
+              className="size-5 rounded flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden"
               title={`Add ${title.toLowerCase()}`}
               aria-label={`Add ${title.toLowerCase()}`}
             >
@@ -143,7 +144,7 @@ function InspectorSection({
               e.stopPropagation();
               onToggleExpand();
             }}
-            className="size-5 rounded flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors"
+            className="size-5 rounded flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden"
             title={isExpanded ? 'Collapse section' : 'Expand section'}
             aria-label={isExpanded ? 'Collapse section' : 'Expand section'}
             aria-expanded={isExpanded}
@@ -543,10 +544,31 @@ export function LibraryInspector({
                     count={itemCollectionIds.length}
                     isExpanded={expandedSections.collections}
                     onToggleExpand={() => toggleSection('collections')}
-                    onAdd={() => {
-                      setExpandedSections((prev) => ({ ...prev, collections: true }));
-                      openModal('CREATE_COLLECTION');
-                    }}
+                    actionSlot={
+                      effectiveCanEdit ? (
+                        <CollectionPickerPopover
+                          paper={effectiveItem}
+                          scopeId={targetScope}
+                          canEdit={effectiveCanEdit}
+                          align="end"
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!expandedSections.collections) {
+                                toggleSection('collections');
+                              }
+                            }}
+                            className="size-5 rounded flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors"
+                            title="Add to collection"
+                            aria-label="Add to collection"
+                          >
+                            <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                          </button>
+                        </CollectionPickerPopover>
+                      ) : null
+                    }
                     contentClassName="px-3 pt-1.5 pb-2.5 flex flex-col gap-1"
                     canEdit={effectiveCanEdit}
                   >

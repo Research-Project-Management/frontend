@@ -35,12 +35,16 @@ export function EditorBreadcrumbs({
       <Breadcrumb>
         <BreadcrumbList className="text-11 text-muted-foreground flex items-center gap-1.5 font-sans leading-none">
           <BreadcrumbItem>
-            <BreadcrumbLink
-              onClick={onNavigateRoot}
-              className="hover:text-foreground transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <Folder className="size-3 text-muted-foreground shrink-0" />
-              <span className="truncate max-w-[140px] sm:max-w-[200px]">{projectTitle}</span>
+            <BreadcrumbLink asChild>
+              <button
+                type="button"
+                onClick={onNavigateRoot}
+                className="hover:text-foreground transition-colors motion-reduce:transition-none cursor-pointer flex items-center gap-1 outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-xs"
+                aria-label={`Project: ${projectTitle}, click to open root file`}
+              >
+                <Folder className="size-3 text-muted-foreground shrink-0" />
+                <span className="truncate max-w-[140px] sm:max-w-[200px]">{projectTitle}</span>
+              </button>
             </BreadcrumbLink>
           </BreadcrumbItem>
 
@@ -48,7 +52,7 @@ export function EditorBreadcrumbs({
 
           <BreadcrumbItem>
             <BreadcrumbPage className="font-medium text-foreground flex items-center gap-1 font-mono">
-              <FileCode2 className="size-3 text-primary shrink-0" />
+              <FileCode2 className="size-3 text-foreground shrink-0" />
               <span className="truncate max-w-[160px] sm:max-w-[240px]">{fileName}</span>
             </BreadcrumbPage>
           </BreadcrumbItem>

@@ -42,11 +42,11 @@ function getFileIcon(filename: string) {
       return { icon: FileCode2, color: 'text-primary' };
     case 'bib':
     case 'bst':
-      return { icon: BookText, color: 'text-emerald-500 dark:text-emerald-400' };
+      return { icon: BookText, color: 'text-foreground/85' };
     case 'cls':
     case 'sty':
     case 'ins':
-      return { icon: Braces, color: 'text-sky-500 dark:text-sky-400' };
+      return { icon: Braces, color: 'text-foreground/70' };
     case 'md':
     case 'txt':
       return { icon: FileType, color: 'text-muted-foreground' };
@@ -118,7 +118,7 @@ export default function DeletedFilesModal({
             type="button"
             onClick={() => onOpenChange(false)}
             aria-label="Close"
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted focus:outline-hidden transition-colors cursor-pointer"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer"
           >
             <X className="size-4" strokeWidth={1.5} />
           </button>
@@ -146,7 +146,7 @@ export default function DeletedFilesModal({
         <div className="flex-1 overflow-y-auto px-5 py-2 max-h-[50vh] thin-scrollbar">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" strokeWidth={1.5} />
+              <Loader2 className="size-5 animate-spin text-muted-foreground motion-reduce:animate-none" strokeWidth={1.5} />
               <p className="text-12">Loading deleted files…</p>
             </div>
           ) : filteredFiles.length === 0 ? (
@@ -197,7 +197,7 @@ export default function DeletedFilesModal({
                       className="h-7 px-2.5 text-11 gap-1.5 shrink-0 cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground shadow-none"
                     >
                       {isRestoring ? (
-                        <Loader2 className="size-3 animate-spin" strokeWidth={1.5} />
+                        <Loader2 className="size-3 animate-spin motion-reduce:animate-none" strokeWidth={1.5} />
                       ) : (
                         <RotateCcw className="size-3" strokeWidth={1.5} />
                       )}

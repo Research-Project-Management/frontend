@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -136,11 +137,14 @@ export function ImportDocumentModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[480px] p-6 bg-background border border-border shadow-raised-200 rounded-md gap-4">
+      <DialogContent className="sm:max-w-[480px] p-6 bg-background border border-border/80 shadow-raised-200 rounded-md gap-4">
         <DialogHeader>
-          <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
+          <DialogTitle className="text-16 font-semibold text-foreground tracking-tight">
             {format === 'docx' ? 'Import Word Document' : 'Import Markdown Document'}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Upload and convert Word or Markdown documents into project files.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Hidden native input */}
@@ -164,7 +168,7 @@ export function ImportDocumentModal({
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
             className={cn(
-              'border border-dashed rounded-lg p-6 flex flex-col items-center justify-center gap-2 text-center cursor-pointer transition-colors',
+              'border border-dashed rounded-md p-6 flex flex-col items-center justify-center gap-2 text-center cursor-pointer transition-colors',
               isDragging
                 ? 'border-primary bg-primary/5'
                 : 'border-border/80 hover:border-border hover:bg-muted/30'
@@ -174,25 +178,25 @@ export function ImportDocumentModal({
               <UploadCloud className="size-5" />
             </div>
             <div className="space-y-0.5">
-              <span className="text-xs font-semibold text-foreground">
+              <span className="text-12 font-semibold text-foreground">
                 Click to browse or drag and drop
               </span>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-11 text-muted-foreground">
                 {format === 'docx' ? 'Microsoft Word document up to 25 MB' : 'Markdown document up to 25 MB'}
               </p>
             </div>
           </div>
         ) : (
-          <div className="border border-border rounded-lg p-3.5 bg-muted/20 flex items-center justify-between gap-3">
+          <div className="border border-border rounded-md p-3.5 bg-muted/20 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="size-9 rounded-md bg-background border border-border flex items-center justify-center shrink-0">
                 <FileCode2 className="size-4.5 text-foreground" />
               </div>
               <div className="min-w-0">
-                <span className="text-xs font-medium text-foreground block truncate">
+                <span className="text-12 font-medium text-foreground block truncate">
                   {selectedFile.name}
                 </span>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-11 text-muted-foreground">
                   {formatBytes(selectedFile.size)}
                 </span>
               </div>
@@ -203,7 +207,8 @@ export function ImportDocumentModal({
               variant="ghost"
               size="sm"
               onClick={() => setSelectedFile(null)}
-              className="size-7 p-0 rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
+              aria-label="Remove selected file"
+              className="size-7 p-0 rounded-md text-muted-foreground hover:text-foreground cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
             >
               <X className="size-3.5" />
             </Button>
@@ -217,7 +222,7 @@ export function ImportDocumentModal({
             variant="ghost"
             onClick={() => setIsOpen(false)}
             disabled={isSubmitting}
-            className="h-8 px-3 text-12 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
+            className="h-8 px-3 text-12 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             Cancel
           </Button>
@@ -225,9 +230,16 @@ export function ImportDocumentModal({
             type="button"
             disabled={!selectedFile || isSubmitting}
             onClick={handleSubmit}
-            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md shadow-none"
+            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md shadow-none gap-1.5 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
-            {isSubmitting ? 'Importing...' : 'Import'}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
+                <span>Importing...</span>
+              </>
+            ) : (
+              'Import'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

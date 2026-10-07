@@ -29,9 +29,9 @@ export const DeleteProjectViewModal: React.FC<DeleteProjectViewModalProps> = ({
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-full max-w-md p-6 gap-4 rounded-md border border-border bg-background shadow-lg">
+      <DialogContent className="w-full max-w-md p-6 gap-4 rounded-md border border-border/80 bg-background shadow-raised-200">
         <DialogHeader className="text-left space-y-1.5">
-          <DialogTitle className="text-base font-semibold text-foreground">
+          <DialogTitle className="text-16 font-semibold text-foreground">
             Delete view
           </DialogTitle>
           <DialogDescription className="text-13 text-muted-foreground leading-relaxed">
@@ -50,7 +50,7 @@ export const DeleteProjectViewModal: React.FC<DeleteProjectViewModalProps> = ({
             size="sm"
             onClick={onClose}
             disabled={loading}
-            className="h-8 px-3 text-13 font-medium rounded-md text-foreground hover:bg-muted cursor-pointer"
+            className="h-8 px-3 text-12 font-medium rounded-md text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             Cancel
           </Button>
@@ -60,7 +60,7 @@ export const DeleteProjectViewModal: React.FC<DeleteProjectViewModalProps> = ({
             size="sm"
             onClick={onConfirm}
             disabled={loading}
-            className="h-8 px-3 text-13 font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-none cursor-pointer"
+            className="h-8 px-3 text-12 font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             {loading ? 'Deleting...' : 'Delete view'}
           </Button>

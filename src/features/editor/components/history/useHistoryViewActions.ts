@@ -18,6 +18,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { historyService } from '@/features/editor/services/history.service';
 import { historyKeys } from '@/features/editor/hooks/use-history';
 import { filesQuery } from '@/features/editor/hooks/use-core';
+import { documentModelManager, editorCommandBus, documentSessionCoordinator } from '@/features/editor/core';
+import { draftStorageService } from '@/features/editor/services';
+import { useCompileStore } from '@/features/editor/store';
 
 export interface UseHistoryViewActionsOptions {
   projectId?: string;
@@ -48,6 +51,10 @@ export function useHistoryViewActions(options?: UseHistoryViewActionsOptions) {
           {
             onSuccess: () => {
               engine?.setContent(scrubContent);
+              documentModelManager.updateContent(targetPageId, scrubContent, false);
+              useCompileStore.getState().clearDirty(targetPageId);
+              documentSessionCoordinator.clearDraftSnapshot(targetPageId);
+              editorCommandBus.dispatch({ type: 'document:content-updated', docId: targetPageId, content: scrubContent });
               toast.success(
                 `Document restored to ${new Date(scrubTimestamp).toLocaleTimeString()} successfully!`,
               );
@@ -82,6 +89,10 @@ export function useHistoryViewActions(options?: UseHistoryViewActionsOptions) {
             if (fileId === activeFilePageId) {
               engine?.setContent(contentToRestore);
             }
+            documentModelManager.updateContent(fileId, contentToRestore, false);
+            useCompileStore.getState().clearDirty(fileId);
+            documentSessionCoordinator.clearDraftSnapshot(fileId);
+            editorCommandBus.dispatch({ type: 'document:content-updated', docId: fileId, content: contentToRestore });
             toast.success(`Restored "${fileName}" to this revision successfully!`);
             if (onSuccess) onSuccess();
           },
@@ -99,6 +110,9 @@ export function useHistoryViewActions(options?: UseHistoryViewActionsOptions) {
       setIsRestoringProject(true);
       try {
         await historyService.restoreProjectVersion(targetId, versionNumber);
+        useCompileStore.getState().clearAllDirty();
+        void draftStorageService.clearProjectDrafts(targetId);
+        editorCommandBus.dispatch({ type: 'filetree:updated' });
         toast.success(`Project restored to Version ${versionNumber} successfully!`);
         queryClient.invalidateQueries({ queryKey: historyKeys.byProject(targetId) });
         if (rootPageId) {

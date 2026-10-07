@@ -1,17 +1,13 @@
 'use client';
 
 import React, { useMemo, useCallback, useState } from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
 import { UploadCloud, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import {
   useLibraryItemsQuery,
   useCollectionsQuery,
-  useBatchRestoreItemsMutation,
   useDetachItemFromCollectionMutation,
-  useBatchDetachItemsMutation,
-  useLibraryItemsData,
   useSavedSearchResults,
 } from '../../data';
 import { ContentSkeleton } from './ContentSkeleton';
@@ -22,12 +18,15 @@ import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { BatchBar } from './BatchBar';
 import {
   useLibraryModalStore,
-  useLibraryViewStore,
   useLibraryUIStore,
   useProcessModalStore,
   cleanFilenameToTitle,
 } from '../../store';
-import { useQuickCopyShortcuts } from '../../hooks/use-quick-copy';
+import {
+  useQuickCopyShortcuts,
+  useLibraryBatchCoordinator,
+  useLibraryNavigation,
+} from '../../hooks';
 import type { Item, Collection } from '../../types';
 import type { LibraryOrderBy } from '../topbar/LibraryDisplayPopover';
 
@@ -98,112 +97,57 @@ export function LibraryContent({
   onAddLink,
   onEmptyTrash,
 }: LibraryContentProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const filterParam = searchParams.get('filter');
+  const nav = useLibraryNavigation();
+
   const effectiveSavedSearchId =
-    propSavedSearchId || (filterParam === 'saved-search' ? searchParams.get('savedSearchId') : null);
+    propSavedSearchId || (nav.filterParam === 'saved-search' ? nav.savedSearchId : null);
   const isSavedSearchView = Boolean(effectiveSavedSearchId);
-  const search = searchParams.get('q') || undefined;
-  const fromYearParam = searchParams.get('fromYear');
-  const toYearParam = searchParams.get('toYear');
-  const typeParam = searchParams.get('type') || searchParams.get('itemType') || undefined;
-  const readStatusParam = searchParams.get('readStatus') || undefined;
-  const hasFileParam = searchParams.get('hasFile');
-  const hasNotesParam = searchParams.get('hasNotes');
-  const fileStatusParam = searchParams.get('fileStatus');
-  const tagParam = searchParams.get('tag') || undefined;
-
-  const handleClearSearch = useCallback(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('q');
-    const qs = params.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [router, pathname, searchParams]);
-
-  const fromYear = fromYearParam ? parseInt(fromYearParam, 10) : undefined;
-  const toYear = toYearParam ? parseInt(toYearParam, 10) : undefined;
-
-  const hasFile = useMemo(() => {
-    if (hasFileParam !== null) return hasFileParam === 'true';
-    if (fileStatusParam === 'has-pdf') return true;
-    if (fileStatusParam === 'missing-pdf') return false;
-    return undefined;
-  }, [hasFileParam, fileStatusParam]);
-
-  const hasNotes = useMemo(() => {
-    if (hasNotesParam !== null) return hasNotesParam === 'true';
-    if (fileStatusParam === 'has-notes') return true;
-    return undefined;
-  }, [hasNotesParam, fileStatusParam]);
 
   const openModal = useLibraryModalStore((s) => s.openModal);
-  const selectedIds = useLibraryViewStore((s) => s.selectedIds);
-  const clearSelection = useLibraryViewStore((s) => s.clearSelection);
   const displayOptions = useLibraryUIStore((s) => s.displayOptions);
   const setDisplayOptions = useLibraryUIStore((s) => s.setDisplayOptions);
   const processingItems = useProcessModalStore((s) => s.processingItems);
 
-  const effectiveView = view || (filterParam && filterParam !== 'saved-search' ? filterParam : undefined);
+  const effectiveView = view || (nav.filterParam && nav.filterParam !== 'saved-search' ? nav.filterParam : undefined);
 
-  const orderByParam = searchParams.get('orderBy') as LibraryOrderBy | null;
-  const orderDirectionParam = searchParams.get('orderDirection') as 'asc' | 'desc' | null;
-
-  const pageParam = parseInt(searchParams.get('page') || '1', 10);
-  const currentPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
-
-  const handlePageChange = useCallback(
-    (newPage: number) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (newPage <= 1) {
-        params.delete('page');
-      } else {
-        params.set('page', String(newPage));
-      }
-      clearSelection();
-      const queryString = params.toString();
-      router.push(`${pathname}${queryString ? `?${queryString}` : ''}`, { scroll: false });
-    },
-    [pathname, router, searchParams, clearSelection],
-  );
-
-  const effectiveOrderBy = orderByParam || displayOptions?.orderBy;
-  const effectiveOrderDirection = orderDirectionParam || displayOptions?.orderDirection;
+  const effectiveOrderBy = nav.orderBy || displayOptions?.orderBy;
+  const effectiveOrderDirection = nav.orderDirection || displayOptions?.orderDirection;
 
   const queryParams = useMemo(
     () => ({
       collectionId,
+      includeSubcollections: displayOptions?.includeSubcollections ?? true,
       view: effectiveView,
-      search,
-      type: typeParam,
-      itemType: typeParam,
-      fromYear: Number.isFinite(fromYear) ? fromYear : undefined,
-      toYear: Number.isFinite(toYear) ? toYear : undefined,
-      readStatus: readStatusParam,
-      hasFile,
-      hasNotes,
-      tag: tagParam,
+      search: nav.search,
+      type: nav.type,
+      itemType: nav.type,
+      fromYear: nav.fromYear,
+      toYear: nav.toYear,
+      readStatus: nav.readStatus,
+      hasFile: nav.hasFile,
+      hasNotes: nav.hasNotes,
+      tag: nav.tag,
       orderBy: effectiveOrderBy,
       orderDirection: effectiveOrderDirection,
       fields: ITEM_LIST_FIELDS,
-      page: currentPage,
+      page: nav.page,
       limit: PAGE_SIZE,
     }),
     [
       collectionId,
+      displayOptions?.includeSubcollections,
       effectiveView,
-      search,
-      typeParam,
-      fromYear,
-      toYear,
-      readStatusParam,
-      hasFile,
-      hasNotes,
-      tagParam,
+      nav.search,
+      nav.type,
+      nav.fromYear,
+      nav.toYear,
+      nav.readStatus,
+      nav.hasFile,
+      nav.hasNotes,
+      nav.tag,
       effectiveOrderBy,
       effectiveOrderDirection,
-      currentPage,
+      nav.page,
     ],
   );
 
@@ -220,7 +164,7 @@ export function LibraryContent({
     scopeId,
     effectiveSavedSearchId || null,
     {
-      page: currentPage,
+      page: nav.page,
       limit: PAGE_SIZE,
       sortBy: mapOrderByToSavedSearchSortBy(effectiveOrderBy),
       sortOrder: effectiveOrderDirection,
@@ -228,10 +172,7 @@ export function LibraryContent({
   );
 
   const { data: collections = [] } = useCollectionsQuery(scopeId);
-  const { batchMoveItems } = useLibraryItemsData({ scopeId, collectionId });
-  const restoreMutation = useBatchRestoreItemsMutation(scopeId);
   const detachMutation = useDetachItemFromCollectionMutation(scopeId);
-  const batchDetachMutation = useBatchDetachItemsMutation(scopeId);
 
   const isLoading = isSavedSearchView ? savedSearchQuery.isLoading : isItemsLoading;
   const isError = isSavedSearchView ? savedSearchQuery.isError : isItemsError;
@@ -305,10 +246,14 @@ export function LibraryContent({
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-  const selectedItems: Item[] = useMemo(() => {
-    if (selectedIds.size === 0) return [];
-    return displayedItems.filter((item) => selectedIds.has(item.id));
-  }, [displayedItems, selectedIds]);
+  const batchCoordinator = useLibraryBatchCoordinator({
+    items: displayedItems,
+    scopeId,
+    collectionId,
+    view: effectiveView,
+    isTrash,
+    canEdit,
+  });
 
   const activeItemId = useLibraryUIStore((s) => s.activeItemId);
 
@@ -316,7 +261,7 @@ export function LibraryContent({
   useQuickCopyShortcuts({
     scopeId,
     items: displayedItems,
-    selectedIds,
+    selectedIds: batchCoordinator.selectedIds,
     activeItemId,
   });
 
@@ -355,44 +300,6 @@ export function LibraryContent({
     [canEdit, isTrash, onDirectFilesUpload],
   );
 
-  /** IDs of currently-uploading items that cannot be moved, deleted, or detached. */
-  const processingIds = useMemo(
-    () =>
-      new Set(
-        selectedItems
-          .filter((item: any) => item._isProcessing || item.id.startsWith('temp-') || item.id.startsWith('provisional-'))
-          .map((item) => item.id),
-      ),
-    [selectedItems],
-  );
-
-  const handleBatchMove = (targetColId: string | null) => {
-    const movableIds = Array.from(selectedIds).filter((id) => !processingIds.has(id));
-    if (processingIds.size > 0) {
-      toast.warning('Cannot move files that are currently uploading or processing', {
-        id: 'library-item-guard',
-      });
-    }
-    if (movableIds.length === 0) return;
-    batchMoveItems(movableIds, targetColId);
-    clearSelection();
-  };
-
-  const handleBatchDelete = () => {
-    const deletableIds = Array.from(selectedIds).filter((id) => !processingIds.has(id));
-    if (processingIds.size > 0) {
-      toast.warning('Cannot delete files that are currently uploading or processing', {
-        id: 'library-item-guard',
-      });
-    }
-    if (deletableIds.length === 0) return;
-    if (isTrash) {
-      openModal('DELETE_ITEMS', { itemIds: deletableIds, permanent: true });
-      return;
-    }
-    openModal('DELETE_ITEMS', { itemIds: deletableIds });
-  };
-
   const handleDetachItem = useCallback(
     (itemId: string) => {
       if (!collectionId) return;
@@ -408,30 +315,6 @@ export function LibraryContent({
     [collectionId, detachMutation, displayedItems],
   );
 
-  const handleBatchDetach = useCallback(() => {
-    const detachableIds = Array.from(selectedIds).filter((id) => !processingIds.has(id));
-    if (processingIds.size > 0) {
-      toast.warning('Cannot remove files that are currently uploading or processing', {
-        id: 'library-item-guard',
-      });
-    }
-    if (!collectionId || detachableIds.length === 0) return;
-    batchDetachMutation.mutate({ collectionId, itemIds: detachableIds });
-    clearSelection();
-  }, [collectionId, selectedIds, processingIds, batchDetachMutation, clearSelection]);
-
-  const handleBatchRestore = () => {
-    const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
-    restoreMutation.mutate(ids);
-    clearSelection();
-  };
-
-  const handleBatchMerge = () => {
-    if (selectedItems.length < 2) return;
-    openModal('MERGE_DUPLICATES', { items: selectedItems, duplicates: selectedItems });
-  };
-
   const handleSortChange = useCallback(
     (columnKey: string, direction: 'asc' | 'desc') => {
       setDisplayOptions((prev) => ({
@@ -439,15 +322,10 @@ export function LibraryContent({
         orderBy: columnKey as LibraryOrderBy,
         orderDirection: direction,
       }));
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('orderBy', columnKey);
-      params.set('orderDirection', direction);
-      params.delete('page'); // Reset to page 1 on sort change
-      clearSelection();
-      const queryString = params.toString();
-      router.push(`${pathname}${queryString ? `?${queryString}` : ''}`, { scroll: false });
+      nav.setSorting(columnKey as LibraryOrderBy, direction);
+      batchCoordinator.clearSelection();
     },
-    [pathname, router, searchParams, setDisplayOptions, clearSelection],
+    [setDisplayOptions, nav, batchCoordinator],
   );
 
   if (isLoading) {
@@ -469,11 +347,11 @@ export function LibraryContent({
     return (
       <LibraryEmptyState
         canEdit={canEdit}
-        search={search}
-        activeFilter={isSavedSearchView ? 'saved-search' : (view || searchParams.get('filter'))}
+        search={nav.search}
+        activeFilter={isSavedSearchView ? 'saved-search' : (view || nav.filterParam)}
         collectionId={collectionId}
         collectionName={activeCollection?.name}
-        onClearSearch={handleClearSearch}
+        onClearSearch={nav.clearSearch}
         onDirectFilesUpload={onDirectFilesUpload}
         onAddLink={onAddLink || (() => openModal('ADD_LINK', { collectionId }))}
       />
@@ -539,12 +417,15 @@ export function LibraryContent({
           <div className="flex items-center gap-1">
             <button
               type="button"
-              disabled={currentPage <= 1}
-              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={nav.page <= 1}
+              onClick={() => {
+                batchCoordinator.clearSelection();
+                nav.setPage(nav.page - 1);
+              }}
               aria-label="Previous page"
               className={cn(
-                'inline-flex items-center justify-center size-7 rounded-md text-xs font-medium transition-colors',
-                currentPage <= 1
+                'inline-flex items-center justify-center size-7 rounded-md text-xs font-medium transition-colors relative before:absolute before:-inset-2 md:before:hidden',
+                nav.page <= 1
                   ? 'text-muted-foreground/30 cursor-not-allowed pointer-events-none'
                   : 'text-foreground hover:bg-muted cursor-pointer',
               )}
@@ -552,7 +433,7 @@ export function LibraryContent({
               <ChevronLeft className="size-3.5" />
             </button>
 
-            {getVisiblePages(currentPage, totalPages).map((p, idx) => {
+            {getVisiblePages(nav.page, totalPages).map((p, idx) => {
               if (p === 'ellipsis') {
                 return (
                   <span
@@ -563,15 +444,18 @@ export function LibraryContent({
                   </span>
                 );
               }
-              const isCurrent = p === currentPage;
+              const isCurrent = p === nav.page;
               return (
                 <button
                   key={p}
                   type="button"
-                  onClick={() => handlePageChange(p)}
+                  onClick={() => {
+                    batchCoordinator.clearSelection();
+                    nav.setPage(p);
+                  }}
                   aria-current={isCurrent ? 'page' : undefined}
                   className={cn(
-                    'inline-flex items-center justify-center size-7 rounded-md text-xs font-medium transition-colors cursor-pointer',
+                    'inline-flex items-center justify-center size-7 rounded-md text-xs font-medium transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden',
                     isCurrent
                       ? 'bg-muted text-foreground font-semibold border border-border shadow-xs'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/60',
@@ -584,12 +468,15 @@ export function LibraryContent({
 
             <button
               type="button"
-              disabled={currentPage >= totalPages}
-              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={nav.page >= totalPages}
+              onClick={() => {
+                batchCoordinator.clearSelection();
+                nav.setPage(nav.page + 1);
+              }}
               aria-label="Next page"
               className={cn(
-                'inline-flex items-center justify-center size-7 rounded-md text-xs font-medium transition-colors',
-                currentPage >= totalPages
+                'inline-flex items-center justify-center size-7 rounded-md text-xs font-medium transition-colors relative before:absolute before:-inset-2 md:before:hidden',
+                nav.page >= totalPages
                   ? 'text-muted-foreground/30 cursor-not-allowed pointer-events-none'
                   : 'text-foreground hover:bg-muted cursor-pointer',
               )}
@@ -602,15 +489,8 @@ export function LibraryContent({
 
       {/* Floating Multi-Selection Action Bar */}
       <BatchBar
-        selectedCount={selectedIds.size}
-        selectedItems={selectedItems}
+        coordinator={batchCoordinator}
         collections={collections as Collection[]}
-        onClearSelection={clearSelection}
-        onBatchMove={canEdit && !isTrash ? handleBatchMove : undefined}
-        onBatchDelete={canEdit ? handleBatchDelete : undefined}
-        onBatchRestore={canEdit && isTrash ? handleBatchRestore : undefined}
-        onBatchDetach={canEdit && !isTrash && collectionId ? handleBatchDetach : undefined}
-        onBatchMerge={canEdit && view === 'duplicates' && selectedItems.length >= 2 ? handleBatchMerge : undefined}
         isTrash={isTrash}
         scopeId={scopeId}
       />

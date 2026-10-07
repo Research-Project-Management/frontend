@@ -14,7 +14,7 @@ import { Shapes } from "lucide-react";
 
 const Stickies = dynamic(() => import("../components/Stickies"), {
   ssr: false,
-  loading: () => <div className="h-32 w-full rounded-lg bg-muted/30 animate-pulse" />,
+  loading: () => <div className="h-32 w-full rounded-md bg-muted/30 animate-pulse motion-reduce:animate-none" />,
 });
 
 const ManageWidgetsModal = dynamic(
@@ -112,15 +112,15 @@ export default function HomePage() {
           <div className="flex flex-col items-center justify-center text-center space-y-2 mt-6 mb-8">
             {isUserLoading ? (
               <div className="flex flex-col items-center gap-3">
-                <Skeleton className="h-10 w-64 rounded-full" />
-                <Skeleton className="h-5 w-40 rounded-full" />
+                <Skeleton className="h-10 w-64 rounded-full motion-reduce:animate-none" />
+                <Skeleton className="h-5 w-40 rounded-full motion-reduce:animate-none" />
               </div>
             ) : (
               <>
                 <h1 className="text-24 md:text-26 font-semibold tracking-tight text-foreground leading-tight">
                   {greeting.text}{fullName ? `, ${fullName}` : ""}
                 </h1>
-                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mt-1.5" suppressHydrationWarning>
+                <div className="flex items-center gap-2 text-12 font-medium text-muted-foreground mt-1.5" suppressHydrationWarning>
                   <span className="text-base">
                     {greeting.icon}
                   </span>
@@ -146,16 +146,16 @@ export default function HomePage() {
               <div className="size-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4">
                 <Shapes className="size-5 shrink-0" />
               </div>
-              <h3 className="text-base font-semibold text-foreground mb-1">
+              <h3 className="text-16 font-semibold text-foreground mb-1">
                 It's Quiet Without Widgets
               </h3>
-              <p className="text-13 text-foreground/75 max-w-[350px]">
+              <p className="text-13 text-muted-foreground max-w-[350px]">
                 It looks like all your widgets are turned off. Enable them now to enhance your experience.
               </p>
               <button
                 type="button"
                 onClick={() => setSettingsOpen(true)}
-                className="mt-5 px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary-hover text-13 font-medium transition-colors cursor-pointer shadow-none"
+                className="relative mt-5 px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary-hover text-13 font-medium transition-colors cursor-pointer shadow-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
               >
                 Enable Widgets
               </button>

@@ -50,7 +50,7 @@ export default function StickyPage() {
         <PageContent maxWidth="full">
           <div className="flex-1 flex items-center justify-center gap-3 text-muted-foreground py-20">
             <Loader2 className="h-5 w-5 animate-spin shrink-0" />
-            <span className="text-sm">{copy.loading}</span>
+            <span className="text-13 font-normal">{copy.loading}</span>
           </div>
         </PageContent>
       </PageLayout>

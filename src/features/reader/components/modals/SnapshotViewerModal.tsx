@@ -4,6 +4,7 @@ import React from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/shared/components/ui";
@@ -48,14 +49,12 @@ export default function SnapshotViewerModal({
               <Globe className="size-3.5 shrink-0" strokeWidth={1.5} />
             </div>
             <div className="min-w-0 flex-1">
-              <DialogTitle className="text-13 font-semibold text-foreground truncate">
+              <DialogTitle className="text-14 font-semibold tracking-tight text-foreground truncate">
                 {title || 'Web Snapshot Reader'}
               </DialogTitle>
-              {sourceUrl && (
-                <p className="text-11 text-muted-foreground truncate font-mono">
-                  Source: {sourceUrl}
-                </p>
-              )}
+              <DialogDescription className="text-11 text-muted-foreground truncate font-mono">
+                {sourceUrl ? `Source: ${sourceUrl}` : 'Archived web page snapshot reader'}
+              </DialogDescription>
             </div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
@@ -64,22 +63,23 @@ export default function SnapshotViewerModal({
                 href={sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-12 text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
+                className="inline-flex items-center gap-1.5 text-12 font-medium text-muted-foreground hover:text-foreground h-7 px-2 rounded-md hover:bg-muted transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                <ExternalLink className="size-3" />
+                <ExternalLink className="size-3.5 shrink-0" />
                 Original
               </a>
             )}
             <button
+              type="button"
               onClick={handleDownload}
-              className="inline-flex items-center gap-1 text-12 text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
+              className="inline-flex items-center gap-1.5 text-12 font-medium text-muted-foreground hover:text-foreground h-7 px-2 rounded-md hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
-              <Download className="size-3" />
+              <Download className="size-3.5 shrink-0" />
               Download HTML
             </button>
           </div>
         </DialogHeader>
-        <div className="flex-1 w-full h-full min-h-0 bg-white relative">
+        <div className="flex-1 w-full h-full min-h-0 bg-background relative">
           <iframe
             src={snapshotUrl}
             title={title}

@@ -65,7 +65,7 @@ export function AiTopbar({ title: propTitle, className }: AiTopbarProps) {
             </Tooltip>
           )}
 
-          {/* Brand & Breadcrumb: AIIcon + Flux AI */}
+          {/* Brand & Breadcrumb: AIIcon + AI Assistant */}
           <nav aria-label="Breadcrumbs" className="flex items-center gap-1.5 min-w-0">
             <button
               onClick={() => router.push('/ai')}
@@ -73,10 +73,10 @@ export function AiTopbar({ title: propTitle, className }: AiTopbarProps) {
             >
               <img
                 src="/Chat.svg"
-                alt="Flux AI"
+                alt="AI Assistant"
                 className="size-4.5 shrink-0 object-contain"
               />
-              <span>Flux AI</span>
+              <span>AI Assistant</span>
             </button>
 
             {chatId && (

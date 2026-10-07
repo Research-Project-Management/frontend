@@ -128,7 +128,7 @@ export default function DocumentNavDrawer({
         <Button
           variant="ghost"
           size="icon"
-          className="size-7 text-foreground hover:bg-muted rounded-md cursor-pointer"
+          className="size-7 text-foreground hover:bg-muted rounded-md cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
           onClick={onClose}
           aria-label="Close outline drawer"
         >
@@ -137,12 +137,12 @@ export default function DocumentNavDrawer({
       </header>
 
       {/* Underline Tab Strip */}
-      <div className="flex h-9 shrink-0 items-center border-b border-border px-2 bg-background gap-1">
+      <div className="flex h-10 shrink-0 items-center border-b border-border px-2 bg-background gap-1">
         <button
           type="button"
           onClick={() => setActiveTab('outline')}
           className={cn(
-            'relative flex items-center gap-1.5 h-full px-2 text-12 font-medium transition-colors cursor-pointer border-b-2',
+            'relative flex items-center gap-1.5 h-full px-2 text-12 font-medium transition-colors cursor-pointer border-b-2 before:absolute before:-inset-1 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary',
             activeTab === 'outline'
               ? 'border-primary text-foreground'
               : 'border-transparent text-foreground hover:bg-muted',
@@ -159,7 +159,7 @@ export default function DocumentNavDrawer({
           type="button"
           onClick={() => setActiveTab('figures')}
           className={cn(
-            'relative flex items-center gap-1.5 h-full px-2 text-12 font-medium transition-colors cursor-pointer border-b-2',
+            'relative flex items-center gap-1.5 h-full px-2 text-12 font-medium transition-colors cursor-pointer border-b-2 before:absolute before:-inset-1 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary',
             activeTab === 'figures'
               ? 'border-primary text-foreground'
               : 'border-transparent text-foreground hover:bg-muted',
@@ -176,7 +176,7 @@ export default function DocumentNavDrawer({
           type="button"
           onClick={() => setActiveTab('tables')}
           className={cn(
-            'relative flex items-center gap-1.5 h-full px-2 text-12 font-medium transition-colors cursor-pointer border-b-2',
+            'relative flex items-center gap-1.5 h-full px-2 text-12 font-medium transition-colors cursor-pointer border-b-2 before:absolute before:-inset-1 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary',
             activeTab === 'tables'
               ? 'border-primary text-foreground'
               : 'border-transparent text-foreground hover:bg-muted',
@@ -193,7 +193,7 @@ export default function DocumentNavDrawer({
           type="button"
           onClick={() => setActiveTab('formulas')}
           className={cn(
-            'relative flex items-center gap-1.5 h-full px-2 text-12 font-medium transition-colors cursor-pointer border-b-2',
+            'relative flex items-center gap-1.5 h-full px-2 text-12 font-medium transition-colors cursor-pointer border-b-2 before:absolute before:-inset-1 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary',
             activeTab === 'formulas'
               ? 'border-primary text-foreground'
               : 'border-transparent text-foreground hover:bg-muted',
@@ -221,7 +221,7 @@ export default function DocumentNavDrawer({
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground p-0.5 rounded cursor-pointer"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground p-0.5 rounded cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
             >
               <X className="size-3 shrink-0" strokeWidth={1.5} />
             </button>

@@ -2,8 +2,8 @@
 
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { MessageSquareText, Sparkles } from 'lucide-react';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { MessageSquareText, Bot } from 'lucide-react';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import { useActionsStore, useSettingsStore } from '@/features/editor/store';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
@@ -74,7 +74,7 @@ export const EditorFloatingBar = React.memo(function EditorFloatingBar({
         'fixed z-50 flex flex-col items-center justify-between',
         'w-7 h-14 p-0.5 rounded-md',
         'bg-popover border border-border shadow-raised-200 text-popover-foreground',
-        'transition-all duration-150 select-none animate-in fade-in zoom-in-95',
+        'transition-all duration-150 select-none animate-in fade-in zoom-in-95 motion-reduce:animate-none motion-reduce:transition-none',
       )}
       style={{
         left: `${selFloating.x}px`,
@@ -96,10 +96,10 @@ export const EditorFloatingBar = React.memo(function EditorFloatingBar({
                 selectedText: selFloating.text,
               });
               useSettingsStore.getState().setIsReviewOpen(true);
-              EditorEventBus.emit('flux:open-panel', 'Review');
+              editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
               onClose();
             }}
-            className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <MessageSquareText className="size-4 shrink-0" strokeWidth={1.75} />
           </button>
@@ -107,7 +107,7 @@ export const EditorFloatingBar = React.memo(function EditorFloatingBar({
         <TooltipContent
           side="right"
           sideOffset={8}
-          className="text-11 px-2 py-0.5 font-sans bg-popover text-popover-foreground border border-border shadow-md"
+          className="text-11 px-2 py-0.5 font-sans bg-popover text-popover-foreground border border-border shadow-raised-100"
         >
           Add comment
         </TooltipContent>
@@ -130,19 +130,19 @@ export const EditorFloatingBar = React.memo(function EditorFloatingBar({
                   position: { x: selFloating.x + 36, y: selFloating.y },
                 });
               } else {
-                EditorEventBus.emit('flux:open-ai-panel', { selectedText: selFloating.text });
+                editorCommandBus.dispatch({ type: 'sidebar:open-ai-panel', selectedText: selFloating.text });
               }
               onClose();
             }}
-            className="size-6 flex items-center justify-center rounded text-ai hover:text-ai/90 hover:bg-ai/10 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-6 flex items-center justify-center rounded text-ai hover:text-ai/90 hover:bg-ai/10 transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
-            <Sparkles className="size-4 text-ai fill-ai/20 shrink-0" strokeWidth={1.75} />
+            <Bot className="size-4 text-ai shrink-0" strokeWidth={1.75} />
           </button>
         </TooltipTrigger>
         <TooltipContent
           side="right"
           sideOffset={8}
-          className="text-11 px-2 py-0.5 font-sans bg-popover text-popover-foreground border border-border shadow-md"
+          className="text-11 px-2 py-0.5 font-sans bg-popover text-popover-foreground border border-border shadow-raised-100"
         >
           AI Assist
         </TooltipContent>

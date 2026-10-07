@@ -129,7 +129,7 @@ export default function ProcessModal({
               e.stopPropagation();
               onClose();
             }}
-            className="size-4 p-0.5 rounded-xs hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center ml-0.5 cursor-pointer outline-none"
+            className="size-4 p-0.5 rounded-xs hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center ml-0.5 cursor-pointer outline-none relative before:absolute before:-inset-2 md:before:hidden"
             title="Dismiss"
             aria-label="Dismiss"
           >
@@ -162,7 +162,7 @@ export default function ProcessModal({
         <div className="pb-3 flex items-start justify-between">
           <DialogHeader className="text-left">
             <div className="flex items-center gap-2.5">
-              <DialogTitle className="text-16 font-semibold text-foreground tracking-tight">
+              <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
                 Metadata Retrieval
               </DialogTitle>
               {state.isComplete && !state.error && (

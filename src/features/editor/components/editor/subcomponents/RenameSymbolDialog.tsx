@@ -4,6 +4,7 @@ import React from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -46,6 +47,9 @@ export const RenameSymbolDialog = React.memo(function RenameSymbolDialog({
           <DialogTitle className="text-16 font-semibold tracking-tight text-foreground">
             Rename Occurrences
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Rename all matching symbol occurrences across the active document.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2">

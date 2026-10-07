@@ -23,7 +23,16 @@ import type {
   IEditorEngine,
   EditorSelectionRange,
   LatexFormatType,
+  DiffProposal,
 } from '../../ports/editor-engine.port';
+import {
+  proposeDiffEffect,
+  clearDiffEffect,
+  acceptDiffEffect,
+  rejectDiffEffect,
+  diffProposalField,
+} from '../../engines/inline-diff';
+import { editorCommandBus } from '../../coordinators/command-bus';
 
 // Effect to trigger line flash/highlight for SyncTeX or compiler errors
 export const highlightLineEffect = StateEffect.define<{ line: number; type: 'synctex' | 'error' }>();
@@ -98,6 +107,67 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
       changes: { from, to, insert: text },
       selection: EditorSelection.cursor(from + text.length),
     });
+    this.view.focus();
+  }
+
+  getSelectionOffsets(): { from: number; to: number } | null {
+    if (!this.view.state) return null;
+    const { from, to } = this.view.state.selection.main;
+    return { from, to };
+  }
+
+  proposeDiff(proposal: DiffProposal): void {
+    this.view.dispatch({
+      effects: [proposeDiffEffect.of(proposal)],
+    });
+    // Scroll cursor into view near the diff proposal
+    this.view.dispatch({
+      selection: EditorSelection.cursor(proposal.from),
+      scrollIntoView: true,
+    });
+  }
+
+  clearDiff(): void {
+    this.view.dispatch({
+      effects: [clearDiffEffect.of()],
+    });
+  }
+
+  acceptDiff(diffId?: string): void {
+    const current = this.view.state.field(diffProposalField, false);
+    if (current?.proposal && (!diffId || current.proposal.id === diffId)) {
+      this.view.dispatch({
+        changes: {
+          from: current.proposal.from,
+          to: current.proposal.to,
+          insert: current.proposal.replacementText,
+        },
+        effects: [acceptDiffEffect.of(current.proposal.id)],
+        userEvent: 'ai.accept-diff',
+      });
+      editorCommandBus.dispatch({
+        type: 'ai:diff-resolved',
+        action: 'accept',
+        proposal: current.proposal,
+        payload: { action: 'accept', proposal: current.proposal },
+      } as any);
+      this.view.focus();
+    }
+  }
+
+  rejectDiff(diffId?: string): void {
+    const current = this.view.state.field(diffProposalField, false);
+    const targetId = diffId || current?.proposal?.id || '';
+    this.view.dispatch({
+      effects: [rejectDiffEffect.of(targetId)],
+      userEvent: 'ai.reject-diff',
+    });
+    editorCommandBus.dispatch({
+      type: 'ai:diff-resolved',
+      action: 'reject',
+      proposalId: targetId,
+      payload: { action: 'reject', proposalId: targetId },
+    } as any);
     this.view.focus();
   }
 

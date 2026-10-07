@@ -20,6 +20,30 @@ import {
   downloadAllArtifactsZipUrl,
 } from '@/features/editor/services/compiler.service';
 import { manuscriptService } from '@/features/editor/services/manuscript.service';
+import { aiCoordinator } from '@/features/editor/coordinators/ai.coordinator';
+import { usePageStore } from '@/features/editor/store';
+
+export function copySnippetToClipboard(snippet?: string): void {
+  if (!snippet) return;
+  navigator.clipboard.writeText(snippet);
+  toast.success('Snippet copied to clipboard');
+}
+
+export async function fetchLogEntryExplanation(entry: LogEntry): Promise<any | null> {
+  try {
+    if (entry.code) {
+      return await manuscriptService.diagnostics.getExplanation(entry.code);
+    }
+    const rules = await manuscriptService.diagnostics.getRules();
+    const found = rules.find((r: any) => {
+      if (r.title && entry.message.toLowerCase().includes(r.title.toLowerCase())) return true;
+      return false;
+    });
+    return found || null;
+  } catch {
+    return null;
+  }
+}
 
 export interface UseLogViewerActionsOptions {
   engine?: any;
@@ -34,31 +58,8 @@ export function useLogViewerActions({
   onCompile,
   onClearCacheAndCompile,
 }: UseLogViewerActionsOptions = {}) {
-  const copySnippet = useCallback((snippet?: string) => {
-    if (!snippet) return;
-    navigator.clipboard.writeText(snippet);
-    toast.success('Snippet copied to clipboard');
-  }, []);
-
-  const fetchErrorExplanation = useCallback(
-    async (entry: LogEntry): Promise<any | null> => {
-      try {
-        if (entry.code) {
-          const exp = await manuscriptService.diagnostics.getExplanation(entry.code);
-          return exp;
-        }
-        const rules = await manuscriptService.diagnostics.getRules();
-        const found = rules.find((r: any) => {
-          if (r.title && entry.message.toLowerCase().includes(r.title.toLowerCase())) return true;
-          return false;
-        });
-        return found || null;
-      } catch {
-        return null;
-      }
-    },
-    [],
-  );
+  const copySnippet = copySnippetToClipboard;
+  const fetchErrorExplanation = fetchLogEntryExplanation;
 
   const applyQuickFix = useCallback(
     (
@@ -82,20 +83,18 @@ export function useLogViewerActions({
 
   const applyAiFix = useCallback(
     (entry: LogEntry, fix: AiErrorFixResult, onApplied?: () => void) => {
-      if (!engine) {
-        toast.error('Editor is not ready');
-        return;
-      }
+      const pageStore = usePageStore.getState();
+      const fileId = pageStore.activeFilePage?.id || pageStore.currentPage?.id || 'main.tex';
 
-      if (entry.line) {
-        engine.jumpToLine(entry.line, 'synctex');
-      }
+      aiCoordinator.proposeDiff(fileId, fix.fixedSnippet, {
+        line: fix.startLine || entry.line,
+        endLine: fix.endLine,
+        title: `AI Fix: ${fix.explanation || entry.message}`,
+      });
 
-      toast.success('AI fix applied successfully');
       onApplied?.();
-      onCompile?.();
     },
-    [engine, onCompile],
+    [],
   );
 
   const downloadAuxFile = useCallback(

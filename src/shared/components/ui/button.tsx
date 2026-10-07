@@ -5,7 +5,7 @@ import { Slot } from "@radix-ui/react-slot"
 import { cn } from "@/shared/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md text-13 font-medium whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md text-13 font-medium whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 cursor-pointer",
   {
     variants: {
       variant: {
@@ -27,15 +27,15 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-8 py-1.5 gap-1.5 rounded-md px-3 text-13 has-[>svg]:px-2.5",
-        xs: "h-6 py-1 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-7 py-1 gap-1.5 rounded-md px-2.5 text-11 has-[>svg]:px-2",
+        xs: "h-6 py-1 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3 relative before:absolute before:-inset-2 md:before:hidden",
+        sm: "h-7 py-1 gap-1.5 rounded-md px-2.5 text-11 has-[>svg]:px-2 relative before:absolute before:-inset-1 md:before:hidden",
         md: "h-8 py-1.5 gap-1.5 rounded-md px-3 text-13 has-[>svg]:px-2.5",
         lg: "h-9 py-2 gap-1.5 rounded-md px-4 text-13 has-[>svg]:px-3",
         xl: "h-11 py-2.5 gap-2 rounded-md px-5 text-14 has-[>svg]:px-4",
-        icon: "size-8 rounded-md p-1.5",
-        "icon-xs": "size-6 rounded-md p-1 [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-7 rounded-md p-1.5",
-        "icon-md": "size-8 rounded-md p-1.5",
+        icon: "size-8 rounded-md p-1.5 relative before:absolute before:-inset-1.5 md:before:hidden",
+        "icon-xs": "size-6 rounded-md p-1 [&_svg:not([class*='size-'])]:size-3 relative before:absolute before:-inset-2.5 md:before:hidden",
+        "icon-sm": "size-7 rounded-md p-1.5 relative before:absolute before:-inset-2 md:before:hidden",
+        "icon-md": "size-8 rounded-md p-1.5 relative before:absolute before:-inset-1.5 md:before:hidden",
         "icon-lg": "size-9 rounded-md p-2",
         "icon-xl": "size-11 rounded-md p-2.5",
       },

@@ -36,7 +36,7 @@ export const CitationItem = memo(function CitationItem({
       {/* Top row: Key + Source badge + Year */}
       <div className="flex items-center justify-between gap-1.5 min-w-0">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="font-mono text-xs font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-xs truncate shrink-0 max-w-[150px]">
+          <span className="font-mono text-11 font-medium bg-background border border-border text-foreground px-1.5 py-0.5 rounded-[3px] truncate shrink-0 max-w-[150px]">
             {item.key}
           </span>
           {item.source === 'bib' && (
@@ -64,7 +64,7 @@ export const CitationItem = memo(function CitationItem({
       </p>
 
       {/* Quick actions on hover */}
-      <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity flex items-center gap-0.5 bg-background/95 backdrop-blur-xs p-0.5 rounded-md border border-border shadow-xs">
+      <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity flex items-center gap-0.5 bg-background/95 backdrop-blur-xs p-0.5 rounded-md border border-border">
         <button
           type="button"
           onClick={(e) => {
@@ -88,7 +88,7 @@ export const CitationItem = memo(function CitationItem({
           aria-label="Copy citation command"
         >
           {isCopied ? (
-            <Check className="size-3.5 text-emerald-500 shrink-0" />
+            <Check className="size-3.5 text-primary shrink-0" />
           ) : (
             <Copy className="size-3.5 shrink-0" />
           )}

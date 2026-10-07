@@ -22,14 +22,14 @@ export function DeletePermanentModal({
 
   return (
     <Dialog open={Boolean(project)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md p-6 bg-card border border-border">
+      <DialogContent className="sm:max-w-md p-6 bg-card border border-border shadow-raised-200">
         <DialogHeader className="space-y-2">
-          <DialogTitle className="text-base font-semibold text-foreground">
+          <DialogTitle className="text-16 font-semibold text-foreground">
             Permanently delete project
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
+          <DialogDescription className="text-13 text-muted-foreground leading-relaxed">
             Are you sure you want to permanently delete{' '}
-            <strong className="text-foreground">{project.name}</strong>? All
+            <strong className="text-foreground font-semibold">{project.name}</strong>? All
             associated work items, cycles, notes, and storage files will be lost forever.
             This action cannot be undone.
           </DialogDescription>
@@ -42,7 +42,7 @@ export function DeletePermanentModal({
             size="sm"
             onClick={onClose}
             disabled={isDeleting}
-            className="text-xs cursor-pointer"
+            className="h-8 px-3 text-12 font-medium cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             Cancel
           </Button>
@@ -52,7 +52,7 @@ export function DeletePermanentModal({
             size="sm"
             onClick={onConfirm}
             disabled={isDeleting}
-            className="text-xs font-semibold cursor-pointer"
+            className="h-8 px-3 text-12 font-medium cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             {isDeleting ? 'Deleting...' : 'Delete Permanently'}
           </Button>

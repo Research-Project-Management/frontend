@@ -53,7 +53,7 @@ export function ArchiveCard({
       <div className={cn('relative h-24 w-full bg-gradient-to-tr overflow-hidden', bannerClass)}>
         <div className="absolute inset-0 bg-black/40 backdrop-blur-[0.5px]" />
         <div className="absolute top-2 right-2">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-warning/20 text-warning border border-warning/30 backdrop-blur-xs">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-11 font-medium bg-warning/20 text-warning border border-warning/30 backdrop-blur-xs">
             <Archive className="size-2.5 shrink-0" />
             <span>Archived</span>
           </span>
@@ -65,7 +65,7 @@ export function ArchiveCard({
         {project.avatar ? (
           <span>{project.avatar}</span>
         ) : (
-          <span className="text-sm font-semibold text-foreground">
+          <span className="text-13 font-semibold text-foreground">
             {project.name ? project.name.charAt(0).toUpperCase() : 'P'}
           </span>
         )}
@@ -76,12 +76,12 @@ export function ArchiveCard({
         <div className="space-y-0.5 min-w-0">
           <Link
             href={`/projects/${projectId}/work-items`}
-            className="text-sm font-semibold text-foreground tracking-tight truncate block hover:underline shrink-0"
+            className="text-13 font-semibold text-foreground tracking-tight truncate block hover:underline shrink-0"
           >
             {project.name}
           </Link>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-mono text-xs">{projectKey}</span>
+          <div className="flex items-center gap-2 text-12 text-muted-foreground">
+            <span className="font-mono text-11 font-medium">{projectKey}</span>
             <span>•</span>
             <span className="flex items-center gap-1">
               {isPrivate ? (
@@ -100,7 +100,7 @@ export function ArchiveCard({
         </div>
 
         {project.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+          <p className="text-13 text-muted-foreground line-clamp-2 leading-relaxed">
             {project.description}
           </p>
         )}
@@ -113,16 +113,16 @@ export function ArchiveCard({
               <div className="flex items-center gap-1 min-w-0">
                 <Avatar className="size-4.5 border border-background shrink-0">
                   <AvatarImage src={leadUser.avatar} alt={leadUser.name} />
-                  <AvatarFallback className="text-xs bg-muted font-medium">
+                  <AvatarFallback className="text-10 bg-muted font-medium">
                     {leadUser.name ? leadUser.name.charAt(0).toUpperCase() : 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-xs font-medium text-foreground truncate max-w-[80px]">
+                <span className="text-12 font-medium text-foreground truncate max-w-[80px]">
                   {leadUser.name || 'Lead'}
                 </span>
               </div>
             ) : (
-              <span className="text-xs text-muted-foreground/60 italic">No lead</span>
+              <span className="text-12 text-muted-foreground/60 italic">No lead</span>
             )}
           </div>
 
@@ -132,8 +132,9 @@ export function ArchiveCard({
               type="button"
               onClick={(e) => onRestore(projectId, e)}
               disabled={isRestoring}
-              className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-1 h-7 px-2 rounded-md text-12 font-medium text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-50 relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               title="Restore project to workspace"
+              aria-label="Restore project to workspace"
             >
               <RotateCcw className="size-3 shrink-0" />
               <span>Restore</span>
@@ -142,8 +143,9 @@ export function ArchiveCard({
             <button
               type="button"
               onClick={(e) => onDeletePermanent(project, e)}
-              className="flex items-center justify-center size-7 rounded text-muted-foreground hover:bg-destructive/10 transition-colors cursor-pointer"
+              className="flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               title="Delete permanently"
+              aria-label="Delete project permanently"
             >
               <Trash2 className="size-3.5 shrink-0" />
             </button>

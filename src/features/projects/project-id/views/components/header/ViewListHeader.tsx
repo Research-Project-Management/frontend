@@ -109,7 +109,7 @@ export function ViewListHeader({
                 setIsSearchOpen(true);
                 setTimeout(() => inputRef.current?.focus(), 50);
               }}
-              className="size-8 p-0 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+              className="size-8 p-0 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               title="Search views"
             >
               <Search className="size-4" />
@@ -128,7 +128,7 @@ export function ViewListHeader({
                 onChange={(e) => onSearchChange(e.target.value)}
                 onKeyDown={handleInputKeyDown}
                 placeholder="Search views..."
-                className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none"
+                className="w-full bg-transparent text-12 sm:text-13 text-foreground placeholder:text-muted-foreground outline-none"
                 autoFocus
               />
               <button
@@ -137,7 +137,7 @@ export function ViewListHeader({
                   onSearchChange('');
                   setIsSearchOpen(false);
                 }}
-                className="text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                className="text-muted-foreground hover:text-foreground cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <X className="size-3.5" />
               </button>
@@ -151,13 +151,13 @@ export function ViewListHeader({
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-2.5 text-xs font-normal rounded-md border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shrink-0"
+              className="h-8 px-2.5 text-12 font-medium rounded-md border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               {sortBy === 'asc' ? <SortAscendingIcon /> : <SortDescendingIcon />}
               <span>{activeSortLabel}</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 p-1">
+          <DropdownMenuContent align="end" className="w-48 p-1 shadow-overlay">
             <DropdownMenuLabel className="text-11 font-medium text-muted-foreground px-2 py-1">
               Sort by
             </DropdownMenuLabel>
@@ -167,7 +167,7 @@ export function ViewListHeader({
                 <DropdownMenuItem
                   key={opt.key}
                   onClick={() => onSortChange(opt.key, sortBy)}
-                  className="flex items-center justify-between text-xs cursor-pointer px-2 py-1.5 rounded-sm"
+                  className="flex items-center justify-between text-12 cursor-pointer px-2 py-1.5 rounded-sm relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <span>{opt.label}</span>
                   {isSelected && <Check className="size-3.5 text-primary" />}
@@ -180,7 +180,7 @@ export function ViewListHeader({
             </DropdownMenuLabel>
             <DropdownMenuItem
               onClick={() => onSortChange(sortKey, 'asc')}
-              className="flex items-center justify-between text-xs cursor-pointer px-2 py-1.5 rounded-sm"
+              className="flex items-center justify-between text-12 cursor-pointer px-2 py-1.5 rounded-sm relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               <div className="flex items-center gap-2">
                 <SortAscendingIcon className="size-3.5 text-muted-foreground" />
@@ -190,7 +190,7 @@ export function ViewListHeader({
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onSortChange(sortKey, 'desc')}
-              className="flex items-center justify-between text-xs cursor-pointer px-2 py-1.5 rounded-sm"
+              className="flex items-center justify-between text-12 cursor-pointer px-2 py-1.5 rounded-sm relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               <div className="flex items-center gap-2">
                 <SortDescendingIcon className="size-3.5 text-muted-foreground" />
@@ -208,7 +208,7 @@ export function ViewListHeader({
               variant="outline"
               size="sm"
               className={cn(
-                'h-8 px-2.5 text-xs font-normal rounded-md border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shrink-0',
+                'h-8 px-2.5 text-12 font-medium rounded-md border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
                 isFiltersApplied && 'bg-muted border-primary/40 font-medium'
               )}
             >
@@ -219,17 +219,17 @@ export function ViewListHeader({
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-56 p-2 space-y-3">
+          <PopoverContent align="end" className="w-56 p-2 space-y-3 shadow-overlay">
             <div>
               <div className="text-11 font-medium text-muted-foreground mb-1.5">
                 Saved Views
               </div>
-              <label className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-muted cursor-pointer text-xs">
+              <label className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-muted cursor-pointer text-12 select-none">
                 <Checkbox
                   checked={onlyFavorites}
                   onCheckedChange={(checked) => onFavoritesChange(Boolean(checked))}
                 />
-                <Star className={cn('size-3.5', onlyFavorites ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground')} />
+                <Star className={cn('size-3.5', onlyFavorites ? 'text-warning fill-warning' : 'text-muted-foreground')} />
                 <span>Favorites only</span>
               </label>
             </div>
@@ -245,7 +245,7 @@ export function ViewListHeader({
                     type="button"
                     onClick={() => onAccessFilterChange(acc)}
                     className={cn(
-                      'w-full flex items-center justify-between px-2 py-1 rounded text-xs text-left cursor-pointer transition-colors',
+                      'w-full flex items-center justify-between px-2 py-1 rounded text-12 text-left cursor-pointer transition-colors relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
                       accessFilter === acc
                         ? 'bg-primary/10 text-primary font-medium'
                         : 'hover:bg-muted text-muted-foreground hover:text-foreground'
@@ -253,7 +253,7 @@ export function ViewListHeader({
                   >
                     <div className="flex items-center gap-2">
                       {acc === 'all' && <ViewsOutlineIcon className="size-3.5" />}
-                      {acc === 'public' && <Globe className="size-3.5 text-blue-500" />}
+                      {acc === 'public' && <Globe className="size-3.5 text-primary" />}
                       {acc === 'private' && <Lock className="size-3.5 text-muted-foreground" />}
                       <span className="capitalize">{acc === 'all' ? 'All Access' : acc}</span>
                     </div>
@@ -273,7 +273,7 @@ export function ViewListHeader({
                     type="button"
                     onClick={() => onCreatorFilterChange(null)}
                     className={cn(
-                      'w-full flex items-center justify-between px-2 py-1 rounded text-xs text-left cursor-pointer transition-colors',
+                      'w-full flex items-center justify-between px-2 py-1 rounded text-12 text-left cursor-pointer transition-colors relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
                       !creatorFilter
                         ? 'bg-primary/10 text-primary font-medium'
                         : 'hover:bg-muted text-muted-foreground hover:text-foreground'
@@ -293,7 +293,7 @@ export function ViewListHeader({
                         type="button"
                         onClick={() => onCreatorFilterChange(isSelected ? null : m.id)}
                         className={cn(
-                          'w-full flex items-center justify-between px-2 py-1 rounded text-xs text-left cursor-pointer transition-colors',
+                          'w-full flex items-center justify-between px-2 py-1 rounded text-12 text-left cursor-pointer transition-colors relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
                           isSelected
                             ? 'bg-primary/10 text-primary font-medium'
                             : 'hover:bg-muted text-muted-foreground hover:text-foreground'
@@ -315,7 +315,7 @@ export function ViewListHeader({
           variant="default"
           size="sm"
           onClick={onOpenCreateModal}
-          className="h-8 px-3 text-xs font-semibold rounded-md flex items-center gap-1.5 cursor-pointer shadow-none shrink-0"
+          className="h-8 px-3 text-12 font-medium rounded-md flex items-center gap-1.5 cursor-pointer shadow-none shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
         >
           <Plus className="size-3.5" />
           <span>Add view</span>

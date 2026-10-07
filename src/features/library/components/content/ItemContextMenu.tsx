@@ -23,6 +23,7 @@ import {
   ContextMenuSub,
   ContextMenuSubContent,
   ContextMenuSubTrigger,
+  ContextMenuShortcut,
 } from '@/shared/components/ui/context-menu';
 import { libraryServices } from '../../data';
 import { useLibraryUIStore } from '../../store';
@@ -200,7 +201,8 @@ export function ItemContextMenu({
                     className="gap-2 text-12 py-1.5 px-2 cursor-pointer text-foreground focus:text-foreground"
                   >
                     <FolderMinus className="size-3.5 text-foreground" />
-                    Remove from Collection
+                    <span>Remove from Collection</span>
+                    <ContextMenuShortcut className="text-11 ml-auto">Del</ContextMenuShortcut>
                   </ContextMenuItem>
                 )}
               </>
@@ -214,7 +216,10 @@ export function ItemContextMenu({
                   className="gap-2 text-12 py-1.5 px-2 cursor-pointer text-destructive focus:text-destructive focus:bg-muted"
                 >
                   <Trash2 className="size-3.5 text-destructive" />
-                  Move to Trash
+                  <span>Move to Trash</span>
+                  <ContextMenuShortcut className="text-11 ml-auto">
+                    {onDetachFromCollection ? 'Shift+Del' : 'Del'}
+                  </ContextMenuShortcut>
                 </ContextMenuItem>
               </>
             )}

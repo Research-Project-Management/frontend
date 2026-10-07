@@ -82,11 +82,11 @@ export function FavoritesPage() {
         {/* Left: Star Icon, Title & Count */}
         <div className="flex items-center gap-2.5 min-w-0">
           <Star className="size-4 text-warning fill-warning shrink-0" />
-          <h1 className="text-sm font-semibold text-foreground tracking-tight">
+          <h1 className="text-13 font-semibold text-foreground tracking-tight">
             Favorites
           </h1>
           {favoriteProjects.length > 0 && (
-            <span className="text-xs font-mono tabular-nums px-1.5 py-0.2 rounded-full bg-muted text-foreground border border-border shrink-0">
+            <span className="text-11 font-mono tabular-nums px-1.5 py-0.2 rounded-full bg-muted text-foreground border border-border shrink-0">
               {favoriteProjects.length}
             </span>
           )}
@@ -105,7 +105,7 @@ export function FavoritesPage() {
             asChild
             variant="outline"
             size="sm"
-            className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted inline-flex cursor-pointer"
+            className="relative h-8 px-2.5 text-12 font-medium gap-1.5 text-foreground hover:bg-muted inline-flex cursor-pointer shadow-none focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
             title="All projects"
           >
             <Link className="shrink-0" href="/projects">
@@ -117,7 +117,7 @@ export function FavoritesPage() {
           <Button
             size="sm"
             onClick={() => setIsCreateOpen(true)}
-            className="h-8 gap-1.5 px-3 text-xs font-semibold shadow-none cursor-pointer"
+            className="relative h-8 gap-1.5 px-3 text-13 font-medium shadow-none cursor-pointer focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
           >
             <Plus className="size-3.5 shrink-0" />
             <span>New Project</span>
@@ -128,10 +128,10 @@ export function FavoritesPage() {
       {/* Toolbar: Sort & View Mode */}
       {favoriteProjects.length > 0 && (
         <div
-          className="flex flex-wrap items-center justify-between gap-3 px-6 py-2.5 border-b border-border bg-muted select-none shrink-0"
+          className="flex flex-wrap items-center justify-between gap-3 px-6 h-10 border-b border-border bg-muted select-none shrink-0"
           style={{ paddingLeft: 'max(1.5rem, var(--header-offset, 0px))' }}
         >
-          <div className="text-xs text-muted-foreground">
+          <div className="text-12 text-muted-foreground">
             Showing {filteredProjects.length} of {favoriteProjects.length} favorite {favoriteProjects.length === 1 ? 'project' : 'projects'}
           </div>
 
@@ -141,7 +141,7 @@ export function FavoritesPage() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer border border-border"
+                  className="relative flex items-center gap-1.5 px-2 py-1 rounded-md text-12 font-medium text-foreground hover:bg-muted transition-colors cursor-pointer border border-border focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
                 >
                   <ArrowUpDown className="size-3 text-foreground shrink-0" />
                   <span>
@@ -153,22 +153,22 @@ export function FavoritesPage() {
                   </span>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44 p-1 text-xs">
+              <DropdownMenuContent align="end" className="w-44 p-1 text-12 shadow-overlay bg-popover">
                 <DropdownMenuItem
                   onClick={() => setSortBy('updated')}
-                  className={cn('cursor-pointer font-medium', sortBy === 'updated' && 'font-semibold text-primary')}
+                  className={cn('cursor-pointer font-medium text-12', sortBy === 'updated' && 'font-semibold text-primary')}
                 >
                   Recently updated
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setSortBy('name')}
-                  className={cn('cursor-pointer font-medium', sortBy === 'name' && 'font-semibold text-primary')}
+                  className={cn('cursor-pointer font-medium text-12', sortBy === 'name' && 'font-semibold text-primary')}
                 >
                   Name (A-Z)
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setSortBy('created')}
-                  className={cn('cursor-pointer font-medium', sortBy === 'created' && 'font-semibold text-primary')}
+                  className={cn('cursor-pointer font-medium text-12', sortBy === 'created' && 'font-semibold text-primary')}
                 >
                   Newest created
                 </DropdownMenuItem>
@@ -181,7 +181,7 @@ export function FavoritesPage() {
                 type="button"
                 onClick={() => setViewMode('grid')}
                 className={cn(
-                  'p-1 rounded cursor-pointer transition-colors',
+                  'relative p-1 rounded cursor-pointer transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-[\'\']',
                   viewMode === 'grid' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
                 )}
                 title="Grid view"
@@ -192,7 +192,7 @@ export function FavoritesPage() {
                 type="button"
                 onClick={() => setViewMode('list')}
                 className={cn(
-                  'p-1 rounded cursor-pointer transition-colors',
+                  'relative p-1 rounded cursor-pointer transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-[\'\']',
                   viewMode === 'list' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
                 )}
                 title="List view"
@@ -209,7 +209,7 @@ export function FavoritesPage() {
         {isLoading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex flex-col rounded-lg border border-border bg-card p-4 space-y-3 animate-pulse">
+              <div key={i} className="flex flex-col rounded-lg border border-border bg-card p-4 space-y-3 animate-pulse motion-reduce:animate-none">
                 <Skeleton className="h-24 w-full rounded-md" />
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-2/3" />
@@ -225,11 +225,11 @@ export function FavoritesPage() {
             <div className="size-12 rounded-full bg-warning/10 flex items-center justify-center mb-3">
               <Star className="size-6 text-warning fill-warning" />
             </div>
-            <h2 className="text-base font-semibold text-foreground">No favorite projects yet</h2>
-            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+            <h2 className="text-16 font-semibold text-foreground">No favorite projects yet</h2>
+            <p className="text-13 text-muted-foreground mt-1 max-w-sm">
               Click the star icon on any project card or from the sidebar menu to pin your most important projects here.
             </p>
-            <Button asChild size="sm" className="mt-4">
+            <Button asChild size="sm" className="relative mt-4 h-8 px-3 text-13 font-medium cursor-pointer shadow-none focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']">
               <Link href="/projects">Browse all projects</Link>
             </Button>
           </div>
@@ -237,7 +237,7 @@ export function FavoritesPage() {
 
         {!isLoading && favoriteProjects.length > 0 && filteredProjects.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center select-none">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-13 text-muted-foreground">
               No favorite projects match your search &quot;{searchQuery}&quot;.
             </p>
           </div>

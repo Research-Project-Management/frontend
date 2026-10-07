@@ -367,6 +367,9 @@ export type PaginatedItemsResponse = z.infer<typeof paginatedItemsResponseSchema
 
 export interface ItemQueryParams {
   collectionId?: string;
+  collectionIds?: string[];
+  includeSubcollections?: boolean;
+  recursive?: boolean;
   search?: string;
   smartFilter?: 'unfiled' | 'missing-doi' | 'missing-pdf' | 'with-notes';
   limit?: number;

@@ -53,7 +53,7 @@ const AttachmentsSection = dynamic(() => import('./AttachmentsSection'), {
 import CiteSection from './CiteSection';
 import NotesSection from './NotesSection';
 import TagsSection from './TagsSection';
-import CollectionsSection from './CollectionsSection';
+import CollectionsSection, { ReaderCollectionPickerPopover } from './CollectionsSection';
 import RelatedSection from './RelatedSection';
 import ChatPanel from '../panel/ChatPanel';
 
@@ -128,7 +128,7 @@ function InspectorSection({
                 }
                 onAdd();
               }}
-              className="size-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              className="size-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
               title={`Add ${title.toLowerCase()}`}
               aria-label={`Add ${title.toLowerCase()}`}
             >
@@ -142,7 +142,7 @@ function InspectorSection({
               e.stopPropagation();
               onToggleExpand();
             }}
-            className="size-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+            className="size-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
             title={isExpanded ? 'Collapse section' : 'Expand section'}
             aria-label={isExpanded ? 'Collapse section' : 'Expand section'}
             aria-expanded={isExpanded}
@@ -538,10 +538,31 @@ export function LibraryInspector({
                     count={itemCollectionIds.length}
                     isExpanded={expandedSections.collections}
                     onToggleExpand={() => toggleSection('collections')}
-                    onAdd={() => {
-                      setExpandedSections((prev) => ({ ...prev, collections: true }));
-                      openModal('CREATE_COLLECTION');
-                    }}
+                    actionSlot={
+                      canEdit ? (
+                        <ReaderCollectionPickerPopover
+                          paper={effectiveItem}
+                          scopeId={targetScope}
+                          canEdit={canEdit}
+                          align="end"
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!expandedSections.collections) {
+                                toggleSection('collections');
+                              }
+                            }}
+                            className="size-5 rounded flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors"
+                            title="Add to collection"
+                            aria-label="Add to collection"
+                          >
+                            <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                          </button>
+                        </ReaderCollectionPickerPopover>
+                      ) : null
+                    }
                     contentClassName="pl-3 pr-1.5 pt-1.5 pb-2.5 flex flex-col gap-1 w-full min-w-0"
                     canEdit={canEdit}
                   >
@@ -672,7 +693,7 @@ export function LibraryInspector({
             {/* Mobile Drawer */}
             <aside
               aria-label="Library Inspector"
-              className="fixed inset-y-0 right-0 z-50 w-[calc(100vw-32px)] max-w-sm h-full border-l border-border bg-background flex flex-col select-text shadow-elevation-3"
+              className="fixed inset-y-0 right-0 z-50 w-[calc(100vw-32px)] max-w-sm h-full border-l border-border bg-background flex flex-col select-text shadow-overlay"
             >
               {inspectorContent}
             </aside>

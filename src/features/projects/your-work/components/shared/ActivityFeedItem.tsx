@@ -77,19 +77,19 @@ export function ActivityFeedItem({
           src={activity.user?.avatar || undefined}
           alt={actorName}
         />
-        <AvatarFallback className="rounded-full text-xs font-medium bg-muted text-foreground">
+        <AvatarFallback className="rounded-full text-11 font-medium bg-muted text-foreground">
           {actorName.substring(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-foreground leading-snug">
+        <p className="text-13 text-foreground leading-snug">
           <span className="font-semibold text-foreground mr-1.5">
             {actorName}
           </span>
           <span className="text-muted-foreground mr-1.5">{actionVerb}</span>
           {activity.targetIdentifier && (
-            <span className="font-medium text-foreground mr-1.5 font-mono">
+            <span className="text-11 font-medium text-foreground mr-1.5 font-mono">
               {activity.targetIdentifier}
             </span>
           )}
@@ -101,13 +101,13 @@ export function ActivityFeedItem({
         </p>
 
         <div className="flex items-center gap-2 mt-1">
-          <span className="text-xs text-muted-foreground font-normal">
+          <span className="text-12 text-muted-foreground font-normal">
             {formatDistanceToNow(timeDate, { addSuffix: true })}
           </span>
           {projectName && (
             <>
-              <span className="text-muted-foreground text-xs">•</span>
-              <span className="text-xs font-medium text-muted-foreground truncate max-w-[200px]">
+              <span className="text-muted-foreground text-12">•</span>
+              <span className="text-12 font-medium text-muted-foreground truncate max-w-[200px]">
                 {projectName}
               </span>
             </>

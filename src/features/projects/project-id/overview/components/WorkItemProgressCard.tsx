@@ -48,20 +48,21 @@ export function WorkItemProgressCard({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <BarChart2 className="size-4 text-primary" />
-          <h2 className="text-sm font-semibold tracking-tight text-foreground">
+          <h2 className="text-13 font-semibold tracking-tight text-foreground">
             Work Items & Progress
           </h2>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-foreground">
+          <span className="text-12 font-medium text-foreground">
             {completionPercentage}% completed
           </span>
           <Link
             href={`/projects/${projectId}/work-items`}
-            className="flex items-center gap-1 text-xs text-primary font-medium hover:underline ml-1"
+            className="flex items-center gap-1 text-12 text-primary font-medium hover:underline ml-1 relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
-            View all <ArrowRight className="size-3" />
+            <span>View all</span>
+            <ArrowRight className="size-3" />
           </Link>
         </div>
       </div>
@@ -72,28 +73,28 @@ export function WorkItemProgressCard({
           {completedPct > 0 && (
             <div
               style={{ width: `${completedPct}%` }}
-              className="h-full bg-emerald-500 transition-all duration-500"
+              className="h-full bg-success transition-all duration-500"
               title={`Completed: ${completed} (${completedPct.toFixed(1)}%)`}
             />
           )}
           {startedPct > 0 && (
             <div
               style={{ width: `${startedPct}%` }}
-              className="h-full bg-amber-500 transition-all duration-500"
+              className="h-full bg-warning transition-all duration-500"
               title={`In Progress: ${started} (${startedPct.toFixed(1)}%)`}
             />
           )}
           {unstartedPct > 0 && (
             <div
               style={{ width: `${unstartedPct}%` }}
-              className="h-full bg-blue-500 transition-all duration-500"
+              className="h-full bg-primary transition-all duration-500"
               title={`Unstarted: ${unstarted} (${unstartedPct.toFixed(1)}%)`}
             />
           )}
           {backlogPct > 0 && (
             <div
               style={{ width: `${backlogPct}%` }}
-              className="h-full bg-slate-400 dark:bg-slate-600 transition-all duration-500"
+              className="h-full bg-muted-foreground/60 transition-all duration-500"
               title={`Backlog: ${backlog} (${backlogPct.toFixed(1)}%)`}
             />
           )}
@@ -103,10 +104,10 @@ export function WorkItemProgressCard({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
           {/* Completed */}
           <div className="flex items-center gap-2 rounded-md border border-border bg-background/50 p-2.5">
-            <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+            <CheckCircle2 className="size-4 text-success shrink-0" />
             <div className="flex flex-col min-w-0">
               <span className="text-11 text-muted-foreground font-medium">Completed</span>
-              <span className="text-sm font-semibold text-foreground">
+              <span className="text-14 font-semibold text-foreground">
                 {completed}{' '}
                 <span className="text-11 font-normal text-muted-foreground">
                   ({completedPct.toFixed(0)}%)
@@ -117,10 +118,10 @@ export function WorkItemProgressCard({
 
           {/* In Progress / Started */}
           <div className="flex items-center gap-2 rounded-md border border-border bg-background/50 p-2.5">
-            <Clock className="size-4 text-amber-500 shrink-0" />
+            <Clock className="size-4 text-warning shrink-0" />
             <div className="flex flex-col min-w-0">
               <span className="text-11 text-muted-foreground font-medium">Started</span>
-              <span className="text-sm font-semibold text-foreground">
+              <span className="text-14 font-semibold text-foreground">
                 {started}{' '}
                 <span className="text-11 font-normal text-muted-foreground">
                   ({startedPct.toFixed(0)}%)
@@ -131,10 +132,10 @@ export function WorkItemProgressCard({
 
           {/* Unstarted */}
           <div className="flex items-center gap-2 rounded-md border border-border bg-background/50 p-2.5">
-            <CircleDot className="size-4 text-blue-500 shrink-0" />
+            <CircleDot className="size-4 text-primary shrink-0" />
             <div className="flex flex-col min-w-0">
               <span className="text-11 text-muted-foreground font-medium">Unstarted</span>
-              <span className="text-sm font-semibold text-foreground">
+              <span className="text-14 font-semibold text-foreground">
                 {unstarted}{' '}
                 <span className="text-11 font-normal text-muted-foreground">
                   ({unstartedPct.toFixed(0)}%)
@@ -145,10 +146,10 @@ export function WorkItemProgressCard({
 
           {/* Backlog */}
           <div className="flex items-center gap-2 rounded-md border border-border bg-background/50 p-2.5">
-            <Inbox className="size-4 text-slate-400 shrink-0" />
+            <Inbox className="size-4 text-muted-foreground shrink-0" />
             <div className="flex flex-col min-w-0">
               <span className="text-11 text-muted-foreground font-medium">Backlog</span>
-              <span className="text-sm font-semibold text-foreground">
+              <span className="text-14 font-semibold text-foreground">
                 {backlog}{' '}
                 <span className="text-11 font-normal text-muted-foreground">
                   ({backlogPct.toFixed(0)}%)
@@ -161,16 +162,16 @@ export function WorkItemProgressCard({
 
       {/* Overdue alert banner if > 0 */}
       {overdue > 0 && (
-        <div className="flex items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs text-destructive">
+        <div className="flex items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-12 text-destructive">
           <div className="flex items-center gap-2 font-medium">
             <AlertTriangle className="size-4 shrink-0 text-destructive" />
             <span>
-              <strong>{overdue}</strong> {overdue === 1 ? 'work item is' : 'work items are'} past due date
+              <strong className="font-semibold">{overdue}</strong> {overdue === 1 ? 'work item is' : 'work items are'} past due date
             </span>
           </div>
           <Link
             href={`/projects/${projectId}/work-items`}
-            className="text-xs font-semibold underline underline-offset-2 hover:opacity-80 shrink-0"
+            className="text-12 font-medium underline underline-offset-2 hover:opacity-80 shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             Review overdue
           </Link>

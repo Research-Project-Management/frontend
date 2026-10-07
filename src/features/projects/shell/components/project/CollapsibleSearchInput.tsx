@@ -31,7 +31,7 @@ export function CollapsibleSearchInput({
       tabIndex={active ? -1 : 0}
       aria-label={ariaLabel}
       className={cn(
-        'relative flex items-center transition-colors duration-300 ease-in-out h-8 rounded-md overflow-hidden group focus-visible:ring-2 focus-visible:ring-ring',
+        'relative flex items-center transition-colors duration-300 ease-in-out h-8 rounded-md overflow-hidden group focus-visible:ring-1 focus-visible:ring-ring',
         active
           ? 'w-48 sm:w-64 border border-border bg-background'
           : 'w-8 hover:bg-muted cursor-pointer',
@@ -70,7 +70,7 @@ export function CollapsibleSearchInput({
           }
         }}
         className={cn(
-          'h-full border-none shadow-none pl-8 pr-3 text-xs bg-transparent focus-visible:ring-0 transition-opacity duration-200',
+          'h-full border-none shadow-none pl-8 pr-3 text-13 bg-transparent focus-visible:ring-0 transition-opacity duration-200',
           active ? 'opacity-100' : 'opacity-0 pointer-events-none',
         )}
       />

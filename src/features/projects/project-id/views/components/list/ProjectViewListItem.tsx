@@ -88,12 +88,12 @@ export function ProjectViewListItem({
   const creatorInitials = creatorName.slice(0, 2).toUpperCase();
 
   return (
-    <div className="group relative flex items-center justify-between gap-4 px-4 py-3 border-b border-border hover:bg-muted/40 transition-colors">
+    <div className="group relative flex items-center justify-between gap-4 px-4 py-2 min-h-11 border-b border-border hover:bg-muted/40 transition-colors">
       {/* Left Item Details (Title, Icon, Description) */}
       <div className="flex items-center gap-3 min-w-0 flex-1">
         <Link
           href={viewUrl}
-          className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer focus:outline-none"
+          className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer focus-visible:ring-1 focus-visible:ring-ring rounded-md outline-none"
         >
           <div className="size-7 rounded-md bg-muted/60 flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
             {renderLayoutIcon()}
@@ -103,12 +103,12 @@ export function ProjectViewListItem({
               <span className="font-medium text-13 text-foreground group-hover:text-primary transition-colors truncate">
                 {view.name}
               </span>
-              <span className="text-10 font-mono uppercase px-1.5 py-0.2 rounded bg-muted/70 text-muted-foreground shrink-0">
+              <span className="text-11 font-mono uppercase px-1.5 py-0.5 rounded bg-muted/70 text-muted-foreground shrink-0">
                 {view.layout}
               </span>
             </div>
             {view.description && (
-              <p className="text-xs text-muted-foreground truncate mt-0.5">
+              <p className="text-12 text-muted-foreground truncate mt-0.5">
                 {view.description}
               </p>
             )}
@@ -124,13 +124,13 @@ export function ProjectViewListItem({
             <TooltipTrigger asChild>
               <div className="cursor-default flex items-center justify-center size-6 text-muted-foreground/80 hover:text-foreground">
                 {isPublic ? (
-                  <Globe className="size-3.5 text-muted-foreground hover:text-blue-500 transition-colors" />
+                  <Globe className="size-3.5 text-muted-foreground hover:text-primary transition-colors" />
                 ) : (
-                  <Lock className="size-3.5 text-muted-foreground hover:text-amber-500 transition-colors" />
+                  <Lock className="size-3.5 text-muted-foreground hover:text-warning transition-colors" />
                 )}
               </div>
             </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
+            <TooltipContent side="top" className="text-12">
               {isPublic ? 'Public · Shared with project members' : 'Private · Only visible to you'}
             </TooltipContent>
           </Tooltip>
@@ -152,7 +152,7 @@ export function ProjectViewListItem({
                   </Avatar>
                 </div>
               </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">
+              <TooltipContent side="top" className="text-12">
                 Created by {creatorName}
               </TooltipContent>
             </Tooltip>
@@ -160,7 +160,7 @@ export function ProjectViewListItem({
         )}
 
         {/* Relative Updated Timestamp */}
-        <span className="text-11 text-muted-foreground whitespace-nowrap hidden sm:inline-block">
+        <span className="text-11 font-mono text-muted-foreground whitespace-nowrap hidden sm:inline-block">
           {formatViewDate(view.updatedAt || view.createdAt)}
         </span>
 
@@ -176,21 +176,22 @@ export function ProjectViewListItem({
                   onToggleFavorite(view.id);
                 }}
                 className={cn(
-                  'size-6 flex items-center justify-center rounded hover:bg-muted cursor-pointer transition-colors',
+                  'size-6 flex items-center justify-center rounded hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
                   isFavorite
-                    ? 'text-amber-500 fill-amber-500'
+                    ? 'text-warning fill-warning'
                     : 'text-muted-foreground/40 hover:text-muted-foreground'
                 )}
+                aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
               >
                 <Star
                   className={cn(
                     'size-3.5',
-                    isFavorite ? 'fill-amber-500 text-amber-500' : 'text-current'
+                    isFavorite ? 'fill-warning text-warning' : 'text-current'
                   )}
                 />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
+            <TooltipContent side="top" className="text-12">
               {isFavorite ? 'Remove from favorites' : 'Add to favorites'}
             </TooltipContent>
           </Tooltip>
@@ -202,36 +203,37 @@ export function ProjectViewListItem({
             <Button
               variant="ghost"
               size="sm"
-              className="size-7 p-0 rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+              className="size-7 p-0 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+              aria-label="View options"
             >
               <MoreHorizontal className="size-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44 p-1">
+          <DropdownMenuContent align="end" className="w-44 p-1 shadow-overlay">
             <DropdownMenuItem
               onClick={() => onEdit(view)}
-              className="flex items-center gap-2 text-xs cursor-pointer px-2 py-1.5 rounded-sm"
+              className="flex items-center gap-2 text-12 cursor-pointer px-2 py-1.5 rounded-sm relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               <Pencil className="size-3.5 text-muted-foreground" />
               <span>Edit view</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onDuplicate(view)}
-              className="flex items-center gap-2 text-xs cursor-pointer px-2 py-1.5 rounded-sm"
+              className="flex items-center gap-2 text-12 cursor-pointer px-2 py-1.5 rounded-sm relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               <Copy className="size-3.5 text-muted-foreground" />
               <span>Duplicate</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onCopyLink(view)}
-              className="flex items-center gap-2 text-xs cursor-pointer px-2 py-1.5 rounded-sm"
+              className="flex items-center gap-2 text-12 cursor-pointer px-2 py-1.5 rounded-sm relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               <LinkIcon className="size-3.5 text-muted-foreground" />
               <span>Copy link</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => window.open(viewUrl, '_blank')}
-              className="flex items-center gap-2 text-xs cursor-pointer px-2 py-1.5 rounded-sm"
+              className="flex items-center gap-2 text-12 cursor-pointer px-2 py-1.5 rounded-sm relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               <ExternalLink className="size-3.5 text-muted-foreground" />
               <span>Open in new tab</span>
@@ -239,7 +241,7 @@ export function ProjectViewListItem({
             <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem
               onClick={() => onDelete(view)}
-              className="flex items-center gap-2 text-xs cursor-pointer px-2 py-1.5 rounded-sm text-destructive focus:text-destructive focus:bg-muted"
+              className="flex items-center gap-2 text-12 cursor-pointer px-2 py-1.5 rounded-sm text-destructive focus:text-destructive focus:bg-muted relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               <Trash2 className="size-3.5" />
               <span>Delete view</span>

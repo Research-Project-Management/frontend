@@ -13,6 +13,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -67,6 +68,9 @@ export function UploadConflictDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-sm">Upload Files</DialogTitle>
+          <DialogDescription className="sr-only">
+            Review and resolve duplicate files or zip extraction settings before uploading.
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-1 max-h-72 overflow-y-auto overflow-x-hidden py-1">
           {pendingUploads.map((item, i) => {

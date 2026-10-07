@@ -13,6 +13,7 @@ import {
   Button,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -46,21 +47,21 @@ const STATUS_CONFIG: Record<
 > = {
   published: {
     label: 'Published',
-    color: '#10b981',
-    bg: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
-    border: 'border-emerald-500/20',
+    color: 'var(--color-success, #1A7F37)',
+    bg: 'bg-success/10 text-success',
+    border: 'border-success/20',
   },
   draft: {
     label: 'Draft',
-    color: '#f59e0b',
-    bg: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-    border: 'border-amber-500/20',
+    color: 'var(--color-warning, #9A6700)',
+    bg: 'bg-warning/10 text-warning',
+    border: 'border-warning/20',
   },
   archived: {
     label: 'Archived',
-    color: '#64748b',
-    bg: 'bg-slate-500/10 text-slate-700 dark:text-slate-400',
-    border: 'border-slate-500/20',
+    color: 'var(--color-muted-foreground, #6E6E6E)',
+    bg: 'bg-muted text-muted-foreground',
+    border: 'border-border',
   },
 };
 
@@ -150,17 +151,20 @@ export function EditModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent aria-describedby={undefined} className="sm:max-w-[480px] rounded-md p-5 gap-4">
+      <DialogContent className="sm:max-w-[480px] rounded-md p-5 gap-4 shadow-raised-200 border-border/80">
         <DialogHeader className="pb-1">
-          <DialogTitle className="text-sm font-semibold tracking-tight text-foreground">
+          <DialogTitle className="text-16 font-semibold tracking-tight text-foreground">
             Edit page
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Edit page properties, status, and labels.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
           {/* Page Title */}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="edit-page-title" className="text-xs font-medium text-foreground">
+            <Label htmlFor="edit-page-title" className="text-12 font-medium text-foreground">
               Page title <span className="text-destructive">*</span>
             </Label>
             <Input
@@ -169,7 +173,7 @@ export function EditModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               autoFocus
-              className="h-8 text-xs rounded-md shadow-none"
+              className="h-8 text-13 rounded-md shadow-none focus-visible:ring-1 focus-visible:ring-ring"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && title.trim() && !isSaving) {
                   e.preventDefault();
@@ -181,7 +185,7 @@ export function EditModal({
 
           {/* Description */}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="edit-page-desc" className="text-xs font-medium text-foreground">
+            <Label htmlFor="edit-page-desc" className="text-12 font-medium text-foreground">
               Description
             </Label>
             <textarea
@@ -190,7 +194,7 @@ export function EditModal({
               placeholder="Add a brief description or abstract notes for this page..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full text-xs rounded-md border border-border bg-background p-2.5 text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring resize-none leading-relaxed"
+              className="w-full text-13 rounded-md border border-border bg-background p-2.5 text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring resize-none leading-relaxed"
             />
           </div>
 
@@ -204,7 +208,7 @@ export function EditModal({
                   variant="outline"
                   size="sm"
                   className={cn(
-                    'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+                    'h-7 px-2.5 text-12 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
                     isStatusPopoverOpen && 'bg-muted border-border'
                   )}
                 >
@@ -220,7 +224,7 @@ export function EditModal({
                 align="start"
                 side="bottom"
                 sideOffset={4}
-                className="w-44 p-1 rounded-md border border-border bg-popover z-50 flex flex-col shadow-md"
+                className="w-44 p-1 rounded-md border border-border bg-popover flex flex-col shadow-overlay"
               >
                 {(Object.keys(STATUS_CONFIG) as PageStatus[]).map((st) => {
                   const cfg = STATUS_CONFIG[st];
@@ -234,7 +238,7 @@ export function EditModal({
                         setIsStatusPopoverOpen(false);
                       }}
                       className={cn(
-                        'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors hover:bg-muted/60 cursor-pointer select-none text-left',
+                        'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-12 transition-colors hover:bg-muted/60 cursor-pointer select-none text-left relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
                         isSelected && 'bg-muted font-medium'
                       )}
                     >
@@ -262,7 +266,7 @@ export function EditModal({
                   variant="outline"
                   size="sm"
                   className={cn(
-                    'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+                    'h-7 px-2.5 text-12 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
                     (isLabelPopoverOpen || selectedLabelIds.length > 0) && 'bg-muted border-border',
                     selectedLabelIds.length > 0 && 'font-medium'
                   )}
@@ -281,7 +285,7 @@ export function EditModal({
                 align="start"
                 side="bottom"
                 sideOffset={4}
-                className="w-56 p-1.5 rounded-md border border-border bg-popover z-50 flex flex-col shadow-md text-foreground overflow-hidden"
+                className="w-56 p-1.5 rounded-md border border-border bg-popover flex flex-col shadow-overlay text-foreground overflow-hidden"
               >
                 <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1">
                   <Search className="size-3.5 text-muted-foreground shrink-0 pointer-events-none" />
@@ -290,14 +294,14 @@ export function EditModal({
                     placeholder="Search labels..."
                     value={labelSearch}
                     onChange={(e) => setLabelSearch(e.target.value)}
-                    className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground text-foreground"
+                    className="w-full bg-transparent text-12 outline-none focus-visible:ring-0 focus-visible:outline-none placeholder:text-muted-foreground text-foreground"
                     autoFocus
                   />
                   {labelSearch && (
                     <button
                       type="button"
                       onClick={() => setLabelSearch('')}
-                      className="text-muted-foreground hover:text-foreground cursor-pointer p-0.5 rounded-sm"
+                      className="text-muted-foreground hover:text-foreground cursor-pointer p-0.5 rounded-sm relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
                       aria-label="Clear search"
                     >
                       <X className="size-3" />
@@ -310,20 +314,20 @@ export function EditModal({
                   style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--border) transparent' }}
                 >
                   {filteredLabels.length === 0 ? (
-                    <div className="py-2.5 text-center text-xs text-muted-foreground">
+                    <div className="py-2.5 text-center text-12 text-muted-foreground">
                       {projectLabels.length === 0 ? 'No labels in this project' : 'No labels found'}
                     </div>
                   ) : (
                     filteredLabels.map((label) => {
                       const isSelected = selectedLabelIds.includes(label.id);
-                      const color = label.color || '#3b82f6';
+                      const color = label.color || '#0969DA';
                       return (
                         <button
                           key={label.id}
                           type="button"
                           onClick={() => handleToggleLabel(label.id)}
                           className={cn(
-                            'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors hover:bg-muted/60 cursor-pointer select-none text-left',
+                            'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-12 transition-colors hover:bg-muted/60 cursor-pointer select-none text-left relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
                             isSelected && 'bg-muted/60 font-medium'
                           )}
                         >
@@ -347,11 +351,11 @@ export function EditModal({
 
             {/* Selected Label Chips inline */}
             {selectedLabels.map((label) => {
-              const color = label.color || '#3b82f6';
+              const color = label.color || '#0969DA';
               return (
                 <span
                   key={label.id}
-                  className="inline-flex items-center gap-1.5 h-6 pl-2 pr-1 rounded-md text-xs font-medium border shrink-0 transition-colors"
+                  className="inline-flex items-center gap-1.5 h-6 pl-2 pr-1 rounded-md text-12 font-medium border shrink-0 transition-colors"
                   style={{
                     backgroundColor: `${color}12`,
                     borderColor: `${color}30`,
@@ -363,8 +367,9 @@ export function EditModal({
                   <button
                     type="button"
                     onClick={() => handleToggleLabel(label.id)}
-                    className="size-3.5 rounded-sm flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer ml-0.5"
+                    className="size-3.5 rounded-sm flex items-center justify-center hover:bg-foreground/10 transition-colors cursor-pointer ml-0.5 relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                     title={`Remove ${label.name}`}
+                    aria-label={`Remove ${label.name}`}
                   >
                     <X className="size-2.5" />
                   </button>
@@ -381,7 +386,7 @@ export function EditModal({
             size="sm"
             onClick={() => setIsOpen(false)}
             disabled={isSaving}
-            className="h-8 text-xs rounded-md shadow-none cursor-pointer"
+            className="h-8 text-12 px-3 rounded-md shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             Cancel
           </Button>
@@ -390,11 +395,11 @@ export function EditModal({
             size="sm"
             onClick={handleSave}
             disabled={!title.trim() || isSaving}
-            className="h-8 text-xs rounded-md shadow-none cursor-pointer font-medium"
+            className="h-8 text-12 px-3 rounded-md shadow-none cursor-pointer font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             {isSaving ? (
               <>
-                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                <Loader2 className="mr-1.5 size-3.5 animate-spin motion-reduce:animate-none" />
                 Saving...
               </>
             ) : (

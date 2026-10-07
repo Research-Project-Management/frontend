@@ -92,7 +92,7 @@ function getFileMeta(name: string, size?: number) {
     return {
       type: 'Word',
       icon: FileText,
-      iconColor: 'text-blue-500',
+      iconColor: 'text-primary',
       sizeText,
     };
   }
@@ -209,28 +209,110 @@ export function CompanionInput({
     return (projects || []).filter((p: any) => !p.isArchived);
   }, [projects]);
 
-  // Selected project: defaults to currentProjectId if inside a project, otherwise null ('None')
+  // Track if user explicitly clicked "None" in the dropdown to avoid auto-selecting again in this session
+  const hasUserExplicitlyClearedRef = useRef(false);
+
+  // Initialize selectedProject with resolution hierarchy:
+  // 1. currentProjectId (prop from route)
+  // 2. localStorage ('flux_active_project_id')
+  // 3. null (resolved to activeProjects[0] once activeProjects load)
   const [selectedProject, setSelectedProject] = useState<string | null>(() => {
-    return currentProjectId || null;
+    if (currentProjectId) return currentProjectId;
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('flux_active_project_id');
+      if (stored) return stored;
+    }
+    return null;
   });
 
+  // When route project ID changes, sync and reset explicit clear flag
   const prevRouteProjectIdRef = useRef(currentProjectId);
   useEffect(() => {
     if (currentProjectId !== prevRouteProjectIdRef.current) {
       prevRouteProjectIdRef.current = currentProjectId;
-      setSelectedProject(currentProjectId || null);
+      if (currentProjectId) {
+        hasUserExplicitlyClearedRef.current = false;
+        const matched = activeProjects.find(
+          (p: any) => p.id === currentProjectId || p.identifier === currentProjectId
+        );
+        const resolvedId = matched ? matched.id : currentProjectId;
+        setSelectedProject(resolvedId);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('flux_active_project_id', resolvedId);
+        }
+      }
     }
-  }, [currentProjectId]);
+  }, [currentProjectId, activeProjects]);
 
+  // Synchronize and auto-resolve selectedProject when activeProjects load or change
   useEffect(() => {
-    if (
-      selectedProject &&
-      activeProjects.length > 0 &&
-      !activeProjects.some((p: any) => p.id === selectedProject)
-    ) {
-      setSelectedProject(null);
+    if (activeProjects.length === 0) {
+      if (selectedProject !== null) {
+        setSelectedProject(null);
+      }
+      return;
     }
-  }, [activeProjects, selectedProject]);
+
+    // If user explicitly chose "None" in this session, do not auto-select
+    if (hasUserExplicitlyClearedRef.current) {
+      return;
+    }
+
+    // 1. If route project ID is present, try matching it first
+    if (currentProjectId) {
+      const matched = activeProjects.find(
+        (p: any) => p.id === currentProjectId || p.identifier === currentProjectId
+      );
+      if (matched) {
+        if (selectedProject !== matched.id) {
+          setSelectedProject(matched.id);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('flux_active_project_id', matched.id);
+          }
+        }
+        return;
+      }
+    }
+
+    // 2. If current selectedProject matches an active project (by id or identifier)
+    if (selectedProject) {
+      const matched = activeProjects.find(
+        (p: any) => p.id === selectedProject || p.identifier === selectedProject
+      );
+      if (matched) {
+        if (selectedProject !== matched.id) {
+          setSelectedProject(matched.id);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('flux_active_project_id', matched.id);
+          }
+        }
+        return;
+      }
+    }
+
+    // 3. Check localStorage for active project
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('flux_active_project_id');
+      if (stored) {
+        const matched = activeProjects.find(
+          (p: any) => p.id === stored || p.identifier === stored
+        );
+        if (matched) {
+          setSelectedProject(matched.id);
+          return;
+        }
+      }
+    }
+
+    // 4. Fallback: Default to the first active project if any exist (never default to 'None' when projects exist)
+    const firstProject = activeProjects[0];
+    if (firstProject) {
+      setSelectedProject(firstProject.id);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('flux_active_project_id', firstProject.id);
+      }
+    }
+  }, [activeProjects, currentProjectId, selectedProject]);
 
   const filteredProjects = useMemo(() => {
     const q = projectSearch.trim().toLowerCase();
@@ -392,7 +474,7 @@ export function CompanionInput({
     }
     if ((!text.trim() && attachedFiles.length === 0) || isStreaming) return;
 
-    const finalProjectId = selectedProject;
+    const finalProjectId = currentProjectObj ? currentProjectObj.id : selectedProject;
     const finalWebSearch = webSearchEnabled ? ['*'] : undefined;
     const finalDocIds =
       attachedFiles.length > 0 ? attachedFiles.map((f) => f.id) : undefined;
@@ -411,11 +493,21 @@ export function CompanionInput({
     }
   };
 
-  // Selected project display name
-  const currentProjectObj = activeProjects.find((p: any) => p.id === selectedProject);
-  const rawProjectName = currentProjectObj?.name || 'None';
+  // Selected project display name & object lookup (matching by id or identifier)
+  const currentProjectObj = useMemo(() => {
+    if (!selectedProject) return null;
+    return (
+      activeProjects.find(
+        (p: any) => p.id === selectedProject || p.identifier === selectedProject
+      ) || null
+    );
+  }, [activeProjects, selectedProject]);
+
+  const rawProjectName =
+    currentProjectObj?.name || (activeProjects.length === 0 ? 'No project' : 'None');
   const currentProjectName =
-    rawProjectName.toLowerCase().includes('flux neural dynamics') || rawProjectName.toLowerCase() === 'flux'
+    rawProjectName.toLowerCase().includes('flux neural dynamics') ||
+    rawProjectName.toLowerCase() === 'flux'
       ? 'flux'
       : rawProjectName;
 
@@ -457,7 +549,7 @@ export function CompanionInput({
                 <PopoverTrigger asChild>
                   <button
                     type='button'
-                    className='inline-flex h-6 max-w-[220px] items-center gap-1.5 rounded-lg border border-border bg-background hover:bg-muted px-2 text-11 text-foreground transition-colors cursor-pointer outline-none shrink-0'
+                    className='inline-flex h-6 max-w-[220px] items-center gap-1.5 rounded-md border border-border bg-background hover:bg-muted px-2 text-11 text-foreground transition-colors cursor-pointer outline-none shrink-0 relative before:absolute before:-inset-1.5 md:before:hidden'
                     aria-label='Project context scope'
                   >
                     {currentProjectObj ? (
@@ -505,6 +597,7 @@ export function CompanionInput({
                 <button
                   type='button'
                   onClick={() => {
+                    hasUserExplicitlyClearedRef.current = true;
                     setSelectedProject(null);
                     setScopeOpen(false);
                     setProjectSearch('');
@@ -548,7 +641,8 @@ export function CompanionInput({
 
                 {!isLoadingProjects &&
                   filteredProjects.map((p: any) => {
-                    const isSelected = selectedProject === p.id;
+                    const isSelected =
+                      selectedProject === p.id || selectedProject === p.identifier;
                     const displayName =
                       p.name?.toLowerCase().includes('flux neural dynamics') || p.name?.toLowerCase() === 'flux'
                         ? 'flux'
@@ -558,7 +652,11 @@ export function CompanionInput({
                         key={p.id}
                         type='button'
                         onClick={() => {
+                          hasUserExplicitlyClearedRef.current = false;
                           setSelectedProject(p.id);
+                          if (typeof window !== 'undefined') {
+                            localStorage.setItem('flux_active_project_id', p.id);
+                          }
                           setScopeOpen(false);
                           setProjectSearch('');
                         }}
@@ -653,7 +751,7 @@ export function CompanionInput({
                     <button
                       type='button'
                       onClick={() => removeAttachedFile(file.id)}
-                      className='size-4.5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted ml-0.5 cursor-pointer'
+                      className='size-4.5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted ml-0.5 cursor-pointer relative before:absolute before:-inset-2 md:before:hidden'
                       aria-label={`Remove ${file.name}`}
                     >
                       <X className='size-2.5' />
@@ -692,7 +790,7 @@ export function CompanionInput({
                       type='button'
                       disabled={isStreaming}
                       className={cn(
-                        'relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai',
+                        'relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai before:absolute before:-inset-2 md:before:hidden',
                         isStreaming && 'opacity-40 cursor-not-allowed'
                       )}
                       aria-label='Add attachment or toggle features'
@@ -750,12 +848,22 @@ export function CompanionInput({
                 <DropdownMenuSeparator className='my-1' />
 
                 {/* 4. Web Search Toggle inside the Plus menu */}
-                <div
+                <button
+                  type='button'
+                  role='switch'
+                  aria-checked={webSearchEnabled}
                   onClick={(e) => {
                     e.stopPropagation();
                     setWebSearchEnabled(!webSearchEnabled);
                   }}
-                  className='flex items-center justify-between px-2.5 py-1.5 rounded-md hover:bg-muted transition-colors cursor-pointer select-none text-foreground text-13 font-normal'
+                  onKeyDown={(e) => {
+                    if (e.key === ' ' || e.key === 'Enter') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setWebSearchEnabled(!webSearchEnabled);
+                    }
+                  }}
+                  className='w-full flex items-center justify-between px-2.5 py-1.5 rounded-md hover:bg-muted focus:bg-muted transition-colors cursor-pointer select-none text-foreground text-13 font-normal outline-none focus-visible:ring-1 focus-visible:ring-ai'
                 >
                   <div className='flex items-center gap-2.5 min-w-0'>
                     <Globe className='size-4 text-foreground shrink-0' />
@@ -763,7 +871,7 @@ export function CompanionInput({
                   </div>
                   <div
                     className={cn(
-                      'relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out',
+                      'relative inline-flex h-4 w-7 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out',
                       webSearchEnabled ? 'bg-ai' : 'bg-muted-foreground/30'
                     )}
                   >
@@ -774,7 +882,7 @@ export function CompanionInput({
                       )}
                     />
                   </div>
-                </div>
+                </button>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -790,7 +898,7 @@ export function CompanionInput({
                     toast.info('Voice input coming soon');
                   }}
                   disabled={isStreaming}
-                  className='flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none'
+                  className='relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none before:absolute before:-inset-2 md:before:hidden'
                   aria-label='Voice input'
                 >
                   <Mic className='size-3.5 shrink-0 text-foreground' />
@@ -807,7 +915,7 @@ export function CompanionInput({
                   <button
                     type='button'
                     onClick={onStop}
-                    className='flex size-7 items-center justify-center rounded-md bg-ai text-white hover:bg-ai-hover transition-all active:scale-95 cursor-pointer'
+                    className='relative flex size-7 items-center justify-center rounded-md bg-ai text-white hover:bg-ai-hover transition-all active:scale-95 cursor-pointer before:absolute before:-inset-2 md:before:hidden'
                     aria-label='Stop generating'
                   >
                     <Square className='size-3 fill-current' />
@@ -825,7 +933,7 @@ export function CompanionInput({
                     onClick={handleSubmit}
                     disabled={(!text.trim() && attachedFiles.length === 0) || isUploading}
                     className={cn(
-                      'flex size-7 items-center justify-center rounded-md p-0 transition-all select-none',
+                      'relative flex size-7 items-center justify-center rounded-md p-0 transition-all select-none before:absolute before:-inset-2 md:before:hidden',
                       isUploading
                         ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
                         : (!text.trim() && attachedFiles.length === 0)
@@ -861,7 +969,7 @@ export function CompanionInput({
       {/* Plane Style Disclaimer Footer */}
       {showDisclaimer && (
         <p className='text-12 text-muted-foreground text-center select-none pt-2 pb-0.5 leading-normal'>
-          Flux AI can make mistakes, please double-check responses.
+          AI Assistant can make mistakes, please double-check responses.
         </p>
       )}
 

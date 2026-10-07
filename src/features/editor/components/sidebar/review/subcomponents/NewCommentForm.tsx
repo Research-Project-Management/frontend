@@ -94,7 +94,7 @@ export function NewCommentForm({
 
         {/* Selected Quote Preview */}
         {pendingQuote && (
-          <div className="text-xs bg-muted/60 border-l-2 border-primary/60 px-2.5 py-1.5 italic text-muted-foreground truncate rounded-r">
+          <div className="text-xs bg-muted/60 border border-border/70 px-2.5 py-1.5 italic text-muted-foreground truncate rounded-md">
             &ldquo;{pendingQuote}&rdquo;
           </div>
         )}
@@ -149,7 +149,7 @@ export function NewCommentForm({
             className="flex items-center gap-1.5 rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 cursor-pointer transition-colors"
           >
             {isPending ? (
-              <Loader2 className="size-3 animate-spin" />
+              <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />
             ) : (
               <Send className="size-3" />
             )}

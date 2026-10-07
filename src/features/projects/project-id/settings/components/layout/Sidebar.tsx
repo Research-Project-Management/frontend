@@ -76,14 +76,25 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="h-full w-60 shrink-0 border-r border-border bg-transparent select-none max-md:w-full max-md:border-r-0 max-md:border-b">
-      <ScrollArea type="scroll" scrollHideDelay={600} className="h-full w-full">
-        <div className="w-full p-2.5 py-4">
-          {/* Back to Project */}
-          <div className="mb-2.5 px-1">
+    <aside className="h-full w-60 shrink-0 border-r border-border bg-transparent select-none max-md:w-full max-md:border-r-0 max-md:border-b max-md:h-auto flex flex-col">
+      {/* Topbar Header matching the h-11 border-b of PageHeader */}
+      <div className="h-11 border-b border-border px-3 flex items-center shrink-0 max-md:hidden">
+        <Link
+          href={`/projects/${projectId}/work-items`}
+          className="group relative flex h-8 w-full items-center gap-2 rounded-md px-2 text-13 leading-5 font-normal text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
+        >
+          <ArrowLeft className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-transform group-hover:-translate-x-0.5" />
+          <span className="tracking-tight font-medium">Back to project</span>
+        </Link>
+      </div>
+
+      <ScrollArea type="scroll" scrollHideDelay={600} className="flex-1 w-full">
+        <div className="w-full p-2.5 py-3">
+          {/* Mobile Back to Project (visible on mobile only) */}
+          <div className="mb-2.5 px-1 md:hidden">
             <Link
               href={`/projects/${projectId}/work-items`}
-              className="group flex h-8 w-full items-center gap-2 rounded-md px-2 text-13 leading-5 font-normal text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+              className="group relative flex h-8 w-full items-center gap-2 rounded-md px-2 text-13 leading-5 font-normal text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
             >
               <ArrowLeft className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-transform group-hover:-translate-x-0.5" />
               <span className="tracking-tight font-medium">Back to project</span>
@@ -132,7 +143,7 @@ function GroupSection({
               key={item.id}
               href={item.to}
               className={cn(
-                'group flex h-8 items-center gap-2 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none shrink-0',
+                'group relative flex h-8 items-center gap-2 rounded-md px-2.5 text-13 leading-5 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0 before:absolute before:-inset-1 md:before:hidden',
                 active
                   ? 'bg-muted text-foreground font-medium'
                   : 'text-foreground hover:bg-muted font-normal'

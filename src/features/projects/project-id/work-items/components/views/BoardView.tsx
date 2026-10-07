@@ -49,7 +49,15 @@ import {
   LabelPopover,
   AvatarStack,
 } from '../modals/Popovers';
-import { ItemHelpers, resolveColumnId, getItemBucketKey } from '../../utils/work-item.utils';
+import {
+  ItemHelpers,
+  resolveColumnId,
+  getItemBucketKey,
+  resolveColumnColor,
+  resolveStateColor,
+  PRIORITY_THEME_COLORS,
+  GROUP_DEFAULT_COLORS,
+} from '../../utils/work-item.utils';
 import {
   type Item,
   type Column as ColumnType,
@@ -115,7 +123,7 @@ const PRIORITY_THEME_CLASSES: Record<string, string> = {
   urgent:
     'text-destructive bg-destructive/10 border-destructive/30 hover:bg-destructive/20 shadow-none font-normal',
   high:
-    'text-amber-700 dark:text-amber-300 bg-amber-500/15 border-amber-500/30 hover:bg-amber-500/25 shadow-none font-normal',
+    'text-warning bg-warning/10 border-warning/30 hover:bg-warning/20 shadow-none font-normal',
   medium:
     'text-foreground bg-muted border-border hover:bg-muted/80 shadow-none font-normal',
   low:
@@ -248,7 +256,7 @@ export function CardUI({
   );
 
   const colTitle = matchedState?.title || matchedState?.name || 'Backlog';
-  const currentColor = matchedState?.color || matchedState?.accentColor || '#6B7280';
+  const currentColor = resolveStateColor(matchedState);
   const stateGroup = matchedState?.group || (card as any).stateGroup || (card as any).state?.group || colTitle;
 
   const priorityKey = (card.priority || 'none').toLowerCase() as Priority;
@@ -356,12 +364,12 @@ export function CardUI({
                   variant="ghost"
                   size="icon"
                   aria-label={`Options for ${card.title}`}
-                  className="size-5.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors rounded-sm flex items-center justify-center cursor-pointer"
+                  className="relative size-5.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors rounded-sm flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
                 >
                   <MoreHorizontal className="size-3.5 shrink-0" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 z-100 rounded-md">
+              <DropdownMenuContent align="end" className="w-40 z-100 rounded-md shadow-overlay">
                 {onDuplicate && (
                   <DropdownMenuItem onClick={duplicate} className="rounded-md cursor-pointer">
                     <Copy className="mr-2 size-3.5 shrink-0 text-foreground" />
@@ -461,7 +469,7 @@ export function CardUI({
             <>
               {labels.slice(0, 2).map((lbl: any) => {
                 const lblName = lbl.title || lbl.name || lbl.id || '';
-                const lblColor = lbl.color || '#8b5cf6';
+                const lblColor = lbl.color || GROUP_DEFAULT_COLORS.label;
                 return (
                   <button
                     key={lbl.id || lblName}
@@ -596,7 +604,7 @@ export function CardUI({
                 type="button"
                 onClick={() => setMemberOpen(true)}
                 disabled={isReadOnly}
-                className="cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all rounded-full shrink-0"
+                className="relative cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all rounded-full shrink-0 before:absolute before:-inset-1 md:before:hidden"
                 title={`${resolvedAssignees.length} assignees`}
               >
                 <AvatarStack users={resolvedAssignees} size="xs" max={2} />
@@ -606,7 +614,7 @@ export function CardUI({
                 type="button"
                 onClick={() => setMemberOpen(true)}
                 disabled={isReadOnly}
-                className="size-5 rounded-full border border-border overflow-hidden flex items-center justify-center shrink-0 cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all"
+                className="relative size-5 rounded-full border border-border overflow-hidden flex items-center justify-center shrink-0 cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all before:absolute before:-inset-1 md:before:hidden"
                 title={resolvedAssignees[0].name || 'Assignee'}
               >
                 <Avatar className="size-full shrink-0">
@@ -620,7 +628,7 @@ export function CardUI({
               <button
                 type="button"
                 onClick={() => setMemberOpen(true)}
-                className="size-5 rounded-md border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer transition-colors sm:opacity-0 sm:group-hover:opacity-100"
+                className="relative size-5 rounded-md border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer transition-colors sm:opacity-0 sm:group-hover:opacity-100 before:absolute before:-inset-1 md:before:hidden"
                 title="Assign member"
               >
                 <User className="size-3" />
@@ -718,7 +726,7 @@ export function Column({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const columnId = resolveColumnId(column);
-  const columnColor = column.color || column.accentColor || '#6B7280';
+  const columnColor = resolveColumnColor(column);
 
   const effectiveDroppableId = droppableId || columnId;
   const { setNodeRef, isOver } = useDroppable({
@@ -790,7 +798,7 @@ export function Column({
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 text-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-background/80 transition-colors"
+            className="size-7 text-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-background/80 transition-colors relative before:absolute before:-inset-2 md:before:hidden"
             onClick={() => setIsCollapsed(false)}
             title="Expand column"
           >
@@ -801,7 +809,7 @@ export function Column({
             <Button
               variant="ghost"
               size="icon"
-              className="size-7 text-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-background/80 transition-colors"
+              className="size-7 text-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-background/80 transition-colors relative before:absolute before:-inset-2 md:before:hidden"
               onClick={() => {
                 setIsCollapsed(false);
                 setIsQuickAdding(true);
@@ -847,7 +855,7 @@ export function Column({
           <Button
             variant="ghost"
             size="icon"
-            className="size-6 text-foreground hover:text-foreground cursor-pointer transition-colors rounded-md"
+            className="size-6 text-foreground hover:text-foreground cursor-pointer transition-colors rounded-md relative before:absolute before:-inset-2 md:before:hidden"
             onClick={() => setIsCollapsed(true)}
             title="Collapse column"
           >
@@ -858,7 +866,7 @@ export function Column({
             <Button
               variant="ghost"
               size="icon"
-              className="size-6 text-foreground hover:text-foreground cursor-pointer transition-colors rounded-md"
+              className="size-6 text-foreground hover:text-foreground cursor-pointer transition-colors rounded-md relative before:absolute before:-inset-2 md:before:hidden"
               onClick={() => setIsQuickAdding(true)}
               title="Add work item"
             >
@@ -883,7 +891,8 @@ export function Column({
                 }
               }}
               placeholder="What needs to be done?"
-              className="w-full text-xs bg-transparent border-none p-0 outline-none placeholder:text-muted-foreground text-foreground"
+              aria-label="What needs to be done?"
+              className="w-full text-13 bg-transparent border-none p-0 outline-none placeholder:text-muted-foreground text-foreground"
             />
             <div className="flex items-center justify-end gap-1.5 pt-1">
               <Button
@@ -1017,11 +1026,11 @@ export function BoardView({
     let defs: SwimlaneDef[] = [];
     if (subGroupBy === 'priority') {
       defs = [
-        { id: 'urgent', title: 'Urgent', color: '#ef4444' },
-        { id: 'high', title: 'High', color: '#f97316' },
-        { id: 'medium', title: 'Medium', color: '#f59e0b' },
-        { id: 'low', title: 'Low', color: '#3b82f6' },
-        { id: 'none', title: 'No Priority', color: '#6b7280' },
+        { id: 'urgent', title: 'Urgent', color: PRIORITY_THEME_COLORS.urgent },
+        { id: 'high', title: 'High', color: PRIORITY_THEME_COLORS.high },
+        { id: 'medium', title: 'Medium', color: PRIORITY_THEME_COLORS.medium },
+        { id: 'low', title: 'Low', color: PRIORITY_THEME_COLORS.low },
+        { id: 'none', title: 'No Priority', color: PRIORITY_THEME_COLORS.none },
       ];
     } else if (subGroupBy === 'assignee') {
       const memberLanes: SwimlaneDef[] = (members || []).map((m: any, idx: number) => {
@@ -1031,7 +1040,7 @@ export function BoardView({
         return {
           id: userId,
           title: name,
-          color: '#6366f1',
+          color: GROUP_DEFAULT_COLORS.assignee,
           icon: (
             <Avatar className="size-4 shrink-0">
               <AvatarImage src={avatar || undefined} />
@@ -1045,7 +1054,7 @@ export function BoardView({
         {
           id: '__unassigned__',
           title: 'Unassigned',
-          color: '#9ca3af',
+          color: GROUP_DEFAULT_COLORS.unassigned,
           icon: <User className="size-3.5 text-foreground shrink-0" />,
         },
       ];
@@ -1064,8 +1073,8 @@ export function BoardView({
         return {
           id: lbl,
           title: meta?.name || lbl,
-          color: meta?.color || '#8b5cf6',
-          icon: <Tag className="size-3.5 text-purple-500 shrink-0" />,
+          color: meta?.color || GROUP_DEFAULT_COLORS.label,
+          icon: <Tag className="size-3.5 text-ai shrink-0" />,
         };
       });
       defs = [
@@ -1073,7 +1082,7 @@ export function BoardView({
         {
           id: '__no_label__',
           title: 'No Label',
-          color: '#9ca3af',
+          color: GROUP_DEFAULT_COLORS.noLabel,
           icon: <Tag className="size-3.5 text-foreground shrink-0" />,
         },
       ];
@@ -1194,6 +1203,8 @@ export function BoardView({
                   <div
                     role="button"
                     tabIndex={0}
+                    aria-expanded={!isCollapsed}
+                    aria-label={`Toggle ${lane.title} swimlane`}
                     onClick={() => toggleLaneCollapse(lane.id)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
@@ -1215,7 +1226,7 @@ export function BoardView({
                       ) : (
                         <span
                           className="size-2 rounded-full shrink-0"
-                          style={{ backgroundColor: lane.color || '#6b7280' }}
+                          style={{ backgroundColor: lane.color || GROUP_DEFAULT_COLORS.unknown }}
                         />
                       )}
                       <span className="text-xs font-semibold text-foreground">

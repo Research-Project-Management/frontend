@@ -115,13 +115,13 @@ export function AddMemberDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-lg border border-border p-0 overflow-hidden bg-background">
+      <DialogContent className="sm:max-w-md rounded-md border border-border/80 p-0 overflow-hidden bg-background shadow-raised-200">
         <div className="p-6 pb-2">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold text-foreground">
+            <DialogTitle className="text-16 font-semibold text-foreground">
               Add members to project
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground mt-1">
+            <DialogDescription className="text-12 text-muted-foreground mt-1">
               Search researchers by name or email to invite them to this project.
             </DialogDescription>
           </DialogHeader>
@@ -135,10 +135,10 @@ export function AddMemberDialog({
                 placeholder="Search by name or email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-8 h-8 text-xs border-border focus:ring-0 focus:outline-none"
+                className="pl-8 h-8 text-12 border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />
               {isSearching && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground animate-spin shrink-0" />
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground animate-spin motion-reduce:animate-none shrink-0" />
               )}
             </div>
 
@@ -146,17 +146,17 @@ export function AddMemberDialog({
               value={selectedRole}
               onValueChange={(val) => setSelectedRole(val as ProjectRole)}
             >
-              <SelectTrigger className="w-28 h-8 text-xs border-border focus:ring-0 focus:outline-none">
+              <SelectTrigger className="w-28 h-8 text-12 border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="coordinator" className="text-xs">
+              <SelectContent className="shadow-overlay">
+                <SelectItem value="coordinator" className="text-12">
                   Coordinator
                 </SelectItem>
-                <SelectItem value="contributor" className="text-xs">
+                <SelectItem value="contributor" className="text-12">
                   Contributor
                 </SelectItem>
-                <SelectItem value="reviewer" className="text-xs">
+                <SelectItem value="reviewer" className="text-12">
                   Reviewer
                 </SelectItem>
               </SelectContent>
@@ -165,12 +165,12 @@ export function AddMemberDialog({
 
           <div className="max-h-56 overflow-y-auto border border-border rounded-lg divide-y divide-border/60 bg-muted/40">
             {search.trim().length < 2 && displayedUsers.length === 0 ? (
-              <div className="p-8 text-center text-xs text-muted-foreground flex flex-col items-center gap-2">
+              <div className="p-8 text-center text-12 text-muted-foreground flex flex-col items-center gap-2">
                 <UserPlus className="size-6 text-muted-foreground/60 shrink-0" />
                 <p>Type at least 2 characters to search for researchers.</p>
               </div>
             ) : displayedUsers.length === 0 ? (
-              <div className="p-8 text-center text-xs text-muted-foreground">
+              <div className="p-8 text-center text-12 text-muted-foreground">
                 {isSearching
                   ? 'Searching users...'
                   : `No users found matching "${search}"`}
@@ -185,7 +185,7 @@ export function AddMemberDialog({
                     type="button"
                     onClick={() => toggleUser(u.id)}
                     className={cn(
-                      'w-full flex items-center justify-between p-2.5 transition-colors cursor-pointer text-left',
+                      'relative w-full flex items-center justify-between p-2.5 transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden',
                       isSelected ? 'bg-muted font-medium' : 'hover:bg-muted/70'
                     )}
                   >
@@ -205,16 +205,16 @@ export function AddMemberDialog({
                         {u.avatar && (
                           <AvatarImage src={u.avatar} className="object-cover" />
                         )}
-                        <AvatarFallback className="text-xs bg-muted font-medium">
+                        <AvatarFallback className="text-11 bg-muted font-medium">
                           {(u.name || 'U').charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
 
                       <div className="min-w-0">
-                        <p className="text-xs font-medium text-foreground truncate">
+                        <p className="text-12 font-medium text-foreground truncate">
                           {u.name || 'Unknown'}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="text-11 text-muted-foreground truncate">
                           {u.email || ''}
                         </p>
                       </div>
@@ -231,7 +231,7 @@ export function AddMemberDialog({
             variant="ghost"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="h-8 text-xs font-medium px-4 cursor-pointer"
+            className="relative h-8 text-12 font-medium px-4 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
           >
             Cancel
           </Button>
@@ -239,9 +239,9 @@ export function AddMemberDialog({
             size="sm"
             onClick={handleConfirm}
             disabled={selectedUserIds.length === 0 || isLoading}
-            className="h-8 text-xs font-medium px-4 bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-none"
+            className="relative h-8 text-12 font-medium px-4 bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
           >
-            {isLoading && <Loader2 className="mr-1.5 size-3 animate-spin shrink-0" />}
+            {isLoading && <Loader2 className="mr-1.5 size-3 animate-spin motion-reduce:animate-none shrink-0" />}
             <span>Add {selectedUserIds.length > 0 ? `(${selectedUserIds.length})` : ''}</span>
           </Button>
         </DialogFooter>

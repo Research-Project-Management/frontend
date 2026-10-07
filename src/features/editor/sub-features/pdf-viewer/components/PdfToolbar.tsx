@@ -422,7 +422,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                   align="end"
                   sideOffset={6}
                   onOpenAutoFocus={(e) => e.preventDefault()}
-                  className="w-56 p-2 bg-popover text-popover-foreground border border-border shadow-md rounded-md z-50 text-xs"
+                  className="w-56 p-2 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md z-50 text-xs"
                 >
                   {/* Scale Header */}
                   <div className="flex items-center justify-between px-1 pb-1.5 border-b border-border/60">

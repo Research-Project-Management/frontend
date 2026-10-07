@@ -3,8 +3,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  Plus,
-  Briefcase,
   LayoutGrid,
   List,
   Globe,
@@ -15,8 +13,6 @@ import {
   Link2,
   Settings,
   UserSquare2,
-  AlertCircle,
-  RefreshCw,
   Tag,
   Copy,
   Trash2,
@@ -25,6 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import { Button, Skeleton } from "@/shared/components/ui";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/components/ui";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
+import { PlaneErrorState, PlaneEmptyState } from "@/shared/components/ui";
 import { CreateProjectModal } from '../components/project/CreateProjectModal';
 import { UploadProjectZipModal } from '../components/project/UploadProjectZipModal';
 import { ProjectTagsBar } from '../components/project/ProjectTagsBar';
@@ -109,7 +106,7 @@ export function ProjectsPage() {
     }
   }, []);
 
-  const { projects: rawProjects = [], isLoading, isError } = useProjects();
+  const { projects: rawProjects = [], isLoading, isError, error, refetch } = useProjects();
   const { labels: userLabels = [] } = useUserProjectLabels();
   const archiveProjectMutation = useArchiveProject();
   const duplicateProjectMutation = useDuplicateProject();
@@ -197,14 +194,14 @@ export function ProjectsPage() {
             <button
               onClick={() => setActiveFilter('all')}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0',
+                'flex items-center gap-1.5 h-7 px-2.5 rounded-md text-12 font-medium transition-colors cursor-pointer shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                 activeFilter === 'all'
-                  ? 'bg-background text-foreground font-medium border border-border'
+                  ? 'bg-background text-foreground border border-border'
                   : 'text-foreground hover:bg-muted'
               )}
             >
               <span>All Projects</span>
-              <span className="text-xs font-mono tabular-nums px-1 rounded-full bg-muted">
+              <span className="text-11 font-mono tabular-nums px-1 rounded-full bg-muted">
                 {filterCounts.all}
               </span>
             </button>
@@ -212,16 +209,16 @@ export function ProjectsPage() {
             <button
               onClick={() => setActiveFilter('public')}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0',
+                'flex items-center gap-1.5 h-7 px-2.5 rounded-md text-12 font-medium transition-colors cursor-pointer shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                 activeFilter === 'public'
-                  ? 'bg-background text-foreground font-medium border border-border'
+                  ? 'bg-background text-foreground border border-border'
                   : 'text-foreground hover:bg-muted'
               )}
             >
               <Globe className="size-3 text-foreground shrink-0" />
               <span>Public</span>
               {filterCounts.public > 0 && (
-                <span className="text-xs font-mono tabular-nums px-1 rounded-full bg-muted">
+                <span className="text-11 font-mono tabular-nums px-1 rounded-full bg-muted">
                   {filterCounts.public}
                 </span>
               )}
@@ -230,16 +227,16 @@ export function ProjectsPage() {
             <button
               onClick={() => setActiveFilter('private')}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0',
+                'flex items-center gap-1.5 h-7 px-2.5 rounded-md text-12 font-medium transition-colors cursor-pointer shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                 activeFilter === 'private'
-                  ? 'bg-background text-foreground font-medium border border-border'
+                  ? 'bg-background text-foreground border border-border'
                   : 'text-foreground hover:bg-muted'
               )}
             >
               <Lock className="size-3 text-foreground shrink-0" />
               <span>Private</span>
               {filterCounts.private > 0 && (
-                <span className="text-xs font-mono tabular-nums px-1 rounded-full bg-muted">
+                <span className="text-11 font-mono tabular-nums px-1 rounded-full bg-muted">
                   {filterCounts.private}
                 </span>
               )}
@@ -253,7 +250,7 @@ export function ProjectsPage() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer border border-border"
+                  className="flex items-center gap-1.5 h-7 px-2 rounded-md text-12 font-medium text-foreground hover:bg-muted transition-colors cursor-pointer border border-border relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <ArrowUpDown className="size-3 text-foreground shrink-0" />
                   <span>
@@ -265,22 +262,22 @@ export function ProjectsPage() {
                   </span>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44 p-1 text-xs">
+              <DropdownMenuContent align="end" className="w-44 p-1 text-12 shadow-overlay">
                 <DropdownMenuItem
                   onClick={() => setSortBy('updated')}
-                  className={cn('cursor-pointer font-medium', sortBy === 'updated' && 'font-semibold text-primary')}
+                  className={cn('cursor-pointer font-medium text-12', sortBy === 'updated' && 'text-primary')}
                 >
                   Recently updated
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setSortBy('name')}
-                  className={cn('cursor-pointer font-medium', sortBy === 'name' && 'font-semibold text-primary')}
+                  className={cn('cursor-pointer font-medium text-12', sortBy === 'name' && 'text-primary')}
                 >
                   Name (A-Z)
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setSortBy('created')}
-                  className={cn('cursor-pointer font-medium', sortBy === 'created' && 'font-semibold text-primary')}
+                  className={cn('cursor-pointer font-medium text-12', sortBy === 'created' && 'text-primary')}
                 >
                   Newest created
                 </DropdownMenuItem>
@@ -293,7 +290,7 @@ export function ProjectsPage() {
                 type="button"
                 onClick={() => handleSetViewMode('grid')}
                 className={cn(
-                  'p-1 rounded-md transition-colors cursor-pointer',
+                  'size-7 rounded-md flex items-center justify-center transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                   viewMode === 'grid'
                     ? 'bg-background text-foreground'
                     : 'text-foreground hover:bg-muted'
@@ -306,7 +303,7 @@ export function ProjectsPage() {
                 type="button"
                 onClick={() => handleSetViewMode('list')}
                 className={cn(
-                  'p-1 rounded-md transition-colors cursor-pointer',
+                  'size-7 rounded-md flex items-center justify-center transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                   viewMode === 'list'
                     ? 'bg-background text-foreground'
                     : 'text-foreground hover:bg-muted'
@@ -347,25 +344,12 @@ export function ProjectsPage() {
 
         {/* Error state */}
         {!isLoading && isError && (
-          <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-            <div className="size-12 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive">
-              <AlertCircle className="size-6 text-destructive shrink-0" />
-            </div>
-            <div className="space-y-1 max-w-sm">
-              <h3 className="text-base font-semibold text-foreground">Failed to load projects</h3>
-              <p className="text-xs text-muted-foreground">
-                There was a problem communicating with the server. Please check your connection and try again.
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.location.reload()}
-              className="gap-2 text-xs cursor-pointer"
-            >
-              <RefreshCw className="size-3.5 shrink-0" />
-              <span>Reload page</span>
-            </Button>
+          <div className="h-full min-h-[380px] flex items-center justify-center">
+            <PlaneErrorState
+              title="Failed to load projects"
+              description="There was a problem communicating with the server. Please check your connection and try again."
+              error={error}
+            />
           </div>
         )}
 
@@ -404,11 +388,11 @@ export function ProjectsPage() {
               return (
                 <div
                   key={projectId}
-                  className="group flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted transition-colors text-xs"
+                  className="group flex items-center justify-between gap-4 px-4 py-2.5 min-h-11 hover:bg-muted transition-colors text-12"
                 >
                   {/* Left: Avatar + Title + Key + Description */}
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="size-8 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0 overflow-hidden font-semibold text-foreground">
+                    <div className="size-8 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0 overflow-hidden font-medium text-foreground">
                       <ProjectAvatar avatar={project.avatar} name={project.name} id={projectId} size="md" />
                     </div>
 
@@ -416,16 +400,16 @@ export function ProjectsPage() {
                       <div className="flex items-center gap-2 min-w-0">
                         <Link
                           href={`/projects/${projectId}/work-items`}
-                          className="font-semibold text-foreground hover:underline transition-colors truncate block shrink-0"
+                          className="font-semibold text-13 text-foreground hover:underline transition-colors truncate block shrink-0"
                         >
                           {project.name}
                         </Link>
-                        <span className="text-xs font-mono font-medium text-muted-foreground px-1 py-0.2 rounded bg-muted border border-border shrink-0">
+                        <span className="text-11 font-mono font-medium text-muted-foreground px-1 py-0.5 rounded bg-muted border border-border shrink-0">
                           {projectKey}
                         </span>
                       </div>
                       {project.description && (
-                        <p className="text-xs text-muted-foreground truncate max-w-xl">
+                        <p className="text-12 text-muted-foreground truncate max-w-xl">
                           {project.description}
                         </p>
                       )}
@@ -468,19 +452,19 @@ export function ProjectsPage() {
                         <>
                           <Avatar className="size-4 shrink-0">
                             <AvatarImage src={leadUser.avatar} alt={leadUser.name} />
-                            <AvatarFallback className="text-xs bg-muted">
+                            <AvatarFallback className="text-10 bg-muted">
                               {leadUser.name ? leadUser.name.charAt(0).toUpperCase() : 'U'}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="truncate max-w-[100px] text-xs">{leadUser.name || 'Lead'}</span>
+                          <span className="truncate max-w-[100px] text-12">{leadUser.name || 'Lead'}</span>
                         </>
                       ) : (
-                        <span className="text-xs text-muted-foreground/60 italic">No lead</span>
+                        <span className="text-12 text-muted-foreground/60 italic">No lead</span>
                       )}
                     </div>
 
                     {/* Visibility */}
-                    <div className="w-16 flex items-center gap-1 text-xs">
+                    <div className="w-16 flex items-center gap-1 text-12">
                       {isPrivate ? (
                         <>
                           <Lock className="size-3 text-muted-foreground shrink-0" />
@@ -495,7 +479,7 @@ export function ProjectsPage() {
                     </div>
 
                     {/* Status */}
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success/10 text-success border border-success/20">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-11 font-medium bg-success/10 text-success border border-success/20">
                       Joined
                     </span>
                   </div>
@@ -506,16 +490,17 @@ export function ProjectsPage() {
                       <DropdownMenuTrigger asChild>
                         <button
                           type="button"
-                          className="size-7 rounded-md text-foreground hover:bg-muted flex items-center justify-center transition-colors cursor-pointer"
+                          className="size-7 rounded-md text-foreground hover:bg-muted flex items-center justify-center transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                           title="More options"
+                          aria-label="More options"
                         >
                           <MoreHorizontal className="size-4 shrink-0" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48 p-1.5 text-xs">
+                      <DropdownMenuContent align="end" className="w-48 p-1.5 text-12 shadow-overlay">
                         <DropdownMenuItem
                           onClick={(e) => handleCopyLink(projectId, e)}
-                          className="cursor-pointer font-medium flex items-center gap-2"
+                          className="cursor-pointer font-medium text-12 flex items-center gap-2"
                         >
                           <Link2 className="size-3.5 shrink-0" />
                           <span>Copy link</span>
@@ -527,12 +512,12 @@ export function ProjectsPage() {
                             setTagModalProject(project);
                             setIsTagModalOpen(true);
                           }}
-                          className="cursor-pointer font-medium flex items-center gap-2"
+                          className="cursor-pointer font-medium text-12 flex items-center gap-2"
                         >
                           <Tag className="size-3.5 shrink-0 text-muted-foreground" />
                           <span>Manage Tags & Folders</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem asChild className="cursor-pointer font-medium">
+                        <DropdownMenuItem asChild className="cursor-pointer font-medium text-12">
                           <Link
                             href={`/projects/${projectId}/settings`}
                             className="flex items-center gap-2 w-full shrink-0"
@@ -548,14 +533,14 @@ export function ProjectsPage() {
                             duplicateProjectMutation.mutate({ projectId });
                           }}
                           disabled={duplicateProjectMutation.isPending}
-                          className="cursor-pointer font-medium flex items-center gap-2"
+                          className="cursor-pointer font-medium text-12 flex items-center gap-2"
                         >
                           <Copy className="size-3.5 shrink-0 text-muted-foreground" />
                           <span>{duplicateProjectMutation.isPending ? 'Duplicating…' : 'Duplicate project'}</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleArchiveProject(projectId)}
-                          className="cursor-pointer font-medium text-warning flex items-center gap-2"
+                          className="cursor-pointer font-medium text-12 text-warning flex items-center gap-2"
                         >
                           <Archive className="size-3.5 shrink-0" />
                           <span>Archive project</span>
@@ -567,7 +552,7 @@ export function ProjectsPage() {
                             deleteProjectMutation.mutate({ projectId });
                           }}
                           disabled={deleteProjectMutation.isPending}
-                          className="cursor-pointer font-medium text-destructive flex items-center gap-2"
+                          className="cursor-pointer font-medium text-12 text-destructive flex items-center gap-2"
                         >
                           <Trash2 className="size-3.5 shrink-0" />
                           <span>{deleteProjectMutation.isPending ? 'Moving to trash…' : 'Move to trash'}</span>
@@ -583,55 +568,51 @@ export function ProjectsPage() {
 
         {/* Empty state: 0 active projects in workspace */}
         {!isLoading && !isError && activeProjects.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-28 text-center select-none animate-in fade-in duration-300">
-            <div className="relative mb-3 flex items-center justify-center">
-              <div className="absolute inset-0 size-16 rounded-full bg-foreground/[0.03] blur-xl -z-10" />
-              <Briefcase className="size-10 stroke-[1.25] text-muted-foreground/35 shrink-0" />
-            </div>
-            <div className="space-y-1 max-w-sm px-4">
-              <h3 className="text-sm font-medium text-foreground tracking-tight">No projects yet</h3>
-              <p className="text-xs text-muted-foreground/80 leading-relaxed">
-                Projects organize research work items, cycles, and collaborative notes in your workspace.
-              </p>
-            </div>
+          <div className="h-full min-h-[380px] flex items-center justify-center">
+            <PlaneEmptyState
+              variant="files"
+              title="No projects yet"
+              description="Projects organize research work items, cycles, and collaborative notes in your workspace."
+              action={{
+                label: 'New project',
+                onClick: () => setIsCreateOpen(true),
+              }}
+            />
           </div>
         )}
 
         {/* Empty state: Search / Filter query matched 0 projects */}
         {!isLoading && !isError && activeProjects.length > 0 && filteredProjects.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-28 text-center select-none animate-in fade-in duration-300">
-            <div className="relative mb-3 flex items-center justify-center">
-              <div className="absolute inset-0 size-16 rounded-full bg-foreground/[0.03] blur-xl -z-10" />
-              <Briefcase className="size-10 stroke-[1.25] text-muted-foreground/35 shrink-0" />
-            </div>
-            <div className="space-y-1 max-w-sm px-4 mb-3">
-              <h3 className="text-sm font-medium text-foreground tracking-tight">No matching projects</h3>
-              <p className="text-xs text-muted-foreground/80 leading-relaxed">
-                No projects matched your active search query or filter.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {activeFilter !== 'all' && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setActiveFilter('all')}
-                  className="text-xs text-foreground hover:bg-muted cursor-pointer h-7 px-2.5 rounded-md"
-                >
-                  Show all projects
-                </Button>
-              )}
-              {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSearchQuery('')}
-                  className="text-xs text-foreground hover:bg-muted cursor-pointer h-7 px-2.5 rounded-md"
-                >
-                  Clear search
-                </Button>
-              )}
-            </div>
+          <div className="h-full min-h-[380px] flex items-center justify-center">
+            <PlaneEmptyState
+              variant="search"
+              title="No matching projects"
+              description="No projects matched your active search query or filter."
+              action={
+                <div className="flex items-center gap-2">
+                  {activeFilter !== 'all' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setActiveFilter('all')}
+                      className="h-8 px-3 text-12 font-medium rounded-md cursor-pointer border-border hover:bg-muted text-foreground relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      Show all projects
+                    </Button>
+                  )}
+                  {searchQuery && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSearchQuery('')}
+                      className="h-8 px-3 text-12 font-medium rounded-md cursor-pointer border-border hover:bg-muted text-foreground relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      Clear search
+                    </Button>
+                  )}
+                </div>
+              }
+            />
           </div>
         )}
       </div>

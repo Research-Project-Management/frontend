@@ -24,11 +24,11 @@ import {
   Underline,
   Zap,
   FileCheck,
-  Sparkles,
+  Bot,
   Check,
 } from 'lucide-react';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
-import { useActionsStore } from '@/features/editor/store';
+// Editor shortcuts and command bindings
+import { useDocumentCollaborationStore } from '@/features/editor/store';
 import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import { spellingService } from '@/features/editor/services/spelling.service';
 import {
@@ -76,7 +76,7 @@ export function useEditorShortcuts({
   ctxMisspelledInfo,
 }: UseEditorShortcutsOptions) {
   const { engine } = useEditorInstance();
-  const setPendingComment = useActionsStore((s) => s.setPendingComment);
+  const setPendingComment = useDocumentCollaborationStore((s) => s.setPendingComment);
 
   const trigger = (action: string) => {
     if (action === 'undo') {
@@ -259,7 +259,7 @@ export function useEditorShortcuts({
         label: 'Search in Project',
         kbd: 'Ctrl+Shift+F',
         action: () => {
-          EditorEventBus.emit('flux:open-panel', { panel: 'Search', query: ctxSelText || undefined });
+          editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Search', query: ctxSelText || undefined });
           closeMenu();
         },
       },
@@ -270,11 +270,11 @@ export function useEditorShortcuts({
         action: openRenameDialog,
       },
       {
-        icon: Sparkles,
+        icon: Bot,
         label: 'Auto-Fix Page Syntax',
         kbd: 'Alt+Shift+F',
         action: () => {
-          EditorEventBus.emit('flux:autofix');
+          editorCommandBus.dispatch({ type: 'editor:autofix' });
           closeMenu();
         },
       },
@@ -298,7 +298,7 @@ export function useEditorShortcuts({
             endLine: ctxEndLine ?? ctxStartLine ?? 1,
             selectedText: ctxSelText,
           });
-          EditorEventBus.emit('flux:open-panel', 'Review');
+          editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
           closeMenu();
         },
       },

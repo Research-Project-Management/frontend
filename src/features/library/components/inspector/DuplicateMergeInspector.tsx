@@ -15,6 +15,7 @@ import {
   Maximize2,
   X,
   Sparkles,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -83,6 +84,11 @@ export function DuplicateMergeInspector({
   );
 
   const assetsSummary = useMemo(() => aggregateItemAssets(items), [items]);
+
+  const itemTypes = useMemo(() => {
+    return Array.from(new Set(items.map((i) => i.itemType).filter(Boolean)));
+  }, [items]);
+  const hasTypeMismatch = itemTypes.length > 1;
 
   const visibleFields = useMemo(() => {
     if (!showConflictsOnly) return inspection.fields;
@@ -214,8 +220,8 @@ export function DuplicateMergeInspector({
           <Button
             size="sm"
             onClick={handleConfirmMerge}
-            disabled={isMerging || !masterPaper}
-            className="w-full h-8 text-12 font-medium gap-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+            disabled={isMerging || !masterPaper || hasTypeMismatch}
+            className="w-full h-8 text-12 font-medium gap-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             {isMerging ? (
               <Loader2 className="size-3.5 animate-spin shrink-0" />
@@ -226,6 +232,18 @@ export function DuplicateMergeInspector({
               {isMerging ? 'Merging Items...' : `Merge ${items.length} Items`}
             </span>
           </Button>
+        )}
+
+        {hasTypeMismatch && (
+          <div className="flex items-start gap-2 p-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-11">
+            <AlertTriangle className="size-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+            <div className="space-y-0.5">
+              <p className="font-medium">Items of different types cannot be merged</p>
+              <p className="text-10 text-muted-foreground leading-normal">
+                Selected items have different item types ({itemTypes.join(', ')}). In accordance with Zotero standards, change their item types to match before merging.
+              </p>
+            </div>
+          </div>
         )}
 
         <div className="flex items-center justify-between gap-2 pt-0.5">

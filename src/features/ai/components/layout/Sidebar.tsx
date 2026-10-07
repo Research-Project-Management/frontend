@@ -151,10 +151,10 @@ export function Sidebar() {
 
   return (
     <aside className="w-60 shrink-0 h-full border-r border-border bg-background flex flex-col overflow-hidden select-none">
-      {/* ── 1. Header: Brand (Flux AI, flat header) ───────── */}
+      {/* ── 1. Header: Brand (AI Assistant, flat header) ───────── */}
       <div className="h-11 px-3.5 flex items-center justify-between">
         <span className="text-sm font-semibold tracking-tight text-foreground">
-          Flux AI
+          AI Assistant
         </span>
 
         <Tooltip>

@@ -7,7 +7,8 @@ import type {
   Label,
   CreateLabelInput,
   UpdateLabelInput,
-} from '@/features/projects/project-id/settings/types/label.types';
+} from '../types/label.types';
+import { getErrorMessage } from "@/shared/lib/utils";
 
 export const userLabelKeys = {
   all: ['labels'] as const,
@@ -48,8 +49,8 @@ export function useCreateWorkspaceLabel() {
       queryClient.invalidateQueries({ queryKey: workspaceLabelKeys.all });
       toast.success('Label created');
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to create label');
+    onError: (err: unknown) => {
+      toast.error(getErrorMessage(err) || 'Failed to create label');
     },
   });
 }
@@ -74,8 +75,8 @@ export function useUpdateWorkspaceLabel() {
       queryClient.invalidateQueries({ queryKey: workspaceLabelKeys.all });
       toast.success('Label updated');
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to update label');
+    onError: (err: unknown) => {
+      toast.error(getErrorMessage(err) || 'Failed to update label');
     },
   });
 }
@@ -93,8 +94,8 @@ export function useDeleteWorkspaceLabel() {
       queryClient.invalidateQueries({ queryKey: workspaceLabelKeys.all });
       toast.success('Label deleted');
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to delete label');
+    onError: (err: unknown) => {
+      toast.error(getErrorMessage(err) || 'Failed to delete label');
     },
   });
 }

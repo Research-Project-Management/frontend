@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
@@ -168,12 +169,15 @@ export function TemplatePickerDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-4xl lg:max-w-5xl max-h-[85vh] h-[600px] flex flex-col p-0 overflow-hidden rounded-lg bg-background border border-border shadow-raised-400">
+      <DialogContent className="sm:max-w-4xl lg:max-w-5xl max-h-[85vh] h-[600px] flex flex-col p-0 overflow-hidden rounded-md bg-background border border-border/80 shadow-raised-200">
         {/* Header: Title only, clean and compact */}
         <DialogHeader className="px-5 py-3.5 border-b border-border flex flex-row items-center justify-between shrink-0">
-          <DialogTitle className="text-14 font-semibold text-foreground">
+          <DialogTitle className="text-16 font-semibold text-foreground">
             Template gallery
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Browse and scaffold LaTeX document templates.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Main Body: 3-column layout */}
@@ -195,7 +199,7 @@ export function TemplatePickerDialog({
                     setSelectedTemplateId(null);
                   }}
                   className={cn(
-                    'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-12 text-left cursor-pointer transition-colors group',
+                    'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-12 text-left cursor-pointer transition-colors group relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
                     isActive
                       ? 'bg-background text-foreground font-medium shadow-xs border border-border/60'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 font-normal border border-transparent'
@@ -234,7 +238,7 @@ export function TemplatePickerDialog({
                   <button
                     type="button"
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
                     title="Clear search"
                     aria-label="Clear search"
                   >
@@ -248,7 +252,7 @@ export function TemplatePickerDialog({
             <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 thin-scrollbar">
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-48 gap-2 text-muted-foreground">
-                  <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                  <Loader2 className="size-5 animate-spin motion-reduce:animate-none text-muted-foreground" />
                   <span className="text-12">Loading templates...</span>
                 </div>
               ) : templates.length === 0 ? (
@@ -265,7 +269,7 @@ export function TemplatePickerDialog({
                       type="button"
                       onClick={() => setSelectedTemplateId(tmpl.id)}
                       className={cn(
-                        'w-full text-left p-3 rounded-lg border transition-all cursor-pointer flex flex-col gap-1.5 select-none',
+                        'w-full text-left p-3 rounded-lg border transition-all cursor-pointer flex flex-col gap-1.5 select-none relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
                         isSelected
                           ? 'border-primary/50 bg-primary/[0.04] ring-1 ring-primary/20'
                           : 'border-border/60 hover:border-border hover:bg-muted/40'
@@ -312,7 +316,7 @@ export function TemplatePickerDialog({
                         type="button"
                         onClick={() => setPreviewTab('main')}
                         className={cn(
-                          'px-2 py-0.5 rounded-sm font-medium transition-colors cursor-pointer',
+                          'px-2 py-0.5 rounded-sm font-medium transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
                           previewTab === 'main'
                             ? 'bg-background text-foreground font-medium shadow-xs'
                             : 'text-muted-foreground hover:text-foreground'
@@ -325,7 +329,7 @@ export function TemplatePickerDialog({
                           type="button"
                           onClick={() => setPreviewTab('bib')}
                           className={cn(
-                            'px-2 py-0.5 rounded-sm font-medium transition-colors cursor-pointer',
+                            'px-2 py-0.5 rounded-sm font-medium transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
                             previewTab === 'bib'
                               ? 'bg-background text-foreground font-medium shadow-xs'
                               : 'text-muted-foreground hover:text-foreground'
@@ -342,9 +346,9 @@ export function TemplatePickerDialog({
                     variant="ghost"
                     size="sm"
                     onClick={handleCopy}
-                    className="h-7 px-2 text-11 text-muted-foreground hover:text-foreground cursor-pointer gap-1"
+                    className="h-7 px-2 text-11 text-muted-foreground hover:text-foreground cursor-pointer gap-1 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
                   >
-                    {isCopied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+                    {isCopied ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
                     <span>{isCopied ? 'Copied' : 'Copy'}</span>
                   </Button>
                 </div>
@@ -378,7 +382,7 @@ export function TemplatePickerDialog({
               size="sm"
               onClick={() => setIsOpen(false)}
               disabled={isScaffolding}
-              className="h-8 px-3 text-12 font-medium rounded-md border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer shadow-none"
+              className="h-8 px-3 text-12 font-medium rounded-md border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer shadow-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               Cancel
             </Button>
@@ -387,11 +391,11 @@ export function TemplatePickerDialog({
               size="sm"
               onClick={handleScaffold}
               disabled={!activeTemplate || isScaffolding}
-              className="h-8 px-3.5 text-12 font-medium rounded-md cursor-pointer shadow-none gap-1.5"
+              className="h-8 px-3.5 text-12 font-medium rounded-md cursor-pointer shadow-none gap-1.5 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               {isScaffolding ? (
                 <>
-                  <Loader2 className="size-3.5 animate-spin" />
+                  <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
                   <span>Scaffolding...</span>
                 </>
               ) : (

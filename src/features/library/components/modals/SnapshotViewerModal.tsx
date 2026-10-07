@@ -4,6 +4,7 @@ import React from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/shared/components/ui";
@@ -49,14 +50,12 @@ export default function SnapshotViewerModal({
               <Globe className="size-3.5 shrink-0" strokeWidth={1.5} />
             </div>
             <div className="min-w-0 flex-1">
-              <DialogTitle className="text-13 font-semibold text-foreground truncate">
+              <DialogTitle className="text-14 font-semibold text-foreground truncate tracking-tight">
                 {title || 'Web Snapshot Reader'}
               </DialogTitle>
-              {sourceUrl && (
-                <p className="text-11 text-muted-foreground truncate font-mono">
-                  Source: {sourceUrl}
-                </p>
-              )}
+              <DialogDescription className="text-11 text-muted-foreground truncate font-mono">
+                {sourceUrl ? `Source: ${sourceUrl}` : 'Archived web page snapshot viewer'}
+              </DialogDescription>
             </div>
           </div>
 
@@ -65,7 +64,7 @@ export default function SnapshotViewerModal({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-11 gap-1 text-foreground rounded-md hover:bg-muted"
+                className="h-8 px-2.5 text-12 font-medium gap-1.5 text-foreground rounded-md hover:bg-muted"
                 onClick={() => window.open(sourceUrl, '_blank', 'noopener,noreferrer')}
                 title="Open original live website"
               >
@@ -76,7 +75,7 @@ export default function SnapshotViewerModal({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-11 gap-1 text-foreground rounded-md hover:bg-muted"
+              className="h-8 px-2.5 text-12 font-medium gap-1.5 text-foreground rounded-md hover:bg-muted"
               onClick={handleDownload}
               title="Download snapshot HTML"
             >

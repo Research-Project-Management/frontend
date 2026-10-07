@@ -14,7 +14,7 @@ import {
 } from '@/shared/components/ui/tabs';
 import { Input } from '@/shared/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { Search, Sigma, Pi, Sparkles } from 'lucide-react';
+import { Search, Sigma, Pi } from 'lucide-react';
 import { OverleafOmegaIcon } from '@/features/editor/sub-features/code-editor/components/OverleafToolbarIcons';
 
 export interface MathSymbolItem {
@@ -322,7 +322,8 @@ export function MathSymbolPalette({ onInsert, trigger }: MathSymbolPaletteProps)
                           <button
                             type="button"
                             onClick={() => handleSelect(item.latex)}
-                            className="flex items-center gap-2 p-1.5 rounded-sm border border-border/60 hover:border-primary/50 hover:bg-primary/10 text-foreground transition-colors text-left group cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                            aria-label={`${item.name} (${item.latex})`}
+                            className="flex items-center gap-2 p-1.5 rounded-sm border border-border/60 hover:border-primary/50 hover:bg-primary/10 text-foreground transition-colors motion-reduce:transition-none text-left group cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                           >
                             <span className="font-mono text-xs font-semibold text-primary px-1 py-0.5 rounded-sm bg-muted/50 shrink-0">
                               {item.display}
@@ -347,7 +348,8 @@ export function MathSymbolPalette({ onInsert, trigger }: MathSymbolPaletteProps)
                           <button
                             type="button"
                             onClick={() => handleSelect(item.latex)}
-                            className="h-8 flex items-center justify-center rounded-sm border border-transparent hover:border-border hover:bg-muted text-foreground font-serif text-sm transition-all duration-100 active:scale-90 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
+                            aria-label={`${item.name} (${item.latex})`}
+                            className="h-8 flex items-center justify-center rounded-sm border border-transparent hover:border-border hover:bg-muted text-foreground font-serif text-sm transition-all duration-100 motion-reduce:transition-none active:scale-90 motion-reduce:active:scale-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
                           >
                             {item.display}
                           </button>
@@ -368,7 +370,7 @@ export function MathSymbolPalette({ onInsert, trigger }: MathSymbolPaletteProps)
           <div className="h-[230px] overflow-y-auto pr-1 select-none">
             {filteredSymbols.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-xs gap-1 py-6">
-                <Sparkles className="size-4 opacity-40" />
+                <Sigma className="size-4 opacity-40" />
                 <span>No symbols found for &quot;{search}&quot;</span>
               </div>
             ) : (
@@ -379,7 +381,8 @@ export function MathSymbolPalette({ onInsert, trigger }: MathSymbolPaletteProps)
                       <button
                         type="button"
                         onClick={() => handleSelect(item.latex)}
-                        className="flex items-center gap-2 p-1.5 rounded-sm border border-border/60 hover:border-primary/50 hover:bg-primary/10 text-foreground transition-colors text-left group cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        aria-label={`${item.name} (${item.latex})`}
+                        className="flex items-center gap-2 p-1.5 rounded-sm border border-border/60 hover:border-primary/50 hover:bg-primary/10 text-foreground transition-colors motion-reduce:transition-none text-left group cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       >
                         <span className="font-serif text-sm font-semibold text-primary px-1.5 py-0.5 rounded-sm bg-muted/60 shrink-0 min-w-6 text-center">
                           {item.display}

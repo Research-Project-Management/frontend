@@ -142,7 +142,7 @@ export function YourWorkEmptyState({
             variant="outline"
             size="sm"
             onClick={onClearSearch}
-            className="h-7 px-3 text-12 font-medium text-muted-foreground hover:text-foreground cursor-pointer"
+            className="h-7 px-3 text-12 font-medium text-muted-foreground hover:text-foreground cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             Clear filter
           </Button>
@@ -154,7 +154,7 @@ export function YourWorkEmptyState({
           <Button
             size="sm"
             onClick={onAction}
-            className="h-7 px-3 text-12 font-medium bg-primary text-primary-foreground hover:bg-primary-hover transition-colors shadow-none cursor-pointer"
+            className="h-7 px-3 text-12 font-medium bg-primary text-primary-foreground hover:bg-primary-hover transition-colors shadow-none cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             {actionText}
           </Button>

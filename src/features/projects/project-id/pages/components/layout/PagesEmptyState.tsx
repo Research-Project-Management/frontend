@@ -137,7 +137,7 @@ export function PagesEmptyState({
             variant="outline"
             size="sm"
             onClick={onClearSearch}
-            className="h-7 px-3 text-12 font-medium text-muted-foreground hover:text-foreground cursor-pointer shadow-none"
+            className="h-7 px-3 text-12 font-medium text-muted-foreground hover:text-foreground cursor-pointer shadow-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             Clear search
           </Button>
@@ -150,7 +150,7 @@ export function PagesEmptyState({
             variant="outline"
             size="sm"
             onClick={onClearFilter}
-            className="h-7 px-3 text-12 font-medium text-muted-foreground hover:text-foreground cursor-pointer shadow-none"
+            className="h-7 px-3 text-12 font-medium text-muted-foreground hover:text-foreground cursor-pointer shadow-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             Clear label filter
           </Button>

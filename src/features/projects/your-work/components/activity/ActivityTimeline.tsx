@@ -22,9 +22,9 @@ export function ActivityTimeline({
   return (
     <div className={cn('space-y-6', className)}>
       <div className="flex items-center justify-between px-1">
-        <h2 className="text-foreground font-semibold text-sm tracking-tight">
+        <h2 className="text-foreground font-semibold text-13 tracking-tight">
           Recent activity
-          <span className="ml-2 text-xs font-normal text-muted-foreground">
+          <span className="ml-2 text-12 font-medium text-muted-foreground tabular-nums">
             ({activities.length})
           </span>
         </h2>

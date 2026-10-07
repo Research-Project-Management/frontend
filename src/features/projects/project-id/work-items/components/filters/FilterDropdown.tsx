@@ -101,12 +101,12 @@ export function StateGroupCancelledIcon({ className }: { className?: string }) {
 // ── Submenu Priority Icons ──────────────────────────────────────────────────
 
 export function PriorityUrgentIcon({ className }: { className?: string }) {
-  return <AlertCircle className={cn('size-3.5 text-rose-500 shrink-0 stroke-[1.75]', className)} />;
+  return <AlertCircle className={cn('size-3.5 text-destructive shrink-0 stroke-[1.75]', className)} />;
 }
 
 export function PriorityHighIcon({ className }: { className?: string }) {
   return (
-    <svg className={cn('size-3.5 text-orange-500 shrink-0', className)} viewBox="0 0 24 24" fill="currentColor">
+    <svg className={cn('size-3.5 text-warning shrink-0', className)} viewBox="0 0 24 24" fill="currentColor">
       <rect x="4" y="14" width="3.5" height="6" rx="1" />
       <rect x="10.25" y="9" width="3.5" height="11" rx="1" />
       <rect x="16.5" y="4" width="3.5" height="16" rx="1" />
@@ -116,7 +116,7 @@ export function PriorityHighIcon({ className }: { className?: string }) {
 
 export function PriorityMediumIcon({ className }: { className?: string }) {
   return (
-    <svg className={cn('size-3.5 text-amber-500 shrink-0', className)} viewBox="0 0 24 24" fill="currentColor">
+    <svg className={cn('size-3.5 text-warning shrink-0', className)} viewBox="0 0 24 24" fill="currentColor">
       <rect x="4" y="14" width="3.5" height="6" rx="1" />
       <rect x="10.25" y="9" width="3.5" height="11" rx="1" />
       <rect x="16.5" y="4" width="3.5" height="16" rx="1" className="opacity-20" />
@@ -126,7 +126,7 @@ export function PriorityMediumIcon({ className }: { className?: string }) {
 
 export function PriorityLowIcon({ className }: { className?: string }) {
   return (
-    <svg className={cn('size-3.5 text-blue-500 shrink-0', className)} viewBox="0 0 24 24" fill="currentColor">
+    <svg className={cn('size-3.5 text-primary shrink-0', className)} viewBox="0 0 24 24" fill="currentColor">
       <rect x="4" y="14" width="3.5" height="6" rx="1" />
       <rect x="10.25" y="9" width="3.5" height="11" rx="1" className="opacity-20" />
       <rect x="16.5" y="4" width="3.5" height="16" rx="1" className="opacity-20" />
@@ -340,7 +340,7 @@ export function FilterDropdown({
               type="button"
               size="icon"
               className={cn(
-                'size-8 rounded-md border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors relative shrink-0',
+                'size-8 rounded-md border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors relative shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden',
                 isOpen && 'bg-muted',
               )}
               aria-label="Filters"
@@ -356,7 +356,7 @@ export function FilterDropdown({
 
       <DropdownMenuContent
         align="start"
-        className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-md max-h-[85vh] overflow-y-auto"
+        className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-[85vh] overflow-y-auto"
       >
         {/* Main Search Header */}
         <div className="p-1 pb-1.5 border-b border-border/50 mb-1" onClick={(e) => e.stopPropagation()}>
@@ -393,7 +393,7 @@ export function FilterDropdown({
                 <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-60 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-64 overflow-y-auto">
+            <DropdownMenuSubContent className="w-60 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-64 overflow-y-auto">
               <SubmenuSearchBar
                 value={getSubSearch('work-items')}
                 onChange={(v) => setSubSearchVal('work-items', v)}
@@ -448,7 +448,7 @@ export function FilterDropdown({
                 <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-60 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-64 overflow-y-auto">
+            <DropdownMenuSubContent className="w-60 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-64 overflow-y-auto">
               <SubmenuSearchBar
                 value={getSubSearch('parent')}
                 onChange={(v) => setSubSearchVal('parent', v)}
@@ -517,7 +517,7 @@ export function FilterDropdown({
                 <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-64 overflow-y-auto">
+            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-64 overflow-y-auto">
               <SubmenuSearchBar
                 value={getSubSearch('state')}
                 onChange={(v) => setSubSearchVal('state', v)}
@@ -569,7 +569,7 @@ export function FilterDropdown({
                 <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none">
+            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
               <SubmenuSearchBar
                 value={getSubSearch('state-group')}
                 onChange={(v) => setSubSearchVal('state-group', v)}
@@ -623,7 +623,7 @@ export function FilterDropdown({
                 <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-60 overflow-y-auto">
+            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-60 overflow-y-auto">
               <SubmenuSearchBar
                 value={getSubSearch('assignees')}
                 onChange={(v) => setSubSearchVal('assignees', v)}
@@ -696,7 +696,7 @@ export function FilterDropdown({
                 <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-60 overflow-y-auto">
+            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-60 overflow-y-auto">
               <SubmenuSearchBar
                 value={getSubSearch('subscribers')}
                 onChange={(v) => setSubSearchVal('subscribers', v)}
@@ -752,7 +752,7 @@ export function FilterDropdown({
                 <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-52 p-1 rounded-md border-border bg-popover text-12 shadow-none">
+            <DropdownMenuSubContent className="w-52 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
               <SubmenuSearchBar
                 value={getSubSearch('priority')}
                 onChange={(v) => setSubSearchVal('priority', v)}
@@ -806,7 +806,7 @@ export function FilterDropdown({
                 <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-56 overflow-y-auto">
+            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-56 overflow-y-auto">
               <SubmenuSearchBar
                 value={getSubSearch('mentions')}
                 onChange={(v) => setSubSearchVal('mentions', v)}
@@ -872,7 +872,7 @@ export function FilterDropdown({
                 <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-52 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-56 overflow-y-auto">
+            <DropdownMenuSubContent className="w-52 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-56 overflow-y-auto">
               <SubmenuSearchBar
                 value={getSubSearch('label')}
                 onChange={(v) => setSubSearchVal('label', v)}
@@ -919,7 +919,7 @@ export function FilterDropdown({
                 <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none">
+            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
               <SubmenuSearchBar
                 value={getSubSearch('attach')}
                 onChange={(v) => setSubSearchVal('attach', v)}
@@ -973,7 +973,7 @@ export function FilterDropdown({
                 <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border bg-popover text-12 shadow-none">
+            <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
               <SubmenuSearchBar
                 value={getSubSearch('start-date')}
                 onChange={(v) => setSubSearchVal('start-date', v)}
@@ -1023,7 +1023,7 @@ export function FilterDropdown({
                 <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-52 p-1 rounded-md border-border bg-popover text-12 shadow-none">
+            <DropdownMenuSubContent className="w-52 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
               <SubmenuSearchBar
                 value={getSubSearch('due-date')}
                 onChange={(v) => setSubSearchVal('due-date', v)}
@@ -1074,7 +1074,7 @@ export function FilterDropdown({
                 <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border bg-popover text-12 shadow-none">
+            <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
               <SubmenuSearchBar
                 value={getSubSearch('created-at')}
                 onChange={(v) => setSubSearchVal('created-at', v)}
@@ -1117,7 +1117,7 @@ export function FilterDropdown({
                 <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border bg-popover text-12 shadow-none">
+            <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
               <SubmenuSearchBar
                 value={getSubSearch('updated-at')}
                 onChange={(v) => setSubSearchVal('updated-at', v)}
@@ -1160,7 +1160,7 @@ export function FilterDropdown({
                 <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-56 overflow-y-auto">
+            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-56 overflow-y-auto">
               <SubmenuSearchBar
                 value={getSubSearch('created-by')}
                 onChange={(v) => setSubSearchVal('created-by', v)}

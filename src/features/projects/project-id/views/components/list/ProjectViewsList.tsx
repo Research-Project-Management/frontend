@@ -38,7 +38,7 @@ export function ProjectViewsList({
     return (
       <div className="divide-y divide-border border-y border-border bg-background">
         {[1, 2, 3, 4].map((n) => (
-          <div key={n} className="flex items-center justify-between px-4 py-3.5 animate-pulse">
+          <div key={n} className="flex items-center justify-between px-4 py-3.5 animate-pulse motion-reduce:animate-none">
             <div className="flex items-center gap-3 w-1/2">
               <div className="size-7 rounded-md bg-muted/60" />
               <div className="space-y-1.5 flex-1">
@@ -64,17 +64,17 @@ export function ProjectViewsList({
         <div className="size-12 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground mb-3">
           <Search className="size-5" />
         </div>
-        <h4 className="text-sm font-semibold text-foreground mb-1">
+        <h4 className="text-16 font-semibold text-foreground mb-1">
           No matching views found
         </h4>
-        <p className="text-xs text-muted-foreground max-w-sm mb-4">
+        <p className="text-13 text-muted-foreground max-w-sm mb-4">
           There are no saved views matching your current filters or search query.
         </p>
         <Button
           variant="outline"
           size="sm"
           onClick={onClearFilters}
-          className="h-8 px-3 text-xs font-medium cursor-pointer"
+          className="h-8 px-3 text-12 font-medium cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
         >
           Clear filters
         </Button>
@@ -89,10 +89,10 @@ export function ProjectViewsList({
         <div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-4 ring-1 ring-primary/20">
           <ViewsOutlineIcon className="size-7" />
         </div>
-        <h4 className="text-base font-semibold text-foreground mb-1.5">
+        <h4 className="text-16 font-semibold text-foreground mb-1.5">
           Save custom views for filtered work items
         </h4>
-        <p className="text-xs text-muted-foreground max-w-md mb-6 leading-relaxed">
+        <p className="text-13 text-muted-foreground max-w-md mb-6 leading-relaxed">
           Views are saved configurations of filters, layouts, and display options.
           Create custom views to focus on specific work items without moving or duplicating data.
         </p>
@@ -100,7 +100,7 @@ export function ProjectViewsList({
           variant="default"
           size="sm"
           onClick={onOpenCreateModal}
-          className="h-8 px-4 text-xs font-semibold rounded-md flex items-center gap-1.5 cursor-pointer shadow-none"
+          className="h-8 px-4 text-12 font-medium rounded-md flex items-center gap-1.5 cursor-pointer shadow-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
         >
           <Plus className="size-4" />
           <span>Add view</span>

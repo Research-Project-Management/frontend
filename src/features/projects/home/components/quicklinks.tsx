@@ -63,8 +63,9 @@ export default function Quicklinks() {
 
   const actionButton = (
     <button
+      type="button"
       onClick={handleAddClick}
-      className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline transition-colors cursor-pointer"
+      className="relative flex items-center gap-1.5 text-12 font-medium text-primary hover:underline transition-colors cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
     >
       <Plus className="size-3.5 text-primary shrink-0" />
       <span>Add quicklink</span>
@@ -75,8 +76,19 @@ export default function Quicklinks() {
     <>
       <Section title="Quicklinks" action={actionButton}>
         {!isLoaded ? (
-          <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-            Loading...
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {[1, 2, 3].map((n) => (
+              <div
+                key={n}
+                className="h-[74px] rounded-md border border-border bg-card p-3.5 flex items-center gap-3.5 animate-pulse motion-reduce:animate-none"
+              >
+                <div className="size-10 rounded-md bg-muted shrink-0" />
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div className="h-3.5 w-24 bg-muted rounded" />
+                  <div className="h-2.5 w-16 bg-muted rounded" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : links.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -95,7 +107,7 @@ export default function Quicklinks() {
                       href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm font-medium text-foreground truncate transition-colors before:absolute before:inset-0"
+                      className="text-13 font-medium text-foreground truncate transition-colors before:absolute before:inset-0 rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
                       {getDisplayTitle(link.title, link.url)}
                     </a>
@@ -107,30 +119,31 @@ export default function Quicklinks() {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 hover:bg-muted text-foreground transition-colors duration-150 z-10 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        type="button"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md opacity-100 sm:opacity-0 sm:group-hover:opacity-100 data-[state=open]:opacity-100 hover:bg-muted text-foreground transition-colors duration-150 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
                         aria-label="More options"
                       >
                         <MoreVertical className="size-4 shrink-0" aria-hidden="true" />
                       </button>
                     </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()} className="bg-popover">
-                    <DropdownMenuItem onClick={() => handleEditClick(link)} className="cursor-pointer">
-                      <Pencil className="mr-2 size-4 text-foreground shrink-0" />
+                  <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()} className="bg-popover shadow-overlay">
+                    <DropdownMenuItem onClick={() => handleEditClick(link)} className="cursor-pointer text-12">
+                      <Pencil className="mr-2 size-3.5 text-foreground shrink-0" />
                       Edit
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => window.open(link.url, '_blank')} className="cursor-pointer">
-                      <ExternalLink className="mr-2 size-4 text-foreground shrink-0" />
+                    <DropdownMenuItem onClick={() => window.open(link.url, '_blank')} className="cursor-pointer text-12">
+                      <ExternalLink className="mr-2 size-3.5 text-foreground shrink-0" />
                       Open in new tab
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigator.clipboard.writeText(link.url)} className="cursor-pointer">
-                      <Link2 className="mr-2 size-4 text-foreground shrink-0" />
+                    <DropdownMenuItem onClick={() => navigator.clipboard.writeText(link.url)} className="cursor-pointer text-12">
+                      <Link2 className="mr-2 size-3.5 text-foreground shrink-0" />
                       Copy link
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => setDeleteLinkId(link.id)}
-                      className="cursor-pointer text-destructive focus:text-destructive"
+                      className="cursor-pointer text-12 text-destructive focus:text-destructive"
                     >
-                      <Trash2 className="mr-2 size-4 text-destructive shrink-0" />
+                      <Trash2 className="mr-2 size-3.5 text-destructive shrink-0" />
                       Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -145,7 +158,7 @@ export default function Quicklinks() {
             <button
               type="button"
               onClick={handleAddClick}
-              className="text-12 font-medium text-primary hover:underline cursor-pointer"
+              className="relative text-12 font-medium text-primary hover:underline cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
             >
               Add your first quicklink
             </button>

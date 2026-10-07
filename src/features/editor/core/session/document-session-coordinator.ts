@@ -15,14 +15,13 @@
 import { documentModelManager, type DocumentModelState } from '../models/document-model-manager';
 import { manuscriptService } from '@/features/editor/services/manuscript.service';
 import { useCompileStore, usePageStore, useSettingsStore } from '@/features/editor/store';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { editorCommandBus } from '../command-bus/editor-command-bus';
+import {
+  draftStorageService,
+  type DraftSnapshot,
+} from '@/features/editor/services/draft-storage.service';
 
-export interface DraftSnapshot {
-  fileId: string;
-  content: string;
-  savedAt: number;
-}
+export type { DraftSnapshot };
 
 export interface FlushResult {
   fileId: string;
@@ -42,7 +41,6 @@ export interface DocumentSessionOptions {
   autoCompileDelay?: number;
 }
 
-const DRAFT_STORAGE_PREFIX = 'flux_draft:';
 const DEFAULT_AUTOSAVE_DELAY = 800; // ms
 const DEFAULT_AUTOCOMPILE_DELAY = 2500; // ms
 
@@ -64,7 +62,7 @@ class DocumentSessionCoordinatorRegistry {
   private initPreCompileListener(): void {
     if (typeof window === 'undefined') return;
 
-    EditorEventBus.on('flux:compile-started', () => {
+    editorCommandBus.subscribe('compiler:started', () => {
       void this.flushAllPending();
     });
   }
@@ -108,7 +106,7 @@ class DocumentSessionCoordinatorRegistry {
   public notifyContentChange(
     fileId: string,
     content: string,
-    options?: { immediate?: boolean }
+    options?: { immediate?: boolean; isRealtimeActive?: boolean }
   ): void {
     if (!fileId) return;
 
@@ -116,8 +114,11 @@ class DocumentSessionCoordinatorRegistry {
     documentModelManager.updateContent(fileId, content, true);
     useCompileStore.getState().markDirty(fileId, content);
 
-    // 2. Persist local draft snapshot for crash resilience
-    this.saveDraftSnapshot(fileId, content);
+    // 2. Persist local draft snapshot for crash resilience (Tier 1 Memory, Tier 2 IndexedDB, Tier 3 LocalStorage)
+    const pageStore = usePageStore.getState();
+    const projectId = pageStore.projectId || undefined;
+    const title = pageStore.currentPage?.id === fileId ? (pageStore.currentPage?.name || (pageStore.currentPage as any)?.title) : undefined;
+    this.saveDraftSnapshot(fileId, content, projectId, title);
 
     // 3. Immediate save on demand (e.g. on blur or Ctrl+S)
     if (options?.immediate) {
@@ -125,7 +126,9 @@ class DocumentSessionCoordinatorRegistry {
       return;
     }
 
-    // 4. Debounced network auto-save (800ms idle)
+    // 4. Debounced network auto-save (800ms offline/single, 15000ms periodic snapshot when realtime active)
+    const saveDelay = options?.isRealtimeActive ? 15000 : DEFAULT_AUTOSAVE_DELAY;
+
     const existingSaveTimer = this.saveTimers.get(fileId);
     if (existingSaveTimer) {
       clearTimeout(existingSaveTimer);
@@ -134,7 +137,7 @@ class DocumentSessionCoordinatorRegistry {
     const saveTimer = setTimeout(() => {
       this.saveTimers.delete(fileId);
       void this.flushFile(fileId);
-    }, DEFAULT_AUTOSAVE_DELAY);
+    }, saveDelay);
 
     this.saveTimers.set(fileId, saveTimer);
 
@@ -186,13 +189,62 @@ class DocumentSessionCoordinatorRegistry {
       // Remove crash-guard snapshot on successful remote persist
       this.clearDraftSnapshot(fileId);
 
-      EditorEventBus.emit('flux:doc-saved', { fileId, content: contentToSave });
+      editorCommandBus.dispatch({ type: 'document:content-updated', docId: fileId, content: contentToSave });
       return true;
     } catch (err) {
       console.error(`[DocumentSessionCoordinator] Failed to flush file ${fileId}:`, err);
-      EditorEventBus.emit('flux:doc-save-failed', { fileId, error: err });
       return false;
     }
+  }
+
+  /**
+   * Coordinates tab switching lifecycle:
+   * - Immediately flushes pending changes of the outgoing file to disk.
+   * - Ensures the incoming file model is registered in memory.
+   */
+  public async switchTab(fromFileId?: string | null, toFileId?: string | null): Promise<boolean> {
+    if (fromFileId && fromFileId !== toFileId) {
+      await this.flushFile(fromFileId);
+    }
+    if (toFileId) {
+      documentModelManager.setActiveFileId(toFileId);
+      const model = documentModelManager.getModel(toFileId);
+      if (model) {
+        model.lastActiveAt = Date.now();
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Coordinates tab closure lifecycle:
+   * - Flushes dirty state if any unsaved changes exist (unless force is true).
+   * - Cleans up debounce timers and local draft backup.
+   * - Evicts closed model from RAM to reclaim memory.
+   */
+  public async closeTab(
+    fileId: string,
+    options?: { force?: boolean }
+  ): Promise<'saved' | 'closed' | 'error'> {
+    if (!fileId) return 'closed';
+
+    const timer = this.saveTimers.get(fileId);
+    if (timer) {
+      clearTimeout(timer);
+      this.saveTimers.delete(fileId);
+    }
+
+    const model = documentModelManager.getModel(fileId);
+    const isDirty = model?.isDirty || useCompileStore.getState().dirtyContentMap?.has(fileId);
+
+    if (isDirty && !options?.force) {
+      const saved = await this.flushFile(fileId);
+      if (!saved) return 'error';
+    }
+
+    this.clearDraftSnapshot(fileId);
+    documentModelManager.evictModel(fileId);
+    return isDirty ? 'saved' : 'closed';
   }
 
   /**
@@ -286,64 +338,60 @@ class DocumentSessionCoordinatorRegistry {
   }
 
   /**
-   * Saves a crash-guard snapshot to local storage.
+   * Saves a crash-guard snapshot across storage tiers (Memory, LocalStorage, IndexedDB).
    */
-  public saveDraftSnapshot(fileId: string, content: string): void {
-    if (typeof window === 'undefined' || !fileId) return;
-    try {
-      const snapshot: DraftSnapshot = {
-        fileId,
-        content,
-        savedAt: Date.now(),
-      };
-      localStorage.setItem(`${DRAFT_STORAGE_PREFIX}${fileId}`, JSON.stringify(snapshot));
-    } catch {
-      // LocalStorage quota exceeded or disabled in private browsing
-    }
+  public saveDraftSnapshot(
+    fileId: string,
+    content: string,
+    projectId?: string,
+    title?: string
+  ): void {
+    if (!fileId) return;
+    void draftStorageService.saveDraft(fileId, content, projectId, title);
   }
 
   /**
-   * Clears a local draft snapshot.
+   * Clears a local draft snapshot across all storage tiers.
    */
   public clearDraftSnapshot(fileId: string): void {
-    if (typeof window === 'undefined' || !fileId) return;
-    try {
-      localStorage.removeItem(`${DRAFT_STORAGE_PREFIX}${fileId}`);
-    } catch {
-      // Ignore storage errors
-    }
+    if (!fileId) return;
+    void draftStorageService.clearDraft(fileId);
   }
 
   /**
-   * Retrieves a local draft snapshot if available.
+   * Synchronously retrieves a local draft snapshot if available (Memory / LocalStorage).
    */
   public getDraftSnapshot(fileId: string): DraftSnapshot | null {
-    if (typeof window === 'undefined' || !fileId) return null;
-    try {
-      const raw = localStorage.getItem(`${DRAFT_STORAGE_PREFIX}${fileId}`);
-      if (!raw) return null;
-      return JSON.parse(raw) as DraftSnapshot;
-    } catch {
-      return null;
-    }
+    if (!fileId) return null;
+    return draftStorageService.getDraftSync(fileId);
   }
 
   /**
-   * Checks if an offline/crash draft exists that is newer than the server copy.
+   * Asynchronously retrieves a local draft snapshot (Memory -> IndexedDB -> LocalStorage).
+   */
+  public async getDraftSnapshotAsync(fileId: string): Promise<DraftSnapshot | null> {
+    if (!fileId) return null;
+    return draftStorageService.getDraft(fileId);
+  }
+
+  /**
+   * Checks synchronously if an offline/crash draft exists that is newer than the server copy.
    */
   public checkDraftRecovery(
     fileId: string,
     serverContent: string
   ): { hasRecoverableDraft: boolean; draft?: DraftSnapshot } {
-    const draft = this.getDraftSnapshot(fileId);
-    if (!draft) return { hasRecoverableDraft: false };
+    return draftStorageService.checkDraftRecovery(fileId, serverContent);
+  }
 
-    // If draft has different content and is not empty
-    if (draft.content && draft.content !== serverContent) {
-      return { hasRecoverableDraft: true, draft };
-    }
-
-    return { hasRecoverableDraft: false };
+  /**
+   * Checks asynchronously (with IndexedDB fallback) if an offline/crash draft exists.
+   */
+  public async checkDraftRecoveryAsync(
+    fileId: string,
+    serverContent: string
+  ): Promise<{ hasRecoverableDraft: boolean; draft?: DraftSnapshot }> {
+    return draftStorageService.checkDraftRecoveryAsync(fileId, serverContent);
   }
 }
 

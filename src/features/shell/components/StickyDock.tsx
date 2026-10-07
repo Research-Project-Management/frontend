@@ -217,7 +217,7 @@ export default function StickyDock() {
               onClick={() => setIsPillOpen(true)}
               aria-label="Stickies"
               className={cn(
-                'relative flex size-8 shrink-0 items-center justify-center rounded-md text-foreground transition-colors duration-200 outline-none select-none cursor-pointer focus-visible:ring-2 focus-visible:ring-primary',
+                'relative flex size-8 shrink-0 items-center justify-center rounded-md text-foreground transition-colors duration-200 outline-none select-none cursor-pointer focus-visible:ring-2 focus-visible:ring-primary before:absolute before:-inset-1.5 md:before:hidden',
                 isPillOpen
                   ? 'opacity-0 pointer-events-none'
                   : activeStickyId
@@ -349,7 +349,7 @@ export default function StickyDock() {
                       }
                     }}
                     placeholder="Search stickies..."
-                    className="h-7 w-48 rounded-md border border-border bg-background pl-8 pr-7 text-12 text-foreground outline-none placeholder:text-muted-foreground focus:border-border transition-colors"
+                    className="h-8 w-48 rounded-md border border-border bg-background pl-8 pr-7 text-12 text-foreground outline-none placeholder:text-muted-foreground focus:border-border transition-colors"
                   />
                   <button
                     type="button"
@@ -361,7 +361,7 @@ export default function StickyDock() {
                         setIsSearchOpen(false);
                       }
                     }}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 size-5 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer rounded transition-colors"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 size-5 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer rounded transition-colors relative before:absolute before:-inset-2 md:before:hidden"
                     title={searchQuery ? "Clear search" : "Close search"}
                     aria-label={searchQuery ? "Clear search" : "Close search"}
                   >
@@ -372,7 +372,7 @@ export default function StickyDock() {
                 <button
                   type="button"
                   onClick={() => setIsSearchOpen(true)}
-                  className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors cursor-pointer"
+                  className="size-7 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
                   title="Search stickies"
                 >
                   <Search className="size-4" />
@@ -384,7 +384,7 @@ export default function StickyDock() {
                 type="button"
                 onClick={handleCreateSticky}
                 disabled={mutations.create.isPending}
-                className="text-13 font-medium text-primary hover:opacity-85 flex items-center gap-1.5 transition-opacity cursor-pointer disabled:opacity-50"
+                className="h-8 px-2.5 rounded-md text-13 font-medium text-primary hover:bg-primary/10 flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 select-none shrink-0"
               >
                 {mutations.create.isPending ? (
                   <Loader2 className="size-3.5 animate-spin text-primary" />
@@ -398,7 +398,7 @@ export default function StickyDock() {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors cursor-pointer"
+                className="size-7 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
                 title="Close"
               >
                 <X className="size-4" />
@@ -460,7 +460,7 @@ export default function StickyDock() {
             <button
               type="button"
               onClick={() => setActiveStickyId(null)}
-              className="size-5 rounded flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors opacity-70 hover:opacity-100 cursor-pointer"
+              className="size-5 rounded flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors opacity-70 hover:opacity-100 cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
               title="Close sticky"
             >
               <X className="size-3.5" />

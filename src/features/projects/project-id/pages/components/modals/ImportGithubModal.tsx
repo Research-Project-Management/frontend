@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -149,18 +150,21 @@ export function ImportGithubModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[540px] p-6 bg-background border border-border shadow-raised-200 rounded-md gap-4">
+      <DialogContent className="sm:max-w-[540px] p-6 bg-background border border-border/80 shadow-raised-200 rounded-md gap-4">
         <DialogHeader>
-          <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
+          <DialogTitle className="text-16 font-semibold text-foreground tracking-tight">
             Import GitHub Repository
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Select and import a GitHub repository into this project.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Body content based on connection status */}
         {isStatusLoading ? (
           <div className="flex flex-col items-center justify-center h-48 gap-2 text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" />
-            <span className="text-xs">Checking GitHub connection...</span>
+            <Loader2 className="size-5 animate-spin motion-reduce:animate-none" />
+            <span className="text-12">Checking GitHub connection...</span>
           </div>
         ) : !isConnected ? (
           <div className="border border-border/80 rounded-lg p-6 flex flex-col items-center justify-center text-center gap-3 bg-muted/10 my-2">
@@ -168,8 +172,8 @@ export function ImportGithubModal({
               <FolderGit2 className="size-5" />
             </div>
             <div className="space-y-1 max-w-sm">
-              <h4 className="text-xs font-semibold text-foreground">Connect your GitHub Account</h4>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
+              <h4 className="text-12 font-semibold text-foreground">Connect your GitHub Account</h4>
+              <p className="text-11 text-muted-foreground leading-relaxed">
                 Connect your GitHub profile to access your public and private academic repositories for instant cloning.
               </p>
             </div>
@@ -178,18 +182,18 @@ export function ImportGithubModal({
               size="sm"
               disabled={isConnecting}
               onClick={handleConnect}
-              className="h-8 text-xs font-medium px-4 cursor-pointer gap-2 mt-1"
+              className="h-8 text-12 font-medium px-4 cursor-pointer gap-2 mt-1 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
-              {isConnecting ? <Loader2 className="size-3.5 animate-spin" /> : <ExternalLink className="size-3.5" />}
+              {isConnecting ? <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" /> : <ExternalLink className="size-3.5" />}
               <span>{isConnecting ? 'Waiting for authorization...' : 'Connect GitHub'}</span>
             </Button>
           </div>
         ) : (
           <div className="space-y-4 my-2">
             {/* Account Status bar */}
-            <div className="flex items-center justify-between p-2.5 rounded-md bg-muted/30 border border-border/60 text-xs">
+            <div className="flex items-center justify-between p-2.5 rounded-md bg-muted/30 border border-border/60 text-12">
               <div className="flex items-center gap-2 text-foreground font-medium">
-                <CheckCircle2 className="size-3.5 text-green-600" />
+                <CheckCircle2 className="size-3.5 text-success" />
                 <span>Connected as <strong className="font-semibold">@{accountName}</strong></span>
               </div>
               <Button
@@ -197,7 +201,7 @@ export function ImportGithubModal({
                 variant="ghost"
                 size="sm"
                 onClick={() => refetchRepos()}
-                className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
+                className="h-6 px-2 text-11 text-muted-foreground hover:text-foreground cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <RefreshCw className="size-3 mr-1" />
                 Refresh
@@ -206,9 +210,9 @@ export function ImportGithubModal({
 
             {/* Repository search and list */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs font-medium text-foreground">
+              <div className="flex items-center justify-between text-12 font-medium text-foreground">
                 <span>Select Repository</span>
-                <span className="text-[11px] text-muted-foreground">{filteredRepos.length} repositories</span>
+                <span className="text-11 text-muted-foreground">{filteredRepos.length} repositories</span>
               </div>
 
               <div className="relative">
@@ -217,18 +221,18 @@ export function ImportGithubModal({
                   placeholder="Filter repositories..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-8 pl-8 text-xs bg-muted/20"
+                  className="h-8 pl-8 text-13 bg-muted/20 focus-visible:ring-1 focus-visible:ring-ring"
                 />
               </div>
 
               <div className="h-44 border border-border rounded-md overflow-y-auto divide-y divide-border/60 bg-muted/5">
                 {isReposLoading ? (
                   <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
-                    <Loader2 className="size-4 animate-spin" />
-                    <span className="text-xs">Loading repositories...</span>
+                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+                    <span className="text-12">Loading repositories...</span>
                   </div>
                 ) : filteredRepos.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
+                  <div className="flex items-center justify-center h-full text-12 text-muted-foreground">
                     No repositories found
                   </div>
                 ) : (
@@ -240,7 +244,7 @@ export function ImportGithubModal({
                         type="button"
                         onClick={() => setSelectedRepo(repo.name)}
                         className={cn(
-                          'w-full text-left px-3 py-2 text-xs flex items-center justify-between transition-colors cursor-pointer',
+                          'w-full text-left px-3 py-2 text-12 flex items-center justify-between transition-colors cursor-pointer relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
                           isSelected
                             ? 'bg-primary text-primary-foreground font-medium'
                             : 'hover:bg-muted/50 text-foreground'
@@ -261,13 +265,13 @@ export function ImportGithubModal({
             {/* Branch Selector */}
             {selectedRepo && (
               <div className="space-y-1.5 pt-1 border-t border-border/50">
-                <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                <label className="text-12 font-medium text-foreground flex items-center gap-1.5">
                   <GitBranch className="size-3.5" />
                   <span>Target Branch</span>
                 </label>
                 {isBranchesLoading ? (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="size-3 animate-spin" />
+                  <div className="flex items-center gap-2 text-12 text-muted-foreground">
+                    <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />
                     <span>Loading branches...</span>
                   </div>
                 ) : (
@@ -278,7 +282,7 @@ export function ImportGithubModal({
                         type="button"
                         onClick={() => setSelectedBranch(b)}
                         className={cn(
-                          'px-2.5 py-1 rounded text-xs font-mono transition-colors cursor-pointer border',
+                          'px-2.5 py-1 rounded-sm text-12 font-mono transition-colors cursor-pointer border relative before:absolute before:-inset-1.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
                           selectedBranch === b
                             ? 'bg-foreground text-background border-foreground font-medium'
                             : 'bg-muted/40 text-muted-foreground border-border hover:bg-muted'
@@ -300,7 +304,7 @@ export function ImportGithubModal({
             type="button"
             variant="ghost"
             onClick={() => setIsOpen(false)}
-            className="h-8 px-3 text-12 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
+            className="h-8 px-3 text-12 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             Cancel
           </Button>
@@ -308,7 +312,7 @@ export function ImportGithubModal({
             type="button"
             disabled={!isConnected || !selectedRepo || isImporting}
             onClick={handleImport}
-            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md shadow-none"
+            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md shadow-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             {isImporting ? 'Importing...' : 'Import Repository'}
           </Button>

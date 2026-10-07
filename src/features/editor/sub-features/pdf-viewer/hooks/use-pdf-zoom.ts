@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { EditorEventBus } from '../../../utils/editor.util';
+import { editorCommandBus } from '../../../core/command-bus/editor-command-bus';
 
 export interface UsePdfZoomOptions {
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -111,13 +111,13 @@ export function usePdfZoom({
 
   // Listen to global zoom shortcut events
   useEffect(() => {
-    const unsubZoomIn = EditorEventBus.on('flux:zoom-in', handleZoomIn);
-    const unsubZoomOut = EditorEventBus.on('flux:zoom-out', handleZoomOut);
-    const unsubFitWidth = EditorEventBus.on('flux:zoom-fit-width', () => {
+    const unsubZoomIn = editorCommandBus.subscribe('viewer:zoom-in', handleZoomIn);
+    const unsubZoomOut = editorCommandBus.subscribe('viewer:zoom-out', handleZoomOut);
+    const unsubFitWidth = editorCommandBus.subscribe('viewer:fit-width', () => {
       setAutoFit(true);
       setScale(fittedScale);
     });
-    const unsubFitHeight = EditorEventBus.on('flux:zoom-fit-height', () => {
+    const unsubFitHeight = editorCommandBus.subscribe('viewer:fit-height', () => {
       setAutoFit(false);
       setScale(0.85);
     });

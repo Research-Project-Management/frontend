@@ -15,7 +15,7 @@
 import { StateField, RangeSet, StateEffect, Extension, EditorState, Annotation } from '@codemirror/state';
 import { Decoration, DecorationSet, EditorView } from '@codemirror/view';
 import type { PageSuggestion } from '@/features/editor/types';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 
 export const externalUpdateAnnotation = Annotation.define<boolean>();
 
@@ -168,7 +168,8 @@ export const trackChangesClickHandler = EditorView.domEventHandlers({
       const suggestionId = highlight.getAttribute('data-suggestion-id');
       if (suggestionId) {
         const rect = highlight.getBoundingClientRect();
-        EditorEventBus.emit('flux:open-suggestion-widget', {
+        editorCommandBus.dispatch({
+          type: 'editor:open-suggestion-widget',
           suggestionId,
           x: Math.round(rect.left),
           y: Math.round(rect.bottom + 6),

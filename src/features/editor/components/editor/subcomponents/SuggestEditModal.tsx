@@ -51,7 +51,7 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
       <DialogContent className="sm:max-w-lg p-5 gap-4">
         <DialogHeader className="gap-1">
           <div className="flex items-center gap-2">
-            <div className="size-7 rounded-md bg-amber-500/15 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+            <div className="size-7 rounded-md bg-warning/15 flex items-center justify-center text-warning shrink-0">
               <FileCheck className="size-4" />
             </div>
             <DialogTitle className="text-16 font-semibold tracking-tight text-foreground">
@@ -77,8 +77,8 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
                 className={cn(
                   'px-2.5 py-1 rounded-sm capitalize font-medium transition-colors cursor-pointer text-xs outline-none focus-visible:ring-1 focus-visible:ring-primary',
                   suggestModal.type === t
-                    ? 'bg-background text-foreground shadow-2xs'
-                    : 'text-muted-foreground hover:text-foreground',
+                    ? 'bg-background text-foreground font-semibold border border-border/60'
+                    : 'text-muted-foreground hover:text-foreground border border-transparent',
                 )}
               >
                 {t}
@@ -93,7 +93,7 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
             <Label className="text-xs font-medium text-muted-foreground">
               Original Code / Text:
             </Label>
-            <div className="max-h-24 overflow-y-auto rounded-md border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs font-mono text-rose-700 dark:text-rose-400 select-text leading-relaxed">
+            <div className="max-h-24 overflow-y-auto rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs font-mono text-destructive select-text leading-relaxed">
               {suggestModal.originalText}
             </div>
           </div>
@@ -162,7 +162,7 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
             disabled={isPending}
             className="h-8 px-3.5 rounded-md text-xs font-medium cursor-pointer gap-1.5"
           >
-            {isPending && <Loader2 className="size-3.5 animate-spin" />}
+            {isPending && <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />}
             <span>{isPending ? 'Submitting...' : 'Submit Suggestion'}</span>
           </Button>
         </DialogFooter>

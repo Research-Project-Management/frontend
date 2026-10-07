@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogTitle,
   DialogFooter,
   DialogClose,
@@ -130,10 +131,13 @@ export default function CslStyleSearchModal({
           <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
             Citation Styles
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Search and select a citation style for references and bibliography export.
+          </DialogDescription>
           <DialogClose asChild>
             <button
               type="button"
-              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted focus:outline-hidden transition-colors cursor-pointer"
+              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted focus:outline-hidden transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
               aria-label="Close"
             >
               <X className="size-4" strokeWidth={1.5} />
@@ -174,7 +178,7 @@ export default function CslStyleSearchModal({
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 size-6 flex items-center justify-center text-muted-foreground hover:text-foreground rounded-sm cursor-pointer transition-colors"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 size-6 flex items-center justify-center text-muted-foreground hover:text-foreground rounded-sm cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden"
                 aria-label="Clear search"
               >
                 <X className="size-3.5" strokeWidth={1.5} />

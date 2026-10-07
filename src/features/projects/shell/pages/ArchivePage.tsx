@@ -7,8 +7,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Archive,
   RotateCcw,
-  Trash2,
-  Search,
   Layers,
   FileText,
   CheckCircle2,
@@ -27,10 +25,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui";
+import { PlaneEmptyState, PlaneErrorState } from "@/shared/components/ui";
 import { ProjectAvatar } from "@/shared/components/icons";
 import { toast } from 'sonner';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { useProjects, useRestoreProject, useDeleteProject, useTrashedProjects, usePermanentDeleteProject } from '../hooks/use-project';
+import { useProjects, useRestoreProject, useDeleteProject } from '../hooks/use-project';
 import {
   filterArchivedProjects,
   searchArchivedProjects,
@@ -51,7 +50,7 @@ import type { WorkItemViewItem } from '@/features/projects/project-id/views/type
 import type { Page } from '@/features/projects/project-id/pages/types/page.types';
 import { cn } from '@/shared/lib/utils';
 
-export type ArchiveTab = 'work-items' | 'projects' | 'views' | 'pages' | 'trash';
+export type ArchiveTab = 'work-items' | 'projects' | 'views' | 'pages';
 
 export function ArchivePage() {
   const { user } = useAuth();
@@ -60,15 +59,15 @@ export function ArchivePage() {
 
   const tabParam = searchParams.get('tab') as ArchiveTab | null;
   const initialTab: ArchiveTab =
-    tabParam && ['work-items', 'projects', 'views', 'pages', 'trash'].includes(tabParam)
+    tabParam && ['projects', 'work-items', 'pages', 'views'].includes(tabParam)
       ? tabParam
-      : 'work-items';
+      : 'projects';
 
   const [activeTab, setActiveTab] = useState<ArchiveTab>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    if (tabParam && ['work-items', 'projects', 'views', 'pages', 'trash'].includes(tabParam)) {
+    if (tabParam && ['projects', 'work-items', 'pages', 'views'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [tabParam]);
@@ -77,7 +76,13 @@ export function ArchivePage() {
   const [deleteConfirmProject, setDeleteConfirmProject] = useState<Project | null>(null);
 
   // 1. Fetch available projects
-  const { projects: rawProjects = [], isLoading: isProjectsLoading } = useProjects();
+  const {
+    projects: rawProjects = [],
+    isLoading: isProjectsLoading,
+    isError: isProjectsError,
+    error: projectsError,
+    actions: projectActions,
+  } = useProjects();
   const activeProjects = useMemo(() => rawProjects.filter((p) => !p.isArchived), [rawProjects]);
 
   // Target project context for work items/views/pages
@@ -86,18 +91,6 @@ export function ArchivePage() {
   // 2. Archived Projects logic
   const restoreProjectMutation = useRestoreProject();
   const deleteProjectMutation = useDeleteProject();
-
-  // 2b. Trash logic (soft-deleted projects)
-  const { projects: trashedProjects = [], isLoading: isTrashedLoading } = useTrashedProjects();
-  const permanentDeleteMutation = usePermanentDeleteProject();
-  const [trashDeleteConfirm, setTrashDeleteConfirm] = useState<Project | null>(null);
-
-  const filteredTrashedProjects = useMemo(() => {
-    if (!searchQuery.trim()) return trashedProjects as Project[];
-    return (trashedProjects as Project[]).filter((p) =>
-      p.name?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [trashedProjects, searchQuery]);
 
   const archivedProjects = useMemo(() => {
     return filterArchivedProjects(rawProjects);
@@ -112,6 +105,9 @@ export function ArchivePage() {
   const {
     data: archivedItemsData,
     isLoading: isArchivedItemsLoading,
+    isError: isArchivedItemsError,
+    error: archivedItemsError,
+    refetch: refetchArchivedItems,
   } = useQuery({
     queryKey: ['archived-work-items', currentProjectId],
     queryFn: async () => {
@@ -164,6 +160,9 @@ export function ArchivePage() {
   const {
     data: viewsData,
     isLoading: isViewsLoading,
+    isError: isViewsError,
+    error: viewsError,
+    refetch: refetchViews,
   } = useQuery({
     queryKey: ['archived-views', currentProjectId],
     queryFn: async () => {
@@ -185,6 +184,9 @@ export function ArchivePage() {
   const {
     data: pagesData,
     isLoading: isPagesLoading,
+    isError: isPagesError,
+    error: pagesError,
+    refetch: refetchPages,
   } = useQuery({
     queryKey: ['archived-pages', currentProjectId],
     queryFn: async () => {
@@ -241,38 +243,46 @@ export function ArchivePage() {
 
   const currentProject = activeProjects.find((p) => p.id === currentProjectId);
 
+  const archiveTabs = useMemo(() => [
+    {
+      key: 'projects' as const,
+      label: 'Projects',
+      count: archivedProjects.length,
+    },
+    {
+      key: 'work-items' as const,
+      label: 'Work items',
+      count: archivedItems.length,
+    },
+    {
+      key: 'pages' as const,
+      label: 'Pages',
+      count: archivedPages.length,
+    },
+  ], [archivedProjects.length, archivedItems.length, archivedPages.length]);
+
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden select-none">
-      {/* ── Top Header ── */}
+      {/* ── Top Header (Matching Your Work pattern) ── */}
       <header
-        className="flex items-center justify-between px-6 h-11 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-20 shrink-0 select-none min-w-0"
+        className="flex items-center justify-between px-6 h-11 border-b border-border bg-background sticky top-0 z-20 shrink-0 select-none min-w-0"
         style={{ paddingLeft: 'max(1.5rem, var(--header-offset, 0px))' }}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <Archive className="size-4 text-primary shrink-0" />
-          <h1 className="text-sm font-semibold text-foreground tracking-tight">Archives Hub</h1>
-          <span className="text-xs text-muted-foreground hidden sm:inline">·</span>
-          <span className="text-xs text-muted-foreground hidden sm:inline truncate">
-            {activeTab === 'work-items'
-              ? 'Archived Work Items'
-              : activeTab === 'projects'
-                ? 'Archived Projects'
-                : activeTab === 'views'
-                  ? 'Archived Views'
-                  : 'Archived Pages'}
-          </span>
+          <Archive className="size-4 text-foreground shrink-0" />
+          <h1 className="text-13 font-semibold text-foreground tracking-tight">Archives</h1>
         </div>
 
-        {/* Project Selector & Search */}
+        {/* Project Selector */}
         <div className="flex items-center gap-2.5 shrink-0">
-          {/* Project selector dropdown (for work items, views, pages) */}
-          {activeTab !== 'projects' && (
+          {/* Project selector dropdown (for pages, work items, views) */}
+          {(activeTab === 'pages' || activeTab === 'work-items' || activeTab === 'views') && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted font-normal cursor-pointer"
+                  className="h-8 px-2.5 text-12 gap-1.5 text-foreground hover:bg-muted font-normal cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   {currentProject ? (
                     <div className="flex items-center gap-1.5 min-w-0">
@@ -285,14 +295,14 @@ export function ArchivePage() {
                   <ChevronDown className="size-3 text-muted-foreground shrink-0" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 p-1 text-xs">
+              <DropdownMenuContent align="end" className="w-56 p-1 text-12 shadow-overlay">
                 {activeProjects.map((p) => {
                   const isSelected = p.id === currentProjectId;
                   return (
                     <DropdownMenuItem
                       key={p.id}
                       onClick={() => setSelectedProjectId(p.id)}
-                      className={cn('cursor-pointer font-medium flex items-center justify-between', isSelected && 'bg-muted font-semibold')}
+                      className={cn('cursor-pointer font-medium text-12 flex items-center justify-between', isSelected && 'bg-muted font-semibold')}
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <ProjectAvatar avatar={p.avatar} name={p.name} id={p.id} size="xs" />
@@ -305,108 +315,58 @@ export function ArchivePage() {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-
-          {/* Search Box */}
-          <div className="relative flex items-center">
-            <Search className="absolute left-2.5 size-3.5 text-muted-foreground pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search archives..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 w-44 md:w-60 pl-8 pr-3 text-xs rounded-md border border-border bg-background placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
         </div>
       </header>
 
-      {/* ── Subheader Navigation Tabs ── */}
-      <div
-        className="flex items-center justify-between px-6 border-b border-border bg-muted/40 shrink-0 overflow-x-auto gap-4"
+      {/* ── Subheader Navigation Tabs (Matching Your Work toolbar pattern) ── */}
+      <nav
+        aria-label="Archives Navigation"
+        className="flex items-center justify-between border-b border-border px-6 bg-background select-none shrink-0 h-10 overflow-x-auto"
         style={{ paddingLeft: 'max(1.5rem, var(--header-offset, 0px))' }}
       >
-        <div className="flex items-center gap-1 py-1">
-          <button
-            type="button"
-            onClick={() => { setActiveTab('work-items'); setSelectedItemIds(new Set()); }}
-            className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors',
-              activeTab === 'work-items'
-                ? 'bg-background text-foreground font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <CheckCircle2 className="size-3.5 shrink-0" />
-            <span>Work Items</span>
-            {archivedItems.length > 0 && (
-              <span className="text-10 font-mono px-1.5 py-0.2 rounded-full bg-muted text-foreground border border-border">
-                {archivedItems.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => { setActiveTab('projects'); setSelectedItemIds(new Set()); }}
-            className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors',
-              activeTab === 'projects'
-                ? 'bg-background text-foreground font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Folder className="size-3.5 shrink-0" />
-            <span>Projects</span>
-            {archivedProjects.length > 0 && (
-              <span className="text-10 font-mono px-1.5 py-0.2 rounded-full bg-muted text-foreground border border-border">
-                {archivedProjects.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => { setActiveTab('pages'); setSelectedItemIds(new Set()); }}
-            className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors',
-              activeTab === 'pages'
-                ? 'bg-background text-foreground font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <FileText className="size-3.5 shrink-0" />
-            <span>Pages</span>
-            {archivedPages.length > 0 && (
-              <span className="text-10 font-mono px-1.5 py-0.2 rounded-full bg-muted text-foreground border border-border">
-                {archivedPages.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => { setActiveTab('trash'); setSelectedItemIds(new Set()); }}
-            className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors',
-              activeTab === 'trash'
-                ? 'bg-background text-foreground font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Trash2 className="size-3.5 shrink-0" />
-            <span>Trash</span>
-            {trashedProjects.length > 0 && (
-              <span className="text-10 font-mono px-1.5 py-0.2 rounded-full bg-destructive/15 text-destructive border border-destructive/25">
-                {trashedProjects.length}
-              </span>
-            )}
-          </button>
+        <div className="flex items-center gap-1 h-full">
+          {archiveTabs.map((tab) => {
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab.key);
+                  setSelectedItemIds(new Set());
+                }}
+                className={cn(
+                  'relative flex h-full items-center gap-2 px-3.5 text-12 font-medium transition-colors outline-none cursor-pointer shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                  isActive
+                    ? 'text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <span>{tab.label}</span>
+                {typeof tab.count === 'number' && tab.count > 0 && (
+                  <span
+                    className={cn(
+                      'text-11 px-1.5 py-0.5 rounded-full font-mono font-medium leading-none tabular-nums',
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'bg-muted text-muted-foreground'
+                    )}
+                  >
+                    {tab.count}
+                  </span>
+                )}
+                {isActive && (
+                  <div className="absolute -bottom-[1px] left-0 right-0 h-[2px] bg-primary" />
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Bulk action toolbar (for work items) */}
         {activeTab === 'work-items' && selectedItemIds.size > 0 && (
           <div className="flex items-center gap-2 shrink-0 py-1">
-            <span className="text-xs text-muted-foreground">
+            <span className="text-12 text-muted-foreground">
               {selectedItemIds.size} selected
             </span>
             <Button
@@ -414,14 +374,14 @@ export function ArchivePage() {
               variant="outline"
               onClick={handleBulkRestoreSelected}
               disabled={bulkRestoreMutation.isPending}
-              className="h-7 text-xs px-2.5 gap-1.5 cursor-pointer text-primary border-primary/30 hover:bg-primary/5"
+              className="h-7 text-12 font-medium px-2.5 gap-1.5 cursor-pointer text-primary border-primary/30 hover:bg-primary/5 relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <RotateCcw className="size-3 shrink-0" />
               <span>Restore Selected</span>
             </Button>
           </div>
         )}
-      </div>
+      </nav>
 
       {/* ── Main Tab Content ── */}
       <main className="flex-1 overflow-y-auto p-6 md:p-8">
@@ -434,29 +394,38 @@ export function ArchivePage() {
                   <Skeleton key={i} className="h-12 w-full rounded-md" />
                 ))}
               </div>
+            ) : isArchivedItemsError ? (
+              <div className="h-full min-h-[340px] flex items-center justify-center">
+                <PlaneErrorState
+                  title="Failed to load archived work items"
+                  description="There was a problem loading archived items for this project."
+                  error={archivedItemsError as Error}
+                />
+              </div>
             ) : filteredArchivedItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 text-center select-none">
-                <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                  <CheckCircle2 className="size-6 text-muted-foreground/60" />
-                </div>
-                <h3 className="text-sm font-semibold text-foreground">No archived work items</h3>
-                <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                  {searchQuery
-                    ? `No work items match your search "${searchQuery}".`
-                    : currentProject
-                      ? `There are no archived work items in project ${currentProject.name}.`
-                      : 'Select a project to view archived tasks.'}
-                </p>
+              <div className="h-full min-h-[340px] flex items-center justify-center">
+                <PlaneEmptyState
+                  variant="review"
+                  title="No archived work items"
+                  description={
+                    searchQuery
+                      ? `No work items match your search "${searchQuery}".`
+                      : currentProject
+                        ? `There are no archived work items in project ${currentProject.name}.`
+                        : 'Select a project to view archived tasks.'
+                  }
+                />
               </div>
             ) : (
               <div className="border border-border rounded-lg bg-card overflow-hidden divide-y divide-border">
                 {/* Header row */}
-                <div className="flex items-center justify-between px-4 py-2.5 bg-muted/30 text-xs font-semibold text-muted-foreground select-none">
+                <div className="flex items-center justify-between px-4 py-2 bg-muted/30 text-12 font-medium text-muted-foreground select-none">
                   <div className="flex items-center gap-3 min-w-0">
                     <button
                       type="button"
                       onClick={handleToggleSelectAll}
-                      className="cursor-pointer text-muted-foreground hover:text-foreground"
+                      className="cursor-pointer text-muted-foreground hover:text-foreground relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      aria-label="Toggle select all"
                     >
                       {selectedItemIds.size === filteredArchivedItems.length && filteredArchivedItems.length > 0 ? (
                         <CheckSquare className="size-4 text-primary" />
@@ -480,7 +449,7 @@ export function ArchivePage() {
                     <div
                       key={item.id}
                       className={cn(
-                        'flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors gap-3',
+                        'flex items-center justify-between px-4 py-2.5 min-h-11 hover:bg-muted/40 transition-colors gap-3',
                         isSelected && 'bg-muted/50'
                       )}
                     >
@@ -488,7 +457,8 @@ export function ArchivePage() {
                         <button
                           type="button"
                           onClick={() => handleToggleSelectItem(item.id)}
-                          className="cursor-pointer text-muted-foreground hover:text-foreground shrink-0"
+                          className="cursor-pointer text-muted-foreground hover:text-foreground shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          aria-label={`Select item ${item.title}`}
                         >
                           {isSelected ? (
                             <CheckSquare className="size-4 text-primary" />
@@ -503,7 +473,7 @@ export function ArchivePage() {
                                 {item.identifier}
                               </span>
                             )}
-                            <span className="text-xs font-medium text-foreground truncate">
+                            <span className="text-13 font-medium text-foreground truncate">
                               {item.title}
                             </span>
                           </div>
@@ -526,8 +496,9 @@ export function ArchivePage() {
                           size="sm"
                           onClick={() => restoreWorkItemMutation.mutate(item.id)}
                           disabled={restoreWorkItemMutation.isPending}
-                          className="h-7 text-xs px-2 gap-1.5 cursor-pointer text-foreground hover:bg-muted"
+                          className="h-7 text-12 font-medium px-2 gap-1.5 cursor-pointer text-foreground hover:bg-muted relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                           title="Restore work item to board"
+                          aria-label="Restore work item"
                         >
                           <RotateCcw className="size-3 text-primary shrink-0" />
                           <span>Restore</span>
@@ -555,6 +526,14 @@ export function ArchivePage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            ) : isProjectsError ? (
+              <div className="h-full min-h-[340px] flex items-center justify-center">
+                <PlaneErrorState
+                  title="Failed to load archived projects"
+                  description="Could not retrieve the list of archived projects from the server."
+                  error={projectsError as Error}
+                />
               </div>
             ) : filteredArchivedProjects.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -587,28 +566,36 @@ export function ArchivePage() {
                   <Skeleton key={i} className="h-12 w-full rounded-md" />
                 ))}
               </div>
+            ) : isViewsError ? (
+              <div className="h-full min-h-[340px] flex items-center justify-center">
+                <PlaneErrorState
+                  title="Failed to load archived views"
+                  description="Could not load archived views for this project."
+                  error={viewsError as Error}
+                />
+              </div>
             ) : filteredArchivedViews.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 text-center select-none">
-                <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                  <Layers className="size-6 text-muted-foreground/60" />
-                </div>
-                <h3 className="text-sm font-semibold text-foreground">No archived views</h3>
-                <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                  {currentProject
-                    ? `No archived filter views found in ${currentProject.name}.`
-                    : 'Select a project to inspect saved views.'}
-                </p>
+              <div className="h-full min-h-[340px] flex items-center justify-center">
+                <PlaneEmptyState
+                  variant="search"
+                  title="No archived views"
+                  description={
+                    currentProject
+                      ? `No archived filter views found in ${currentProject.name}.`
+                      : 'Select a project to inspect saved views.'
+                  }
+                />
               </div>
             ) : (
               <div className="divide-y divide-border border border-border rounded-lg bg-card overflow-hidden">
                 {filteredArchivedViews.map((view) => (
                   <div
                     key={view.id}
-                    className="flex items-center justify-between p-3.5 hover:bg-muted/30 transition-colors gap-3"
+                    className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors gap-3"
                   >
                     <div className="min-w-0">
-                      <span className="text-xs font-semibold text-foreground truncate">{view.name}</span>
-                      <span className="text-10 font-mono ml-2 px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                      <span className="text-13 font-medium text-foreground truncate">{view.name}</span>
+                      <span className="text-11 font-mono ml-2 px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                         {view.access || 'public'}
                       </span>
                     </div>
@@ -628,28 +615,36 @@ export function ArchivePage() {
                   <Skeleton key={i} className="h-12 w-full rounded-md" />
                 ))}
               </div>
+            ) : isPagesError ? (
+              <div className="h-full min-h-[340px] flex items-center justify-center">
+                <PlaneErrorState
+                  title="Failed to load archived pages"
+                  description="Could not load archived pages for this project."
+                  error={pagesError as Error}
+                />
+              </div>
             ) : filteredArchivedPages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 text-center select-none">
-                <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                  <FileText className="size-6 text-muted-foreground/60" />
-                </div>
-                <h3 className="text-sm font-semibold text-foreground">No archived pages</h3>
-                <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                  {currentProject
-                    ? `No archived wiki documents found in ${currentProject.name}.`
-                    : 'Select a project to view archived pages.'}
-                </p>
+              <div className="h-full min-h-[340px] flex items-center justify-center">
+                <PlaneEmptyState
+                  variant="document"
+                  title="No archived pages"
+                  description={
+                    currentProject
+                      ? `No archived wiki documents found in ${currentProject.name}.`
+                      : 'Select a project to view archived pages.'
+                  }
+                />
               </div>
             ) : (
               <div className="divide-y divide-border border border-border rounded-lg bg-card overflow-hidden">
                 {filteredArchivedPages.map((page) => (
                   <div
                     key={page.id}
-                    className="flex items-center justify-between p-3.5 hover:bg-muted/30 transition-colors gap-3"
+                    className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors gap-3"
                   >
                     <div className="min-w-0">
-                      <span className="text-xs font-semibold text-foreground truncate">{page.title || 'Untitled Page'}</span>
-                      <p className="text-10 text-muted-foreground font-mono mt-0.5">
+                      <span className="text-13 font-medium text-foreground truncate">{page.title || 'Untitled Page'}</span>
+                      <p className="text-11 text-muted-foreground font-mono mt-0.5">
                         Status: {page.status}
                       </p>
                     </div>
@@ -660,68 +655,6 @@ export function ArchivePage() {
           </div>
         )}
 
-        {/* 6. TRASH TAB — Soft-deleted projects */}
-        {activeTab === 'trash' && (
-          <div className="space-y-4">
-            {isTrashedLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-14 w-full rounded-md" />
-                ))}
-              </div>
-            ) : filteredTrashedProjects.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 text-center select-none">
-                <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                  <Trash2 className="size-6 text-muted-foreground/60" />
-                </div>
-                <h3 className="text-sm font-semibold text-foreground">Trash is empty</h3>
-                <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                  Deleted projects will appear here. You can restore or permanently delete them.
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border border border-border rounded-lg bg-card overflow-hidden">
-                {filteredTrashedProjects.map((project) => (
-                  <div
-                    key={project.id}
-                    className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors gap-3"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <ProjectAvatar avatar={project.avatar} name={project.name} id={project.id} size="sm" />
-                      <div className="min-w-0">
-                        <span className="text-xs font-semibold text-foreground truncate block">{project.name}</span>
-                        <p className="text-10 text-muted-foreground font-mono mt-0.5">
-                          Deleted {project.deletedAt ? new Date(project.deletedAt as any).toLocaleDateString() : '-'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        onClick={() => restoreProjectMutation.mutate({ projectId: project.id })}
-                        disabled={restoreProjectMutation.isPending}
-                        className="gap-1.5 text-xs"
-                      >
-                        <RotateCcw className="size-3 shrink-0" />
-                        Restore
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        onClick={() => setTrashDeleteConfirm(project)}
-                        className="gap-1.5 text-xs text-destructive hover:text-destructive border-destructive/30 hover:border-destructive/60"
-                      >
-                        <Trash2 className="size-3 shrink-0" />
-                        Delete forever
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </main>
 
       {/* Permanent Delete Modal for Archived Projects */}
@@ -731,21 +664,6 @@ export function ArchivePage() {
         onConfirm={handleDeletePermanent}
         isDeleting={deleteProjectMutation.isPending}
       />
-
-      {/* Permanent Delete Confirmation for Trash */}
-      {trashDeleteConfirm && (
-        <DeletePermanentModal
-          project={trashDeleteConfirm}
-          onClose={() => setTrashDeleteConfirm(null)}
-          onConfirm={() => {
-            permanentDeleteMutation.mutate(
-              { projectId: trashDeleteConfirm.id },
-              { onSuccess: () => setTrashDeleteConfirm(null) }
-            );
-          }}
-          isDeleting={permanentDeleteMutation.isPending}
-        />
-      )}
     </div>
   );
 }

@@ -92,7 +92,7 @@ export function InspectorHeader({
           <button
             type="button"
             onClick={() => setIsRetractionModalOpen(true)}
-            className="h-6.5 px-2 text-11 font-medium bg-destructive/10 text-destructive border border-destructive/25 rounded-md hover:bg-destructive/20 hover:border-destructive/40 transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1.5 select-none"
+            className="h-6 px-2 text-11 font-medium bg-destructive/10 text-destructive border border-destructive/25 rounded-md hover:bg-destructive/20 hover:border-destructive/40 transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1.5 select-none relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-destructive"
             title={`${retractionTitle}. Click to view details.`}
             aria-label="View retraction notice details"
           >
@@ -107,7 +107,7 @@ export function InspectorHeader({
           <button
             type="button"
             onClick={onClose}
-            className="md:hidden size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+            className="md:hidden size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
             title="Close inspector"
             aria-label="Close inspector"
           >

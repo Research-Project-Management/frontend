@@ -107,9 +107,9 @@ export function WorkspaceViewsPage() {
       >
         <div className="flex items-center gap-2.5 min-w-0">
           <Layers className="size-4 text-primary shrink-0" />
-          <h1 className="text-sm font-semibold text-foreground tracking-tight">Views</h1>
-          <span className="text-xs text-muted-foreground hidden sm:inline">·</span>
-          <span className="text-xs text-muted-foreground hidden sm:inline truncate">
+          <h1 className="text-13 font-semibold text-foreground tracking-tight">Views</h1>
+          <span className="text-12 text-muted-foreground hidden sm:inline">·</span>
+          <span className="text-12 text-muted-foreground hidden sm:inline truncate">
             {selectedProject ? selectedProject.name : 'Workspace View Library'}
           </span>
         </div>
@@ -121,7 +121,7 @@ export function WorkspaceViewsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted font-normal cursor-pointer"
+                className="h-8 px-2.5 text-12 gap-1.5 text-foreground hover:bg-muted font-normal cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 {selectedProject ? (
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -137,10 +137,10 @@ export function WorkspaceViewsPage() {
                 <ChevronDown className="size-3 text-muted-foreground shrink-0" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 p-1 text-xs">
+            <DropdownMenuContent align="end" className="w-56 p-1 text-12 shadow-overlay">
               <DropdownMenuItem
                 onClick={() => setSelectedProjectId('all')}
-                className={cn('cursor-pointer font-medium flex items-center justify-between', isAllProjects && 'bg-muted font-semibold')}
+                className={cn('cursor-pointer font-medium text-12 flex items-center justify-between', isAllProjects && 'bg-muted font-semibold')}
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <Layers className="size-3.5 text-primary shrink-0" />
@@ -154,7 +154,7 @@ export function WorkspaceViewsPage() {
                   <DropdownMenuItem
                     key={p.id}
                     onClick={() => setSelectedProjectId(p.id)}
-                    className={cn('cursor-pointer font-medium flex items-center justify-between', isSelected && 'bg-muted font-semibold')}
+                    className={cn('cursor-pointer font-medium text-12 flex items-center justify-between', isSelected && 'bg-muted font-semibold')}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <ProjectAvatar avatar={p.avatar} name={p.name} id={p.id} size="xs" />
@@ -174,7 +174,7 @@ export function WorkspaceViewsPage() {
               placeholder="Search views..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 w-44 md:w-56 pl-8 pr-3 text-xs rounded-md border border-border bg-background placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary"
+              className="h-8 w-44 md:w-56 pl-8 pr-3 text-13 rounded-md border border-border bg-background placeholder:text-muted-foreground/70 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
         </div>
@@ -185,10 +185,10 @@ export function WorkspaceViewsPage() {
         {/* System Views Section */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold text-muted-foreground tracking-normal">
+            <h2 className="text-12 font-medium text-muted-foreground tracking-normal">
               System Views
             </h2>
-            <span className="text-11 text-muted-foreground">Standard perspective lenses</span>
+            <span className="text-11 text-muted-foreground font-mono">Standard perspective lenses</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -198,16 +198,16 @@ export function WorkspaceViewsPage() {
                 <Link
                   key={sys.id}
                   href={sys.href}
-                  className="flex items-start gap-3.5 p-4 rounded-lg border border-border bg-card hover:bg-muted/40 transition-all hover:border-primary/40 group"
+                  className="flex items-start gap-3.5 p-4 rounded-lg border border-border bg-card hover:bg-muted/40 transition-all hover:border-primary/40 group relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <div className="size-8 rounded-md bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
                     <Icon className="size-4 text-primary shrink-0" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
+                    <h3 className="text-13 font-medium text-foreground group-hover:text-primary transition-colors">
                       {sys.name}
                     </h3>
-                    <p className="text-11 text-muted-foreground mt-0.5 leading-snug">
+                    <p className="text-12 text-muted-foreground mt-0.5 leading-snug">
                       {sys.description}
                     </p>
                   </div>
@@ -221,15 +221,15 @@ export function WorkspaceViewsPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h2 className="text-xs font-semibold text-muted-foreground tracking-normal">
+              <h2 className="text-12 font-medium text-muted-foreground tracking-normal">
                 Saved Views
               </h2>
               {selectedProject && (
-                <span className="text-xs text-foreground font-medium">· {selectedProject.name}</span>
+                <span className="text-12 text-foreground font-medium">· {selectedProject.name}</span>
               )}
             </div>
             {targetProjectId && (
-              <Button asChild size="sm" variant="outline" className="h-7 text-xs px-2.5 gap-1.5 cursor-pointer">
+              <Button asChild size="sm" variant="outline" className="h-7 text-12 font-medium px-2.5 gap-1.5 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                 <Link href={`/projects/${targetProjectId}/views`}>
                   <Plus className="size-3 shrink-0" />
                   <span>Manage in Project</span>
@@ -247,8 +247,8 @@ export function WorkspaceViewsPage() {
           ) : filteredViews.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-border rounded-lg bg-card/50">
               <Layers className="size-8 text-muted-foreground/50 mb-2" />
-              <h3 className="text-xs font-semibold text-foreground">No saved views</h3>
-              <p className="text-11 text-muted-foreground mt-1 max-w-sm">
+              <h3 className="text-16 font-semibold text-foreground">No saved views</h3>
+              <p className="text-13 text-muted-foreground mt-1 max-w-sm">
                 {searchQuery
                   ? `No views match "${searchQuery}".`
                   : 'Save filters as custom views inside any project to quickly access them here.'}
@@ -260,21 +260,21 @@ export function WorkspaceViewsPage() {
                 <Link
                   key={view.id}
                   href={`/projects/${view.projectId || targetProjectId}/views/${view.id}`}
-                  className="flex flex-col justify-between p-4 rounded-lg border border-border bg-card hover:bg-muted/40 transition-all hover:border-primary/40 group space-y-3"
+                  className="flex flex-col justify-between p-4 rounded-lg border border-border bg-card hover:bg-muted/40 transition-all hover:border-primary/40 group space-y-3 relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <Layers className="size-3.5 text-primary shrink-0" />
-                      <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                      <span className="text-13 font-medium text-foreground group-hover:text-primary transition-colors truncate">
                         {view.name}
                       </span>
                     </div>
-                    <span className="text-10 font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+                    <span className="text-11 font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
                       {view.access || 'public'}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between text-10 text-muted-foreground font-mono pt-2 border-t border-border/50">
+                  <div className="flex items-center justify-between text-11 text-muted-foreground font-mono pt-2 border-t border-border/50">
                     <span className="truncate max-w-[180px]">{(view as any).projectName || selectedProject?.name || 'Project View'}</span>
                     <ExternalLink className="size-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>

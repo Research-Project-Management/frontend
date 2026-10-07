@@ -98,7 +98,7 @@ export function BreakdownCard({
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
-      <h3 className="text-sm font-semibold text-foreground tracking-tight">
+      <h3 className="text-13 font-semibold text-foreground tracking-tight">
         {title}
       </h3>
 
@@ -106,7 +106,7 @@ export function BreakdownCard({
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center py-4 text-center">
             <EmptyIllustration />
-            <span className="text-xs text-muted-foreground mt-3 font-normal">
+            <span className="text-12 text-muted-foreground mt-3 font-normal">
               No work item assigned yet
             </span>
           </div>
@@ -139,12 +139,12 @@ export function BreakdownCard({
                   >
                     <div className="flex items-center gap-2 min-w-0 pr-1">
                       <span className={cn('size-2 rounded-full shrink-0', item.color)} />
-                      <span className="text-xs font-medium text-muted-foreground truncate">
+                      <span className="text-12 font-medium text-muted-foreground truncate">
                         {item.label}
                       </span>
                     </div>
                     <div className="flex items-baseline gap-1 shrink-0">
-                      <span className="text-xs font-semibold text-foreground tabular-nums">
+                      <span className="text-12 font-medium text-foreground tabular-nums">
                         {item.count}
                       </span>
                       <span className="text-10 text-muted-foreground tabular-nums">

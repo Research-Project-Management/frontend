@@ -156,7 +156,7 @@ export function TopbarSearch({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={handleClear}
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2 md:before:hidden"
           aria-label="Clear search"
         >
           <X className="size-3 shrink-0" />

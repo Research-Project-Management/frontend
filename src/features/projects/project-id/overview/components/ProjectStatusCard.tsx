@@ -50,10 +50,10 @@ const STATUS_CONFIG: Record<
   at_risk: {
     label: 'At Risk',
     sublabel: 'Emerging blockers or risks need attention from the team',
-    badgeClass: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
+    badgeClass: 'bg-warning/10 text-warning border-warning/30',
     icon: AlertTriangle,
-    iconColor: 'text-amber-600 dark:text-amber-400',
-    borderClass: 'border-border hover:border-amber-500/40',
+    iconColor: 'text-warning',
+    borderClass: 'border-border hover:border-warning/40',
   },
   off_track: {
     label: 'Off Track',
@@ -102,13 +102,13 @@ export function ProjectStatusCard({
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold tracking-tight text-foreground">
+            <h3 className="text-13 font-semibold tracking-tight text-foreground">
               Project Status & Health
             </h3>
             {currentUpdate && config && (
               <Badge
                 variant="outline"
-                className={`text-11 font-semibold gap-1 py-0.5 px-2 ${config.badgeClass}`}
+                className={`text-11 font-medium gap-1 py-0.5 px-2 ${config.badgeClass}`}
               >
                 <config.icon className="size-3" />
                 {config.label}
@@ -122,7 +122,7 @@ export function ProjectStatusCard({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowHistory(!showHistory)}
-                className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1 px-2"
+                className="h-7 text-12 font-medium text-muted-foreground hover:text-foreground gap-1 px-2 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <History className="size-3.5" />
                 {showHistory ? 'Hide History' : `History (${updatesList.length})`}
@@ -137,7 +137,7 @@ export function ProjectStatusCard({
               variant="outline"
               size="sm"
               onClick={() => setIsModalOpen(true)}
-              className="h-7 text-xs gap-1 px-2.5 font-medium"
+              className="h-7 text-12 font-medium gap-1 px-2.5 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <Plus className="size-3.5" />
               Post Update
@@ -157,7 +157,7 @@ export function ProjectStatusCard({
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-foreground">
+                    <span className="text-12 font-semibold text-foreground">
                       {config.label}
                     </span>
                     <span className="text-11 text-muted-foreground">
@@ -172,7 +172,7 @@ export function ProjectStatusCard({
             </div>
 
             {/* Message Body */}
-            <div className="text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed pl-1">
+            <div className="text-13 text-foreground/90 whitespace-pre-wrap leading-relaxed pl-1">
               {currentUpdate.message}
             </div>
 
@@ -205,7 +205,7 @@ export function ProjectStatusCard({
             <div className="size-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground mb-2">
               <CheckCircle2 className="size-4" />
             </div>
-            <p className="text-xs font-medium text-foreground">
+            <p className="text-13 font-medium text-foreground">
               No status updates yet
             </p>
             <p className="text-11 text-muted-foreground max-w-xs mt-1">
@@ -215,7 +215,7 @@ export function ProjectStatusCard({
               variant="outline"
               size="sm"
               onClick={() => setIsModalOpen(true)}
-              className="mt-3 text-xs gap-1.5 h-7"
+              className="mt-3 text-12 font-medium gap-1.5 h-7 px-2.5 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <Plus className="size-3" />
               Post first status update
@@ -226,7 +226,7 @@ export function ProjectStatusCard({
         {/* Historical Timeline (Collapsible) */}
         {showHistory && updatesList && updatesList.length > 0 && (
           <div className="flex flex-col gap-2 pt-2 border-t border-border/50">
-            <span className="text-11 font-semibold text-muted-foreground tracking-normal">
+            <span className="text-11 font-medium text-muted-foreground tracking-normal">
               Update Timeline History
             </span>
             <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1">
@@ -235,7 +235,7 @@ export function ProjectStatusCard({
                 return (
                   <div
                     key={item.id}
-                    className="flex flex-col gap-1.5 p-3 rounded-lg border border-border/60 bg-muted/20 text-xs"
+                    className="flex flex-col gap-1.5 p-3 rounded-lg border border-border/60 bg-muted/20 text-12"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -257,7 +257,9 @@ export function ProjectStatusCard({
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDeleteUpdate(item.id)}
-                        className="size-6 text-muted-foreground hover:text-destructive"
+                        className="size-6 text-muted-foreground hover:text-destructive cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        title="Delete update"
+                        aria-label="Delete update"
                       >
                         <Trash2 className="size-3" />
                       </Button>

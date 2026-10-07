@@ -39,7 +39,7 @@ export function GeneralDanger({
             variant="outline"
             size="sm"
             onClick={() => setArchiveOpen(true)}
-            className="h-8 px-3.5 rounded-md border-border bg-background hover:bg-muted text-xs font-medium text-foreground shrink-0 cursor-pointer"
+            className="relative h-8 px-3.5 rounded-md border-border bg-background hover:bg-muted text-12 font-medium text-foreground shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
           >
             {isArchived ? 'Restore' : 'Archive'}
           </Button>
@@ -59,7 +59,7 @@ export function GeneralDanger({
             size="sm"
             onClick={() => setDeleteOpen(true)}
             disabled={isDeleting}
-            className="h-8 px-3.5 rounded-md border-destructive text-destructive hover:bg-destructive/10 text-xs font-medium shrink-0 cursor-pointer"
+            className="relative h-8 px-3.5 rounded-md border-destructive text-destructive hover:bg-destructive/10 text-12 font-medium shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
           >
             Delete
           </Button>

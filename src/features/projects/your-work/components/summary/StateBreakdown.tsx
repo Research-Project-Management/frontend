@@ -31,7 +31,7 @@ function StateCustomTooltip({ active, payload, total }: StateTooltipProps) {
   const percentage = total > 0 ? Math.round((data.count / total) * 100) : 0;
 
   return (
-    <div className="rounded-md bg-popover px-2.5 py-1.5 text-xs text-popover-foreground border border-border">
+    <div className="rounded-md bg-popover px-2.5 py-1.5 text-12 text-popover-foreground border border-border shadow-overlay">
       <div className="flex items-center gap-1.5 font-medium">
         <span
           className="size-2 rounded-xs shrink-0"
@@ -40,7 +40,7 @@ function StateCustomTooltip({ active, payload, total }: StateTooltipProps) {
         <span>{data.label}</span>
       </div>
       <div className="mt-1 text-11 text-muted-foreground flex items-center gap-1">
-        <span className="font-semibold text-foreground tabular-nums">{data.count}</span>
+        <span className="font-medium text-foreground tabular-nums">{data.count}</span>
         <span>({percentage}%)</span>
       </div>
     </div>
@@ -67,7 +67,7 @@ export function StateBreakdown({
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
-      <h3 className="text-sm font-semibold text-foreground tracking-tight">
+      <h3 className="text-13 font-semibold text-foreground tracking-tight">
         Work items by state
       </h3>
 
@@ -75,7 +75,7 @@ export function StateBreakdown({
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center py-6 text-center">
             <EmptyIllustration />
-            <span className="text-xs text-muted-foreground mt-3 font-normal">
+            <span className="text-12 text-muted-foreground mt-3 font-normal">
               No work item assigned yet
             </span>
           </div>
@@ -132,19 +132,19 @@ export function StateBreakdown({
                 return (
                   <div
                     key={group.key}
-                    className="flex items-center justify-between gap-2 text-xs"
+                    className="flex items-center justify-between gap-2 text-12"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span
                         className="size-2.5 rounded-xs shrink-0"
                         style={{ backgroundColor: group.hex }}
                       />
-                      <span className="text-xs font-medium text-muted-foreground truncate">
+                      <span className="text-12 font-medium text-muted-foreground truncate">
                         {group.label}
                       </span>
                     </div>
                     <div className="flex items-baseline gap-1.5 shrink-0">
-                      <span className="text-xs font-semibold text-foreground tabular-nums">
+                      <span className="text-12 font-medium text-foreground tabular-nums">
                         {group.count}
                       </span>
                       <span className="text-10 text-muted-foreground tabular-nums">

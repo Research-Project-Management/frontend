@@ -110,6 +110,25 @@ export const useWorkspaceProjects = () =>
     enabled: true,
   });
 
+export function invalidateWorkItemRelatedQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  projectId?: string,
+) {
+  queryClient.invalidateQueries({ queryKey: ['work-items'] });
+  if (projectId) {
+    queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['project-states', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['project-state-counts', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['project-details', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['project-overview', projectId] });
+  } else {
+    queryClient.invalidateQueries({ queryKey: ['project-states'] });
+    queryClient.invalidateQueries({ queryKey: ['project-state-counts'] });
+    queryClient.invalidateQueries({ queryKey: ['project-details'] });
+    queryClient.invalidateQueries({ queryKey: ['project-overview'] });
+  }
+}
+
 // ── Mutations ───────────────────────────────────────────────────────────────
 
 export const useCreateItem = () => {
@@ -124,10 +143,12 @@ export const useCreateItem = () => {
       return CoreService.create(input);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['work-items'] });
       toast.success('Work item created', { id: 'work-item-action' });
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to create work item', { id: 'work-item-action' }),
+    onSettled: (_data, _error, variables) => {
+      invalidateWorkItemRelatedQueries(queryClient, variables?.projectId);
+    },
   });
 };
 
@@ -194,8 +215,8 @@ export const useUpdateItem = () => {
       }
       toast.error(error.message || 'Failed to update work item', { id: 'work-item-action' });
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['work-items'] });
+    onSettled: (_data, _error, variables) => {
+      invalidateWorkItemRelatedQueries(queryClient, variables?.projectId);
     },
   });
 };
@@ -249,8 +270,8 @@ export const useDeleteItem = () => {
     onSuccess: () => {
       toast.success('Work item deleted', { id: 'work-item-action' });
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['work-items'] });
+    onSettled: (_data, _error, variables) => {
+      invalidateWorkItemRelatedQueries(queryClient, variables?.projectId);
     },
   });
 };
@@ -268,10 +289,12 @@ export const useDuplicateItem = () => {
         projectId: vars.projectId,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['work-items'] });
       toast.success('Work item duplicated', { id: 'work-item-action' });
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to duplicate work item', { id: 'work-item-action' }),
+    onSettled: (_data, _error, variables) => {
+      invalidateWorkItemRelatedQueries(queryClient, variables?.projectId);
+    },
   });
 };
 
@@ -335,8 +358,8 @@ export const useBulkUpdate = () => {
         toast.success('Work items updated', { id: 'work-item-bulk' });
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['work-items'] });
+    onSettled: (_data, _error, variables) => {
+      invalidateWorkItemRelatedQueries(queryClient, (variables as any)?.projectId);
     },
   });
 };
@@ -399,8 +422,8 @@ export const useBulkDelete = () => {
     onSuccess: () => {
       toast.success('Work items deleted', { id: 'work-item-bulk' });
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['work-items'] });
+    onSettled: (_data, _error, variables) => {
+      invalidateWorkItemRelatedQueries(queryClient, variables?.projectId);
     },
   });
 };
@@ -416,10 +439,12 @@ export const useCreateSubItem = () => {
       return CoreService.createSubItem(targetId, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['work-items'] });
       toast.success('Sub-item created', { id: 'work-item-action' });
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to create sub-item', { id: 'work-item-action' }),
+    onSettled: (_data, _error, variables) => {
+      invalidateWorkItemRelatedQueries(queryClient, (variables as any)?.projectId);
+    },
   });
 };
 
@@ -433,10 +458,12 @@ export const useConvertSubItemToRoot = () => {
       return CoreService.convertToRoot(targetId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['work-items'] });
       toast.success('Converted to top-level item', { id: 'work-item-action' });
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to convert to top-level item', { id: 'work-item-action' }),
+    onSettled: (_data, _error, variables) => {
+      invalidateWorkItemRelatedQueries(queryClient, (variables as any)?.projectId);
+    },
   });
 };
 
@@ -493,8 +520,8 @@ export const useReorderItem = () => {
       }
       toast.error(error.message || 'Failed to reorder work item', { id: 'work-item-reorder' });
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['work-items'] });
+    onSettled: (_data, _error, variables) => {
+      invalidateWorkItemRelatedQueries(queryClient, (variables as any)?.projectId);
     },
   });
 };

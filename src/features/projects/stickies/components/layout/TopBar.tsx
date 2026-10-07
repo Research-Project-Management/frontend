@@ -32,7 +32,7 @@ export default function TopBar({
     >
       <div className="flex items-center gap-2.5">
         <StickiesIcon className="size-4 text-foreground shrink-0" />
-        <h1 className="text-sm font-semibold text-foreground tracking-tight">Stickies</h1>
+        <h1 className="text-13 font-semibold text-foreground tracking-tight">Stickies</h1>
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
@@ -42,7 +42,7 @@ export default function TopBar({
           tabIndex={isSearchExpanded || searchQuery ? -1 : 0}
           aria-label="Search stickies"
           className={cn(
-            "relative flex items-center transition-colors duration-300 ease-in-out h-8 rounded-md overflow-hidden group focus-visible:ring-2 focus-visible:ring-ring",
+            "relative flex items-center transition-colors duration-300 ease-in-out h-8 rounded-md overflow-hidden group focus-visible:ring-1 focus-visible:ring-ring",
             isSearchExpanded || searchQuery
               ? "w-64 border border-border bg-background"
               : "w-8 hover:bg-muted cursor-pointer"
@@ -76,7 +76,7 @@ export default function TopBar({
             onChange={(e) => onSearchChange(e.target.value)}
             onBlur={() => !searchQuery && setIsSearchExpanded(false)}
             className={cn(
-              "h-full text-sm py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/50 transition-opacity pl-8 pr-8",
+              "h-full text-13 py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/50 transition-opacity pl-8 pr-8",
               isSearchExpanded || searchQuery ? "opacity-100" : "opacity-0 pointer-events-none"
             )}
             autoFocus={isSearchExpanded}
@@ -91,7 +91,7 @@ export default function TopBar({
                 onSearchChange("");
                 setIsSearchExpanded(false);
               }}
-              className="absolute right-2.5 text-foreground transition-colors cursor-pointer"
+              className="absolute right-2.5 text-foreground transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <X className="size-3.5 text-foreground shrink-0" />
             </button>
@@ -103,7 +103,7 @@ export default function TopBar({
           size="sm"
           onClick={onAddSticky}
           disabled={isAddingSticky}
-          className="h-8 rounded-md px-3 text-xs font-medium cursor-pointer"
+          className="h-8 rounded-md px-3 text-12 font-medium cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
         >
           {addLabel}
         </Button>

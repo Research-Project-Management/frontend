@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -176,10 +177,10 @@ export default function ImportFromPersonalModal({
                 Import from My Library
               </DialogTitle>
             </div>
-            <p className="text-12 text-muted-foreground mt-0.5">
+            <DialogDescription className="text-12 text-muted-foreground mt-0.5">
               Select references from your user library to collaborate on in{' '}
               <span className="font-semibold text-foreground">{projectName}</span>.
-            </p>
+            </DialogDescription>
           </div>
         </DialogHeader>
 

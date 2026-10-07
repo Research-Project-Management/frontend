@@ -28,6 +28,7 @@ import {
   FileSpreadsheet,
   FileCode,
   File,
+  GitCompare,
 } from 'lucide-react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -39,7 +40,7 @@ import { AIIcon } from '@/shared/components/icons';
 
 import { usePageStore } from '@/features/editor/store';
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import {
   streamEditorChat,
   getPageChat,
@@ -128,7 +129,7 @@ function getFileMeta(name: string, size?: number) {
     return {
       type: 'Word',
       icon: FileText,
-      iconColor: 'text-blue-500',
+      iconColor: 'text-foreground/80',
       sizeText,
     };
   }
@@ -144,7 +145,7 @@ function getFileMeta(name: string, size?: number) {
     return {
       type: 'Sheet',
       icon: FileSpreadsheet,
-      iconColor: 'text-emerald-500',
+      iconColor: 'text-foreground/80',
       sizeText,
     };
   }
@@ -168,7 +169,7 @@ function getFileMeta(name: string, size?: number) {
     return {
       type: 'Code',
       icon: FileCode,
-      iconColor: 'text-amber-500',
+      iconColor: 'text-foreground/80',
       sizeText,
     };
   }
@@ -277,11 +278,12 @@ function ThinkingBlock({ content, isOpen }: { content: string; isOpen: boolean }
 
 export default function AiTab({ onClose }: AiTabProps) {
   const params = useParams<{ projectId?: string; pageId?: string; draftId?: string }>();
-  const { currentPage } = usePageStore();
+  const currentPage = usePageStore((s) => s.currentPage);
   const { engine, getContent } = useEditorInstance();
   const {
     insertAtCursor,
     replaceSelection,
+    proposeDiff,
     copyCode,
     notifyFileAttached,
     notifyFileError,
@@ -404,9 +406,9 @@ export default function AiTab({ onClose }: AiTabProps) {
 
   // Listen for external open-ai-panel events from toolbar / floating menu
   useEffect(() => {
-    return EditorEventBus.on('flux:open-ai-panel', (detail) => {
-      if (detail?.selectedText) {
-        setSelectionContext(detail.selectedText);
+    return editorCommandBus.subscribe('sidebar:open-ai-panel', (cmd) => {
+      if (cmd?.selectedText) {
+        setSelectionContext(cmd.selectedText);
       } else if (engine) {
         const text = engine.getSelectedText();
         if (text.trim()) {
@@ -414,8 +416,8 @@ export default function AiTab({ onClose }: AiTabProps) {
         }
       }
 
-      if (detail?.initialPrompt) {
-        setInputPrompt(detail.initialPrompt);
+      if (cmd?.initialPrompt) {
+        setInputPrompt(cmd.initialPrompt);
       }
 
       setTimeout(() => {
@@ -423,6 +425,16 @@ export default function AiTab({ onClose }: AiTabProps) {
       }, 100);
     });
   }, [engine]);
+
+  // Listen for diff resolutions (Accept / Reject from CodeMirror inline diff)
+  useEffect(() => {
+    return editorCommandBus.subscribe('ai:diff-resolved', (cmd) => {
+      const action = cmd.action || cmd.payload?.action;
+      if (action === 'accept') {
+        setSelectionContext(null);
+      }
+    });
+  }, []);
 
   // Auto-resize textarea
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -435,6 +447,11 @@ export default function AiTab({ onClose }: AiTabProps) {
   // Editor Actions: Insert at cursor
   const handleInsertAtCursor = (text: string) => {
     insertAtCursor(text);
+  };
+
+  // Editor Actions: Propose interactive diff
+  const handleProposeDiff = (text: string) => {
+    proposeDiff(text);
   };
 
   // Editor Actions: Replace current selection
@@ -573,7 +590,7 @@ export default function AiTab({ onClose }: AiTabProps) {
                   className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
                   title="Copy code"
                 >
-                  {isCopied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+                  {isCopied ? <Check className="size-3 text-primary" /> : <Copy className="size-3" />}
                   <span>{isCopied ? 'Copied' : 'Copy'}</span>
                 </button>
                 <button
@@ -585,11 +602,20 @@ export default function AiTab({ onClose }: AiTabProps) {
                   <ArrowDownToLine className="size-3" />
                   <span>Insert</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => handleProposeDiff(codeString)}
+                  className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-purple-400 hover:bg-purple-500/15 transition-colors cursor-pointer font-medium"
+                  title="Review diff interactively in editor (⌘⏎ Accept, Esc Reject)"
+                >
+                  <GitCompare className="size-3" />
+                  <span>Diff</span>
+                </button>
                 {selectionContext && (
                   <button
                     type="button"
                     onClick={() => handleReplaceSelection(codeString)}
-                    className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer font-medium"
+                    className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-warning hover:bg-warning/15 transition-colors cursor-pointer font-medium"
                     title="Replace selection with this code"
                   >
                     <Replace className="size-3" />
@@ -699,7 +725,7 @@ export default function AiTab({ onClose }: AiTabProps) {
       >
         {isLoadingHistory && (
           <div className="flex items-center justify-center py-6 text-12 text-muted-foreground gap-2">
-            <RefreshCw className="size-3.5 animate-spin text-ai" />
+            <RefreshCw className="size-3.5 animate-spin motion-reduce:animate-none text-ai" />
             <span>Loading history...</span>
           </div>
         )}
@@ -804,7 +830,7 @@ export default function AiTab({ onClose }: AiTabProps) {
                       >
                         {answer || (!thinking ? streamingMessage : '')}
                       </ReactMarkdown>
-                      <span className="inline-block w-1.5 h-3.5 bg-ai ml-0.5 animate-pulse" />
+                      <span className="inline-block w-1.5 h-3.5 bg-ai ml-0.5 animate-pulse motion-reduce:animate-none" />
                     </div>
                   </>
                 );
@@ -836,7 +862,7 @@ export default function AiTab({ onClose }: AiTabProps) {
         )}
 
         {/* Input Card */}
-        <div className="rounded-lg border border-border bg-muted/20 focus-within:border-ai/50 focus-within:bg-background transition-all p-2 flex flex-col gap-1.5 shadow-2xs">
+        <div className="rounded-lg border border-border bg-muted/20 focus-within:border-ai/50 focus-within:bg-background transition-all p-2 flex flex-col gap-1.5">
           {/* Attached Files List */}
           {(attachedFiles.length > 0 || uploadingFiles.length > 0) && (
             <div className="flex items-center gap-1.5 flex-wrap pb-1.5 pt-0.5 max-h-32 overflow-y-auto">
@@ -847,7 +873,7 @@ export default function AiTab({ onClose }: AiTabProps) {
                   <Tooltip key={up.id}>
                     <TooltipTrigger asChild>
                       <div className="inline-flex h-6.5 items-center gap-1.5 px-2 rounded-md border border-border/70 bg-muted/40 text-11 text-foreground transition-all select-none max-w-[240px] cursor-default">
-                        <Loader2 className="size-3 animate-spin text-ai shrink-0" />
+                        <Loader2 className="size-3 animate-spin text-ai shrink-0 motion-reduce:animate-none" />
                         <span className="truncate max-w-[120px] font-medium">{up.name}</span>
                         <span className="text-10 text-muted-foreground font-mono shrink-0">
                           {isProcessing ? 'Indexing...' : `${up.progress}%`}
@@ -969,7 +995,7 @@ export default function AiTab({ onClose }: AiTabProps) {
                   align="start"
                   side="top"
                   sideOffset={8}
-                  className="w-56 p-1 rounded-lg shadow-lg border border-border bg-popover text-foreground select-none space-y-0.5"
+                  className="w-56 p-1 rounded-lg shadow-raised-100 border border-border bg-popover text-foreground select-none space-y-0.5"
                 >
                   {/* 1. Upload from Device */}
                   <DropdownMenuItem
@@ -1011,11 +1037,21 @@ export default function AiTab({ onClose }: AiTabProps) {
 
                   {/* 5. Web Search Toggle inside the Plus menu */}
                   <div
+                    role="menuitemcheckbox"
+                    tabIndex={0}
+                    aria-checked={webSearchEnabled}
                     onClick={(e) => {
                       e.stopPropagation();
                       setWebSearchEnabled(!webSearchEnabled);
                     }}
-                    className="flex items-center justify-between px-2.5 py-1.5 rounded-md hover:bg-muted transition-colors cursor-pointer select-none text-foreground text-13 font-normal"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setWebSearchEnabled(!webSearchEnabled);
+                      }
+                    }}
+                    className="flex items-center justify-between px-2.5 py-1.5 rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer select-none text-foreground text-13 font-normal"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Globe className="size-4 text-foreground shrink-0" />
@@ -1046,7 +1082,7 @@ export default function AiTab({ onClose }: AiTabProps) {
                     <button
                       type="button"
                       onClick={handleStopStreaming}
-                      className="flex size-7 items-center justify-center rounded-md bg-ai text-white hover:bg-ai-hover transition-all active:scale-95 cursor-pointer shadow-xs"
+                      className="flex size-7 items-center justify-center rounded-md bg-ai text-white hover:bg-ai-hover transition-all active:scale-95 cursor-pointer"
                       aria-label="Stop generating"
                     >
                       <Square className="size-3 fill-current" />
@@ -1069,12 +1105,12 @@ export default function AiTab({ onClose }: AiTabProps) {
                           ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
                           : (!inputPrompt.trim() && attachedFiles.length === 0)
                             ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-40'
-                            : 'bg-ai text-white hover:bg-ai-hover active:scale-95 cursor-pointer shadow-xs'
+                            : 'bg-ai text-white hover:bg-ai-hover active:scale-95 cursor-pointer'
                       )}
                       aria-label={uploadingFiles.length > 0 ? 'Processing documents...' : 'Send message'}
                     >
                       {uploadingFiles.length > 0 ? (
-                        <Loader2 className="size-3.5 animate-spin text-ai" />
+                        <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none text-ai" />
                       ) : (
                         <ArrowUp className="size-3.5 shrink-0 stroke-[2.5] translate-y-[1px]" />
                       )}

@@ -16,6 +16,8 @@ import {
   type DraftSnapshot,
 } from './document-session-coordinator';
 import { manuscriptService } from '@/features/editor/services/manuscript.service';
+import { editorCommandBus } from '../command-bus/editor-command-bus';
+import { visibilityHibernationCoordinator } from '../coordinators/visibility-hibernation.coordinator';
 
 export const extractStringContent = (c: any): string =>
   typeof c === 'string'
@@ -29,7 +31,7 @@ export interface UseDocumentSessionOptions {
   isRealtimeActive?: boolean;
 }
 
-export function useDocumentSession({ page }: UseDocumentSessionOptions) {
+export function useDocumentSession({ page, isRealtimeActive = false }: UseDocumentSessionOptions) {
   const activePageRef = useRef(page);
   activePageRef.current = page;
   const activePageIdRef = useRef(page.id);
@@ -44,26 +46,46 @@ export function useDocumentSession({ page }: UseDocumentSessionOptions) {
 
   const [recoverableDraft, setRecoverableDraft] = useState<DraftSnapshot | null>(null);
 
-  // 1. Initialize BeforeUnload protection
+  // 1. Initialize BeforeUnload & Tab Visibility/Hibernation protection
   useEffect(() => {
+    visibilityHibernationCoordinator.init();
     return documentSessionCoordinator.initBeforeUnloadProtection();
   }, []);
 
-  // 2. Check for offline/crash draft recovery on mount or page switch
+  // 2. Check for offline/crash draft recovery on mount or page switch (Memory -> LocalStorage -> IndexedDB)
   useEffect(() => {
-    const recovery = documentSessionCoordinator.checkDraftRecovery(page.id, initialServerText);
-    if (recovery.hasRecoverableDraft && recovery.draft) {
-      setRecoverableDraft(recovery.draft);
-    } else {
-      setRecoverableDraft(null);
+    let isMounted = true;
+    const syncRecovery = documentSessionCoordinator.checkDraftRecovery(page.id, initialServerText);
+    if (syncRecovery.hasRecoverableDraft && syncRecovery.draft) {
+      setRecoverableDraft(syncRecovery.draft);
+      return;
     }
+
+    void documentSessionCoordinator
+      .checkDraftRecoveryAsync(page.id, initialServerText)
+      .then((asyncRecovery) => {
+        if (!isMounted) return;
+        if (asyncRecovery.hasRecoverableDraft && asyncRecovery.draft) {
+          setRecoverableDraft(asyncRecovery.draft);
+        } else {
+          setRecoverableDraft(null);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [page.id, initialServerText]);
 
-  // 3. Register with DocumentModelManager
+  // 3. Register with DocumentModelManager & protect from LRU eviction
   useEffect(() => {
+    documentModelManager.setActiveFileId(page.id);
+    const rawProjectId = (page as any)?.projectId || usePageStore.getState().projectId || undefined;
+    const effectiveProjectId = typeof rawProjectId === 'string' ? rawProjectId : rawProjectId?.id;
     documentModelManager.registerModel(page.id, {
       content: initialServerText,
       filePath: page.title || (page as any).name || page.id,
+      projectId: effectiveProjectId,
     });
   }, [page.id, page.title, initialServerText]);
 
@@ -96,31 +118,35 @@ export function useDocumentSession({ page }: UseDocumentSessionOptions) {
 
   // 5. Real-time Remote Collaborator Updates
   useEffect(() => {
-    const handleRemoteUpdate = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const detail = customEvent.detail;
-      if (!detail || detail.docId !== page.id) return;
+    const processRemoteUpdate = (docId: string, remoteContent: string) => {
+      if (!docId || docId !== page.id) return;
 
       const model = documentModelManager.getModel(page.id);
       const isLocallyDirty = model?.isDirty ?? false;
 
-      if (!isLocallyDirty && typeof detail.content === 'string') {
-        latestTextRef.current = detail.content;
-        setCurrentContent(detail.content);
-        documentModelManager.updateContent(page.id, detail.content, false);
+      if (!isLocallyDirty && typeof remoteContent === 'string') {
+        latestTextRef.current = remoteContent;
+        setCurrentContent(remoteContent);
+        documentModelManager.updateContent(page.id, remoteContent, false);
         if (typeof setCurrentPage === 'function') {
           setCurrentPage({
             ...activePageRef.current,
-            content: detail.content,
+            content: remoteContent,
           });
         }
-      } else if (isLocallyDirty && detail.content && detail.content !== latestTextRef.current) {
+      } else if (isLocallyDirty && remoteContent && remoteContent !== latestTextRef.current) {
+        editorCommandBus.dispatch({
+          type: 'document:conflict',
+          docId: page.id,
+          remoteContent,
+          localContent: latestTextRef.current,
+        });
         if (typeof window !== 'undefined') {
           window.dispatchEvent(
             new CustomEvent('flux:document-conflict', {
               detail: {
                 docId: page.id,
-                remoteContent: detail.content,
+                remoteContent,
                 localContent: latestTextRef.current,
               },
             })
@@ -129,9 +155,26 @@ export function useDocumentSession({ page }: UseDocumentSessionOptions) {
       }
     };
 
-    window.addEventListener('flux:doc-content-updated', handleRemoteUpdate);
+    const unsubCmd = editorCommandBus.subscribe('document:content-updated', (cmd) => {
+      processRemoteUpdate(cmd.docId, cmd.content);
+    });
+
+    const handleWindowFallback = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail?.docId && typeof detail?.content === 'string') {
+        processRemoteUpdate(detail.docId, detail.content);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('flux:doc-content-updated', handleWindowFallback);
+    }
+
     return () => {
-      window.removeEventListener('flux:doc-content-updated', handleRemoteUpdate);
+      unsubCmd();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('flux:doc-content-updated', handleWindowFallback);
+      }
     };
   }, [page.id, setCurrentPage]);
 
@@ -156,9 +199,9 @@ export function useDocumentSession({ page }: UseDocumentSessionOptions) {
       }
 
       // Route change through DocumentSessionCoordinator
-      documentSessionCoordinator.notifyContentChange(currentPage.id, text);
+      documentSessionCoordinator.notifyContentChange(currentPage.id, text, { isRealtimeActive });
     },
-    [clearDirty]
+    [clearDirty, isRealtimeActive]
   );
 
   // 7. Manual Flush Action (Ctrl+S / Vim :w / Compile trigger)

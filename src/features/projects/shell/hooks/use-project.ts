@@ -422,6 +422,7 @@ export interface UseProjectsState {
   readonly projects: Project[];
   readonly isLoading: boolean;
   readonly isError: boolean;
+  readonly error: Error | null;
   readonly total: number;
 }
 
@@ -442,6 +443,7 @@ export interface UseProjectsReturn {
   projects: Project[];
   isLoading: boolean;
   isError: boolean;
+  error: Error | null;
   refetch: () => Promise<any>;
 }
 
@@ -472,9 +474,10 @@ export function useProjects(options?: { isArchived?: boolean }): UseProjectsRetu
       projects: projectsList,
       isLoading: query.isLoading,
       isError: query.isError,
+      error: (query.error as Error) ?? null,
       total: projectsList.length,
     }),
-    [projectsList, query.isLoading, query.isError]
+    [projectsList, query.isLoading, query.isError, query.error]
   );
 
   const createMutAsync = createMutation.mutateAsync;
@@ -516,9 +519,10 @@ export function useProjects(options?: { isArchived?: boolean }): UseProjectsRetu
       projects: projectsList,
       isLoading: query.isLoading,
       isError: query.isError,
+      error: (query.error as Error) ?? null,
       refetch: query.refetch,
     }),
-    [state, actions, projectsList, query.isLoading, query.isError, query.refetch]
+    [state, actions, projectsList, query.isLoading, query.isError, query.error, query.refetch]
   );
 }
 

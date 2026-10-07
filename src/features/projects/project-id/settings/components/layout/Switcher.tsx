@@ -67,9 +67,12 @@ export default function Switcher({
       {/* ── Trigger ── */}
       <button
         type="button"
+        aria-label="Switch project"
+        aria-expanded={open}
+        aria-haspopup="listbox"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          'group flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 transition-colors cursor-pointer border border-border/70 bg-background/60 hover:bg-background',
+          'group relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-12 transition-colors cursor-pointer border border-border/70 bg-background/60 hover:bg-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden',
           open && 'bg-background border-border',
         )}
       >
@@ -79,7 +82,7 @@ export default function Switcher({
           id={currentProject?.id}
           size="sm"
         />
-        <span className="flex-1 min-w-0 text-left font-medium text-xs text-foreground truncate">
+        <span className="flex-1 min-w-0 text-left font-medium text-12 text-foreground truncate">
           {currentProject?.name ?? 'Select project…'}
         </span>
         <ChevronsUpDown className="size-3.5 text-muted-foreground shrink-0" />
@@ -90,14 +93,14 @@ export default function Switcher({
         <div
           className={cn(
             'absolute left-1 right-1 top-full z-50 mt-1.5',
-            'rounded-md border border-border bg-popover text-popover-foreground shadow-md',
+            'rounded-md border border-border bg-popover text-popover-foreground shadow-overlay',
             'animate-in fade-in-0 zoom-in-95 duration-100',
             'flex flex-col overflow-hidden',
           )}
           style={{ maxHeight: '340px' }}
         >
           {/* Search box */}
-          <div className="flex items-center gap-2 border-b border-border px-3 py-2 bg-background">
+          <div className="flex items-center gap-2 border-b border-border px-3 py-1.5 bg-background">
             <Search className="size-3.5 text-muted-foreground shrink-0" />
             <input
               ref={searchRef}
@@ -105,13 +108,14 @@ export default function Switcher({
               placeholder="Search projects…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+              className="flex-1 h-7 bg-transparent text-12 text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
             {search && (
               <button
                 type="button"
+                aria-label="Clear search"
                 onClick={() => setSearch('')}
-                className="text-foreground cursor-pointer"
+                className="relative text-foreground cursor-pointer rounded p-0.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
               >
                 <X className="size-3 shrink-0" />
               </button>
@@ -119,10 +123,10 @@ export default function Switcher({
           </div>
 
           {/* Project List */}
-          <div className="overflow-y-auto p-1 space-y-0.5 max-h-56">
+          <div role="listbox" className="overflow-y-auto p-1 space-y-0.5 max-h-56">
             {filtered.length === 0 ? (
               <div className="flex items-center justify-center py-6 text-center">
-                <span className="text-xs text-muted-foreground">
+                <span className="text-12 text-muted-foreground">
                   {search ? 'No projects found' : 'No projects yet'}
                 </span>
               </div>
@@ -133,9 +137,11 @@ export default function Switcher({
                   <button
                     key={proj.id}
                     type="button"
+                    role="option"
+                    aria-selected={isCurrent}
                     onClick={() => handleSelect(proj)}
                     className={cn(
-                      'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors cursor-pointer',
+                      'relative flex h-8 w-full items-center gap-2 rounded-md px-2 text-12 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden',
                       isCurrent
                         ? 'bg-muted font-medium text-foreground'
                         : 'hover:bg-muted text-foreground',

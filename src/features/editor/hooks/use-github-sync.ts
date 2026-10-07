@@ -9,7 +9,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { integrationService } from '@/features/integrations/services/integration.service';
+import { integrationService } from '@/features/settings/services/integration.service';
 
 export const githubSyncKeys = {
   all: ['github-sync'] as const,

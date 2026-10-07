@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -81,12 +82,12 @@ export default function CslStyleSearchModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px] max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-200">
         <DialogHeader className="p-4 border-b border-border bg-muted/20">
-          <DialogTitle className="text-14 font-semibold text-foreground flex items-center gap-2">
+          <DialogTitle className="text-14 font-semibold tracking-tight text-foreground flex items-center gap-2">
             Search Citation Styles
           </DialogTitle>
-          <p className="text-12 text-muted-foreground mt-0.5">
+          <DialogDescription className="text-12 text-muted-foreground mt-0.5">
             Search over 10,000+ official CSL academic citation formats.
-          </p>
+          </DialogDescription>
           <div className="relative mt-3">
             <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
             <Input
@@ -100,7 +101,8 @@ export default function CslStyleSearchModal({
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+                className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
               >
                 <X className="size-4" />
               </button>
@@ -184,13 +186,13 @@ export default function CslStyleSearchModal({
           </div>
           <div className="flex items-center gap-2">
             <DialogClose asChild>
-              <Button variant="ghost" size="sm" className="h-8 text-12">
+              <Button variant="ghost" size="sm" className="h-8 px-2.5 text-12 font-medium relative before:absolute before:-inset-2 md:before:hidden">
                 Cancel
               </Button>
             </DialogClose>
             <Button
               size="sm"
-              className="h-8 text-12 gap-1.5"
+              className="h-8 px-2.5 text-12 font-medium gap-1.5 relative before:absolute before:-inset-2 md:before:hidden"
               disabled={!selectedStyle || selectedStyle.id === currentStyleId}
               onClick={handleConfirm}
             >

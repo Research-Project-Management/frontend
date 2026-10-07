@@ -1,14 +1,17 @@
 /**
  * Unified exports for editor hooks mirroring Backend modules:
  *  - use-core.ts
- *  - use-compiler.ts
- *  - use-synctex.ts
  *  - use-comment.ts
  *  - use-suggestion.ts
  *  - use-history.ts
  *  - use-collaboration.ts
  *  - use-citation.ts
  *  - use-storage.ts
+ *  - use-export.ts
+ *  - use-notification-bundler.ts
+ *  - use-spelling.ts
+ *  - use-github-sync.ts
+ *  - use-project-chat.ts
  */
 
 export * from './use-core';
@@ -22,3 +25,9 @@ export * from './use-export';
 export * from './use-notification-bundler';
 export * from './use-spelling';
 export * from './use-github-sync';
+export * from './use-project-chat';
+export * from '../ui/features/preview/hooks/use-pdf-compiler';
+export * from '../ui/features/preview/hooks/use-pdf-zoom';
+export * from '../ui/features/preview/hooks/use-viewer-synctex';
+export * from '../ui/features/preview/hooks/use-viewer-popout';
+export * from '../ui/features/preview/hooks/use-pdf-search';

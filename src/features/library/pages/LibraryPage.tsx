@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
@@ -10,6 +10,7 @@ import { LibraryTopbar, type BreadcrumbItem } from '../components/topbar';
 import { LibraryContent } from '../components/content';
 import { LibraryInspector } from '../components/inspector';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
+import { useLibraryNavigation } from '../hooks';
 
 const LibraryModals = dynamic(
   () => import('../components/modals').then((m) => m.LibraryModals),
@@ -55,7 +56,7 @@ export function ModernLibraryPage({
   view,
   title,
 }: LibraryPageProps) {
-  const router = useRouter();
+  const nav = useLibraryNavigation();
   const queryClient = useQueryClient();
   const params = useParams() as { collectionId?: string; projectId?: string };
   const activeScope = useLibrarySidebarStore((s) => s.activeScope);
@@ -63,6 +64,7 @@ export function ModernLibraryPage({
   const setActiveItem = useLibraryUIStore((s) => s.setActiveItem);
   const selectOnly = useLibraryUIStore((s) => s.selectOnly);
   const setIsInspectorOpen = useLibraryUIStore((s) => s.setIsInspectorOpen);
+  const displayOptions = useLibraryUIStore((s) => s.displayOptions);
   const startBatchUpload = useProcessModalStore((s) => s.startBatchUpload);
 
   const effectiveScopeId =
@@ -75,11 +77,8 @@ export function ModernLibraryPage({
   const isUserScope = activeScope.type === 'user';
   const { canEditItem: canEdit } = useLibraryPermissions();
 
-  const searchParams = useSearchParams();
-  const filterParam = searchParams.get('filter');
-  const savedSearchId = searchParams.get('savedSearchId') || undefined;
-  const isSavedSearchView = filterParam === 'saved-search' && Boolean(savedSearchId);
-  const effectiveView = view || (filterParam && filterParam !== 'saved-search' ? filterParam : undefined);
+  const isSavedSearchView = nav.isSavedSearchView;
+  const effectiveView = view || (nav.filterParam && nav.filterParam !== 'saved-search' ? nav.filterParam : undefined);
 
   const filterTitleMap: Record<string, string> = {
     'my-publications': 'My Publications',
@@ -103,24 +102,23 @@ export function ModernLibraryPage({
   const currentCollection = effectiveCollectionId
     ? collections.find((c) => c.id === effectiveCollectionId)
     : undefined;
-  const currentSavedSearch = savedSearchId
-    ? savedSearches.find((s) => s.id === savedSearchId)
+  const currentSavedSearch = nav.savedSearchId
+    ? savedSearches.find((s) => s.id === nav.savedSearchId)
     : undefined;
 
   const savedSearchResults = useSavedSearchResults(
     effectiveScopeId,
-    isSavedSearchView && savedSearchId ? savedSearchId : null,
+    isSavedSearchView && nav.savedSearchId ? nav.savedSearchId : null,
   );
 
   // Deep linking: auto-select item and open inspector if ?item=... or ?selected=... is in URL
-  const itemParam = searchParams.get('item') || searchParams.get('selected');
   React.useEffect(() => {
-    if (itemParam) {
-      setActiveItem(itemParam);
-      selectOnly(itemParam);
+    if (nav.selectedItemId) {
+      setActiveItem(nav.selectedItemId);
+      selectOnly(nav.selectedItemId);
       setIsInspectorOpen(true);
     }
-  }, [itemParam, setActiveItem, selectOnly, setIsInspectorOpen]);
+  }, [nav.selectedItemId, setActiveItem, selectOnly, setIsInspectorOpen]);
 
   // Breadcrumb navigation with full ancestor chain
   const breadcrumbs = useMemo<BreadcrumbItem[] | undefined>(() => {
@@ -161,11 +159,7 @@ export function ModernLibraryPage({
   }, [isSavedSearchView, currentSavedSearch, currentCollection, collections, activeScope.name, activeScope.type, resolvedTitle]);
 
   const handleNavigateCrumb = (crumbId?: string) => {
-    if (!crumbId) {
-      router.push('/library');
-    } else {
-      router.push(`/library/${crumbId}`);
-    }
+    nav.navigateToCollection(crumbId);
   };
 
   // Shared upload handler — used for both file and folder uploads.
@@ -261,6 +255,10 @@ export function ModernLibraryPage({
       return currentSavedSearch?.cachedCount ?? 0;
     }
     if (currentCollection) {
+      const showSubcollections = displayOptions?.includeSubcollections ?? true;
+      if (showSubcollections && currentCollection.recursiveItemCount !== undefined) {
+        return currentCollection.recursiveItemCount;
+      }
       return currentCollection.itemCount ?? currentCollection.paperCount ?? 0;
     }
     return countsData?.total;
@@ -271,6 +269,7 @@ export function ModernLibraryPage({
     savedSearchResults.data?.items,
     currentSavedSearch?.cachedCount,
     currentCollection,
+    displayOptions?.includeSubcollections,
     countsData?.total,
   ]);
 

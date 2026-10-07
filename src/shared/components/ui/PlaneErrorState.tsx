@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { RefreshCw } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import { Button } from './button';
 
 const ILLUSTRATION_COLOR_TOKEN_MAP = {
   fill: {
@@ -254,8 +257,10 @@ export interface PlaneErrorStateProps {
   description?: string;
   error?: Error | { message?: string; digest?: string; [key: string]: any } | string | null;
   reset?: () => void;
+  resetLabel?: string;
   homeHref?: string;
   homeLabel?: string;
+  action?: React.ReactNode;
   className?: string;
   isFullPage?: boolean;
 }
@@ -266,13 +271,17 @@ export interface PlaneErrorStateProps {
  * - 3D Isometric spatial illustration
  * - Clean seamless default canvas (zero harsh red alert boxes)
  * - Restrained typography and discrete collapsible error logs
- * - Strictly NO buttons (clean default canvas)
- * - Restrained typography and discrete collapsible error logs
+ * - Standard action/reload button matching PlaneEmptyState design tokens
  */
 export function PlaneErrorState({
   title = 'An unexpected error occurred',
   description = 'This view encountered an issue while loading data. Navigation and other workspaces remain safe.',
   error,
+  reset,
+  resetLabel,
+  homeHref,
+  homeLabel,
+  action,
   className,
   isFullPage = false,
 }: PlaneErrorStateProps) {
@@ -333,6 +342,35 @@ export function PlaneErrorState({
       <p className="text-13 text-foreground/80 dark:text-muted-foreground max-w-[420px] leading-relaxed mb-4 font-normal">
         {description}
       </p>
+
+      {/* Action Buttons (Retry / Home / Custom Action) */}
+      {action ? (
+        <div className="mt-1 mb-4 flex items-center justify-center gap-2">{action}</div>
+      ) : (reset || homeHref) ? (
+        <div className="mt-1 mb-4 flex items-center justify-center gap-2">
+          {reset && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={reset}
+              className="h-8 px-3.5 text-xs font-medium rounded-md gap-1.5 cursor-pointer shadow-xs border-border hover:bg-muted text-foreground"
+            >
+              <RefreshCw className="size-3.5 shrink-0" />
+              <span>{resetLabel || 'Reload page'}</span>
+            </Button>
+          )}
+          {homeHref && (
+            <Button
+              size="sm"
+              variant="ghost"
+              asChild
+              className="h-8 px-3 text-xs font-medium rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              <Link href={homeHref}>{homeLabel || 'Go to Overview'}</Link>
+            </Button>
+          )}
+        </div>
+      ) : null}
 
       {/* Optional Technical Error Diagnostics (Polished Interactive Disclosure) */}
       {errorMessage && (

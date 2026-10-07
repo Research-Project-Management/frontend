@@ -9,21 +9,19 @@ import {
   Plus,
   Settings,
   UserStar,
-  MoreHorizontal,
   Compass,
   Archive,
   Star,
   Share2,
   Link2,
-  FileText,
   Briefcase,
   Layers,
   BarChart3,
-  Pin,
-  PinOff,
   PanelLeft,
   MessageSquare,
   Wallet,
+  FileText,
+  MoreHorizontal,
 } from 'lucide-react';
 import { motion, LayoutGroup } from 'framer-motion';
 import { toast } from 'sonner';
@@ -32,11 +30,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/co
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import dynamic from 'next/dynamic';
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
 import {
   AddWorkItemIcon,
@@ -130,43 +123,6 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   const [favoritesSectionOpen, setFavoritesSectionOpen] = useState(true);
   const [projectsSectionOpen, setProjectsSectionOpen] = useState(true);
 
-  // Hidden items in Overview section (persisted)
-  const [hiddenOverviewItems, setHiddenOverviewItems] = useState<Set<string>>(() => new Set<string>());
-  const [isHidePopoverOpen, setIsHidePopoverOpen] = useState(false);
-
-  useEffect(() => {
-    try {
-      const saved =
-        localStorage.getItem('sidebar_hidden_overview_items') ||
-        localStorage.getItem('sidebar_hidden_workspace_items');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          setHiddenOverviewItems(new Set(parsed.filter((item): item is string => typeof item === 'string')));
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, []);
-
-  const toggleHideOverviewItem = (itemId: string) => {
-    setHiddenOverviewItems((prev) => {
-      const next = new Set(prev);
-      if (next.has(itemId)) {
-        next.delete(itemId);
-      } else {
-        next.add(itemId);
-      }
-      try {
-        localStorage.setItem('sidebar_hidden_overview_items', JSON.stringify(Array.from(next)));
-      } catch (e) {
-        // ignore
-      }
-      return next;
-    });
-  };
-
   const overviewItems = useMemo(
     () => [
       {
@@ -174,28 +130,18 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         label: 'Projects',
         icon: Briefcase,
         to: '/projects',
-        canHide: false,
-      },
-      {
-        id: 'pages',
-        label: 'Pages',
-        icon: FileText,
-        to: '/projects/pages',
-        canHide: true,
       },
       {
         id: 'analytics',
         label: 'Analytics',
         icon: BarChart3,
         to: '/projects/analytics',
-        canHide: true,
       },
       {
         id: 'archives',
         label: 'Archives',
         icon: Archive,
         to: '/projects/archives',
-        canHide: true,
       },
     ],
     []
@@ -545,7 +491,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           </LayoutGroup>
         </div>
 
-        {/* Overview section */}
+        {/* Workspace section */}
         <Collapsible
           open={overviewSectionOpen}
           onOpenChange={setOverviewSectionOpen}
@@ -554,7 +500,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           <div className="flex items-center justify-between h-7 px-2.5 text-11 font-medium text-muted-foreground select-none">
             <CollapsibleTrigger asChild>
               <button className="flex-1 text-left text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer outline-none transition-colors">
-                Overview
+                Workspace
               </button>
             </CollapsibleTrigger>
 
@@ -563,7 +509,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                 <CollapsibleTrigger asChild>
                   <button
                     type="button"
-                    aria-label={overviewSectionOpen ? "Collapse overview" : "Expand overview"}
+                    aria-label={overviewSectionOpen ? "Collapse workspace" : "Expand workspace"}
                     className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none"
                   >
                     <ChevronDown
@@ -576,88 +522,36 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                 </CollapsibleTrigger>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={6}>
-                {overviewSectionOpen ? "Collapse overview" : "Expand overview"}
+                {overviewSectionOpen ? "Collapse workspace" : "Expand workspace"}
               </TooltipContent>
             </Tooltip>
           </div>
 
           <CollapsibleContent className="overflow-hidden mt-1">
             <div className="flex flex-col gap-1">
-              {overviewItems
-                .filter((item) => !hiddenOverviewItems.has(item.id))
-                .map((item) => {
-                  const ItemIcon = item.icon;
-                  const active =
-                    item.to === '/projects'
-                      ? pathname === '/projects' || pathname === '/projects/'
-                      : pathname === item.to || pathname.startsWith(item.to + '/');
+              {overviewItems.map((item) => {
+                const ItemIcon = item.icon;
+                const active =
+                  item.to === '/projects'
+                    ? pathname === '/projects' || pathname === '/projects/'
+                    : pathname === item.to || pathname.startsWith(item.to + '/');
 
-                  return (
-                    <Link
-                      key={item.id}
-                      href={item.to}
-                      className={cn(
-                        "group flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none",
-                        active
-                          ? "bg-muted text-foreground font-medium"
-                          : "text-foreground hover:bg-muted font-normal"
-                      )}
-                    >
-                      <ItemIcon className="size-4 shrink-0 text-foreground" />
-                      <span className="min-w-0 truncate tracking-tight">{item.label}</span>
-                    </Link>
-                  );
-                })}
-
-              {/* Hide / Customize Trigger */}
-              <Popover open={isHidePopoverOpen} onOpenChange={setIsHidePopoverOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="group flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none cursor-pointer"
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.to}
+                    className={cn(
+                      "group flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none",
+                      active
+                        ? "bg-muted text-foreground font-medium"
+                        : "text-foreground hover:bg-muted font-normal"
+                    )}
                   >
-                    <MoreHorizontal className="size-4 shrink-0" />
-                    <span className="min-w-0 truncate tracking-tight">Hide</span>
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent
-                  side="right"
-                  align="start"
-                  sideOffset={8}
-                  className="w-56 p-1.5 border border-border bg-popover text-popover-foreground rounded-lg shadow-raised-200 z-50 text-xs"
-                >
-                  <div className="space-y-0.5">
-                    {overviewItems
-                      .filter((item) => item.canHide)
-                      .map((item) => {
-                        const ItemIcon = item.icon;
-                        const isHidden = hiddenOverviewItems.has(item.id);
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => toggleHideOverviewItem(item.id)}
-                            className="flex w-full items-center justify-between gap-2 px-2.5 py-2 rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer text-left text-13 group"
-                          >
-                            <div className="flex items-center gap-2 truncate">
-                              <ItemIcon className="size-4 shrink-0 text-foreground" />
-                              <span className="truncate">{item.label}</span>
-                            </div>
-                            {isHidden ? (
-                              <Pin
-                                className="size-4 shrink-0 text-muted-foreground/40 group-hover:text-foreground transition-colors"
-                              />
-                            ) : (
-                              <PinOff
-                                className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors"
-                              />
-                            )}
-                          </button>
-                        );
-                      })}
-                  </div>
-                </PopoverContent>
-              </Popover>
+                    <ItemIcon className="size-4 shrink-0 text-foreground" />
+                    <span className="min-w-0 truncate tracking-tight">{item.label}</span>
+                  </Link>
+                );
+              })}
             </div>
           </CollapsibleContent>
         </Collapsible>

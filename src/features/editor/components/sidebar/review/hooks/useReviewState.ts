@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { usePageStore, useActionsStore } from '@/features/editor/store';
+import { usePageStore, useDocumentCollaborationStore } from '@/features/editor/store';
 import { useActiveDocument, filesQuery } from '@/features/editor/hooks/use-core';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { usePageComments } from '@/features/editor/hooks/use-comment';
@@ -15,7 +15,7 @@ import {
   useRejectAllSuggestions,
 } from '@/features/editor/hooks/use-suggestion';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import type { MentionMember } from '@/features/editor/utils/mention.util';
 import { useReviewRealtimeNotifications } from '../useReviewRealtimeNotifications';
 import { jumpToEditorLine, scrollToReviewItem } from '../utils/review.util';
@@ -47,8 +47,8 @@ export function useReviewState() {
   const [commentLine, setCommentLine] = useState<number | null>(null);
   const [commentLineEnd, setCommentLineEnd] = useState<number | null>(null);
 
-  const pendingComment = useActionsStore((s) => s.pendingComment);
-  const clearPendingComment = useActionsStore((s) => s.clearPendingComment);
+  const pendingComment = useDocumentCollaborationStore((s) => s.pendingComment);
+  const clearPendingComment = useDocumentCollaborationStore((s) => s.clearPendingComment);
 
   // Fetch project members for author resolution and @mentions with 5-minute cache
   const { data: projectMembersData } = useQuery({
@@ -114,18 +114,16 @@ export function useReviewState() {
   // Real-time notifications
   useReviewRealtimeNotifications({ pageId, userId: user?.id });
 
-  // Listen to deep-link events from Monaco / CodeMirror glyphs
+  // Listen to deep-link events from CodeMirror glyphs
   useEffect(() => {
-    const unsub = EditorEventBus.on('flux:open-panel', (detail) => {
-      if (typeof detail === 'object' && detail !== null) {
-        setScope('current');
-        if (detail.commentId) {
-          setHighlightId(detail.commentId);
-          scrollToReviewItem(detail.commentId, 'comment');
-        } else if (detail.suggestionId) {
-          setHighlightId(detail.suggestionId);
-          scrollToReviewItem(detail.suggestionId, 'suggestion');
-        }
+    const unsub = editorCommandBus.subscribe('sidebar:open-panel', (cmd) => {
+      setScope('current');
+      if (cmd.commentId) {
+        setHighlightId(cmd.commentId);
+        scrollToReviewItem(cmd.commentId, 'comment');
+      } else if (cmd.suggestionId) {
+        setHighlightId(cmd.suggestionId);
+        scrollToReviewItem(cmd.suggestionId, 'suggestion');
       }
     });
 

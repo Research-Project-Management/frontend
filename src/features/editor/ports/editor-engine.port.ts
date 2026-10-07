@@ -38,6 +38,16 @@ export interface EditorSelectionRange {
   endColumn: number;
 }
 
+export interface DiffProposal {
+  id: string;
+  from: number;
+  to: number;
+  originalText: string;
+  replacementText: string;
+  title?: string;
+  createdAt: number;
+}
+
 export interface IEditorEngine {
   /** Retrieves full document content */
   getContent(): string;
@@ -56,6 +66,21 @@ export interface IEditorEngine {
 
   /** Replaces text within an absolute range [from, to] */
   replaceRange?(text: string, from: number, to: number): void;
+
+  /** Proposes an AI inline diff review widget instead of immediate direct replacement */
+  proposeDiff?(proposal: DiffProposal): void;
+
+  /** Clears any active AI diff preview without applying */
+  clearDiff?(): void;
+
+  /** Accepts active AI diff proposal */
+  acceptDiff?(diffId?: string): void;
+
+  /** Rejects active AI diff proposal */
+  rejectDiff?(diffId?: string): void;
+
+  /** Gets character offset range for the active selection */
+  getSelectionOffsets?(): { from: number; to: number } | null;
 
   /** Wraps current selection (or placeholder) with prefix and suffix */
   wrapSelection(prefix: string, suffix: string, placeholder?: string): void;

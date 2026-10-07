@@ -30,7 +30,7 @@ function YourWorkLayoutContent({ children }: { children: React.ReactNode }) {
           style={{ paddingLeft: 'max(1.5rem, var(--header-offset, 0px))' }}
         >
           <UserStar className="size-4 text-foreground shrink-0" />
-          <h1 className="text-sm font-semibold text-foreground tracking-tight">
+          <h1 className="text-13 font-semibold text-foreground tracking-tight">
             Your work
           </h1>
         </div>

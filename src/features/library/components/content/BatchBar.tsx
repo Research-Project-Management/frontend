@@ -20,12 +20,14 @@ import { useParams } from 'next/navigation';
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/shared/components/ui";
 import type { Collection, Item, CslStyle } from '../../types/library.types';
 import { isItemRetracted } from '../../utils/retraction';
+import type { useLibraryBatchCoordinator } from '../../hooks/useLibraryBatchCoordinator';
 
 export interface BatchBarProps {
-  selectedCount: number;
+  coordinator?: ReturnType<typeof useLibraryBatchCoordinator>;
+  selectedCount?: number;
   selectedItems?: Item[];
   collections: Collection[];
-  onClearSelection: () => void;
+  onClearSelection?: () => void;
   onBatchMove?: (collectionId: string | null) => void;
   onBatchDelete?: () => void;
   onBatchRestore?: () => void;
@@ -37,15 +39,16 @@ export interface BatchBarProps {
 }
 
 export function BatchBar({
-  selectedCount,
-  selectedItems,
+  coordinator,
+  selectedCount: propSelectedCount,
+  selectedItems: propSelectedItems,
   collections,
-  onClearSelection,
-  onBatchMove,
-  onBatchDelete,
-  onBatchRestore,
-  onBatchMerge,
-  onBatchDetach,
+  onClearSelection: propOnClearSelection,
+  onBatchMove: propOnBatchMove,
+  onBatchDelete: propOnBatchDelete,
+  onBatchRestore: propOnBatchRestore,
+  onBatchMerge: propOnBatchMerge,
+  onBatchDetach: propOnBatchDetach,
   isTrash = false,
   scopeId: propsScopeId,
   projectId: propsProjectId,
@@ -58,6 +61,15 @@ export function BatchBar({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const selectedCount = coordinator ? coordinator.selectedCount : (propSelectedCount ?? 0);
+  const resolvedItems = coordinator ? coordinator.selectedItems : (propSelectedItems ?? []);
+  const onClearSelection = coordinator ? coordinator.clearSelection : propOnClearSelection;
+  const onBatchMove = coordinator ? coordinator.batchMove : propOnBatchMove;
+  const onBatchDelete = coordinator ? coordinator.batchDelete : propOnBatchDelete;
+  const onBatchRestore = coordinator ? coordinator.batchRestore : propOnBatchRestore;
+  const onBatchDetach = coordinator ? coordinator.batchDetach : propOnBatchDetach;
+  const onBatchMerge = coordinator ? coordinator.batchMerge : propOnBatchMerge;
 
   const copyWithToast = async (text: string, label: string = 'Copied to clipboard') => {
     if (!text || !text.trim()) {
@@ -73,7 +85,7 @@ export function BatchBar({
   };
 
   React.useEffect(() => {
-    if (selectedCount === 0) return;
+    if (coordinator || selectedCount === 0 || !onClearSelection) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClearSelection();
@@ -81,22 +93,23 @@ export function BatchBar({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedCount, onClearSelection]);
+  }, [coordinator, selectedCount, onClearSelection]);
 
   if (selectedCount === 0) return null;
 
-  const resolvedItems = selectedItems || [];
+  const isAllProcessingSelected = coordinator
+    ? coordinator.isAllProcessingSelected
+    : resolvedItems.length > 0 &&
+      resolvedItems.every(
+        (item) =>
+          Boolean(item._isProcessing) ||
+          item.id.startsWith('temp-') ||
+          item.id.startsWith('provisional-'),
+      );
 
-  const isAllProcessingSelected =
-    resolvedItems.length > 0 &&
-    resolvedItems.every(
-      (item) =>
-        Boolean(item._isProcessing) ||
-        item.id.startsWith('temp-') ||
-        item.id.startsWith('provisional-'),
-    );
-
-  const retractedSelected = resolvedItems.filter((i) => isItemRetracted(i));
+  const retractedSelected = coordinator
+    ? coordinator.retractedSelected
+    : resolvedItems.filter((i) => isItemRetracted(i));
 
   const warnIfRetractedPresent = (actionLabel: string) => {
     if (retractedSelected.length > 0) {
@@ -110,7 +123,7 @@ export function BatchBar({
     }
   };
 
-  const handleCopyMultiCite = async (style: CslStyle | 'latex' = 'apa') => {
+  const fallbackCopyMultiCite = async (style: CslStyle | 'latex' = 'apa') => {
     warnIfRetractedPresent('citation formatting');
     if (style === 'latex') {
       const keys = resolvedItems.map((p) => generateCitationKey(p)).filter(Boolean);
@@ -143,7 +156,9 @@ export function BatchBar({
     await copyWithToast(citeCmd, `Copied ${citeCmd} to clipboard`);
   };
 
-  const handleCopyInTextCite = async (style: CslStyle = 'apa') => {
+  const handleCopyMultiCite = coordinator ? coordinator.copyMultiCite : fallbackCopyMultiCite;
+
+  const fallbackCopyInTextCite = async (style: CslStyle = 'apa') => {
     warnIfRetractedPresent('in-text citation');
     const itemIds = resolvedItems.map((p) => p.id).filter(Boolean);
     if (itemIds.length > 0) {
@@ -167,7 +182,9 @@ export function BatchBar({
     }
   };
 
-  const handleExportAllBibtex = async () => {
+  const handleCopyInTextCite = coordinator ? coordinator.copyInTextCite : fallbackCopyInTextCite;
+
+  const fallbackExportAllBibtex = async () => {
     warnIfRetractedPresent('BibTeX export');
     const itemIds = resolvedItems.map((p) => p.id).filter(Boolean);
     if (itemIds.length === 0) return;
@@ -199,7 +216,9 @@ export function BatchBar({
     }
   };
 
-  const handleDownloadBibFile = async () => {
+  const handleExportAllBibtex = coordinator ? coordinator.exportAllBibtex : fallbackExportAllBibtex;
+
+  const fallbackDownloadBibFile = async () => {
     warnIfRetractedPresent('BibTeX download');
     const itemIds = resolvedItems.map((p) => p.id).filter(Boolean);
     if (itemIds.length === 0) return;
@@ -243,6 +262,8 @@ export function BatchBar({
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+
+  const handleDownloadBibFile = coordinator ? coordinator.downloadBibFile : fallbackDownloadBibFile;
 
   if (!mounted || typeof document === 'undefined') {
     return null;
@@ -289,7 +310,7 @@ export function BatchBar({
                     variant="ghost"
                     size="sm"
                     disabled={isAllProcessingSelected}
-                    className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none"
+                    className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none relative before:absolute before:-inset-1 md:before:hidden"
                   >
                     <FolderInput className="size-3.5 text-foreground shrink-0" />
                     <span>Move to</span>
@@ -336,7 +357,7 @@ export function BatchBar({
                 size="sm"
                 disabled={isAllProcessingSelected}
                 onClick={onBatchMerge}
-                className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+                className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
               >
                 <GitMerge className="size-3.5 shrink-0 text-foreground" />
                 <span>Merge {selectedCount} items</span>
@@ -356,7 +377,7 @@ export function BatchBar({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+                  className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
                   aria-label="Copy citation"
                 >
                   <Quote className="size-3.5 shrink-0 text-foreground" />
@@ -439,7 +460,7 @@ export function BatchBar({
               variant="ghost"
               size="sm"
               onClick={handleExportAllBibtex}
-              className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+              className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
             >
               <Copy className="size-3.5 shrink-0 text-foreground" />
               <span>Copy BibTeX</span>
@@ -457,7 +478,7 @@ export function BatchBar({
               variant="ghost"
               size="sm"
               onClick={handleDownloadBibFile}
-              className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+              className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
             >
               <Download className="size-3.5 shrink-0 text-foreground" />
               <span>Download .bib</span>
@@ -479,7 +500,7 @@ export function BatchBar({
                     size="sm"
                     disabled={isAllProcessingSelected}
                     onClick={onBatchRestore}
-                    className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+                    className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
                   >
                     <RotateCcw className="size-3.5 shrink-0 text-foreground" />
                     <span>Restore</span>
@@ -498,7 +519,7 @@ export function BatchBar({
                     size="sm"
                     disabled={isAllProcessingSelected}
                     onClick={onBatchDelete}
-                    className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+                    className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
                   >
                     <Trash2 className="size-3.5 shrink-0 text-foreground" />
                     <span>Delete permanently</span>
@@ -520,7 +541,7 @@ export function BatchBar({
                     size="sm"
                     disabled={isAllProcessingSelected}
                     onClick={onBatchDetach}
-                    className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+                    className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
                   >
                     <FolderMinus className="size-3.5 shrink-0 text-foreground" />
                     <span>Remove from collection</span>
@@ -539,7 +560,7 @@ export function BatchBar({
                     size="sm"
                     disabled={isAllProcessingSelected}
                     onClick={onBatchDelete}
-                    className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+                    className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
                   >
                     <Trash2 className="size-3.5 shrink-0 text-foreground" />
                     <span>Move to trash</span>
@@ -559,7 +580,7 @@ export function BatchBar({
             <button
               type="button"
               onClick={onClearSelection}
-              className="flex size-6 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer ml-0.5 outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex size-6 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer ml-0.5 outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2 md:before:hidden"
               aria-label="Clear selection"
             >
               <X className="size-3.5 text-foreground shrink-0" />

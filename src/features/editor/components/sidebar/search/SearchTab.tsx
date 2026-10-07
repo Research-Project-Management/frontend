@@ -17,7 +17,6 @@ import { cn } from "@/shared/lib/utils";
 import { usePageStore, useTabsStore } from "@/features/editor/store";
 import { filesQuery } from "@/features/editor/hooks/use-core";
 import { useDebounce } from "@/shared/hooks";
-import { EditorEventBus } from "@/features/editor/utils/editor.util";
 import { documentSearchService } from "@/features/editor/services/search.service";
 import { useEditorInstance } from "@/features/editor/core/context/editor-instance.context";
 import { editorCommandBus } from "@/features/editor/core/command-bus/editor-command-bus";
@@ -44,7 +43,9 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   const searchParams = useSearchParams();
   const params = useParams<{ projectId?: string; pageId?: string }>();
 
-  const { currentPage, activeFilePage, projectId: storeProjectId } = usePageStore();
+  const currentPage = usePageStore((s) => s.currentPage);
+  const activeFilePage = usePageStore((s) => s.activeFilePage);
+  const storeProjectId = usePageStore((s) => s.projectId);
   const { engine, getContent } = useEditorInstance();
   const openTab = useTabsStore((s) => s.openTab);
 
@@ -92,11 +93,11 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
     searchInputRef.current?.focus();
   }, []);
 
-  // Listen for flux:open-panel events with prefilled query (bridge from In-File Search / Editor)
+  // Listen for sidebar:open-panel events with prefilled query (bridge from In-File Search / Editor)
   useEffect(() => {
-    const unsub = EditorEventBus.on("flux:open-panel", (detail) => {
-      if (typeof detail === "object" && detail.panel === "Search" && detail.query !== undefined) {
-        setQuery(detail.query);
+    const unsub = editorCommandBus.subscribe("sidebar:open-panel", (cmd) => {
+      if (cmd.panel === "Search" && cmd.query !== undefined) {
+        setQuery(cmd.query);
         setTimeout(() => {
           searchInputRef.current?.focus();
           searchInputRef.current?.select();
@@ -308,7 +309,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             className="h-8 pl-8 pr-8 text-xs bg-background border-border/80 focus-visible:ring-1 focus-visible:ring-primary rounded-md w-full placeholder:text-muted-foreground"
           />
           {isFetching ? (
-            <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 animate-spin text-muted-foreground pointer-events-none shrink-0" />
+            <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 animate-spin motion-reduce:animate-none text-muted-foreground pointer-events-none shrink-0" />
           ) : query ? (
             <button
               type="button"
@@ -428,7 +429,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                   : `${totalMatches} result${totalMatches !== 1 ? "s" : ""} in ${fileResults.length} file${fileResults.length !== 1 ? "s" : ""}`}
               </span>
               {backendSearchData?.truncated && (
-                <span className="text-amber-600 dark:text-amber-400 text-10 font-medium">
+                <span className="text-warning text-10 font-medium">
                   Capped at 1,000
                 </span>
               )}
@@ -445,14 +446,14 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                         type="button"
                         onClick={() => toggleFileCollapse(file.fileId)}
                         aria-expanded={!isCollapsed}
-                        className="flex h-8 w-full items-center gap-1.5 px-3 text-left text-xs transition-colors hover:bg-sidebar-hover cursor-pointer outline-none select-none border-b border-border/10"
+                        className="flex h-8 w-full items-center gap-1.5 px-3 text-left text-xs transition-colors hover:bg-sidebar-hover cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none border-b border-border/10"
                       >
                         {isCollapsed ? (
                           <ChevronRight className="size-3.5 text-muted-foreground shrink-0" />
                         ) : (
                           <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
                         )}
-                        <FileCode2 className="size-3.5 text-emerald-500 shrink-0" />
+                        <FileCode2 className="size-3.5 text-foreground shrink-0" />
                         <span className="text-xs font-semibold text-foreground/90 flex-1 truncate font-mono">
                           {file.fileName}
                         </span>
@@ -489,7 +490,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                                 </span>
                                 <span className="truncate font-mono text-xs text-foreground/80 leading-snug">
                                   {match.text.slice(0, match.matchStart)}
-                                  <span className="bg-amber-400/30 dark:bg-amber-400/20 text-foreground font-semibold rounded-sm px-0.5">
+                                  <span className="bg-warning/25 text-foreground font-semibold rounded-sm px-0.5">
                                     {match.text.slice(match.matchStart, match.matchEnd)}
                                   </span>
                                   {match.text.slice(match.matchEnd)}

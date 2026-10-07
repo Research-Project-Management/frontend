@@ -5,7 +5,7 @@
  * bridging the Editor, Viewer, Compiler, and Sidebar without mutable refs.
  */
 
-import type { LatexFormatType } from './editor-engine.port';
+import type { LatexFormatType, DiffProposal } from './editor-engine.port';
 
 export type SidebarPanelName =
   | 'Files'
@@ -68,18 +68,53 @@ export type EditorCommand =
   | { type: 'dialog:open'; dialog: DialogName; payload?: any }
   | { type: 'dialog:close'; dialog?: DialogName }
   | { type: 'synctex:forward'; line?: number; column?: number }
-  | { type: 'synctex:backward'; page?: number; x?: number; y?: number };
+  | { type: 'synctex:backward'; page?: number; x?: number; y?: number }
+  | { type: 'document:content-updated'; docId: string; content: string }
+  | { type: 'document:conflict'; docId: string; remoteContent: string; localContent: string }
+  | { type: 'filetree:updated'; payload?: any }
+  | { type: 'workspace:open-file'; fileId: string; filePath?: string; preview?: boolean }
+  | { type: 'workspace:create-file'; name: string; folderId?: string | null; content?: string }
+  | { type: 'workspace:rename-file'; fileId: string; oldPath: string; newPath: string }
+  | { type: 'workspace:delete-file'; fileId: string; filePath?: string }
+  | { type: 'workspace:move-file'; fileId: string; targetFolderId: string | null }
+  | { type: 'navigation:open-tab'; fileId: string; title: string; path?: string }
+  | { type: 'navigation:close-tab'; fileId: string }
+  | { type: 'navigation:jump-to-line'; fileId?: string; line: number; column?: number; highlight?: 'error' | 'synctex' }
+  | { type: 'navigation:next-error' }
+  | { type: 'navigation:prev-error' }
+  | { type: 'ai:request-completion'; prompt: string; context?: any }
+  | { type: 'ai:apply-fix'; fileId: string; line?: number; replacement: string }
+  | { type: 'ai:propose-diff'; proposal: DiffProposal }
+  | { type: 'ai:accept-diff'; diffId?: string }
+  | { type: 'ai:reject-diff'; diffId?: string }
+  | { type: 'ai:autofix-diagnostic'; diagnostic: any }
+  | {
+      type: 'ai:diff-resolved';
+      action?: 'accept' | 'reject';
+      proposalId?: string;
+      proposal?: DiffProposal;
+      payload?: { action: 'accept' | 'reject'; proposalId?: string; proposal?: DiffProposal };
+    };
 
-export type CommandHandler<T extends EditorCommand = EditorCommand> = (command: T) => void;
+export type CommandHandler<T extends EditorCommand = EditorCommand, R = any> = (command: T) => R | Promise<R>;
 
 export interface IEditorCommandBus {
-  /** Dispatches an editor command to registered handlers */
+  /** Dispatches an editor command to registered handlers (fire-and-forget) */
   dispatch(command: EditorCommand): void;
+
+  /** Executes an editor command and awaits the return value from the primary handler */
+  execute<R = void>(command: EditorCommand): Promise<R>;
 
   /** Subscribes to commands of a specific type */
   subscribe<K extends EditorCommand['type']>(
     type: K,
     handler: (command: Extract<EditorCommand, { type: K }>) => void,
+  ): () => void;
+
+  /** Registers a primary command executor that returns a result */
+  registerExecutor<K extends EditorCommand['type'], R = any>(
+    type: K,
+    executor: (command: Extract<EditorCommand, { type: K }>) => Promise<R> | R,
   ): () => void;
 
   /** Subscribes to all commands */

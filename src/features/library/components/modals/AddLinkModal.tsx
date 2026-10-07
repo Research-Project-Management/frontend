@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -118,9 +119,12 @@ export default function AddLinkModal({
         className="sm:max-w-[500px] p-6 bg-background border border-border shadow-raised-200 rounded-lg"
       >
         <DialogHeader className="text-left pb-1">
-          <DialogTitle className="text-base font-medium text-foreground">
+          <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
             Add Item by Identifier
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Enter a DOI, ISBN, arXiv ID, PubMed ID, or URL to add to your library.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>

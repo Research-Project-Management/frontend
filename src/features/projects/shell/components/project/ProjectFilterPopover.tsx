@@ -183,7 +183,7 @@ export function ProjectFilterPopover({
                 variant="outline"
                 size="icon"
                 className={cn(
-                  'size-8 rounded-md bg-transparent border-border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                  'size-8 rounded-md bg-transparent border-border cursor-pointer outline-none relative before:absolute before:-inset-1.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                   activeCount > 0 && 'bg-muted border-border text-foreground font-medium'
                 )}
                 aria-label="Filter"
@@ -201,7 +201,7 @@ export function ProjectFilterPopover({
       <PopoverContent
         align="end"
         sideOffset={6}
-        className="w-72 p-3 bg-popover border border-border rounded-md z-50 select-none text-foreground"
+        className="w-72 p-3 bg-popover border border-border rounded-md z-50 select-none text-foreground shadow-overlay"
       >
         {/* 1. Popover Search */}
         <div className="relative flex items-center mb-2.5">
@@ -210,7 +210,7 @@ export function ProjectFilterPopover({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search"
-            className="h-8 w-full pl-8 pr-2.5 text-xs bg-background border border-border rounded-md outline-none focus:outline-none focus:border-border focus:ring-0 placeholder:text-muted-foreground text-foreground shadow-none"
+            className="h-8 w-full pl-8 pr-2.5 text-13 bg-background border border-border rounded-md outline-none focus:outline-none focus:border-border focus:ring-0 placeholder:text-muted-foreground text-foreground shadow-none"
           />
         </div>
 
@@ -219,9 +219,9 @@ export function ProjectFilterPopover({
           <label
             onClick={() => onFilterChange({ ...filter, myProjects: !filter.myProjects })}
             className={cn(
-              "flex items-center gap-2 px-2.5 py-1.5 rounded-md border transition-colors cursor-pointer text-xs font-medium",
+              "flex items-center gap-2 px-2.5 py-1.5 rounded-md border transition-colors cursor-pointer text-13 font-normal",
               filter.myProjects
-                ? "bg-muted border-border text-foreground font-semibold"
+                ? "bg-muted border-border text-foreground font-medium"
                 : "bg-background hover:bg-muted border-transparent text-foreground"
             )}
           >
@@ -236,7 +236,7 @@ export function ProjectFilterPopover({
             <button
               type="button"
               onClick={() => setAccessOpen(!accessOpen)}
-              className="flex items-center justify-between w-full text-left text-xs font-semibold text-foreground py-1 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="flex items-center justify-between w-full text-left text-12 font-medium text-foreground py-1 cursor-pointer outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <span>Access</span>
               <ChevronDown
@@ -278,7 +278,7 @@ export function ProjectFilterPopover({
               <button
                 type="button"
                 onClick={() => setLeadOpen(!leadOpen)}
-                className="flex items-center justify-between w-full text-left text-xs font-semibold text-foreground py-1 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                className="flex items-center justify-between w-full text-left text-12 font-medium text-foreground py-1 cursor-pointer outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <span>Lead</span>
                 <ChevronDown
@@ -300,12 +300,12 @@ export function ProjectFilterPopover({
                       <label
                         key={lead.id}
                         onClick={() => toggleLead(lead.id)}
-                        className="flex items-center gap-2 py-1 px-1.5 rounded-md hover:bg-muted cursor-pointer text-xs transition-colors"
+                        className="flex items-center gap-2 py-1 px-1.5 rounded-md hover:bg-muted cursor-pointer text-12 transition-colors"
                       >
                         <FilterCheckbox checked={isChecked} />
                         <Avatar className="size-4 shrink-0">
                           {lead.avatar && <AvatarImage src={lead.avatar} alt={displayName} />}
-                          <AvatarFallback className="text-xs bg-muted font-medium">
+                          <AvatarFallback className="text-10 bg-muted font-medium">
                             {displayName.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
@@ -324,7 +324,7 @@ export function ProjectFilterPopover({
               <button
                 type="button"
                 onClick={() => setMembersOpen(!membersOpen)}
-                className="flex items-center justify-between w-full text-left text-xs font-semibold text-foreground py-1 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                className="flex items-center justify-between w-full text-left text-12 font-medium text-foreground py-1 cursor-pointer outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <span>Members</span>
                 <ChevronDown
@@ -346,12 +346,12 @@ export function ProjectFilterPopover({
                       <label
                         key={member.id}
                         onClick={() => toggleMember(member.id)}
-                        className="flex items-center gap-2 py-1 px-1.5 rounded-md hover:bg-muted cursor-pointer text-xs transition-colors"
+                        className="flex items-center gap-2 py-1 px-1.5 rounded-md hover:bg-muted cursor-pointer text-12 transition-colors"
                       >
                         <FilterCheckbox checked={isChecked} />
                         <Avatar className="size-4 shrink-0">
                           {member.avatar && <AvatarImage src={member.avatar} alt={displayName} />}
-                          <AvatarFallback className="text-xs bg-muted font-medium">
+                          <AvatarFallback className="text-10 bg-muted font-medium">
                             {displayName.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
@@ -369,7 +369,7 @@ export function ProjectFilterPopover({
             <button
               type="button"
               onClick={() => setDateOpen(!dateOpen)}
-              className="flex items-center justify-between w-full text-left text-xs font-semibold text-foreground py-1 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="flex items-center justify-between w-full text-left text-12 font-medium text-foreground py-1 cursor-pointer outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <span>Created date</span>
               <ChevronDown

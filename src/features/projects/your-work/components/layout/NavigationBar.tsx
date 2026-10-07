@@ -40,7 +40,7 @@ export default function NavigationBar({
     <nav
       aria-label="Your Work Sub Navigation"
       className={cn(
-        'flex items-center gap-1 border-b border-border px-6 bg-background select-none shrink-0 h-13',
+        'flex items-center gap-1 border-b border-border px-6 bg-background select-none shrink-0 h-10 min-h-10',
         className,
       )}
     >
@@ -55,7 +55,7 @@ export default function NavigationBar({
             href={targetHref}
             aria-current={isActive ? 'page' : undefined}
             className={cn(
-              'relative flex h-full items-center gap-2 px-3.5 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0',
+              'relative flex h-full items-center gap-2 px-3.5 text-13 font-medium transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0 before:absolute before:-inset-y-0.5 before:inset-x-0 md:before:hidden',
               isActive
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
@@ -65,7 +65,7 @@ export default function NavigationBar({
             {typeof count === 'number' && count > 0 && (
               <span
                 className={cn(
-                  'text-xs px-1.5 py-0.5 rounded-full font-medium leading-none tabular-nums',
+                  'text-11 px-1.5 py-0.5 rounded-full font-medium leading-none tabular-nums',
                   isActive
                     ? 'bg-primary/10 text-primary'
                     : 'bg-muted text-muted-foreground',

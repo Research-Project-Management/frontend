@@ -6,7 +6,7 @@ import {
   Settings,
   Loader2,
   MessageSquare,
-  Sparkles,
+  Bot,
 } from "lucide-react";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
@@ -17,7 +17,7 @@ import FilesTab from "./explorer/FilesTab";
 
 const PanelLoadingFallback = () => (
   <div className="flex h-full w-full items-center justify-center p-6 text-muted-foreground">
-    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+    <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none mr-2" />
     <span className="text-xs">Loading panel...</span>
   </div>
 );
@@ -44,7 +44,6 @@ const AiTab = dynamic(() => import("./ai/AiTab"), {
 });
 
 import StickyDock from "@/features/shell/components/StickyDock";
-import { EditorEventBus } from "@/features/editor/utils/editor.util";
 import { useSettingsStore, usePageStore } from "@/features/editor/store";
 import { useDocumentCollaborationStore } from "@/features/editor/store/collaboration.store";
 import { usePageComments } from "@/features/editor/hooks/use-comment";
@@ -59,7 +58,7 @@ const sideBarItems = [
   { name: "Citations", icon: BookMarked },
   { name: "Review", icon: OverleafReviewIcon },
   { name: "Chat", icon: MessageSquare },
-  { name: "AI", icon: Sparkles },
+  { name: "AI", icon: Bot },
 ] as const;
 
 export type SidebarTab = (typeof sideBarItems)[number]["name"];
@@ -161,30 +160,8 @@ const SideBar = React.memo(function SideBar({
   }, [activePanel, mounted, setActiveSidebarPanel]);
 
   useEffect(() => {
-    const unsubPanel = EditorEventBus.on("flux:open-panel", (detail) => {
-      const tabName = typeof detail === "string" ? detail : detail?.panel;
-      if (tabName === "Explorer" || tabName === "Outline") {
-        setActivePanel("Files");
-      } else if (tabName && validTabs.has(tabName as SidebarTab)) {
-        setActivePanel(tabName as SidebarTab);
-      }
-    });
-
-    const unsubOpenAi = EditorEventBus.on("flux:open-ai-panel", () => {
-      setActivePanel("AI");
-    });
-
-    const unsubToggleAi = EditorEventBus.on("flux:toggle-ai-panel", () => {
-      togglePanel("AI");
-    });
-
-    const unsubOpenChat = EditorEventBus.on("flux:open-chat-panel", () => {
-      setActivePanel("AI");
-    });
-
-    const unsubToggleChat = EditorEventBus.on("flux:toggle-chat-panel", () => {
-      togglePanel("AI");
-    });
+    // When controlled by EditorWorkspaceLayout, let the layout container manage command bus events
+    if (isControlled) return;
 
     const unsubCmdToggle = editorCommandBus.subscribe("sidebar:toggle-panel", (cmd) => {
       if (cmd.panel === "Explorer" || cmd.panel === "Outline") {
@@ -202,16 +179,21 @@ const SideBar = React.memo(function SideBar({
       }
     });
 
+    const unsubCmdOpenAi = editorCommandBus.subscribe("sidebar:open-ai-panel", () => {
+      setActivePanel("AI");
+    });
+
+    const unsubCmdToggleAi = editorCommandBus.subscribe("sidebar:toggle-ai-panel", () => {
+      togglePanel("AI");
+    });
+
     return () => {
-      unsubPanel();
-      unsubOpenAi();
-      unsubToggleAi();
-      unsubOpenChat();
-      unsubToggleChat();
       unsubCmdToggle();
       unsubCmdOpen();
+      unsubCmdOpenAi();
+      unsubCmdToggleAi();
     };
-  }, [setActivePanel, togglePanel]);
+  }, [isControlled, setActivePanel, togglePanel]);
 
   const currentTabId = (activePanel || "Files").toLowerCase();
 
@@ -257,7 +239,7 @@ const SideBar = React.memo(function SideBar({
                         {showBadge && (
                           <span
                             className={cn(
-                              "absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full text-11 font-mono font-semibold leading-tight shadow-xs",
+                              "absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full text-11 font-mono font-semibold leading-tight",
                               isChat ? "bg-primary text-primary-foreground" : "bg-warning text-warning-foreground"
                             )}
                           >

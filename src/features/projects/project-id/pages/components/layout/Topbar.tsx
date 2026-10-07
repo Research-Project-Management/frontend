@@ -149,7 +149,7 @@ export function Topbar({
           tabIndex={isSearching ? -1 : 0}
           aria-label="Search pages"
           className={cn(
-            'relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-md overflow-hidden group focus-visible:ring-2 focus-visible:ring-ring',
+            'relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-md overflow-hidden group focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
             isSearching
               ? 'w-48 sm:w-64 border border-border bg-background'
               : 'w-8 hover:bg-muted cursor-pointer'
@@ -187,7 +187,7 @@ export function Topbar({
               }
             }}
             className={cn(
-              'h-full text-xs py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground transition-opacity duration-200 pl-8 pr-8 text-foreground',
+              'h-full text-13 py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground transition-opacity duration-200 pl-8 pr-8 text-foreground',
               isSearching ? 'opacity-100' : 'opacity-0 pointer-events-none'
             )}
             autoFocus={isSearchExpanded}
@@ -202,7 +202,7 @@ export function Topbar({
                 onSearchChange?.('');
                 setIsSearchExpanded(false);
               }}
-              className="absolute right-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer p-0.5 rounded-md"
+              className="absolute right-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer p-0.5 rounded-md relative touch-manipulation sm:after:hidden after:absolute after:-inset-2 after:content-[''] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <X className="size-3.5 shrink-0" />
             </button>
@@ -219,7 +219,7 @@ export function Topbar({
                     variant="outline"
                     size="icon"
                     className={cn(
-                      'relative size-8 rounded-md bg-transparent border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors shadow-none shrink-0',
+                      'relative size-8 rounded-md bg-transparent border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                       activeLabelIds.length > 0 && 'bg-muted border-border font-medium text-foreground'
                     )}
                     aria-label={
@@ -232,7 +232,7 @@ export function Topbar({
                     {activeLabelIds.length === 1 && selectedLabel ? (
                       <span
                         className="absolute bottom-1 right-1 size-1.5 rounded-full ring-1 ring-background shrink-0"
-                        style={{ backgroundColor: selectedLabel.color || '#3b82f6' }}
+                        style={{ backgroundColor: selectedLabel.color || '#0969DA' }}
                       />
                     ) : activeLabelIds.length > 1 ? (
                       <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-11 font-mono font-medium text-background">
@@ -255,7 +255,7 @@ export function Topbar({
           <PopoverContent
             align="end"
             sideOffset={6}
-            className="w-60 p-0 py-1.5 bg-popover border border-border rounded-md shadow-md z-50 text-foreground overflow-hidden"
+            className="w-60 p-0 py-1.5 bg-popover border border-border rounded-md shadow-overlay text-foreground overflow-hidden"
           >
             {/* Search Input: Clean background, proper border and active styling */}
             {projectLabels.length > 0 && (
@@ -267,14 +267,14 @@ export function Topbar({
                     placeholder="Search labels..."
                     value={filterSearch}
                     onChange={(e) => setFilterSearch(e.target.value)}
-                    className="h-8 w-full pl-8 pr-7 text-xs bg-background border border-border rounded-md outline-none focus:ring-1 focus:ring-ring focus:border-border text-foreground placeholder:text-muted-foreground transition-colors"
+                    className="h-8 w-full pl-8 pr-7 text-13 bg-background border border-border rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none focus:border-border text-foreground placeholder:text-muted-foreground transition-colors"
                     autoFocus
                   />
                   {filterSearch && (
                     <button
                       type="button"
                       onClick={() => setFilterSearch('')}
-                      className="absolute right-2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5 rounded-sm"
+                      className="absolute right-2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5 rounded-sm relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       aria-label="Clear search"
                     >
                       <X className="size-3" />
@@ -290,7 +290,7 @@ export function Topbar({
             >
               {filteredLabels.map((label) => {
                 const isSelected = activeLabelIds.includes(label.id);
-                const color = label.color || '#3b82f6';
+                const color = label.color || '#0969DA';
                 return (
                   <div
                     key={label.id}
@@ -304,7 +304,7 @@ export function Topbar({
                       }
                     }}
                     className={cn(
-                      'w-full flex items-center gap-2.5 px-2 py-1.5 text-xs rounded-md cursor-pointer transition-colors text-left select-none group',
+                      'w-full flex items-center gap-2.5 px-2 py-1.5 text-12 rounded-md cursor-pointer transition-colors text-left select-none group',
                       isSelected
                         ? 'bg-muted/70 text-foreground font-medium'
                         : 'text-foreground/80 hover:bg-muted/50 hover:text-foreground'
@@ -344,7 +344,7 @@ export function Topbar({
                     if (onSelectLabelIds) onSelectLabelIds([]);
                     else if (onSelectLabelId) onSelectLabelId(null);
                   }}
-                  className="w-full text-center py-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer rounded-md hover:bg-muted/60 font-medium"
+                  className="w-full text-center py-1 text-12 text-muted-foreground hover:text-foreground transition-colors cursor-pointer rounded-md hover:bg-muted/60 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   Clear filter
                 </button>
@@ -372,7 +372,7 @@ export function Topbar({
                       aria-selected={isSelected}
                       onClick={() => setViewMode(opt.id)}
                       className={cn(
-                        'relative size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                        'relative size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1 md:before:hidden',
                         isSelected
                           ? 'text-foreground font-medium'
                           : 'text-muted-foreground hover:text-foreground hover:bg-background/40'
@@ -420,43 +420,43 @@ export function Topbar({
           <DropdownMenuTrigger asChild>
             <Button
               size="sm"
-              className="h-8 rounded-md px-3 text-xs font-medium cursor-pointer shadow-none"
+              className="h-8 rounded-md px-3 text-12 font-medium cursor-pointer shadow-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               Add page
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" sideOffset={6} className="w-56 text-xs">
-            <DropdownMenuItem className="text-xs cursor-pointer" onSelect={() => onCreateClick('blank')}>
+          <DropdownMenuContent align="end" sideOffset={6} className="w-56 text-12 shadow-overlay">
+            <DropdownMenuItem className="text-12 cursor-pointer" onSelect={() => onCreateClick('blank')}>
               Blank page
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-11 font-normal text-muted-foreground">Import</DropdownMenuLabel>
-            <DropdownMenuItem className="text-xs cursor-pointer" onSelect={() => zipInputRef.current?.click()}>
+            <DropdownMenuItem className="text-12 cursor-pointer" onSelect={() => zipInputRef.current?.click()}>
               ZIP archive
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-xs cursor-pointer" onSelect={() => onOpenImportDoc?.('docx')}>
+            <DropdownMenuItem className="text-12 cursor-pointer" onSelect={() => onOpenImportDoc?.('docx')}>
               Word document
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-xs cursor-pointer" onSelect={() => onOpenImportDoc?.('md')}>
+            <DropdownMenuItem className="text-12 cursor-pointer" onSelect={() => onOpenImportDoc?.('md')}>
               Markdown document
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-xs cursor-pointer" onSelect={() => onOpenImportGithub?.()}>
+            <DropdownMenuItem className="text-12 cursor-pointer" onSelect={() => onOpenImportGithub?.()}>
               GitHub repo
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-11 font-normal text-muted-foreground">Templates</DropdownMenuLabel>
-            <DropdownMenuItem className="text-xs cursor-pointer" onSelect={() => onCreateClick('example')}>
+            <DropdownMenuItem className="text-12 cursor-pointer" onSelect={() => onCreateClick('example')}>
               Example project
             </DropdownMenuItem>
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger className="text-xs cursor-pointer">More templates</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="w-52">
+              <DropdownMenuSubTrigger className="text-12 cursor-pointer">More templates</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-52 text-12 shadow-overlay">
                 {OVERLEAF_TEMPLATE_CATEGORIES.map((item) => (
                   <DropdownMenuItem
                     key={item.category}
-                    className="text-xs cursor-pointer"
+                    className="text-12 cursor-pointer"
                     onSelect={() => onOpenTemplates?.(item.category)}
                   >
                     {item.label}

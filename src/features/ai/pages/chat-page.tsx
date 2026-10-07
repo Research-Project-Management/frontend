@@ -382,7 +382,7 @@ function WelcomeScreen({
 
       {/* Footer Disclaimer */}
       <p className="text-11 text-muted-foreground text-center select-none mt-12">
-        Flux AI can make mistakes, please double-check responses.
+        AI Assistant can make mistakes, please double-check responses.
       </p>
     </div>
   );
@@ -394,7 +394,7 @@ function EmptyConversation() {
       <div className="mb-4 flex items-center justify-center select-none">
         <img
           src="/Chat.svg"
-          alt="Flux AI conversation icon"
+          alt="AI Assistant conversation icon"
           className="size-14 object-contain"
         />
       </div>

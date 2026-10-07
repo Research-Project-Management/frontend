@@ -4,7 +4,6 @@
 
 import { API_BASE_URL } from '@/config/env';
 import { editorCommandBus } from '../core/command-bus/editor-command-bus';
-import type { SidebarPanelName } from '../ports/command-bus.port';
 
 const GLOBAL_EVENT_KEY = Symbol.for('__FLUX_IN_MEMORY_EVENT_HANDLERS__');
 const globalAnyEvents = globalThis as any;
@@ -485,6 +484,9 @@ export interface EditorEventMap {
   };
 }
 
+/**
+ * @deprecated Legacy event bus bridge. Use canonical `editorCommandBus` directly.
+ */
 export const EditorEventBus = {
   emit<K extends keyof EditorEventMap>(
     event: K,
@@ -690,11 +692,10 @@ export const EditorEventBus = {
         break;
       }
       default:
+        // Dispatch via fallback in-memory channel for events not mapped to editorCommandBus
+        _inMemoryEventBus.emit(event as string, detail);
         break;
     }
-
-    // 2. Also dispatch via fallback in-memory channel for any custom events
-    _inMemoryEventBus.emit(event as string, detail);
   },
 
   on<K extends keyof EditorEventMap>(
@@ -938,9 +939,11 @@ export const EditorEventBus = {
         break;
     }
 
-    // 2. Also listen to fallback in-memory channel for custom events
-    const unsubMemory = _inMemoryEventBus.on(event as string, handler as any);
-    unsubs.push(unsubMemory);
+    // 2. Fallback to in-memory channel only for events not mapped to editorCommandBus
+    if (unsubs.length === 0) {
+      const unsubMemory = _inMemoryEventBus.on(event as string, handler as any);
+      unsubs.push(unsubMemory);
+    }
 
     return () => {
       for (const unsub of unsubs) {
@@ -975,126 +978,31 @@ export type LatexFormatType =
   | 'ref'
   | 'align';
 
-export const EditorCommandBus = {
-  wrapSelection(
-    editor: any,
-    prefix: string,
-    suffix: string,
-    placeholder = '',
-  ): void {
-    if (!editor) return;
-    const selection = editor.getSelection();
-    if (!selection) return;
+// ── Canonical Command Bus Export & Legacy Adapter ─────────────────────────────
 
-    const model = editor.getModel();
-    if (!model) return;
+export { editorCommandBus, type IEditorCommandBus } from '../core/command-bus/editor-command-bus';
 
-    const selectedText = model.getValueInRange(selection);
-    const contentToWrap = selectedText || placeholder;
-    const newText = `${prefix}${contentToWrap}${suffix}`;
-
-    editor.executeEdits('toolbar-command', [
-      { range: selection, text: newText, forceMoveMarkers: true },
-    ]);
-
-    editor.focus();
+/**
+ * @deprecated Use canonical `editorCommandBus` directly.
+ */
+export const LegacyEditorCommandBus = {
+  wrapSelection(_editor: unknown, prefix: string, suffix: string, placeholder = ''): void {
+    editorCommandBus.dispatch({ type: 'editor:wrap-selection', prefix, suffix, placeholder });
   },
-
-  insertSnippet(
-    editor: any,
-    snippet: string,
-  ): void {
-    if (!editor) return;
-    const selection = editor.getSelection();
-    if (!selection) return;
-
-    editor.executeEdits('toolbar-command', [
-      { range: selection, text: snippet, forceMoveMarkers: true },
-    ]);
-
-    editor.focus();
+  insertSnippet(_editor: unknown, snippet: string): void {
+    editorCommandBus.dispatch({ type: 'editor:insert-text', text: snippet });
   },
-
-  format(
-    editor: any,
-    type: LatexFormatType,
-  ): void {
-    switch (type) {
-      case 'bold':
-        return EditorCommandBus.wrapSelection(editor, '\\textbf{', '}', 'bold text');
-      case 'italic':
-        return EditorCommandBus.wrapSelection(editor, '\\textit{', '}', 'italic text');
-      case 'underline':
-        return EditorCommandBus.wrapSelection(editor, '\\underline{', '}', 'underlined text');
-      case 'inlineMath':
-        return EditorCommandBus.wrapSelection(editor, '$', '$', 'x');
-      case 'displayMath':
-        return EditorCommandBus.wrapSelection(editor, '\\[\n', '\n\\]', 'E = mc^2');
-      case 'equation':
-        return EditorCommandBus.wrapSelection(
-          editor,
-          '\\begin{equation}\n  ',
-          '\n\\end{equation}',
-          'y = mx + b',
-        );
-      case 'code':
-        return EditorCommandBus.wrapSelection(editor, '\\texttt{', '}', 'code');
-      case 'strikethrough':
-        return EditorCommandBus.wrapSelection(editor, '\\sout{', '}', 'text');
-      case 'superscript':
-        return EditorCommandBus.wrapSelection(editor, '^{', '}', '2');
-      case 'subscript':
-        return EditorCommandBus.wrapSelection(editor, '_{', '}', 'i');
-      case 'section':
-        return EditorCommandBus.wrapSelection(editor, '\\section{', '}', 'Section Title');
-      case 'subsection':
-        return EditorCommandBus.wrapSelection(editor, '\\subsection{', '}', 'Subsection Title');
-      case 'subsubsection':
-        return EditorCommandBus.wrapSelection(editor, '\\subsubsection{', '}', 'Subsubsection Title');
-      case 'paragraph':
-        return EditorCommandBus.wrapSelection(editor, '\\paragraph{', '}', 'Paragraph Heading');
-      case 'itemize':
-        return EditorCommandBus.insertSnippet(
-          editor,
-          '\\begin{itemize}\n  \\item First item\n  \\item Second item\n\\end{itemize}',
-        );
-      case 'enumerate':
-        return EditorCommandBus.insertSnippet(
-          editor,
-          '\\begin{enumerate}\n  \\item First step\n  \\item Second step\n\\end{enumerate}',
-        );
-      case 'table':
-        return EditorCommandBus.insertSnippet(
-          editor,
-          '\\begin{table}[htbp]\n  \\centering\n  \\begin{tabular}{cc}\n    \\toprule\n    Header 1 & Header 2 \\\\\n    \\midrule\n    Data 1 & Data 2 \\\\\n    \\bottomrule\n  \\end{tabular}\n  \\caption{Caption}\n  \\label{tab:my_label}\n\\end{table}',
-        );
-      case 'figure':
-        return EditorCommandBus.insertSnippet(
-          editor,
-          '\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\linewidth]{filename}\n  \\caption{Caption}\n  \\label{fig:my_label}\n\\end{figure}',
-        );
-      case 'cite':
-        return EditorCommandBus.wrapSelection(editor, '\\cite{', '}', 'citation_key');
-      case 'ref':
-        return EditorCommandBus.wrapSelection(editor, '\\ref{', '}', 'label_name');
-      case 'align':
-        return EditorCommandBus.insertSnippet(
-          editor,
-          '\\begin{align}\n  y &= mx + b \\\\\n  z &= ax + c\n\\end{align}',
-        );
-    }
+  format(_editor: unknown, format: LatexFormatType): void {
+    editorCommandBus.dispatch({ type: 'editor:format', format });
   },
-
-  undo(editor: any): void {
-    if (!editor) return;
-    editor.trigger('toolbar', 'undo', null);
-    editor.focus();
+  undo(_editor?: unknown): void {
+    editorCommandBus.dispatch({ type: 'editor:undo' });
   },
-
-  redo(editor: any): void {
-    if (!editor) return;
-    editor.trigger('toolbar', 'redo', null);
-    editor.focus();
+  redo(_editor?: unknown): void {
+    editorCommandBus.dispatch({ type: 'editor:redo' });
   },
 };
+
+export const EditorCommandBus = LegacyEditorCommandBus;
+
 

@@ -36,19 +36,19 @@ export function RecentActivityList({ activities }: RecentActivityListProps) {
       {/* Header */}
       <div className="flex items-center gap-2">
         <Activity className="size-4 text-primary" />
-        <h2 className="text-sm font-semibold tracking-tight text-foreground">
+        <h2 className="text-13 font-semibold tracking-tight text-foreground">
           Recent Activity
         </h2>
       </div>
 
       {activities.length === 0 ? (
-        <div className="py-6 text-center text-xs text-muted-foreground">
+        <div className="py-6 text-center text-12 text-muted-foreground">
           No recent activity recorded yet.
         </div>
       ) : (
         <div className="flex flex-col divide-y divide-border/50">
           {activities.map((act) => (
-            <div key={act.id} className="py-2.5 flex items-start gap-3 text-xs first:pt-1 last:pb-0">
+            <div key={act.id} className="py-2.5 flex items-start gap-3 text-12 first:pt-1 last:pb-0">
               {/* Actor avatar */}
               <div className="size-6 rounded-full bg-muted flex items-center justify-center text-muted-foreground overflow-hidden shrink-0 mt-0.5">
                 {act.actor.avatar ? (
@@ -65,14 +65,14 @@ export function RecentActivityList({ activities }: RecentActivityListProps) {
               {/* Action content */}
               <div className="flex-1 min-w-0">
                 <p className="text-foreground leading-snug">
-                  <span className="font-semibold text-foreground mr-1">
+                  <span className="font-medium text-foreground mr-1">
                     {act.actor.name || 'Anonymous'}
                   </span>
                   <span className="text-muted-foreground">
                     {formatVerb(act)}
                   </span>
                 </p>
-                <span className="text-11 text-muted-foreground/70 mt-0.5 block">
+                <span className="text-11 text-muted-foreground/70 font-mono mt-0.5 block">
                   {formatRelativeTime(act.createdAt)}
                 </span>
               </div>

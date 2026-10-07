@@ -294,7 +294,7 @@ export function ReaderToolbar({
   };
 
   return (
-    <div className="h-9 shrink-0 border-b border-border bg-background px-2 flex items-center justify-between select-none z-20 text-xs overflow-x-auto min-w-0 thin-scrollbar gap-2">
+    <div className="min-h-10 h-10 shrink-0 border-b border-border bg-background px-2 flex items-center justify-between select-none z-20 text-xs overflow-x-auto min-w-0 thin-scrollbar gap-2">
       <TooltipProvider delayDuration={300}>
         {/* ── LEFT CLUSTER: Sidebar toggle | Back | Page Navigation ─────────────────
             Zotero 7 official left cluster order:
@@ -307,7 +307,7 @@ export function ReaderToolbar({
                 type="button"
                 onClick={onToggleSidebar}
                 className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden",
                   isSidebarOpen
                     ? "bg-muted text-foreground font-medium"
                     : "text-foreground hover:bg-muted"
@@ -332,7 +332,7 @@ export function ReaderToolbar({
                     type="button"
                     onClick={onNavigateBack}
                     disabled={!canNavigateBack}
-                    className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                    className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
                     aria-label="Navigate back in document"
                   >
                     <Undo2 className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -352,7 +352,7 @@ export function ReaderToolbar({
                 type="button"
                 onClick={() => onNavigateToPage(Math.max(1, visiblePage - 1))}
                 disabled={visiblePage <= 1}
-                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
                 aria-label="Previous page"
                 data-reader-first-page={visiblePage <= 1 ? undefined : undefined}
               >
@@ -392,7 +392,7 @@ export function ReaderToolbar({
                 type="button"
                 onClick={() => onNavigateToPage(Math.min(numPages || 1, visiblePage + 1))}
                 disabled={visiblePage >= (numPages || 1)}
-                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
                 aria-label="Next page"
               >
                 <ChevronRight className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -412,7 +412,7 @@ export function ReaderToolbar({
                 type="button"
                 onClick={() => onSelectInteractionMode?.('select')}
                 className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary",
                   interactionMode === 'select'
                     ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
@@ -431,7 +431,7 @@ export function ReaderToolbar({
                 type="button"
                 onClick={() => onSelectInteractionMode?.('hand')}
                 className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary",
                   interactionMode === 'hand'
                     ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
@@ -453,7 +453,7 @@ export function ReaderToolbar({
                 type="button"
                 onClick={() => onSelectTool?.('highlight')}
                 className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative",
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary",
                   activeTool === 'highlight'
                     ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
@@ -477,7 +477,7 @@ export function ReaderToolbar({
                 type="button"
                 onClick={() => onSelectTool?.('underline')}
                 className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary",
                   activeTool === 'underline'
                     ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
@@ -497,7 +497,7 @@ export function ReaderToolbar({
                 type="button"
                 onClick={() => onSelectTool?.('note')}
                 className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary",
                   activeTool === 'note'
                     ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
@@ -517,7 +517,7 @@ export function ReaderToolbar({
                 type="button"
                 onClick={() => onSelectTool?.('text')}
                 className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary",
                   activeTool === 'text'
                     ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
@@ -537,7 +537,7 @@ export function ReaderToolbar({
                 type="button"
                 onClick={() => onSelectTool?.('area')}
                 className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary",
                   activeTool === 'area'
                     ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
@@ -557,7 +557,7 @@ export function ReaderToolbar({
                 type="button"
                 onClick={() => onSelectTool?.('ink')}
                 className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary",
                   activeTool === 'ink'
                     ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
@@ -579,7 +579,7 @@ export function ReaderToolbar({
                 type="button"
                 onClick={() => onSelectTool?.('eraser')}
                 className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary",
                   activeTool === 'eraser'
                     ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
@@ -605,7 +605,7 @@ export function ReaderToolbar({
                       type="button"
                       onClick={() => onSelectColor?.(c.hex)}
                       className={cn(
-                        "size-4 rounded-full border border-border hover:scale-125 transition-all cursor-pointer",
+                        "size-4 rounded-full border border-border hover:scale-125 transition-all cursor-pointer relative before:absolute before:-inset-2.5 md:before:hidden",
                         isSelected && "ring-2 ring-primary ring-offset-1 scale-110"
                       )}
                       style={{ backgroundColor: c.hex }}
@@ -622,13 +622,13 @@ export function ReaderToolbar({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="size-4.5 flex items-center justify-center rounded hover:bg-muted text-foreground transition-colors cursor-pointer ml-0.5"
+                  className="size-6 flex items-center justify-center rounded hover:bg-muted text-foreground transition-colors cursor-pointer ml-0.5 relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   aria-label="More colors"
                 >
                   <ChevronDown className="size-3" strokeWidth={1.5} />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="p-1.5 flex items-center gap-1 min-w-0 bg-popover border border-border shadow-md rounded-md">
+              <DropdownMenuContent align="center" className="p-1.5 flex items-center gap-1 min-w-0 bg-popover border border-border shadow-raised-200 rounded-md z-50">
                 {ZOTERO_COLORS.map((c) => (
                   <button
                     key={c.id}
@@ -636,7 +636,7 @@ export function ReaderToolbar({
                     onClick={() => onSelectColor?.(c.hex)}
                     title={c.label}
                     className={cn(
-                      "size-4 rounded-full border border-border hover:scale-125 transition-transform cursor-pointer",
+                      "size-4 rounded-full border border-border hover:scale-125 transition-transform cursor-pointer relative before:absolute before:-inset-2 md:before:hidden",
                       activeColor === c.hex && "ring-2 ring-primary ring-offset-1"
                     )}
                     style={{ backgroundColor: c.hex }}
@@ -653,7 +653,7 @@ export function ReaderToolbar({
                     type="button"
                     onClick={onToggleToolLocked}
                     className={cn(
-                      "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer ml-0.5",
+                      "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer ml-0.5 relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary",
                       isToolLocked
                         ? "bg-primary/10 text-primary border border-primary/20 font-medium"
                         : "text-foreground hover:bg-muted"
@@ -683,7 +683,7 @@ export function ReaderToolbar({
               <button
                 type="button"
                 onClick={onZoomOut}
-                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer"
+                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 aria-label="Zoom out"
               >
                 <ZoomOut className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -697,14 +697,14 @@ export function ReaderToolbar({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="h-6 px-1.5 flex items-center gap-1 rounded-md hover:bg-muted text-foreground font-mono text-11 transition-colors cursor-pointer tabular-nums"
+                className="h-7 px-2 flex items-center gap-1 rounded-md hover:bg-muted text-foreground font-mono text-11 transition-colors cursor-pointer tabular-nums relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 aria-label="Zoom percentage"
               >
                 <span>{Math.round(zoom * 100)}%</span>
                 <ChevronDown className="size-2.5 opacity-60 shrink-0" strokeWidth={1.5} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-28 text-xs p-1 bg-popover border border-border shadow-md rounded-md">
+            <DropdownMenuContent align="center" className="w-28 text-xs p-1 bg-popover border border-border shadow-raised-200 rounded-md z-50">
               {ZOOM_PRESETS.map((preset) => (
                 <DropdownMenuItem
                   key={preset.label}
@@ -735,7 +735,7 @@ export function ReaderToolbar({
               <button
                 type="button"
                 onClick={onZoomIn}
-                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer"
+                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 aria-label="Zoom in"
               >
                 <ZoomIn className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -754,7 +754,7 @@ export function ReaderToolbar({
                     onSelectFitMode?.('fit-width');
                     onFitWidth();
                   }}
-                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer"
+                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   aria-label="Fit to width"
                 >
                   <Maximize2 className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -772,7 +772,7 @@ export function ReaderToolbar({
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="h-6 px-1.5 flex items-center gap-1 rounded-md hover:bg-muted text-foreground text-11 transition-colors cursor-pointer"
+                      className="h-7 px-2 flex items-center gap-1 rounded-md hover:bg-muted text-foreground text-11 transition-colors cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       aria-label="Page presentation mode"
                     >
                       <span className="capitalize text-11 font-sans">
@@ -784,7 +784,7 @@ export function ReaderToolbar({
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-11">Page Presentation</TooltipContent>
               </Tooltip>
-              <DropdownMenuContent align="center" className="w-44 text-xs p-1 bg-popover border border-border shadow-md rounded-md">
+              <DropdownMenuContent align="center" className="w-44 text-xs p-1 bg-popover border border-border shadow-raised-200 rounded-md z-50">
                 <DropdownMenuItem
                   onClick={() => onSelectViewMode?.('continuous')}
                   className="cursor-pointer text-11 flex items-center justify-between"
@@ -837,7 +837,7 @@ export function ReaderToolbar({
                 <button
                   type="button"
                   onClick={onRotate}
-                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer"
+                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   aria-label="Rotate clockwise"
                 >
                   <RotateCw className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -857,7 +857,7 @@ export function ReaderToolbar({
                   type="button"
                   onClick={onToggleThemeMode}
                   className={cn(
-                    "size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer",
+                    "size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary",
                     themeMode !== 'normal' && "text-primary font-medium"
                   )}
                   aria-label="Toggle reading appearance theme"
@@ -886,7 +886,7 @@ export function ReaderToolbar({
                     <button
                       type="button"
                       className={cn(
-                        "size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer",
+                        "size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary",
                         splitMode && splitMode !== 'none' && "bg-muted text-primary font-medium"
                       )}
                       aria-label="Split view"
@@ -905,7 +905,7 @@ export function ReaderToolbar({
                   Split View ({splitMode === 'vertical' ? 'Vertical' : splitMode === 'horizontal' ? 'Horizontal' : 'Single'})
                 </TooltipContent>
               </Tooltip>
-              <DropdownMenuContent align="end" className="w-36 text-xs p-1 bg-popover border border-border shadow-md rounded-md">
+              <DropdownMenuContent align="end" className="w-36 text-xs p-1 bg-popover border border-border shadow-raised-200 rounded-md z-50">
                 <DropdownMenuItem
                   onClick={() => onSelectSplitMode('none')}
                   className="cursor-pointer text-11 flex items-center justify-between"
@@ -944,7 +944,7 @@ export function ReaderToolbar({
                 <button
                   type="button"
                   onClick={onTriggerOcr}
-                  className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-10 font-medium select-none cursor-pointer transition-colors hover:bg-amber-100 dark:hover:bg-amber-900/50"
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-10 font-medium select-none cursor-pointer transition-colors hover:bg-amber-100 dark:hover:bg-amber-900/50 relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   aria-label="Scanned document OCR indicator"
                 >
                   <Scan className="size-3 text-amber-600 dark:text-amber-400 shrink-0" strokeWidth={1.5} />
@@ -968,7 +968,7 @@ export function ReaderToolbar({
                 <button
                   type="button"
                   onClick={onToggleSearch}
-                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer"
+                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   aria-label="Find in document"
                 >
                   <Search className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -987,7 +987,7 @@ export function ReaderToolbar({
                 type="button"
                 onClick={onToggleInspector}
                 className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary",
                   isInspectorOpen
                     ? "bg-muted text-foreground font-medium"
                     : "text-foreground hover:bg-muted"

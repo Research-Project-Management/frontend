@@ -382,7 +382,7 @@ export function Activities({
           placeholder={canComment ? "Write a comment..." : "Save card before commenting"}
           disabled={!canComment || isReadOnly}
           className={cn(
-            "min-h-[64px] rounded-md border border-border bg-background p-3 text-xs sm:text-sm text-foreground shadow-none focus-visible:ring-1 focus-visible:ring-primary resize-none transition-colors leading-relaxed",
+            "min-h-[64px] rounded-md border border-border bg-background p-3 text-13 text-foreground placeholder:text-muted-foreground shadow-none focus-visible:ring-1 focus-visible:ring-ring resize-none transition-colors leading-relaxed",
             (!canComment || isReadOnly) && "cursor-not-allowed bg-muted"
           )}
           rows={2}
@@ -397,7 +397,7 @@ export function Activities({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 px-2.5 text-xs text-foreground hover:bg-muted rounded-md shadow-none cursor-pointer"
+              className="h-8 px-3 text-13 font-medium text-foreground hover:bg-muted rounded-md shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               onClick={handleCancelComment}
               disabled={isSavingComment}
             >
@@ -406,12 +406,12 @@ export function Activities({
             <Button
               type="button"
               size="sm"
-              className="h-7 px-3 text-xs rounded-md shadow-none cursor-pointer"
+              className="h-8 px-3 text-13 font-medium rounded-md shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               onClick={handleSaveComment}
               disabled={!commentText.trim() || isSavingComment}
             >
               {isSavingComment ? (
-                <span className="inline-block size-3 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent mr-1" />
+                <span className="inline-block size-3 animate-spin motion-reduce:animate-none rounded-full border-2 border-primary-foreground border-t-transparent mr-1" />
               ) : null}
               Comment
             </Button>
@@ -465,7 +465,7 @@ export function Activities({
                             <Textarea
                               value={editingCommentText}
                               onChange={(e) => setEditingCommentText(e.target.value)}
-                              className="min-h-[50px] rounded-md border border-border bg-card p-2 text-xs text-foreground shadow-none resize-none focus-visible:ring-1 focus-visible:ring-primary"
+                              className="min-h-[50px] rounded-md border border-border bg-card p-2 text-13 text-foreground placeholder:text-muted-foreground shadow-none resize-none focus-visible:ring-1 focus-visible:ring-ring"
                               disabled={isSubmittingEdit}
                               autoFocus
                             />
@@ -474,7 +474,7 @@ export function Activities({
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 px-2 text-xs text-foreground hover:bg-muted rounded-md shadow-none cursor-pointer"
+                                className="h-7 px-2.5 text-12 font-medium text-foreground hover:bg-muted rounded-md shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
                                 onClick={handleCancelEditComment}
                                 disabled={isSubmittingEdit}
                               >
@@ -483,12 +483,12 @@ export function Activities({
                               <Button
                                 type="button"
                                 size="sm"
-                                className="h-6 px-2.5 text-xs rounded-md shadow-none cursor-pointer"
+                                className="h-7 px-3 text-12 font-medium rounded-md shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
                                 onClick={handleSaveEditedComment}
                                 disabled={!editingCommentText.trim() || isSubmittingEdit}
                               >
                                 {isSubmittingEdit ? (
-                                  <span className="inline-block size-2.5 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent mr-1" />
+                                  <span className="inline-block size-2.5 animate-spin motion-reduce:animate-none rounded-full border-2 border-primary-foreground border-t-transparent mr-1" />
                                 ) : null}
                                 Save
                               </Button>
@@ -510,7 +510,7 @@ export function Activities({
                                 type="button"
                                 disabled={isReadOnly}
                                 className={cn(
-                                  "inline-flex size-5 items-center justify-center rounded-md text-foreground transition-colors focus:outline-none",
+                                  "inline-flex size-5 items-center justify-center rounded-md text-foreground transition-colors focus:outline-none relative before:absolute before:-inset-2 md:before:hidden",
                                   isReadOnly ? "cursor-not-allowed opacity-30" : "hover:bg-muted hover:text-foreground cursor-pointer"
                                 )}
                                 aria-label="Open reaction picker"
@@ -528,7 +528,7 @@ export function Activities({
                                 <>
                                   <button
                                     type="button"
-                                    className="hover:text-foreground cursor-pointer transition-colors"
+                                    className="hover:text-foreground cursor-pointer transition-colors relative before:absolute before:-inset-1.5 md:before:hidden"
                                     onClick={() => handleStartEditComment(item.id, item.content)}
                                   >
                                     Edit
@@ -536,7 +536,7 @@ export function Activities({
                                   <span>·</span>
                                   <button
                                     type="button"
-                                    className="hover:text-destructive cursor-pointer transition-colors"
+                                    className="hover:text-destructive cursor-pointer transition-colors relative before:absolute before:-inset-1.5 md:before:hidden"
                                     onClick={() => setDeleteCommentId(item.id)}
                                   >
                                     Delete
@@ -545,12 +545,12 @@ export function Activities({
                               ) : null}
 
                               {reactionPickerCommentId === item.id ? (
-                                <div className="absolute bottom-full left-0 z-20 mb-1 rounded-md border border-border bg-popover text-popover-foreground px-1.5 py-0.5 flex items-center gap-0.5 shadow-md">
+                                <div className="absolute bottom-full left-0 z-20 mb-1 rounded-md border border-border bg-popover text-popover-foreground px-1.5 py-0.5 flex items-center gap-0.5 shadow-overlay">
                                   {reactionOptions.map((emoji) => (
                                     <button
                                       key={emoji}
                                       type="button"
-                                      className="flex size-7 items-center justify-center rounded-md text-base transition-transform hover:scale-115 hover:bg-muted active:scale-95 cursor-pointer"
+                                      className="flex size-7 items-center justify-center rounded-md text-base transition-transform hover:scale-115 hover:bg-muted active:scale-95 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden"
                                       onClick={() => handlePickReaction(item.id, emoji)}
                                       aria-label={`Pick reaction ${emoji}`}
                                     >
@@ -596,12 +596,12 @@ export function Activities({
           if (!open) setDeleteCommentId(null);
         }}
       >
-        <DialogContent className="max-w-xs rounded-md border border-border p-4" showCloseButton={false}>
+        <DialogContent className="max-w-xs rounded-md border border-border p-5 shadow-raised-200" showCloseButton={false}>
           <DialogHeader className="space-y-1 text-left">
-            <DialogTitle className="text-sm font-semibold text-foreground">
+            <DialogTitle className="text-16 font-semibold text-foreground">
               Delete comment?
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
+            <DialogDescription className="text-12 text-muted-foreground">
               This comment will be removed and cannot be recovered.
             </DialogDescription>
           </DialogHeader>
@@ -611,7 +611,7 @@ export function Activities({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 text-xs px-2.5 text-foreground hover:bg-muted rounded-md shadow-none cursor-pointer"
+              className="h-8 text-13 font-medium px-3 text-foreground hover:bg-muted rounded-md shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               onClick={() => setDeleteCommentId(null)}
             >
               Cancel
@@ -620,7 +620,7 @@ export function Activities({
               type="button"
               variant="destructive"
               size="sm"
-              className="h-7 text-xs px-3 shadow-none rounded-md cursor-pointer"
+              className="h-8 text-13 font-medium px-3 shadow-none rounded-md cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               onClick={handleConfirmDeleteComment}
               disabled={isDeleteCommentRunning}
             >

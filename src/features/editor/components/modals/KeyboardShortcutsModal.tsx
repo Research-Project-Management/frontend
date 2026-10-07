@@ -214,7 +214,7 @@ export default function KeyboardShortcutsModal({
             type="button"
             onClick={() => onOpenChange(false)}
             aria-label="Close"
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted focus:outline-hidden transition-colors cursor-pointer"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer"
           >
             <X className="size-4" strokeWidth={1.5} />
           </button>
@@ -245,8 +245,8 @@ export default function KeyboardShortcutsModal({
                 className={cn(
                   'px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-primary',
                   activeCategory === cat
-                    ? 'bg-background text-foreground shadow-xs font-semibold'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-background text-foreground font-semibold border border-border/60'
+                    : 'text-muted-foreground hover:text-foreground border border-transparent'
                 )}
               >
                 {cat}
@@ -286,7 +286,7 @@ export default function KeyboardShortcutsModal({
                 <div className="flex items-center gap-1 shrink-0 font-mono text-xs">
                   {s.keys.map((k, i) => (
                     <React.Fragment key={k}>
-                      <kbd className="px-2 py-0.5 rounded-sm bg-muted/70 border border-border/60 text-11 font-medium text-foreground shadow-2xs">
+                      <kbd className="px-2 py-0.5 rounded-sm bg-muted/70 border border-border/60 text-11 font-medium text-foreground">
                         {k}
                       </kbd>
                       {i < s.keys.length - 1 && (

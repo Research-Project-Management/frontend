@@ -48,6 +48,39 @@ export function useAiChatActions({ engine }: UseAiChatActionsOptions = {}) {
     [engine],
   );
 
+  const proposeDiff = useCallback(
+    (code: string, title?: string) => {
+      if (!engine) {
+        toast.error('Editor not ready');
+        return;
+      }
+
+      if (typeof engine.proposeDiff === 'function') {
+        const offsets = typeof engine.getSelectionOffsets === 'function' ? engine.getSelectionOffsets() : null;
+        const originalText = engine.getSelectedText ? engine.getSelectedText() : '';
+        const from = offsets?.from ?? 0;
+        const to = offsets?.to ?? from;
+
+        engine.proposeDiff({
+          id: `diff-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          from,
+          to,
+          originalText,
+          replacementText: code,
+          title: title || (to > from ? 'AI Selection Diff' : 'AI Suggested Insertion'),
+          createdAt: Date.now(),
+        });
+        engine.focus();
+        toast.info('Active diff proposal in editor (⌘⏎ Accept, Esc Reject)');
+      } else {
+        engine.insertText(code);
+        engine.focus();
+        toast.success('Inserted AI code into document');
+      }
+    },
+    [engine],
+  );
+
   const copyCode = useCallback(async (code: string, onSuccess?: () => void) => {
     try {
       await navigator.clipboard.writeText(code);
@@ -89,6 +122,7 @@ export function useAiChatActions({ engine }: UseAiChatActionsOptions = {}) {
   return {
     insertAtCursor,
     replaceSelection,
+    proposeDiff,
     copyCode,
     notifyFileAttached,
     notifyFileError,

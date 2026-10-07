@@ -113,7 +113,7 @@ export const CommentCard = React.memo(function CommentCard({
             className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
           >
             {resolveMutation.isPending && (
-              <Loader2 className="size-3.5 animate-spin" />
+              <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
             )}
             {!resolveMutation.isPending && isResolved && (
               <RotateCcw className="size-3.5" />

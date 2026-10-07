@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, ChevronRight, Folder, Search } from 'lucide-react';
+import { Users, ChevronRight, Folder, Search, Files } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import type { TreeNode, CollectionActionHandlers } from './sidebar.types';
@@ -38,6 +38,8 @@ interface ProjectLibrariesSectionProps extends CollectionActionHandlers {
   onRenameSavedSearchValueChange?: (value: string) => void;
   onDuplicateSavedSearch?: (savedSearch: SavedSearch) => void;
   onDeleteSavedSearch?: (id: string) => void;
+  pathname?: string;
+  duplicateCount?: number;
   renamingSavedSearchId?: string | null;
   renameSavedSearchValue?: string;
 }
@@ -132,6 +134,8 @@ export function ProjectLibrariesSection({
   onDeleteSavedSearch,
   renamingSavedSearchId,
   renameSavedSearchValue = '',
+  pathname = '',
+  duplicateCount,
 }: ProjectLibrariesSectionProps) {
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
 
@@ -157,6 +161,7 @@ export function ProjectLibrariesSection({
         <Tooltip delayDuration={700}>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -236,10 +241,10 @@ export function ProjectLibrariesSection({
                     </span>
                   </button>
 
-                  {/* Project Collections Tree (Rendered when this project is active) */}
-                  {isProjectActive &&
-                    (projectTree.length > 0 || (savedSearches && savedSearches.length > 0)) && (
-                      <div className="flex flex-col gap-1 w-full pl-2">
+                  {/* Project Contents (Rendered when this project is active) */}
+                  {isProjectActive && (
+                    <div className="flex flex-col gap-1 w-full pl-2">
+                      {projectTree.length > 0 && (
                         <CollectionTree
                           tree={projectTree}
                           allCollections={projectCollections}
@@ -264,68 +269,88 @@ export function ProjectLibrariesSection({
                           onLinkClick={onLinkClick}
                           onDropItems={onDropItems}
                         />
+                      )}
 
-                        {savedSearches && savedSearches.length > 0 && (
-                          <div className="my-1 flex flex-col gap-0.5 border-t border-border pt-1">
-                            <div className="px-6 py-1 text-11 font-medium text-foreground flex items-center justify-between">
-                              <span>Saved Searches</span>
-                            </div>
-                            {savedSearches.map((ss) => {
-                              const isSSActive =
-                                currentFilter === 'saved-search' && currentSavedSearchId === ss.id;
-                              const isRenaming = renamingSavedSearchId === ss.id;
-                              const { label: cleanName } = parseEmojiPrefix(ss.name);
+                      {savedSearches && savedSearches.length > 0 && (
+                        <div className="my-1 flex flex-col gap-0.5 border-t border-border pt-1">
+                          <div className="px-6 py-1 text-11 font-medium text-foreground flex items-center justify-between">
+                            <span>Saved Searches</span>
+                          </div>
+                          {savedSearches.map((ss) => {
+                            const isSSActive =
+                              currentFilter === 'saved-search' && currentSavedSearchId === ss.id;
+                            const isRenaming = renamingSavedSearchId === ss.id;
+                            const { label: cleanName } = parseEmojiPrefix(ss.name);
 
-                              if (isRenaming) {
-                                return (
-                                  <div
-                                    key={ss.id}
-                                    className="relative z-10 flex h-8 w-full items-center pr-2 min-w-0 gap-2.5 pl-6"
-                                  >
-                                    <Search className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-                                    <input
-                                      autoFocus
-                                      value={renameSavedSearchValue}
-                                      onChange={(e) => onRenameSavedSearchValueChange?.(e.target.value)}
-                                      onBlur={() => onSubmitRenameSavedSearch?.(ss.id)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') onSubmitRenameSavedSearch?.(ss.id);
-                                        if (e.key === 'Escape') onSubmitRenameSavedSearch?.('__cancel__');
-                                      }}
-                                      className="h-7 w-full min-w-0 rounded-md border border-border bg-background px-2 text-13 font-normal focus:outline-none focus:ring-1 focus:ring-ring shadow-none text-foreground"
-                                    />
-                                  </div>
-                                );
-                              }
-
+                            if (isRenaming) {
                               return (
-                                <div key={ss.id} className="group/item relative flex items-center w-full has-[[data-state=open]]:bg-muted rounded-md">
-                                  <div className="flex-1 min-w-0">
-                                    <SidebarNavItem
-                                      href={`${basePath}?filter=saved-search&savedSearchId=${ss.id}`}
-                                      icon={Search}
-                                      label={cleanName}
-                                      isActive={isSSActive}
-                                      navId={navId}
-                                      onClick={onLinkClick}
-                                    />
-                                  </div>
-                                  <div className="absolute right-1.5 z-20">
-                                    <SavedSearchContextMenu
-                                      savedSearch={ss as SavedSearch}
-                                      onEdit={onEditSavedSearch || (() => {})}
-                                      onRename={(id, name) => onStartRenameSavedSearch?.(id, name)}
-                                      onDuplicate={onDuplicateSavedSearch || (() => {})}
-                                      onDelete={onDeleteSavedSearch || (() => {})}
-                                    />
-                                  </div>
+                                <div
+                                  key={ss.id}
+                                  className="relative z-10 flex h-8 w-full items-center pr-2 min-w-0 gap-2.5 pl-6"
+                                >
+                                  <Search className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                                  <input
+                                    autoFocus
+                                    value={renameSavedSearchValue}
+                                    onChange={(e) => onRenameSavedSearchValueChange?.(e.target.value)}
+                                    onBlur={() => onSubmitRenameSavedSearch?.(ss.id)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') onSubmitRenameSavedSearch?.(ss.id);
+                                      if (e.key === 'Escape') onSubmitRenameSavedSearch?.('__cancel__');
+                                    }}
+                                    className="h-7 w-full min-w-0 rounded-md border border-border bg-background px-2 text-13 font-normal focus:outline-none focus:ring-1 focus:ring-ring shadow-none text-foreground"
+                                  />
                                 </div>
                               );
-                            })}
-                          </div>
-                        )}
+                            }
+
+                            return (
+                              <div key={ss.id} className="group/item relative flex items-center w-full has-[[data-state=open]]:bg-muted rounded-md">
+                                <div className="flex-1 min-w-0">
+                                  <SidebarNavItem
+                                    href={`${basePath}?filter=saved-search&savedSearchId=${ss.id}`}
+                                    icon={Search}
+                                    label={cleanName}
+                                    isActive={isSSActive}
+                                    navId={navId}
+                                    onClick={onLinkClick}
+                                  />
+                                </div>
+                                <div className="absolute right-1.5 z-20">
+                                  <SavedSearchContextMenu
+                                    savedSearch={ss as SavedSearch}
+                                    onEdit={onEditSavedSearch || (() => {})}
+                                    onRename={(id, name) => onStartRenameSavedSearch?.(id, name)}
+                                    onDuplicate={onDuplicateSavedSearch || (() => {})}
+                                    onDelete={onDeleteSavedSearch || (() => {})}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Project Duplicate Items Nav Item (Zotero Group Library parity) */}
+                      <div className="my-1 flex flex-col gap-0.5 border-t border-border pt-1">
+                        <SidebarNavItem
+                          href={`${basePath}/duplicates`}
+                          icon={Files}
+                          label="Duplicate Items"
+                          isActive={pathname === `${basePath}/duplicates` || (pathname === basePath && currentFilter === 'duplicates')}
+                          navId={navId}
+                          onClick={onLinkClick}
+                          badge={
+                            duplicateCount ? (
+                              <span className="relative z-10 ml-auto rounded-full bg-muted-foreground/15 px-1.5 py-0.2 text-10 font-medium tabular-nums text-muted-foreground">
+                                {duplicateCount}
+                              </span>
+                            ) : null
+                          }
+                        />
                       </div>
-                    )}
+                    </div>
+                  )}
                 </div>
               );
             })

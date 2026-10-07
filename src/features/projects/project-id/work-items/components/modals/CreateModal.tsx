@@ -104,7 +104,7 @@ const DEFAULT_EMPTY_ATTACHMENTS: AttachCenterData = {
 };
 
 const pillBtnClass =
-  'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0';
+  'h-8 px-2.5 text-12 font-medium rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring outline-none';
 
 export function CreateModal({
   open,
@@ -205,7 +205,7 @@ export function CreateModal({
       startDate: initialData?.startDate || '',
       parentId: initialData?.parentId || initialData?.parentWorkItemId || null,
       parentWorkItemId: initialData?.parentWorkItemId || initialData?.parentId || null,
-      labels: initialData?.labels ? ItemHelpers.uniqueLabels(initialData.labels as any) : [],
+      labels: initialData?.labels ? ItemHelpers.uniqueLabels(initialData.labels) : [],
     },
   });
 
@@ -236,7 +236,7 @@ export function CreateModal({
   const priority = useWatch({ control, name: 'priority' }) ?? 'none';
   const dueDate = useWatch({ control, name: 'dueDate' }) ?? '';
   const startDate = useWatch({ control, name: 'startDate' }) ?? '';
-  const parentId = (useWatch({ control, name: 'parentId' as any }) as string | null) ?? null;
+  const parentId = (useWatch({ control, name: 'parentId' }) as string | null) ?? null;
   const watchedLabels = useWatch({ control, name: 'labels' });
   const labels = watchedLabels ?? DEFAULT_EMPTY_ARRAY;
   const assigneeId = useWatch({ control, name: 'assigneeId' }) ?? null;
@@ -394,7 +394,7 @@ export function CreateModal({
         startDate: initialData?.startDate || '',
         parentId: initialData?.parentId || initialData?.parentWorkItemId || null,
         parentWorkItemId: initialData?.parentWorkItemId || initialData?.parentId || null,
-        labels: initialData?.labels ? ItemHelpers.uniqueLabels(initialData.labels as any) : [],
+        labels: initialData?.labels ? ItemHelpers.uniqueLabels(initialData.labels) : [],
         assigneeIds: initialAssigneeIds,
         assigneeId: initialAssigneeIds[0] ?? null,
         attachments: normalizeAttachments(initialData?.attachments),
@@ -426,7 +426,7 @@ export function CreateModal({
     setAttachments((prev) => ({
       ...prev,
       pages: (prev.pages || []).filter(
-        (p) => (p as any).pageId !== pageId && p.id !== pageId
+        (p) => p.pageId !== pageId && p.id !== pageId
       ),
     }));
   };
@@ -458,7 +458,7 @@ export function CreateModal({
     setAttachments((prev) => ({
       ...prev,
       papers: (prev.papers || []).filter(
-        (p) => (p as any).paperId !== paperId && p.id !== paperId
+        (p) => p.paperId !== paperId && p.id !== paperId
       ),
     }));
   };
@@ -489,7 +489,7 @@ export function CreateModal({
   const handleDetachFile = (fileId: string) => {
     setAttachments((prev) => ({
       ...prev,
-      files: (prev.files || []).filter((f) => (f as any).id !== fileId),
+      files: (prev.files || []).filter((f) => f.id !== fileId),
     }));
   };
 
@@ -519,7 +519,7 @@ export function CreateModal({
     setAttachments((prev) => ({
       ...prev,
       files: (prev.files || []).map((a) =>
-        (a as any).id === attachmentId ? { ...a, name: newName } : a
+        a.id === attachmentId ? { ...a, name: newName } : a
       ),
     }));
   };
@@ -584,7 +584,7 @@ export function CreateModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="w-full max-w-[1100px] sm:max-w-[1100px] p-0 gap-0 rounded-md border border-border overflow-hidden bg-background flex flex-col max-h-[90vh] sm:min-h-[580px]"
+        className="w-full max-w-[1100px] sm:max-w-[1100px] p-0 gap-0 rounded-md border border-border overflow-hidden bg-background flex flex-col max-h-[90vh] sm:min-h-[580px] shadow-raised-200"
         style={{ width: 'min(1100px, 96vw)', maxWidth: '1100px' }}
         onKeyDown={(e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -596,7 +596,7 @@ export function CreateModal({
         <Form {...form}>
           {/* Header */}
           <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-5 pb-0 flex flex-row items-center justify-between shrink-0 space-y-0">
-            <DialogTitle className="text-base font-semibold text-foreground tracking-tight">
+            <DialogTitle className="text-16 font-semibold text-foreground tracking-tight">
               Create new work item
             </DialogTitle>
             <DialogDescription className="sr-only">
@@ -645,7 +645,7 @@ export function CreateModal({
                   placeholder="Title"
                   autoFocus
                   disabled={isSubmitting}
-                  className="w-full text-sm font-normal text-foreground outline-none bg-transparent placeholder:text-muted-foreground border-none p-0 focus:ring-0"
+                  className="w-full text-13 font-normal text-foreground outline-none bg-transparent placeholder:text-muted-foreground border-none p-0 focus:ring-0"
                 />
               </div>
               {errors.title && (
@@ -663,7 +663,7 @@ export function CreateModal({
                 placeholder="Click to add description"
                 disabled={isSubmitting}
                 rows={8}
-                className="w-full resize-none text-xs sm:text-sm text-foreground placeholder:text-muted-foreground outline-none bg-transparent border-none p-0 focus:ring-0 leading-relaxed min-h-[220px]"
+                className="w-full resize-none text-13 text-foreground placeholder:text-muted-foreground outline-none bg-transparent border-none p-0 focus:ring-0 leading-relaxed min-h-[220px]"
               />
             </div>
 
@@ -778,7 +778,7 @@ export function CreateModal({
                   <span>Templates {projectTemplates.length > 0 ? `(${projectTemplates.length})` : ''}</span>
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="w-64 p-1.5 rounded-md border-border bg-popover z-100 flex flex-col space-y-1">
+              <PopoverContent align="start" className="w-64 p-1.5 rounded-md border border-border bg-popover shadow-overlay z-100 flex flex-col space-y-1">
                 <div className="flex items-center justify-between px-2 py-1 border-b border-border mb-1">
                   <span className="text-11 font-semibold text-foreground">Work Item Templates</span>
                 </div>
@@ -793,7 +793,7 @@ export function CreateModal({
                         onClick={() => handleApplyTemplate(t)}
                         className="w-full flex flex-col items-start px-2 py-1.5 rounded-md text-xs hover:bg-muted text-left transition-colors cursor-pointer"
                       >
-                        <span className="font-semibold text-foreground truncate w-full">{t.name}</span>
+                        <span className="font-medium text-foreground truncate w-full">{t.name}</span>
                         {t.description && (
                           <span className="text-10 text-muted-foreground truncate w-full">{t.description}</span>
                         )}
@@ -864,7 +864,7 @@ export function CreateModal({
               size="sm"
               onClick={handleDiscard}
               disabled={isSubmitting}
-              className="h-8 text-13 px-3 font-medium cursor-pointer rounded-md border border-border bg-background hover:bg-muted text-foreground"
+              className="h-8 text-13 px-3 font-medium cursor-pointer rounded-md border border-border bg-background hover:bg-muted text-foreground relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               Discard
             </Button>
@@ -874,9 +874,9 @@ export function CreateModal({
               size="sm"
               disabled={isSubmitting}
               onClick={handleSubmit}
-              className="h-8 text-13 px-4 font-medium cursor-pointer rounded-md bg-primary text-primary-foreground hover:bg-primary-hover flex items-center gap-1.5 shadow-none select-none"
+              className="h-8 text-13 px-4 font-medium cursor-pointer rounded-md bg-primary text-primary-foreground hover:bg-primary-hover flex items-center gap-1.5 shadow-none select-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
-              {isSubmitting && <Loader2 className="size-3.5 animate-spin shrink-0" />}
+              {isSubmitting && <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none shrink-0" />}
               <span>{isSubmitting ? 'Creating...' : 'Create work item'}</span>
             </Button>
           </div>

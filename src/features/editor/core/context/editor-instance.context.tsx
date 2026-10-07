@@ -18,18 +18,31 @@ interface EditorInstanceContextValue {
   getContent: () => string;
 }
 
+let activeEngineInstance: IEditorEngine | null = null;
+
+export function getActiveEditorEngine(): IEditorEngine | null {
+  return activeEngineInstance;
+}
+
+export const getActiveEditorInstance = getActiveEditorEngine;
+
+export function getActiveEditorContent(): string {
+  return activeEngineInstance?.getContent() ?? '';
+}
+
 const EditorInstanceContext = createContext<EditorInstanceContextValue | null>(null);
 
 export function EditorInstanceProvider({ children }: { children: React.ReactNode }) {
   const [engine, setEngineState] = useState<IEditorEngine | null>(null);
 
   const setEngine = useCallback((newEngine: IEditorEngine | null) => {
+    activeEngineInstance = newEngine;
     setEngineState(newEngine);
   }, []);
 
   const getContent = useCallback(() => {
-    return engine?.getContent() ?? '';
-  }, [engine]);
+    return activeEngineInstance?.getContent() ?? '';
+  }, []);
 
   // Wire incoming CommandBus commands to the active engine
   useEffect(() => {

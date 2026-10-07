@@ -232,7 +232,7 @@ export default function NotesSection({
             <button
               type="button"
               onClick={() => setIsAdding(true)}
-              className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               title="Add note"
               aria-label="Add note"
             >
@@ -354,7 +354,7 @@ export default function NotesSection({
               key={n.id}
               onClick={canEdit ? () => handleStartEdit(n) : undefined}
               className={cn(
-                "group/note flex items-center justify-between gap-2 px-1.5 py-1 min-h-[28px] rounded-md text-12 select-none min-w-0",
+                "group/note flex items-center justify-between gap-2 px-1.5 py-1 min-h-8 rounded-md text-12 select-none min-w-0",
                 canEdit ? "hover:bg-muted cursor-pointer" : "cursor-default"
               )}
             >
@@ -376,7 +376,7 @@ export default function NotesSection({
                           e.stopPropagation();
                           onNavigateToAnnotation(pageNum);
                         }}
-                        className="text-10 font-medium text-primary hover:underline px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 shrink-0 cursor-pointer"
+                        className="text-10 font-medium text-primary hover:underline px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 shrink-0 cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         title={`Jump to page ${pageNum}`}
                       >
                         p. {pageNum}
@@ -387,7 +387,7 @@ export default function NotesSection({
                 })()}
               </div>
 
-              {/* Minus circle button on hover */}
+              {/* Minus circle button on hover / always visible on mobile */}
               {canEdit && (
                 <button
                   type="button"
@@ -402,7 +402,7 @@ export default function NotesSection({
                       deleteNote(n.id, target?.version);
                     }
                   }}
-                  className="invisible group-hover/note:visible size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0"
+                  className="invisible group-hover/note:visible max-md:visible focus-visible:visible size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   title="Delete note"
                   aria-label="Delete note"
                 >

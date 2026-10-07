@@ -1,11 +1,11 @@
-import { Metadata } from 'next';
-import InboxView from '@/features/inbox/components/InboxView';
+import type { Metadata } from 'next';
+import { InboxPage } from '@/features/shell';
 
 export const metadata: Metadata = {
-  title: 'Inbox | Flux',
+  title: 'Inbox · Flux',
   description: 'Manage and review project invitations, manuscript mentions, and comments.',
 };
 
-export default function InboxPage() {
-  return <InboxView />;
+export default function Page() {
+  return <InboxPage />;
 }

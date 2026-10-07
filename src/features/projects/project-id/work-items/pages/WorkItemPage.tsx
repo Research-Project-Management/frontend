@@ -46,7 +46,15 @@ import {
   useBulkRestore,
   useArchivedItems,
 } from "../hooks/use-archive";
-import { ItemHelpers, WorkItemHelpers, resolveColumnId, resolveStateId, getItemBucketKey } from "../utils/work-item.utils";
+import {
+  ItemHelpers,
+  WorkItemHelpers,
+  resolveColumnId,
+  resolveStateId,
+  getItemBucketKey,
+  PRIORITY_THEME_COLORS,
+  GROUP_DEFAULT_COLORS,
+} from "../utils/work-item.utils";
 import { useTopbar } from "../hooks/use-topbar";
 import { useRealtimeWorkItems } from "../hooks/use-realtime";
 import type {
@@ -360,11 +368,11 @@ export function WorkItemPage({
     const groupBy = effectiveGroupBy;
     if (groupBy === 'priority') {
       return [
-        { id: 'urgent', name: 'Urgent', title: 'Urgent', color: '#ef4444', accentColor: '#ef4444', group: 'unstarted', sequence: 0, isDefault: false },
-        { id: 'high', name: 'High', title: 'High', color: '#f97316', accentColor: '#f97316', group: 'unstarted', sequence: 1, isDefault: false },
-        { id: 'medium', name: 'Medium', title: 'Medium', color: '#f59e0b', accentColor: '#f59e0b', group: 'unstarted', sequence: 2, isDefault: false },
-        { id: 'low', name: 'Low', title: 'Low', color: '#3b82f6', accentColor: '#3b82f6', group: 'unstarted', sequence: 3, isDefault: false },
-        { id: 'none', name: 'No Priority', title: 'No Priority', color: '#6b7280', accentColor: '#6b7280', group: 'unstarted', sequence: 4, isDefault: false },
+        { id: 'urgent', name: 'Urgent', title: 'Urgent', color: PRIORITY_THEME_COLORS.urgent, accentColor: PRIORITY_THEME_COLORS.urgent, group: 'unstarted', sequence: 0, isDefault: false },
+        { id: 'high', name: 'High', title: 'High', color: PRIORITY_THEME_COLORS.high, accentColor: PRIORITY_THEME_COLORS.high, group: 'unstarted', sequence: 1, isDefault: false },
+        { id: 'medium', name: 'Medium', title: 'Medium', color: PRIORITY_THEME_COLORS.medium, accentColor: PRIORITY_THEME_COLORS.medium, group: 'unstarted', sequence: 2, isDefault: false },
+        { id: 'low', name: 'Low', title: 'Low', color: PRIORITY_THEME_COLORS.low, accentColor: PRIORITY_THEME_COLORS.low, group: 'unstarted', sequence: 3, isDefault: false },
+        { id: 'none', name: 'No Priority', title: 'No Priority', color: PRIORITY_THEME_COLORS.none, accentColor: PRIORITY_THEME_COLORS.none, group: 'unstarted', sequence: 4, isDefault: false },
       ];
     }
     if (groupBy === 'assignee') {
@@ -375,8 +383,8 @@ export function WorkItemPage({
           id: userId,
           name,
           title: name,
-          color: '#6366f1',
-          accentColor: '#6366f1',
+          color: GROUP_DEFAULT_COLORS.assignee,
+          accentColor: GROUP_DEFAULT_COLORS.assignee,
           group: 'unstarted',
           sequence: idx,
           isDefault: false,
@@ -384,14 +392,14 @@ export function WorkItemPage({
       });
       return [
         ...memberCols,
-        { id: '__unassigned__', name: 'Unassigned', title: 'Unassigned', color: '#9ca3af', accentColor: '#9ca3af', group: 'backlog', sequence: 999, isDefault: false },
+        { id: '__unassigned__', name: 'Unassigned', title: 'Unassigned', color: GROUP_DEFAULT_COLORS.unassigned, accentColor: GROUP_DEFAULT_COLORS.unassigned, group: 'backlog', sequence: 999, isDefault: false },
       ];
     }
     if (groupBy === 'labels') {
       const labelCols: Column[] = (labels || []).map((l: any, idx: number) => {
         const id = l.id || l.name;
         const name = l.name || l.title || 'Label';
-        const color = l.color || '#3b82f6';
+        const color = l.color || GROUP_DEFAULT_COLORS.label;
         return {
           id,
           name,
@@ -405,7 +413,7 @@ export function WorkItemPage({
       });
       return [
         ...labelCols,
-        { id: '__no_label__', name: 'No Label', title: 'No Label', color: '#9ca3af', accentColor: '#9ca3af', group: 'backlog', sequence: 999, isDefault: false },
+        { id: '__no_label__', name: 'No Label', title: 'No Label', color: GROUP_DEFAULT_COLORS.noLabel, accentColor: GROUP_DEFAULT_COLORS.noLabel, group: 'backlog', sequence: 999, isDefault: false },
       ];
     }
     if (groupBy === 'createdBy') {
@@ -416,8 +424,8 @@ export function WorkItemPage({
           id: userId,
           name,
           title: name,
-          color: '#8b5cf6',
-          accentColor: '#8b5cf6',
+          color: GROUP_DEFAULT_COLORS.createdBy,
+          accentColor: GROUP_DEFAULT_COLORS.createdBy,
           group: 'unstarted',
           sequence: idx,
           isDefault: false,
@@ -425,12 +433,12 @@ export function WorkItemPage({
       });
       return [
         ...authorCols,
-        { id: '__unknown__', name: 'Unknown Creator', title: 'Unknown Creator', color: '#9ca3af', accentColor: '#9ca3af', group: 'backlog', sequence: 999, isDefault: false },
+        { id: '__unknown__', name: 'Unknown Creator', title: 'Unknown Creator', color: GROUP_DEFAULT_COLORS.unknown, accentColor: GROUP_DEFAULT_COLORS.unknown, group: 'backlog', sequence: 999, isDefault: false },
       ];
     }
     if (groupBy === 'none') {
       return [
-        { id: '__all__', name: 'All Work Items', title: 'All Work Items', color: '#6366f1', accentColor: '#6366f1', group: 'unstarted', sequence: 0, isDefault: true },
+        { id: '__all__', name: 'All Work Items', title: 'All Work Items', color: GROUP_DEFAULT_COLORS.all, accentColor: GROUP_DEFAULT_COLORS.all, group: 'unstarted', sequence: 0, isDefault: true },
       ];
     }
     return columns;
@@ -884,18 +892,18 @@ export function WorkItemPage({
 
       {/* Archived Notice Banner */}
       {showArchived && (
-        <div className="flex items-center justify-between px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-xs text-amber-700 dark:text-amber-300 shrink-0 animate-in fade-in duration-150">
+        <div className="flex items-center justify-between px-4 py-2 bg-warning/10 border-b border-warning/20 text-xs text-warning shrink-0 animate-in fade-in duration-150">
           <div className="flex items-center gap-2">
-            <Archive className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <Archive className="size-4 shrink-0 text-warning" />
             <span>
-              <strong>Archived Mode:</strong> You are viewing archived work items. They are excluded from active boards and views.
+              <span className="font-semibold">Archived Mode:</span> You are viewing archived work items. They are excluded from active boards and views.
             </span>
           </div>
           <Button
             size="sm"
             variant="ghost"
             onClick={() => setShowArchived(false)}
-            className="h-6 px-2 text-xs font-medium hover:bg-amber-500/20 text-amber-700 dark:text-amber-300"
+            className="h-6 px-2 text-xs font-medium hover:bg-warning/20 text-warning relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             Back to active items
           </Button>
@@ -908,7 +916,7 @@ export function WorkItemPage({
           <div className="flex items-center gap-2 min-w-0">
             <SlidersHorizontal className="size-3.5 shrink-0 text-primary" />
             <span className="truncate">
-              Viewing view: <strong className="font-semibold text-foreground">{savedViews?.find((v) => v.id === activeViewId)?.name || 'Custom View'}</strong>
+              Viewing view: <span className="font-semibold text-foreground">{savedViews?.find((v) => v.id === activeViewId)?.name || 'Custom View'}</span>
             </span>
             <span className="text-10 font-mono capitalize px-1.5 py-0.5 rounded-md bg-muted text-foreground font-medium">
               {viewMode}
@@ -923,7 +931,7 @@ export function WorkItemPage({
                 router.push(`/projects/${projectId}/work-items`);
               }
             }}
-            className="h-6 px-2 text-xs font-medium hover:bg-muted text-foreground shrink-0 rounded-md cursor-pointer"
+            className="h-6 px-2 text-xs font-medium hover:bg-muted text-foreground shrink-0 rounded-md cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             Clear view
           </Button>
@@ -1180,9 +1188,9 @@ export function WorkItemPage({
 
       {/* Save Current View Dialog */}
       <Dialog open={isSaveViewOpen} onOpenChange={setIsSaveViewOpen}>
-        <DialogContent className="sm:max-w-md p-5 bg-background border-border shadow-lg rounded-md">
+        <DialogContent className="sm:max-w-md p-5 bg-background border-border shadow-raised-200 rounded-md">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold text-foreground">
+            <DialogTitle className="text-16 font-semibold text-foreground">
               Save Current View
             </DialogTitle>
             <DialogDescription className="text-13 text-muted-foreground">
@@ -1207,7 +1215,7 @@ export function WorkItemPage({
                 value={newViewName}
                 onChange={(e) => setNewViewName(e.target.value)}
                 autoFocus
-                className="h-8 text-13 bg-background border-border"
+                className="h-8 text-13 bg-background border-border placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
               />
             </div>
 
@@ -1218,7 +1226,7 @@ export function WorkItemPage({
                 size="sm"
                 onClick={() => setIsSaveViewOpen(false)}
                 disabled={isSavingCurrentView}
-                className="h-8 px-3 text-13 font-medium rounded-md text-foreground hover:bg-muted cursor-pointer"
+                className="h-8 px-3 text-13 font-medium rounded-md text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               >
                 Cancel
               </Button>
@@ -1226,7 +1234,7 @@ export function WorkItemPage({
                 type="submit"
                 size="sm"
                 disabled={!newViewName.trim() || isSavingCurrentView}
-                className="h-8 px-4 text-13 font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary-hover shadow-none cursor-pointer"
+                className="h-8 px-4 text-13 font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary-hover shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               >
                 {isSavingCurrentView ? 'Saving...' : 'Save View'}
               </Button>

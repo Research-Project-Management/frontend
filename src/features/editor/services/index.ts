@@ -7,8 +7,12 @@
  *  - suggestion.service.ts
  *  - history.service.ts
  *  - collaboration.service.ts
- *  - citation.service.ts
  *  - storage.service.ts
+ *  - export.service.ts
+ *  - manuscript.service.ts
+ *  - spelling.service.ts
+ *  - draft-storage.service.ts
+ *  - search.service.ts
  */
 
 export * from './core.service';
@@ -22,3 +26,5 @@ export * from './storage.service';
 export * from './export.service';
 export * from './manuscript.service';
 export * from './spelling.service';
+export * from './draft-storage.service';
+export * from './search.service';

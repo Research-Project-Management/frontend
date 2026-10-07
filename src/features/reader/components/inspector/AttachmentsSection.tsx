@@ -163,7 +163,7 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
               setCurrentPage((p) => Math.max(1, p - 1));
             }}
             aria-label="Previous page"
-            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none transition-colors"
+            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <ChevronLeft className="size-4 shrink-0" />
           </button>
@@ -175,7 +175,7 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
               setCurrentPage((p) => Math.min(numPages, p + 1));
             }}
             aria-label="Next page"
-            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none transition-colors"
+            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <ChevronRight className="size-4 shrink-0" />
           </button>
@@ -433,7 +433,7 @@ export default function AttachmentsSection({
                 <button
                   type="button"
                   disabled={isUploadingFile}
-                  className="size-5 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+                  className="size-5 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   title="Add attachment"
                   aria-label="Add attachment"
                 >
@@ -479,7 +479,7 @@ export default function AttachmentsSection({
 
         {/* Primary PDF Row */}
         {paperUrl ? (
-          <div className="flex items-center justify-between px-2 py-1 min-h-[28px] rounded-md hover:bg-muted border border-border">
+          <div className="flex items-center justify-between px-2 py-1 min-h-8 rounded-md hover:bg-muted border border-border">
             <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
               <div className="size-4 shrink-0 flex items-center justify-center">
                 <FileText className="size-4 text-foreground shrink-0" />
@@ -504,7 +504,7 @@ export default function AttachmentsSection({
                 <button
                   type="button"
                   aria-label="Attachment options"
-                  className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-0"
+                  className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2 md:before:hidden"
                 >
                   <MoreVertical className="size-3.5 text-foreground shrink-0" />
                 </button>
@@ -574,7 +574,7 @@ export default function AttachmentsSection({
           return (
             <div
               key={att.id}
-              className="flex items-center justify-between px-2 py-1 min-h-[28px] rounded-md hover:bg-muted border border-border transition-colors"
+              className="flex items-center justify-between px-2 py-1 min-h-8 rounded-md hover:bg-muted border border-border transition-colors"
             >
               <div
                 className={`flex items-center gap-2 min-w-0 flex-1 mr-2 ${isSnapshot || isLink ? 'cursor-pointer' : ''}`}
@@ -627,7 +627,7 @@ export default function AttachmentsSection({
                     <button
                       type="button"
                       aria-label="Attachment options"
-                      className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-0"
+                      className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2 md:before:hidden"
                     >
                       <MoreVertical className="size-3.5 text-foreground shrink-0" />
                     </button>
@@ -698,7 +698,7 @@ export default function AttachmentsSection({
           type="button"
           disabled={isCapturingSnapshot}
           onClick={handleCaptureSnapshot}
-          className="w-full mt-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md border border-dashed border-border hover:bg-muted text-12 text-foreground transition-colors disabled:opacity-50 cursor-pointer"
+          className="w-full mt-1 flex items-center justify-center gap-1.5 h-8 px-2.5 rounded-md border border-dashed border-border hover:bg-muted text-12 font-medium text-foreground transition-colors disabled:opacity-50 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           {isCapturingSnapshot ? (
             <>

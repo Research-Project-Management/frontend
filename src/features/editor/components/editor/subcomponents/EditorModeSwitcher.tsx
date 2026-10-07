@@ -47,18 +47,18 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
     <button
       type="button"
       className={cn(
-        'relative inline-flex items-center justify-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer outline-none select-none text-foreground border border-transparent hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary',
-        reviewMode && 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/15 font-semibold',
+        'relative inline-flex items-center justify-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors motion-reduce:transition-none cursor-pointer outline-none select-none text-foreground border border-transparent hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary',
+        reviewMode && 'bg-warning/15 text-foreground border-warning/40 hover:bg-warning/25 font-semibold',
         isReviewerOnly && 'cursor-default opacity-90',
         className,
       )}
       aria-label={`Editor Mode: ${reviewMode ? 'Reviewing' : 'Editing'}`}
       title={reviewMode ? 'Reviewing mode' : 'Editing mode'}
     >
-      <OverleafPenIcon className={cn('size-3.5 shrink-0', reviewMode ? 'text-amber-600 dark:text-amber-400' : 'text-foreground')} />
+      <OverleafPenIcon className={cn('size-3.5 shrink-0', reviewMode ? 'text-warning' : 'text-foreground')} />
       <span className="text-12 font-medium hidden sm:inline">{reviewMode ? 'Reviewing' : 'Editing'}</span>
       {isReviewerOnly ? (
-        <Lock className="size-2.5 shrink-0 text-amber-500" />
+        <Lock className="size-2.5 shrink-0 text-warning" />
       ) : (
         <OverleafCaretDownIcon className="h-2 w-auto opacity-70 shrink-0" />
       )}
@@ -86,7 +86,7 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
         <DropdownMenuItem
           onClick={() => onSelectMode('editing')}
           className={cn(
-            'flex items-start gap-2.5 p-2 rounded-md cursor-pointer transition-colors outline-none',
+            'flex items-start gap-2.5 p-2 rounded-md cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary',
             !reviewMode
               ? 'bg-muted text-foreground font-medium'
               : 'hover:bg-muted text-foreground/90',
@@ -106,7 +106,7 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
         <DropdownMenuItem
           onClick={() => onSelectMode('reviewing')}
           className={cn(
-            'flex items-start gap-2.5 p-2 mt-1 rounded-md cursor-pointer transition-colors outline-none',
+            'flex items-start gap-2.5 p-2 mt-1 rounded-md cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary',
             reviewMode
               ? 'bg-muted text-foreground font-medium'
               : 'hover:bg-muted text-foreground/90',

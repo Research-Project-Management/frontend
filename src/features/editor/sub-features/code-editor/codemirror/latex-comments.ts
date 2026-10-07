@@ -10,7 +10,7 @@
 import { StateField, RangeSet, StateEffect, Extension } from '@codemirror/state';
 import { Decoration, DecorationSet, EditorView } from '@codemirror/view';
 import type { PageComment } from '@/features/editor/types';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 
 export const setCommentsEffect = StateEffect.define<{
   comments: PageComment[];
@@ -90,7 +90,8 @@ export const commentClickHandler = EditorView.domEventHandlers({
     if (highlight) {
       const commentId = highlight.getAttribute('data-comment-id');
       if (commentId) {
-        EditorEventBus.emit('flux:open-panel', {
+        editorCommandBus.dispatch({
+          type: 'sidebar:open-panel',
           panel: 'Review',
           commentId,
         });

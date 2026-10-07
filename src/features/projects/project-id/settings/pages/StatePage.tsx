@@ -230,11 +230,11 @@ export default function StatePage() {
         <PageHeader title="States" icon={CircleDot} />
         <PageContent maxWidth="md">
           <div className="space-y-4">
-            <Skeleton className="h-8 w-48 rounded-md" />
-            <Skeleton className="h-4 w-96 rounded-md" />
+            <Skeleton className="h-8 w-48 rounded-md motion-reduce:animate-none" />
+            <Skeleton className="h-4 w-96 rounded-md motion-reduce:animate-none" />
             <div className="pt-4 space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-20 w-full rounded-lg" />
+                <Skeleton key={i} className="h-20 w-full rounded-lg motion-reduce:animate-none" />
               ))}
             </div>
           </div>
@@ -267,7 +267,7 @@ export default function StatePage() {
                     <button
                       type="button"
                       onClick={() => toggleGroup(groupKey)}
-                      className="flex items-center gap-2 group/title select-none text-left cursor-pointer"
+                      className="flex items-center gap-2 group/title select-none text-left cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -ml-1"
                     >
                       <span className="text-muted-foreground/80 group-hover/title:text-foreground transition-colors">
                         {isCollapsed ? (
@@ -286,7 +286,7 @@ export default function StatePage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleStartAdd(groupKey)}
-                      className="size-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-md cursor-pointer"
+                      className="relative size-7 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-md cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1.5 md:before:hidden"
                       aria-label={`Add state to ${groupConfig.label}`}
                     >
                       <Plus className="size-4" />
@@ -306,12 +306,12 @@ export default function StatePage() {
                                 <PopoverTrigger asChild>
                                   <button
                                     type="button"
-                                    className="size-7 rounded-md shrink-0 border border-border/70 hover:scale-105 transition-transform cursor-pointer"
+                                    className="relative size-7 rounded-md shrink-0 border border-border/70 hover:scale-105 transition-transform cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
                                     style={{ backgroundColor: inlineColor }}
                                     aria-label="Pick state color"
                                   />
                                 </PopoverTrigger>
-                                <PopoverContent className="w-48 p-2.5" align="start">
+                                <PopoverContent className="w-48 p-2.5 shadow-overlay" align="start">
                                   <div className="grid grid-cols-4 gap-2">
                                     {STATE_PALETTE.map((c) => {
                                       const isSelected = inlineColor?.toLowerCase() === c.value.toLowerCase();
@@ -323,7 +323,7 @@ export default function StatePage() {
                                             setInlineColor(c.value);
                                             setIsColorPickerOpen(false);
                                           }}
-                                          className="size-7 rounded-md flex items-center justify-center border border-border cursor-pointer hover:scale-110 transition-transform"
+                                          className="relative size-7 rounded-md flex items-center justify-center border border-border cursor-pointer hover:scale-110 transition-transform focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
                                           style={{ backgroundColor: c.value }}
                                           aria-label={c.label}
                                         >
@@ -347,7 +347,7 @@ export default function StatePage() {
                                 className={`h-8 text-13 font-medium bg-background ${
                                   inlineError
                                     ? 'border-destructive focus-visible:ring-1 focus-visible:ring-destructive'
-                                    : 'border-border/80 focus-visible:ring-1 focus-visible:ring-primary'
+                                    : 'border-border/80 focus-visible:ring-1 focus-visible:ring-ring'
                                 }`}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') handleCreateInline(groupKey);
@@ -368,20 +368,20 @@ export default function StatePage() {
                             onChange={(e) => setInlineDescription(e.target.value)}
                             placeholder="Describe this state for your members"
                             rows={2}
-                            className="w-full px-3 py-2 text-12 rounded-md border border-border/80 bg-background text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary resize-none"
+                            className="w-full px-3 py-2 text-13 rounded-md border border-border/80 bg-background text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
                             onKeyDown={(e) => {
                               if (e.key === 'Escape') setAddingGroup(null);
                             }}
                           />
 
-                          {/* Bottom row: Cancel & Create action buttons (Create is NOT dimmed/disabled) */}
+                          {/* Bottom row: Cancel & Create action buttons */}
                           <div className="flex items-center justify-end gap-2 pt-0.5">
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
                               onClick={() => setAddingGroup(null)}
-                              className="h-7 px-3 text-xs font-medium rounded-md border-border/80 cursor-pointer"
+                              className="relative h-8 px-3 text-12 font-medium rounded-md border-border/80 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
                             >
                               Cancel
                             </Button>
@@ -389,7 +389,7 @@ export default function StatePage() {
                               type="button"
                               size="sm"
                               onClick={() => handleCreateInline(groupKey)}
-                              className="h-7 px-3.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                              className="relative h-8 px-3.5 text-12 font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary-hover cursor-pointer shadow-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
                             >
                               {isMutating ? 'Creating...' : 'Create'}
                             </Button>
@@ -399,7 +399,7 @@ export default function StatePage() {
 
                       {/* State Items in this group */}
                       {groupStates.length === 0 && !isAdding ? (
-                        <div className="py-2.5 text-center text-xs text-muted-foreground italic rounded-md">
+                        <div className="py-2.5 text-center text-13 text-muted-foreground italic rounded-md">
                           No states in this group.
                         </div>
                       ) : (
@@ -418,12 +418,12 @@ export default function StatePage() {
                                       <PopoverTrigger asChild>
                                         <button
                                           type="button"
-                                          className="size-7 rounded-md shrink-0 border border-border/70 hover:scale-105 transition-transform cursor-pointer"
+                                          className="relative size-7 rounded-md shrink-0 border border-border/70 hover:scale-105 transition-transform cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
                                           style={{ backgroundColor: editColor }}
                                           aria-label="Pick state color"
                                         />
                                       </PopoverTrigger>
-                                      <PopoverContent className="w-48 p-2.5" align="start">
+                                      <PopoverContent className="w-48 p-2.5 shadow-overlay" align="start">
                                         <div className="grid grid-cols-4 gap-2">
                                           {STATE_PALETTE.map((c) => {
                                             const isSelected = editColor?.toLowerCase() === c.value.toLowerCase();
@@ -435,7 +435,7 @@ export default function StatePage() {
                                                   setEditColor(c.value);
                                                   setIsEditColorPickerOpen(false);
                                                 }}
-                                                className="size-7 rounded-md flex items-center justify-center border border-border cursor-pointer hover:scale-110 transition-transform"
+                                                className="relative size-7 rounded-md flex items-center justify-center border border-border cursor-pointer hover:scale-110 transition-transform focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
                                                 style={{ backgroundColor: c.value }}
                                                 aria-label={c.label}
                                               >
@@ -459,7 +459,7 @@ export default function StatePage() {
                                       className={`h-8 text-13 font-medium bg-background ${
                                         editError
                                           ? 'border-destructive focus-visible:ring-1 focus-visible:ring-destructive'
-                                          : 'border-border/80 focus-visible:ring-1 focus-visible:ring-primary'
+                                          : 'border-border/80 focus-visible:ring-1 focus-visible:ring-ring'
                                       }`}
                                       onKeyDown={(e) => {
                                         if (e.key === 'Enter') handleSaveEdit(s.id);
@@ -479,7 +479,7 @@ export default function StatePage() {
                                   onChange={(e) => setEditDescription(e.target.value)}
                                   placeholder="Describe this state for your members"
                                   rows={2}
-                                  className="w-full px-3 py-2 text-12 rounded-md border border-border/80 bg-background text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary resize-none"
+                                  className="w-full px-3 py-2 text-13 rounded-md border border-border/80 bg-background text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
                                 />
 
                                 <div className="flex items-center justify-end gap-2 pt-0.5">
@@ -488,7 +488,7 @@ export default function StatePage() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setEditingStateId(null)}
-                                    className="h-7 px-3 text-xs font-medium rounded-md border-border/80 cursor-pointer"
+                                    className="relative h-8 px-3 text-12 font-medium rounded-md border-border/80 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
                                   >
                                     Cancel
                                   </Button>
@@ -496,7 +496,7 @@ export default function StatePage() {
                                     type="button"
                                     size="sm"
                                     onClick={() => handleSaveEdit(s.id)}
-                                    className="h-7 px-3.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                                    className="relative h-8 px-3.5 text-12 font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary-hover cursor-pointer shadow-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
                                   >
                                     {isMutating ? 'Saving...' : 'Save'}
                                   </Button>
@@ -508,7 +508,7 @@ export default function StatePage() {
                           return (
                             <div
                               key={s.id}
-                              className="group/item flex items-center justify-between px-3.5 py-2.5 rounded-lg border border-border/60 bg-background hover:border-border transition-colors"
+                              className="group/item flex items-center justify-between px-3.5 py-2 min-h-10 rounded-lg border border-border/60 bg-background hover:border-border transition-colors"
                             >
                               {/* Left: State Icon + Title */}
                               <div className="flex items-center gap-2.5 min-w-0">
@@ -524,12 +524,12 @@ export default function StatePage() {
                               </div>
 
                               {/* Right: Actions on hover (neutral gray icons, no orange or red) */}
-                              <div className="flex items-center gap-1.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                              <div className="flex items-center gap-1.5 opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100 max-md:opacity-100 transition-opacity">
                                 {!s.isDefault && (
                                   <button
                                     type="button"
                                     onClick={() => handleSetDefault(s)}
-                                    className="text-xs text-muted-foreground hover:text-foreground mr-1.5 font-normal transition-colors cursor-pointer"
+                                    className="relative text-12 text-muted-foreground hover:text-foreground mr-1.5 font-normal transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 before:absolute before:-inset-1 md:before:hidden"
                                   >
                                     Mark as default
                                   </button>
@@ -537,7 +537,7 @@ export default function StatePage() {
                                 <button
                                   type="button"
                                   onClick={() => handleStartEdit(s)}
-                                  className="p-1 text-muted-foreground hover:text-foreground rounded-sm transition-colors cursor-pointer"
+                                  className="relative size-7 inline-flex items-center justify-center text-muted-foreground hover:text-foreground rounded-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1.5 md:before:hidden"
                                   aria-label="Edit state"
                                 >
                                   <Pencil className="size-3.5" />
@@ -546,7 +546,7 @@ export default function StatePage() {
                                   type="button"
                                   disabled={s.isDefault || states.length <= 1}
                                   onClick={() => handleOpenDeleteModal(s)}
-                                  className="p-1 text-muted-foreground hover:text-foreground rounded-sm transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                  className="relative size-7 inline-flex items-center justify-center text-muted-foreground hover:text-foreground rounded-md transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1.5 md:before:hidden"
                                   aria-label="Delete state"
                                 >
                                   <X className="size-3.5" />
@@ -572,17 +572,17 @@ export default function StatePage() {
           if (!open) setDeletingState(null);
         }}
       >
-        <DialogContent className="max-w-[480px] p-0 overflow-hidden border border-border rounded-lg">
+        <DialogContent className="max-w-[480px] p-0 overflow-hidden border border-border rounded-lg shadow-raised-200 bg-background">
           <div className="p-6">
             <DialogHeader className="flex flex-row items-start gap-3 space-y-0">
               <div className="size-10 rounded-full bg-destructive/10 text-destructive flex items-center justify-center shrink-0">
                 <AlertTriangle className="size-5 shrink-0" />
               </div>
               <div className="min-w-0">
-                <DialogTitle className="text-base font-semibold text-foreground">
+                <DialogTitle className="text-16 font-semibold text-foreground">
                   Delete Workflow State
                 </DialogTitle>
-                <DialogDescription className="mt-2 text-xs text-muted-foreground leading-relaxed">
+                <DialogDescription className="mt-1.5 text-13 text-muted-foreground leading-normal">
                   Are you sure you want to delete &ldquo;{deletingState?.name || deletingState?.title}&rdquo;?
                 </DialogDescription>
               </div>
@@ -590,14 +590,14 @@ export default function StatePage() {
 
             {deletingState && (itemCounts[deletingState.id] || 0) > 0 && (
               <div className="mt-4 p-3 rounded-md bg-destructive/5 border border-destructive/20 space-y-2.5">
-                <p className="text-xs text-foreground font-medium">
+                <p className="text-12 text-foreground font-medium">
                   This state contains <strong className="text-destructive font-semibold">{itemCounts[deletingState.id]}</strong> active work item(s).
                   Please choose a destination state to safely move them to:
                 </p>
                 <select
                   value={fallbackStateId}
                   onChange={(e) => setFallbackStateId(e.target.value)}
-                  className="w-full h-9 px-3 text-13 font-medium rounded-md border border-border bg-background text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  className="w-full h-8 px-2.5 text-13 font-medium rounded-md border border-border bg-background text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   {states
                     .filter((s) => s.id !== deletingState.id)
@@ -618,7 +618,7 @@ export default function StatePage() {
               size="sm"
               onClick={() => setDeletingState(null)}
               disabled={isMutating}
-              className="h-8 px-3.5 text-xs font-medium rounded-md"
+              className="relative h-8 px-3.5 text-12 font-medium rounded-md cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
             >
               Cancel
             </Button>
@@ -628,7 +628,7 @@ export default function StatePage() {
               size="sm"
               onClick={handleDeleteConfirm}
               disabled={isMutating}
-              className="h-8 px-4 text-xs font-medium rounded-md"
+              className="relative h-8 px-4 text-12 font-medium rounded-md cursor-pointer shadow-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
             >
               {isMutating ? 'Deleting...' : 'Delete State'}
             </Button>

@@ -25,6 +25,7 @@ import {
   Split,
   Info,
   SlidersHorizontal,
+  AlertTriangle,
 } from 'lucide-react';
 import type { Item } from '../../types/items.types';
 import { formatAcademicAuthors } from '../../utils/academic-text';
@@ -145,6 +146,11 @@ export function MergeModal({
     () => aggregateItemAssets(items),
     [items],
   );
+
+  const itemTypes = useMemo(() => {
+    return Array.from(new Set(items.map((i) => i.itemType).filter(Boolean)));
+  }, [items]);
+  const hasTypeMismatch = itemTypes.length > 1;
 
   // Filtered fields based on user toggle
   const visibleFields = useMemo(() => {
@@ -286,6 +292,18 @@ export function MergeModal({
             </div>
           </div>
         </DialogHeader>
+
+        {hasTypeMismatch && (
+          <div className="mx-6 mt-3 flex items-start gap-2 p-3 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-12">
+            <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+            <div className="space-y-0.5">
+              <p className="font-semibold">Items of different types cannot be merged</p>
+              <p className="text-11 text-muted-foreground leading-normal">
+                Selected items have different item types ({itemTypes.join(', ')}). In accordance with Zotero standards, change their item types to match before merging.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* ── Scrollable Body Workbench ─────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4 space-y-4">
@@ -562,8 +580,8 @@ export function MergeModal({
               type="button"
               size="sm"
               onClick={handleConfirmMerge}
-              disabled={isMerging || !masterPaper}
-              className="h-8 px-3 text-12 font-medium gap-1.5 rounded-md bg-primary text-primary-foreground shadow-none hover:bg-primary/90"
+              disabled={isMerging || !masterPaper || hasTypeMismatch}
+              className="h-8 px-3 text-12 font-medium gap-1.5 rounded-md bg-primary text-primary-foreground shadow-none hover:bg-primary/90 disabled:opacity-50"
             >
               {isMerging ? (
                 <Loader2 className="size-3.5 animate-spin shrink-0" />

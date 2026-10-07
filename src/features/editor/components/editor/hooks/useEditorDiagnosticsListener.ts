@@ -14,7 +14,7 @@
 import React, { useEffect } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { toast } from 'sonner';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import { manuscriptService } from '@/features/editor/services/manuscript.service';
 import { runLatexLinter, type RetractedItemInfo } from '@/features/editor/utils/latex-linter.util';
 
@@ -28,7 +28,7 @@ export function useEditorDiagnosticsListener({
   retractedMapRef,
 }: UseEditorDiagnosticsListenerOptions) {
   useEffect(() => {
-    const unsubAutoFix = EditorEventBus.on('flux:autofix', async () => {
+    const unsubAutoFix = editorCommandBus.subscribe('editor:autofix', async () => {
       const view = viewRef.current;
       if (!view) return;
       const content = view.state.doc.toString();
@@ -51,7 +51,7 @@ export function useEditorDiagnosticsListener({
       }
     });
 
-    const unsubLint = EditorEventBus.on('flux:lint-page', async () => {
+    const unsubLint = editorCommandBus.subscribe('editor:lint-project', async () => {
       const view = viewRef.current;
       if (!view) return;
       const content = view.state.doc.toString();

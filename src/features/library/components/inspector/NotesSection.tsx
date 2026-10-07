@@ -232,7 +232,7 @@ export default function NotesSection({
             <button
               type="button"
               onClick={() => setIsAdding(true)}
-              className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden"
               title="Add note"
               aria-label="Add note"
             >
@@ -277,7 +277,7 @@ export default function NotesSection({
       {potentialCommentText && !hasCommentInNotes && canEdit && (
         <div className="flex items-center justify-between gap-2 p-2 bg-muted/40 rounded-md border border-border/50 text-xs">
           <div className="space-y-0.5 min-w-0 flex-1">
-            <span className="text-[10px] font-medium text-muted-foreground block">
+            <span className="text-10 font-medium text-muted-foreground block">
               Publication Comment
             </span>
             <p className="text-11 text-foreground/80 line-clamp-1 italic select-text">
@@ -289,7 +289,7 @@ export default function NotesSection({
             variant="outline"
             size="sm"
             onClick={handleConvertCommentToNote}
-            className="h-6 text-[10px] shrink-0 font-normal px-2 gap-1 cursor-pointer"
+            className="h-6 text-10 shrink-0 font-normal px-2 gap-1 cursor-pointer"
             title="Convert publication comment to a research note"
           >
             <Plus className="size-3" />
@@ -376,7 +376,7 @@ export default function NotesSection({
                           e.stopPropagation();
                           onNavigateToAnnotation(pageNum);
                         }}
-                        className="text-10 font-medium text-primary hover:underline px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 shrink-0 cursor-pointer"
+                        className="text-10 font-medium text-primary hover:underline px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 shrink-0 cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden"
                         title={`Jump to page ${pageNum}`}
                       >
                         p. {pageNum}
@@ -387,7 +387,7 @@ export default function NotesSection({
                 })()}
               </div>
 
-              {/* Minus circle button on hover */}
+              {/* Minus circle button on hover / mobile visible */}
               {canEdit && (
                 <button
                   type="button"
@@ -402,7 +402,7 @@ export default function NotesSection({
                       deleteNote(n.id, target?.version);
                     }
                   }}
-                  className="invisible group-hover/note:visible size-5 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0"
+                  className="invisible group-hover/note:visible max-md:visible size-5 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0 relative before:absolute before:-inset-2.5 md:before:hidden"
                   title="Delete note"
                   aria-label="Delete note"
                 >

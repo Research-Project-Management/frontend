@@ -13,12 +13,23 @@ import {
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useIntegrations } from '@/features/integrations/hooks/use-integrations';
+import { useIntegrations } from '@/features/settings/hooks/use-integrations';
 import { useGithubSync } from '../../hooks/use-github-sync';
 import { GitHubIcon } from '@/shared/components/icons';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { Input } from '@/shared/components/ui/input';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/shared/components/ui/alert-dialog';
 import {
   Select,
   SelectContent,
@@ -49,6 +60,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
 
   const [isCreatingNew, setIsCreatingNew] = useState<boolean>(false);
   const [showChangeRepo, setShowChangeRepo] = useState<boolean>(false);
+  const [isPullConfirmOpen, setIsPullConfirmOpen] = useState<boolean>(false);
 
   const {
     linkData,
@@ -160,7 +172,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
             disabled={isConnecting}
             className="gap-2 shrink-0 cursor-pointer"
           >
-            {isConnecting && <RefreshCw className="size-3.5 animate-spin" />}
+            {isConnecting && <RefreshCw className="size-3.5 animate-spin motion-reduce:animate-none" />}
             <GitHubIcon className="size-4" />
             Connect GitHub
           </Button>
@@ -257,7 +269,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                 className="gap-2 w-full h-8 text-xs cursor-pointer"
               >
                 {pushMutation.isPending ? (
-                  <RefreshCw className="size-3.5 animate-spin" />
+                  <RefreshCw className="size-3.5 animate-spin motion-reduce:animate-none" />
                 ) : (
                   <GitCommit className="size-3.5" />
                 )}
@@ -269,7 +281,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
             <div className="p-4 rounded-md border border-border bg-card flex flex-col justify-between space-y-3">
               <div>
                 <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                  <Download className="size-3.5 text-emerald-500" />
+                  <Download className="size-3.5 text-primary" />
                   <span>Pull from GitHub</span>
                 </div>
                 <p className="text-11 text-muted-foreground mt-1">
@@ -279,20 +291,12 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      'Are you sure you want to pull from GitHub? This will update project files with remote changes.',
-                    )
-                  ) {
-                    pullMutation.mutate({ branch: linkedRepo.branch || 'main' });
-                  }
-                }}
+                onClick={() => setIsPullConfirmOpen(true)}
                 disabled={pullMutation.isPending}
-                className="gap-2 w-full h-8 text-xs cursor-pointer border-border"
+                className="gap-2 w-full h-8 text-xs cursor-pointer border-border motion-reduce:transition-none"
               >
                 {pullMutation.isPending ? (
-                  <RefreshCw className="size-3.5 animate-spin" />
+                  <RefreshCw className="size-3.5 animate-spin motion-reduce:animate-none" />
                 ) : (
                   <GitPullRequest className="size-3.5" />
                 )}
@@ -331,7 +335,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                   value={selectedRepo}
                   onValueChange={(val) => setLinkValue('selectedRepo', val, { shouldValidate: true })}
                 >
-                  <SelectTrigger className="w-full h-8 text-xs bg-background">
+                  <SelectTrigger aria-label="Select GitHub repository" className="w-full h-8 text-xs bg-background">
                     <SelectValue placeholder={isLoadingRepos ? 'Loading repositories...' : 'Choose a repository'} />
                   </SelectTrigger>
                   <SelectContent className="max-h-56">
@@ -351,6 +355,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                 <label className="text-xs font-medium text-foreground">Branch</label>
                 <Input
                   {...registerLink('targetBranch')}
+                  aria-label="Target Branch"
                   placeholder="main"
                   className="h-8 text-xs bg-background"
                 />
@@ -366,7 +371,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                     variant="outline"
                     size="sm"
                     onClick={() => setShowChangeRepo(false)}
-                    className="h-8 text-xs cursor-pointer"
+                    className="h-8 text-xs cursor-pointer motion-reduce:transition-none"
                   >
                     Cancel
                   </Button>
@@ -375,9 +380,9 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                   type="submit"
                   size="sm"
                   disabled={!selectedRepo || linkMutation.isPending}
-                  className="h-8 text-xs gap-1.5 cursor-pointer"
+                  className="h-8 text-xs gap-1.5 cursor-pointer motion-reduce:transition-none"
                 >
-                  {linkMutation.isPending && <RefreshCw className="size-3.5 animate-spin" />}
+                  {linkMutation.isPending && <RefreshCw className="size-3.5 animate-spin motion-reduce:animate-none" />}
                   Link Repository
                 </Button>
               </div>
@@ -391,6 +396,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                 <label className="text-xs font-medium text-foreground">Repository Name</label>
                 <Input
                   {...registerCreate('newRepoName')}
+                  aria-label="New Repository Name"
                   placeholder="paper-manuscript"
                   className="h-8 text-xs bg-background"
                 />
@@ -400,14 +406,12 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
               </div>
 
               <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
+                <Checkbox
                   id="private-repo-check"
                   checked={newRepoPrivate}
-                  onChange={(e) => setCreateValue('newRepoPrivate', e.target.checked)}
-                  className="size-3.5 rounded border-border cursor-pointer accent-primary"
+                  onCheckedChange={(checked) => setCreateValue('newRepoPrivate', Boolean(checked))}
                 />
-                <label htmlFor="private-repo-check" className="text-xs text-foreground cursor-pointer">
+                <label htmlFor="private-repo-check" className="text-xs text-foreground cursor-pointer select-none">
                   Private repository (recommended)
                 </label>
               </div>
@@ -419,7 +423,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                     variant="outline"
                     size="sm"
                     onClick={() => setShowChangeRepo(false)}
-                    className="h-8 text-xs cursor-pointer"
+                    className="h-8 text-xs cursor-pointer motion-reduce:transition-none"
                   >
                     Cancel
                   </Button>
@@ -428,9 +432,9 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                   type="submit"
                   size="sm"
                   disabled={createAndLinkMutation.isPending}
-                  className="h-8 text-xs gap-1.5 cursor-pointer"
+                  className="h-8 text-xs gap-1.5 cursor-pointer motion-reduce:transition-none"
                 >
-                  {createAndLinkMutation.isPending && <RefreshCw className="size-3.5 animate-spin" />}
+                  {createAndLinkMutation.isPending && <RefreshCw className="size-3.5 animate-spin motion-reduce:animate-none" />}
                   <Plus className="size-3.5" />
                   Create & Link
                 </Button>
@@ -439,6 +443,32 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
           )}
         </div>
       )}
+
+      {/* Pull Confirmation Dialog */}
+      <AlertDialog open={isPullConfirmOpen} onOpenChange={setIsPullConfirmOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Pull changes from GitHub?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              This will update your project files with remote commits from branch{' '}
+              <code className="text-foreground font-mono">{linkedRepo?.branch || 'main'}</code>.
+              Make sure your work is saved before pulling.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="h-8 text-xs"
+              onClick={() => {
+                setIsPullConfirmOpen(false);
+                pullMutation.mutate({ branch: linkedRepo?.branch || 'main' });
+              }}
+            >
+              Pull Changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/shared/components/ui";
 import { Button } from "@/shared/components/ui";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 
 export interface DeleteModalProps {
   open: boolean;
@@ -37,7 +37,7 @@ export default function DeleteModal({
     <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="max-w-[480px] p-6 bg-popover border border-border rounded-lg"
+        className="max-w-[480px] p-6 bg-popover border border-border rounded-lg shadow-raised-200"
       >
         <DialogHeader className="flex flex-row items-start gap-4 space-y-0">
           <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
@@ -45,10 +45,10 @@ export default function DeleteModal({
           </div>
 
           <div className="min-w-0 flex-1">
-            <DialogTitle className="text-base font-semibold text-foreground">
+            <DialogTitle className="text-16 font-semibold text-foreground">
               {title}
             </DialogTitle>
-            <DialogDescription className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+            <DialogDescription className="mt-1.5 text-13 text-muted-foreground leading-relaxed">
               {description}
             </DialogDescription>
           </div>
@@ -60,7 +60,7 @@ export default function DeleteModal({
             variant="outline"
             onClick={onCancel}
             disabled={isConfirmLoading}
-            className="cursor-pointer text-foreground hover:bg-muted h-9 px-4 text-xs font-medium"
+            className="cursor-pointer text-foreground hover:bg-muted h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             {cancelText}
           </Button>
@@ -70,9 +70,10 @@ export default function DeleteModal({
             variant="destructive"
             onClick={onConfirm}
             disabled={isConfirmLoading}
-            className="cursor-pointer h-9 px-4 text-xs font-medium"
+            className="cursor-pointer h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring inline-flex items-center gap-1.5"
           >
-            {isConfirmLoading ? "Deleting..." : confirmText}
+            {isConfirmLoading && <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none shrink-0" />}
+            <span>{isConfirmLoading ? "Deleting..." : confirmText}</span>
           </Button>
         </DialogFooter>
       </DialogContent>

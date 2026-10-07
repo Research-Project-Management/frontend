@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Button } from "@/shared/components/ui/button";
-import { Trash2, AlertTriangle } from "lucide-react";
+import { Trash2, AlertTriangle, Loader2 } from "lucide-react";
 
 interface DeleteModalProps {
   open: boolean;
@@ -32,7 +32,7 @@ export function DeleteModal({
       <DialogContent
         showCloseButton={false}
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="max-w-[440px] p-0 overflow-hidden rounded-lg border border-border bg-popover"
+        className="max-w-[440px] p-0 overflow-hidden rounded-md shadow-raised-200 border border-border bg-popover"
       >
         <div className="p-6">
           <DialogHeader className="flex flex-row items-start gap-4 space-y-0">
@@ -40,8 +40,8 @@ export function DeleteModal({
               <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
             </div>
             <div className="min-w-0">
-              <DialogTitle className="text-base font-semibold text-foreground">Remove Quicklink?</DialogTitle>
-              <DialogDescription className="mt-1 text-sm text-muted-foreground leading-relaxed">
+              <DialogTitle className="text-16 font-semibold text-foreground">Remove Quicklink?</DialogTitle>
+              <DialogDescription className="mt-1 text-13 text-muted-foreground leading-relaxed">
                 {description}
               </DialogDescription>
             </div>
@@ -54,7 +54,7 @@ export function DeleteModal({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="h-9 px-4 text-xs font-medium cursor-pointer"
+              className="relative h-8 px-4 text-13 font-medium shadow-none cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
             >
               Cancel
             </Button>
@@ -66,11 +66,16 @@ export function DeleteModal({
                 onConfirm();
               }}
               disabled={isDeleting}
-              className="h-9 px-6 text-sm font-medium shadow-none transition-all active:scale-95 cursor-pointer"
+              className="relative h-8 px-4 text-13 font-medium shadow-none transition-colors cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
             >
-              {isDeleting ? "Deleting..." : (
+              {isDeleting ? (
                 <>
-                  <Trash2 className="size-3.5 mr-1 shrink-0" />
+                  <Loader2 className="size-3.5 mr-1.5 animate-spin motion-reduce:animate-none shrink-0" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="size-3.5 mr-1.5 shrink-0" />
                   Delete
                 </>
               )}

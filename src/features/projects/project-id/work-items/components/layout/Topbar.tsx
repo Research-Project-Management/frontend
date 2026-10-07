@@ -213,7 +213,7 @@ export function Topbar({
         {showArchived && (
           <>
             <ChevronRight className="size-3.5 text-muted-foreground/40 shrink-0 mx-0.5" strokeWidth={1.75} />
-            <span className="text-13 font-medium text-amber-600 dark:text-amber-400 shrink-0">
+            <span className="text-13 font-medium text-warning shrink-0">
               Archived
             </span>
           </>
@@ -241,7 +241,7 @@ export function Topbar({
                       aria-selected={isSelected}
                       onClick={() => onViewChange(v.id)}
                       className={cn(
-                        'relative size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                        'relative size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden',
                         isSelected ? 'text-foreground' : 'text-foreground/70 hover:text-foreground hover:bg-background/40',
                       )}
                       aria-label={v.label}
@@ -321,7 +321,7 @@ export function Topbar({
             type="button"
             size="sm"
             onClick={onOpenAnalytics}
-            className="h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shrink-0"
+            className="relative h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
             aria-label="Analytics"
           >
             <span>Analytics</span>
@@ -331,12 +331,11 @@ export function Topbar({
         {/* Primary Action (+ Add Work Item) */}
         {!isReadOnly && (
           <div className="flex items-center gap-1.5 shrink-0">
-
             <Button
               type="button"
               size="sm"
               onClick={handleAdd}
-              className="h-8 px-3 text-13 font-medium bg-primary text-primary-foreground hover:bg-primary-hover rounded-md cursor-pointer transition-colors shadow-none shrink-0"
+              className="relative h-8 px-3 text-13 font-medium bg-primary text-primary-foreground hover:bg-primary-hover rounded-md cursor-pointer transition-colors shadow-none shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
             >
               <span>Add work item</span>
             </Button>

@@ -1,68 +1,6 @@
 'use client';
 
 import React from 'react';
-import {
-  Search,
-  Home,
-  Settings,
-  Check,
-  CheckCircle,
-  Heart,
-  Plus,
-  Trash2,
-  ArrowLeft,
-  Star,
-  LogOut,
-  PlusCircle,
-  XCircle,
-  ChevronDown,
-  MoreVertical,
-  CheckSquare,
-  ExternalLink,
-  RefreshCw,
-  ArrowRight,
-  Circle,
-  MoreHorizontal,
-  LayoutGrid,
-  Target,
-  Download,
-  Minus,
-  Zap,
-  ArrowUp,
-  AlignLeft,
-  Key,
-  Folder,
-  FileText,
-  Bookmark,
-  Calendar,
-  Clock,
-  Compass,
-  Cpu,
-  Database,
-  Flame,
-  Globe,
-  Hash,
-  Layers,
-  Link as LinkIcon,
-  Lock,
-  Mail,
-  MapPin,
-  MessageSquare,
-  Moon,
-  Package,
-  Paperclip,
-  Radio,
-  Send,
-  Share2,
-  Shield,
-  Sun,
-  Tag,
-  Terminal,
-  User,
-  Users,
-  type LucideIcon,
-} from 'lucide-react';
-import { Avatar } from "@/shared/components/ui";
 import { IconPicker, ProjectAvatar } from "@/shared/components/icons";
 import { CoverModal } from './CoverModal';
 
@@ -115,23 +53,24 @@ export function GeneralBanner({
           <IconPicker currentValue={avatar} onSelect={onSelectAvatar}>
             <button
               type="button"
-              className="cursor-pointer group relative block shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              aria-label="Change project icon"
+              className="cursor-pointer group relative block shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1.5 md:before:hidden"
               title="Change emoji or icon"
             >
               <div className="size-14 rounded-lg border-2 border-border bg-background flex items-center justify-center overflow-hidden">
                 <ProjectAvatar avatar={avatar} name={name} size="2xl" />
               </div>
-              <div className="absolute inset-0 rounded-lg bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs text-white font-medium">
+              <div className="absolute inset-0 rounded-lg bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center text-12 text-white font-medium">
                 Edit
               </div>
             </button>
           </IconPicker>
 
           <div className="min-w-0 text-white">
-            <h2 className="text-base font-semibold truncate leading-tight tracking-tight">
+            <h2 className="text-16 font-semibold truncate leading-tight tracking-tight">
               {name || 'Untitled project'}
             </h2>
-            <p className="text-xs text-white/85 font-medium mt-0.5 tracking-wide">
+            <p className="text-12 text-white/85 font-medium mt-0.5 tracking-wide">
               {displayId}
             </p>
           </div>
@@ -146,7 +85,7 @@ export function GeneralBanner({
         >
           <button
             type="button"
-            className="h-8 px-3 rounded-md border border-border bg-background/90 hover:bg-background text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0"
+            className="relative h-8 px-3 rounded-md border border-border bg-background/90 hover:bg-background text-foreground text-12 font-medium flex items-center gap-1.5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0 before:absolute before:-inset-1 md:before:hidden"
           >
             <span>Change cover</span>
           </button>

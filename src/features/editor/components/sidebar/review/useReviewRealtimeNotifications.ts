@@ -11,7 +11,7 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 
 export interface UseReviewRealtimeNotificationsOptions {
   pageId?: string;
@@ -59,7 +59,7 @@ export function useReviewRealtimeNotifications({
       }
     };
 
-    const unsub = EditorEventBus.on('flux:review-event', ({ pageId: evtPageId, event, payload }) => {
+    const unsub = editorCommandBus.subscribe('editor:review-event', ({ pageId: evtPageId, event, payload }) => {
       if (evtPageId !== pageId) return;
       handleEvent(event, payload);
     });

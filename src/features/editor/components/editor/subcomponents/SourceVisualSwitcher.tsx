@@ -17,7 +17,7 @@ export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
       <TabsList className="h-7 p-0.5 bg-muted/80 border border-border/50 rounded-md">
         <TabsTrigger
           value="code"
-          className="h-6 px-2.5 text-12 font-medium data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-xs transition-all cursor-pointer rounded-xs"
+          className="h-6 px-2.5 text-12 font-medium data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all cursor-pointer rounded-sm"
           title="Source mode (LaTeX code) (Ctrl+Shift+V)"
           aria-label="Source mode"
         >
@@ -25,7 +25,7 @@ export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
         </TabsTrigger>
         <TabsTrigger
           value="visual"
-          className="h-6 px-2.5 text-12 font-medium data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-xs transition-all cursor-pointer rounded-xs"
+          className="h-6 px-2.5 text-12 font-medium data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all cursor-pointer rounded-sm"
           title="Visual mode (Ctrl+Shift+V)"
           aria-label="Visual mode"
         >

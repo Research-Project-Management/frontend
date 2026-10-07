@@ -1,11 +1,6 @@
 /**
- * pdf-viewer/index.ts
- *
- * Public API for PDF Viewer sub-domain.
+ * @deprecated Use `@/features/editor/ui/features/preview` instead.
+ * All sub-features/ have been eliminated in favor of canonical ui/ architecture.
  */
 
-export * from './components/PdfToolbar';
-export * from './components/PdfPaginationControls';
-export * from './components/PdfZoomControls';
-export * from './components/PdfFindBar';
-export * from './hooks/use-pdf-search';
+export * from '../../ui/features/preview';

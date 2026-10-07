@@ -396,14 +396,14 @@ export function WordCountDialog({
               Word Count
             </DialogTitle>
             {loading && (
-              <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+              <Loader2 className="size-3.5 animate-spin text-muted-foreground motion-reduce:animate-none" />
             )}
           </div>
           <DialogClose asChild>
             <button
               type="button"
               onClick={onClose}
-              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-foreground focus:outline-hidden transition-colors cursor-pointer"
+              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer"
               aria-label="Close"
             >
               <X className="size-4" strokeWidth={1.5} />
@@ -424,7 +424,7 @@ export function WordCountDialog({
             <TabsList className="grid grid-cols-3 h-8 p-0.5 bg-muted/60 border border-border/50 rounded-md">
               <TabsTrigger
                 value="document"
-                className="text-12 gap-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs transition-all font-medium truncate"
+                className="text-12 gap-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all font-medium truncate"
               >
                 <FileText className="size-3.5 shrink-0" strokeWidth={1.5} />
                 <span className="truncate">{activeFileName || 'Document'}</span>
@@ -432,7 +432,7 @@ export function WordCountDialog({
 
               <TabsTrigger
                 value="project"
-                className="text-12 gap-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs transition-all font-medium"
+                className="text-12 gap-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all font-medium"
               >
                 <Files className="size-3.5 shrink-0" strokeWidth={1.5} />
                 <span>Project</span>
@@ -441,12 +441,12 @@ export function WordCountDialog({
               <TabsTrigger
                 value="selection"
                 disabled={!hasSelection}
-                className="text-12 gap-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs transition-all disabled:opacity-40 font-medium"
+                className="text-12 gap-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all disabled:opacity-40 font-medium"
               >
                 <MousePointer className="size-3.5 shrink-0" strokeWidth={1.5} />
                 <span>Selection</span>
                 {hasSelection && (
-                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse ml-0.5" />
+                  <span className="size-1.5 rounded-full bg-primary animate-pulse motion-reduce:animate-none ml-0.5" />
                 )}
               </TabsTrigger>
             </TabsList>

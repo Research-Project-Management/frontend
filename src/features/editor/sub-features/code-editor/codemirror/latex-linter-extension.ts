@@ -2,19 +2,21 @@
  * latex-linter-extension.ts
  *
  * CodeMirror 6 Linter Extension for LaTeX syntax checking, retracted citations,
- * and TeX compiler diagnostics.
+ * and TeX compiler diagnostics with interval-indexed file partitioning.
  */
 
 import { lintGutter, linter, type Diagnostic } from '@codemirror/lint';
 import type { EditorView } from '@codemirror/view';
 import { runLatexLinter, type RetractedItemInfo } from '../../../utils/latex-linter.util';
 import { editorCommandBus } from '../../../core/command-bus/editor-command-bus';
+import { diagnosticsCoordinator } from '../../../core/coordinators/diagnostics.coordinator';
 import type { CompileError } from '../../../types/compiler.types';
 
 export function createLatexLinterExtension(
   getRetractedMap?: () => Map<string, RetractedItemInfo> | undefined,
   getCompilerErrors?: () => CompileError[] | undefined,
   isCodeCheckEnabled?: () => boolean,
+  getFilePath?: () => string | undefined,
 ) {
   return [
     lintGutter({
@@ -84,8 +86,23 @@ export function createLatexLinterExtension(
         }
 
         // 2. Real LaTeX Compiler Diagnostics (TeX Engine: pdflatex / xelatex / lualatex)
-        const compilerErrors = getCompilerErrors?.() || [];
-        for (const err of compilerErrors) {
+        const currentFile = getFilePath?.();
+        const indexedErrors = currentFile ? diagnosticsCoordinator.getDiagnosticsForFile(currentFile) : [];
+
+        // Fallback to raw compilerErrors if coordinator has not ingested yet
+        const rawErrors = getCompilerErrors?.() || [];
+        const effectiveErrors = indexedErrors.length > 0
+          ? indexedErrors
+          : rawErrors.filter((err) => {
+              if (!currentFile || !err.file) return true;
+              return (
+                err.file === currentFile ||
+                currentFile.endsWith(`/${err.file}`) ||
+                err.file.endsWith(`/${currentFile}`)
+              );
+            });
+
+        for (const err of effectiveErrors) {
           const lineNum = err.line ? Math.min(Math.max(1, err.line), doc.lines) : 1;
           const line = doc.line(lineNum);
 

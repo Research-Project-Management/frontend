@@ -292,7 +292,7 @@ export const TexFileRow = React.memo(function TexFileRow({
             e.stopPropagation();
             onDelete(file.id);
           }}
-          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none transition-colors"
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors"
         >
           <Trash2 className="size-4 shrink-0" strokeWidth={1.5} />
           <span>Delete</span>
@@ -362,7 +362,7 @@ export const TexFileRow = React.memo(function TexFileRow({
             e.stopPropagation();
             onDelete(file.id);
           }}
-          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none transition-colors"
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors"
         >
           <Trash2 className="size-4 shrink-0" strokeWidth={1.5} />
           <span>Delete</span>

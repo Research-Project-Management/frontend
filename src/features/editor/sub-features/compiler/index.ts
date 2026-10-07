@@ -1,8 +1,7 @@
 /**
- * compiler/index.ts
- *
- * Public API for Compiler sub-domain.
+ * @deprecated Use `@/features/editor/ui/features/preview` instead.
+ * All sub-features have been eliminated in favor of canonical ui/ architecture.
  */
 
-export * from './components/CompileButton';
-export * from './hooks/use-pdf-compiler';
+export { CompileButton } from '../../ui/features/preview/CompileButton';
+export { usePdfCompiler } from '../../ui/features/preview/hooks/use-pdf-compiler';

@@ -109,12 +109,12 @@ export function ManageProjectTagsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md p-6 bg-card border-border">
-        <DialogTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+      <DialogContent className="max-w-md p-6 bg-card border-border shadow-raised-200">
+        <DialogTitle className="flex items-center gap-2 text-16 font-semibold text-foreground">
           <Folder className="size-4 text-primary shrink-0" />
           <span>{project ? 'Manage Tags & Folders' : 'Create & Manage Tags'}</span>
         </DialogTitle>
-        <DialogDescription className="text-xs text-muted-foreground mt-1">
+        <DialogDescription className="text-13 text-muted-foreground mt-1">
           {project
             ? `Organize "${project.name}" by tagging it with topics, labs, or folders.`
             : 'Create tags to organize your manuscripts and research projects.'}
@@ -124,12 +124,12 @@ export function ManageProjectTagsModal({
           {/* Tag Checkbox List */}
           <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
             {isLoadingLabels ? (
-              <div className="flex items-center justify-center py-6 text-xs text-muted-foreground">
+              <div className="flex items-center justify-center py-6 text-12 text-muted-foreground">
                 <Loader2 className="size-4 animate-spin mr-2" />
                 <span>Loading tags...</span>
               </div>
             ) : labels.length === 0 ? (
-              <div className="text-center py-6 text-xs text-muted-foreground border border-dashed border-border rounded-lg p-4">
+              <div className="text-center py-6 text-12 text-muted-foreground border border-dashed border-border rounded-lg p-4">
                 <Tag className="size-6 mx-auto mb-1.5 opacity-40" />
                 <p className="font-medium text-foreground">No tags created yet</p>
                 <p className="mt-0.5 text-muted-foreground">
@@ -144,7 +144,7 @@ export function ManageProjectTagsModal({
                     key={label.id}
                     onClick={() => project && handleToggleTag(label.id)}
                     className={cn(
-                      'flex items-center justify-between px-3 py-2 rounded-md border text-xs transition-colors',
+                      'flex items-center justify-between px-3 py-2 rounded-md border text-12 transition-colors',
                       project
                         ? 'cursor-pointer hover:bg-muted/60'
                         : 'cursor-default',
@@ -176,8 +176,9 @@ export function ManageProjectTagsModal({
                     <button
                       type="button"
                       onClick={(e) => handleDeleteTag(label.id, e)}
-                      className="size-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0 ml-2"
+                      className="size-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0 ml-2 relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       title="Delete tag"
+                      aria-label={`Delete tag ${label.name}`}
                     >
                       <Trash2 className="size-3" />
                     </button>
@@ -194,36 +195,37 @@ export function ManageProjectTagsModal({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsCreating(true)}
-                className="w-full gap-1.5 text-xs cursor-pointer border-dashed"
+                className="w-full h-8 gap-1.5 text-12 font-medium cursor-pointer border-dashed relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <Plus className="size-3.5" />
                 <span>Create New Tag / Folder</span>
               </Button>
             ) : (
               <form onSubmit={handleCreateNewTag} className="space-y-3 p-3 bg-muted/40 rounded-lg border border-border">
-                <div className="text-xs font-medium text-foreground">New Tag Details</div>
+                <div className="text-12 font-medium text-foreground">New Tag Details</div>
                 <Input
                   autoFocus
                   placeholder="e.g., CVPR 2026, PhD Thesis, Grant..."
                   value={newTagName}
                   onChange={(e) => setNewTagName(e.target.value)}
-                  className="h-8 text-xs bg-background"
+                  className="h-8 text-13 bg-background focus-visible:ring-1 focus-visible:ring-ring"
                 />
 
                 {/* Color swatches */}
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-muted-foreground mr-1">Color:</span>
+                  <span className="text-12 text-muted-foreground mr-1">Color:</span>
                   {PRESET_COLORS.map((c) => (
                     <button
                       key={c.hex}
                       type="button"
                       onClick={() => setNewTagColor(c.hex)}
                       className={cn(
-                        'size-5 rounded-full transition-transform cursor-pointer shrink-0 flex items-center justify-center',
-                        newTagColor === c.hex && 'ring-2 ring-primary ring-offset-1 scale-110'
+                        'size-5 rounded-full transition-transform cursor-pointer shrink-0 flex items-center justify-center relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                        newTagColor === c.hex && 'ring-1 ring-primary ring-offset-1 scale-110'
                       )}
                       style={{ backgroundColor: c.hex }}
                       title={c.name}
+                      aria-label={`Select ${c.name} color`}
                     >
                       {newTagColor === c.hex && <Check className="size-2.5 text-white stroke-[3]" />}
                     </button>
@@ -239,7 +241,7 @@ export function ManageProjectTagsModal({
                       setIsCreating(false);
                       setNewTagName('');
                     }}
-                    className="h-7 text-xs cursor-pointer"
+                    className="h-7 px-2.5 text-12 font-medium cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   >
                     Cancel
                   </Button>
@@ -247,7 +249,7 @@ export function ManageProjectTagsModal({
                     type="submit"
                     size="sm"
                     disabled={!newTagName.trim() || createLabelMutation.isPending}
-                    className="h-7 text-xs cursor-pointer"
+                    className="h-7 px-2.5 text-12 font-medium cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   >
                     {createLabelMutation.isPending ? (
                       <Loader2 className="size-3 animate-spin mr-1" />
@@ -268,7 +270,7 @@ export function ManageProjectTagsModal({
             variant="outline"
             size="sm"
             onClick={onClose}
-            className="text-xs cursor-pointer"
+            className="h-8 px-3 text-12 font-medium cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             {project ? 'Cancel' : 'Close'}
           </Button>
@@ -277,7 +279,7 @@ export function ManageProjectTagsModal({
               size="sm"
               onClick={handleSave}
               disabled={assignLabelsMutation.isPending}
-              className="text-xs cursor-pointer"
+              className="h-8 px-3 text-12 font-medium cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               {assignLabelsMutation.isPending && (
                 <Loader2 className="size-3 animate-spin mr-1.5" />

@@ -29,7 +29,7 @@ const STATE_CONFIG: Record<
 > = {
   draft: { label: 'Draft', color: 'bg-muted text-muted-foreground' },
   planning: { label: 'Planning', color: 'bg-muted text-foreground' },
-  execution: { label: 'In Execution', color: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30' },
+  execution: { label: 'In Execution', color: 'bg-warning/10 text-warning border border-warning/30' },
   monitoring: { label: 'Monitoring', color: 'bg-muted text-foreground' },
   completed: { label: 'Completed', color: 'bg-success/10 text-success border border-success/30' },
   cancelled: { label: 'Cancelled', color: 'bg-muted text-muted-foreground line-through' },
@@ -39,8 +39,8 @@ const PRIORITY_CONFIG: Record<
   ProjectPriority,
   { label: string; color: string }
 > = {
-  urgent: { label: 'Urgent', color: 'text-destructive font-semibold' },
-  high: { label: 'High', color: 'text-amber-600 dark:text-amber-400 font-medium' },
+  urgent: { label: 'Urgent', color: 'text-destructive font-medium' },
+  high: { label: 'High', color: 'text-warning font-medium' },
   medium: { label: 'Medium', color: 'text-foreground font-medium' },
   low: { label: 'Low', color: 'text-muted-foreground font-normal' },
   none: { label: 'None', color: 'text-muted-foreground/60' },
@@ -71,17 +71,17 @@ export function ProjectPropertiesSidebar({
   return (
     <div className="rounded-xl border border-border bg-card p-5 flex flex-col gap-5">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold tracking-tight text-foreground">
+        <h3 className="text-13 font-semibold tracking-tight text-foreground">
           Project Details
         </h3>
-        <Button asChild variant="ghost" size="icon" className="size-7 text-muted-foreground">
+        <Button asChild variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-foreground cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
           <Link href={`/projects/${project.id}/settings`}>
             <Settings className="size-3.5" />
           </Link>
         </Button>
       </div>
 
-      <div className="flex flex-col gap-4 text-xs">
+      <div className="flex flex-col gap-4 text-12">
         {/* State */}
         <div className="flex items-center justify-between py-1 border-b border-border/40">
           <span className="text-muted-foreground font-medium flex items-center gap-1.5">
@@ -99,7 +99,7 @@ export function ProjectPropertiesSidebar({
           <span className="text-muted-foreground font-medium flex items-center gap-1.5">
             <Flag className="size-3.5" /> Priority
           </span>
-          <span className={`capitalize text-xs ${priorityMeta.color}`}>
+          <span className={`capitalize text-12 ${priorityMeta.color}`}>
             {priorityMeta.label}
           </span>
         </div>
@@ -111,12 +111,12 @@ export function ProjectPropertiesSidebar({
           </span>
           {currentUpdate ? (
             <span
-              className={`px-2 py-0.5 rounded-md font-semibold text-11 capitalize ${
+              className={`px-2 py-0.5 rounded-md font-medium text-11 capitalize ${
                 currentUpdate.status === 'on_track'
-                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                  ? 'bg-success/10 text-success'
                   : currentUpdate.status === 'at_risk'
-                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-                    : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                    ? 'bg-warning/10 text-warning'
+                    : 'bg-destructive/10 text-destructive'
               }`}
             >
               {currentUpdate.status.replace('_', ' ')}
@@ -198,7 +198,7 @@ export function ProjectPropertiesSidebar({
             </span>
             <Link
               href={`/projects/${project.id}/settings/members`}
-              className="text-11 text-primary hover:underline"
+              className="text-11 text-primary hover:underline relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               Manage
             </Link>

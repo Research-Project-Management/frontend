@@ -34,16 +34,16 @@ function getFileIcon(filename: string) {
     case 'ltx':
       return { icon: FileCode2, color: 'text-primary' };
     case 'bib':
-      return { icon: BookText, color: 'text-emerald-500' };
+      return { icon: BookText, color: 'text-foreground/85' };
     case 'cls':
     case 'sty':
-      return { icon: Braces, color: 'text-amber-500' };
+      return { icon: Braces, color: 'text-foreground/70' };
     case 'png':
     case 'jpg':
     case 'jpeg':
     case 'svg':
     case 'pdf':
-      return { icon: ImageIcon, color: 'text-blue-500' };
+      return { icon: ImageIcon, color: 'text-muted-foreground' };
     default:
       return { icon: FileText, color: 'text-muted-foreground' };
   }
@@ -51,8 +51,10 @@ function getFileIcon(filename: string) {
 
 export default function QuickOpenModal({ open, onOpenChange }: QuickOpenModalProps) {
   const params = useParams<{ pageId?: string; projectId?: string }>();
-  const { currentPage, setActiveFilePage, activeFilePage } = usePageStore();
-  const { openTab } = useTabsStore();
+  const currentPage = usePageStore((s) => s.currentPage);
+  const activeFilePage = usePageStore((s) => s.activeFilePage);
+  const setActiveFilePage = usePageStore((s) => s.setActiveFilePage);
+  const openTab = useTabsStore((s) => s.openTab);
   const rootId = currentPage?.id || params?.pageId;
 
   const { data: pageFiles = [] } = useQuery({

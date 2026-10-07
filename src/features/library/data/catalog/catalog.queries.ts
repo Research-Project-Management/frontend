@@ -295,7 +295,10 @@ export function useDetachItemFromCollectionMutation(scopeId?: string) {
     onSuccess: () => {
       invalidateCollections(queryClient, effectiveScope);
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      toast.success('Removed item from collection');
+      toast.success('Removed item from collection', {
+        description: 'Item remains safely in your library (now in Unfiled Items if not in other collections).',
+        id: 'detach-item',
+      });
     },
     onError: (err: any) => {
       toast.error('Failed to remove item from collection', {
@@ -316,7 +319,10 @@ export function useBatchDetachItemsMutation(scopeId?: string) {
     onSuccess: (_data, variables) => {
       invalidateCollections(queryClient, effectiveScope);
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      toast.success(`Removed ${variables.itemIds.length} item(s) from collection`);
+      toast.success(`Removed ${variables.itemIds.length} item(s) from collection`, {
+        description: 'Items remain safely in your library (now in Unfiled Items if not in other collections).',
+        id: 'batch-detach-items',
+      });
     },
     onError: (err: any) => {
       toast.error('Failed to remove items from collection', {
@@ -336,11 +342,15 @@ export function useViewItems(
   const targetScope = scopeId || 'user';
   return useQuery({
     queryKey: itemKeys.byView(targetScope, view, search),
-    queryFn: () =>
-      ItemService.getAll(targetScope, {
-        view,
-        search: search?.trim() || undefined,
-      }),
+    queryFn: ({ signal }) =>
+      ItemService.getAll(
+        targetScope,
+        {
+          view,
+          search: search?.trim() || undefined,
+        },
+        { signal },
+      ),
     enabled: true,
     select: (data) => {
       const items: Item[] = data?.items || [];
@@ -372,7 +382,7 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
 
   const allItemsQuery = useQuery({
     queryKey: itemKeys.all(targetScope),
-    queryFn: () => ItemService.getAll(targetScope),
+    queryFn: ({ signal }) => ItemService.getAll(targetScope, undefined, { signal }),
     enabled: options.enabled ?? true,
     select: (data) => {
       if (!data) return { items: [] as Item[], meta: null };
@@ -638,6 +648,55 @@ export function useItemTypes(scopeIdOrOptions?: string | { scopeId?: string; pro
   };
 }
 
+/**
+ * Safely patch an item inside TanStack Query cache across all formats:
+ * - Paginated list: { items: Item[], ... }
+ * - Infinite query: { pages: [{ items: Item[] }], pageParams: [] }
+ * - Raw array: Item[]
+ */
+function patchItemInCacheData(oldData: any, targetId: string, patch: Partial<Item>): any {
+  if (!oldData) return oldData;
+  if (Array.isArray(oldData.items)) {
+    return {
+      ...oldData,
+      items: oldData.items.map((it: Item) => (it.id === targetId ? { ...it, ...patch } : it)),
+    };
+  }
+  if (Array.isArray(oldData.pages)) {
+    return {
+      ...oldData,
+      pages: oldData.pages.map((page: any) => {
+        if (!page || !Array.isArray(page.items)) return page;
+        return {
+          ...page,
+          items: page.items.map((it: Item) => (it.id === targetId ? { ...it, ...patch } : it)),
+        };
+      }),
+    };
+  }
+  if (Array.isArray(oldData)) {
+    return oldData.map((it: Item) => (it.id === targetId ? { ...it, ...patch } : it));
+  }
+  return oldData;
+}
+
+/**
+ * Safely patch single item detail cache ({ item: Item, paper: Item } or Item)
+ */
+function patchSingleItemCache(oldData: any, patch: Partial<Item>): any {
+  if (!oldData) return oldData;
+  if (oldData.item) {
+    const updated = { ...oldData.item, ...patch };
+    return {
+      ...oldData,
+      ...updated,
+      item: updated,
+      paper: updated,
+    };
+  }
+  return { ...oldData, ...patch };
+}
+
 export function useItemState(scopeId?: string, itemId?: string | null) {
   const queryClient = useQueryClient();
   const effectiveScope = scopeId || 'user';
@@ -661,8 +720,15 @@ export function useItemState(scopeId?: string, itemId?: string | null) {
     onSuccess: (newData) => {
       if (effectiveItemId) {
         queryClient.setQueryData(itemKeys.state(effectiveScope, effectiveItemId), newData);
+        queryClient.setQueryData(
+          itemKeys.byId(effectiveScope, effectiveItemId),
+          (old: any) => patchSingleItemCache(old, newData as any),
+        );
+        queryClient.setQueriesData(
+          { queryKey: ['library', 'items', effectiveScope] },
+          (old) => patchItemInCacheData(old, effectiveItemId, newData as any),
+        );
       }
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       toast.success('Reading state updated', { id: 'library-reading-state' });
     },
     onError: (err: Error | { message?: string }) => {
@@ -678,8 +744,15 @@ export function useItemState(scopeId?: string, itemId?: string | null) {
     onSuccess: (newData) => {
       if (effectiveItemId) {
         queryClient.setQueryData(itemKeys.state(effectiveScope, effectiveItemId), newData);
+        queryClient.setQueryData(
+          itemKeys.byId(effectiveScope, effectiveItemId),
+          (old: any) => patchSingleItemCache(old, newData as any),
+        );
+        queryClient.setQueriesData(
+          { queryKey: ['library', 'items', effectiveScope] },
+          (old) => patchItemInCacheData(old, effectiveItemId, newData as any),
+        );
       }
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       toast.success('Marked as read', { id: 'library-reading-state' });
     },
     onError: (err: Error | { message?: string }) => {
@@ -713,7 +786,7 @@ export function useTrash(scopeId?: string) {
 
   const trashQuery = useQuery({
     queryKey: itemKeys.trash(effectiveScope),
-    queryFn: () => ItemService.getAll(effectiveScope, { view: 'trash' }),
+    queryFn: ({ signal }) => ItemService.getAll(effectiveScope, { view: 'trash' }, { signal }),
     enabled: true,
     select: (data): Item[] => {
       if (Array.isArray(data?.items)) return data.items;
@@ -1021,8 +1094,8 @@ export function useLibraryItemsQuery(
   return useQuery({
     queryKey: libraryKeys.items(targetScope, params),
     enabled: options?.enabled ?? true,
-    queryFn: async (): Promise<LibraryItemsQueryResult> => {
-      const res = await ItemService.getAll(targetScope, params);
+    queryFn: async ({ signal }): Promise<LibraryItemsQueryResult> => {
+      const res = await ItemService.getAll(targetScope, params, { signal });
       const items: Item[] = res?.items || [];
       const pagination = (res?.pagination || res?.meta || null) as CursorPaginationMeta | null;
       const total =
@@ -1054,11 +1127,15 @@ export function useInfiniteLibraryItemsQuery(
   return useInfiniteQuery({
     queryKey: [...libraryKeys.items(targetScope, params), 'infinite'],
     enabled: options?.enabled ?? true,
-    queryFn: async ({ pageParam }): Promise<LibraryItemsQueryResult> => {
-      const res = await ItemService.getAll(targetScope, {
-        ...params,
-        cursor: pageParam ? String(pageParam) : undefined,
-      });
+    queryFn: async ({ pageParam, signal }): Promise<LibraryItemsQueryResult> => {
+      const res = await ItemService.getAll(
+        targetScope,
+        {
+          ...params,
+          cursor: pageParam ? String(pageParam) : undefined,
+        },
+        { signal },
+      );
       const items: Item[] = res?.items || [];
       const pagination = (res?.pagination || res?.meta || null) as CursorPaginationMeta | null;
       const total =
@@ -1132,17 +1209,35 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
         (typeof cachedVersion === 'number' ? cachedVersion : undefined);
       return ItemService.update(effectiveScope, targetId, updateData, resolvedVersion);
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (updatedResult, variables) => {
       const targetId = variables.id || variables.itemId || '';
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: libraryKeys.tags(effectiveScope) });
+      const rawData = variables.payload || variables.data || {};
+      const returnedItem = (updatedResult?.item || updatedResult?.paper || updatedResult) as Item;
+      const patchData: Partial<Item> = {
+        ...rawData,
+        ...(returnedItem && typeof returnedItem === 'object' ? returnedItem : {}),
+      };
+
       if (targetId) {
-        queryClient.invalidateQueries({ queryKey: itemKeys.byId(effectiveScope, targetId) });
-        queryClient.invalidateQueries({
-          predicate: (query) =>
-            Array.isArray(query.queryKey) && query.queryKey.includes(targetId),
-        });
+        // 1. Direct cache update for detail view
+        queryClient.setQueryData(
+          itemKeys.byId(effectiveScope, targetId),
+          (old: any) => patchSingleItemCache(old, patchData),
+        );
+
+        // 2. Direct cache patch for all active item lists (instant update, zero table flicker)
+        queryClient.setQueriesData(
+          { queryKey: ['library', 'items', effectiveScope] },
+          (old) => patchItemInCacheData(old, targetId, patchData),
+        );
       }
+
+      // 3. Invalidate auxiliary caches only
+      queryClient.invalidateQueries({ queryKey: libraryKeys.tags(effectiveScope) });
+      if (patchData.collectionId !== undefined) {
+        invalidateCollections(queryClient, effectiveScope);
+      }
+
       const isSilent = Boolean(
         variables.silent ||
         variables.payload?.silent ||
@@ -1169,18 +1264,74 @@ export function useToggleStarItemMutation(scopeId?: string) {
     mutationFn: async ({ id, isStarred }: { id: string; isStarred: boolean }) => {
       return ItemStateService.updateState(effectiveScope, id, { isStarred });
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: itemKeys.byId(effectiveScope, variables.id) });
-      toast.success(variables.isStarred ? 'Added to Starred' : 'Removed from Starred', {
-        id: 'item-star-toggle',
+    onMutate: async ({ id, isStarred }) => {
+      // Cancel queries in flight to prevent overwriting optimistic state
+      await queryClient.cancelQueries({ queryKey: ['library', 'items', effectiveScope] });
+      await queryClient.cancelQueries({ queryKey: itemKeys.byId(effectiveScope, id) });
+      await queryClient.cancelQueries({ queryKey: itemKeys.state(effectiveScope, id) });
+
+      // Snapshot previous state for rollback
+      const previousLists = queryClient.getQueriesData({
+        queryKey: ['library', 'items', effectiveScope],
       });
+      const previousItem = queryClient.getQueryData(itemKeys.byId(effectiveScope, id));
+      const previousState = queryClient.getQueryData(itemKeys.state(effectiveScope, id));
+
+      // Optimistically update lists cache
+      queryClient.setQueriesData(
+        { queryKey: ['library', 'items', effectiveScope] },
+        (old) => patchItemInCacheData(old, id, { isStarred }),
+      );
+
+      // Optimistically update detail cache
+      queryClient.setQueryData(
+        itemKeys.byId(effectiveScope, id),
+        (old: any) => patchSingleItemCache(old, { isStarred }),
+      );
+
+      // Optimistically update state cache
+      queryClient.setQueryData(
+        itemKeys.state(effectiveScope, id),
+        (old: any) => {
+          if (!old) return { isStarred };
+          return { ...old, isStarred };
+        },
+      );
+
+      return { previousLists, previousItem, previousState };
     },
-    onError: (err: any) => {
+    onError: (err: any, variables, context) => {
+      // Rollback to snapshots
+      if (context?.previousLists) {
+        for (const [key, data] of context.previousLists) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+      if (context?.previousItem !== undefined) {
+        queryClient.setQueryData(
+          itemKeys.byId(effectiveScope, variables.id),
+          context.previousItem,
+        );
+      }
+      if (context?.previousState !== undefined) {
+        queryClient.setQueryData(
+          itemKeys.state(effectiveScope, variables.id),
+          context.previousState,
+        );
+      }
       toast.error('Action failed', {
         description: err?.message || 'Please try again.',
         id: 'item-star-toggle',
       });
+    },
+    onSuccess: (_, variables) => {
+      toast.success(variables.isStarred ? 'Added to Starred' : 'Removed from Starred', {
+        id: 'item-star-toggle',
+      });
+    },
+    onSettled: () => {
+      // Sync badge count in sidebar without table flicker
+      queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) });
     },
   });
 }

@@ -51,7 +51,7 @@ export function RetractionNoticeModal({
               <ShieldAlert className="size-5" strokeWidth={1.5} />
             </div>
             <div className="flex-1 min-w-0">
-              <DialogTitle className="text-15 font-semibold text-destructive">
+              <DialogTitle className="text-14 font-semibold text-destructive tracking-tight">
                 {retractionInfo.title || 'Retracted Publication'}
               </DialogTitle>
               <DialogDescription className="text-12 text-muted-foreground mt-0.5">
@@ -133,7 +133,7 @@ export function RetractionNoticeModal({
               size="sm"
               onClick={handleDismiss}
               disabled={isDismissing}
-              className="text-11 h-7.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 px-2"
+              className="text-12 font-medium h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 px-3 cursor-pointer"
             >
               Dismiss warning
             </Button>
@@ -146,7 +146,7 @@ export function RetractionNoticeModal({
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="text-11 h-7.5 px-3 min-w-[65px]"
+            className="text-12 font-medium h-8 px-3.5 min-w-[70px] cursor-pointer"
           >
             Close
           </Button>

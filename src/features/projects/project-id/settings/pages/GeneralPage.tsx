@@ -67,7 +67,7 @@ export default function GeneralPage() {
       <PageLayout>
         <PageHeader title="General" icon={Settings} />
         <PageContent maxWidth="md">
-          <div className="text-sm text-muted-foreground">
+          <div className="text-12 text-muted-foreground">
             Error loading project details.
           </div>
         </PageContent>

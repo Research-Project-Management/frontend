@@ -541,8 +541,8 @@ export default function CitationPickerModal({
                 className={cn(
                   'px-2.5 py-1 text-11 rounded-md transition-colors font-medium cursor-pointer',
                   activeView === 'tree'
-                    ? 'bg-background text-foreground shadow-2xs'
-                    : 'text-muted-foreground hover:text-foreground',
+                    ? 'bg-background text-foreground font-semibold border border-border/60'
+                    : 'text-muted-foreground hover:text-foreground border border-transparent',
                 )}
               >
                 Library
@@ -553,8 +553,8 @@ export default function CitationPickerModal({
                 className={cn(
                   'px-2.5 py-1 text-11 rounded-md transition-colors font-medium cursor-pointer',
                   activeView === 'list'
-                    ? 'bg-background text-foreground shadow-2xs'
-                    : 'text-muted-foreground hover:text-foreground',
+                    ? 'bg-background text-foreground font-semibold border border-border/60'
+                    : 'text-muted-foreground hover:text-foreground border border-transparent',
                 )}
               >
                 Papers ({filteredItems.length})
@@ -566,8 +566,8 @@ export default function CitationPickerModal({
                 className={cn(
                   'px-2.5 py-1 text-11 rounded-md transition-colors font-medium cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
                   activeView === 'detail'
-                    ? 'bg-background text-foreground shadow-2xs'
-                    : 'text-muted-foreground hover:text-foreground',
+                    ? 'bg-background text-foreground font-semibold border border-border/60'
+                    : 'text-muted-foreground hover:text-foreground border border-transparent',
                 )}
               >
                 Details
@@ -617,7 +617,7 @@ export default function CitationPickerModal({
                     setActiveView('list');
                   }}
                   className={cn(
-                    'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none select-none text-left',
+                    'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-left',
                     selectedNav === 'all'
                       ? 'bg-muted text-foreground font-medium'
                       : 'text-foreground hover:bg-muted',
@@ -637,7 +637,7 @@ export default function CitationPickerModal({
                     setActiveView('list');
                   }}
                   className={cn(
-                    'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none select-none text-left',
+                    'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-left',
                     selectedNav === 'cited'
                       ? 'bg-muted text-foreground font-medium'
                       : 'text-foreground hover:bg-muted',
@@ -657,7 +657,7 @@ export default function CitationPickerModal({
                     setActiveView('list');
                   }}
                   className={cn(
-                    'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none select-none text-left',
+                    'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-left',
                     selectedNav === 'library'
                       ? 'bg-muted text-foreground font-medium'
                       : 'text-foreground hover:bg-muted',
@@ -677,7 +677,7 @@ export default function CitationPickerModal({
                     setActiveView('list');
                   }}
                   className={cn(
-                    'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none select-none text-left',
+                    'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-left',
                     selectedNav === 'bib'
                       ? 'bg-muted text-foreground font-medium'
                       : 'text-foreground hover:bg-muted',
@@ -866,7 +866,7 @@ export default function CitationPickerModal({
                 >
                   {isResolving ? (
                     <>
-                      <Loader2 className="size-3 animate-spin mr-1 text-foreground" />
+                      <Loader2 className="size-3 animate-spin mr-1 text-foreground motion-reduce:animate-none" />
                       Resolving...
                     </>
                   ) : (
@@ -891,7 +891,7 @@ export default function CitationPickerModal({
 
               {isSearchingServer && (
                 <div className="flex items-center justify-center py-8 text-foreground gap-2">
-                  <Loader2 className="size-3.5 animate-spin text-foreground" />
+                  <Loader2 className="size-3.5 animate-spin text-foreground motion-reduce:animate-none" />
                   <span className="text-xs">Searching references...</span>
                 </div>
               )}
@@ -1000,7 +1000,7 @@ export default function CitationPickerModal({
                         aria-label="Copy citation key"
                       >
                         {copiedKey ? (
-                          <Check className="size-2.5 text-emerald-500" />
+                          <Check className="size-2.5 text-primary" />
                         ) : (
                           <Copy className="size-2.5" />
                         )}
@@ -1077,7 +1077,7 @@ export default function CitationPickerModal({
                             aria-label="Copy DOI"
                           >
                             {copiedDoi ? (
-                              <Check className="size-3 text-emerald-500" />
+                              <Check className="size-3 text-primary" />
                             ) : (
                               <Copy className="size-3 text-foreground" />
                             )}
@@ -1109,7 +1109,7 @@ export default function CitationPickerModal({
                         className="h-7 px-2.5 text-11 rounded border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
                         {copiedSnippet ? (
-                          <Check className="size-3 text-emerald-500" />
+                          <Check className="size-3 text-primary" />
                         ) : (
                           <Code2 className="size-3 text-foreground" />
                         )}
@@ -1189,8 +1189,8 @@ export default function CitationPickerModal({
                     >
                       {copiedBibtex ? (
                         <>
-                          <Check className="size-3 text-emerald-500" />
-                          <span className="text-emerald-600 dark:text-emerald-400 font-medium">Copied</span>
+                          <Check className="size-3 text-primary" />
+                          <span className="text-primary font-medium">Copied</span>
                         </>
                       ) : (
                         <>

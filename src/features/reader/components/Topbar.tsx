@@ -77,7 +77,7 @@ export function Topbar({
   const isDocumentActive = currentTabId !== 'library';
 
   return (
-    <header className="h-9 shrink-0 bg-background border-b border-border flex items-center px-1 select-none z-30 text-12">
+    <header className="h-10 shrink-0 bg-background border-b border-border flex items-center px-1 select-none z-30 text-12">
       {/* Scrollable Tabs Bar */}
       <div
         role="tablist"
@@ -101,7 +101,7 @@ export function Topbar({
                   else if (onBack) onBack();
                 }}
                 className={cn(
-                  "h-8 px-3 flex items-center gap-1.5 rounded-t-md transition-colors cursor-pointer shrink-0 text-12 outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                  "h-8 px-3 flex items-center gap-1.5 rounded-t-md transition-colors cursor-pointer shrink-0 text-12 outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-1 md:before:hidden",
                   isActive
                     ? "bg-background text-foreground font-medium border-x border-t border-border border-b-transparent -mb-px z-10"
                     : "text-foreground hover:bg-muted"
@@ -146,8 +146,8 @@ export function Topbar({
                     onCloseTab(tab.id);
                   }}
                   className={cn(
-                    "size-4 flex items-center justify-center rounded-sm hover:bg-muted text-foreground transition-all cursor-pointer shrink-0",
-                    isActive ? "opacity-70 hover:opacity-100" : "opacity-0 group-hover:opacity-100"
+                    "size-4 flex items-center justify-center rounded-sm hover:bg-muted text-foreground transition-all cursor-pointer shrink-0 relative before:absolute before:-inset-2.5 md:before:hidden",
+                    isActive ? "opacity-70 hover:opacity-100" : "opacity-0 group-hover:opacity-100 max-md:opacity-100"
                   )}
                   title="Close tab"
                   aria-label={`Close tab ${tab.title}`}
@@ -168,7 +168,7 @@ export function Topbar({
               <button
                 type="button"
                 onClick={onPrint}
-                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer"
+                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 aria-label="Print document"
               >
                 <Printer className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -186,7 +186,7 @@ export function Topbar({
               <button
                 type="button"
                 onClick={onExportAnnotatedPdf}
-                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer"
+                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 aria-label="Export PDF with annotations"
               >
                 <Download className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -203,7 +203,7 @@ export function Topbar({
             <button
               type="button"
               onClick={handleToggleFullscreen}
-              className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer"
+              className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
               aria-label="Toggle fullscreen"
             >
               {isFullscreen ? (

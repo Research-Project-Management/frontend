@@ -4,8 +4,7 @@ import React from 'react';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from "@/shared/components/ui";
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
-import { Sparkles, ShieldCheck } from 'lucide-react';
+import { Bot, ShieldCheck } from 'lucide-react';
 
 export default function EditMenu() {
   const { engine } = useEditorInstance();
@@ -17,8 +16,8 @@ export default function EditMenu() {
     editorCommandBus.dispatch({ type: 'editor:find', open: true });
     engine?.focus();
   };
-  const handleAutoFix = () => EditorEventBus.emit('flux:autofix');
-  const handleLintPage = () => EditorEventBus.emit('flux:lint-page');
+  const handleAutoFix = () => editorCommandBus.dispatch({ type: 'editor:autofix' });
+  const handleLintPage = () => editorCommandBus.dispatch({ type: 'editor:lint-project' });
 
   return (
     <MenubarMenu>
@@ -45,7 +44,7 @@ export default function EditMenu() {
         </MenubarItem>
         <MenubarSeparator />
         <MenubarItem onClick={handleAutoFix} className="cursor-pointer">
-          <Sparkles className="size-3.5 mr-2 text-foreground" />
+          <Bot className="size-3.5 mr-2 text-foreground" />
           <span>Auto-Fix Page Syntax</span>
           <MenubarShortcut>Alt Shift F</MenubarShortcut>
         </MenubarItem>

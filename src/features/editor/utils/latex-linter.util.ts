@@ -69,6 +69,23 @@ const COMMAND_TYPOS: Record<string, string> = {
   '\\bibliograph': '\\bibliography',
 };
 
+const DEPRECATED_ENTRIES = Object.entries(DEPRECATED_COMMANDS);
+const TYPO_ENTRIES = Object.entries(COMMAND_TYPOS);
+const EMPTY_REF_REGEX = /\\(cite|ref|label|pageref|eqref)\{\s*\}/g;
+const ENV_MATCH_REGEX = /\\(begin|end)\{([a-zA-Z0-9*_-]+)\}/g;
+const UNESCAPED_PERCENT_REGEX = /([a-zA-Z0-9)\]])(\s*)%/g;
+const MASKED_COMMANDS_REGEX = /\\(cite|citep|citet|ref|pageref|eqref|label|url|href|includegraphics|input|include)(?:\[[^\]]*\])?\{[^}]*\}/g;
+const LATEX_CITE_REGEX = /\\(cite|citep|citet|parencite|textcite|nocite)(?:\[[^\]]*\])*\{([^}]+)\}/g;
+
+/**
+ * Normalizes string or string array into a string array without redundant splitting.
+ */
+export function toLines(input: string | readonly string[]): readonly string[] {
+  if (Array.isArray(input)) return input;
+  if (typeof input === 'string') return input.split(/\r?\n/);
+  return [];
+}
+
 // Alignment environments where unescaped & is valid
 const ALIGNMENT_ENVIRONMENTS = new Set([
   'tabular', 'tabular*', 'array', 'align', 'align*', 'aligned',
@@ -106,9 +123,9 @@ export function stripLineComment(line: string): string {
 /**
  * 1. Lint Unmatched Curly Braces {}
  */
-export function lintUnmatchedBraces(text: string): LatexLintDiagnostic[] {
+export function lintUnmatchedBraces(input: string | readonly string[]): LatexLintDiagnostic[] {
   const diagnostics: LatexLintDiagnostic[] = [];
-  const lines = text.split(/\r?\n/);
+  const lines = toLines(input);
   const stack: Array<{ line: number; col: number }> = [];
 
   lines.forEach((lineText, lineIdx) => {
@@ -167,9 +184,9 @@ export function lintUnmatchedBraces(text: string): LatexLintDiagnostic[] {
 /**
  * 2. Lint LaTeX Environments (\begin{} and \end{})
  */
-export function lintEnvironments(text: string): LatexLintDiagnostic[] {
+export function lintEnvironments(input: string | readonly string[]): LatexLintDiagnostic[] {
   const diagnostics: LatexLintDiagnostic[] = [];
-  const lines = text.split(/\r?\n/);
+  const lines = toLines(input);
   const envStack: Array<{ name: string; line: number; col: number }> = [];
   const beginEndRegex = /\\(begin|end)\{([a-zA-Z0-9*_-]+)\}/g;
 
@@ -238,9 +255,9 @@ export function lintEnvironments(text: string): LatexLintDiagnostic[] {
 /**
  * 3. Lint Unescaped Special Characters: %, _, & outside expected contexts
  */
-export function lintSpecialCharacters(text: string): LatexLintDiagnostic[] {
+export function lintSpecialCharacters(input: string | readonly string[]): LatexLintDiagnostic[] {
   const diagnostics: LatexLintDiagnostic[] = [];
-  const lines = text.split(/\r?\n/);
+  const lines = toLines(input);
 
   // Track active environments
   const activeEnvs: string[] = [];
@@ -254,11 +271,12 @@ export function lintSpecialCharacters(text: string): LatexLintDiagnostic[] {
     if (lineText.includes('\\]')) inDisplayMath = false;
 
     // Track \begin and \end on this line to update activeEnvs
-    const envMatches = lineText.matchAll(/\\(begin|end)\{([a-zA-Z0-9*_-]+)\}/g);
-    for (const m of envMatches) {
-      if (m[1] === 'begin') activeEnvs.push(m[2]);
-      else if (m[1] === 'end') {
-        const idx = activeEnvs.lastIndexOf(m[2]);
+    ENV_MATCH_REGEX.lastIndex = 0;
+    let envMatch: RegExpExecArray | null;
+    while ((envMatch = ENV_MATCH_REGEX.exec(lineText)) !== null) {
+      if (envMatch[1] === 'begin') activeEnvs.push(envMatch[2]);
+      else if (envMatch[1] === 'end') {
+        const idx = activeEnvs.lastIndexOf(envMatch[2]);
         if (idx !== -1) activeEnvs.splice(idx, 1);
       }
     }
@@ -269,9 +287,9 @@ export function lintSpecialCharacters(text: string): LatexLintDiagnostic[] {
 
     // ── Check A: Unescaped % after alphanumeric characters ──────────────────
     // e.g. "95% of data", "accuracy: 100%"
-    const unescapedPercentRegex = /([a-zA-Z0-9)\]])(\s*)%/g;
+    UNESCAPED_PERCENT_REGEX.lastIndex = 0;
     let pctMatch: RegExpExecArray | null;
-    while ((pctMatch = unescapedPercentRegex.exec(lineText)) !== null) {
+    while ((pctMatch = UNESCAPED_PERCENT_REGEX.exec(lineText)) !== null) {
       const matchIndex = pctMatch.index + pctMatch[1].length + pctMatch[2].length;
       if (lineText[matchIndex - 1] !== '\\') {
         const restOfLine = lineText.slice(matchIndex + 1).trim();
@@ -333,7 +351,8 @@ export function lintSpecialCharacters(text: string): LatexLintDiagnostic[] {
     // ── Check C: Unescaped _ outside math mode and outside URL/cite/label ────
     if (!isInsideMathEnv) {
       // Mask allowed commands like \cite{...}, \label{...}, \ref{...}, \url{...}, \href{...}, \includegraphics{...}
-      let maskedLine = cleanLine.replace(/\\(cite|citep|citet|ref|pageref|eqref|label|url|href|includegraphics|input|include)(?:\[[^\]]*\])?\{[^}]*\}/g, (m) => ' '.repeat(m.length));
+      MASKED_COMMANDS_REGEX.lastIndex = 0;
+      const maskedLine = cleanLine.replace(MASKED_COMMANDS_REGEX, (m) => ' '.repeat(m.length));
 
       let inEscape = false;
       let inInlineMath = false;
@@ -371,9 +390,9 @@ export function lintSpecialCharacters(text: string): LatexLintDiagnostic[] {
 /**
  * 4. Lint Inline Math Mode ($ count per line / block)
  */
-export function lintInlineMath(text: string): LatexLintDiagnostic[] {
+export function lintInlineMath(input: string | readonly string[]): LatexLintDiagnostic[] {
   const diagnostics: LatexLintDiagnostic[] = [];
-  const lines = text.split(/\r?\n/);
+  const lines = toLines(input);
 
   lines.forEach((lineText, lineIdx) => {
     const lineNum = lineIdx + 1;
@@ -424,9 +443,9 @@ export function lintInlineMath(text: string): LatexLintDiagnostic[] {
 /**
  * 5. Lint Duplicate Labels & Undefined References
  */
-export function lintLabelsAndReferences(text: string): LatexLintDiagnostic[] {
+export function lintLabelsAndReferences(input: string | readonly string[]): LatexLintDiagnostic[] {
   const diagnostics: LatexLintDiagnostic[] = [];
-  const lines = text.split(/\r?\n/);
+  const lines = toLines(input);
 
   const definedLabels = new Map<string, { line: number; col: number }>();
   const references: Array<{ key: string; cmd: string; line: number; col: number; len: number }> = [];
@@ -494,16 +513,16 @@ export function lintLabelsAndReferences(text: string): LatexLintDiagnostic[] {
 /**
  * 6. Lint Deprecated Commands & Command Typos
  */
-export function lintCommandsAndTypos(text: string): LatexLintDiagnostic[] {
+export function lintCommandsAndTypos(input: string | readonly string[]): LatexLintDiagnostic[] {
   const diagnostics: LatexLintDiagnostic[] = [];
-  const lines = text.split(/\r?\n/);
+  const lines = toLines(input);
 
   lines.forEach((lineText, lineIdx) => {
     const lineNum = lineIdx + 1;
     const cleanLine = stripLineComment(lineText);
 
     // A. Check Deprecated LaTeX 2.09 commands (\bf, \it, etc.)
-    for (const [cmd, info] of Object.entries(DEPRECATED_COMMANDS)) {
+    for (const [cmd, info] of DEPRECATED_ENTRIES) {
       const idx = cleanLine.indexOf(cmd);
       if (idx !== -1) {
         const afterChar = cleanLine[idx + cmd.length];
@@ -523,7 +542,7 @@ export function lintCommandsAndTypos(text: string): LatexLintDiagnostic[] {
     }
 
     // B. Check Command Typos
-    for (const [typo, correct] of Object.entries(COMMAND_TYPOS)) {
+    for (const [typo, correct] of TYPO_ENTRIES) {
       const idx = cleanLine.indexOf(typo);
       if (idx !== -1) {
         const afterChar = cleanLine[idx + typo.length];
@@ -543,9 +562,9 @@ export function lintCommandsAndTypos(text: string): LatexLintDiagnostic[] {
     }
 
     // C. Check Empty \ref{}, \cite{}, \label{}
-    const emptyRefRegex = /\\(cite|ref|label|pageref|eqref)\{\s*\}/g;
+    EMPTY_REF_REGEX.lastIndex = 0;
     let emptyMatch: RegExpExecArray | null;
-    while ((emptyMatch = emptyRefRegex.exec(cleanLine)) !== null) {
+    while ((emptyMatch = EMPTY_REF_REGEX.exec(cleanLine)) !== null) {
       diagnostics.push({
         startLineNumber: lineNum,
         startColumn: emptyMatch.index + 1,
@@ -565,22 +584,20 @@ export function lintCommandsAndTypos(text: string): LatexLintDiagnostic[] {
  * 7. Scans document for citations referencing known retracted publications.
  */
 export function lintRetractedCitations(
-  text: string,
+  input: string | readonly string[],
   retractedMap: Map<string, RetractedItemInfo>,
 ): LatexLintDiagnostic[] {
-  if (!text || !retractedMap || retractedMap.size === 0) return [];
+  if (!input || !retractedMap || retractedMap.size === 0) return [];
   const diagnostics: LatexLintDiagnostic[] = [];
-  const lines = text.split(/\r?\n/);
-
-  const latexCiteRegex = /\\(cite|citep|citet|parencite|textcite|nocite)(?:\[[^\]]*\])*\{([^}]+)\}/g;
+  const lines = toLines(input);
 
   lines.forEach((lineText, lineIdx) => {
     const lineNum = lineIdx + 1;
     const cleanLine = stripLineComment(lineText);
 
     let match: RegExpExecArray | null;
-    latexCiteRegex.lastIndex = 0;
-    while ((match = latexCiteRegex.exec(cleanLine)) !== null) {
+    LATEX_CITE_REGEX.lastIndex = 0;
+    while ((match = LATEX_CITE_REGEX.exec(cleanLine)) !== null) {
       const fullCmd = match[0];
       const keysRaw = match[2];
       const keysStartOffset = match.index + fullCmd.indexOf(keysRaw);
@@ -616,6 +633,31 @@ export function lintRetractedCitations(
   return diagnostics;
 }
 
+interface LinterCacheEntry {
+  key: string;
+  content: string;
+  diagnostics: LatexLintDiagnostic[];
+}
+
+const LINTER_CACHE_MAX = 5;
+const linterCache: LinterCacheEntry[] = [];
+
+function getRetractedMapFingerprint(map?: Map<string, RetractedItemInfo>): string {
+  if (!map || map.size === 0) return '0';
+  let sample = `${map.size}:`;
+  let count = 0;
+  for (const key of map.keys()) {
+    sample += key + ',';
+    count++;
+    if (count >= 5) break;
+  }
+  return sample;
+}
+
+export function clearLatexLinterCache(): void {
+  linterCache.length = 0;
+}
+
 /**
  * Main linter entry point: orchestrates all real-time LaTeX diagnostics.
  */
@@ -631,30 +673,58 @@ export function runLatexLinter(
     retractedItemsMap,
   } = options;
 
+  const retractedFingerprint = getRetractedMapFingerprint(retractedItemsMap);
+  const cacheKey = `${content.length}:${content.slice(0, 40)}:${content.slice(-40)}:${enableStructureLint}:${enableSyntaxDiagnostics}:${retractedFingerprint}`;
+
+  // LRU memoization check
+  for (let i = 0; i < linterCache.length; i++) {
+    const entry = linterCache[i];
+    if (entry.key === cacheKey && entry.content === content) {
+      if (i > 0) {
+        linterCache.splice(i, 1);
+        linterCache.unshift(entry);
+      }
+      return entry.diagnostics.slice();
+    }
+  }
+
+  // Pre-split content once to share across all sub-linters
+  const lines = content.split(/\r?\n/);
   const results: LatexLintDiagnostic[] = [];
 
   if (enableStructureLint) {
-    results.push(...lintEnvironments(content));
-    results.push(...lintUnmatchedBraces(content));
+    results.push(...lintEnvironments(lines));
+    results.push(...lintUnmatchedBraces(lines));
   }
 
   if (enableSyntaxDiagnostics) {
-    results.push(...lintSpecialCharacters(content));
-    results.push(...lintInlineMath(content));
-    results.push(...lintLabelsAndReferences(content));
-    results.push(...lintCommandsAndTypos(content));
+    results.push(...lintSpecialCharacters(lines));
+    results.push(...lintInlineMath(lines));
+    results.push(...lintLabelsAndReferences(lines));
+    results.push(...lintCommandsAndTypos(lines));
   }
 
   if (retractedItemsMap && retractedItemsMap.size > 0) {
-    results.push(...lintRetractedCitations(content, retractedItemsMap));
+    results.push(...lintRetractedCitations(lines, retractedItemsMap));
   }
 
   // Sort by line number, then column
-  return results.sort((a, b) => {
+  results.sort((a, b) => {
     if (a.startLineNumber !== b.startLineNumber) {
       return a.startLineNumber - b.startLineNumber;
     }
     return a.startColumn - b.startColumn;
   });
+
+  if (linterCache.length >= LINTER_CACHE_MAX) {
+    linterCache.pop();
+  }
+  linterCache.unshift({
+    key: cacheKey,
+    content,
+    diagnostics: results,
+  });
+
+  return results.slice();
 }
 

@@ -189,10 +189,10 @@ export function YourWorkItemList({
       {/* Header, Search & GroupBy Control */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-0.5">
         <div className="flex items-center gap-2">
-          <h2 className="text-foreground font-semibold text-sm tracking-tight">
+          <h2 className="text-foreground font-semibold text-13 tracking-tight">
             {title}
           </h2>
-          <span className="text-xs font-medium text-muted-foreground tabular-nums">
+          <span className="text-12 font-medium text-muted-foreground tabular-nums">
             ({filteredWorkItems.length}
             {filteredWorkItems.length !== workItems.length && ` of ${workItems.length}`})
           </span>
@@ -208,13 +208,14 @@ export function YourWorkItemList({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Filter work items..."
-                className="h-8 pl-8 pr-7 text-xs rounded-md bg-muted/40 border-0 focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-ring"
+                className="h-8 pl-8 pr-7 text-13 rounded-md bg-muted/40 border-0 focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-ring"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground hover:text-foreground flex items-center justify-center rounded-sm"
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground hover:text-foreground flex items-center justify-center rounded-sm before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <X className="size-3 shrink-0" />
                 </button>
@@ -227,7 +228,7 @@ export function YourWorkItemList({
                 type="button"
                 onClick={() => setGroupBy('state')}
                 className={cn(
-                  'flex items-center gap-1 px-2.5 py-1 rounded-sm text-xs font-medium transition-colors',
+                  'flex items-center gap-1 px-2.5 py-1 rounded-sm text-12 font-medium transition-colors relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                   groupBy === 'state'
                     ? 'bg-background text-foreground shadow-none font-semibold'
                     : 'text-muted-foreground hover:text-foreground',
@@ -241,7 +242,7 @@ export function YourWorkItemList({
                 type="button"
                 onClick={() => setGroupBy('project')}
                 className={cn(
-                  'flex items-center gap-1 px-2.5 py-1 rounded-sm text-xs font-medium transition-colors',
+                  'flex items-center gap-1 px-2.5 py-1 rounded-sm text-12 font-medium transition-colors relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                   groupBy === 'project'
                     ? 'bg-background text-foreground shadow-none font-semibold'
                     : 'text-muted-foreground hover:text-foreground',
@@ -294,7 +295,7 @@ export function YourWorkItemList({
                   role="button"
                   tabIndex={0}
                   aria-expanded={!isCollapsed}
-                  className="flex items-center gap-2 px-3.5 py-2.5 bg-muted/60 transition-colors group cursor-pointer hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring select-none"
+                  className="flex items-center gap-2 px-3 py-1.5 min-h-8 bg-muted/60 transition-colors group cursor-pointer hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring select-none"
                   onClick={() => toggleExpand(group.key)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -313,7 +314,7 @@ export function YourWorkItemList({
                     className="size-2 rounded-full shrink-0"
                     style={{ backgroundColor: group.color }}
                   />
-                  <span className="text-xs font-semibold text-foreground">
+                  <span className="text-12 font-semibold text-foreground">
                     {group.label}
                   </span>
                   <span className="text-11 px-1.5 py-0.2 rounded-full bg-muted text-muted-foreground font-medium tabular-nums">
@@ -356,7 +357,7 @@ export function YourWorkItemList({
                   role="button"
                   tabIndex={0}
                   aria-expanded={!isCollapsed}
-                  className="flex items-center justify-between px-3.5 py-2.5 bg-muted/60 transition-colors group cursor-pointer hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring select-none"
+                  className="flex items-center justify-between px-3 py-1.5 min-h-8 bg-muted/60 transition-colors group cursor-pointer hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring select-none"
                   onClick={() => toggleExpand(group.id)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -379,7 +380,7 @@ export function YourWorkItemList({
                       size="xs"
                       className="size-4.5 rounded-sm"
                     />
-                    <span className="text-xs font-semibold text-foreground truncate">
+                    <span className="text-12 font-semibold text-foreground truncate">
                       {group.name}
                     </span>
                     {group.identifier && (
@@ -456,20 +457,17 @@ function WorkItemRow({
 
   const assigneeObj = typeof item.assignee === 'object' ? item.assignee : null;
 
-  let stateGroup = 'unstarted';
-  if (showStateBadge) {
-    let colName = item.columnId;
-    const cols = item.project?.workItemColumns;
-    if (Array.isArray(cols)) {
-      const matched = (cols as Array<Record<string, unknown>>).find(
-        (c) => c.id === item.columnId,
-      );
-      if (matched?.title || matched?.name) {
-        colName = String(matched.title || matched.name);
-      }
+  let colName = item.columnId;
+  const cols = item.project?.workItemColumns;
+  if (Array.isArray(cols)) {
+    const matched = (cols as Array<Record<string, unknown>>).find(
+      (c) => c.id === item.columnId,
+    );
+    if (matched?.title || matched?.name) {
+      colName = String(matched.title || matched.name);
     }
-    stateGroup = inferStateGroup(item.columnId, colName);
   }
+  const stateGroup = item.stateGroup || item.state?.group || inferStateGroup(item.columnId, colName);
   const stateConfig = STATE_GROUP_CONFIG[stateGroup as StateGroup];
 
   return (
@@ -483,14 +481,20 @@ function WorkItemRow({
           onWorkItemClick(workItemId);
         }
       }}
-      className="w-full flex items-center gap-3 px-4 py-2.5 bg-card hover:bg-muted focus-visible:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors text-left group cursor-pointer"
+      className="w-full flex items-center gap-3 px-3.5 py-1.5 min-h-8 bg-card hover:bg-muted focus-visible:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors text-left group cursor-pointer"
     >
       {/* State indicator */}
       <div className="shrink-0 flex items-center justify-center">
         {isDone ? (
-          <CheckCircle2 className="size-3.5 text-success shrink-0" />
+          <CheckCircle2 className="size-3.5 text-state-completed shrink-0" />
+        ) : isCancelled ? (
+          <Circle className="size-3.5 text-state-cancelled opacity-60 shrink-0" />
+        ) : stateGroup === 'started' ? (
+          <Clock3 className="size-3.5 text-state-started shrink-0" />
+        ) : stateGroup === 'backlog' ? (
+          <Circle className="size-3.5 text-state-backlog/70 shrink-0" />
         ) : (
-          <Circle className="size-3.5 text-muted-foreground/60 shrink-0" />
+          <Circle className="size-3.5 text-state-unstarted shrink-0" />
         )}
       </div>
 
@@ -505,7 +509,7 @@ function WorkItemRow({
       <div className="flex-1 min-w-0 flex items-center gap-2">
         <span
           className={cn(
-            'text-xs truncate font-medium text-foreground transition-colors',
+            'text-13 truncate font-medium text-foreground transition-colors',
             isCancelled && 'text-muted-foreground line-through font-normal',
             isDone && !isCancelled && 'text-muted-foreground font-normal',
           )}

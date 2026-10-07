@@ -40,7 +40,7 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { useEditorStorage } from '@/features/editor/hooks/use-storage';
+import { useEditorStorageFiles, useEditorStorageMutations } from '@/features/editor/hooks/use-storage';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/services/storage.service';
 
 export function getStorageIcon(item: StorageItem) {
@@ -143,7 +143,7 @@ export function InlineInput({
         className="h-6.5 flex-1 min-w-0 bg-background text-12 font-sans text-foreground border border-border focus:border-foreground/50 rounded-sm px-2 py-0.5 outline-none focus-visible:ring-1 focus-visible:ring-foreground placeholder:text-muted-foreground"
       />
       {isPending && (
-        <Loader2 className="size-3.5 animate-spin text-foreground shrink-0 ml-1.5" />
+        <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none text-foreground shrink-0 ml-1.5" />
       )}
     </div>
   );
@@ -191,7 +191,7 @@ export function RenameInput({
         className="h-6.5 w-full bg-background text-12 font-normal text-foreground border border-foreground/40 rounded-sm px-2 py-0.5 outline-none focus-visible:ring-1 focus-visible:ring-foreground"
       />
       {isPending && (
-        <Loader2 className="size-3.5 animate-spin text-foreground shrink-0 ml-1.5" />
+        <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none text-foreground shrink-0 ml-1.5" />
       )}
     </div>
   );
@@ -239,7 +239,7 @@ export function RowActions({
   );
 }
 
-export function StorageFolderNode({
+export const StorageFolderNode = React.memo(function StorageFolderNode({
   folder,
   projectId,
   depth,
@@ -256,12 +256,14 @@ export function StorageFolderNode({
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  const { files: children, isLoading } = useEditorStorage(
+  const { files: children, isLoading } = useEditorStorageFiles(
     projectId,
-    expanded ? folder.id : undefined,
+    folder.id,
+    undefined,
+    { enabled: expanded },
   );
 
-  const { deleteFile, renameFile } = useEditorStorage(projectId, undefined);
+  const { deleteFile, renameFile } = useEditorStorageMutations(projectId);
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -393,7 +395,7 @@ export function StorageFolderNode({
                 e.stopPropagation();
                 deleteFile.mutate(folder.id);
               }}
-              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none transition-colors"
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors"
             >
               <Trash2 className="size-4 shrink-0" strokeWidth={1.5} />
               <span>Delete</span>
@@ -439,7 +441,7 @@ export function StorageFolderNode({
                 e.stopPropagation();
                 deleteFile.mutate(folder.id);
               }}
-              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none transition-colors"
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors"
             >
               <Trash2 className="size-4 shrink-0" strokeWidth={1.5} />
               <span>Delete</span>
@@ -456,7 +458,7 @@ export function StorageFolderNode({
               className="flex h-8 items-center"
               style={{ paddingLeft: `${paddingLeft + 32}px` }}
             >
-              <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
+              <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none text-foreground shrink-0" />
             </div>
           )}
           {children?.map((child: any) =>
@@ -493,9 +495,9 @@ export function StorageFolderNode({
       )}
     </>
   );
-}
+});
 
-export function StorageFileRow({
+export const StorageFileRow = React.memo(function StorageFileRow({
   item,
   depth,
   onInsertAsset,
@@ -510,7 +512,7 @@ export function StorageFileRow({
 }) {
   const isImage = item.mimeType?.startsWith('image/');
   const { icon: Icon, color } = getStorageIcon(item);
-  const { deleteFile, renameFile } = useEditorStorage(null, undefined, projectId);
+  const { deleteFile, renameFile } = useEditorStorageMutations(projectId);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const { copyStorageSnippet, downloadStorageItem } = useStorageItemActions();
@@ -649,7 +651,7 @@ export function StorageFileRow({
             e.stopPropagation();
             deleteFile.mutate(item.id);
           }}
-          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none transition-colors"
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors"
         >
           <Trash2 className="size-4 shrink-0" strokeWidth={1.5} />
           <span>Delete</span>
@@ -706,7 +708,7 @@ export function StorageFileRow({
             e.stopPropagation();
             deleteFile.mutate(item.id);
           }}
-          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none transition-colors"
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors"
         >
           <Trash2 className="size-4 shrink-0" strokeWidth={1.5} />
           <span>Delete</span>
@@ -714,4 +716,4 @@ export function StorageFileRow({
       </ContextMenuContent>
     </ContextMenu>
   );
-}
+});

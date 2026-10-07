@@ -82,7 +82,7 @@ export function ProfileSidebar({
         <button
           type="button"
           onClick={onEditProfile}
-          className="absolute top-3 right-3 size-7 rounded-md bg-background hover:bg-muted text-foreground border border-border flex items-center justify-center transition-colors z-10 cursor-pointer"
+          className="absolute top-3 right-3 size-7 rounded-md bg-background hover:bg-muted text-foreground border border-border flex items-center justify-center transition-colors z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
           title="Edit profile"
           aria-label="Edit profile"
         >
@@ -105,17 +105,17 @@ export function ProfileSidebar({
 
       {/* 2. User Identity Details (Clean layout, NO divider lines) */}
       <div className="px-5 pt-10 pb-2">
-        <h4 className="text-base font-semibold text-foreground tracking-tight leading-tight">
+        <h4 className="text-16 font-semibold text-foreground tracking-tight leading-tight">
           {displayName}
         </h4>
-        <p className="text-xs text-muted-foreground font-normal mt-0.5">
+        <p className="text-12 text-muted-foreground font-normal mt-0.5">
           ({username})
         </p>
 
-        <div className="mt-4 text-xs">
+        <div className="mt-4 text-12">
           <div className="flex items-center justify-between text-muted-foreground">
             <span>Joined on</span>
-            <span className="font-semibold text-foreground tabular-nums">
+            <span className="font-medium text-foreground tabular-nums">
               {formattedJoinedDate}
             </span>
           </div>
@@ -137,7 +137,8 @@ export function ProfileSidebar({
               <button
                 type="button"
                 onClick={() => toggleProject(project.projectId)}
-                className="w-full flex items-center justify-between text-left group cursor-pointer p-1.5 -mx-1.5 rounded-md hover:bg-muted transition-colors"
+                aria-expanded={isOpen}
+                className="w-full flex items-center justify-between text-left group cursor-pointer p-1.5 -mx-1.5 rounded-md hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <ProjectAvatar
@@ -147,7 +148,7 @@ export function ProfileSidebar({
                     size="sm"
                     className="shrink-0"
                   />
-                  <span className="truncate text-sm font-medium text-foreground transition-colors">
+                  <span className="truncate text-13 font-medium text-foreground transition-colors">
                     {project.projectName}
                   </span>
                 </div>
@@ -161,10 +162,10 @@ export function ProfileSidebar({
 
               {/* Project Breakdown Items (Exact 4 Work items categories from screenshot) */}
               {isOpen && (
-                <div className="space-y-3.5 pl-6 pt-1 text-xs">
+                <div className="space-y-3.5 pl-6 pt-1 text-12">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <span className="size-2.5 rounded-xs bg-blue-900 shrink-0" />
+                      <span className="size-2.5 rounded-xs bg-state-backlog shrink-0" />
                       <span className="text-foreground font-normal">Created</span>
                     </div>
                     <span className="font-normal text-foreground tabular-nums">
@@ -174,7 +175,7 @@ export function ProfileSidebar({
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <span className="size-2.5 rounded-xs bg-blue-600 shrink-0" />
+                      <span className="size-2.5 rounded-xs bg-primary shrink-0" />
                       <span className="text-foreground font-normal">Assigned</span>
                     </div>
                     <span className="font-normal text-foreground tabular-nums">
@@ -184,7 +185,7 @@ export function ProfileSidebar({
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <span className="size-2.5 rounded-xs bg-amber-500 shrink-0" />
+                      <span className="size-2.5 rounded-xs bg-state-started shrink-0" />
                       <span className="text-foreground font-normal">Due</span>
                     </div>
                     <span className="font-normal text-foreground tabular-nums">
@@ -194,7 +195,7 @@ export function ProfileSidebar({
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <span className="size-2.5 rounded-xs bg-emerald-600 shrink-0" />
+                      <span className="size-2.5 rounded-xs bg-state-completed shrink-0" />
                       <span className="text-foreground font-normal">Completed</span>
                     </div>
                     <span className="font-normal text-foreground tabular-nums">

@@ -1,0 +1,11 @@
+/**
+ * Modals API Surface (Block 7: UI Shell / Modals Layer).
+ * Location: `features/editor/ui/modals/index.ts`
+ */
+
+export { default as ProjectSettingsModal } from './ProjectSettingsModal';
+export { default as DeletedFilesModal } from './DeletedFilesModal';
+export { default as WordCountDialog } from './WordCountDialog';
+export { default as TemplateGalleryModal } from './TemplateGalleryModal';
+export { default as KeyboardShortcutsModal } from './KeyboardShortcutsModal';
+export { default as QuickOpenModal } from './QuickOpenModal';

@@ -75,7 +75,7 @@ export const CompileButton = React.memo(function CompileButton({
   };
 
   return (
-    <div className="inline-flex items-center rounded-md shadow-xs select-none shrink-0">
+    <div className="inline-flex items-center rounded-md select-none shrink-0">
       <button
         type="button"
         onClick={onCompile}
@@ -88,7 +88,7 @@ export const CompileButton = React.memo(function CompileButton({
         }
         className="flex items-center justify-center gap-1.5 h-7 px-2.5 min-w-[94px] whitespace-nowrap shrink-0 rounded-l-md bg-primary hover:bg-primary-hover text-primary-foreground text-12 font-medium transition-colors disabled:opacity-85 outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
       >
-        {isRunning && <Loader2 className="size-3.5 animate-spin shrink-0 text-primary-foreground" />}
+        {isRunning && <Loader2 className="size-3.5 animate-spin shrink-0 text-primary-foreground motion-reduce:animate-none" />}
         <span>{isRunning ? (statusLabel[compileStatus] ?? 'Compiling…') : 'Recompile'}</span>
       </button>
 
@@ -97,6 +97,7 @@ export const CompileButton = React.memo(function CompileButton({
           <button
             type="button"
             aria-label="Compile options"
+            aria-haspopup="menu"
             className="flex items-center justify-center h-7 px-1.5 shrink-0 rounded-r-md bg-primary hover:bg-primary-hover text-primary-foreground border-l border-primary-foreground/25 text-xs transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
           >
             <ChevronDown className="size-3.5 text-current" />

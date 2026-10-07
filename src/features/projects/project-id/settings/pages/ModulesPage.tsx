@@ -28,7 +28,7 @@ export default function ModulesPage() {
       <PageLayout>
         <PageHeader title="Modules" icon={LayoutGrid} />
         <PageContent maxWidth="md">
-          <Skeleton className="h-64 w-full rounded-md" />
+          <Skeleton className="h-64 w-full rounded-md motion-reduce:animate-none" />
         </PageContent>
       </PageLayout>
     );
@@ -39,7 +39,7 @@ export default function ModulesPage() {
       <PageLayout>
         <PageHeader title="Modules" icon={LayoutGrid} />
         <PageContent maxWidth="md">
-          <div className="text-sm text-muted-foreground">
+          <div className="text-13 text-muted-foreground">
             Error loading project.
           </div>
         </PageContent>

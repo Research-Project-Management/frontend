@@ -50,7 +50,7 @@ function SortableHeader({
         <button
           type="button"
           aria-label={`Sort by ${label}`}
-          className="inline-flex items-center gap-1 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          className="inline-flex items-center gap-1 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-0.5 relative before:absolute before:-inset-1 md:before:hidden"
         >
           <span className={cn(active && 'text-foreground font-semibold')}>{label}</span>
           <ChevronDown
@@ -62,11 +62,11 @@ function SortableHeader({
           />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-44 p-1 text-xs">
+      <DropdownMenuContent align="start" className="w-44 p-1 text-12 shadow-overlay">
         <DropdownMenuItem
           onClick={() => onSort(field, true)}
           className={cn(
-            'flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5',
+            'flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5 text-12',
             active && sortAsc && 'bg-muted font-medium',
           )}
         >
@@ -76,7 +76,7 @@ function SortableHeader({
         <DropdownMenuItem
           onClick={() => onSort(field, false)}
           className={cn(
-            'flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5',
+            'flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5 text-12',
             active && !sortAsc && 'bg-muted font-medium',
           )}
         >
@@ -165,9 +165,9 @@ export default function MemberPage() {
         <PageHeader title="Members" icon={Users} />
         <PageContent maxWidth="md">
           <div className="space-y-6">
-            <Skeleton className="h-10 w-full rounded-md" />
-            <Skeleton className="h-10 w-full rounded-md" />
-            <Skeleton className="h-64 w-full rounded-md" />
+            <Skeleton className="h-10 w-full rounded-md motion-reduce:animate-none" />
+            <Skeleton className="h-10 w-full rounded-md motion-reduce:animate-none" />
+            <Skeleton className="h-64 w-full rounded-md motion-reduce:animate-none" />
           </div>
         </PageContent>
       </PageLayout>
@@ -179,7 +179,7 @@ export default function MemberPage() {
       <PageLayout>
         <PageHeader title="Members" icon={Users} />
         <PageContent maxWidth="md">
-          <div className="text-sm text-muted-foreground">
+          <div className="text-13 text-muted-foreground">
             Error loading project members.
           </div>
         </PageContent>
@@ -193,16 +193,15 @@ export default function MemberPage() {
         variant="outline"
         size="sm"
         onClick={handleImport}
-        className="h-8 px-3 text-xs font-medium border-border bg-background hover:bg-muted text-foreground cursor-pointer rounded-md shrink-0"
+        className="relative h-8 px-3 text-12 font-medium border-border bg-background hover:bg-muted text-foreground cursor-pointer rounded-md shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
       >
         Import
       </Button>
-
       {isOwnerOrAdmin && (
         <Button
           size="sm"
           onClick={() => setAddDialogOpen(true)}
-          className="h-8 px-3 text-xs font-medium bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer rounded-md shadow-none shrink-0"
+          className="relative h-8 px-3 text-12 font-medium bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer rounded-md shadow-none shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
         >
           Add member
         </Button>
@@ -239,7 +238,7 @@ export default function MemberPage() {
                     placeholder="Search members..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="pl-8 h-8 text-xs border-border bg-background focus:ring-0 focus:outline-none rounded-md"
+                    className="pl-8 h-8 text-13 border-border bg-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-md"
                   />
                 </div>
               </div>
@@ -252,7 +251,7 @@ export default function MemberPage() {
             {/* Table */}
             <div className="rounded-md border border-border overflow-hidden bg-background">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
+                <table className="w-full text-left text-12 border-collapse">
                   <thead>
                     <tr className="border-b border-border bg-muted/60 text-muted-foreground select-none">
                       <th className="py-2.5 px-4 font-medium" aria-sort={sortField === 'name' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
@@ -293,7 +292,7 @@ export default function MemberPage() {
                   <tbody className="divide-y divide-border/60">
                     {filteredMembers.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center text-xs text-muted-foreground">
+                        <td colSpan={6} className="py-12 text-center text-13 text-muted-foreground">
                           {search || roleFilter
                             ? 'No members found matching your search.'
                             : 'No members in this project.'}

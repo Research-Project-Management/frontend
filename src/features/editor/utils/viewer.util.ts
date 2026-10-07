@@ -391,28 +391,23 @@ export const LatexCompilerEngine = {
     const flushedFileIds: string[] = dirtyFiles.map((f) => f.fileId);
     const flushErrors: Array<{ fileId: string; error: unknown }> = [];
 
-    // 2. Pre-compile Synchronous Flush: Flush in-flight buffer and dirty files
+    // Non-blocking background persistence: fires asynchronously without delaying compilation (0ms latency)
     if (dirtyFiles.length > 0 || projectId) {
-      onPhaseChange?.("flushing");
-      try {
-        const flushTasks: Promise<any>[] = [];
-        if (projectId) {
-          flushTasks.push(manuscriptService.updater.flushProject(projectId).catch(() => {}));
-        }
-        for (const { fileId, content } of dirtyFiles) {
-          flushTasks.push(
-            flushPageContent(fileId, content).catch((err: unknown) => {
-              logger.debug(`[LatexCompilerEngine] Flush notice on ${fileId}`, { error: err });
-            }),
-          );
-        }
-        await Promise.allSettled(flushTasks);
-      } catch (err: unknown) {
-        logger.debug("[LatexCompilerEngine] Flush warning", { error: err });
+      const flushTasks: Promise<any>[] = [];
+      if (projectId) {
+        flushTasks.push(manuscriptService.updater.flushProject(projectId).catch(() => {}));
       }
+      for (const { fileId, content } of dirtyFiles) {
+        flushTasks.push(
+          flushPageContent(fileId, content).catch((err: unknown) => {
+            logger.debug(`[LatexCompilerEngine] Background flush notice on ${fileId}`, { error: err });
+          }),
+        );
+      }
+      void Promise.allSettled(flushTasks);
     }
 
-    // 3. Compile
+    // 3. Compile: Instantly enter compiling phase
     onPhaseChange?.("compiling");
 
     // Resolve source content from dirtyFiles, options, or active page

@@ -37,7 +37,7 @@ function TagItemInput({
 
   if (!canEdit) {
     return (
-      <div className="flex items-center gap-2 px-1.5 py-0.5 min-h-[28px] rounded-md">
+      <div className="flex items-center gap-2 px-1.5 py-0.5 min-h-8 rounded-md">
         <div className="size-4 shrink-0 flex items-center justify-center">
           <Tag className="size-3.5 text-foreground shrink-0" />
         </div>
@@ -58,7 +58,7 @@ function TagItemInput({
   };
 
   return (
-    <div className="group flex items-center gap-2 px-1.5 py-0.5 min-h-[28px] rounded-md">
+    <div className="group flex items-center gap-2 px-1.5 py-0.5 min-h-8 rounded-md">
       <div className="size-4 shrink-0 flex items-center justify-center">
         <Tag className="size-3.5 text-foreground shrink-0" />
       </div>
@@ -90,7 +90,7 @@ function TagItemInput({
           e.stopPropagation();
           onRemove(tag);
         }}
-        className="size-6 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer invisible group-hover:visible focus-visible:visible"
+        className="size-6 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer invisible group-hover:visible max-md:visible focus-visible:visible relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         title={`Remove tag "${tag}"`}
         aria-label={`Remove tag "${tag}"`}
       >
@@ -166,7 +166,7 @@ export default function TagsSection({
             <button
               type="button"
               onClick={() => setIsAdding(true)}
-              className="size-5 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              className="size-5 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               title="Add tag"
               aria-label="Add tag"
             >
@@ -189,7 +189,7 @@ export default function TagsSection({
 
       {/* Adding Tag Row */}
       {isAdding && (
-        <div className="flex items-center gap-2 px-1.5 py-0.5 min-h-[28px] rounded-md">
+        <div className="flex items-center gap-2 px-1.5 py-0.5 min-h-8 rounded-md">
           <div className="size-4 shrink-0 flex items-center justify-center">
             <Tag className="size-3.5 text-foreground shrink-0" />
           </div>
@@ -220,7 +220,7 @@ export default function TagsSection({
               setNewTag('');
               onCancelAdding?.();
             }}
-            className="size-6 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer"
+            className="size-6 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             title="Cancel"
             aria-label="Cancel adding tag"
           >

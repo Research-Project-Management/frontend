@@ -13,6 +13,7 @@ export const collectionSchema = z.object({
   parentId: z.string().nullable().optional(),
   createdBy: userSchema.optional(),
   itemCount: z.number().optional().default(0),
+  recursiveItemCount: z.number().optional(),
   paperCount: z.number().optional().default(0),
   createdAt: z.string().optional().default(''),
   updatedAt: z.string().optional().default(''),

@@ -523,14 +523,14 @@ export function CreatorFields({
                 </Tooltip>
               )}
 
-              {/* Action Buttons (Add, Remove) - only visible on hover */}
-              <div className="invisible group-hover:visible flex items-center gap-0.5 shrink-0">
+              {/* Action Buttons (Add, Remove) - visible on hover or always on touch */}
+              <div className="invisible group-hover:visible max-md:visible focus-within:visible flex items-center gap-0.5 shrink-0">
                 <Tooltip delayDuration={300}>
                   <TooltipTrigger asChild>
                     <button
                       type="button"
                       onClick={() => handleAddCreator(originalIndex)}
-                      className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none"
+                      className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2 md:before:hidden"
                       aria-label={`Add ${roleLabel.toLowerCase()}`}
                     >
                       <Plus className="size-3.5 text-foreground shrink-0" aria-hidden="true" strokeWidth={1.5} />
@@ -541,7 +541,7 @@ export function CreatorFields({
                     align="start"
                     sideOffset={6}
                     alignOffset={2}
-                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
+                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-raised-200"
                   >
                     Add {roleLabel.toLowerCase()}
                   </TooltipContent>
@@ -553,7 +553,7 @@ export function CreatorFields({
                       <button
                         type="button"
                         onClick={() => handleRemoveCreator(originalIndex)}
-                        className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none"
+                        className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2 md:before:hidden"
                         aria-label={`Remove ${roleLabel.toLowerCase()}`}
                       >
                         <Minus className="size-3.5 text-foreground shrink-0" aria-hidden="true" strokeWidth={1.5} />
@@ -564,7 +564,7 @@ export function CreatorFields({
                       align="start"
                       sideOffset={6}
                       alignOffset={2}
-                      className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
+                      className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-raised-200"
                     >
                       Remove {roleLabel.toLowerCase()}
                     </TooltipContent>

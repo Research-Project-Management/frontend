@@ -391,9 +391,9 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
       {/* 2.1 RETRACTION WARNING BANNER (Zotero-style alert) */}
       {(paper as any)?.isRetracted && (
-        <div className="bg-rose-600 text-white px-4 py-2 flex items-center justify-between text-xs z-30 shrink-0 border-b border-rose-700 select-none">
+        <div className="bg-destructive text-destructive-foreground px-4 py-2 flex items-center justify-between text-12 z-30 shrink-0 border-b border-destructive/20 select-none">
           <div className="flex items-center gap-2 min-w-0">
-            <ShieldAlert className="size-4 shrink-0 text-white animate-pulse" />
+            <ShieldAlert className="size-4 shrink-0 text-destructive-foreground animate-pulse" />
             <span className="font-semibold tracking-normal">
               {(paper as any).retractionNature === 'expression_of_concern'
                 ? 'Expression of Concern'
@@ -401,7 +401,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 ? 'Publisher Correction'
                 : 'Retracted Publication'}
             </span>
-            <span className="text-rose-100 truncate max-w-xl">
+            <span className="text-destructive-foreground/90 truncate max-w-xl">
               - {(((paper as any).retractionDetails as any)?.reason) || 'This publication has been flagged as retracted or unreliable.'}
             </span>
           </div>
@@ -410,7 +410,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
               href={((paper as any).retractionDetails as any).noticeUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-white underline font-medium hover:text-rose-200 shrink-0 ml-4"
+              className="inline-flex items-center gap-1 text-12 text-destructive-foreground underline font-medium hover:text-destructive-foreground/80 shrink-0 ml-4 relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               Notice <ExternalLink className="size-3 shrink-0" />
             </a>
@@ -451,7 +451,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 <FileQuestion className="size-5 text-foreground" strokeWidth={1.5} />
               </div>
               <div className="space-y-1">
-                <h3 className="text-13 font-semibold text-foreground">Document not found</h3>
+                <h3 className="text-14 font-semibold tracking-tight text-foreground">Document not found</h3>
                 <p className="text-12 text-foreground/80 leading-relaxed">
                   The document could not be found or you do not have permission.
                 </p>
@@ -460,7 +460,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 variant="outline"
                 size="sm"
                 onClick={goBack}
-                className="h-8 px-3 mt-1 text-12 font-medium rounded-md cursor-pointer border border-border bg-background text-foreground hover:bg-muted"
+                className="h-8 px-3 mt-1 text-12 font-medium rounded-md cursor-pointer border border-border bg-background text-foreground hover:bg-muted relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <ChevronLeft className="size-3.5 mr-1 shrink-0 text-foreground" strokeWidth={1.5} />
                 Return to Library
@@ -575,7 +575,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 variant="outline"
                 size="sm"
                 onClick={() => setIsInspectorOpen(true)}
-                className="h-8 px-3 text-12 font-medium rounded-md cursor-pointer border border-border bg-background text-foreground hover:bg-muted"
+                className="h-8 px-3 text-12 font-medium rounded-md cursor-pointer border border-border bg-background text-foreground hover:bg-muted relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 Open Details
               </Button>

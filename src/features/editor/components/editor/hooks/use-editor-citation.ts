@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import { logger } from '@/shared/lib/utils';
 import { parseBibContent, type BibEntry } from '@/features/editor/utils/bib-parser.util';
 import { extractCitationKeys, formatBibEntryToBibtex } from '@/features/editor/utils/citation.util';
@@ -207,31 +207,31 @@ export function useEditorCitation({
 
   // Listen to external citation events (from Citation sidebar panel & CodeMirror completion)
   useEffect(() => {
-    const unsubOpen = EditorEventBus.on('flux:open-citation-picker', (detail) => {
-      setCitationModalOpen(true);
-      if (detail && typeof detail === 'object') {
-        if (detail.initialQuery) setInitialCitationQuery(detail.initialQuery);
-        if (detail.initialKey) setInitialCitationKey(detail.initialKey);
-      } else {
-        setInitialCitationQuery('');
-        setInitialCitationKey('');
+    const unsubOpen = editorCommandBus.subscribe('dialog:open', (cmd) => {
+      if (cmd.dialog === 'citation-picker') {
+        setCitationModalOpen(true);
+        if (cmd.payload && typeof cmd.payload === 'object') {
+          if (cmd.payload.initialQuery) setInitialCitationQuery(cmd.payload.initialQuery);
+          if (cmd.payload.initialKey) setInitialCitationKey(cmd.payload.initialKey);
+        } else {
+          setInitialCitationQuery('');
+          setInitialCitationKey('');
+        }
       }
     });
 
-    const unsubInsert = (detail: any) => {
-      const bibKey = detail?.bibKey;
+    const unsubInsert = editorCommandBus.subscribe('editor:insert-citation', (cmd) => {
+      const bibKey = cmd.bibKey;
       if (!bibKey) return;
-      if (!detail?.textInserted && engine) {
+      if (!cmd.textInserted && engine) {
         engine.insertText(`\\cite{${bibKey}}`);
       }
-      ensureEntryInBibFile(bibKey, detail?.entry);
-    };
-
-    const unsubInsertHandler = EditorEventBus.on('flux:insert-citation', unsubInsert);
+      ensureEntryInBibFile(bibKey, cmd.entry);
+    });
 
     return () => {
       unsubOpen();
-      unsubInsertHandler();
+      unsubInsert();
     };
   }, [engine, ensureEntryInBibFile]);
 

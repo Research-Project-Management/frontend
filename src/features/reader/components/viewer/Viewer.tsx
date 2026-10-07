@@ -777,7 +777,7 @@ export default function Viewer({
     <div
       className={cn(
         "relative flex-1 flex flex-col min-w-0 h-full overflow-hidden transition-colors",
-        themeMode === 'dark' ? "bg-zinc-950" : themeMode === 'sepia' ? "bg-[#efe7d7]" : "bg-muted"
+        themeMode === 'dark' ? "bg-background" : themeMode === 'sepia' ? "bg-[#efe7d7]" : "bg-muted"
       )}
     >
       {/* Scrollable PDF area */}
@@ -823,8 +823,9 @@ export default function Viewer({
               type="button"
               onClick={handlePrevMatch}
               disabled={searchMatches.length === 0}
-              className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 cursor-pointer"
+              className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               title="Previous match (Shift+Enter)"
+              aria-label="Previous match"
             >
               <ChevronLeft className="size-3.5 shrink-0" strokeWidth={1.5} />
             </button>
@@ -833,8 +834,9 @@ export default function Viewer({
               type="button"
               onClick={handleNextMatch}
               disabled={searchMatches.length === 0}
-              className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 cursor-pointer"
+              className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               title="Next match (Enter)"
+              aria-label="Next match"
             >
               <ChevronRight className="size-3.5 shrink-0" strokeWidth={1.5} />
             </button>
@@ -842,8 +844,9 @@ export default function Viewer({
             <button
               type="button"
               onClick={() => onCloseSearch?.()}
-              className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer ml-0.5"
+              className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer ml-0.5 relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               title="Close (Escape)"
+              aria-label="Close search"
             >
               <X className="size-3.5 shrink-0" strokeWidth={1.5} />
             </button>
@@ -972,16 +975,18 @@ export default function Viewer({
                       <button
                         type="button"
                         onClick={handleSaveInlineText}
-                        className="size-6 rounded text-primary hover:bg-primary/10 flex items-center justify-center cursor-pointer transition-colors"
+                        className="size-6 rounded-md text-primary hover:bg-primary/10 flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         title="Save text (Enter)"
+                        aria-label="Save text"
                       >
                         <Check className="size-3.5" strokeWidth={2} />
                       </button>
                       <button
                         type="button"
                         onClick={() => setInlineTextInput(null)}
-                        className="size-6 rounded text-muted-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors"
+                        className="size-6 rounded-md text-muted-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         title="Cancel (Esc)"
+                        aria-label="Cancel"
                       >
                         <X className="size-3.5" strokeWidth={2} />
                       </button>
@@ -1182,7 +1187,7 @@ export default function Viewer({
         {/* Zotero 7 Official Quick Edit Card */}
         {activeHighlightTooltip && (
           <div
-            className="absolute z-40 rounded-md border border-border bg-background p-2.5 shadow-md text-12 select-none w-72 max-w-[90vw] animate-in fade-in zoom-in-95 duration-100 font-sans"
+            className="absolute z-50 rounded-md border border-border bg-background p-2.5 shadow-raised-200 text-12 select-none w-72 max-w-[90vw] animate-in fade-in zoom-in-95 duration-100 font-sans"
             style={{
               top: `${activeHighlightTooltip.top}px`,
               left: `${activeHighlightTooltip.left}px`,
@@ -1222,10 +1227,11 @@ export default function Viewer({
                       );
                       setActiveHighlightTooltip(null);
                     }}
-                    className="size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors"
+                    className="size-6 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     title="Add to Note"
+                    aria-label="Add to Note"
                   >
-                    <StickyNote className="size-3 shrink-0" strokeWidth={1.5} />
+                    <StickyNote className="size-3.5 shrink-0" strokeWidth={1.5} />
                   </button>
                 )}
                 {onDeleteAnnotation && (
@@ -1235,19 +1241,21 @@ export default function Viewer({
                       onDeleteAnnotation(activeHighlightTooltip.ann);
                       setActiveHighlightTooltip(null);
                     }}
-                    className="size-5 rounded-md text-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer transition-colors"
+                    className="size-6 rounded-md text-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     title="Delete annotation"
+                    aria-label="Delete annotation"
                   >
-                    <Trash2 className="size-3 shrink-0" strokeWidth={1.5} />
+                    <Trash2 className="size-3.5 shrink-0" strokeWidth={1.5} />
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => setActiveHighlightTooltip(null)}
-                  className="size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors"
+                  className="size-6 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   title="Close"
+                  aria-label="Close"
                 >
-                  <X className="size-3 shrink-0" strokeWidth={1.5} />
+                  <X className="size-3.5 shrink-0" strokeWidth={1.5} />
                 </button>
               </div>
             </div>
@@ -1266,7 +1274,7 @@ export default function Viewer({
                       title={c.label}
                       onClick={() => handleCardColorChange(c.hex)}
                       className={cn(
-                        "size-3.5 rounded-full border border-border/80 hover:scale-125 transition-transform cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                        "size-3.5 rounded-full border border-border/80 hover:scale-125 transition-transform cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2.5 md:before:hidden",
                         isSelected && "ring-2 ring-primary ring-offset-1 scale-110"
                       )}
                       style={{ backgroundColor: c.hex }}
@@ -1331,7 +1339,7 @@ export default function Viewer({
         {/* Floating selection action menu: highlight colors, note, ask AI, cite, copy */}
         {showFloatingMenu && selectedText && (
           <div
-            className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1.5 bg-background text-foreground px-2 py-1 rounded-md border border-border shadow-md duration-150 select-none"
+            className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1.5 bg-background text-foreground px-2 py-1 rounded-md border border-border shadow-raised-200 duration-150 select-none"
             style={{
               top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`,
@@ -1375,7 +1383,7 @@ export default function Viewer({
                       }}
                       title={`Highlight in ${c.label}`}
                       className={cn(
-                        "size-3.5 rounded-full border border-border hover:scale-125 transition-transform cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                        "size-3.5 rounded-full border border-border hover:scale-125 transition-transform cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2.5 md:before:hidden",
                         isSelected && "ring-2 ring-primary ring-offset-1 scale-110"
                       )}
                       style={{ backgroundColor: c.hex }}
@@ -1395,7 +1403,7 @@ export default function Viewer({
                   setShowFloatingMenu(false);
                   window.getSelection()?.removeAllRanges();
                 }}
-                className="flex items-center gap-1 px-1.5 py-1 rounded-md text-12 font-medium hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                className="flex items-center gap-1 h-7 px-2 rounded-md text-12 font-medium hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1.5 md:before:hidden"
                 title="Add selected text to Note"
               >
                 <StickyNote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -1412,7 +1420,7 @@ export default function Viewer({
                 setShowFloatingMenu(false);
                 window.getSelection()?.removeAllRanges();
               }}
-              className="flex items-center gap-1 px-1.5 py-1 rounded-md text-12 font-medium hover:bg-muted text-primary transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="flex items-center gap-1 h-7 px-2 rounded-md text-12 font-medium hover:bg-muted text-primary transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1.5 md:before:hidden"
               title="Ask AI about selected text"
             >
               <img src="/Chat.svg" alt="AI" className="size-3.5 shrink-0 rounded-full" />
@@ -1425,7 +1433,7 @@ export default function Viewer({
                 type="button"
                 aria-label="Copy in-text citation"
                 onClick={handleCopyCitation}
-                className="flex items-center gap-1 px-1.5 py-1 rounded-md text-12 font-medium hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                className="flex items-center gap-1 h-7 px-2 rounded-md text-12 font-medium hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1.5 md:before:hidden"
                 title="Copy in-text citation: (Author, Year, p. X)"
               >
                 {copiedCitation ? (
@@ -1442,7 +1450,7 @@ export default function Viewer({
               type="button"
               aria-label="Copy selected text"
               onClick={handleCopySelection}
-              className="flex items-center gap-1 px-1.5 py-1 rounded-md text-12 font-medium hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="flex items-center gap-1 h-7 px-2 rounded-md text-12 font-medium hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1.5 md:before:hidden"
               title="Copy text"
             >
               {copiedSelection ? (

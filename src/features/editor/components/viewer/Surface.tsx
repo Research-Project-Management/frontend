@@ -117,6 +117,7 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
       }}
       onClickCapture={handleClickCapture}
       onDoubleClickCapture={handleDoubleClick}
+      title="Double-click or Ctrl/Cmd+Click to jump to LaTeX source (SyncTeX)"
       className={cn(
         "bg-canvas dark:bg-card relative flex items-center justify-center cursor-text transition-all shrink-0",
         isSpreadView ? "my-0" : "border-b border-border/60 last:border-b-0"
@@ -150,12 +151,12 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
           devicePixelRatio={typeof window !== 'undefined' ? Math.min(2, Math.max(1, window.devicePixelRatio || 1)) : 1}
           loading={
             <div className="absolute inset-0 flex items-center justify-center bg-canvas dark:bg-card">
-              <Loader2 className="size-5 animate-spin text-muted-foreground/30 shrink-0" />
+              <Loader2 className="size-5 animate-spin motion-reduce:animate-none text-muted-foreground/30 shrink-0" />
             </div>
           }
         />
       ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 text-muted-foreground/30 select-none animate-pulse">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 text-muted-foreground/30 select-none animate-pulse motion-reduce:animate-none">
           <span className="text-xs font-mono font-medium">Page {pageNum}</span>
         </div>
       )}
@@ -181,14 +182,14 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
         >
           {clickIndicator.w && clickIndicator.h ? (
             <div className="relative w-full h-full">
-              <div className="absolute inset-0 rounded-sm bg-primary/20 border-y-2 border-primary animate-pulse" />
+              <div className="absolute inset-0 rounded-sm bg-primary/20 border-y-2 border-primary animate-pulse motion-reduce:animate-none" />
               <div className="absolute -left-2 top-1/2 -translate-y-1/2 size-2 rounded-full bg-primary ring-2 ring-background" />
             </div>
           ) : (
             <span className="relative flex size-9 items-center justify-center">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500/60 opacity-80" />
-              <span className="absolute inline-flex size-6 rounded-full border-2 border-emerald-500 bg-emerald-500/20" />
-              <span className="relative inline-flex size-2 rounded-full bg-emerald-600" />
+              <span className="absolute inline-flex size-full animate-ping motion-reduce:animate-none rounded-full bg-primary/60 opacity-80" />
+              <span className="absolute inline-flex size-6 rounded-full border-2 border-primary bg-primary/20" />
+              <span className="relative inline-flex size-2 rounded-full bg-primary" />
             </span>
           )}
         </div>
@@ -263,7 +264,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
   const [clickIndicator, setClickIndicator] = useState<ClickIndicator | null>(null);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [docLoadError, setDocLoadError] = useState<Error | null>(null);
-  setupPdfWorker();
+
   useEffect(() => {
     setupPdfWorker();
   }, []);
@@ -422,13 +423,13 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
         className={cn(
           "flex-1 h-full min-h-0 overflow-y-auto flex flex-col items-center justify-start select-text relative transition-colors duration-200 thin-scrollbar",
           autoFit ? "overflow-x-hidden" : "overflow-x-auto",
-          invertColors ? "bg-neutral-950 text-neutral-100" : "bg-background text-foreground"
+          invertColors ? "dark bg-background text-foreground" : "bg-canvas text-foreground"
         )}
       >
         {!pdfUrl ? (
           <PlaneEmptyState
             variant="preview"
-            className={invertColors ? "bg-neutral-950 text-neutral-100" : undefined}
+            className={invertColors ? "dark bg-background text-foreground" : undefined}
           />
         ) : (
           /* PDF Document Canvas */
@@ -439,7 +440,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
             onLoadError={handleDocumentLoadError}
             loading={
               <div className="flex items-center justify-center h-full">
-                <Loader2 className="size-8 animate-spin text-primary shrink-0" />
+                <Loader2 className="size-8 animate-spin motion-reduce:animate-none text-primary shrink-0" />
               </div>
             }
             error={
@@ -554,7 +555,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
                   }}
                 >
                   <span className="relative flex size-9 items-center justify-center">
-                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/40 opacity-70" />
+                    <span className="absolute inline-flex size-full animate-ping motion-reduce:animate-none rounded-full bg-primary/40 opacity-70" />
                     <span className="absolute inline-flex size-6 rounded-full border-2 border-primary bg-primary/20" />
                     <span className="relative inline-flex size-2 rounded-full bg-primary" />
                   </span>

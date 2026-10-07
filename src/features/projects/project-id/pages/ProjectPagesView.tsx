@@ -243,7 +243,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div
                     key={i}
-                    className="flex flex-col rounded-md border border-border/80 bg-card overflow-hidden animate-pulse"
+                    className="flex flex-col rounded-md border border-border/80 bg-card overflow-hidden animate-pulse motion-reduce:animate-none"
                   >
                     <div className="aspect-[16/9] w-full bg-muted/40 border-b border-border/70 p-3.5 flex flex-col justify-between">
                       <div className="space-y-1.5">
@@ -271,7 +271,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
           ) : (
             <div className="divide-y divide-border/60 border-b border-border overflow-x-auto select-none">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-10 px-4 flex items-center min-w-[780px] animate-pulse">
+                <div key={i} className="h-10 px-4 flex items-center min-w-[780px] animate-pulse motion-reduce:animate-none">
                   <div className="w-[36%] flex items-center gap-2.5 min-w-0 pr-4">
                     <div className="size-6.5 rounded-md bg-muted/60 shrink-0" />
                     <div className="h-3.5 w-3/5 rounded bg-muted/70" />

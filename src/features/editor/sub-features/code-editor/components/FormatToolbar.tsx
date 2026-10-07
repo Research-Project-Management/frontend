@@ -23,7 +23,7 @@ import {
   Folder,
   Globe,
   Image as ImageIcon,
-  Sparkles,
+  Bot,
 } from 'lucide-react';
 import {
   OverleafUndoIcon,
@@ -66,7 +66,6 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { editorCommandBus } from '../../../core/command-bus/editor-command-bus';
-import { EditorEventBus } from '../../../utils/editor.util';
 import { convertLatexTableToHtml } from '../../../utils/latex-converter.util';
 import { useSettingsStore } from '../../../store';
 import type { LatexFormatType } from '../../../ports/editor-engine.port';
@@ -103,7 +102,7 @@ const ToolbarButton = React.memo(function ToolbarButton({
           onClick={onClick}
           aria-label={tooltip}
           className={cn(
-            'relative flex size-7 items-center justify-center rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary select-none after:absolute after:-inset-1 after:content-[\'\']',
+            'relative flex size-7 items-center justify-center rounded-md text-xs font-medium transition-colors motion-reduce:transition-none cursor-pointer shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary select-none after:absolute after:-inset-x-0.5 after:-inset-y-1 after:content-[\'\']',
             active
               ? 'bg-muted text-foreground font-semibold'
               : 'text-foreground hover:bg-muted',
@@ -149,17 +148,24 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
     const el = containerRef.current;
     if (!el) return;
 
+    let rafId: number | null = null;
     const ro = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const w = entry.contentRect.width;
         if (w > 0) {
-          setContainerWidth(w);
+          if (rafId !== null) cancelAnimationFrame(rafId);
+          rafId = requestAnimationFrame(() => {
+            setContainerWidth(w);
+          });
         }
       }
     });
 
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      ro.disconnect();
+    };
   }, []);
 
   // Responsive collapse tiers based on measured container width:
@@ -182,7 +188,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
   const handleFormat = useCallback(
     (format: LatexFormatType) => {
       if (editorMode === 'visual') {
-        EditorEventBus.emit('flux:visual-command', { command: format as any });
+        editorCommandBus.dispatch({ type: 'editor:visual-command', command: format as any });
       } else {
         editorCommandBus.dispatch({ type: 'editor:format', format });
       }
@@ -194,7 +200,8 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
     (snippet: string) => {
       if (editorMode === 'visual') {
         const htmlTable = convertLatexTableToHtml(snippet);
-        EditorEventBus.emit('flux:visual-command', {
+        editorCommandBus.dispatch({
+          type: 'editor:visual-command',
           command: 'insertTable',
           contentHtml: htmlTable || `<p>${snippet}</p>`,
         });
@@ -271,7 +278,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
             >
               <DropdownMenuItem
                 onClick={() => handleFormat('normal')}
-                className="px-2.5 py-1.5 cursor-pointer text-xs font-normal text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors"
+                className="px-2.5 py-1.5 cursor-pointer text-xs font-normal text-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors"
               >
                 Normal text
               </DropdownMenuItem>
@@ -280,35 +287,35 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
 
               <DropdownMenuItem
                 onClick={() => handleFormat('section')}
-                className="px-2.5 py-1.5 cursor-pointer font-serif text-14 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-tight"
+                className="px-2.5 py-1.5 cursor-pointer font-serif text-14 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors leading-tight"
               >
                 Section
               </DropdownMenuItem>
 
               <DropdownMenuItem
                 onClick={() => handleFormat('subsection')}
-                className="px-2.5 py-1.5 cursor-pointer font-serif text-13 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-tight"
+                className="px-2.5 py-1.5 cursor-pointer font-serif text-13 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors leading-tight"
               >
                 Subsection
               </DropdownMenuItem>
 
               <DropdownMenuItem
                 onClick={() => handleFormat('subsubsection')}
-                className="px-2.5 py-1.5 cursor-pointer font-serif text-12 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-tight"
+                className="px-2.5 py-1.5 cursor-pointer font-serif text-12 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors leading-tight"
               >
                 Subsubsection
               </DropdownMenuItem>
 
               <DropdownMenuItem
                 onClick={() => handleFormat('paragraph')}
-                className="px-2.5 py-1.5 cursor-pointer font-serif text-12 font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-normal"
+                className="px-2.5 py-1.5 cursor-pointer font-serif text-12 font-medium text-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors leading-normal"
               >
                 Paragraph
               </DropdownMenuItem>
 
               <DropdownMenuItem
                 onClick={() => handleFormat('subparagraph')}
-                className="px-2.5 py-1.5 cursor-pointer font-serif text-12 font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-normal"
+                className="px-2.5 py-1.5 cursor-pointer font-serif text-12 font-medium text-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors leading-normal"
               >
                 Subparagraph
               </DropdownMenuItem>
@@ -452,7 +459,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
         {/* 10. Citation [📖] (visible if level < 1) */}
         {level < 1 && (
           <ToolbarButton
-            onClick={() => EditorEventBus.emit('flux:open-citation-picker')}
+            onClick={() => editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'citation-picker' })}
             icon={OverleafBookIcon}
             iconClassName="size-3.5"
             tooltip="Insert Citation"
@@ -484,21 +491,21 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
             >
               <DropdownMenuItem
                 onClick={() => fileInputRef.current?.click()}
-                className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
+                className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground flex items-center gap-3 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
                 <Upload className="size-4 text-foreground shrink-0" />
                 <span>Upload from computer</span>
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => EditorEventBus.emit('flux:open-figure-wizard')}
-                className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
+                onClick={() => editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'figure-wizard' })}
+                className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground flex items-center gap-3 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
                 <ImageIcon className="size-4 text-foreground shrink-0" />
                 <span>From project files</span>
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => EditorEventBus.emit('flux:open-figure-wizard')}
-                className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
+                onClick={() => editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'figure-wizard' })}
+                className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground flex items-center gap-3 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
                 <Folder className="size-4 text-foreground shrink-0" />
                 <span>From another project</span>
@@ -512,7 +519,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                     );
                   }
                 }}
-                className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
+                className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground flex items-center gap-3 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
                 <Globe className="size-4 text-foreground shrink-0" />
                 <span>From URL</span>
@@ -551,14 +558,14 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                   editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'AI' });
                   notifyAiTablePrompt();
                 }}
-                className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-2.5 transition-colors outline-none"
+                className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground flex items-center gap-2.5 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
                 <span>From text or image</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="my-1" />
               <DropdownMenuItem
-                onClick={() => EditorEventBus.emit('flux:open-table-wizard')}
-                className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground transition-colors outline-none"
+                onClick={() => editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'table-wizard' })}
+                className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
                 <span>Select size</span>
               </DropdownMenuItem>
@@ -595,7 +602,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                   <button
                     type="button"
                     onClick={() => handleFormat('itemize')}
-                    className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none"
+                    className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     aria-label="Bullet list"
                   >
                     <OverleafListIcon className="size-3.5 shrink-0" />
@@ -608,7 +615,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                   <button
                     type="button"
                     onClick={() => handleFormat('enumerate')}
-                    className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none"
+                    className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     aria-label="Numbered list"
                   >
                     <ListOrdered className="size-4 shrink-0" />
@@ -669,38 +676,38 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                     >
                       <DropdownMenuItem
                         onClick={() => { handleFormat('normal'); setOverflowOpen(false); }}
-                        className="px-2.5 py-1.5 cursor-pointer text-xs font-normal text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors"
+                        className="px-2.5 py-1.5 cursor-pointer text-xs font-normal text-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors"
                       >
                         Normal text
                       </DropdownMenuItem>
                       <DropdownMenuSeparator className="-mx-1 my-1 bg-border/60" />
                       <DropdownMenuItem
                         onClick={() => { handleFormat('section'); setOverflowOpen(false); }}
-                        className="px-2.5 py-1.5 cursor-pointer text-14 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-tight"
+                        className="px-2.5 py-1.5 cursor-pointer text-14 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors leading-tight"
                       >
                         Section
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => { handleFormat('subsection'); setOverflowOpen(false); }}
-                        className="px-2.5 py-1.5 cursor-pointer text-13 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-tight"
+                        className="px-2.5 py-1.5 cursor-pointer text-13 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors leading-tight"
                       >
                         Subsection
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => { handleFormat('subsubsection'); setOverflowOpen(false); }}
-                        className="px-2.5 py-1.5 cursor-pointer text-12 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-tight"
+                        className="px-2.5 py-1.5 cursor-pointer text-12 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors leading-tight"
                       >
                         Subsubsection
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => { handleFormat('paragraph'); setOverflowOpen(false); }}
-                        className="px-2.5 py-1.5 cursor-pointer text-12 font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-normal"
+                        className="px-2.5 py-1.5 cursor-pointer text-12 font-medium text-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors leading-normal"
                       >
                         Paragraph
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => { handleFormat('subparagraph'); setOverflowOpen(false); }}
-                        className="px-2.5 py-1.5 cursor-pointer text-12 font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-normal"
+                        className="px-2.5 py-1.5 cursor-pointer text-12 font-medium text-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors leading-normal"
                       >
                         Subparagraph
                       </DropdownMenuItem>
@@ -777,7 +784,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
 
                   <ToolbarButton
                     onClick={() => {
-                      EditorEventBus.emit('flux:open-symbol-palette');
+                      editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'symbol-palette' });
                       setOverflowOpen(false);
                     }}
                     icon={OverleafOmegaIcon}
@@ -875,7 +882,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                 <>
                   <ToolbarButton
                     onClick={() => {
-                      EditorEventBus.emit('flux:open-citation-picker');
+                      editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'citation-picker' });
                       setOverflowOpen(false);
                     }}
                     icon={OverleafBookIcon}
@@ -910,27 +917,27 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                           fileInputRef.current?.click();
                           setOverflowOpen(false);
                         }}
-                        className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
+                        className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground flex items-center gap-3 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       >
                         <Upload className="size-4 text-foreground shrink-0" />
                         <span>Upload from computer</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => {
-                          EditorEventBus.emit('flux:open-figure-wizard');
+                          editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'figure-wizard' });
                           setOverflowOpen(false);
                         }}
-                        className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
+                        className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground flex items-center gap-3 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       >
                         <ImageIcon className="size-4 text-foreground shrink-0" />
                         <span>From project files</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => {
-                          EditorEventBus.emit('flux:open-figure-wizard');
+                          editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'figure-wizard' });
                           setOverflowOpen(false);
                         }}
-                        className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
+                        className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground flex items-center gap-3 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       >
                         <Folder className="size-4 text-foreground shrink-0" />
                         <span>From another project</span>
@@ -945,7 +952,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                           }
                           setOverflowOpen(false);
                         }}
-                        className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
+                        className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground flex items-center gap-3 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       >
                         <Globe className="size-4 text-foreground shrink-0" />
                         <span>From URL</span>
@@ -983,18 +990,18 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                           notifyAiTablePrompt();
                           setOverflowOpen(false);
                         }}
-                        className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-2.5 transition-colors outline-none"
+                        className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground flex items-center gap-2.5 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       >
-                        <Sparkles className="size-4 text-ai shrink-0" />
+                        <Bot className="size-4 text-ai shrink-0" />
                         <span>From text or image</span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator className="my-1" />
                       <DropdownMenuItem
                         onClick={() => {
-                          EditorEventBus.emit('flux:open-table-wizard');
+                          editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'table-wizard' });
                           setOverflowOpen(false);
                         }}
-                        className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground transition-colors outline-none"
+                        className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       >
                         <span>Select size</span>
                       </DropdownMenuItem>

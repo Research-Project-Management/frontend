@@ -43,8 +43,8 @@ export function TrackChangesControlBar({
             className={cn(
               'px-2.5 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
               !reviewMode
-                ? 'bg-background text-foreground shadow-2xs font-semibold'
-                : 'text-muted-foreground hover:text-foreground',
+                ? 'bg-background text-foreground font-semibold border border-border/60'
+                : 'text-muted-foreground hover:text-foreground border border-transparent',
             )}
             aria-pressed={!reviewMode}
           >
@@ -56,7 +56,7 @@ export function TrackChangesControlBar({
             className={cn(
               'px-2.5 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
               reviewMode
-                ? 'bg-primary text-primary-foreground shadow-2xs font-semibold'
+                ? 'bg-primary text-primary-foreground font-semibold'
                 : 'text-muted-foreground hover:text-foreground',
             )}
             aria-pressed={reviewMode}

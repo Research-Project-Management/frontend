@@ -152,7 +152,10 @@ export default function Recent() {
   const filterAction = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background text-xs font-medium text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary">
+        <button
+          type="button"
+          className="relative flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background hover:bg-muted text-12 font-medium text-foreground transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none shadow-none touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
+        >
           {filterLabels[filter]}
           <ChevronDown className="size-3.5 text-foreground shrink-0" />
         </button>
@@ -160,18 +163,18 @@ export default function Recent() {
       <DropdownMenuContent
         align="end"
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="w-36 rounded-md bg-popover"
+        className="w-36 rounded-md bg-popover text-12 shadow-overlay"
       >
-        <DropdownMenuItem onClick={() => setFilter('all')} className="text-sm cursor-pointer">
+        <DropdownMenuItem onClick={() => setFilter('all')} className="text-12 cursor-pointer">
           All
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setFilter('work-items')} className="text-sm cursor-pointer">
+        <DropdownMenuItem onClick={() => setFilter('work-items')} className="text-12 cursor-pointer">
           Work Items
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setFilter('pages')} className="text-sm cursor-pointer">
+        <DropdownMenuItem onClick={() => setFilter('pages')} className="text-12 cursor-pointer">
           Pages
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setFilter('projects')} className="text-sm cursor-pointer">
+        <DropdownMenuItem onClick={() => setFilter('projects')} className="text-12 cursor-pointer">
           Projects
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -181,8 +184,19 @@ export default function Recent() {
   return (
     <Section title='Recents' action={filterAction}>
       {isLoading ? (
-        <div className='flex items-center justify-center py-8'>
-          <Loader2 className='w-6 h-6 animate-spin text-primary shrink-0' />
+        <div className="grid gap-1.5">
+          {[1, 2, 3, 4].map((n) => (
+            <div
+              key={n}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-md animate-pulse motion-reduce:animate-none"
+            >
+              <div className="size-4 rounded bg-muted shrink-0" />
+              <div className="h-3 w-12 rounded bg-muted/60 shrink-0" />
+              <div className="h-3.5 w-64 rounded bg-muted flex-1" />
+              <div className="h-3 w-16 rounded bg-muted/40 shrink-0" />
+              <div className="size-5 rounded-full bg-muted shrink-0" />
+            </div>
+          ))}
         </div>
       ) : items && items.length > 0 ? (
         <div className='grid gap-1.5'>
@@ -227,7 +241,7 @@ export default function Recent() {
                   )}
                   <Link
                     href={linkTo}
-                    className='text-13 font-medium text-foreground truncate transition-colors before:absolute before:inset-0'
+                    className='text-13 font-medium text-foreground truncate transition-colors before:absolute before:inset-0 rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
                   >
                     {item.title || item.name}
                   </Link>

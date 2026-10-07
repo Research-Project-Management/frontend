@@ -5,23 +5,25 @@
  */
 
 import { create } from 'zustand';
+import { useDocumentEditorStore as usePageStore } from './editor.store';
 
 export interface EditorTab {
   id: string;
   title: string;
   isDirty?: boolean;
   fileUrl?: string;
+  path?: string;
 }
 
 export interface DocumentTabsState {
   tabsByProject: Record<string, EditorTab[]>;
   activeByProject: Record<string, string | null>;
 
-  openTab: (projectId: string, tab: EditorTab) => void;
+  openTab: (projectIdOrTab: string | EditorTab, maybeTab?: EditorTab) => void;
   closeTab: (
-    projectId: string,
-    tabId: string,
-    router: (pageId: string | null) => void,
+    projectIdOrTabId: string,
+    maybeTabId?: string | ((pageId: string | null) => void),
+    router?: (pageId: string | null) => void,
   ) => void;
   setActive: (projectId: string, tabId: string) => void;
   getTabs: (projectId: string) => EditorTab[];
@@ -45,7 +47,18 @@ export const useDocumentTabsStore = create<DocumentTabsState>()((set, get) => ({
   tabsByProject: {},
   activeByProject: {},
 
-  openTab(projectId, tab) {
+  openTab(projectIdOrTab, maybeTab) {
+    let projectId: string;
+    let tab: EditorTab;
+    if (typeof projectIdOrTab === 'object' && projectIdOrTab !== null) {
+      tab = projectIdOrTab;
+      projectId = usePageStore.getState().projectId || usePageStore.getState().currentPage?.id || 'default';
+    } else {
+      projectId = projectIdOrTab;
+      tab = maybeTab!;
+    }
+    if (!tab) return;
+
     set((state) => {
       const existing = state.tabsByProject[projectId] ?? [];
       const isIncomingMain = isMainDocTab(tab, projectId);
@@ -94,7 +107,21 @@ export const useDocumentTabsStore = create<DocumentTabsState>()((set, get) => ({
     });
   },
 
-  closeTab(projectId, tabId, router) {
+  closeTab(projectIdOrTabId, maybeTabId, maybeRouter) {
+    let projectId: string;
+    let tabId: string;
+    let router: ((pageId: string | null) => void) | undefined;
+
+    if (typeof maybeTabId === 'function' || maybeTabId === undefined) {
+      tabId = projectIdOrTabId;
+      projectId = usePageStore.getState().projectId || usePageStore.getState().currentPage?.id || 'default';
+      router = typeof maybeTabId === 'function' ? maybeTabId : maybeRouter;
+    } else {
+      projectId = projectIdOrTabId;
+      tabId = maybeTabId;
+      router = maybeRouter;
+    }
+
     const state = get();
     const currentTabs = state.tabsByProject[projectId] ?? [];
     const isClosingMain = isMainDocTab({ id: tabId }, projectId);
@@ -119,7 +146,9 @@ export const useDocumentTabsStore = create<DocumentTabsState>()((set, get) => ({
         const nextIdx = Math.min(idx, remaining.length - 1);
         nextActive = remaining[nextIdx].id;
       }
-      router(nextActive);
+      if (router) {
+        router(nextActive);
+      }
     } else {
       nextActive = currentActive ?? null;
     }

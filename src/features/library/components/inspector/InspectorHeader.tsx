@@ -102,7 +102,7 @@ export function InspectorHeader({
           <button
             type="button"
             onClick={() => setIsRetractionModalOpen(true)}
-            className="h-6.5 px-2 text-11 font-medium bg-destructive/10 text-destructive border border-destructive/25 rounded-md hover:bg-destructive/20 hover:border-destructive/40 transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1.5 select-none"
+            className="h-6.5 px-2 text-11 font-medium bg-destructive/10 text-destructive border border-destructive/25 rounded-md hover:bg-destructive/20 hover:border-destructive/40 transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1.5 select-none relative before:absolute before:-inset-1.5 md:before:hidden"
             title={`${retractionTitle}. Click to view details.`}
             aria-label="View retraction notice details"
           >
@@ -117,7 +117,7 @@ export function InspectorHeader({
           <button
             type="button"
             onClick={onClose}
-            className="md:hidden size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0"
+            className="md:hidden size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden"
             title="Close inspector"
             aria-label="Close inspector"
           >
@@ -150,7 +150,7 @@ export function InspectorHeader({
                   type="button"
                   onClick={() => restoreMutation.mutate([item.id])}
                   disabled={restoreMutation.isPending}
-                  className="h-6 px-2 text-11 font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-md cursor-pointer flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  className="h-7 px-2.5 text-11 font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-md cursor-pointer flex items-center gap-1.5 transition-colors disabled:opacity-50 relative before:absolute before:-inset-1.5 md:before:hidden"
                 >
                   <RotateCcw className="size-3" />
                   <span>Restore</span>
@@ -163,7 +163,7 @@ export function InspectorHeader({
                     }
                   }}
                   disabled={purgeMutation.isPending}
-                  className="h-6 px-2 text-11 font-medium border border-destructive/40 text-destructive hover:bg-destructive/10 rounded-md cursor-pointer flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  className="h-7 px-2.5 text-11 font-medium border border-destructive/40 text-destructive hover:bg-destructive/10 rounded-md cursor-pointer flex items-center gap-1.5 transition-colors disabled:opacity-50 relative before:absolute before:-inset-1.5 md:before:hidden"
                 >
                   <Trash2 className="size-3" />
                   <span>Delete permanently</span>

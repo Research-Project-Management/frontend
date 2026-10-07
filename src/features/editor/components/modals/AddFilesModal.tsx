@@ -416,9 +416,35 @@ export default function AddFilesModal({
     { id: 'library' as const, label: 'From library', icon: BookOpen },
   ];
 
+  const handleTabKeyDown = (e: React.KeyboardEvent) => {
+    const currentIndex = tabs.findIndex((t) => t.id === activeTab);
+    if (currentIndex === -1) return;
+
+    let nextIndex = -1;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      nextIndex = (currentIndex + 1) % tabs.length;
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      nextIndex = 0;
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      nextIndex = tabs.length - 1;
+    }
+
+    if (nextIndex !== -1) {
+      const nextTab = tabs[nextIndex];
+      setActiveTab(nextTab.id);
+      document.getElementById(`add-files-tab-${nextTab.id}`)?.focus();
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-2xl rounded-lg text-foreground select-none">
+      <DialogContent className="max-w-3xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-300 rounded-lg text-foreground select-none">
         {/* Hidden inputs for upload */}
         <input
           ref={fileInputRef}
@@ -445,7 +471,7 @@ export default function AddFilesModal({
             type="button"
             onClick={() => onOpenChange(false)}
             aria-label="Close"
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted focus:outline-hidden transition-colors cursor-pointer"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer"
           >
             <X className="size-4" strokeWidth={1.5} />
           </button>
@@ -455,20 +481,29 @@ export default function AddFilesModal({
         </DialogDescription>
 
         {/* Modal Body: Left sidebar + Right form pane */}
-        <div className="flex min-h-[420px]">
+        <div className="flex flex-col sm:flex-row min-h-[420px]">
           {/* Left Navigation Sidebar */}
-          <div className="w-56 shrink-0 border-r border-border bg-muted/20 p-2.5 flex flex-col gap-1" role="tablist">
+          <div
+            className="w-full sm:w-56 shrink-0 border-b sm:border-b-0 sm:border-r border-border bg-muted/20 p-2 sm:p-2.5 flex sm:flex-col flex-row overflow-x-auto sm:overflow-x-visible gap-1"
+            role="tablist"
+            aria-label="Add file options"
+            aria-orientation="vertical"
+            onKeyDown={handleTabKeyDown}
+          >
             {tabs.map(({ id, label, icon: Icon }) => {
               const isActive = activeTab === id;
               return (
                 <button
                   key={id}
+                  id={`add-files-tab-${id}`}
                   type="button"
                   role="tab"
+                  tabIndex={isActive ? 0 : -1}
                   aria-selected={isActive}
+                  aria-controls={`add-files-panel-${id}`}
                   onClick={() => setActiveTab(id)}
                   className={cn(
-                    'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-12 font-medium text-left transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                    'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-12 font-medium text-left transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary whitespace-nowrap',
                     isActive
                       ? 'bg-background text-foreground font-semibold border border-border/60'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/60',
@@ -480,6 +515,7 @@ export default function AddFilesModal({
                       isActive ? 'text-primary' : 'text-muted-foreground',
                     )}
                     strokeWidth={1.5}
+                    aria-hidden="true"
                   />
                   <span>{label}</span>
                 </button>
@@ -488,7 +524,13 @@ export default function AddFilesModal({
           </div>
 
           {/* Right Form & Content Pane */}
-          <div className="flex-1 p-6 flex flex-col justify-between">
+          <div
+            id={`add-files-panel-${activeTab}`}
+            role="tabpanel"
+            aria-labelledby={`add-files-tab-${activeTab}`}
+            tabIndex={0}
+            className="flex-1 p-4 sm:p-6 flex flex-col justify-between outline-none"
+          >
             {/* 1. New File Tab */}
             {activeTab === 'new-file' && (
               <form
@@ -532,7 +574,7 @@ export default function AddFilesModal({
                     className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none gap-1.5"
                   >
                     {isCreatingNewFile && (
-                      <Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} />
+                      <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" strokeWidth={1.5} />
                     )}
                     <span>Create</span>
                   </Button>
@@ -620,7 +662,7 @@ export default function AddFilesModal({
                     </label>
                     {isLoadingProjects ? (
                       <div className="flex items-center gap-2 text-12 text-muted-foreground py-2">
-                        <Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} />
+                        <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" strokeWidth={1.5} />
                         Loading projects...
                       </div>
                     ) : availableProjects.length === 0 ? (
@@ -662,7 +704,7 @@ export default function AddFilesModal({
                       </label>
                       {isLoadingOtherPages ? (
                         <div className="flex items-center gap-2 text-12 text-muted-foreground py-2">
-                          <Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} />
+                          <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" strokeWidth={1.5} />
                           Loading files...
                         </div>
                       ) : otherProjectPages.length === 0 ? (
@@ -737,7 +779,7 @@ export default function AddFilesModal({
                     className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none gap-1.5"
                   >
                     {isCopyingFromProject && (
-                      <Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} />
+                      <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" strokeWidth={1.5} />
                     )}
                     <span>Create</span>
                   </Button>
@@ -803,7 +845,7 @@ export default function AddFilesModal({
                     className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none gap-1.5"
                   >
                     {isFetchingUrl && (
-                      <Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} />
+                      <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" strokeWidth={1.5} />
                     )}
                     <span>Create</span>
                   </Button>
@@ -872,7 +914,7 @@ export default function AddFilesModal({
                     <div className="max-h-48 overflow-y-auto divide-y divide-border/60 px-1 thin-scrollbar">
                       {isLoadingLibrary ? (
                         <div className="flex items-center justify-center py-6 text-12 text-muted-foreground gap-2">
-                          <Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} />
+                          <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" strokeWidth={1.5} />
                           <span>Loading library items...</span>
                         </div>
                       ) : libraryItems.length === 0 ? (
@@ -885,9 +927,18 @@ export default function AddFilesModal({
                           return (
                             <div
                               key={item.id}
+                              role="button"
+                              tabIndex={0}
+                              aria-pressed={isSelected}
                               onClick={() => handleToggleItem(item.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  handleToggleItem(item.id);
+                                }
+                              }}
                               className={cn(
-                                'flex items-start gap-2.5 py-2 px-1 hover:bg-muted/20 transition-colors cursor-pointer text-12',
+                                'flex items-start gap-2.5 py-2 px-1 hover:bg-muted/20 transition-colors cursor-pointer text-12 outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-sm',
                                 isSelected && 'bg-muted/15',
                               )}
                             >
@@ -944,7 +995,7 @@ export default function AddFilesModal({
                     className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none gap-1.5"
                   >
                     {isExportingBib && (
-                      <Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} />
+                      <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" strokeWidth={1.5} />
                     )}
                     <span>Create</span>
                   </Button>

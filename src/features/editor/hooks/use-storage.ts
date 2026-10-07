@@ -6,6 +6,11 @@
  * Real-time storage hooks for Editor Files Explorer wired to:
  * - Manuscript Structure Service (`/api/v1/manuscripts/projects/:projectId/structure`)
  * - Manuscript Filestore Service (`/api/v1/manuscripts/projects/:projectId/files`)
+ *
+ * Architectural Optimization:
+ * - Decoupled query and mutation lifecycles (useEditorStorageFiles, useEditorStorageMutations, useEditorStorageRootDoc)
+ * - Conditional query execution (enabled flag on folder expansion)
+ * - Zero redundant root queries from child file/folder rows
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -13,16 +18,13 @@ import { toast } from 'sonner';
 import { StorageService, type EditorStorageItem } from '../services/storage.service';
 import { usePageStore } from '../store';
 
-export function useEditorStorage(
+export function useResolvedProjectId(
   pageIdOrProjectId?: string | null,
-  parentId?: string | null,
   explicitProjectId?: string | null,
-) {
-  const queryClient = useQueryClient();
+): string {
   const currentPage = usePageStore((s) => s.currentPage);
   const storeProjectId = usePageStore((s) => s.projectId);
 
-  // Derive genuine project ID from explicit param, page store, or currentPage
   const resolvedProjectId =
     explicitProjectId ||
     (typeof currentPage?.projectId === 'string'
@@ -31,10 +33,27 @@ export function useEditorStorage(
     storeProjectId ||
     '';
 
-  // If pageIdOrProjectId matches storeProjectId or explicitProjectId, it is definitely a projectId
-  const effectiveProjectId =
+  return (
     resolvedProjectId ||
-    (pageIdOrProjectId && pageIdOrProjectId === storeProjectId ? pageIdOrProjectId : '');
+    (pageIdOrProjectId && pageIdOrProjectId === storeProjectId ? pageIdOrProjectId : '')
+  );
+}
+
+export interface UseEditorStorageFilesOptions {
+  enabled?: boolean;
+}
+
+export function useEditorStorageFiles(
+  pageIdOrProjectId?: string | null,
+  parentId?: string | null,
+  explicitProjectId?: string | null,
+  options?: UseEditorStorageFilesOptions,
+) {
+  const effectiveProjectId = useResolvedProjectId(pageIdOrProjectId, explicitProjectId);
+
+  const isEnabled = Boolean(
+    (effectiveProjectId || pageIdOrProjectId) && (options?.enabled ?? true),
+  );
 
   const {
     data: items = [],
@@ -56,8 +75,25 @@ export function useEditorStorage(
         return [];
       }
     },
-    enabled: Boolean(effectiveProjectId || pageIdOrProjectId),
+    enabled: isEnabled,
   });
+
+  return {
+    items,
+    files: items,
+    children: items,
+    isLoading,
+    refetch,
+  };
+}
+
+export function useEditorStorageMutations(
+  pageIdOrProjectId?: string | null,
+  explicitProjectId?: string | null,
+  defaultParentId?: string | null,
+) {
+  const queryClient = useQueryClient();
+  const effectiveProjectId = useResolvedProjectId(pageIdOrProjectId, explicitProjectId);
 
   const uploadFileMutation = useMutation({
     mutationFn: async ({
@@ -76,7 +112,7 @@ export function useEditorStorage(
       return await StorageService.uploadPageFile(
         targetId,
         file,
-        targetParentId ?? parentId,
+        targetParentId ?? defaultParentId,
         undefined,
         pid || undefined,
       );
@@ -105,10 +141,10 @@ export function useEditorStorage(
     }): Promise<any> => {
       const pid = targetProjectId || effectiveProjectId;
       if (pid) {
-        return await StorageService.createProjectFolder(pid, name, targetParentId ?? parentId);
+        return await StorageService.createProjectFolder(pid, name, targetParentId ?? defaultParentId);
       }
       const targetId = targetPageId || pageIdOrProjectId || '';
-      return await StorageService.createPageFolder(targetId, name, targetParentId ?? parentId);
+      return await StorageService.createPageFolder(targetId, name, targetParentId ?? defaultParentId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
@@ -121,7 +157,12 @@ export function useEditorStorage(
   });
 
   const renameMutation = useMutation({
-    mutationFn: async (args: { itemId?: string; fileId?: string; newName?: string; name?: string }): Promise<any> => {
+    mutationFn: async (args: {
+      itemId?: string;
+      fileId?: string;
+      newName?: string;
+      name?: string;
+    }): Promise<any> => {
       const id = args.itemId || args.fileId || '';
       const name = args.newName || args.name || '';
       return await StorageService.renameItem(id, name, effectiveProjectId);
@@ -197,27 +238,14 @@ export function useEditorStorage(
     },
   });
 
-  const rootDocQuery = useQuery({
-    queryKey: ['editor-root-doc', effectiveProjectId],
-    queryFn: async () => {
-      if (!effectiveProjectId) return null;
-      return await StorageService.getRootDoc(effectiveProjectId);
-    },
-    enabled: !!effectiveProjectId,
-  });
-
   return {
-    children: items,
-    files: items,
-    isLoading,
-    refetch,
-    rootDoc: rootDocQuery.data,
-    rootDocLoading: rootDocQuery.isLoading,
     uploadFile: uploadFileMutation,
     createFolder: createFolderMutation,
     renameFile: renameMutation,
     deleteFile: deleteMutation,
+    moveFile: moveMutation,
     moveItem: moveMutation,
+    reorderFile: reorderMutation,
     reorderItem: reorderMutation,
     setRootDoc: setRootDocMutation,
     uploadFileMutation,
@@ -230,3 +258,45 @@ export function useEditorStorage(
   };
 }
 
+export function useEditorStorageRootDoc(
+  pageIdOrProjectId?: string | null,
+  explicitProjectId?: string | null,
+) {
+  const effectiveProjectId = useResolvedProjectId(pageIdOrProjectId, explicitProjectId);
+
+  const rootDocQuery = useQuery({
+    queryKey: ['editor-root-doc', effectiveProjectId],
+    queryFn: async () => {
+      if (!effectiveProjectId) return null;
+      return await StorageService.getRootDoc(effectiveProjectId);
+    },
+    enabled: !!effectiveProjectId,
+  });
+
+  return {
+    rootDoc: rootDocQuery.data,
+    rootDocLoading: rootDocQuery.isLoading,
+    refetchRootDoc: rootDocQuery.refetch,
+  };
+}
+
+export function useEditorStorage(
+  pageIdOrProjectId?: string | null,
+  parentId?: string | null,
+  explicitProjectId?: string | null,
+  options?: UseEditorStorageFilesOptions,
+) {
+  const filesState = useEditorStorageFiles(pageIdOrProjectId, parentId, explicitProjectId, options);
+  const mutations = useEditorStorageMutations(pageIdOrProjectId, explicitProjectId, parentId);
+  const rootDocState = useEditorStorageRootDoc(pageIdOrProjectId, explicitProjectId);
+
+  return {
+    children: filesState.items,
+    files: filesState.items,
+    isLoading: filesState.isLoading,
+    refetch: filesState.refetch,
+    rootDoc: rootDocState.rootDoc,
+    rootDocLoading: rootDocState.rootDocLoading,
+    ...mutations,
+  };
+}

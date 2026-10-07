@@ -595,7 +595,7 @@ export function LibraryFilterPopover({
         className="w-72 max-h-[85vh] p-2 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 z-50 font-sans flex flex-col select-none"
       >
         {/* 1. Main Search Header at Top - Fixed, Flat, No Shadow (Matches Project Standard) */}
-        <div className="relative flex items-center mb-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div role="presentation" className="relative flex items-center mb-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-foreground pointer-events-none shrink-0" strokeWidth={1.5} />
           <input
             ref={searchInputRef}

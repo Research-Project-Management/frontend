@@ -5,7 +5,6 @@ import {
   Sigma,
   Search,
   Check,
-  Sparkles,
   Info,
   X,
 } from 'lucide-react';

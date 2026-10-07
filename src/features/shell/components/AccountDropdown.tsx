@@ -22,12 +22,12 @@ import {
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui/avatar";
 import { resolveFileUrl } from "@/shared/lib/file-client";
-import { useUserCover } from '@/features/account/hooks/use-user-cover';
-import { CoverModal } from '@/features/account/components/CoverModal';
+import { useUserCover } from '@/features/settings/hooks/use-user-cover';
+import { CoverModal } from '@/features/settings/components/profile/CoverModal';
 import { useUpload } from "@/shared/hooks/use-upload";
 import dynamic from 'next/dynamic';
 import { useMyProjectInvitations } from '@/features/projects/invitation/hooks/use-project-invitations';
-import { useUnreadNotificationCount } from '@/features/inbox/hooks/use-inbox';
+import { useUnreadNotificationCount } from '../hooks/use-inbox';
 
 const CreateProjectModal = dynamic(
   () =>
@@ -93,7 +93,7 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
     return (
       <Link
         href="/login"
-        className="flex items-center justify-center size-8 rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        className="relative flex items-center justify-center size-8 rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary before:absolute before:-inset-1.5 md:before:hidden"
         aria-label="Sign in"
       >
         <Avatar className="size-7 rounded-full border border-border">
@@ -147,7 +147,7 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
       )}
 
       <DropdownMenu>
-        <DropdownMenuTrigger className="relative flex items-center justify-center size-8 rounded-md transition-colors hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary data-[state=open]:bg-muted cursor-pointer">
+        <DropdownMenuTrigger className="relative flex items-center justify-center size-8 rounded-md transition-colors hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary data-[state=open]:bg-muted cursor-pointer before:absolute before:-inset-1.5 md:before:hidden">
           <Avatar className="size-7 rounded-full shrink-0 border border-border/60">
             {user.avatar ? (
               <AvatarImage

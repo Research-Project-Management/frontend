@@ -25,18 +25,18 @@ import ProjectTitleDropdown from './ProjectTitleDropdown';
 import { SourceVisualSwitcher } from '../editor/subcomponents/SourceVisualSwitcher';
 
 const TemplateGalleryModal = dynamic(
-  () => import('@/features/editor/components/modals/TemplateGalleryModal'),
+  () => import('@/features/editor/ui/modals/TemplateGalleryModal'),
   { ssr: false }
 );
 const KeyboardShortcutsModal = dynamic(
-  () => import('@/features/editor/components/modals/KeyboardShortcutsModal'),
+  () => import('@/features/editor/ui/modals/KeyboardShortcutsModal'),
   { ssr: false }
 );
 const QuickOpenModal = dynamic(
-  () => import('@/features/editor/components/modals/QuickOpenModal'),
+  () => import('@/features/editor/ui/modals/QuickOpenModal'),
   { ssr: false }
 );
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { editorCommandBus, documentSessionCoordinator } from '@/features/editor/core';
 import { useSettingsStore, useCompileStore, usePageStore } from '@/features/editor/store';
 import { usePageActions } from '@/features/editor/hooks/use-core';
 import { useShallow } from 'zustand/react/shallow';
@@ -73,6 +73,13 @@ export default function Topbar() {
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isQuickOpenOpen, setIsQuickOpenOpen] = useState(false);
 
+  const handleToggleHistory = React.useCallback(async () => {
+    if (!isHistoryOpen) {
+      await documentSessionCoordinator.flushAllPending();
+    }
+    toggleHistory();
+  }, [isHistoryOpen, toggleHistory]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
@@ -95,7 +102,7 @@ export default function Topbar() {
       // Ctrl+Shift+K or Cmd+Shift+K -> Open Citation Picker
       if (modKey && e.shiftKey && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        EditorEventBus.emit('flux:open-citation-picker');
+        editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'citation-picker' });
         return;
       }
     };
@@ -108,14 +115,14 @@ export default function Topbar() {
     <TooltipProvider delayDuration={150}>
       <nav
         aria-label="Editor toolbar"
-        className="relative flex h-11 items-center justify-between gap-2 px-3 py-1 bg-sidebar shrink-0 z-10 select-none"
+        className="relative flex h-11 items-center justify-between gap-2 px-3 py-1 bg-sidebar border-b border-border shrink-0 z-10 select-none"
       >
         {/* ── Left: Logo (Back to project / Home), Main Menubar ── */}
         <div className="flex items-center min-w-0 shrink-0 gap-1">
           {/* Mobile sidebar drawer trigger */}
           <button
             type="button"
-            onClick={() => EditorEventBus.emit('flux:toggle-sidebar')}
+            onClick={() => editorCommandBus.dispatch({ type: 'sidebar:toggle-panel', panel: 'Files' })}
             title="Open Explorer & Tools"
             aria-label="Open Explorer & Tools"
             className="md:hidden relative flex items-center justify-center p-1.5 rounded-md text-foreground hover:bg-sidebar-hover transition-colors mr-1 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
@@ -149,7 +156,7 @@ export default function Topbar() {
 
           <div className="h-4 w-px bg-border/60 mx-1 shrink-0 hidden sm:block" />
 
-          <Menubar className="h-8 border-none bg-transparent p-0 gap-0.5 shadow-none">
+          <Menubar className="h-8 border-none bg-transparent p-0 gap-0.5 shadow-none hidden sm:flex">
             {/* Sub-menu Tabs */}
             <FileMenu />
             <EditMenu />
@@ -170,10 +177,11 @@ export default function Topbar() {
           {isSaving && (
             <div className="flex items-center shrink-0 mr-0.5">
               <span
-                className="flex items-center justify-center size-6 text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-full select-none"
+                className="flex items-center justify-center size-6 text-warning bg-warning/15 rounded-full select-none"
                 title="Saving..."
+                aria-label="Saving changes"
               >
-                <Loader2 className="size-3 animate-spin shrink-0" />
+                <Loader2 className="size-3 animate-spin shrink-0 motion-reduce:animate-none" />
               </span>
             </div>
           )}
@@ -183,7 +191,7 @@ export default function Topbar() {
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={toggleHistory}
+                onClick={handleToggleHistory}
                 aria-label="History (revisions)"
                 className={cn(
                   "flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none",

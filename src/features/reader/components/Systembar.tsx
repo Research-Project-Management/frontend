@@ -55,7 +55,7 @@ export function Systembar({
           transition={{ duration: 0.15, ease: 'easeOut' }}
         >
           <div
-            className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 shadow-lg select-none font-sans"
+            className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 shadow-raised-200 select-none font-sans"
           >
             {/* Selected Count */}
             <div className="flex items-center gap-1.5 pr-2 border-r border-border text-12 font-mono font-medium text-foreground">
@@ -76,7 +76,7 @@ export function Systembar({
                         onClick={() => onChangeColor(c.hex)}
                         disabled={isProcessing}
                         aria-label={`Set color ${c.label}`}
-                        className="size-4 rounded-full border border-border transition-transform hover:scale-125 focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+                        className="size-4 rounded-full border border-border transition-transform hover:scale-125 focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
                         style={{ backgroundColor: c.hex }}
                       />
                     </TooltipTrigger>
@@ -96,7 +96,7 @@ export function Systembar({
                   size="sm"
                   onClick={onAddToNote}
                   disabled={isProcessing}
-                  className="h-7 px-2.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer"
+                  className="h-8 px-2.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer relative before:absolute before:-inset-1 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
                   <FileText className="mr-1 size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                   Add to Note
@@ -109,7 +109,7 @@ export function Systembar({
                   size="sm"
                   onClick={onBatchDelete}
                   disabled={isProcessing}
-                  className="h-7 px-2.5 text-12 font-medium text-destructive hover:bg-destructive/10 hover:text-destructive rounded-md cursor-pointer"
+                  className="h-8 px-2.5 text-12 font-medium text-destructive hover:bg-destructive/10 hover:text-destructive rounded-md cursor-pointer relative before:absolute before:-inset-1 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
                   <Trash2 className="mr-1 size-3.5 shrink-0" strokeWidth={1.5} />
                   Delete
@@ -124,7 +124,7 @@ export function Systembar({
               onClick={onClearSelection}
               disabled={isProcessing}
               aria-label="Clear selection"
-              className="h-7 px-2.5 text-12 font-medium text-foreground hover:bg-muted rounded-md ml-1 cursor-pointer"
+              className="h-8 px-2.5 text-12 font-medium text-foreground hover:bg-muted rounded-md ml-1 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               Clear
             </Button>

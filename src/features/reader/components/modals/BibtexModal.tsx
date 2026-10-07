@@ -73,7 +73,7 @@ export default function PaperBibtexDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl p-0 gap-0 overflow-hidden border border-border bg-background shadow-lg rounded-lg font-sans">
+      <DialogContent className="max-w-xl p-0 gap-0 overflow-hidden border border-border bg-background shadow-raised-200 rounded-lg font-sans">
         <DialogHeader className="p-4 pb-3 border-b border-border bg-background">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -81,7 +81,7 @@ export default function PaperBibtexDialog({
                 <FileJson className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
               </div>
               <div>
-                <DialogTitle className="text-14 font-medium text-foreground">Citation Export</DialogTitle>
+                <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">Citation Export</DialogTitle>
                 <DialogDescription className="text-12 text-foreground/80 line-clamp-1">
                   {paper.title || 'Academic reference'}
                 </DialogDescription>
@@ -94,7 +94,7 @@ export default function PaperBibtexDialog({
                 type="button"
                 onClick={() => setFormat('bibtex')}
                 className={cn(
-                  'px-2.5 py-1 text-12 font-medium rounded-sm transition-colors cursor-pointer',
+                  'px-2.5 py-1 text-12 font-medium rounded-sm transition-colors cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary',
                   format === 'bibtex'
                     ? 'bg-background text-foreground font-medium border border-border/50'
                     : 'text-foreground hover:bg-muted',
@@ -106,7 +106,7 @@ export default function PaperBibtexDialog({
                 type="button"
                 onClick={() => setFormat('ris')}
                 className={cn(
-                  'px-2.5 py-1 text-12 font-medium rounded-sm transition-colors cursor-pointer',
+                  'px-2.5 py-1 text-12 font-medium rounded-sm transition-colors cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary',
                   format === 'ris'
                     ? 'bg-background text-foreground font-medium border border-border/50'
                     : 'text-foreground hover:bg-muted',
@@ -137,7 +137,7 @@ export default function PaperBibtexDialog({
                 await copy(`@${citationKey}`, `@${citationKey}`);
               }}
               title="Copy Citation Key"
-              className="text-foreground hover:bg-muted p-1 rounded-sm cursor-pointer transition-colors"
+              className="text-foreground hover:bg-muted p-1 rounded-sm cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden"
             >
               <Copy className="size-3 text-foreground" strokeWidth={1.5} />
             </button>
@@ -148,7 +148,7 @@ export default function PaperBibtexDialog({
               variant="outline"
               size="sm"
               onClick={handleCopy}
-              className="h-8 px-3 text-12 font-medium gap-1.5 border-border bg-background text-foreground hover:bg-muted cursor-pointer rounded-md focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+              className="h-8 px-3 text-12 font-medium gap-1.5 border-border bg-background text-foreground hover:bg-muted cursor-pointer rounded-md focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none relative before:absolute before:-inset-1 md:before:hidden"
             >
               {isCopied() ? <Check className="size-3.5 text-primary shrink-0" strokeWidth={1.5} /> : <Copy className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />}
               <span>{isCopied() ? 'Copied' : 'Copy'}</span>
@@ -156,7 +156,7 @@ export default function PaperBibtexDialog({
             <Button
               size="sm"
               onClick={handleDownload}
-              className="h-8 px-3 text-12 font-medium gap-1.5 cursor-pointer rounded-md focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+              className="h-8 px-3 text-12 font-medium gap-1.5 cursor-pointer rounded-md focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none relative before:absolute before:-inset-1 md:before:hidden"
             >
               <Download className="size-3.5 shrink-0" strokeWidth={1.5} />
               <span>Download .{format === 'bibtex' ? 'bib' : 'ris'}</span>

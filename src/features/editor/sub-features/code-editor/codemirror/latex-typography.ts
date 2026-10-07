@@ -12,6 +12,9 @@ export const FONT_FAMILY_MAP: Record<string, string> = {
   consolas: 'Consolas, "Lucida Console", monospace',
   fira: '"Fira Code", monospace',
   'source-code': '"Source Code Pro", monospace',
+  jetbrains: '"JetBrains Mono", monospace',
+  courier: '"Courier New", Courier, monospace',
+  inconsolata: 'Inconsolata, monospace',
 };
 
 export function getTypographyExtension(

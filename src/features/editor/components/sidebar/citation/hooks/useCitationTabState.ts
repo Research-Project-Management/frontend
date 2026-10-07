@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { usePageStore } from '@/features/editor/store';
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import { useEditorCitations } from '@/features/editor/hooks/use-citation';
 import { useCitationPickerActions } from '@/features/editor/components/editor/hooks/useCitationPickerActions';
 import { manuscriptService, type CitationValidationResult } from '@/features/editor/services/manuscript.service';
@@ -40,7 +40,8 @@ const bibParseCache = new Map<string, CachedBibFile>();
 
 export function useCitationTabState() {
   const params = useParams<{ projectId?: string; pageId?: string }>();
-  const { currentPage, projectId: storeProjectId } = usePageStore();
+  const currentPage = usePageStore((s) => s.currentPage);
+  const storeProjectId = usePageStore((s) => s.projectId);
   const { engine, getContent } = useEditorInstance();
 
   const rootPageId = params?.pageId || params?.projectId || currentPage?.id || '';
@@ -307,10 +308,11 @@ export function useCitationTabState() {
   const openPickerModal = useCallback((initialQuery?: unknown, initialKey?: unknown) => {
     const query = typeof initialQuery === 'string' ? initialQuery : undefined;
     const key = typeof initialKey === 'string' ? initialKey : query;
-    EditorEventBus.emit(
-      'flux:open-citation-picker',
-      query ? { initialQuery: query, initialKey: key } : undefined,
-    );
+    editorCommandBus.dispatch({
+      type: 'dialog:open',
+      dialog: 'citation-picker',
+      payload: query ? { initialQuery: query, initialKey: key } : undefined,
+    });
   }, []);
 
   return {

@@ -40,6 +40,9 @@ import {
   PopoverTrigger,
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
   Checkbox,
 } from "@/shared/components/ui";
 import type { Column, Item } from '../../types/work-item.types';
@@ -71,7 +74,7 @@ function CalendarCard({ card }: CalendarCardProps) {
   const columnColor = resolveStateColor(card.columnId);
 
   return (
-    <div className="rounded-md border border-border bg-card p-3 space-y-2 text-xs w-72 shadow-none">
+    <div className="rounded-md border border-border bg-card p-3 space-y-2 text-xs w-72 shadow-overlay">
       <div className="flex items-center justify-between gap-2">
         {card.identifier && (
           <span className="text-11 font-mono text-muted-foreground font-medium tabular-nums">
@@ -404,7 +407,7 @@ export function CalendarView({
               size="icon"
               onClick={handlePrevious}
               aria-label="Previous period"
-              className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer"
+              className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               <ChevronLeft className="size-4 shrink-0" />
             </Button>
@@ -413,7 +416,7 @@ export function CalendarView({
               size="icon"
               onClick={handleNext}
               aria-label="Next period"
-              className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer"
+              className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               <ChevronRight className="size-4 shrink-0" />
             </Button>
@@ -428,7 +431,7 @@ export function CalendarView({
             <button
               type="button"
               onClick={handleToday}
-              className="h-7 px-2.5 text-13 font-medium text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer select-none"
+              className="h-7 px-2.5 text-13 font-medium text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer select-none relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               Today
             </button>
@@ -438,7 +441,7 @@ export function CalendarView({
                 <button
                   type="button"
                   className={cn(
-                    "h-7 px-2.5 flex items-center gap-1 text-13 font-medium text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer select-none outline-none",
+                    "h-7 px-2.5 flex items-center gap-1 text-13 font-medium text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2 md:before:hidden",
                     optionsOpen && "bg-muted"
                   )}
                 >
@@ -453,7 +456,7 @@ export function CalendarView({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="w-44 p-1 rounded-md border border-border bg-popover shadow-md z-50"
+                className="w-44 p-1 rounded-md border border-border bg-popover shadow-overlay z-50"
               >
                 <DropdownMenuItem
                   onClick={() => setLayoutMode("month")}
@@ -597,7 +600,13 @@ export function CalendarView({
             if (!open) handleCloseExistingDialog();
           }}
         >
-          <DialogContent className="w-145 max-w-[90vw] overflow-hidden rounded-md border border-border p-0" showCloseButton={false}>
+          <DialogContent className="w-145 max-w-[90vw] overflow-hidden rounded-md border border-border p-0 shadow-raised-200" showCloseButton={false}>
+            <DialogHeader className="sr-only">
+              <DialogTitle>Add existing items to date</DialogTitle>
+              <DialogDescription>
+                Search and select existing work items to schedule on this date.
+              </DialogDescription>
+            </DialogHeader>
             {/* Search bar */}
             <div className="px-2 pt-6 pb-2">
               <div className="relative flex items-center">
@@ -608,7 +617,7 @@ export function CalendarView({
                   onChange={(event) => setExistingSearch(event.target.value)}
                   placeholder="Type to search"
                   autoFocus
-                  className="h-10 w-full pl-13 pr-3 text-lg font-medium text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-foreground/70 focus:border-border"
+                  className="h-10 w-full pl-13 pr-3 text-13 font-medium text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-muted-foreground focus:border-border"
                 />
               </div>
             </div>
@@ -672,7 +681,7 @@ export function CalendarView({
                               </span>
                             );
                           })()}
-                          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+                          <span className="min-w-0 flex-1 truncate text-13 font-medium text-foreground">
                             {item.title}
                           </span>
                         </div>
@@ -682,7 +691,7 @@ export function CalendarView({
                             event.stopPropagation();
                             onOpenCardDetail(item);
                           }}
-                          className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted"
+                          className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1 md:before:hidden"
                           aria-label="Open item detail"
                         >
                           <ChevronRight className="size-3.5 shrink-0" />
@@ -716,7 +725,7 @@ export function CalendarView({
                   }
                 }}
                 disabled={filteredExistingItemCandidates.length === 0}
-                className="h-8 rounded-md px-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-30"
+                className="h-8 rounded-md px-2 text-12 font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-30 focus-visible:ring-1 focus-visible:ring-ring"
               >
                 {allFilteredItemsSelected ? "Deselect all" : "Select all"}
               </button>
@@ -726,7 +735,7 @@ export function CalendarView({
                   type="button"
                   variant="ghost"
                   onClick={handleCloseExistingDialog}
-                  className="h-8 px-3 text-12 text-foreground hover:bg-muted rounded-md"
+                  className="h-8 px-3 text-12 text-foreground hover:bg-muted rounded-md focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   Cancel
                 </Button>
@@ -734,7 +743,7 @@ export function CalendarView({
                   type="button"
                   onClick={handleSubmitExistingItems}
                   disabled={selectedExistingItemIds.length === 0}
-                  className="h-8 min-w-17.5 bg-primary px-3 text-12 font-medium text-primary-foreground shadow-none hover:bg-primary-hover disabled:opacity-30 rounded-md"
+                  className="h-8 min-w-17.5 bg-primary px-3 text-12 font-medium text-primary-foreground shadow-none hover:bg-primary-hover disabled:opacity-30 rounded-md focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   Add
                 </Button>
@@ -871,7 +880,7 @@ const CalendarDayCell = memo(({
               align="start"
               sideOffset={6}
               onCloseAutoFocus={(e) => e.preventDefault()}
-              className="w-44 rounded-md border border-border bg-popover p-1 text-xs"
+              className="w-44 rounded-md border border-border bg-popover p-1 text-xs shadow-overlay"
             >
               <DropdownMenuItem
                 onSelect={() => onAddWorkItem(dateKey)}

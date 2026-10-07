@@ -74,13 +74,13 @@ export function InspectorTabs({
             <button
               type="button"
               onClick={onToggleInspector}
-              className="size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors text-foreground hover:bg-muted cursor-pointer"
+              className="size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden"
               aria-label={isInspectorOpen ? 'Collapse inspector' : 'Expand inspector'}
             >
               <PanelRight className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="left" sideOffset={6} className="text-12 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md">
+          <TooltipContent side="left" sideOffset={6} className="text-12 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-raised-200">
             {isInspectorOpen ? 'Collapse inspector' : 'Expand inspector'}
           </TooltipContent>
         </Tooltip>
@@ -104,7 +104,7 @@ export function InspectorTabs({
                     onTabChange(tab.id);
                   }}
                   className={cn(
-                    'relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer text-foreground',
+                    'relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer text-foreground before:absolute before:-inset-1.5 md:before:hidden',
                     isActive
                       ? 'bg-muted font-medium'
                       : 'hover:bg-muted/60',

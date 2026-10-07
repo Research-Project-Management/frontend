@@ -239,7 +239,7 @@ export function TableColumnPropertiesPopover({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-foreground hover:bg-muted border border-border/60 bg-background transition-colors cursor-pointer select-none"
+          className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-foreground hover:bg-muted border border-border/60 bg-background transition-colors cursor-pointer select-none relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
         >
           <SlidersHorizontal className="size-3.5 shrink-0" />
           <span>Display</span>
@@ -248,18 +248,18 @@ export function TableColumnPropertiesPopover({
           </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-64 p-2 border-border bg-popover shadow-md z-100 rounded-md">
+      <PopoverContent align="end" className="w-64 p-2 border-border bg-popover shadow-overlay z-100 rounded-md">
         <div className="flex items-center justify-between pb-2 mb-2 border-b border-border px-1">
           <span className="text-xs font-semibold text-foreground">Display properties</span>
         </div>
 
         <div className="relative mb-2 px-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-foreground shrink-0" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground shrink-0" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search properties..."
-            className="h-7 pl-7 text-xs bg-background border-border placeholder:text-foreground/70 text-foreground rounded-md"
+            className="h-7 pl-7 text-xs bg-background border-border placeholder:text-muted-foreground text-foreground rounded-md focus-visible:ring-1 focus-visible:ring-ring"
           />
         </div>
 
@@ -495,7 +495,7 @@ export function TableGroupHeader({
             e.stopPropagation();
             onToggle();
           }}
-          className="size-4 flex items-center justify-center text-foreground hover:text-foreground transition-colors"
+          className="size-4 flex items-center justify-center text-foreground hover:text-foreground transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
           aria-label={isExpanded ? 'Collapse group' : 'Expand group'}
         >
           {isExpanded ? (
@@ -528,7 +528,7 @@ export function TableGroupHeader({
             e.stopPropagation();
             onQuickAdd();
           }}
-          className="opacity-0 group-hover/groupHeader:opacity-100 p-1 rounded-md text-foreground hover:text-foreground hover:bg-muted transition-all"
+          className="opacity-0 group-hover/groupHeader:opacity-100 p-1 rounded-md text-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           title={`Add item to ${title}`}
         >
           <Plus className="size-3.5 shrink-0" />
@@ -698,8 +698,8 @@ export function TableRowItem({
       }}
       aria-label={`Work item: ${item.title}`}
       className={cn(
-        'group/row flex items-center h-8 border-b border-border/60 hover:bg-muted/40 transition-colors duration-0 cursor-pointer text-xs select-none w-full relative outline-none focus-visible:ring-1 focus-visible:ring-primary',
-        isSelected && 'bg-primary/5 border-l-2 border-primary font-medium'
+        'group/row flex items-center h-8 border-b border-border/60 hover:bg-muted/40 transition-colors duration-0 cursor-pointer text-xs select-none w-full relative outline-none focus-visible:ring-1 focus-visible:ring-ring',
+        isSelected && 'bg-primary/10 ring-1 ring-inset ring-primary/30 font-medium'
       )}
     >
       {/* ── 1. Checkbox + Identifier + Title Column ────────────────────────── */}
@@ -737,7 +737,7 @@ export function TableRowItem({
             type="button"
             onClick={handleCopyIdentifier}
             title="Click to copy identifier"
-            className="text-11 font-mono text-muted-foreground hover:text-foreground px-1 py-0.5 rounded-sm mr-2 shrink-0 transition-colors tabular-nums"
+            className="text-11 font-mono text-muted-foreground hover:text-foreground px-1 py-0.5 rounded-sm mr-2 shrink-0 transition-colors tabular-nums cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             {item.identifier}
           </button>
@@ -763,7 +763,8 @@ export function TableRowItem({
               onChange={(e) => setTitleValue(e.target.value)}
               onBlur={handleSaveTitle}
               onKeyDown={handleKeyDownTitle}
-              className="w-full bg-background border border-primary px-1.5 py-0.5 rounded-md text-xs text-foreground outline-none"
+              aria-label="Edit title"
+              className="w-full bg-background border border-ring px-1.5 py-0.5 rounded-md text-xs text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
         ) : (
@@ -783,7 +784,7 @@ export function TableRowItem({
                   e.stopPropagation();
                   setIsEditingTitle(true);
                 }}
-                className="opacity-0 group-hover/row:opacity-100 p-0.5 text-foreground hover:text-foreground transition-opacity shrink-0"
+                className="opacity-0 group-hover/row:opacity-100 p-0.5 text-foreground hover:text-foreground transition-opacity shrink-0 cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
                 title="Edit title"
               >
                 <Pencil className="size-3" />
@@ -812,7 +813,7 @@ export function TableRowItem({
                   <DropdownMenuTrigger asChild disabled={isReadOnly}>
                     <button
                       type="button"
-                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-muted/80 text-foreground transition-colors w-full text-left truncate cursor-pointer"
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-muted/80 text-foreground transition-colors w-full text-left truncate cursor-pointer focus-visible:ring-1 focus-visible:ring-ring outline-none"
                     >
                       <StatusIcon
                         id={item.columnId}
@@ -826,7 +827,7 @@ export function TableRowItem({
                       </span>
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-44 p-1 text-xs z-100 rounded-md">
+                  <DropdownMenuContent align="start" className="w-44 p-1 text-xs z-100 rounded-md shadow-overlay">
                     {stateList.map((col) => {
                       const cId = resolveColumnId(col);
                       const isCurrent = cId === item.columnId;
@@ -869,7 +870,7 @@ export function TableRowItem({
                       onUpdateCard?.({ id: item.id, priority: newPriority })
                     }
                     isReadOnly={isReadOnly}
-                    actionBtnClass="w-full justify-start h-7 px-2 border-0 bg-transparent hover:bg-muted/80 shadow-none font-normal text-xs text-foreground cursor-pointer"
+                    actionBtnClass="w-full justify-start h-7 px-2 border-0 bg-transparent hover:bg-muted/80 shadow-none font-normal text-xs text-foreground cursor-pointer focus-visible:ring-1 focus-visible:ring-ring"
                   />
                 </div>
               )}
@@ -882,7 +883,7 @@ export function TableRowItem({
                       type="button"
                       onClick={() => !isReadOnly && setAssigneeOpen(true)}
                       disabled={isReadOnly}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-muted/80 transition-colors w-full text-left truncate cursor-pointer"
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-muted/80 transition-colors w-full text-left truncate cursor-pointer focus-visible:ring-1 focus-visible:ring-ring outline-none"
                     >
                       <AvatarStack users={resolvedAssignees} size="xs" max={3} />
                       <span className="text-11 font-mono text-foreground">
@@ -894,7 +895,7 @@ export function TableRowItem({
                       type="button"
                       onClick={() => !isReadOnly && setAssigneeOpen(true)}
                       disabled={isReadOnly}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-muted/80 transition-colors w-full text-left truncate cursor-pointer"
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-muted/80 transition-colors w-full text-left truncate cursor-pointer focus-visible:ring-1 focus-visible:ring-ring outline-none"
                     >
                       <Avatar className="size-4 shrink-0">
                         <AvatarImage src={assigneeAvatar} />
@@ -909,7 +910,7 @@ export function TableRowItem({
                       type="button"
                       onClick={() => !isReadOnly && setAssigneeOpen(true)}
                       disabled={isReadOnly}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-foreground hover:text-foreground hover:bg-muted/80 transition-colors w-full text-left cursor-pointer group/assign"
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-foreground hover:text-foreground hover:bg-muted/80 transition-colors w-full text-left cursor-pointer group/assign focus-visible:ring-1 focus-visible:ring-ring outline-none"
                     >
                       <div className="size-4 rounded-md border border-border flex items-center justify-center group-hover/assign:border-foreground/60">
                         <Plus className="size-2.5 text-foreground" />
@@ -978,7 +979,7 @@ export function TableRowItem({
                     type="button"
                     onClick={() => !isReadOnly && setLabelOpen(true)}
                     disabled={isReadOnly}
-                    className="flex items-center gap-1 px-1.5 py-1 rounded-md text-xs hover:bg-muted/80 transition-colors w-full text-left truncate cursor-pointer"
+                    className="flex items-center gap-1 px-1.5 py-1 rounded-md text-xs hover:bg-muted/80 transition-colors w-full text-left truncate cursor-pointer focus-visible:ring-1 focus-visible:ring-ring outline-none"
                   >
                     {Array.isArray(item.labels) && item.labels.length > 0 ? (
                       <div className="flex items-center gap-1 overflow-hidden">
@@ -1117,7 +1118,7 @@ export function TableRowItem({
         <button
           type="button"
           onClick={handleCopyLink}
-          className="p-1 rounded-md text-foreground hover:text-foreground hover:bg-muted transition-colors"
+          className="p-1 rounded-md text-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           title="Copy link"
         >
           <Link2 className="size-3.5" />
@@ -1131,7 +1132,7 @@ export function TableRowItem({
                 e.stopPropagation();
                 onEditCard(item);
               }}
-              className="p-1 rounded-md text-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="p-1 rounded-md text-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               title="Edit work item"
             >
               <Pencil className="size-3.5" />
@@ -1143,7 +1144,7 @@ export function TableRowItem({
                 e.stopPropagation();
                 onDuplicateCard(item);
               }}
-              className="p-1 rounded-md text-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="p-1 rounded-md text-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               title="Duplicate"
             >
               <Copy className="size-3.5" />
@@ -1155,7 +1156,7 @@ export function TableRowItem({
                 e.stopPropagation();
                 onDeleteCard(item);
               }}
-              className="p-1 rounded-md text-destructive/80 hover:text-destructive hover:bg-destructive/10 transition-colors"
+              className="p-1 rounded-md text-destructive/80 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               title="Delete"
             >
               <Trash2 className="size-3.5" />
@@ -1220,7 +1221,7 @@ export function TableInlineAddRow({
         <button
           type="button"
           onClick={() => setIsAdding(true)}
-          className="flex items-center gap-2 h-8 px-3 w-full text-xs text-foreground hover:bg-muted/30 transition-colors cursor-pointer text-left group/add"
+          className="flex items-center gap-2 h-8 px-3 w-full text-xs text-foreground hover:bg-muted/30 transition-colors cursor-pointer text-left group/add focus-visible:ring-1 focus-visible:ring-ring outline-none"
         >
           <Plus className="size-3.5 text-foreground transition-colors" />
           <span>{groupTitle ? `Add item to ${groupTitle}...` : 'New work item...'}</span>
@@ -1239,17 +1240,18 @@ export function TableInlineAddRow({
         ref={inputRef}
         type="text"
         value={title}
+        aria-label="What needs to be done?"
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="What needs to be done? (Enter to save, Esc to cancel)"
-        className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none px-1"
+        className="flex-1 bg-transparent text-13 text-foreground placeholder:text-muted-foreground outline-none px-1"
       />
       <div className="flex items-center gap-1.5 shrink-0">
         <Button
           type="submit"
           size="sm"
           disabled={!title.trim()}
-          className="h-7 px-3 text-xs font-medium rounded-md"
+          className="h-7 px-3 text-xs font-medium rounded-md focus-visible:ring-1 focus-visible:ring-ring"
         >
           Add
         </Button>
@@ -1261,7 +1263,7 @@ export function TableInlineAddRow({
             setIsAdding(false);
             setTitle('');
           }}
-          className="h-7 w-7 p-0 text-foreground hover:text-foreground rounded-md"
+          className="h-7 w-7 p-0 text-foreground hover:text-foreground rounded-md focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2 md:before:hidden"
         >
           <X className="size-3.5" />
         </Button>
@@ -1615,8 +1617,8 @@ export function TableView({
               <div className="size-10 rounded-md bg-muted flex items-center justify-center mb-3">
                 <FileText className="size-5 text-foreground" />
               </div>
-              <h4 className="text-sm font-semibold text-foreground mb-1">No work items found</h4>
-              <p className="text-xs text-muted-foreground mb-4">
+              <h4 className="text-16 font-semibold text-foreground mb-1">No work items found</h4>
+              <p className="text-13 text-muted-foreground mb-4">
                 There are no items matching the current view filters.
               </p>
               {!isReadOnly && (
@@ -1624,7 +1626,7 @@ export function TableView({
                   size="sm"
                   variant="outline"
                   onClick={() => onAddCard(defaultColId)}
-                  className="gap-1.5 text-xs rounded-md"
+                  className="gap-1.5 text-xs rounded-md focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1 md:before:hidden"
                 >
                   <Plus className="size-3.5" />
                   <span>Create work item</span>

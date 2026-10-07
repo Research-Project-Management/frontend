@@ -33,10 +33,10 @@ export const SuggestionCard = React.memo(function SuggestionCard({
 
   const typeColor =
     suggestion.type === 'insert'
-      ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20'
+      ? 'bg-primary/10 text-primary border-primary/20'
       : suggestion.type === 'delete'
-        ? 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20'
-        : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20';
+        ? 'bg-destructive/10 text-destructive border-destructive/20'
+        : 'bg-warning/10 text-warning border-warning/20';
 
   const authorDisplay = useMemo(
     () => resolveAuthorDisplay(suggestion.author, membersMap, suggestion.authorId),
@@ -96,12 +96,12 @@ export const SuggestionCard = React.memo(function SuggestionCard({
       {/* Diff Preview */}
       <div className="rounded-md bg-muted/40 p-2.5 font-mono text-xs leading-relaxed break-words space-y-1.5">
         {suggestion.originalText && (
-          <div className="text-rose-800 dark:text-rose-200 bg-rose-500/15 px-2 py-1 rounded-sm line-through">
+          <div className="text-destructive bg-destructive/10 border border-destructive/20 px-2 py-1 rounded-sm line-through">
             - {suggestion.originalText}
           </div>
         )}
         {suggestion.suggestedText && (
-          <div className="text-emerald-800 dark:text-emerald-200 bg-emerald-500/15 px-2 py-1 rounded-sm">
+          <div className="text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded-sm">
             + {suggestion.suggestedText}
           </div>
         )}
@@ -121,7 +121,7 @@ export const SuggestionCard = React.memo(function SuggestionCard({
             type="button"
             onClick={() => onReject(suggestion.id)}
             disabled={isRejecting || isAccepting}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 transition-colors disabled:opacity-50 cursor-pointer"
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 cursor-pointer"
           >
             <X className="size-3.5 shrink-0" />
             <span>Reject</span>

@@ -290,6 +290,8 @@ export function DuplicatesPage() {
                   const isHighConfidence = group.confidence === 'high';
                   const isSelectedGroup = (selectedGroup?.key || activeGroups[0]?.key || 'cluster-0') === groupKey;
                   const isDiffExpanded = expandedDiffGroupKeys.has(groupKey);
+                  const itemTypes = Array.from(new Set(items.map((it) => it.itemType).filter(Boolean)));
+                  const hasMismatchedTypes = itemTypes.length > 1;
 
                   return (
                     <div
@@ -320,6 +322,15 @@ export function DuplicatesPage() {
                           >
                             {items.length} {items.length === 1 ? 'item' : 'items'}
                           </Badge>
+                          {hasMismatchedTypes && (
+                            <Badge
+                              variant="outline"
+                              className="text-10 text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 font-normal h-5 rounded-md"
+                              title="Items in this group have different item types and must match before merging"
+                            >
+                              Type Mismatch
+                            </Badge>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -328,7 +339,7 @@ export function DuplicatesPage() {
                             size="sm"
                             onClick={(e) => toggleInlineDiff(groupKey, e)}
                             className={cn(
-                              'h-7 px-2.5 text-12 gap-1.5 transition-colors',
+                              'h-8 px-2.5 text-12 gap-1.5 transition-colors cursor-pointer',
                               isDiffExpanded
                                 ? 'bg-primary/10 text-primary font-medium'
                                 : 'text-muted-foreground hover:text-foreground',
@@ -346,18 +357,24 @@ export function DuplicatesPage() {
                               e.stopPropagation();
                               handleDismissGroup(groupKey);
                             }}
-                            className="h-7 px-2.5 text-12 text-muted-foreground hover:text-foreground"
+                            className="h-8 px-2.5 text-12 text-muted-foreground hover:text-foreground cursor-pointer"
                           >
                             Dismiss
                           </Button>
                           {canEdit && (
                             <Button
                               size="sm"
+                              disabled={hasMismatchedTypes}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleOpenMerge(group);
                               }}
-                              className="h-7 px-3 text-12 gap-1.5 font-medium shadow-none"
+                              className="h-8 px-3 text-12 gap-1.5 font-medium shadow-none disabled:opacity-50 cursor-pointer"
+                              title={
+                                hasMismatchedTypes
+                                  ? 'Items of different types cannot be merged'
+                                  : 'Open merge workbench'
+                              }
                             >
                               <GitMerge className="h-3.5 w-3.5" />
                               Merge this group
@@ -418,14 +435,16 @@ export function DuplicatesPage() {
 
                               <div className="flex items-center gap-2 shrink-0">
                                 <Button
+                                  type="button"
                                   variant="ghost"
                                   size="icon"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     router.push(`/library/papers/${item.id}`);
                                   }}
-                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                  className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
                                   title="Open in Reader"
+                                  aria-label="Open in Reader"
                                 >
                                   <ExternalLink className="h-3.5 w-3.5" />
                                 </Button>

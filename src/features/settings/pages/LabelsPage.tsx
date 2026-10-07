@@ -3,8 +3,8 @@
 import React, { useState, useMemo } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Form, Input, Skeleton, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/components/ui";
-import { DeleteModal } from '@/features/settings/components/modal/DeleteModal';
+import { Button, Form, Input, Skeleton, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/shared/components/ui";
+import { DeleteModal } from '../components/labels/DeleteModal';
 import { PageLayout, PageContent, PageHeader, PageToolbar, EmptyState } from '@/shared/components/layout';
 import {
   Tag,
@@ -24,8 +24,8 @@ import {
   useUpdateUserLabel,
   useDeleteUserLabel,
 } from '../hooks/use-workspace-labels';
-import { labelFormSchema, type LabelFormValues } from '@/features/projects/project-id/settings/schemas/label.schema';
-import type { Label } from '@/features/projects/project-id/settings/types/label.types';
+import { labelFormSchema, type LabelFormValues } from '../types/label.schema';
+import type { Label } from '../types/label.types';
 
 // ── Color Preset Palette ──────────────────────────────────────────────────
 
@@ -325,8 +325,10 @@ export default function LabelsPage() {
                           <button
                             type="button"
                             onClick={() => toggleGroup(root.id)}
-                            className="size-5 rounded flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
+                            className="size-6 rounded flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                             title={isCollapsed ? 'Expand group' : 'Collapse group'}
+                            aria-expanded={!isCollapsed}
+                            aria-label={isCollapsed ? `Expand ${root.name} group` : `Collapse ${root.name} group`}
                           >
                             {isCollapsed ? (
                               <ChevronRight className="size-3.5 shrink-0" />
@@ -335,7 +337,7 @@ export default function LabelsPage() {
                             )}
                           </button>
                         ) : (
-                          <div className="size-5" />
+                          <div className="size-6" />
                         )}
 
                         <span
@@ -343,7 +345,7 @@ export default function LabelsPage() {
                           style={{ backgroundColor: root.color || '#3b82f6' }}
                         />
 
-                        <span className="text-sm font-semibold text-foreground truncate">
+                        <span className="text-13 font-semibold text-foreground truncate">
                           {root.name}
                         </span>
 
@@ -354,19 +356,19 @@ export default function LabelsPage() {
                         )}
 
                         {root.description && (
-                          <span className="text-xs text-muted-foreground truncate hidden md:inline max-w-md">
+                          <span className="text-12 text-muted-foreground truncate hidden md:inline max-w-md">
                             - {root.description}
                           </span>
                         )}
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100 transition-opacity shrink-0">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => openCreateModal(root.id)}
-                          className="h-7 text-xs px-2 text-muted-foreground hover:text-foreground cursor-pointer gap-1"
+                          className="h-7 text-12 px-2 text-muted-foreground hover:text-foreground cursor-pointer gap-1 relative before:absolute before:-inset-1 md:before:hidden"
                           title="Add sub-label inside this group"
                         >
                           <Plus className="size-3.5 shrink-0" />
@@ -377,7 +379,7 @@ export default function LabelsPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openEditModal(root)}
-                          className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
+                          className="size-7 text-muted-foreground hover:text-foreground cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
                           title="Edit label"
                         >
                           <Pencil className="size-3.5 shrink-0" />
@@ -387,7 +389,7 @@ export default function LabelsPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => setDeletingLabel(root)}
-                          className="size-7 text-muted-foreground hover:text-destructive cursor-pointer"
+                          className="size-7 text-muted-foreground hover:text-destructive cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
                           title="Delete label"
                         >
                           <Trash2 className="size-3.5 shrink-0" />
@@ -401,7 +403,7 @@ export default function LabelsPage() {
                         {children.map((child) => (
                           <div
                             key={child.id}
-                            className="flex items-center justify-between gap-3 py-2 text-xs hover:bg-muted/40 transition-colors group/sub px-2 rounded-sm"
+                            className="flex items-center justify-between gap-3 py-2 text-12 hover:bg-muted/40 transition-colors group/sub px-2 rounded-sm"
                           >
                             <div className="flex items-center gap-2 min-w-0 flex-1">
                               <CornerDownRight className="size-3.5 text-muted-foreground/50 shrink-0" />
@@ -419,12 +421,12 @@ export default function LabelsPage() {
                               )}
                             </div>
 
-                            <div className="flex items-center gap-1 opacity-0 group-hover/sub:opacity-100 transition-opacity shrink-0">
+                            <div className="flex items-center gap-1 opacity-0 group-hover/sub:opacity-100 group-focus-within/sub:opacity-100 max-md:opacity-100 transition-opacity shrink-0">
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleUngroup(child)}
-                                className="h-6 text-11 px-2 text-muted-foreground hover:text-foreground cursor-pointer"
+                                className="h-6 text-11 px-2 text-muted-foreground hover:text-foreground cursor-pointer relative before:absolute before:-inset-1 md:before:hidden"
                                 title="Ungroup into independent label"
                               >
                                 Ungroup
@@ -434,7 +436,7 @@ export default function LabelsPage() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => openEditModal(child)}
-                                className="size-6 text-muted-foreground hover:text-foreground cursor-pointer"
+                                className="size-6 text-muted-foreground hover:text-foreground cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
                                 title="Edit sub-label"
                               >
                                 <Pencil className="size-3 shrink-0" />
@@ -444,7 +446,7 @@ export default function LabelsPage() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => setDeletingLabel(child)}
-                                className="size-6 text-muted-foreground hover:text-destructive cursor-pointer"
+                                className="size-6 text-muted-foreground hover:text-destructive cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
                                 title="Delete sub-label"
                               >
                                 <Trash2 className="size-3 shrink-0" />
@@ -462,11 +464,14 @@ export default function LabelsPage() {
 
           {/* ── Create / Edit Label Modal ── */}
           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-            <DialogContent className="sm:max-w-md p-5 bg-card border-border">
+            <DialogContent className="sm:max-w-md p-5 bg-card border-border shadow-overlay">
               <DialogHeader>
-                <DialogTitle className="text-base font-semibold text-foreground">
+                <DialogTitle className="text-14 font-semibold text-foreground">
                   {editingLabel ? 'Edit Label' : formParentId ? 'Add Sub-label' : 'Create Label'}
                 </DialogTitle>
+                <DialogDescription className="text-12 text-muted-foreground">
+                  Configure label properties, color badge, and grouping hierarchy.
+                </DialogDescription>
               </DialogHeader>
 
               <Form {...form}>
@@ -492,21 +497,26 @@ export default function LabelsPage() {
                   <div className="space-y-2">
                     <label className="text-12 font-medium text-foreground">Color Palette</label>
                     <div className="grid grid-cols-5 gap-2">
-                      {COLOR_PALETTE.map((c) => (
-                        <button
-                          key={c.hex}
-                          type="button"
-                          onClick={() => setValue('color', c.hex, { shouldValidate: true })}
-                          className={cn(
-                            'h-7 rounded-md flex items-center justify-center gap-1.5 text-11 font-medium text-white transition-transform cursor-pointer shadow-none',
-                            formColor.toLowerCase() === c.hex.toLowerCase() &&
-                              'ring-2 ring-primary ring-offset-1 ring-offset-background scale-105',
-                          )}
-                          style={{ backgroundColor: c.hex }}
-                        >
-                          <span>{c.name}</span>
-                        </button>
-                      ))}
+                      {COLOR_PALETTE.map((c) => {
+                        const isSelected = formColor.toLowerCase() === c.hex.toLowerCase();
+                        return (
+                          <button
+                            key={c.hex}
+                            type="button"
+                            onClick={() => setValue('color', c.hex, { shouldValidate: true })}
+                            title={c.name}
+                            aria-label={`${c.name} color swatch`}
+                            aria-pressed={isSelected}
+                            className={cn(
+                              'h-8 rounded-md flex items-center justify-center gap-1 text-12 font-medium text-white transition-all cursor-pointer shadow-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                              isSelected && 'ring-2 ring-primary ring-offset-1 ring-offset-background scale-102 font-semibold',
+                            )}
+                            style={{ backgroundColor: c.hex }}
+                          >
+                            <span className="drop-shadow-xs">{c.name}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                     <div className="flex items-center gap-2 pt-1">
                       <span className="text-12 text-muted-foreground">Custom Hex:</span>
@@ -514,7 +524,7 @@ export default function LabelsPage() {
                         value={formColor}
                         onChange={(e) => setValue('color', e.target.value, { shouldValidate: true })}
                         className={cn(
-                          "h-7 w-28 text-12 font-mono bg-background border-border",
+                          "h-8 w-28 text-12 font-mono bg-background border-border",
                           errors.color && "border-destructive"
                         )}
                         placeholder="#000000"
@@ -543,7 +553,7 @@ export default function LabelsPage() {
                       value={formParentId || ''}
                       onChange={(e) => setValue('parentId', e.target.value || null)}
                       disabled={Boolean(editingLabel && childMap[editingLabel.id]?.length > 0)}
-                      className="w-full h-8 text-12 rounded-md border border-border bg-background px-3 text-foreground outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                      className="w-full h-8 text-12 rounded-md border border-border bg-background px-3 text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
                     >
                       <option value="">None (Independent Root Label)</option>
                       {rootLabels

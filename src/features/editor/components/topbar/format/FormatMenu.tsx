@@ -21,8 +21,8 @@
  * - Subparagraph
  */
 
-import React, { useCallback, useMemo } from 'react';
-import { Sparkles, BookMarked } from 'lucide-react';
+import { useMemo, useCallback } from 'react';
+import { Bot, BookMarked } from 'lucide-react';
 import {
   MenubarMenu,
   MenubarTrigger,
@@ -35,7 +35,6 @@ import {
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 import { useSettingsStore } from '@/features/editor/store';
 import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import type { LatexFormatType } from '@/features/editor/ports/editor-engine.port';
 
 export default function FormatMenu() {
@@ -52,7 +51,7 @@ export default function FormatMenu() {
   const handleFormat = useCallback(
     (format: LatexFormatType) => {
       if (editorMode === 'visual') {
-        EditorEventBus.emit('flux:visual-command', { command: format as any });
+        editorCommandBus.dispatch({ type: 'editor:visual-command', command: format as any });
       } else {
         editorCommandBus.dispatch({ type: 'editor:format', format });
       }
@@ -64,7 +63,8 @@ export default function FormatMenu() {
   const handleList = useCallback(
     (env: 'itemize' | 'enumerate') => {
       if (editorMode === 'visual') {
-        EditorEventBus.emit('flux:visual-command', {
+        editorCommandBus.dispatch({
+          type: 'editor:visual-command',
           command: env === 'itemize' ? ('bulletList' as any) : ('orderedList' as any),
         });
       } else if (engine) {
@@ -94,7 +94,7 @@ export default function FormatMenu() {
 
   return (
     <MenubarMenu>
-      <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md outline-none select-none transition-colors">
+      <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary select-none transition-colors">
         Format
       </MenubarTrigger>
 
@@ -223,7 +223,7 @@ export default function FormatMenu() {
           className="px-2.5 py-1.5 cursor-pointer text-xs rounded-sm hover:bg-accent hover:text-accent-foreground flex items-center justify-between"
         >
           <span className="flex items-center gap-2">
-            <Sparkles className="size-3.5 text-foreground" />
+            <Bot className="size-3.5 text-foreground" />
             Auto-Fix Page Syntax
           </span>
           <MenubarShortcut className="text-11 text-muted-foreground/80 font-mono tracking-tight ml-auto">

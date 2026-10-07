@@ -22,6 +22,7 @@ import {
   Avatar,
   AvatarFallback,
   AvatarImage,
+  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -80,7 +81,7 @@ const PRIORITY_THEME_CLASSES: Record<string, string> = {
   urgent:
     'text-destructive bg-destructive/10 border-destructive/30 hover:bg-destructive/20 shadow-none font-normal',
   high:
-    'text-amber-700 dark:text-amber-300 bg-amber-500/15 border-amber-500/30 hover:bg-amber-500/25 shadow-none font-normal',
+    'text-warning bg-warning/10 border-warning/30 hover:bg-warning/20 shadow-none font-normal',
   medium:
     'text-foreground bg-muted border-border hover:bg-muted/80 shadow-none font-normal',
   low:
@@ -108,34 +109,28 @@ function GroupCheckbox({
   disabled?: boolean;
   ariaLabel?: string;
 }) {
-  const ref = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.indeterminate = indeterminate;
-    }
-  }, [indeterminate]);
-
   if (disabled) return null;
 
   return (
-    <input
-      ref={ref}
-      type="checkbox"
-      checked={checked}
-      onChange={() => {}}
+    <div
       onClick={(e) => {
         e.stopPropagation();
         onChange(e);
       }}
-      aria-label={ariaLabel}
       className={cn(
-        'size-3.5 rounded-sm border border-border text-primary focus:ring-1 focus:ring-ring focus:outline-none cursor-pointer shrink-0 accent-primary transition-opacity duration-150',
+        'size-3.5 flex items-center justify-center cursor-pointer shrink-0 transition-opacity duration-150',
         checked || indeterminate
           ? 'opacity-100 pointer-events-auto'
-          : 'opacity-0 pointer-events-none group-hover/header:opacity-100 group-hover/header:pointer-events-auto group-focus-within/header:opacity-100 group-focus-within/header:pointer-events-auto focus:opacity-100 focus:pointer-events-auto',
+          : 'opacity-0 pointer-events-none group-hover/header:opacity-100 group-hover/header:pointer-events-auto group-focus-within/header:opacity-100 group-focus-within/header:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto',
       )}
-    />
+    >
+      <Checkbox
+        checked={indeterminate ? 'indeterminate' : checked}
+        onCheckedChange={() => {}}
+        aria-label={ariaLabel}
+        className="size-3.5 rounded-sm"
+      />
+    </div>
   );
 }
 
@@ -317,29 +312,24 @@ export const ItemRow = ({
       className={cn(
         'group/row relative h-8 pl-7 sm:pl-8 pr-3 sm:pr-4 flex items-center justify-between border-b border-border/60 bg-background hover:bg-muted/40 select-none text-13 transition-colors duration-0',
         isDragging && 'opacity-50 bg-muted',
-        isSelected && 'bg-primary/5 border-l-2 border-primary font-medium',
+        isSelected && 'bg-primary/10 ring-1 ring-inset ring-primary/30 font-medium',
         item.completed && 'opacity-75',
       )}
     >
       {/* Checkbox: Positioned absolutely at left-2 (fades in on hover or when checked) */}
       <div
-        className="absolute left-2 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center z-10"
+        className="absolute left-2 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center z-10 cursor-pointer before:absolute before:-inset-2.5 md:before:hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <input
-          type="checkbox"
+        <Checkbox
           checked={isSelected}
-          onChange={(e) => {
-            e.stopPropagation();
-            onToggleSelect?.(item.id);
-          }}
-          onClick={(e) => e.stopPropagation()}
+          onCheckedChange={() => onToggleSelect?.(item.id)}
           aria-label={`Select item ${item.identifier || item.title || 'untitled'}`}
           className={cn(
-            'size-3.5 rounded-sm border border-border text-primary focus:ring-1 focus:ring-ring focus:outline-none cursor-pointer shrink-0 accent-primary transition-opacity duration-150',
+            'size-3.5 rounded-sm transition-opacity duration-150',
             isSelected
               ? 'opacity-100 pointer-events-auto'
-              : 'max-sm:opacity-100 max-sm:pointer-events-auto sm:opacity-0 sm:pointer-events-none sm:group-hover/row:opacity-100 sm:group-hover/row:pointer-events-auto group-focus-within/row:opacity-100 group-focus-within/row:pointer-events-auto focus:opacity-100 focus:pointer-events-auto',
+              : 'max-sm:opacity-100 max-sm:pointer-events-auto sm:opacity-0 sm:pointer-events-none sm:group-hover/row:opacity-100 sm:group-hover/row:pointer-events-auto group-focus-within/row:opacity-100 group-focus-within/row:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto',
           )}
         />
       </div>
@@ -433,7 +423,7 @@ export const ItemRow = ({
             <DropdownMenuTrigger asChild disabled={isReadOnly}>
               <button
                 type="button"
-                className="h-6 px-2.5 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="relative h-6 px-2.5 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
               >
                 <StatusIcon
                   id={item.columnId}
@@ -445,7 +435,7 @@ export const ItemRow = ({
                 <span className="truncate max-w-[70px] sm:max-w-[95px]">{colTitle}</span>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44 p-1 text-xs z-100">
+            <DropdownMenuContent align="end" className="w-44 p-1 text-xs z-100 shadow-overlay">
               {(projectStates && projectStates.length > 0 ? projectStates : columns).map((col) => {
                 const cId = resolveColumnId(col);
                 const isCurr = cId === item.columnId;
@@ -532,7 +522,7 @@ export const ItemRow = ({
                       isOverdue
                         ? 'border-destructive bg-destructive/10 text-destructive hover:bg-destructive/20 font-medium'
                         : isDueToday
-                          ? 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 font-medium'
+                          ? 'border-warning/30 bg-warning/10 text-warning hover:bg-warning/20 font-medium'
                           : 'border-border bg-background hover:bg-muted text-foreground',
                     )
                   : 'size-6 p-0 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 [&>span]:hidden',
@@ -549,7 +539,7 @@ export const ItemRow = ({
                 type="button"
                 onClick={() => setAssigneeOpen(true)}
                 disabled={isReadOnly}
-                className="cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all rounded-full shrink-0"
+                className="relative cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all rounded-full shrink-0 before:absolute before:-inset-1 md:before:hidden"
                 title={`${resolvedAssignees.length} assignees`}
               >
                 <AvatarStack users={resolvedAssignees} size="xs" max={3} />
@@ -559,7 +549,7 @@ export const ItemRow = ({
                 type="button"
                 onClick={() => setAssigneeOpen(true)}
                 disabled={isReadOnly}
-                className="size-6 rounded-full border border-border overflow-hidden flex items-center justify-center shrink-0 cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all"
+                className="relative size-6 rounded-full border border-border overflow-hidden flex items-center justify-center shrink-0 cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all before:absolute before:-inset-1 md:before:hidden"
                 title={resolvedAssignees[0].name || 'Assignee'}
               >
                 <Avatar className="size-full shrink-0">
@@ -574,7 +564,7 @@ export const ItemRow = ({
                 type="button"
                 onClick={() => setAssigneeOpen(true)}
                 disabled={isReadOnly}
-                className="size-6 rounded-full border border-border overflow-hidden flex items-center justify-center shrink-0 cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all"
+                className="relative size-6 rounded-full border border-border overflow-hidden flex items-center justify-center shrink-0 cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all before:absolute before:-inset-1 md:before:hidden"
                 title={assignee.name || 'Assignee'}
               >
                 <Avatar className="size-full shrink-0">
@@ -589,7 +579,7 @@ export const ItemRow = ({
                 type="button"
                 onClick={() => setAssigneeOpen(true)}
                 disabled={isReadOnly}
-                className="size-6 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                className="relative size-6 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none before:absolute before:-inset-1 md:before:hidden"
                 aria-label="Assign member"
                 title="Assign member"
               >
@@ -688,13 +678,13 @@ export const ItemRow = ({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-6 text-foreground hover:text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shrink-0 shadow-none focus-visible:ring-1 focus-visible:ring-ring flex items-center justify-center"
+                className="relative size-6 text-foreground hover:text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shrink-0 shadow-none focus-visible:ring-1 focus-visible:ring-ring flex items-center justify-center before:absolute before:-inset-2 md:before:hidden"
                 aria-label="More options"
               >
                 <MoreHorizontal className="size-3.5 shrink-0" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44 p-1 text-xs z-100 rounded-md">
+            <DropdownMenuContent align="end" className="w-44 p-1 text-xs z-100 rounded-md shadow-overlay">
               <DropdownMenuItem
                 onClick={() => onDuplicateCard(item)}
                 className="cursor-pointer gap-2 py-1.5 rounded-md"
@@ -818,7 +808,7 @@ const ChildItemRow = ({
           className={cn(
             'size-3.5 rounded-sm border flex items-center justify-center transition-colors cursor-pointer shrink-0',
             isDone
-              ? 'bg-emerald-500 border-emerald-500 text-white'
+              ? 'bg-success border-success text-success-foreground'
               : 'border-border hover:border-primary'
           )}
         >
@@ -884,7 +874,7 @@ const ChildItemRow = ({
               <span className="truncate max-w-[65px]">{colTitle}</span>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40 p-1 text-xs z-100 rounded-md">
+          <DropdownMenuContent align="end" className="w-40 p-1 text-xs z-100 rounded-md shadow-overlay">
             {stateList.map((col) => {
               const cId = resolveColumnId(col);
               const cTitle = col.title || col.name || 'Column';
@@ -964,6 +954,7 @@ const ChildItemQuickAdd = ({
             ref={inputRef}
             type="text"
             value={title}
+            aria-label="Sub-item title"
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -1249,7 +1240,7 @@ const ListViewGroup = ({
                 if (!isExpanded) onToggleExpand(group.key);
                 setQuickAddKey(group.key);
               }}
-              className="size-5 rounded-md flex items-center justify-center text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="size-5 rounded-md flex items-center justify-center text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-2.5 md:before:hidden"
               aria-label={`Add work item to ${group.label}`}
             >
               <Plus className="size-3.5 shrink-0" />
@@ -1657,8 +1648,8 @@ export function ListView({
             <div className="size-10 rounded-md bg-muted flex items-center justify-center text-foreground mb-3">
               <LayoutGrid className="size-5 shrink-0" />
             </div>
-            <h3 className="text-14 font-medium text-foreground mb-1">No columns configured</h3>
-            <p className="text-12 text-muted-foreground max-w-xs">
+            <h3 className="text-16 font-semibold text-foreground mb-1">No columns configured</h3>
+            <p className="text-13 text-muted-foreground max-w-xs">
               This project does not have any status columns set up yet.
             </p>
           </div>

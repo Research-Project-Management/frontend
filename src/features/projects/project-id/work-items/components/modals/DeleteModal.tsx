@@ -10,6 +10,7 @@ import {
   DialogFooter,
   Button,
 } from "@/shared/components/ui";
+import { Loader2 } from 'lucide-react';
 import type { Item } from '../../types/work-item.types';
 
 export interface DeleteModalProps {
@@ -29,9 +30,9 @@ export function DeleteModal({
 }: DeleteModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-md p-6 gap-4 rounded-md border border-border bg-background shadow-lg">
+      <DialogContent className="w-full max-w-md p-6 gap-4 rounded-md border border-border bg-background shadow-raised-200">
         <DialogHeader className="text-left space-y-1.5">
-          <DialogTitle className="text-base font-semibold text-foreground">
+          <DialogTitle className="text-16 font-semibold text-foreground">
             Delete work item
           </DialogTitle>
           <DialogDescription className="text-13 text-muted-foreground">
@@ -45,7 +46,7 @@ export function DeleteModal({
             size="sm"
             onClick={() => onOpenChange(false)}
             disabled={isDeleting}
-            className="h-8 px-3 text-13 font-medium rounded-md text-foreground hover:bg-muted cursor-pointer"
+            className="h-8 px-3 text-13 font-medium rounded-md text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             Cancel
           </Button>
@@ -54,9 +55,10 @@ export function DeleteModal({
             size="sm"
             onClick={onConfirm}
             disabled={isDeleting}
-            className="h-8 px-3 text-13 font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-none cursor-pointer"
+            className="h-8 px-3 text-13 font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring inline-flex items-center gap-1.5"
           >
-            {isDeleting ? 'Deleting...' : 'Delete work item'}
+            {isDeleting && <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none shrink-0" />}
+            <span>{isDeleting ? 'Deleting...' : 'Delete work item'}</span>
           </Button>
         </DialogFooter>
       </DialogContent>

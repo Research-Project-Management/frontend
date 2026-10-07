@@ -20,9 +20,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import type { SuggestModalState } from '../../../components/editor/subcomponents/SuggestEditModal';
 import type { RenameDialogState } from '../../../components/editor/subcomponents/RenameSymbolDialog';
-import { useEditorInstance } from '../../../core/context/editor-instance.context';
-import { editorCommandBus } from '../../../core/command-bus/editor-command-bus';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { useEditorInstance, editorCommandBus } from '../../../core';
 
 const CitationPickerModal = dynamic(
   () => import('../../../components/editor/CitationPickerModal'),
@@ -170,17 +168,9 @@ export function EditorModals({
       if (!cmd.dialog || cmd.dialog === 'symbol-palette') setIsSymbolOpen(false);
     });
 
-    // Also support fallback direct event names
-    const unsubLegacyTable = EditorEventBus.on('flux:open-table-wizard', () => setIsTableOpen(true));
-    const unsubLegacyFigure = EditorEventBus.on('flux:open-figure-wizard', () => setIsFigureOpen(true));
-    const unsubLegacySymbol = EditorEventBus.on('flux:open-symbol-palette', () => setIsSymbolOpen(true));
-
     return () => {
       unsubOpen();
       unsubClose();
-      unsubLegacyTable();
-      unsubLegacyFigure();
-      unsubLegacySymbol();
     };
   }, [setIsTableOpen, setIsFigureOpen, setIsSymbolOpen]);
 

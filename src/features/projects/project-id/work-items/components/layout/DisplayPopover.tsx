@@ -126,7 +126,7 @@ export function DisplayPopover({
         <Button
           type="button"
           size="sm"
-          className="h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shrink-0"
+          className="relative h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
           aria-label="Display options"
         >
           <span>Display</span>
@@ -135,7 +135,7 @@ export function DisplayPopover({
 
       <PopoverContent
         align="end"
-        className="w-68 sm:w-72 max-h-[85vh] overflow-y-auto p-2 rounded-md text-12 border-border bg-popover shadow-md space-y-2"
+        className="w-68 sm:w-72 max-h-[85vh] overflow-y-auto p-2 rounded-md text-12 border-border bg-popover shadow-overlay space-y-2"
       >
         {/* 1. Display Properties */}
         <div>
@@ -163,7 +163,7 @@ export function DisplayPopover({
                     aria-pressed={isSelected}
                     onClick={() => onPropertyToggle(item.key, !isSelected)}
                     className={cn(
-                      "px-2.5 py-1 text-12 font-medium rounded-md border transition-colors cursor-pointer select-none",
+                      "px-2.5 py-1 text-12 font-medium rounded-md border transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1 md:before:hidden",
                       isSelected
                         ? "border-primary bg-primary text-primary-foreground"
                         : "border-border/70 bg-background text-foreground/80 hover:text-foreground hover:bg-muted"
@@ -184,7 +184,7 @@ export function DisplayPopover({
           <button
             type="button"
             onClick={() => setGroupByOpen(!groupByOpen)}
-            className="flex w-full items-center justify-between px-1 py-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+            className="flex w-full items-center justify-between px-1 py-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
           >
             <span>Group by</span>
             {groupByOpen ? (
@@ -206,7 +206,7 @@ export function DisplayPopover({
                     aria-checked={isSelected}
                     onClick={() => handleGroupByChange(opt.value)}
                     className={cn(
-                      "flex w-full items-center gap-2.5 py-1.5 px-2 rounded-md text-12 transition-colors cursor-pointer select-none",
+                      "flex w-full items-center gap-2.5 py-1.5 px-2 rounded-md text-12 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                       isSelected
                         ? "text-foreground font-medium"
                         : "text-foreground/80 hover:text-foreground hover:bg-muted/40"
@@ -238,7 +238,7 @@ export function DisplayPopover({
             <button
               type="button"
               onClick={() => setOrderByOpen(!orderByOpen)}
-              className="flex items-center gap-1 hover:text-foreground/80 transition-colors cursor-pointer"
+              className="flex items-center gap-1 hover:text-foreground/80 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
             >
               <span>Order by</span>
               {orderByOpen ? (
@@ -250,7 +250,7 @@ export function DisplayPopover({
             <button
               type="button"
               onClick={toggleOrderDirection}
-              className="p-1 rounded-md border border-border hover:bg-muted text-foreground transition-colors cursor-pointer"
+              className="relative p-1 rounded-md border border-border hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
               title={orderDirection === 'asc' ? 'Ascending' : 'Descending'}
               aria-label="Toggle sort direction"
             >

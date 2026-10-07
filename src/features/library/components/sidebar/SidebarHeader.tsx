@@ -72,7 +72,7 @@ export function SidebarHeader({
                   e.stopPropagation();
                 }}
                 onClick={handleClearSearch}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-md"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-md relative before:absolute before:-inset-2 md:before:hidden"
                 aria-label="Clear search"
               >
                 <X className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -92,8 +92,9 @@ export function SidebarHeader({
             <Tooltip delayDuration={700}>
               <TooltipTrigger asChild>
                 <button
+                  type="button"
                   onClick={expandSearch}
-                  className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-1.5 md:before:hidden"
                   aria-label="Search collections"
                 >
                   <Search className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
@@ -109,8 +110,9 @@ export function SidebarHeader({
               <Tooltip delayDuration={700}>
                 <TooltipTrigger asChild>
                   <button
+                    type="button"
                     onClick={onOpenCreateRoot}
-                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-1.5 md:before:hidden"
                     aria-label="New collection"
                   >
                     <FolderPlus className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
@@ -127,8 +129,9 @@ export function SidebarHeader({
               <Tooltip delayDuration={700}>
                 <TooltipTrigger asChild>
                   <button
+                    type="button"
                     onClick={onOpenCreateSavedSearch}
-                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-1.5 md:before:hidden"
                     aria-label="New saved search"
                   >
                     <SlidersHorizontal className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
@@ -144,9 +147,10 @@ export function SidebarHeader({
             <Tooltip delayDuration={700}>
               <TooltipTrigger asChild>
                 <button
+                  type="button"
                   onClick={onToggleCollapse}
                   aria-label="Toggle sidebar"
-                  className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-1.5 md:before:hidden"
                 >
                   <PanelLeft className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                 </button>

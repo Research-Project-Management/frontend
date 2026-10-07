@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
@@ -193,9 +194,12 @@ export const EditorModal: React.FC<EditorModalProps> = ({
         <div className="p-5">
           {/* Header */}
           <DialogHeader className="p-0 space-y-0 text-left">
-            <DialogTitle className="text-14 font-semibold tracking-tight text-foreground">
+            <DialogTitle className="text-16 font-semibold tracking-tight text-foreground">
               {draft ? 'Edit draft' : 'Create a draft'}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Create or edit a work item draft with project details and priority.
+            </DialogDescription>
           </DialogHeader>
 
           {/* Project Picker Pill */}
@@ -204,14 +208,14 @@ export const EditorModal: React.FC<EditorModalProps> = ({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="h-7 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-12 font-medium text-foreground inline-flex items-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
+                  className="h-7 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-12 font-medium text-foreground inline-flex items-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer relative before:absolute before:-inset-1 md:before:hidden"
                 >
                   <Folder className="size-3.5 text-muted-foreground shrink-0" />
                   <span className="truncate max-w-44">{currentProject?.name || 'Select project'}</span>
                   <ChevronDown className="size-3 text-muted-foreground shrink-0 ml-0.5" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56 bg-background border border-border">
+              <DropdownMenuContent align="start" className="w-56 bg-background border border-border shadow-overlay">
                 {projects.map((proj) => (
                   <DropdownMenuItem
                     key={proj.id}
@@ -273,7 +277,7 @@ export const EditorModal: React.FC<EditorModalProps> = ({
                   <span>{columnName}</span>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-40 bg-background border border-border">
+              <DropdownMenuContent align="start" className="w-40 bg-background border border-border shadow-overlay">
                 {availableStates.map((col) => (
                   <DropdownMenuItem
                     key={col.key}
@@ -301,7 +305,7 @@ export const EditorModal: React.FC<EditorModalProps> = ({
                   <span className="capitalize">{priority}</span>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-36 bg-background border border-border">
+              <DropdownMenuContent align="start" className="w-36 bg-background border border-border shadow-overlay">
                 {PRIORITY_OPTIONS.map((p) => {
                   const Icon = p.icon;
                   return (
@@ -338,7 +342,7 @@ export const EditorModal: React.FC<EditorModalProps> = ({
                   <span>{labels.length > 0 ? labels.join(', ') : 'Labels'}</span>
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="w-60 p-2.5 bg-background border border-border">
+              <PopoverContent align="start" className="w-60 p-2.5 bg-background border border-border shadow-overlay">
                 <div className="flex flex-col gap-2">
                   <Input
                     placeholder="Add label & press enter..."
@@ -381,7 +385,7 @@ export const EditorModal: React.FC<EditorModalProps> = ({
                   <span>{startDate || 'Start date'}</span>
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="w-auto p-2 bg-background border border-border">
+              <PopoverContent align="start" className="w-auto p-2 bg-background border border-border shadow-overlay">
                 <input
                   type="date"
                   value={startDate}
@@ -402,7 +406,7 @@ export const EditorModal: React.FC<EditorModalProps> = ({
                   <span>{dueDate || 'Due date'}</span>
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="w-auto p-2 bg-background border border-border">
+              <PopoverContent align="start" className="w-auto p-2 bg-background border border-border shadow-overlay">
                 <input
                   type="date"
                   value={dueDate}
@@ -449,7 +453,7 @@ export const EditorModal: React.FC<EditorModalProps> = ({
               size="sm"
               onClick={onClose}
               disabled={isSaving}
-              className="h-8 px-3 text-12 font-medium rounded-md border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer"
+              className="h-8 px-3 text-12 font-medium rounded-md border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               Discard
             </Button>
@@ -458,7 +462,7 @@ export const EditorModal: React.FC<EditorModalProps> = ({
               size="sm"
               onClick={handleSave}
               disabled={!title.trim() || isSaving}
-              className="h-8 px-3.5 text-12 font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary-hover transition-colors shadow-none cursor-pointer"
+              className="h-8 px-3.5 text-12 font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary-hover transition-colors shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               {isSaving ? 'Saving...' : 'Save to Drafts'}
             </Button>

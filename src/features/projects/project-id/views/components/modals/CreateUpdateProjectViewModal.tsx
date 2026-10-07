@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -134,18 +135,21 @@ export const CreateUpdateProjectViewModal: React.FC<CreateUpdateProjectViewModal
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[560px] p-0 overflow-hidden bg-card border-border">
+      <DialogContent className="max-w-[560px] p-0 overflow-hidden bg-card border-border/80 shadow-raised-200 rounded-md">
         <form onSubmit={handleSubmit(onFormSubmit)}>
-          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
-            <DialogTitle className="text-lg font-semibold text-foreground">
+          <DialogHeader className="px-6 pt-5 pb-3 border-b border-border">
+            <DialogTitle className="text-16 font-semibold text-foreground">
               {isEditing ? 'Edit view' : 'Create view'}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Configure view name, layout mode, and access permissions.
+            </DialogDescription>
           </DialogHeader>
 
-          <div className="px-6 py-4 space-y-5">
+          <div className="px-6 py-4 space-y-4">
             {/* View Name */}
             <div className="space-y-1.5">
-              <Label htmlFor="view-name" className="text-xs font-medium text-foreground">
+              <Label htmlFor="view-name" className="text-12 font-medium text-foreground">
                 Name <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -154,18 +158,18 @@ export const CreateUpdateProjectViewModal: React.FC<CreateUpdateProjectViewModal
                 placeholder="e.g. Current Sprint Bugs, High Priority"
                 autoFocus
                 className={cn(
-                  'h-9 text-sm bg-background border-input focus-visible:ring-1',
+                  'h-8 text-13 bg-background border-input focus-visible:ring-1 focus-visible:ring-ring',
                   errors.name && 'border-destructive focus-visible:ring-destructive'
                 )}
               />
               {errors.name && (
-                <p className="text-xs text-destructive mt-1">{errors.name.message}</p>
+                <p className="text-11 text-destructive mt-1">{errors.name.message}</p>
               )}
             </div>
 
             {/* Description */}
             <div className="space-y-1.5">
-              <Label htmlFor="view-description" className="text-xs font-medium text-muted-foreground">
+              <Label htmlFor="view-description" className="text-12 font-medium text-muted-foreground">
                 Description
               </Label>
               <Textarea
@@ -173,16 +177,16 @@ export const CreateUpdateProjectViewModal: React.FC<CreateUpdateProjectViewModal
                 {...register('description')}
                 placeholder="What is this view for?"
                 rows={3}
-                className="text-sm bg-background border-input resize-none focus-visible:ring-1"
+                className="text-13 bg-background border-input resize-none focus-visible:ring-1 focus-visible:ring-ring"
               />
               {errors.description && (
-                <p className="text-xs text-destructive mt-1">{errors.description.message}</p>
+                <p className="text-11 text-destructive mt-1">{errors.description.message}</p>
               )}
             </div>
 
             {/* Layout Selector */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-foreground">Layout</Label>
+              <Label className="text-12 font-medium text-foreground">Layout</Label>
               <div className="grid grid-cols-5 gap-2">
                 {LAYOUT_OPTIONS.map((opt) => {
                   const Icon = opt.icon;
@@ -193,7 +197,7 @@ export const CreateUpdateProjectViewModal: React.FC<CreateUpdateProjectViewModal
                       type="button"
                       onClick={() => setValue('layout', opt.key, { shouldDirty: true })}
                       className={cn(
-                        'flex flex-col items-center justify-center p-2.5 rounded-lg border text-xs font-medium transition-colors cursor-pointer gap-1.5',
+                        'flex flex-col items-center justify-center p-2.5 rounded-lg border text-12 font-medium transition-colors cursor-pointer gap-1.5 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
                         isSelected
                           ? 'border-primary bg-primary/10 text-primary'
                           : 'border-border bg-card hover:bg-accent/50 text-muted-foreground hover:text-foreground'
@@ -209,13 +213,13 @@ export const CreateUpdateProjectViewModal: React.FC<CreateUpdateProjectViewModal
 
             {/* Access Switcher */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-foreground">Access</Label>
+              <Label className="text-12 font-medium text-foreground">Access</Label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setValue('access', 'public', { shouldDirty: true })}
                   className={cn(
-                    'flex items-center gap-2.5 p-3 rounded-lg border text-left cursor-pointer transition-colors',
+                    'flex items-center gap-2.5 p-3 rounded-lg border text-left cursor-pointer transition-colors relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
                     selectedAccess === 'public'
                       ? 'border-primary bg-primary/10 text-foreground'
                       : 'border-border bg-card hover:bg-accent/50 text-muted-foreground hover:text-foreground'
@@ -223,7 +227,7 @@ export const CreateUpdateProjectViewModal: React.FC<CreateUpdateProjectViewModal
                 >
                   <Globe className={cn('size-4 shrink-0', selectedAccess === 'public' ? 'text-primary' : 'text-muted-foreground')} />
                   <div>
-                    <div className="text-xs font-semibold text-foreground">Public view</div>
+                    <div className="text-12 font-semibold text-foreground">Public view</div>
                     <div className="text-11 text-muted-foreground">Anyone in project can view</div>
                   </div>
                 </button>
@@ -232,7 +236,7 @@ export const CreateUpdateProjectViewModal: React.FC<CreateUpdateProjectViewModal
                   type="button"
                   onClick={() => setValue('access', 'private', { shouldDirty: true })}
                   className={cn(
-                    'flex items-center gap-2.5 p-3 rounded-lg border text-left cursor-pointer transition-colors',
+                    'flex items-center gap-2.5 p-3 rounded-lg border text-left cursor-pointer transition-colors relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
                     selectedAccess === 'private'
                       ? 'border-primary bg-primary/10 text-foreground'
                       : 'border-border bg-card hover:bg-accent/50 text-muted-foreground hover:text-foreground'
@@ -240,7 +244,7 @@ export const CreateUpdateProjectViewModal: React.FC<CreateUpdateProjectViewModal
                 >
                   <Lock className={cn('size-4 shrink-0', selectedAccess === 'private' ? 'text-primary' : 'text-muted-foreground')} />
                   <div>
-                    <div className="text-xs font-semibold text-foreground">Private view</div>
+                    <div className="text-12 font-semibold text-foreground">Private view</div>
                     <div className="text-11 text-muted-foreground">Only you can view and edit</div>
                   </div>
                 </button>
@@ -248,14 +252,14 @@ export const CreateUpdateProjectViewModal: React.FC<CreateUpdateProjectViewModal
             </div>
           </div>
 
-          <DialogFooter className="px-6 py-4 bg-muted/30 border-t border-border flex items-center justify-end gap-2">
+          <DialogFooter className="px-6 py-3 bg-muted/30 border-t border-border flex items-center justify-end gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={onClose}
               disabled={isSubmitting || isLoading}
-              className="cursor-pointer text-xs"
+              className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               Cancel
             </Button>
@@ -263,10 +267,10 @@ export const CreateUpdateProjectViewModal: React.FC<CreateUpdateProjectViewModal
               type="submit"
               size="sm"
               disabled={isSubmitting || isLoading}
-              className="cursor-pointer text-xs"
+              className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               {(isSubmitting || isLoading) && (
-                <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+                <Loader2 className="size-3.5 mr-1.5 animate-spin motion-reduce:animate-none" />
               )}
               {isEditing ? 'Save changes' : 'Create view'}
             </Button>

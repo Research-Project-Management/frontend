@@ -153,16 +153,16 @@ export function AiCompanionSidebar() {
         ? firstUserMessage.length > 36
           ? `${firstUserMessage.slice(0, 36)}...`
           : firstUserMessage
-        : sessionTitle || 'Flux AI';
+        : sessionTitle || 'AI Assistant';
   const displayTitle =
-    (messages.length > 0 || sessionTitle) && chatTitle ? chatTitle : 'Flux AI';
+    (messages.length > 0 || sessionTitle) && chatTitle ? chatTitle : 'AI Assistant';
 
   return (
     <>
       {/* Mobile Backdrop Overlay (only on mobile) */}
       <div
         onClick={() => setOpen(false)}
-        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs md:hidden animate-in fade-in duration-150"
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs md:hidden animate-in fade-in duration-150 motion-reduce:animate-none"
         aria-hidden="true"
       />
 
@@ -176,11 +176,11 @@ export function AiCompanionSidebar() {
 
       <aside
         style={isMobile ? undefined : { width: `${currentWidth}px` }}
-        aria-label="Flux AI Companion Sidebar"
+        aria-label="AI Assistant Companion Sidebar"
         className={cn(
           "flex flex-col bg-background relative pb-[env(safe-area-inset-bottom)]",
           // Mobile: slide-over sheet drawer
-          "fixed inset-y-0 right-0 z-50 w-full sm:max-w-md shadow-lg border-l border-border animate-in slide-in-from-right duration-200 overflow-hidden",
+          "fixed inset-y-0 right-0 z-50 w-full sm:max-w-md shadow-lg border-l border-border animate-in slide-in-from-right duration-200 motion-reduce:animate-none motion-reduce:transform-none overflow-hidden",
           // Desktop: in-flow resizable column with visible overflow so edge resize and collapse controls aren't clipped
           "md:relative md:inset-auto md:z-auto md:order-3 md:h-full md:shrink-0 md:rounded-md md:border md:border-border md:shadow-none md:animate-none md:overflow-visible",
           isResizing && "transition-none select-none"
@@ -246,7 +246,7 @@ export function AiCompanionSidebar() {
               <button
                 type='button'
                 onClick={() => setHistoryView(false)}
-                className='flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai'
+                className='relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai before:absolute before:-inset-1.5 md:before:hidden'
                 aria-label='Back to chat'
               >
                 <ChevronRight className='size-4 shrink-0 text-foreground' />
@@ -280,7 +280,7 @@ export function AiCompanionSidebar() {
                     startNewChat();
                     setHistoryView(false);
                   }}
-                  className='flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai'
+                  className='relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai before:absolute before:-inset-1.5 md:before:hidden'
                   aria-label='New chat'
                 >
                   <SquarePen className='size-3.5 shrink-0 text-foreground' />
@@ -298,7 +298,7 @@ export function AiCompanionSidebar() {
                   type='button'
                   onClick={toggleHistoryView}
                   className={cn(
-                    'flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai',
+                    'relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai before:absolute before:-inset-1.5 md:before:hidden',
                     isHistoryView && 'bg-muted'
                   )}
                   aria-label='Chat history'
@@ -317,7 +317,7 @@ export function AiCompanionSidebar() {
                 <button
                   type='button'
                   onClick={() => setOpen(false)}
-                  className='flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai'
+                  className='relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai before:absolute before:-inset-1.5 md:before:hidden'
                   aria-label='Collapse (Ctrl+J)'
                 >
                   <X className='size-3.5 shrink-0 text-foreground' />

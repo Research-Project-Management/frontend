@@ -23,12 +23,8 @@ export const usePageSuggestions = (pageId: string | null, status?: SuggestionSta
     queryKey: suggestionKeys.byPage(pageId, status),
     queryFn: async (): Promise<PageSuggestion[]> => {
       if (!pageId) return [];
-      try {
-        const suggestions = await suggestionService.getSuggestions(pageId, status);
-        return suggestions || [];
-      } catch {
-        return [];
-      }
+      const suggestions = await suggestionService.getSuggestions(pageId, status);
+      return suggestions || [];
     },
     enabled: Boolean(pageId),
   });

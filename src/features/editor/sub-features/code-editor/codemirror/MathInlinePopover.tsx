@@ -79,9 +79,12 @@ export function MathInlinePopover({ trigger, onApply, onClose }: MathInlinePopov
 
   return (
     <div
-      className="fixed z-50 w-96 rounded-lg border border-border bg-popover text-popover-foreground p-3.5 shadow-raised-300 animate-in fade-in zoom-in-95 duration-150 select-none"
+      role="dialog"
+      aria-label="Edit Math"
+      className="fixed z-50 w-96 rounded-lg border border-border bg-popover text-popover-foreground p-3.5 shadow-raised-300 animate-in fade-in zoom-in-95 duration-150 motion-reduce:animate-none select-none"
       style={{ top, left }}
       onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
     >
       {/* Header */}
       <div className="flex items-center justify-between pb-2 border-b border-border/50 text-xs">

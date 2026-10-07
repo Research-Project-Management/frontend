@@ -95,7 +95,7 @@ export function ListView({ pages, onEdit }: ListViewProps) {
   };
 
   return (
-    <div className="flex-1 w-full overflow-x-auto select-none scrollbar-none pb-8">
+    <div className="flex-1 w-full overflow-x-auto select-none scrollbar-none pb-8 touch-pan-x">
       <table className="w-full min-w-[780px] table-fixed text-left border-collapse">
         {/* Golden Ratio Proportions: 36% Title | 12% Status | 16% Author | 22% Labels | 10% Updated | 4% Actions */}
         <colgroup>
@@ -108,11 +108,11 @@ export function ListView({ pages, onEdit }: ListViewProps) {
         </colgroup>
 
         <thead className="sticky top-0 z-10 bg-background select-none">
-          <tr className="h-8.5 text-12 font-medium text-muted-foreground border-b border-border">
+          <tr className="h-8 text-12 font-medium text-muted-foreground border-b border-border">
             {/* Title */}
             <th
               onClick={() => handleSort('title')}
-              className="px-4 min-w-[260px] h-8.5 align-middle cursor-pointer text-muted-foreground hover:text-foreground transition-colors select-none text-left border-b border-border"
+              className="px-4 min-w-[260px] h-8 align-middle cursor-pointer text-muted-foreground hover:text-foreground transition-colors select-none text-left border-b border-border"
             >
               <div className="flex items-center gap-1.5">
                 <span>Page</span>
@@ -123,7 +123,7 @@ export function ListView({ pages, onEdit }: ListViewProps) {
             {/* Status */}
             <th
               onClick={() => handleSort('status')}
-              className="px-3 min-w-[100px] h-8.5 align-middle cursor-pointer text-muted-foreground hover:text-foreground transition-colors select-none text-left border-b border-border"
+              className="px-3 min-w-[100px] h-8 align-middle cursor-pointer text-muted-foreground hover:text-foreground transition-colors select-none text-left border-b border-border"
             >
               <div className="flex items-center gap-1.5">
                 <span>Status</span>
@@ -134,7 +134,7 @@ export function ListView({ pages, onEdit }: ListViewProps) {
             {/* Author */}
             <th
               onClick={() => handleSort('author')}
-              className="px-3 min-w-[140px] h-8.5 align-middle cursor-pointer text-muted-foreground hover:text-foreground transition-colors select-none text-left border-b border-border"
+              className="px-3 min-w-[140px] h-8 align-middle cursor-pointer text-muted-foreground hover:text-foreground transition-colors select-none text-left border-b border-border"
             >
               <div className="flex items-center gap-1.5">
                 <span>Author</span>
@@ -143,14 +143,14 @@ export function ListView({ pages, onEdit }: ListViewProps) {
             </th>
 
             {/* Labels */}
-            <th className="px-3 min-w-[180px] h-8.5 align-middle text-muted-foreground select-none text-left border-b border-border">
+            <th className="px-3 min-w-[180px] h-8 align-middle text-muted-foreground select-none text-left border-b border-border">
               <span>Labels</span>
             </th>
 
             {/* Updated Date */}
             <th
               onClick={() => handleSort('updatedAt')}
-              className="px-3 min-w-[110px] h-8.5 align-middle cursor-pointer text-muted-foreground hover:text-foreground transition-colors select-none text-left border-b border-border"
+              className="px-3 min-w-[110px] h-8 align-middle cursor-pointer text-muted-foreground hover:text-foreground transition-colors select-none text-left border-b border-border"
             >
               <div className="flex items-center gap-1.5">
                 <span>Updated</span>
@@ -159,7 +159,7 @@ export function ListView({ pages, onEdit }: ListViewProps) {
             </th>
 
             {/* Actions Header */}
-            <th className="px-2 min-w-[44px] h-8.5 align-middle text-right border-b border-border" />
+            <th className="px-2 min-w-[44px] h-8 align-middle text-right border-b border-border" />
           </tr>
         </thead>
 
@@ -205,14 +205,14 @@ export function ListView({ pages, onEdit }: ListViewProps) {
                     className={cn(
                       "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-11 font-mono font-medium capitalize",
                       status === 'published'
-                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
-                        : "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+                        ? "bg-success/10 text-success border border-success/20"
+                        : "bg-warning/10 text-warning border border-warning/20"
                     )}
                   >
                     <span
                       className={cn(
                         "size-1.5 rounded-full shrink-0",
-                        status === 'published' ? "bg-emerald-500" : "bg-amber-500"
+                        status === 'published' ? "bg-success" : "bg-warning"
                       )}
                     />
                     <span>{status}</span>
@@ -231,7 +231,7 @@ export function ListView({ pages, onEdit }: ListViewProps) {
                             className="size-5 rounded-full object-cover shrink-0 ring-1 ring-border/50"
                           />
                         ) : (
-                          <span className="size-5 rounded-full bg-muted text-muted-foreground ring-1 ring-border/50 text-11 font-mono font-medium flex items-center justify-center shrink-0">
+                          <span className="size-5 rounded-full bg-muted text-muted-foreground ring-1 ring-border/50 text-10 font-mono font-medium flex items-center justify-center shrink-0">
                             {authorName.charAt(0).toUpperCase()}
                           </span>
                         )}
@@ -252,7 +252,7 @@ export function ListView({ pages, onEdit }: ListViewProps) {
                       labels.slice(0, 2).map((label: any) => {
                         const labelId = label.id ?? label;
                         const labelName = label.name ?? label;
-                        const labelColor = label.color ?? '#3b82f6';
+                        const labelColor = label.color ?? '#0969DA';
                         return (
                           <span
                             key={labelId}
@@ -298,16 +298,16 @@ export function ListView({ pages, onEdit }: ListViewProps) {
                       <DropdownMenuTrigger asChild>
                         <button
                           type="button"
-                          className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-muted data-[state=open]:text-foreground transition-all outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
+                          className="relative size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted opacity-100 sm:opacity-0 sm:group-hover:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-muted data-[state=open]:text-foreground transition-all outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
                           aria-label={`Options for ${page.title}`}
                         >
                           <MoreHorizontal className="size-3.5 shrink-0" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48 text-xs z-50">
+                      <DropdownMenuContent align="end" className="w-48 text-12 shadow-overlay">
                         <DropdownMenuItem
                           onClick={() => router.push(linkHref)}
-                          className="cursor-pointer gap-2"
+                          className="cursor-pointer gap-2 text-12"
                         >
                           <ExternalLink className="size-3.5 text-muted-foreground" />
                           <span>Open page</span>
@@ -318,21 +318,21 @@ export function ListView({ pages, onEdit }: ListViewProps) {
                             e.stopPropagation();
                             onEdit?.(page);
                           }}
-                          className="cursor-pointer gap-2"
+                          className="cursor-pointer gap-2 text-12"
                         >
                           <Pencil className="size-3.5 text-muted-foreground" />
                           <span>Edit page</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleCopyLink(linkHref)}
-                          className="cursor-pointer gap-2"
+                          className="cursor-pointer gap-2 text-12"
                         >
                           <Link2 className="size-3.5 text-muted-foreground" />
                           <span>Copy link</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => duplicatePage.mutate(page.id)}
-                          className="cursor-pointer gap-2"
+                          className="cursor-pointer gap-2 text-12"
                         >
                           <Copy className="size-3.5 text-muted-foreground" />
                           <span>Duplicate</span>
@@ -340,7 +340,7 @@ export function ListView({ pages, onEdit }: ListViewProps) {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => handleDelete(page.id, page.title)}
-                          className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                          className="cursor-pointer gap-2 text-12 text-destructive focus:text-destructive"
                         >
                           <Trash2 className="size-3.5" />
                           <span>Delete</span>

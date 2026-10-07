@@ -20,7 +20,7 @@ import * as decoding from 'lib0/decoding';
 import { Awareness, removeAwarenessStates } from 'y-protocols/awareness';
 import { io, type Socket } from 'socket.io-client';
 import { getEffectiveBaseUrl, getAuthToken } from '@/shared/lib/api';
-import { EditorEventBus } from '../utils/editor.util';
+import { editorCommandBus } from '../core/command-bus/editor-command-bus';
 import type { CollaborationPresence } from '../services/collaboration.service';
 
 export interface CollaboratorUser {
@@ -263,7 +263,11 @@ export class YjsSocketIOProvider {
     // Real-time LaTeX compilation streaming
     this.socket.on('compile:progress', (data: any) => {
       if (this.destroyed) return;
-      EditorEventBus.emit('flux:compile-progress', data);
+      editorCommandBus.dispatch({
+        type: 'compiler:progress',
+        status: data?.status || 'compiling',
+        logs: data?.logs || (typeof data === 'string' ? data : ''),
+      });
     });
 
     // Remote cursor update from peer
@@ -294,6 +298,7 @@ export class YjsSocketIOProvider {
     // Real-time project file-tree mutation (create, rename, move, delete)
     this.socket.on('fileTree:update', (data: any) => {
       if (this.destroyed) return;
+      editorCommandBus.dispatch({ type: 'filetree:updated', payload: data });
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('flux:filetree-updated', { detail: data }));
       }
@@ -302,6 +307,13 @@ export class YjsSocketIOProvider {
     // Real-time document content update from collaborator
     this.socket.on('doc:content-updated', (data: any) => {
       if (this.destroyed) return;
+      if (data?.docId && typeof data?.content === 'string') {
+        editorCommandBus.dispatch({
+          type: 'document:content-updated',
+          docId: data.docId,
+          content: data.content,
+        });
+      }
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('flux:doc-content-updated', { detail: data }));
       }

@@ -15,7 +15,7 @@ import {
   snippet,
 } from '@codemirror/autocomplete';
 import { EditorView } from '@codemirror/view';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 
 const COMMON_ENVIRONMENTS = [
   'equation',
@@ -434,7 +434,8 @@ export function createLatexCompletionSource(
               changes: { from: applyFrom, to: applyTo, insert: insertText },
               selection: { anchor: applyFrom + insertText.length },
             });
-            EditorEventBus.emit('flux:insert-citation', {
+            editorCommandBus.dispatch({
+              type: 'editor:insert-citation',
               bibKey: item.key,
               textInserted: true,
             });

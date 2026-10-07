@@ -47,8 +47,8 @@ import {
   usePageActions,
   useFileActions,
 } from '@/features/editor/hooks/use-core';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
+import { workspaceCoordinator } from '@/features/editor/coordinators/workspace.coordinator';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/services/storage.service';
 import { manuscriptService, type LinkedFileDto } from '@/features/editor/services/manuscript.service';
 import {
@@ -57,6 +57,7 @@ import {
   Button,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -173,6 +174,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     if (!files) return;
     const names = files.map((f: any) => f.title);
     setTexFiles(names);
+    workspaceCoordinator.initProjectSymbols(files as any);
   }, [files, setTexFiles]);
 
   const { createFile: createFileMutation, setMainFile: setMainFileMutation } = useFileActions();
@@ -378,25 +380,6 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   }, []);
 
   useEffect(() => {
-    const unsubFile = EditorEventBus.on('flux:new-file', () => {
-      setIsFileTreeOpen(true);
-      handleOpenFileModal();
-    });
-    const unsubFolder = EditorEventBus.on('flux:new-folder', () => {
-      setIsFileTreeOpen(true);
-      handleStartCreateFolder();
-    });
-    const unsubUpload = EditorEventBus.on('flux:upload-file', () => {
-      setIsFileTreeOpen(true);
-      handleOpenUploadModal();
-    });
-    const unsubAdd = EditorEventBus.on('flux:open-add-files', (payload) => {
-      setIsFileTreeOpen(true);
-      if (payload?.initialTab) {
-        setAddFilesTab(payload.initialTab);
-      }
-      setIsAddFilesModalOpen(true);
-    });
     const unsubCmd = editorCommandBus.subscribe('dialog:open', (cmd) => {
       if (cmd.dialog === 'add-files') {
         setIsFileTreeOpen(true);
@@ -408,6 +391,9 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         setIsFileTreeOpen(true);
         setAddFilesTab('new-file');
         setIsAddFilesModalOpen(true);
+      } else if (cmd.dialog === 'new-folder') {
+        setIsFileTreeOpen(true);
+        handleStartCreateFolder();
       } else if (cmd.dialog === 'upload-file') {
         setIsFileTreeOpen(true);
         setAddFilesTab('upload');
@@ -415,13 +401,9 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       }
     });
     return () => {
-      unsubFile();
-      unsubFolder();
-      unsubUpload();
-      unsubAdd();
       unsubCmd();
     };
-  }, [handleOpenFileModal, handleStartCreateFolder, handleOpenUploadModal]);
+  }, [handleStartCreateFolder]);
 
   const handleCreateFile = useCallback(() => {
     const title = sanitizeTitle(newFileName);
@@ -749,9 +731,9 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
               <div className="flex flex-col py-1 space-y-0.5">
                 {[65, 80, 45, 75, 55].map((w, i) => (
                   <div key={i} className="flex h-8 items-center gap-2 px-3">
-                    <div className="size-4 rounded-md bg-muted animate-pulse shrink-0" />
+                    <div className="size-4 rounded-md bg-muted animate-pulse motion-reduce:animate-none shrink-0" />
                     <div
-                      className="h-3 rounded-md bg-muted animate-pulse"
+                      className="h-3 rounded-md bg-muted animate-pulse motion-reduce:animate-none"
                       style={{ width: `${w}%` }}
                     />
                   </div>
@@ -762,7 +744,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
             {/* Uploading indicator */}
             {uploadingCount > 0 && (
               <div className="flex h-8 items-center gap-2 px-3 text-12 text-muted-foreground select-none">
-                <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
+                <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none text-foreground shrink-0" />
                 <span>
                   Uploading {uploadingCount} file{uploadingCount > 1 ? 's' : ''}…
                 </span>
@@ -883,11 +865,10 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
               <DialogTitle className="text-sm font-semibold tracking-tight text-foreground">
                 Delete file
               </DialogTitle>
+              <DialogDescription className="text-xs text-foreground leading-relaxed pt-1">
+                Are you sure you want to delete <span className="font-semibold text-foreground font-mono">{displayName(fileToDelete.title)}</span>? This file will be moved to Trash and can be restored at any time.
+              </DialogDescription>
             </DialogHeader>
-
-            <div className="text-xs text-foreground leading-relaxed">
-              Are you sure you want to delete <span className="font-semibold text-foreground font-mono">{displayName(fileToDelete.title)}</span>? This file will be moved to Trash and can be restored at any time.
-            </div>
 
             <DialogFooter className="flex justify-end gap-2 pt-2">
               <Button
@@ -910,7 +891,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
               >
                 {deletePageMutation.isPending ? (
                   <>
-                    <Loader2 className="size-3.5 animate-spin mr-1.5" />
+                    <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none mr-1.5" />
                     Deleting...
                   </>
                 ) : (

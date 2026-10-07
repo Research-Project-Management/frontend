@@ -25,7 +25,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           Drafts
         </h1>
         {totalDrafts !== undefined && totalDrafts > 0 && (
-          <span className="px-1.5 py-0.5 rounded text-11 font-mono font-medium text-muted-foreground bg-muted">
+          <span className="px-1.5 py-0.5 rounded-md text-11 font-mono font-medium text-muted-foreground bg-muted">
             {totalDrafts}
           </span>
         )}
@@ -35,7 +35,7 @@ export const Topbar: React.FC<TopbarProps> = ({
       <Button
         onClick={onCreateDraft}
         size="sm"
-        className="h-7 px-2.5 rounded-md font-medium text-12 bg-primary text-primary-foreground hover:bg-primary-hover transition-colors shadow-none shrink-0 cursor-pointer"
+        className="h-7 px-2.5 rounded-md font-medium text-12 bg-primary text-primary-foreground hover:bg-primary-hover transition-colors shadow-none shrink-0 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
       >
         <span>Draft a work item</span>
       </Button>

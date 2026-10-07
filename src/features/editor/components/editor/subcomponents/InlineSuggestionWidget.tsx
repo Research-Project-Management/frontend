@@ -90,7 +90,7 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
     },
     replace: {
       label: 'Replaced',
-      badgeClass: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20',
+      badgeClass: 'bg-warning/15 text-warning border-warning/20',
     },
   }[suggestion.type] || {
     label: suggestion.type,
@@ -104,7 +104,7 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
       ref={containerRef}
       role="dialog"
       aria-label="Track change proposal"
-      className="fixed z-50 w-84 rounded-lg border border-border bg-popover text-popover-foreground p-3.5 shadow-raised-300 animate-in fade-in-0 zoom-in-95 duration-150"
+      className="fixed z-50 w-84 rounded-lg border border-border bg-popover text-popover-foreground p-3.5 shadow-raised-300 animate-in fade-in-0 zoom-in-95 duration-150 motion-reduce:animate-none"
       style={{ left, top }}
     >
       {/* ── Header: Author & Action Type ── */}
@@ -203,7 +203,7 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
             className="h-6 px-2 text-xs font-medium gap-1 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 cursor-pointer"
           >
             {isRejecting ? (
-              <Loader2 className="size-3 animate-spin" />
+              <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />
             ) : (
               <X className="size-3" />
             )}
@@ -218,7 +218,7 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
             className="h-6 px-2.5 text-xs font-medium gap-1 bg-primary text-primary-foreground hover:bg-primary-hover cursor-pointer"
           >
             {isAccepting ? (
-              <Loader2 className="size-3 animate-spin" />
+              <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />
             ) : (
               <Check className="size-3" />
             )}

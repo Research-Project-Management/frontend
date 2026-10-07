@@ -140,8 +140,8 @@ export default function Sidebar() {
             <button
               type='button'
               onClick={toggleOpen}
-              aria-label='Ask Flux AI'
-              title='Ask Flux AI'
+              aria-label='Ask AI Assistant'
+              title='Ask AI Assistant'
               className={cn(
                 'relative flex size-10 shrink-0 -translate-y-4 items-center justify-center rounded-full bg-background shadow-md transition-[transform,box-shadow] duration-200 cursor-pointer outline-none hover:scale-105 active:scale-95 focus-visible:ring-2 focus-visible:ring-ai select-none overflow-hidden z-20',
                 isOpen && 'shadow-lg'
@@ -149,7 +149,7 @@ export default function Sidebar() {
             >
               <img
                 src='/Chat.svg'
-                alt='Flux AI'
+                alt='AI Assistant'
                 className='size-full object-cover rounded-full block'
               />
             </button>
@@ -180,7 +180,7 @@ export default function Sidebar() {
               >
                 <img
                   src='/Chat.svg'
-                  alt='Flux AI'
+                  alt='AI Assistant'
                   className='size-4.5 shrink-0 rounded-full block object-contain'
                 />
               </button>

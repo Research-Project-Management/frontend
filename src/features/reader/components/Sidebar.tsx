@@ -65,14 +65,14 @@ export function Sidebar({
       className="w-72 h-full border-r border-border bg-background flex flex-col shrink-0 select-none z-20"
     >
       {/* Header with 3 tabs: Outline | Thumbnails | Annotations — Zotero 7 official order */}
-      <div className="h-9 shrink-0 border-b border-border px-1.5 flex items-center justify-between">
-        <div className="flex items-center gap-0.5">
+      <div className="h-10 shrink-0 border-b border-border px-2 flex items-center justify-between">
+        <div className="flex items-center gap-1">
           {/* Tab 1: Outline — Zotero 7 order: Outline first */}
           <button
             type="button"
             onClick={() => setActiveTab('outline')}
             className={cn(
-              "flex items-center gap-1 px-2 py-1 text-12 font-medium rounded-md transition-colors cursor-pointer",
+              "h-8 px-2.5 flex items-center gap-1.5 text-12 font-medium rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary",
               activeTab === 'outline'
                 ? "bg-muted text-foreground"
                 : "text-foreground hover:bg-muted"
@@ -87,7 +87,7 @@ export function Sidebar({
             type="button"
             onClick={() => setActiveTab('pages')}
             className={cn(
-              "flex items-center gap-1 px-2 py-1 text-12 font-medium rounded-md transition-colors cursor-pointer",
+              "h-8 px-2.5 flex items-center gap-1.5 text-12 font-medium rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary",
               activeTab === 'pages'
                 ? "bg-muted text-foreground"
                 : "text-foreground hover:bg-muted"
@@ -102,7 +102,7 @@ export function Sidebar({
             type="button"
             onClick={() => setActiveTab('annotations')}
             className={cn(
-              "flex items-center gap-1 px-2 py-1 text-12 font-medium rounded-md transition-colors cursor-pointer",
+              "h-8 px-2.5 flex items-center gap-1.5 text-12 font-medium rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary",
               activeTab === 'annotations'
                 ? "bg-muted text-foreground"
                 : "text-foreground hover:bg-muted"
@@ -135,10 +135,10 @@ export function Sidebar({
               <button
                 type="button"
                 onClick={() => setOutlineFilter('')}
-                className="size-4.5 absolute right-1 flex items-center justify-center text-foreground hover:bg-muted rounded-sm cursor-pointer"
+                className="size-5 absolute right-1 flex items-center justify-center text-foreground hover:bg-muted rounded-sm cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
                 aria-label="Clear filter"
               >
-                <X className="size-2.5" strokeWidth={1.5} />
+                <X className="size-3" strokeWidth={1.5} />
               </button>
             )}
           </div>

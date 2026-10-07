@@ -121,7 +121,7 @@ function AnnotationEditForm({
             type="button"
             variant="outline"
             size="sm"
-            className="h-6 text-11 px-2 cursor-pointer rounded-md border-border bg-background text-foreground hover:bg-muted"
+            className="h-7 text-11 px-2.5 cursor-pointer rounded-md border-border bg-background text-foreground hover:bg-muted relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
             onClick={onCancel}
           >
             Cancel
@@ -129,7 +129,7 @@ function AnnotationEditForm({
           <Button
             type="submit"
             size="sm"
-            className="h-6 text-11 px-2.5 font-medium cursor-pointer rounded-md"
+            className="h-7 text-11 px-3 font-medium cursor-pointer rounded-md relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
             disabled={isSaving}
           >
             {isSaving ? <Loader2 className="size-3 animate-spin shrink-0" strokeWidth={1.5} /> : 'Save'}
@@ -262,15 +262,16 @@ export function AnnotationsPanel({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search highlights..."
-                className="h-6 w-full rounded-md border border-border bg-background pl-6 pr-6 text-11 text-foreground placeholder:text-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary font-sans"
+                className="h-7 w-full rounded-md border border-border bg-background pl-6 pr-6 text-11 text-foreground placeholder:text-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary font-sans"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-1.5 flex size-3.5 items-center justify-center text-foreground hover:bg-muted rounded cursor-pointer"
+                  className="absolute right-1.5 flex size-4.5 items-center justify-center text-foreground hover:bg-muted rounded cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
+                  aria-label="Clear search"
                 >
-                  <X className="size-2.5" strokeWidth={1.5} />
+                  <X className="size-3" strokeWidth={1.5} />
                 </button>
               )}
             </div>
@@ -280,7 +281,7 @@ export function AnnotationsPanel({
               size="sm"
               onClick={() => importExternal()}
               disabled={isImporting}
-              className="h-6 gap-1 px-1.5 text-11 font-medium rounded-md shrink-0 cursor-pointer border border-border bg-background text-foreground hover:bg-muted"
+              className="h-7 gap-1 px-2 text-11 font-medium rounded-md shrink-0 cursor-pointer border border-border bg-background text-foreground hover:bg-muted relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
               title="Import embedded annotations from PDF (/Annots dictionary)"
             >
               {isImporting ? (
@@ -296,7 +297,7 @@ export function AnnotationsPanel({
               size="sm"
               onClick={() => extractNotes(paper.id)}
               disabled={isExtracting || annotations.length === 0}
-              className="h-6 gap-1 px-2 text-11 font-medium rounded-md shrink-0 cursor-pointer border border-border bg-background text-foreground hover:bg-muted"
+              className="h-7 gap-1 px-2 text-11 font-medium rounded-md shrink-0 cursor-pointer border border-border bg-background text-foreground hover:bg-muted relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
               title="Extract all highlights into a Literature Note"
             >
               {isExtracting ? (
@@ -320,7 +321,7 @@ export function AnnotationsPanel({
                     type="button"
                     onClick={() => setSelectedColor(filter.id)}
                     className={cn(
-                      'inline-flex h-4 items-center gap-1 rounded-md px-1.5 text-10 font-medium transition-colors shrink-0 cursor-pointer',
+                      'inline-flex h-5 items-center gap-1 rounded-md px-2 text-10 font-medium transition-colors shrink-0 cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden',
                       active
                         ? 'bg-foreground text-background font-semibold'
                         : 'bg-background border border-border text-foreground hover:bg-muted',
@@ -347,7 +348,7 @@ export function AnnotationsPanel({
                     <button
                       type="button"
                       className={cn(
-                        "h-4.5 px-1.5 flex items-center gap-1 rounded-md text-10 font-sans border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors",
+                        "h-6 px-2 flex items-center gap-1 rounded-md text-10 font-sans border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary",
                         authorFilter !== 'all' && "border-primary/50 text-foreground font-medium"
                       )}
                       title="Filter by Author"
@@ -356,7 +357,7 @@ export function AnnotationsPanel({
                       <span>{authorFilter === 'all' ? 'All' : 'Author'}</span>
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-32 text-xs p-1 bg-popover border border-border shadow-md rounded-md">
+                  <DropdownMenuContent align="end" className="w-32 text-xs p-1 bg-popover border border-border shadow-raised-200 rounded-md z-50">
                     <DropdownMenuItem
                       onClick={() => setAuthorFilter('all')}
                       className="cursor-pointer text-11 flex items-center justify-between text-foreground"
@@ -383,14 +384,14 @@ export function AnnotationsPanel({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="h-4.5 px-1.5 flex items-center gap-1 rounded-md text-10 font-sans border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors"
+                    className="h-6 px-2 flex items-center gap-1 rounded-md text-10 font-sans border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     title="Sort annotations"
                   >
                     <ArrowUpDown className="size-2.5 text-foreground shrink-0" strokeWidth={1.5} />
                     <span className="capitalize">{sortBy}</span>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-36 text-xs p-1 bg-popover border border-border shadow-md rounded-md">
+                <DropdownMenuContent align="end" className="w-36 text-xs p-1 bg-popover border border-border shadow-raised-200 rounded-md z-50">
                   <DropdownMenuItem
                     onClick={() => setSortBy('position')}
                     className="cursor-pointer text-11 flex items-center justify-between text-foreground"
@@ -505,14 +506,14 @@ export function AnnotationsPanel({
                         </div>
 
                         {/* Hover actions */}
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 max-md:opacity-100 transition-opacity">
                           {isDeletingCurrent ? (
                             <div className="flex items-center gap-1">
                               <button
                                 type="button"
                                 onClick={() => handleDelete(annotation)}
                                 aria-label="Confirm delete"
-                                className="size-5 rounded-md text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer"
+                                className="size-6 sm:size-5 rounded-md text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                               >
                                 <Check className="size-3" strokeWidth={1.5} />
                               </button>
@@ -520,7 +521,7 @@ export function AnnotationsPanel({
                                 type="button"
                                 onClick={() => setDeletingId(null)}
                                 aria-label="Cancel"
-                                className="size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
+                                className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                               >
                                 <X className="size-3" strokeWidth={1.5} />
                               </button>
@@ -537,7 +538,7 @@ export function AnnotationsPanel({
                                     )
                                   }
                                   aria-label="Add to Note"
-                                  className="size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
+                                  className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                   title="Add to Note"
                                 >
                                   <StickyNote className="size-3" strokeWidth={1.5} />
@@ -547,7 +548,7 @@ export function AnnotationsPanel({
                                 type="button"
                                 onClick={() => setEditingId(annotation.id)}
                                 aria-label="Edit annotation"
-                                className="size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
+                                className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                               >
                                 <Edit3 className="size-3" strokeWidth={1.5} />
                               </button>
@@ -555,7 +556,7 @@ export function AnnotationsPanel({
                                 type="button"
                                 onClick={() => setDeletingId(annotation.id)}
                                 aria-label="Delete annotation"
-                                className="size-5 rounded-md text-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer"
+                                className="size-6 sm:size-5 rounded-md text-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                               >
                                 <Trash2 className="size-3" strokeWidth={1.5} />
                               </button>

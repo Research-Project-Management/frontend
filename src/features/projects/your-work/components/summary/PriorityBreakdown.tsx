@@ -40,7 +40,7 @@ function PriorityCustomTooltip({ active, payload, total }: PriorityTooltipProps)
   const percentage = total > 0 ? Math.round((data.count / total) * 100) : 0;
 
   return (
-    <div className="rounded-md bg-popover px-2.5 py-1.5 text-xs text-popover-foreground border border-border">
+    <div className="rounded-md bg-popover px-2.5 py-1.5 text-12 text-popover-foreground border border-border shadow-overlay">
       <div className="flex items-center gap-1.5 font-medium">
         <span
           className="size-2 rounded-full shrink-0"
@@ -49,7 +49,7 @@ function PriorityCustomTooltip({ active, payload, total }: PriorityTooltipProps)
         <span>{data.label} Priority</span>
       </div>
       <div className="mt-1 text-11 text-muted-foreground flex items-center gap-1">
-        <span className="font-semibold text-foreground tabular-nums">{data.count} items</span>
+        <span className="font-medium text-foreground tabular-nums">{data.count} items</span>
         <span>({percentage}%)</span>
       </div>
     </div>
@@ -87,7 +87,7 @@ export function PriorityBreakdown({
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
-      <h3 className="text-sm font-semibold text-foreground tracking-tight">
+      <h3 className="text-13 font-semibold text-foreground tracking-tight">
         Work items by priority
       </h3>
 
@@ -95,7 +95,7 @@ export function PriorityBreakdown({
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center py-6 text-center">
             <EmptyIllustration />
-            <span className="text-xs text-muted-foreground mt-3 font-normal">
+            <span className="text-12 text-muted-foreground mt-3 font-normal">
               No work item assigned yet
             </span>
           </div>
@@ -153,7 +153,7 @@ export function PriorityBreakdown({
             {/* Bottom Numeric Legend Strip */}
             <div className="flex items-center justify-between gap-1 pt-2.5 border-t border-border/40">
               {priorities.map((item) => (
-                <div key={item.key} className="flex items-center gap-1.5 text-xs">
+                <div key={item.key} className="flex items-center gap-1.5 text-12">
                   <span
                     className="size-2 rounded-full shrink-0"
                     style={{ backgroundColor: item.hex }}
@@ -161,7 +161,7 @@ export function PriorityBreakdown({
                   <span className="text-11 font-medium text-muted-foreground hidden sm:inline">
                     {item.label}
                   </span>
-                  <span className="text-xs font-semibold text-foreground tabular-nums">
+                  <span className="text-12 font-medium text-foreground tabular-nums">
                     {item.count}
                   </span>
                 </div>

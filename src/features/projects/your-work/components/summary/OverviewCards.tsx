@@ -43,7 +43,7 @@ export function OverviewCards({
 
   return (
     <div className={className}>
-      <h2 className="text-sm font-semibold text-foreground tracking-tight mb-2.5">
+      <h2 className="text-13 font-semibold text-foreground tracking-tight mb-2.5">
         Overview
       </h2>
       <div className="grid gap-3.5 sm:grid-cols-3">
@@ -59,7 +59,7 @@ export function OverviewCards({
                 <Icon className="size-5 text-foreground shrink-0" />
               </div>
               <div className="space-y-0.5">
-                <p className="text-xs text-muted-foreground font-normal">
+                <p className="text-12 text-muted-foreground font-normal">
                   {card.label}
                 </p>
                 <p className="text-lg font-semibold tabular-nums tracking-tight text-foreground">

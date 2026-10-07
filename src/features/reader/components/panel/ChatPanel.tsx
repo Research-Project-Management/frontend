@@ -66,7 +66,7 @@ function CitationPill({
         if (onClick) onClick(citation.pageNumber);
       }}
       title={citation.quote ? `Quote: "${citation.quote}"` : `Jump to Page ${citation.pageNumber}`}
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-11 font-mono text-foreground border border-border bg-background hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer select-none"
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-11 font-mono text-foreground border border-border bg-background hover:bg-muted focus-visible:ring-1 focus-visible:ring-ai focus-visible:outline-none transition-colors cursor-pointer select-none"
     >
       <BookOpen className="size-3 text-foreground shrink-0" />
       <span className="tabular-nums">p.{citation.pageNumber}</span>
@@ -195,7 +195,7 @@ export default function ChatPanel({
                   key={item.id}
                   type="button"
                   onClick={() => sendMessage(item.prompt)}
-                  className="w-full text-left py-1.5 px-2.5 rounded-md text-xs text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors border border-border bg-background cursor-pointer flex items-center justify-between group"
+                  className="w-full text-left py-1.5 px-2.5 rounded-md text-xs text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-ai focus-visible:outline-none transition-colors border border-border bg-background cursor-pointer flex items-center justify-between group"
                 >
                   <span className="truncate">{item.title}</span>
                   <ArrowRight className="size-3 text-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -229,7 +229,7 @@ export default function ChatPanel({
                       <div className="space-y-1 text-xs">
                         {renderMarkdown(msg.content)}
                         {msg.isStreaming && (
-                          <span className="inline-block w-1.5 h-3 bg-primary align-middle ml-1 animate-pulse" />
+                          <span className="inline-block w-1.5 h-3 bg-ai align-middle ml-1 animate-pulse motion-reduce:animate-none" />
                         )}
                       </div>
                     )}
@@ -254,7 +254,7 @@ export default function ChatPanel({
                       <button
                         type="button"
                         onClick={() => handleSaveNote(msg.content)}
-                        className="inline-flex items-center gap-1 text-11 text-foreground hover:bg-muted px-1.5 py-0.5 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none rounded-md transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 text-11 text-foreground hover:bg-muted px-1.5 py-0.5 focus-visible:ring-1 focus-visible:ring-ai focus-visible:outline-none rounded-md transition-colors cursor-pointer"
                         title="Save response to paper notes"
                       >
                         <BookmarkPlus className="size-3 text-foreground shrink-0" />
@@ -265,7 +265,7 @@ export default function ChatPanel({
                         onClick={async () => {
                           await copy(msg.content, 'response');
                         }}
-                        className="inline-flex items-center gap-1 text-11 text-foreground hover:bg-muted px-1.5 py-0.5 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none rounded-md transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 text-11 text-foreground hover:bg-muted px-1.5 py-0.5 focus-visible:ring-1 focus-visible:ring-ai focus-visible:outline-none rounded-md transition-colors cursor-pointer"
                         title="Copy text"
                       >
                         <Copy className="size-3 text-foreground shrink-0" />
@@ -285,7 +285,7 @@ export default function ChatPanel({
           onSubmit={handleSubmit(onSubmit)}
           className="p-2 border-t border-border bg-background shrink-0"
         >
-          <div className="flex items-center gap-1 rounded-md border border-border bg-background focus-within:ring-1 focus-within:ring-ring px-2 py-1">
+          <div className="flex items-center gap-1 rounded-md border border-border bg-background focus-within:ring-1 focus-within:ring-ai px-2 py-1">
             <textarea
               {...register('message')}
               onKeyDown={handleKeyDown}
@@ -309,7 +309,7 @@ export default function ChatPanel({
                 type="submit"
                 disabled={!canSend}
                 aria-label="Send message"
-                className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors shrink-0 cursor-pointer"
+                className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed focus-visible:ring-1 focus-visible:ring-ai focus-visible:outline-none transition-colors shrink-0 cursor-pointer"
               >
                 <ArrowUp className="size-3.5 text-foreground shrink-0" />
               </button>

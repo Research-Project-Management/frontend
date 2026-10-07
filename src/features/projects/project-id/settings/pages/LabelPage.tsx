@@ -164,7 +164,7 @@ function LabelInlineForm({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="size-8.5 rounded-lg border border-input bg-background flex items-center justify-center hover:bg-muted/50 cursor-pointer shrink-0 transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+            className="relative size-8 rounded-md border border-input bg-background flex items-center justify-center hover:bg-muted/50 cursor-pointer shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
             title="Choose color"
           >
             <span
@@ -173,7 +173,7 @@ function LabelInlineForm({
             />
           </button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-auto p-2.5 bg-popover border-border">
+        <PopoverContent align="start" className="w-auto p-2.5 bg-popover border-border shadow-overlay">
           <div className="grid grid-cols-6 gap-2">
             {COLOR_PALETTE.map((c) => (
               <button
@@ -184,7 +184,7 @@ function LabelInlineForm({
                   setIsColorOpen(false);
                 }}
                 className={cn(
-                  "size-6 rounded-full transition-transform hover:scale-110 cursor-pointer flex items-center justify-center ring-offset-background",
+                  "relative size-6 rounded-full transition-transform hover:scale-110 cursor-pointer flex items-center justify-center ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden",
                   color.toLowerCase() === c.hex.toLowerCase() && "ring-2 ring-primary ring-offset-2 scale-105"
                 )}
                 style={{ backgroundColor: c.hex }}
@@ -212,7 +212,7 @@ function LabelInlineForm({
           }
         }}
         maxLength={255}
-        className="flex-1 h-8.5 text-xs sm:text-sm bg-background border-input rounded-md px-3"
+        className="flex-1 h-8 text-13 bg-background border-input rounded-md px-2.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       />
 
       {/* Cancel Button */}
@@ -221,7 +221,7 @@ function LabelInlineForm({
         variant="ghost"
         size="sm"
         onClick={onCancel}
-        className="h-8.5 px-3 text-xs sm:text-sm font-normal text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+        className="relative h-8 px-3 text-12 font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
       >
         Cancel
       </Button>
@@ -231,7 +231,7 @@ function LabelInlineForm({
         type="submit"
         size="sm"
         disabled={!name.trim() || isSubmitting}
-        className="h-8.5 px-4 text-xs sm:text-sm font-medium cursor-pointer shadow-none"
+        className="relative h-8 px-3.5 text-12 font-medium cursor-pointer shadow-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
       >
         {submitLabel}
       </Button>
@@ -378,13 +378,13 @@ export default function LabelPage() {
         <PageHeader title="Labels" icon={Tag} />
         <PageContent maxWidth="md">
           <div className="space-y-6">
-            <Skeleton className="h-8 w-48 rounded" />
-            <Skeleton className="h-4 w-80 rounded" />
+            <Skeleton className="h-8 w-48 rounded motion-reduce:animate-none" />
+            <Skeleton className="h-4 w-80 rounded motion-reduce:animate-none" />
             <div className="flex justify-between gap-4">
-              <Skeleton className="h-8 w-64 rounded-md" />
-              <Skeleton className="h-8 w-24 rounded-md" />
+              <Skeleton className="h-8 w-64 rounded-md motion-reduce:animate-none" />
+              <Skeleton className="h-8 w-24 rounded-md motion-reduce:animate-none" />
             </div>
-            <Skeleton className="h-48 w-full rounded-lg" />
+            <Skeleton className="h-48 w-full rounded-lg motion-reduce:animate-none" />
           </div>
         </PageContent>
       </PageLayout>
@@ -396,7 +396,7 @@ export default function LabelPage() {
       <PageLayout>
         <PageHeader title="Labels" icon={Tag} />
         <PageContent maxWidth="md">
-          <div className="text-sm text-muted-foreground">
+          <div className="text-13 text-muted-foreground">
             Error loading project.
           </div>
         </PageContent>
@@ -422,7 +422,7 @@ export default function LabelPage() {
                   placeholder="Search labels..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-8 pl-8 text-xs rounded-md border-border bg-background"
+                  className="h-8 pl-8 text-13 rounded-md border-border bg-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 />
               </div>
             }
@@ -434,6 +434,7 @@ export default function LabelPage() {
                   setIsCreating(true);
                   setEditingLabelId(null);
                 }}
+                className="relative h-8 px-3 text-12 font-medium cursor-pointer shadow-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
               >
                 Add label
               </Button>
@@ -445,14 +446,14 @@ export default function LabelPage() {
             /* ── Image 1: Empty State ── */
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <EmptyStateIllustration className="size-24 mb-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold text-foreground">No labels yet</h3>
-              <p className="text-xs text-muted-foreground mt-1 max-w-sm leading-relaxed">
+              <h3 className="text-16 font-semibold text-foreground">No labels yet</h3>
+              <p className="text-13 text-muted-foreground mt-1.5 max-w-sm leading-normal">
                 Create personalized labels to effectively categorize and manage your work items.
               </p>
               <Button
                 type="button"
                 onClick={() => setIsCreating(true)}
-                className="mt-4 h-8.5 px-3.5 text-xs sm:text-sm font-medium cursor-pointer shadow-none"
+                className="relative mt-4 h-8 px-3.5 text-12 font-medium cursor-pointer shadow-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
               >
                 Create your first label
               </Button>
@@ -488,7 +489,7 @@ export default function LabelPage() {
 
               {/* Filtered labels list */}
               {filteredLabels.length === 0 ? (
-                <div className="py-8 text-center text-xs text-muted-foreground">
+                <div className="py-8 text-center text-13 text-muted-foreground">
                   No labels matching &ldquo;{searchQuery}&rdquo;
                 </div>
               ) : (
@@ -519,18 +520,24 @@ export default function LabelPage() {
                       onDragOver={(e) => handleDragOver(e, index)}
                       onDragEnd={handleDragEnd}
                       className={cn(
-                        "rounded-md border border-border/70 bg-background hover:bg-muted/20 px-3.5 py-2.5 flex items-center justify-between transition-colors group select-none",
+                        "rounded-md border border-border/70 bg-background hover:bg-muted/20 px-3.5 py-2 min-h-10 flex items-center justify-between transition-colors group select-none",
                         draggedIndex === index && "opacity-50 border-dashed"
                       )}
                     >
                       {/* Left: Grip Handle + Filled Tag Icon + Label Title */}
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <GripVertical className="size-4 text-muted-foreground/40 group-hover:text-muted-foreground cursor-grab active:cursor-grabbing shrink-0 transition-colors" />
+                        <button
+                          type="button"
+                          className="relative size-6 flex items-center justify-center -ml-1 text-muted-foreground/40 group-hover:text-muted-foreground cursor-grab active:cursor-grabbing shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded before:absolute before:-inset-1 md:before:hidden"
+                          aria-label="Reorder label"
+                        >
+                          <GripVertical className="size-4" />
+                        </button>
                         <Tag
                           className="size-4 shrink-0 fill-current"
                           style={{ color: label.color || '#ef4444' }}
                         />
-                        <span className="text-sm font-medium text-foreground truncate">
+                        <span className="text-13 font-medium text-foreground truncate">
                           {label.name}
                         </span>
                       </div>
@@ -540,26 +547,27 @@ export default function LabelPage() {
                         <DropdownMenuTrigger asChild>
                           <button
                             type="button"
-                            className="size-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none"
+                            className="relative size-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
                             title="More options"
+                            aria-label="More label options"
                           >
                             <MoreHorizontal className="size-4" />
                           </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-36 p-1">
+                        <DropdownMenuContent align="end" className="w-36 p-1 shadow-overlay">
                           <DropdownMenuItem
                             onClick={() => {
                               setEditingLabelId(label.id);
                               setIsCreating(false);
                             }}
-                            className="cursor-pointer gap-2 text-xs py-1.5"
+                            className="cursor-pointer gap-2 text-12 py-1.5"
                           >
                             <Pencil className="size-3.5 text-muted-foreground" />
                             <span>Edit label</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => setDeletingLabel(label)}
-                            className="cursor-pointer gap-2 text-xs py-1.5 text-destructive focus:text-destructive focus:bg-muted"
+                            className="cursor-pointer gap-2 text-12 py-1.5 text-destructive focus:text-destructive focus:bg-muted"
                           >
                             <Trash2 className="size-3.5 text-destructive" />
                             <span>Delete label</span>

@@ -12,7 +12,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { Vim } from '@replit/codemirror-vim';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import { setMathEditCallback, type MathPopoverTrigger } from '../latex-visual-plugin';
 import type { InlineSuggestionWidgetData } from '@/features/editor/components/editor/subcomponents/InlineSuggestionWidget';
@@ -61,14 +60,14 @@ export function useEditorInteractions({
 
   // 3. Track Changes Floating Widget State & Listener
   useEffect(() => {
-    const unsub = EditorEventBus.on('flux:open-suggestion-widget', (detail: any) => {
-      if (detail && detail.suggestionId) {
-        const found = (suggestions || []).find((s) => s.id === detail.suggestionId);
+    const unsub = editorCommandBus.subscribe('editor:open-suggestion-widget', (cmd) => {
+      if (cmd.suggestionId) {
+        const found = (suggestions || []).find((s) => s.id === cmd.suggestionId);
         if (found) {
           setActiveSuggestionWidget({
             suggestion: found,
-            x: detail.x ?? 120,
-            y: detail.y ?? 120,
+            x: cmd.x ?? 120,
+            y: cmd.y ?? 120,
           });
         }
       }

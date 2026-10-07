@@ -244,12 +244,12 @@ export const RELATION_TYPE_CONFIG: Record<
   blocks: {
     label: "Blocks",
     description: "This issue blocks the other issue",
-    badgeColor: "text-red-500 bg-red-500/10 border-red-500/20",
+    badgeColor: "text-destructive bg-destructive/10 border-destructive/20",
   },
   blocked_by: {
     label: "Blocked by",
     description: "This issue is blocked by the other issue",
-    badgeColor: "text-orange-500 bg-orange-500/10 border-orange-500/20",
+    badgeColor: "text-warning bg-warning/10 border-warning/20",
   },
   relates_to: {
     label: "Relates to",
@@ -262,6 +262,24 @@ export const RELATION_TYPE_CONFIG: Record<
     badgeColor: "text-muted-foreground bg-muted border-border",
   },
 };
+
+export const PRIORITY_THEME_COLORS: Record<Priority, string> = {
+  urgent: "#CF222E",
+  high: "#D97706",
+  medium: "#9A6700",
+  low: "#6E6E6E",
+  none: "#9CA3AF",
+} as const;
+
+export const GROUP_DEFAULT_COLORS = {
+  assignee: "#0969DA",
+  label: "#0969DA",
+  createdBy: "#8250DF",
+  all: "#0969DA",
+  unassigned: "#9CA3AF",
+  noLabel: "#9CA3AF",
+  unknown: "#9CA3AF",
+} as const;
 
 export const STATE_GROUPS: readonly StateGroup[] = [
   "backlog",

@@ -164,7 +164,7 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
               setCurrentPage((p) => Math.max(1, p - 1));
             }}
             aria-label="Previous page"
-            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none transition-colors"
+            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none transition-colors relative before:absolute before:-inset-1.5 md:before:hidden"
           >
             <ChevronLeft className="size-4 shrink-0" />
           </button>
@@ -176,7 +176,7 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
               setCurrentPage((p) => Math.min(numPages, p + 1));
             }}
             aria-label="Next page"
-            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none transition-colors"
+            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none transition-colors relative before:absolute before:-inset-1.5 md:before:hidden"
           >
             <ChevronRight className="size-4 shrink-0" />
           </button>
@@ -446,7 +446,7 @@ export default function AttachmentsSection({
                 <button
                   type="button"
                   disabled={isUploadingFile}
-                  className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+                  className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden"
                   title="Add attachment"
                   aria-label="Add attachment"
                 >
@@ -517,7 +517,7 @@ export default function AttachmentsSection({
                 <button
                   type="button"
                   aria-label="Attachment options"
-                  className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-0"
+                  className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-0 relative before:absolute before:-inset-2 md:before:hidden"
                 >
                   <MoreVertical className="size-3.5 text-foreground shrink-0" />
                 </button>
@@ -640,7 +640,7 @@ export default function AttachmentsSection({
                     <button
                       type="button"
                       aria-label="Attachment options"
-                      className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-0"
+                      className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-0 relative before:absolute before:-inset-2 md:before:hidden"
                     >
                       <MoreVertical className="size-3.5 text-foreground shrink-0" />
                     </button>
@@ -711,7 +711,7 @@ export default function AttachmentsSection({
           type="button"
           disabled={isCapturingSnapshot}
           onClick={handleCaptureSnapshot}
-          className="w-full mt-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md border border-dashed border-border hover:bg-muted text-xs text-foreground transition-colors disabled:opacity-50 cursor-pointer"
+          className="w-full mt-1 h-8 flex items-center justify-center gap-1.5 px-2 rounded-md border border-dashed border-border hover:bg-muted text-12 text-foreground transition-colors disabled:opacity-50 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden"
         >
           {isCapturingSnapshot ? (
             <>

@@ -6,6 +6,7 @@ import {
   Button,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -25,21 +26,21 @@ export const STATUS_CONFIG: Record<
 > = {
   published: {
     label: 'Published',
-    color: '#10b981',
-    bg: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
-    border: 'border-emerald-500/20',
+    color: 'var(--color-success, #1A7F37)',
+    bg: 'bg-success/10 text-success',
+    border: 'border-success/20',
   },
   draft: {
     label: 'Draft',
-    color: '#f59e0b',
-    bg: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-    border: 'border-amber-500/20',
+    color: 'var(--color-warning, #9A6700)',
+    bg: 'bg-warning/10 text-warning',
+    border: 'border-warning/20',
   },
   archived: {
     label: 'Archived',
-    color: '#64748b',
-    bg: 'bg-slate-500/10 text-slate-700 dark:text-slate-400',
-    border: 'border-slate-500/20',
+    color: 'var(--color-muted-foreground, #6E6E6E)',
+    bg: 'bg-muted text-muted-foreground',
+    border: 'border-border',
   },
 };
 
@@ -112,17 +113,20 @@ export function CreateModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[440px] rounded-md p-5 gap-4">
+      <DialogContent className="sm:max-w-[440px] rounded-md p-5 gap-4 shadow-raised-200 border-border/80">
         <DialogHeader className="pb-1">
-          <DialogTitle className="text-sm font-semibold tracking-tight text-foreground">
+          <DialogTitle className="text-16 font-semibold tracking-tight text-foreground">
             Create page
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Create a new page in the current project.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
           {/* Page Title */}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="title" className="text-xs font-medium text-foreground">
+            <Label htmlFor="title" className="text-12 font-medium text-foreground">
               Page title <span className="text-destructive">*</span>
             </Label>
             <Input
@@ -131,7 +135,7 @@ export function CreateModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               autoFocus
-              className="h-8 text-xs rounded-md shadow-none"
+              className="h-8 text-13 rounded-md shadow-none focus-visible:ring-1 focus-visible:ring-ring"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && title.trim() && !isCreating) {
                   e.preventDefault();
@@ -143,10 +147,10 @@ export function CreateModal({
 
           {/* Status & Labels Row: Button with dropdown/popover + selected chips */}
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground">
+            <Label className="text-12 font-medium text-foreground">
               Status & Labels
             </Label>
-            <div className="flex flex-wrap items-center gap-1.5 min-h-[32px]">
+            <div className="flex flex-wrap items-center gap-1.5 min-h-8">
               <Popover open={isLabelPopoverOpen} onOpenChange={setIsLabelPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -154,7 +158,7 @@ export function CreateModal({
                     variant="outline"
                     size="sm"
                     className={cn(
-                      'h-7 px-2 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+                      'h-7 px-2 text-12 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
                       selectedLabelIds.length > 0 && 'border-border/80 bg-muted/30 font-medium'
                     )}
                   >
@@ -171,7 +175,7 @@ export function CreateModal({
                   align="start"
                   side="bottom"
                   sideOffset={4}
-                  className="w-56 p-0 py-1.5 rounded-md border border-border bg-popover z-50 flex flex-col shadow-md text-foreground overflow-hidden"
+                  className="w-56 p-0 py-1.5 rounded-md border border-border bg-popover flex flex-col shadow-overlay text-foreground overflow-hidden"
                 >
                   {/* Search inside Dropdown */}
                   <div className="px-1.5 pb-1">
@@ -182,14 +186,14 @@ export function CreateModal({
                         placeholder="Search labels..."
                         value={labelSearch}
                         onChange={(e) => setLabelSearch(e.target.value)}
-                        className="w-full pl-2 pr-5 text-xs bg-transparent border-none outline-none focus:outline-none focus:ring-0 shadow-none text-foreground placeholder:text-muted-foreground"
+                        className="w-full pl-2 pr-5 text-12 bg-transparent border-none outline-none focus:outline-none focus:ring-0 shadow-none text-foreground placeholder:text-muted-foreground"
                         autoFocus
                       />
                       {labelSearch && (
                         <button
                           type="button"
                           onClick={() => setLabelSearch('')}
-                          className="absolute right-1.5 text-muted-foreground hover:text-foreground cursor-pointer p-0.5 rounded-sm"
+                          className="absolute right-1.5 text-muted-foreground hover:text-foreground cursor-pointer p-0.5 rounded-sm relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
                           aria-label="Clear search"
                         >
                           <X className="size-3" />
@@ -204,13 +208,13 @@ export function CreateModal({
                     style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--border) transparent' }}
                   >
                     {filteredLabels.length === 0 ? (
-                      <div className="py-2.5 text-center text-xs text-muted-foreground">
+                      <div className="py-2.5 text-center text-12 text-muted-foreground">
                         {projectLabels.length === 0 ? 'No labels in this project' : 'No labels found'}
                       </div>
                     ) : (
                       filteredLabels.map((label) => {
                         const isSelected = selectedLabelIds.includes(label.id);
-                        const color = label.color || '#3b82f6';
+                        const color = label.color || '#0969DA';
                         return (
                           <div
                             key={label.id}
@@ -224,7 +228,7 @@ export function CreateModal({
                               }
                             }}
                             className={cn(
-                              'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors hover:bg-muted/60 cursor-pointer select-none text-left',
+                              'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-12 transition-colors hover:bg-muted/60 cursor-pointer select-none text-left relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
                               isSelected && 'bg-muted/60 font-medium'
                             )}
                           >
@@ -246,14 +250,14 @@ export function CreateModal({
                 </PopoverContent>
               </Popover>
 
-              {/* Status Popover Button (kế bên button label) */}
+              {/* Status Popover Button */}
               <Popover open={isStatusPopoverOpen} onOpenChange={setIsStatusPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-7 px-2 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0"
+                    className="h-7 px-2 text-12 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
                   >
                     <span
                       className="size-2 rounded-full shrink-0"
@@ -267,7 +271,7 @@ export function CreateModal({
                   align="start"
                   side="bottom"
                   sideOffset={4}
-                  className="w-40 p-1 rounded-md border border-border bg-popover z-50 flex flex-col shadow-md text-foreground overflow-hidden"
+                  className="w-40 p-1 rounded-md border border-border bg-popover flex flex-col shadow-overlay text-foreground overflow-hidden"
                 >
                   {(Object.keys(STATUS_CONFIG) as PageStatus[]).map((st) => {
                     const cfg = STATUS_CONFIG[st];
@@ -281,7 +285,7 @@ export function CreateModal({
                           setIsStatusPopoverOpen(false);
                         }}
                         className={cn(
-                          'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors hover:bg-muted/60 cursor-pointer select-none text-left',
+                          'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-12 transition-colors hover:bg-muted/60 cursor-pointer select-none text-left relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
                           isSelected && 'bg-muted/60 font-medium'
                         )}
                       >
@@ -303,11 +307,11 @@ export function CreateModal({
 
               {/* Selected Label Chips displayed inline next to the button */}
               {selectedLabels.map((label) => {
-                const color = label.color || '#3b82f6';
+                const color = label.color || '#0969DA';
                 return (
                   <span
                     key={label.id}
-                    className="inline-flex items-center gap-1.5 h-7 pl-2 pr-1 rounded-md text-xs font-medium border shrink-0 transition-colors"
+                    className="inline-flex items-center gap-1.5 h-7 pl-2 pr-1 rounded-md text-12 font-medium border shrink-0 transition-colors"
                     style={{
                       backgroundColor: `${color}12`,
                       borderColor: `${color}30`,
@@ -319,8 +323,9 @@ export function CreateModal({
                     <button
                       type="button"
                       onClick={() => onToggleLabel(label.id)}
-                      className="size-3.5 rounded-sm flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer ml-0.5"
+                      className="size-3.5 rounded-sm flex items-center justify-center hover:bg-foreground/10 transition-colors cursor-pointer ml-0.5 relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                       title={`Remove ${label.name}`}
+                      aria-label={`Remove ${label.name}`}
                     >
                       <X className="size-2.5" />
                     </button>
@@ -337,7 +342,7 @@ export function CreateModal({
             variant="ghost"
             onClick={() => setIsOpen(false)}
             disabled={isCreating}
-            className="h-8 px-3 text-12 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
+            className="h-8 px-3 text-12 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             Cancel
           </Button>
@@ -345,11 +350,11 @@ export function CreateModal({
             type="button"
             onClick={handleCreate}
             disabled={!title.trim() || isCreating}
-            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md shadow-none"
+            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md shadow-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             {isCreating ? (
               <>
-                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                <Loader2 className="mr-1.5 size-3.5 animate-spin motion-reduce:animate-none" />
                 Creating...
               </>
             ) : (

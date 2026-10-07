@@ -56,7 +56,8 @@ export function CollectionContextMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="flex size-6 shrink-0 items-center justify-center rounded-md text-foreground opacity-0 group-hover/node:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-foreground/10 focus-visible:opacity-100 hover:bg-foreground/10 active:bg-foreground/20 transition-all duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          type="button"
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-foreground opacity-0 max-md:opacity-100 group-hover/node:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-foreground/10 focus-visible:opacity-100 hover:bg-foreground/10 active:bg-foreground/20 transition-all duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-2 md:before:hidden"
           onClick={(e) => e.stopPropagation()}
           aria-label={`Options for ${node.name}`}
         >

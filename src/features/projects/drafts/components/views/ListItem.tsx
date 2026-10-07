@@ -84,11 +84,11 @@ export const ListItem: React.FC<ListItemProps> = ({
       tabIndex={0}
       onClick={() => onEdit(draft)}
       onKeyDown={handleKeyDown}
-      className="group flex items-center justify-between gap-4 px-4 min-h-11 border-b border-border hover:bg-muted transition-colors duration-150 cursor-pointer bg-background focus-visible:outline-none focus-visible:bg-muted"
+      className="group flex items-center justify-between gap-4 px-4 py-1.5 min-h-8 border-b border-border hover:bg-muted transition-colors duration-150 cursor-pointer bg-background focus-visible:outline-none focus-visible:bg-muted focus-visible:ring-1 focus-visible:ring-ring"
     >
       {/* Left: Project Identifier & Title */}
       <div className="flex items-center gap-3 min-w-0 flex-1">
-        <span className="font-mono text-12 font-medium text-muted-foreground w-28 shrink-0 truncate select-none">
+        <span className="font-mono text-11 font-medium text-muted-foreground w-28 shrink-0 truncate select-none">
           {projectIdentifier}
         </span>
         <span
@@ -166,12 +166,12 @@ export const ListItem: React.FC<ListItemProps> = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted p-0 cursor-pointer"
+                className="size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted p-0 cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <MoreHorizontal className="size-3.5 shrink-0" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44 bg-background border border-border">
+            <DropdownMenuContent align="end" className="w-44 bg-background border border-border shadow-overlay">
               <DropdownMenuItem onClick={() => onEdit(draft)} className="gap-2 cursor-pointer text-12">
                 <Pencil className="size-3.5 shrink-0" />
                 Edit draft

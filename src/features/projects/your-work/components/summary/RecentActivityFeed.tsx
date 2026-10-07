@@ -22,7 +22,7 @@ export function RecentActivityFeed({
 
   return (
     <div>
-      <h2 className="text-sm font-semibold text-foreground tracking-tight mb-2.5">
+      <h2 className="text-13 font-semibold text-foreground tracking-tight mb-2.5">
         Recent activity
       </h2>
       <ActivityFeedList

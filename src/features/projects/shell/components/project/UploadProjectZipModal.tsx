@@ -179,7 +179,7 @@ export function UploadProjectZipModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-2xl rounded-xl select-none">
+      <DialogContent className="max-w-lg w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-200 rounded-lg select-none">
         {/* Hidden File Input */}
         <input
           ref={fileInputRef}
@@ -196,10 +196,10 @@ export function UploadProjectZipModal({
               <FolderArchive className="size-4" />
             </div>
             <div>
-              <DialogTitle className="text-base font-semibold text-foreground tracking-tight">
+              <DialogTitle className="text-16 font-semibold text-foreground tracking-tight">
                 Upload Project
               </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+              <DialogDescription className="text-13 text-muted-foreground mt-0.5">
                 Upload a zipped project (.zip) from your computer
               </DialogDescription>
             </div>
@@ -208,7 +208,7 @@ export function UploadProjectZipModal({
             <button
               type="button"
               onClick={handleClose}
-              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <X className="size-4" />
             </button>
@@ -268,17 +268,17 @@ export function UploadProjectZipModal({
                     <div className="size-12 rounded-full bg-muted flex items-center justify-center text-foreground/70 mb-3 shadow-inner">
                       <Upload className="size-5" />
                     </div>
-                    <p className="text-sm font-medium text-foreground">
+                    <p className="text-13 font-medium text-foreground">
                       Drag & drop a <span className="font-semibold text-primary">.zip</span> archive here
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+                    <p className="text-12 text-muted-foreground mt-1 max-w-xs">
                       Supports archives from Overleaf, arXiv, GitHub, or local LaTeX bundles
                     </p>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="mt-4 text-xs gap-1.5 h-8 pointer-events-none"
+                      className="mt-4 text-12 gap-1.5 h-8 pointer-events-none"
                     >
                       <span>Select a .zip file</span>
                     </Button>
@@ -287,7 +287,7 @@ export function UploadProjectZipModal({
               </div>
 
               {parseError && (
-                <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs">
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-12">
                   <AlertCircle className="size-4 shrink-0 mt-0.5" />
                   <span>{parseError}</span>
                 </div>
@@ -300,11 +300,11 @@ export function UploadProjectZipModal({
               <div className="rounded-lg border border-border bg-card p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="size-8 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <div className="size-8 rounded-md bg-success/10 text-success flex items-center justify-center shrink-0">
                       <CheckCircle2 className="size-4" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-foreground truncate max-w-[260px]">
+                      <p className="text-12 font-medium text-foreground truncate max-w-[260px]">
                         {selectedFile?.name}
                       </p>
                       <p className="text-11 text-muted-foreground">
@@ -317,7 +317,7 @@ export function UploadProjectZipModal({
                     variant="ghost"
                     size="sm"
                     onClick={resetState}
-                    className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                    className="h-7 px-2 text-12 text-muted-foreground hover:text-foreground cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   >
                     Change file
                   </Button>
@@ -331,7 +331,7 @@ export function UploadProjectZipModal({
                   </span>
                   {extractedProject.assetFiles.length > 0 && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-11 bg-muted text-foreground font-medium">
-                      <ImageIcon className="size-3 text-amber-500" />
+                      <ImageIcon className="size-3 text-warning" />
                       <span>{extractedProject.assetFiles.length} asset(s)</span>
                     </span>
                   )}
@@ -346,14 +346,14 @@ export function UploadProjectZipModal({
 
               {/* Project Name Field */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground block">
+                <label className="text-12 font-medium text-foreground block">
                   Project Name
                 </label>
                 <Input
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
                   placeholder="Enter project name..."
-                  className="h-9 text-xs"
+                  className="h-8 text-13"
                   autoFocus
                 />
                 <p className="text-11 text-muted-foreground">
@@ -372,7 +372,7 @@ export function UploadProjectZipModal({
             size="sm"
             onClick={handleClose}
             disabled={isImporting}
-            className="h-8 text-xs cursor-pointer"
+            className="h-8 px-3 text-12 font-medium cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             Cancel
           </Button>
@@ -381,7 +381,7 @@ export function UploadProjectZipModal({
             size="sm"
             onClick={handleStartImport}
             disabled={!extractedProject || isImporting || !projectName.trim()}
-            className="h-8 text-xs font-semibold gap-1.5 shadow-none cursor-pointer"
+            className="h-8 px-3.5 text-12 font-medium gap-1.5 shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             {isImporting ? (
               <>

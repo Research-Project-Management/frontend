@@ -34,6 +34,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -889,9 +890,12 @@ export function CreateSavedSearchModal({
       >
         {/* Header - Clean title with NO icon */}
         <DialogHeader className="text-left pb-4">
-          <DialogTitle className="text-base font-semibold text-foreground">
+          <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
             {savedSearch ? 'Edit Saved Search' : 'New Saved Search'}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Configure search criteria and conditions to save a filtered view.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 flex-1 min-h-0 flex flex-col">

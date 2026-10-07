@@ -135,7 +135,7 @@ export default function UploadFilesModal({
         className="sm:max-w-[480px] flex flex-col p-6 overflow-hidden gap-4 rounded-lg border border-border bg-background shadow-raised-200"
       >
         <DialogHeader className="p-0 shrink-0 text-left">
-          <DialogTitle className="text-15 font-semibold text-foreground tracking-tight">
+          <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
             Upload Documents
           </DialogTitle>
           <DialogDescription className="sr-only">
@@ -155,7 +155,7 @@ export default function UploadFilesModal({
             >
               <SelectTrigger
                 aria-label="Collection"
-                className="h-7 text-12 text-foreground w-auto min-w-[150px] max-w-[240px] justify-between rounded-md border-border/80 bg-background shadow-none hover:border-foreground/30 cursor-pointer"
+                className="h-8 text-12 text-foreground w-auto min-w-[150px] max-w-[240px] justify-between rounded-md border-border/80 bg-background shadow-none hover:border-foreground/30 cursor-pointer"
               >
                 <SelectValue placeholder={rootLibraryName} />
               </SelectTrigger>

@@ -52,11 +52,11 @@ export function PageHeader({
         // Layout
         'flex items-center justify-between gap-3',
         // Sizing — 44px height matches settings TopBar
-        'h-11 px-3 sm:px-4 shrink-0',
+        'h-11 px-4 shrink-0',
         // Stacking context
         'sticky top-0 z-10 select-none overflow-x-auto scrollbar-none min-w-0',
-        // Border — transparent background inherits parent surface without nested card effect
-        'bg-transparent border-b border-border',
+        // Solid background prevents content bleeding through on scroll
+        'bg-background border-b border-border',
         className,
       )}
     >
@@ -68,15 +68,15 @@ export function PageHeader({
           </div>
         )}
 
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
           {Icon && (
             <Icon
               className="size-4 text-foreground shrink-0"
-              strokeWidth={1.5}
+              strokeWidth={1.75}
             />
           )}
 
-          <h1 className="text-18 font-semibold tracking-tight text-foreground truncate">
+          <h1 className="text-sm font-semibold tracking-tight text-foreground truncate">
             {title}
           </h1>
 
@@ -90,7 +90,7 @@ export function PageHeader({
 
       {/* ── Right: action slot ── */}
       {actions && (
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
           {actions}
         </div>
       )}

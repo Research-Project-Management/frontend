@@ -291,7 +291,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
             type="button"
             onClick={() => setActiveFormat(item.id)}
             className={cn(
-              'h-6 px-2 text-xs rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium shrink-0 transition-colors',
+              'h-6 px-2 text-xs rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium shrink-0 transition-colors relative before:absolute before:-inset-2 md:before:hidden',
               item.isSelected
                 ? 'bg-muted text-foreground font-semibold'
                 : 'text-foreground hover:bg-muted',
@@ -306,7 +306,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
             <button
               type="button"
               className={cn(
-                'h-6 px-2 text-xs rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium inline-flex items-center gap-1 shrink-0 transition-colors',
+                'h-6 px-2 text-xs rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium inline-flex items-center gap-1 shrink-0 transition-colors relative before:absolute before:-inset-2 md:before:hidden',
                 !isCoreSelected
                   ? 'bg-muted text-foreground font-semibold'
                   : 'text-foreground hover:bg-muted',
@@ -373,7 +373,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
                 <button
                   type="button"
                   onClick={handleCopyInText}
-                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0"
+                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden"
                   aria-label="Copy in-text citation"
                 >
                   {copiedInText ? (
@@ -402,7 +402,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
               'absolute top-1.5 right-1.5 flex items-center gap-1 z-10 select-none transition-opacity duration-150',
               copied
                 ? 'opacity-100'
-                : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto',
+                : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto max-md:opacity-100 max-md:pointer-events-auto',
             )}
           >
             <Tooltip>
@@ -411,7 +411,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
                   type="button"
                   onClick={handleDownload}
                   disabled={!getContentToCopy()}
-                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none relative before:absolute before:-inset-2 md:before:hidden"
                   aria-label="Download citation"
                 >
                   <Download className="size-3.5 text-foreground shrink-0" />
@@ -428,7 +428,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
                   type="button"
                   onClick={handleCopy}
                   disabled={!getContentToCopy()}
-                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none relative before:absolute before:-inset-2 md:before:hidden"
                   aria-label="Copy citation"
                 >
                   {copied ? (

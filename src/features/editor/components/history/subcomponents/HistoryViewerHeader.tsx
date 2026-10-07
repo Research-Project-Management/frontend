@@ -72,8 +72,8 @@ export function HistoryViewerHeader({
             className={cn(
               'px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
               isDiffMode
-                ? 'bg-background text-foreground font-semibold shadow-xs'
-                : 'text-muted-foreground hover:text-foreground',
+                ? 'bg-background text-foreground font-semibold border border-border/60'
+                : 'text-muted-foreground hover:text-foreground border border-transparent',
             )}
           >
             Compare Diff
@@ -85,8 +85,8 @@ export function HistoryViewerHeader({
             className={cn(
               'px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
               !isDiffMode
-                ? 'bg-background text-foreground font-semibold shadow-xs'
-                : 'text-muted-foreground hover:text-foreground',
+                ? 'bg-background text-foreground font-semibold border border-border/60'
+                : 'text-muted-foreground hover:text-foreground border border-transparent',
             )}
           >
             View Source
@@ -130,7 +130,7 @@ export function HistoryViewerHeader({
         {/* Diff Stats Badge (No parentheses) */}
         {isDiffMode && (
           <div className="hidden md:flex items-center gap-1.5 text-11 font-mono shrink-0">
-            <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-500/30">
+            <span className="px-1.5 py-0.5 rounded-md bg-success/15 text-success font-semibold border border-success/30">
               +{additions}
             </span>
             <span className="px-1.5 py-0.5 rounded-md bg-destructive/15 text-destructive font-semibold border border-destructive/30">
@@ -160,7 +160,7 @@ export function HistoryViewerHeader({
           <button
             type="button"
             onClick={onOpenRestoreModal}
-            className="flex items-center gap-1.5 h-7 px-3 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-11 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shadow-xs"
+            className="flex items-center gap-1.5 h-7 px-3 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-11 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             title="Restore version or file"
             aria-label="Restore version or file"
           >

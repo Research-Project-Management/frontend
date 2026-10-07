@@ -43,14 +43,14 @@ export function RetractionNoticeModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] p-6 gap-5">
+      <DialogContent className="sm:max-w-[500px] p-6 gap-5 bg-background border border-border shadow-raised-200 rounded-lg font-sans">
         <DialogHeader className="gap-2 sm:text-left">
           <div className="flex items-start gap-3">
             <div className="size-10 rounded-full bg-destructive/10 text-destructive flex items-center justify-center shrink-0 mt-0.5">
               <ShieldAlert className="size-5" strokeWidth={1.5} />
             </div>
             <div className="flex-1 min-w-0">
-              <DialogTitle className="text-15 font-semibold text-destructive">
+              <DialogTitle className="text-14 font-semibold text-destructive tracking-tight">
                 {retractionInfo.title || 'Retracted Publication'}
               </DialogTitle>
               <DialogDescription className="text-12 text-muted-foreground mt-0.5">
@@ -107,7 +107,7 @@ export function RetractionNoticeModal({
               href={noticeUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-12 text-primary hover:underline"
+              className="min-h-8 inline-flex items-center gap-1.5 text-12 text-primary hover:underline relative before:absolute before:-inset-1 md:before:hidden"
             >
               <span>View Official Publisher Notice</span>
               <ExternalLink className="size-3.5" />
@@ -121,7 +121,7 @@ export function RetractionNoticeModal({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 text-12"
+                className="h-8 px-3 text-12 font-medium relative before:absolute before:-inset-1 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 onClick={handleDismiss}
                 disabled={isDismissing}
               >
@@ -131,7 +131,7 @@ export function RetractionNoticeModal({
             <Button
               variant="default"
               size="sm"
-              className="h-8 text-12"
+              className="h-8 px-3 text-12 font-medium relative before:absolute before:-inset-1 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
               onClick={() => onOpenChange(false)}
             >
               Close

@@ -90,7 +90,7 @@ function TagItemInput({
           e.stopPropagation();
           onRemove(tag);
         }}
-        className="size-5 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer invisible group-hover:visible focus-visible:visible"
+        className="size-5 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer invisible group-hover:visible max-md:visible focus-visible:visible relative before:absolute before:-inset-2.5 md:before:hidden"
         title={`Remove tag "${tag}"`}
         aria-label={`Remove tag "${tag}"`}
       >
@@ -166,7 +166,7 @@ export default function TagsSection({
             <button
               type="button"
               onClick={() => setIsAdding(true)}
-              className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden"
               title="Add tag"
               aria-label="Add tag"
             >
@@ -220,7 +220,7 @@ export default function TagsSection({
               setNewTag('');
               onCancelAdding?.();
             }}
-            className="size-5 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer"
+            className="size-5 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-2.5 md:before:hidden"
             title="Cancel"
             aria-label="Cancel adding tag"
           >

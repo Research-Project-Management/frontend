@@ -25,12 +25,12 @@ import {
   Trash2,
   Download,
   Check,
-  Sparkles,
+  Wand2,
   Loader2,
   FileText,
   Copy,
 } from 'lucide-react';
-import { useLogViewerActions } from './useLogViewerActions';
+import { useLogViewerActions, copySnippetToClipboard, fetchLogEntryExplanation } from './useLogViewerActions';
 import { cn } from '@/shared/lib/utils';
 import {
   Popover,
@@ -81,8 +81,14 @@ export interface ParsedLog {
   badBoxes: LogEntry[];
 }
 
+const PARSED_LOG_CACHE_MAX = 5;
+const parsedLogCache = new Map<string, ParsedLog>();
+
 export function parseLatexLog(raw: string): ParsedLog {
   if (!raw) return { errors: [], warnings: [], badBoxes: [] };
+  const cached = parsedLogCache.get(raw);
+  if (cached) return cached;
+
   const lines = raw.split('\n');
   const errors: LogEntry[] = [];
   const warnings: LogEntry[] = [];
@@ -171,7 +177,14 @@ export function parseLatexLog(raw: string): ParsedLog {
     }
   }
 
-  return { errors, warnings, badBoxes };
+  const result: ParsedLog = { errors, warnings, badBoxes };
+  if (parsedLogCache.size >= PARSED_LOG_CACHE_MAX) {
+    const firstKey = parsedLogCache.keys().next().value;
+    if (firstKey) parsedLogCache.delete(firstKey);
+  }
+  parsedLogCache.set(raw, result);
+
+  return result;
 }
 
 type TabType = 'all' | 'errors' | 'warnings' | 'info';
@@ -186,7 +199,7 @@ const DEFAULT_OUTPUT_FILES = [
   'output.synctex.gz',
 ];
 
-function EntryRow({
+const EntryRow = React.memo(function EntryRow({
   id,
   type,
   entry,
@@ -216,8 +229,6 @@ function EntryRow({
 
   const activeExplanation = entry.explanation || fetchedExplanation;
 
-  const { copySnippet, fetchErrorExplanation } = useLogViewerActions({});
-
   const handleToggleExplain = async () => {
     if (isExplainOpen) {
       setIsExplainOpen(false);
@@ -229,7 +240,7 @@ function EntryRow({
     }
     setIsExplaining(true);
     try {
-      const exp = await fetchErrorExplanation(entry);
+      const exp = await fetchLogEntryExplanation(entry);
       if (exp) {
         setFetchedExplanation(exp);
         setIsExplainOpen(true);
@@ -262,8 +273,8 @@ function EntryRow({
     >
       <div className="flex items-start gap-2.5">
         {type === 'error' && <AlertCircle className="size-3.5 text-destructive shrink-0 mt-0.5" />}
-        {type === 'warning' && <AlertTriangle className="size-3.5 text-amber-500 shrink-0 mt-0.5" />}
-        {type === 'badbox' && <Info className="size-3.5 text-sky-500 shrink-0 mt-0.5" />}
+        {type === 'warning' && <AlertTriangle className="size-3.5 text-warning shrink-0 mt-0.5" />}
+        {type === 'badbox' && <Info className="size-3.5 text-muted-foreground shrink-0 mt-0.5" />}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <p className="text-foreground font-mono text-xs leading-snug break-words">
@@ -277,10 +288,10 @@ function EntryRow({
                     e.stopPropagation();
                     onApplyQuickFix(entry, entry.quickFix!);
                   }}
-                  className="flex items-center gap-1 text-11 px-2 py-0.5 rounded-md font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 hover:bg-emerald-500/20 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-emerald-500 transition-colors"
+                  className="flex items-center gap-1 text-11 px-2 py-0.5 rounded-md font-medium text-primary bg-primary/10 border border-primary/20 hover:bg-primary/20 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors"
                   title={`Quick fix: ${entry.quickFix.description}`}
                 >
-                  <Sparkles className="size-3" />
+                  <Wand2 className="size-3" />
                   <span>Quick fix</span>
                 </button>
               )}
@@ -301,7 +312,7 @@ function EntryRow({
                   title="View LaTeX error explanation and remedies"
                 >
                   {isExplaining && (
-                    <Loader2 className="size-3 animate-spin text-primary" />
+                    <Loader2 className="size-3 animate-spin motion-reduce:animate-none text-primary" />
                   )}
                   <span>{isExplainOpen ? 'Hide guide' : 'Explain'}</span>
                 </button>
@@ -323,7 +334,7 @@ function EntryRow({
                   title="Ask AI Error Assist to explain and fix this LaTeX error"
                 >
                   {isFixLoading && (
-                    <Loader2 className="size-3 animate-spin text-ai" />
+                    <Loader2 className="size-3 animate-spin motion-reduce:animate-none text-ai" />
                   )}
                   <span>{fixResult ? 'Hide fix' : 'Suggest fix'}</span>
                 </button>
@@ -356,8 +367,10 @@ function EntryRow({
       {/* LaTeX Error Guide Expansion Card */}
       {isExplainOpen && activeExplanation && (
         <div
+          role="region"
+          aria-label="LaTeX Error Guide"
           onClick={(e) => e.stopPropagation()}
-          className="ml-6 mt-2 p-3.5 rounded-md bg-muted/30 border border-border text-xs space-y-2.5 select-text shadow-2xs"
+          className="ml-6 mt-2 p-3.5 rounded-md bg-muted/30 border border-border text-xs space-y-2.5 select-text"
         >
           <div className="flex items-center justify-between">
             <h4 className="font-semibold text-13 text-foreground tracking-tight">
@@ -397,7 +410,7 @@ function EntryRow({
                 <span className="font-medium text-11 text-foreground/80">Example Snippet:</span>
                 <button
                   type="button"
-                  onClick={() => copySnippet(activeExplanation.exampleSnippet)}
+                  onClick={() => copySnippetToClipboard(activeExplanation.exampleSnippet)}
                   className="text-10 text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
                 >
                   <Copy className="size-3" />
@@ -415,8 +428,10 @@ function EntryRow({
       {/* AI Error Assist Expansion Card */}
       {(isFixLoading || fixResult) && (
         <div
+          role="region"
+          aria-label="AI Error Assist"
           onClick={(e) => e.stopPropagation()}
-          className="ml-6 mt-2 p-3.5 rounded-md bg-card border border-border text-xs space-y-2.5 select-text shadow-2xs"
+          className="ml-6 mt-2 p-3.5 rounded-md bg-card border border-border text-xs space-y-2.5 select-text"
         >
           <div className="flex items-center justify-between">
             <h4 className="font-semibold text-13 text-foreground tracking-tight">
@@ -440,7 +455,7 @@ function EntryRow({
 
           {isFixLoading ? (
             <div className="flex items-center gap-2 py-2 text-muted-foreground">
-              <Loader2 className="size-3.5 animate-spin text-ai shrink-0" />
+              <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none text-ai shrink-0" />
               <span className="text-12">Analyzing LaTeX error and generating fix...</span>
             </div>
           ) : fixResult ? (
@@ -481,7 +496,7 @@ function EntryRow({
                     disabled={isFixApplied}
                     onClick={() => onApplyFix?.(entry, fixResult)}
                     className={cn(
-                      'h-8 px-3 rounded-md text-13 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shadow-xs',
+                      'h-8 px-3 rounded-md text-13 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                       isFixApplied
                         ? 'bg-muted text-muted-foreground border border-border cursor-not-allowed inline-flex items-center gap-1.5'
                         : 'bg-primary hover:bg-primary-hover text-primary-foreground'
@@ -504,7 +519,7 @@ function EntryRow({
       )}
     </div>
   );
-}
+});
 
 export interface LogsProps {
   log: string;
@@ -523,7 +538,7 @@ export default function Logs({
   onClearCacheAndCompile,
   onCompile,
 }: LogsProps) {
-  const { projectId } = usePageStore();
+  const projectId = usePageStore((s) => s.projectId);
   const compileStatus = useCompileStore((s) => s.compileStatus);
   const { engine } = useEditorInstance();
   const parsed = useMemo(
@@ -623,10 +638,10 @@ export default function Logs({
     Record<string, { loading: boolean; result?: AiErrorFixResult; applied?: boolean }>
   >({});
 
-  const getEntryKey = (entry: LogEntry, index: number) =>
-    `${entry.file || ''}-${entry.line || 0}-${entry.message}-${index}`;
+  const getEntryKey = useCallback((entry: LogEntry, index: number) =>
+    `${entry.file || ''}-${entry.line || 0}-${entry.message}-${index}`, []);
 
-  const handleSuggestFix = async (entry: LogEntry, index: number) => {
+  const handleSuggestFix = useCallback(async (entry: LogEntry, index: number) => {
     const key = getEntryKey(entry, index);
     if (fixState[key]?.result && !fixState[key].loading) {
       setFixState((prev) => {
@@ -662,9 +677,9 @@ export default function Logs({
       ...prev,
       [key]: { loading: false, result },
     }));
-  };
+  }, [engine, fixState, getEntryKey]);
 
-  const handleApplyFix = (entry: LogEntry, fix: AiErrorFixResult, index: number) => {
+  const handleApplyFix = useCallback((entry: LogEntry, fix: AiErrorFixResult, index: number) => {
     const key = getEntryKey(entry, index);
     applyAiFix(entry, fix, () => {
       setFixState((prev) => ({
@@ -672,7 +687,7 @@ export default function Logs({
         [key]: { loading: false, applied: true, result: fix },
       }));
     });
-  };
+  }, [applyAiFix, getEntryKey]);
 
   // Listen for editor:suggest-fix command from editor CodeMirror gutter or tooltip
   useEffect(() => {
@@ -699,7 +714,7 @@ export default function Logs({
     });
   }, [parsed.errors, enrichEntry, handleSuggestFix]);
 
-  const handleEntryClick = (entry: LogEntry) => {
+  const handleEntryClick = useCallback((entry: LogEntry) => {
     if (entry.line) {
       if (onJumpToError) {
         onJumpToError(entry.file, entry.line);
@@ -711,7 +726,7 @@ export default function Logs({
         });
       }
     }
-  };
+  }, [onJumpToError]);
 
   const handleDownloadFile = (fileName: string) => {
     downloadFile(fileName);
@@ -809,7 +824,7 @@ export default function Logs({
           <span
             className={cn(
               'px-1.5 py-0.2 rounded-full text-11 font-mono font-semibold',
-              parsed.warnings.length > 0 ? 'bg-amber-500/20 text-amber-700 dark:text-amber-400 font-semibold' : 'bg-muted text-muted-foreground font-medium'
+              parsed.warnings.length > 0 ? 'bg-warning/20 text-warning font-semibold' : 'bg-muted text-muted-foreground font-medium'
             )}
           >
             {parsed.warnings.length}
@@ -856,7 +871,7 @@ export default function Logs({
                 variant="outline"
                 size="sm"
                 onClick={onClose}
-                className="h-8 px-3 rounded-md text-xs font-medium gap-1.5 cursor-pointer shadow-2xs"
+                className="h-8 px-3 rounded-md text-xs font-medium gap-1.5 cursor-pointer shadow-none"
               >
                 <ChevronLeft className="size-3.5 shrink-0" />
                 <span>Back to PDF preview</span>

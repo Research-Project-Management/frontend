@@ -218,7 +218,7 @@ export function FloatingAiAssistant({
       <div className="p-3 max-h-56 overflow-y-auto space-y-2.5 bg-background">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2">
-            <Loader2 className="size-6 animate-spin text-ai" />
+            <Loader2 className="size-6 animate-spin text-ai motion-reduce:animate-none" />
             <span className="text-xs">Polishing academic text...</span>
           </div>
         ) : result ? (

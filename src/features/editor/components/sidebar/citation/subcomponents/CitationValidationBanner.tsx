@@ -25,8 +25,8 @@ export const CitationValidationBanner = memo(function CitationValidationBanner({
     <div className="space-y-2 mb-2">
       {/* Duplicate Citation Keys Warning */}
       {hasDuplicates && (
-        <div className="p-2.5 rounded-md bg-amber-500/10 border border-amber-500/25 text-foreground text-xs space-y-1.5">
-          <div className="flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-400">
+        <div className="p-2.5 rounded-md bg-warning/10 border border-warning/25 text-foreground text-xs space-y-1.5">
+          <div className="flex items-center gap-1.5 font-medium text-warning">
             <AlertTriangle className="size-3.5 shrink-0" />
             <span>Duplicate Keys ({validation.duplicateKeys.length})</span>
           </div>
@@ -39,7 +39,7 @@ export const CitationValidationBanner = memo(function CitationValidationBanner({
                 key={k}
                 type="button"
                 onClick={() => onSelectKey?.(k)}
-                className="px-1.5 py-0.5 font-mono text-10 font-medium rounded bg-amber-500/15 text-amber-800 dark:text-amber-300 hover:bg-amber-500/25 transition-colors cursor-pointer border border-amber-500/20"
+                className="px-1.5 py-0.5 font-mono text-10 font-medium rounded bg-warning/15 text-foreground hover:bg-warning/25 transition-colors cursor-pointer border border-warning/20 outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 title={`Click to filter by ${k}`}
               >
                 {k}

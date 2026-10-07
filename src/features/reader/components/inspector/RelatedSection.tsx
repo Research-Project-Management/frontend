@@ -264,7 +264,7 @@ export default function RelatedSection({
             <button
               type="button"
               onClick={() => setModalOpen(true)}
-              className="size-5 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              className="size-5 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               title="Add related item"
               aria-label="Add related item"
             >
@@ -329,7 +329,7 @@ export default function RelatedSection({
                             href={`https://doi.org/${encodeURIComponent(item.doi)}`}
                             target="_blank"
                             rel="noreferrer noopener"
-                            className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                            className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                             aria-label={`Open DOI: ${item.doi}`}
                           >
                             <ExternalLink className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -348,7 +348,7 @@ export default function RelatedSection({
                           <button
                             type="button"
                             onClick={(e) => handleUnlink(item.id, e)}
-                            className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                            className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                             aria-label="Unlink reference"
                           >
                             <X className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -482,7 +482,7 @@ export default function RelatedSection({
                     <button
                       type="button"
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-1 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center text-muted-foreground/60 hover:text-foreground cursor-pointer transition-colors rounded-md"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center text-muted-foreground/60 hover:text-foreground cursor-pointer transition-colors rounded-md relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       title="Clear search"
                       aria-label="Clear search"
                     >
@@ -593,7 +593,7 @@ export default function RelatedSection({
             <Button
               size="sm"
               variant="outline"
-              className="h-8 px-3 text-12 font-medium rounded-md border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer shadow-none"
+              className="h-8 px-3 text-12 font-medium rounded-md border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer shadow-none relative before:absolute before:-inset-2 md:before:hidden"
               onClick={() => {
                 setModalOpen(false);
                 setSelectedTargetIds(new Set());
@@ -608,7 +608,7 @@ export default function RelatedSection({
               variant="default"
               disabled={selectedTargetIds.size === 0 || isLinking}
               onClick={handleLinkConfirm}
-              className="h-8 px-4 text-12 font-medium rounded-md cursor-pointer shadow-none flex items-center gap-1.5 disabled:opacity-50 disabled:bg-muted disabled:text-muted-foreground disabled:border-transparent disabled:pointer-events-none"
+              className="h-8 px-4 text-12 font-medium rounded-md cursor-pointer shadow-none flex items-center gap-1.5 disabled:opacity-50 disabled:bg-muted disabled:text-muted-foreground disabled:border-transparent disabled:pointer-events-none relative before:absolute before:-inset-2 md:before:hidden"
             >
               {isLinking && <Loader2 className="size-3.5 animate-spin shrink-0" strokeWidth={1.5} />}
               <span>

@@ -204,7 +204,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
                   className={cn(
                     'flex h-7.5 w-full items-center gap-2 pr-2 text-left text-13 tracking-tight transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:bg-muted focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-inset select-none',
                     isActive
-                      ? 'bg-primary/10 text-primary font-medium border-l-2 border-primary'
+                      ? 'bg-primary/10 text-primary font-medium'
                       : 'hover:bg-muted/60 text-foreground/85 font-normal',
                   )}
                 >

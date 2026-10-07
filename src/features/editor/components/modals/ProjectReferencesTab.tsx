@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { RefreshCw, ExternalLink, Check, AlertCircle, BookOpen, Blocks } from 'lucide-react';
-import { useIntegrations, useRemoteCollections, useSyncCollection } from '@/features/integrations/hooks/use-integrations';
+import { useIntegrations, useRemoteCollections, useSyncCollection } from '@/features/settings/hooks/use-integrations';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { ZoteroIcon, MendeleyIcon } from '@/shared/components/icons';
@@ -91,7 +91,7 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
           <p className="text-11 text-muted-foreground">The .bib file where synced references will be written</p>
         </div>
         <Select value={targetBibFile} onValueChange={setTargetBibFile}>
-          <SelectTrigger className="w-48 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+          <SelectTrigger aria-label="Target Bibliography File" className="w-48 h-8 text-xs font-medium cursor-pointer border-border bg-background">
             <SelectValue placeholder="Select .bib file" />
           </SelectTrigger>
           <SelectContent>
@@ -118,12 +118,12 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
           </div>
 
           {isZoteroConnected ? (
-            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs gap-1">
-              <span className="size-1.5 rounded-full bg-emerald-500" />
+            <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-xs gap-1">
+              <span className="size-1.5 rounded-full bg-success" />
               Connected
             </Badge>
           ) : zoteroIntegration?.needsReconnect ? (
-            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs">
+            <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-xs">
               Reconnect Required
             </Badge>
           ) : (
@@ -144,7 +144,7 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
                 onValueChange={setSelectedZoteroCollection}
                 disabled={isLoadingCollections}
               >
-                <SelectTrigger className="w-full sm:w-64 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                <SelectTrigger aria-label="Select Zotero Collection" className="w-full sm:w-64 h-8 text-xs font-medium cursor-pointer border-border bg-background">
                   <SelectValue
                     placeholder={
                       isLoadingCollections ? 'Loading collections...' : 'Choose a collection to sync'
@@ -163,11 +163,11 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
 
             <Button
               size="sm"
-              className="h-8 text-xs self-end sm:self-auto gap-1.5"
+              className="h-8 text-xs self-end sm:self-auto gap-1.5 motion-reduce:transition-none"
               disabled={!selectedZoteroCollection || syncMutation.isPending}
               onClick={handleSyncZotero}
             >
-              <RefreshCw className={`size-3.5 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`size-3.5 ${syncMutation.isPending ? 'animate-spin motion-reduce:animate-none' : ''}`} />
               {syncMutation.isPending ? 'Syncing...' : 'Sync to BibTeX'}
             </Button>
           </div>
@@ -179,7 +179,7 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
             <Button
               size="sm"
               variant="outline"
-              className="h-8 text-xs"
+              className="h-8 text-xs motion-reduce:transition-none"
               disabled={isConnecting}
               onClick={() => connect('zotero')}
             >
@@ -203,12 +203,12 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
           </div>
 
           {isMendeleyConnected ? (
-            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs gap-1">
-              <span className="size-1.5 rounded-full bg-emerald-500" />
+            <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-xs gap-1">
+              <span className="size-1.5 rounded-full bg-success" />
               Connected
             </Badge>
           ) : mendeleyIntegration?.needsReconnect ? (
-            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs">
+            <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-xs">
               Reconnect Required
             </Badge>
           ) : (
@@ -229,7 +229,7 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
                 onValueChange={setSelectedMendeleyCollection}
                 disabled={isLoadingMendeleyCollections}
               >
-                <SelectTrigger className="w-full sm:w-64 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                <SelectTrigger aria-label="Select Mendeley Folder" className="w-full sm:w-64 h-8 text-xs font-medium cursor-pointer border-border bg-background">
                   <SelectValue
                     placeholder={
                       isLoadingMendeleyCollections ? 'Loading folders...' : 'Choose a folder to sync'
@@ -248,11 +248,11 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
 
             <Button
               size="sm"
-              className="h-8 text-xs self-end sm:self-auto gap-1.5"
+              className="h-8 text-xs self-end sm:self-auto gap-1.5 motion-reduce:transition-none"
               disabled={!selectedMendeleyCollection || syncMutation.isPending}
               onClick={handleSyncMendeley}
             >
-              <RefreshCw className={`size-3.5 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`size-3.5 ${syncMutation.isPending ? 'animate-spin motion-reduce:animate-none' : ''}`} />
               {syncMutation.isPending ? 'Syncing...' : 'Sync to BibTeX'}
             </Button>
           </div>
@@ -264,7 +264,7 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
             <Button
               size="sm"
               variant="outline"
-              className="h-8 text-xs"
+              className="h-8 text-xs motion-reduce:transition-none"
               disabled={isConnecting}
               onClick={() => connect('mendeley')}
             >

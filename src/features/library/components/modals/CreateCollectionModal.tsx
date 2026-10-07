@@ -4,8 +4,7 @@ import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Library, Folder } from 'lucide-react';
-import { Button } from "@/shared/components/ui";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Form } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, Form } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
 import { Label } from "@/shared/components/ui";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/shared/components/ui";
@@ -85,6 +84,9 @@ export default function CreateCollectionModal({
           <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
             New Collection
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Create a new collection to organize your library items.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>

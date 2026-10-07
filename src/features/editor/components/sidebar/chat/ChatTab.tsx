@@ -134,7 +134,7 @@ export default function ChatTab({ onClose }: ChatTabProps) {
 
                 <div
                   className={cn(
-                    'max-w-[85%] rounded-lg px-3 py-1.5 text-xs whitespace-pre-wrap leading-relaxed select-text shadow-2xs break-words',
+                    'max-w-[85%] rounded-lg px-3 py-1.5 text-xs whitespace-pre-wrap leading-relaxed select-text break-words',
                     isSelf
                       ? 'bg-primary text-primary-foreground rounded-tr-xs'
                       : 'bg-muted text-foreground border border-border/50 rounded-tl-xs'
@@ -151,7 +151,7 @@ export default function ChatTab({ onClose }: ChatTabProps) {
 
       {/* ── Input Bar ── */}
       <div className="border-t border-border p-2.5 bg-background shrink-0">
-        <div className="flex items-end gap-1.5 rounded-md border border-input bg-background p-1.5 shadow-2xs focus-within:ring-1 focus-within:ring-primary">
+        <div className="flex items-end gap-1.5 rounded-md border border-input bg-background p-1.5 focus-within:ring-1 focus-within:ring-primary">
           <textarea
             ref={textareaRef}
             rows={1}
@@ -170,7 +170,7 @@ export default function ChatTab({ onClose }: ChatTabProps) {
             className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             {isSending ? (
-              <Loader2 className="size-3.5 animate-spin" />
+              <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
             ) : (
               <Send className="size-3.5" />
             )}

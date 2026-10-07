@@ -10,7 +10,6 @@ import {
   GraduationCap,
   Layout,
   Scroll,
-  Sparkles,
   X,
   FileCheck,
   Search,
@@ -369,8 +368,10 @@ University of Technology
 ];
 
 export default function TemplateGalleryModal() {
-  const { isTemplateModalOpen, setIsTemplateModalOpen } = useSettingsStore();
-  const { activeFilePage, projectId } = usePageStore();
+  const isTemplateModalOpen = useSettingsStore((s) => s.isTemplateModalOpen);
+  const setIsTemplateModalOpen = useSettingsStore((s) => s.setIsTemplateModalOpen);
+  const activeFilePage = usePageStore((s) => s.activeFilePage);
+  const projectId = usePageStore((s) => s.projectId);
   const { engine } = useEditorInstance();
   const [selectedTemplate, setSelectedTemplate] = useState<AcademicTemplate>(ACADEMIC_TEMPLATES[0]);
   const [previewTab, setPreviewTab] = useState<'main' | 'bib'>('main');
@@ -467,7 +468,7 @@ export default function TemplateGalleryModal() {
             type="button"
             onClick={() => setIsTemplateModalOpen(false)}
             aria-label="Close"
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted focus:outline-hidden transition-colors cursor-pointer"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer"
           >
             <X className="size-4" strokeWidth={1.5} />
           </button>
@@ -498,7 +499,7 @@ export default function TemplateGalleryModal() {
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {isLoadingServer && combinedTemplates.length === 0 ? (
                 <div className="flex items-center justify-center py-8 text-muted-foreground text-xs gap-2">
-                  <Loader2 className="size-4 animate-spin" />
+                  <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
                   Loading templates...
                 </div>
               ) : combinedTemplates.length === 0 ? (
@@ -648,7 +649,7 @@ export default function TemplateGalleryModal() {
                   title="Scaffold complete multi-file project with .bib, style files, and assets"
                 >
                   {isScaffolding ? (
-                    <Loader2 className="size-3.5 animate-spin" />
+                    <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
                   ) : (
                     <FileCheck className="size-3.5" />
                   )}

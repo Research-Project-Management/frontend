@@ -161,6 +161,20 @@ export function CollectionNode({
             </Link>
 
             <div className="flex items-center gap-0.5 shrink-0 ml-auto">
+              {((node.recursiveItemCount ?? 0) > 0 || (node.itemCount ?? 0) > 0) && (
+                <span
+                  className="text-11 text-muted-foreground font-mono tabular-nums opacity-60 group-hover/node:opacity-100 transition-opacity mr-1 select-none"
+                  title={
+                    node.recursiveItemCount !== undefined && node.recursiveItemCount !== node.itemCount
+                      ? `${node.itemCount} direct, ${node.recursiveItemCount} total with subcollections`
+                      : `${node.itemCount} items`
+                  }
+                >
+                  {node.recursiveItemCount !== undefined && node.recursiveItemCount !== node.itemCount
+                    ? `${node.itemCount} (${node.recursiveItemCount})`
+                    : node.itemCount}
+                </span>
+              )}
               <CollectionContextMenu
                 node={node}
                 validMoveTargets={validMoveTargets}
@@ -186,7 +200,7 @@ export function CollectionNode({
                         setIsOpen((v) => !v);
                       }}
                       aria-label={effectiveIsOpen ? `Collapse ${node.name}` : `Expand ${node.name}`}
-                      className="flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-foreground/10 active:bg-foreground/20 cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      className="flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-foreground/10 active:bg-foreground/20 cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-2 md:before:hidden"
                     >
                       <ChevronRight
                         className={cn(

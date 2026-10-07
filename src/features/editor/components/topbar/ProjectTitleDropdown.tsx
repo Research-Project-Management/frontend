@@ -126,7 +126,7 @@ export default function ProjectTitleDropdown() {
               type="button"
               onClick={() => setIsRenameOpen(false)}
               aria-label="Close"
-              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted focus:outline-hidden transition-colors cursor-pointer"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer"
             >
               <X className="size-4" strokeWidth={1.5} />
             </button>
@@ -179,7 +179,7 @@ export default function ProjectTitleDropdown() {
                 disabled={isSubmittingAction}
                 className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none gap-1.5"
               >
-                {isSubmittingAction && <Loader2 className="size-3.5 animate-spin" strokeWidth={1.5} />}
+                {isSubmittingAction && <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" strokeWidth={1.5} />}
                 <span>Rename</span>
               </Button>
             </div>

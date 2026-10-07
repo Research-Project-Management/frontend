@@ -10,7 +10,7 @@ import {
   DialogFooter,
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import type { WorkItemDraft } from '../../types/draft.types';
 
 export interface DeleteModalProps {
@@ -41,7 +41,7 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({
             <div className="size-8 rounded-md bg-destructive/10 text-destructive flex items-center justify-center shrink-0">
               <AlertTriangle className="size-4 shrink-0" />
             </div>
-            <DialogTitle className="text-14 font-semibold tracking-tight text-foreground">
+            <DialogTitle className="text-16 font-semibold tracking-tight text-foreground">
               Delete draft
             </DialogTitle>
           </div>
@@ -69,7 +69,7 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({
             size="sm"
             onClick={onClose}
             disabled={isDeleting}
-            className="h-8 px-3 rounded-md text-12 font-medium border-border bg-background hover:bg-muted text-foreground cursor-pointer"
+            className="h-8 px-3 rounded-md text-13 font-medium border-border bg-background hover:bg-muted text-foreground cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             Cancel
           </Button>
@@ -79,9 +79,10 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({
             size="sm"
             onClick={handleDelete}
             disabled={isDeleting}
-            className="h-8 px-3.5 rounded-md text-12 font-medium shadow-none transition-colors cursor-pointer"
+            className="h-8 px-3.5 rounded-md text-13 font-medium shadow-none transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring inline-flex items-center gap-1.5"
           >
-            {isDeleting ? 'Deleting...' : 'Delete draft'}
+            {isDeleting && <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none shrink-0" />}
+            <span>{isDeleting ? 'Deleting...' : 'Delete draft'}</span>
           </Button>
         </DialogFooter>
       </DialogContent>

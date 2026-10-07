@@ -16,7 +16,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Switch } from "@/shared/components/ui/switch";
 
 import type { SectionConfig, SectionId } from "../../schemas/home.schema";
@@ -53,14 +53,16 @@ function SortableRow({
       )}
     >
       <button
+        type="button"
         {...attributes}
         {...listeners}
-        className="cursor-grab text-muted-foreground/20 shrink-0 transition-colors"
+        aria-label={`Drag to reorder ${config.label}`}
+        className="cursor-grab text-muted-foreground/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm p-0.5 shrink-0 transition-colors touch-manipulation"
       >
         <GripVertical className="size-4 shrink-0" />
       </button>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground transition-colors">{config.label}</p>
+        <p className="text-13 font-medium text-foreground transition-colors">{config.label}</p>
       </div>
       <Switch
         checked={config.visible}
@@ -122,13 +124,16 @@ export function ManageWidgetsModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="sm:max-w-[400px] bg-popover border border-border rounded-lg p-6"
+        className="sm:max-w-[400px] bg-popover border border-border rounded-md shadow-raised-200 p-6"
         showCloseButton={false}
       >
         <DialogHeader className="mb-4">
-          <DialogTitle className="text-xl font-semibold text-foreground">
+          <DialogTitle className="text-16 font-semibold text-foreground">
             Manage widgets
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Reorder or toggle visibility of home dashboard widgets.
+          </DialogDescription>
         </DialogHeader>
         <DndContext
           sensors={sensors}

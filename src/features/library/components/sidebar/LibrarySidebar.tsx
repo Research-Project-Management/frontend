@@ -287,13 +287,14 @@ export function LibrarySidebar() {
                 <Tooltip delayDuration={700}>
                   <TooltipTrigger asChild>
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         setIsLibraryExpanded((v) => !v);
                       }}
                       aria-label={isLibraryExpanded ? 'Collapse My Library' : 'Expand My Library'}
-                      className="absolute right-2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-foreground/10 active:bg-foreground/20 cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      className="absolute right-2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-foreground/10 active:bg-foreground/20 cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-2 md:before:hidden"
                     >
                       <ChevronRight
                         className={cn(
@@ -420,6 +421,8 @@ export function LibrarySidebar() {
                 onDeleteSavedSearch={(id) => deleteSavedSearch(id)}
                 renamingSavedSearchId={renamingSavedSearchId}
                 renameSavedSearchValue={renameSavedSearchValue}
+                pathname={pathname}
+                duplicateCount={duplicateCount}
               />
             </nav>
           </LayoutGroup>

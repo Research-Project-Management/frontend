@@ -296,7 +296,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
             type="button"
             onClick={() => setActiveFormat(item.id)}
             className={cn(
-              'h-6 px-2 text-12 rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium shrink-0 transition-colors',
+              'h-7 px-2.5 text-12 rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring font-medium shrink-0 transition-colors relative before:absolute before:-inset-1.5 md:before:hidden',
               item.isSelected
                 ? 'bg-muted text-foreground font-semibold'
                 : 'text-foreground hover:bg-muted',
@@ -311,8 +311,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
             <button
               type="button"
               className={cn(
-                'h-6 px-2 text-12 rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium inline-flex items-center gap-1 shrink-0 transition-colors',
-                'text-foreground hover:bg-muted',
+                'h-7 px-2.5 text-12 rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring font-medium inline-flex items-center gap-1 shrink-0 transition-colors text-foreground hover:bg-muted relative before:absolute before:-inset-1.5 md:before:hidden',
               )}
             >
               <span>More</span>
@@ -362,7 +361,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
       {!isExportFormat && inTextPreview && (
         <div
           tabIndex={0}
-          className="flex items-center justify-between px-2 py-0.5 rounded-md border border-border bg-transparent hover:border-border/80 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors text-12 cursor-text"
+          className="flex items-center justify-between px-2 py-1 min-h-8 rounded-md border border-border bg-transparent hover:border-border/80 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors text-12 cursor-text"
         >
           <div className="flex items-center gap-1.5 min-w-0 pr-2">
             <span className="text-muted-foreground text-12 shrink-0 font-medium">In-text:</span>
@@ -376,7 +375,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
                 <button
                   type="button"
                   onClick={handleCopyInText}
-                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0"
+                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   aria-label="Copy in-text citation"
                 >
                   {copiedInText ? (
@@ -394,7 +393,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
         </div>
       )}
 
-      {/* Citation Box with Hover-Only Action Icons & Full Width Text */}
+      {/* Citation Box with Hover-Only Action Icons (Always accessible on touch) & Full Width Text */}
       <div
         tabIndex={0}
         className="group relative rounded-md border border-border bg-transparent p-2 min-h-[50px] max-h-56 overflow-y-auto text-12 leading-relaxed select-text font-sans hover:border-border/80 focus:border-primary focus:ring-1 focus:ring-primary focus-within:border-primary focus-within:ring-1 focus-within:ring-primary focus:outline-none transition-colors cursor-text"
@@ -404,8 +403,8 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
             className={cn(
               'absolute top-1.5 right-1.5 flex items-center gap-1 z-10 select-none transition-opacity duration-150',
               copied
-                ? 'opacity-100'
-                : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto',
+                ? 'opacity-100 pointer-events-auto'
+                : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto max-md:opacity-100 max-md:pointer-events-auto',
             )}
           >
             <Tooltip>
@@ -414,7 +413,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
                   type="button"
                   onClick={handleDownload}
                   disabled={!getContentToCopy()}
-                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   aria-label="Download citation"
                 >
                   <Download className="size-3.5 text-foreground shrink-0" />
@@ -431,7 +430,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
                   type="button"
                   onClick={handleCopy}
                   disabled={!getContentToCopy()}
-                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   aria-label="Copy citation"
                 >
                   {copied ? (

@@ -77,7 +77,7 @@ export const ReplyForm = React.memo(function ReplyForm({
         className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-primary hover:text-primary/80 transition-colors cursor-pointer disabled:opacity-40 after:absolute after:-inset-1.5 after:content-['']"
       >
         {isPending ? (
-          <Loader2 className="size-3 animate-spin" />
+          <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />
         ) : (
           <Send className="size-3" />
         )}

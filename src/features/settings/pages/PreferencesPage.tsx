@@ -3,7 +3,7 @@
 import React from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
-import PreferencesTab from '@/features/account/components/PreferencesTab';
+import PreferencesTab from '../components/preferences/PreferencesTab';
 
 export default function PreferencesPage() {
   return (

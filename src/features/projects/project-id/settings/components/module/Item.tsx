@@ -35,20 +35,24 @@ export function Item({ mod, active, disabled, onToggle }: ItemProps) {
           <Icon className="size-4 shrink-0" />
         </div>
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-foreground leading-tight">
+          <h3 className="text-13 font-semibold text-foreground leading-tight">
             {mod.label}
           </h3>
-          <p className="text-xs text-muted-foreground leading-snug mt-0.5">
+          <p className="text-12 text-muted-foreground leading-snug mt-0.5">
             {mod.desc}
           </p>
         </div>
       </div>
 
-      <Switch
-        checked={active}
-        onCheckedChange={onToggle}
-        disabled={disabled || mod.locked}
-      />
+      <div className="relative shrink-0 flex items-center">
+        <Switch
+          checked={active}
+          onCheckedChange={onToggle}
+          disabled={disabled || mod.locked}
+          aria-label={`Enable ${mod.label} module`}
+          className="relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        />
+      </div>
     </div>
   );
 }

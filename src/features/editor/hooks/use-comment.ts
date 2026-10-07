@@ -22,12 +22,8 @@ export const usePageComments = (pageId: string | null, status?: CommentStatus) =
     queryKey: commentKeys.byPage(pageId, status),
     queryFn: async (): Promise<PageComment[]> => {
       if (!pageId) return [];
-      try {
-        const comments = await commentService.getComments(pageId, status);
-        return comments || [];
-      } catch {
-        return [];
-      }
+      const comments = await commentService.getComments(pageId, status);
+      return comments || [];
     },
     enabled: Boolean(pageId),
   });
@@ -55,13 +51,44 @@ export const useCreateComment = () => {
         lineEnd: lineEnd ?? undefined,
       });
     },
-    onSuccess: (_, variables) => {
+    onMutate: async ({ pageId, content, line, lineEnd }) => {
+      await queryClient.cancelQueries({ queryKey: ['page-comments', pageId] });
+      const previousData = queryClient.getQueriesData<PageComment[]>({ queryKey: ['page-comments', pageId] });
+
+      const optimisticComment: PageComment = {
+        id: `temp-${Date.now()}`,
+        pageId,
+        userId: 'current-user',
+        content,
+        line: line ?? null,
+        lineEnd: lineEnd ?? null,
+        status: 'open',
+        replies: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      queryClient.setQueriesData<PageComment[]>(
+        { queryKey: ['page-comments', pageId] },
+        (old) => (old ? [...old, optimisticComment] : [optimisticComment]),
+      );
+
+      return { previousData, pageId };
+    },
+    onError: (err: any, _vars, context) => {
+      if (context?.previousData) {
+        context.previousData.forEach(([key, val]) => {
+          queryClient.setQueryData(key, val);
+        });
+      }
+      toast.error(err?.message || 'Failed to add comment');
+    },
+    onSettled: (_data, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
       queryClient.invalidateQueries({ queryKey: ['page-comments'] });
-      toast.success('Comment added');
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to add comment');
+    onSuccess: () => {
+      toast.success('Comment added');
     },
   });
 };
@@ -85,13 +112,43 @@ export const useUpdateComment = () => {
         status: status === 'resolved' ? 'resolved' : 'open',
       });
     },
-    onSuccess: (_, variables) => {
+    onMutate: async ({ pageId, commentId, content, status }) => {
+      await queryClient.cancelQueries({ queryKey: ['page-comments', pageId] });
+      const previousData = queryClient.getQueriesData<PageComment[]>({ queryKey: ['page-comments', pageId] });
+
+      queryClient.setQueriesData<PageComment[]>(
+        { queryKey: ['page-comments', pageId] },
+        (old) =>
+          old
+            ? old.map((c) =>
+                c.id === commentId
+                  ? {
+                      ...c,
+                      content: content !== undefined ? content : c.content,
+                      status: status !== undefined ? status : c.status,
+                      updatedAt: new Date().toISOString(),
+                    }
+                  : c
+              )
+            : old,
+      );
+
+      return { previousData, pageId };
+    },
+    onError: (err: any, _vars, context) => {
+      if (context?.previousData) {
+        context.previousData.forEach(([key, val]) => {
+          queryClient.setQueryData(key, val);
+        });
+      }
+      toast.error(err?.message || 'Failed to update comment');
+    },
+    onSettled: (_data, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
       queryClient.invalidateQueries({ queryKey: ['page-comments'] });
-      toast.success('Comment updated');
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to update comment');
+    onSuccess: () => {
+      toast.success('Comment updated');
     },
   });
 };

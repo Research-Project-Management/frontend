@@ -16,8 +16,10 @@ import {
   Download,
   FileDown,
   Loader2,
+  Bell,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useShallow } from 'zustand/react/shallow';
 import { apiPost, apiDelete } from '@/shared/lib/api';
 import { exportProjectAsZip } from '../../utils/export-zip.util';
 import { useSpellingDictionary } from '../../hooks/use-spelling';
@@ -55,7 +57,19 @@ import { EDITOR_THEMES } from '../editor/editor-themes';
 import { useTheme } from '@/shared/providers';
 import { filesQuery, pageQuery, useFileActions } from '@/features/editor/hooks/use-core';
 import { useQuery } from '@tanstack/react-query';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { editorCommandBus } from '@/features/editor/core';
+
+export const EDITOR_FONT_FAMILIES = [
+  { id: 'default', label: 'Default Monospace (Monaco / Menlo)' },
+  { id: 'fira', label: 'Fira Code' },
+  { id: 'jetbrains', label: 'JetBrains Mono' },
+  { id: 'consolas', label: 'Consolas' },
+  { id: 'source-code', label: 'Source Code Pro' },
+  { id: 'courier', label: 'Courier New' },
+  { id: 'inconsolata', label: 'Inconsolata' },
+];
+
+export const EDITOR_FONT_SIZES = [11, 12, 13, 14, 15, 16, 17, 18, 20, 22, 24];
 
 type SettingsTab =
   | 'editor'
@@ -134,7 +148,7 @@ function SettingRow({
 
 export default function ProjectSettingsModal() {
   const params = useParams<{ pageId?: string; projectId?: string }>();
-  const { currentPage } = usePageStore();
+  const currentPage = usePageStore((s) => s.currentPage);
   const pageId = params?.pageId;
   const projectId = params?.projectId || params?.pageId || currentPage?.id;
   const projectTitle = currentPage?.title || 'manuscript';
@@ -192,7 +206,62 @@ export default function ProjectSettingsModal() {
     setNotifyComments,
     notifyUpdates,
     setNotifyUpdates,
-  } = useSettingsStore();
+  } = useSettingsStore(
+    useShallow((s) => ({
+      settingsPanelOpen: s.settingsPanelOpen,
+      setSettingsPanelOpen: s.setSettingsPanelOpen,
+      engine: s.engine,
+      setEngine: s.setEngine,
+      texLiveVersion: s.texLiveVersion,
+      setTexLiveVersion: s.setTexLiveVersion,
+      mainFile: s.mainFile,
+      setMainFile: s.setMainFile,
+      autoCompile: s.autoCompile,
+      setAutoCompile: s.setAutoCompile,
+      compileMode: s.compileMode,
+      setCompileMode: s.setCompileMode,
+      useCache: s.useCache,
+      setUseCache: s.setUseCache,
+      stopOnFirstError: s.stopOnFirstError,
+      setStopOnFirstError: s.setStopOnFirstError,
+      fontSize: s.fontSize,
+      setFontSize: s.setFontSize,
+      fontFamily: s.fontFamily,
+      setFontFamily: s.setFontFamily,
+      lineHeight: s.lineHeight,
+      setLineHeight: s.setLineHeight,
+      wordWrap: s.wordWrap,
+      setWordWrap: s.setWordWrap,
+      lineNumbers: s.lineNumbers,
+      setLineNumbers: s.setLineNumbers,
+      keybinding: s.keybinding,
+      setKeybinding: s.setKeybinding,
+      editorTheme: s.editorTheme,
+      setEditorTheme: s.setEditorTheme,
+      spellCheck: s.spellCheck,
+      setSpellCheck: s.setSpellCheck,
+      spellCheckLanguage: s.spellCheckLanguage,
+      setSpellCheckLanguage: s.setSpellCheckLanguage,
+      autoCloseBrackets: s.autoCloseBrackets,
+      setAutoCloseBrackets: s.setAutoCloseBrackets,
+      linterEnabled: s.linterEnabled,
+      setLinterEnabled: s.setLinterEnabled,
+      autoComplete: s.autoComplete,
+      setAutoComplete: s.setAutoComplete,
+      nonBlinkingCursor: s.nonBlinkingCursor,
+      setNonBlinkingCursor: s.setNonBlinkingCursor,
+      showEditorTabs: s.showEditorTabs,
+      setShowEditorTabs: s.setShowEditorTabs,
+      previewEditorTabs: s.previewEditorTabs,
+      setPreviewEditorTabs: s.setPreviewEditorTabs,
+      pdfViewer: s.pdfViewer,
+      setPdfViewer: s.setPdfViewer,
+      notifyComments: s.notifyComments,
+      setNotifyComments: s.setNotifyComments,
+      notifyUpdates: s.notifyUpdates,
+      setNotifyUpdates: s.setNotifyUpdates,
+    }))
+  );
 
   const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<SettingsTab>('editor');
@@ -361,15 +430,16 @@ export default function ProjectSettingsModal() {
     { id: 'references' as const, label: 'References', icon: BookOpen },
     { id: 'github' as const, label: 'GitHub Sync', icon: GitHubIcon },
     { id: 'appearance' as const, label: 'Appearance', icon: Paintbrush },
+    { id: 'notifications' as const, label: 'Notifications', icon: Bell },
   ];
 
   const handleTabKeyDown = (e: React.KeyboardEvent, currentIndex: number) => {
-    if (e.key === 'ArrowDown') {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
       e.preventDefault();
       const nextIndex = (currentIndex + 1) % navTabs.length;
       setActiveTab(navTabs[nextIndex].id);
       document.getElementById(`settings-tab-${navTabs[nextIndex].id}`)?.focus();
-    } else if (e.key === 'ArrowUp') {
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
       e.preventDefault();
       const prevIndex = (currentIndex - 1 + navTabs.length) % navTabs.length;
       setActiveTab(navTabs[prevIndex].id);
@@ -389,11 +459,11 @@ export default function ProjectSettingsModal() {
     <Dialog open={settingsPanelOpen} onOpenChange={setSettingsPanelOpen}>
       <DialogContent
         showCloseButton={false}
-        className="sm:max-w-[840px] md:max-w-[880px] lg:max-w-[920px] w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-2xl rounded-xl text-foreground select-none flex flex-col max-h-[88vh] h-[620px]"
+        className="sm:max-w-[840px] md:max-w-[880px] lg:max-w-[920px] w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-300 rounded-xl text-foreground select-none flex flex-col max-h-[88vh] h-[620px]"
       >
         {/* ── Dialog Header (Clean, seamless, zero divider lines) ─────────────── */}
         <div className="flex items-center justify-between px-6 pt-5 pb-3 bg-background shrink-0">
-          <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
+          <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">
             Settings
           </DialogTitle>
           <DialogDescription className="sr-only">
@@ -403,7 +473,7 @@ export default function ProjectSettingsModal() {
             type="button"
             onClick={() => setSettingsPanelOpen(false)}
             aria-label="Close settings"
-            className="size-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <X className="size-4" />
           </button>
@@ -413,7 +483,7 @@ export default function ProjectSettingsModal() {
         <div className="flex flex-col sm:flex-row flex-1 min-h-0 overflow-hidden">
           {/* Left Navigation Sidebar */}
           <div
-            className="w-full sm:w-60 shrink-0 border-b sm:border-b-0 sm:border-r border-border/40 p-2.5 sm:p-3.5 flex sm:flex-col flex-row overflow-x-auto sm:overflow-y-auto bg-muted/15 gap-1"
+            className="w-full sm:w-60 shrink-0 border-b sm:border-b-0 sm:border-r border-border/40 p-2 sm:p-3.5 flex sm:flex-col flex-row items-center sm:items-stretch overflow-x-auto sm:overflow-y-auto bg-muted/15 gap-1"
             role="tablist"
             aria-label="Settings navigation"
           >
@@ -432,7 +502,7 @@ export default function ProjectSettingsModal() {
                   onClick={() => setActiveTab(tab.id)}
                   onKeyDown={(e) => handleTabKeyDown(e, idx)}
                   className={cn(
-                    'flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors text-left cursor-pointer w-full shrink-0 sm:shrink sm:w-full outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                    'flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors motion-reduce:transition-none text-left cursor-pointer w-auto shrink-0 sm:w-full outline-none focus-visible:ring-1 focus-visible:ring-primary',
                     isActive
                       ? 'bg-primary/10 text-primary font-semibold'
                       : 'text-foreground/80 hover:text-foreground hover:bg-muted/60 font-normal'
@@ -451,6 +521,7 @@ export default function ProjectSettingsModal() {
 
             {/* Download Actions (Overleaf 1:1 Parity) */}
             <div className="h-px bg-border/60 my-1.5 hidden sm:block" />
+            <div className="w-px h-5 bg-border/60 mx-1 shrink-0 self-center sm:hidden" />
             <div className="px-3 py-0.5 text-10 font-semibold uppercase tracking-wider text-muted-foreground/70 hidden sm:block">
               Download
             </div>
@@ -458,10 +529,11 @@ export default function ProjectSettingsModal() {
               type="button"
               onClick={handleDownloadZip}
               disabled={isExportingZip}
-              className="hidden sm:flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors text-left cursor-pointer w-full outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50"
+              aria-label="Download Source ZIP"
+              className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors motion-reduce:transition-none text-left cursor-pointer shrink-0 sm:w-full outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50"
             >
               {isExportingZip ? (
-                <Loader2 className="size-4 shrink-0 text-muted-foreground animate-spin" />
+                <Loader2 className="size-4 shrink-0 text-muted-foreground animate-spin motion-reduce:animate-none" />
               ) : (
                 <Download className="size-4 shrink-0 text-muted-foreground" />
               )}
@@ -471,7 +543,8 @@ export default function ProjectSettingsModal() {
               type="button"
               onClick={handleDownloadPdf}
               disabled={!pdfUrl}
-              className="hidden sm:flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors text-left cursor-pointer w-full outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50 disabled:pointer-events-none"
+              aria-label="Download compiled PDF"
+              className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors motion-reduce:transition-none text-left cursor-pointer shrink-0 sm:w-full outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50 disabled:pointer-events-none"
             >
               <FileDown className="size-4 shrink-0 text-muted-foreground" />
               <span className="truncate">PDF</span>
@@ -479,6 +552,7 @@ export default function ProjectSettingsModal() {
 
             {/* Project Functions / Actions (Overleaf Parity) */}
             <div className="h-px bg-border/60 my-1.5 hidden sm:block" />
+            <div className="w-px h-5 bg-border/60 mx-1 shrink-0 self-center sm:hidden" />
             <div className="px-3 py-0.5 text-10 font-semibold uppercase tracking-wider text-muted-foreground/70 hidden sm:block">
               Actions
             </div>
@@ -486,9 +560,10 @@ export default function ProjectSettingsModal() {
               type="button"
               onClick={() => {
                 setSettingsPanelOpen(false);
-                EditorEventBus.emit('flux:open-word-count');
+                editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'word-count' });
               }}
-              className="hidden sm:flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors text-left cursor-pointer w-full outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              aria-label="Word count"
+              className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors motion-reduce:transition-none text-left cursor-pointer shrink-0 sm:w-full outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <FileText className="size-4 shrink-0 text-muted-foreground" />
               <span className="truncate">Word count</span>
@@ -497,29 +572,32 @@ export default function ProjectSettingsModal() {
               type="button"
               onClick={handleClearCache}
               disabled={isClearingCache}
-              className="hidden sm:flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors text-left cursor-pointer w-full outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50"
+              aria-label="Clear cached files"
+              className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors motion-reduce:transition-none text-left cursor-pointer shrink-0 sm:w-full outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50"
             >
               {isClearingCache ? (
-                <Loader2 className="size-4 shrink-0 text-muted-foreground animate-spin" />
+                <Loader2 className="size-4 shrink-0 text-muted-foreground animate-spin motion-reduce:animate-none" />
               ) : (
                 <Trash2 className="size-4 shrink-0 text-muted-foreground" />
               )}
-              <span className="truncate">{isClearingCache ? 'Clearing cache...' : 'Clear cached files'}</span>
+              <span className="truncate">{isClearingCache ? 'Clearing...' : 'Clear cache'}</span>
             </button>
 
             {/* Separator before external links */}
             <div className="h-px bg-border/60 my-1.5 hidden sm:block" />
+            <div className="w-px h-5 bg-border/60 mx-1 shrink-0 self-center sm:hidden" />
 
             {/* Account Settings Link */}
             <Link
               href="/settings"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors group cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              aria-label="Open Account settings in new tab"
+              className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors motion-reduce:transition-none group cursor-pointer shrink-0 sm:w-full outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <Settings className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
-              <span className="flex-1 truncate">Account settings</span>
-              <ExternalLink className="size-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />
+              <span className="truncate">Account</span>
+              <ExternalLink className="size-3.5 shrink-0 text-muted-foreground group-hover:text-foreground hidden sm:block ml-auto" />
             </Link>
 
             {/* Subscription Link */}
@@ -527,11 +605,12 @@ export default function ProjectSettingsModal() {
               href="/settings/billing"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors group cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              aria-label="Open Subscription settings in new tab"
+              className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors motion-reduce:transition-none group cursor-pointer shrink-0 sm:w-full outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <Landmark className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
-              <span className="flex-1 truncate">Subscription</span>
-              <ExternalLink className="size-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />
+              <span className="truncate">Billing</span>
+              <ExternalLink className="size-3.5 shrink-0 text-muted-foreground group-hover:text-foreground hidden sm:block ml-auto" />
             </Link>
           </div>
 
@@ -702,7 +781,7 @@ export default function ProjectSettingsModal() {
                       <SelectValue placeholder="Font size" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[11, 12, 13, 14, 15, 16, 17, 18, 20, 22, 24].map((sz) => (
+                      {EDITOR_FONT_SIZES.map((sz) => (
                         <SelectItem key={sz} value={String(sz)} className="cursor-pointer text-xs">
                           {sz}px
                         </SelectItem>
@@ -721,26 +800,16 @@ export default function ProjectSettingsModal() {
                   >
                     <SelectTrigger
                       aria-label="Font family"
-                      className="w-40 h-8 text-xs font-medium cursor-pointer border-border bg-background"
+                      className="w-48 h-8 text-xs font-medium cursor-pointer border-border bg-background"
                     >
                       <SelectValue placeholder="Font family" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="default" className="cursor-pointer text-xs">
-                        Default Monospace
-                      </SelectItem>
-                      <SelectItem value="menlo" className="cursor-pointer text-xs">
-                        Menlo / Monaco
-                      </SelectItem>
-                      <SelectItem value="consolas" className="cursor-pointer text-xs">
-                        Consolas
-                      </SelectItem>
-                      <SelectItem value="fira" className="cursor-pointer text-xs">
-                        Fira Code
-                      </SelectItem>
-                      <SelectItem value="source-code" className="cursor-pointer text-xs">
-                        Source Code Pro
-                      </SelectItem>
+                      {EDITOR_FONT_FAMILIES.map((f) => (
+                        <SelectItem key={f.id} value={f.id} className="cursor-pointer text-xs">
+                          {f.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </SettingRow>
@@ -1023,7 +1092,7 @@ export default function ProjectSettingsModal() {
                     className="h-8 px-3 rounded-md border border-border bg-background hover:bg-muted text-xs font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50"
                   >
                     {isClearingCache ? (
-                      <Loader2 className="size-3.5 text-muted-foreground animate-spin" />
+                      <Loader2 className="size-3.5 text-muted-foreground animate-spin motion-reduce:animate-none" />
                     ) : (
                       <Trash2 className="size-3.5 text-muted-foreground" />
                     )}
@@ -1100,7 +1169,7 @@ export default function ProjectSettingsModal() {
                   description="Size of text in the Code editor"
                 >
                   <Select
-                    value={String(fontSize)}
+                    value={String(fontSize || 15)}
                     onValueChange={(val) => setFontSize(Number(val))}
                   >
                     <SelectTrigger
@@ -1110,7 +1179,7 @@ export default function ProjectSettingsModal() {
                       <SelectValue placeholder="Size" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[12, 13, 14, 15, 16, 18, 20].map((size) => (
+                      {EDITOR_FONT_SIZES.map((size) => (
                         <SelectItem key={size} value={String(size)} className="cursor-pointer text-xs">
                           {size}px
                         </SelectItem>
@@ -1123,29 +1192,19 @@ export default function ProjectSettingsModal() {
                   title="Font family"
                   description="Monospace font family for the code editor"
                 >
-                  <Select value={fontFamily} onValueChange={setFontFamily}>
+                  <Select value={fontFamily || 'default'} onValueChange={setFontFamily}>
                     <SelectTrigger
                       aria-label="Font family"
-                      className="w-44 h-8 text-xs font-medium cursor-pointer border-border bg-background"
+                      className="w-48 h-8 text-xs font-medium cursor-pointer border-border bg-background"
                     >
                       <SelectValue placeholder="Font" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="default" className="cursor-pointer text-xs">
-                        Default (Monaco)
-                      </SelectItem>
-                      <SelectItem value="fira" className="cursor-pointer text-xs">
-                        Fira Code
-                      </SelectItem>
-                      <SelectItem value="jetbrains" className="cursor-pointer text-xs">
-                        JetBrains Mono
-                      </SelectItem>
-                      <SelectItem value="courier" className="cursor-pointer text-xs">
-                        Courier New
-                      </SelectItem>
-                      <SelectItem value="inconsolata" className="cursor-pointer text-xs">
-                        Inconsolata
-                      </SelectItem>
+                      {EDITOR_FONT_FAMILIES.map((f) => (
+                        <SelectItem key={f.id} value={f.id} className="cursor-pointer text-xs">
+                          {f.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </SettingRow>

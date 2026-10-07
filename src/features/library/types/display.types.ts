@@ -22,6 +22,7 @@ export interface LibraryDisplayOptions {
   orderBy: LibraryOrderBy;
   orderDirection: 'asc' | 'desc';
   density?: 'comfortable' | 'compact';
+  includeSubcollections?: boolean;
 }
 
 export const DEFAULT_LIBRARY_DISPLAY_OPTIONS: LibraryDisplayOptions = {
@@ -37,5 +38,6 @@ export const DEFAULT_LIBRARY_DISPLAY_OPTIONS: LibraryDisplayOptions = {
   orderBy: 'createdAt',
   orderDirection: 'desc',
   density: 'comfortable',
+  includeSubcollections: true,
 };
 

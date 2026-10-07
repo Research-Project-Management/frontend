@@ -62,22 +62,22 @@ export function AnalyticsDrawer({
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-lg p-0 bg-background border-border flex flex-col"
+        className="w-full sm:max-w-lg p-0 bg-background border-border flex flex-col shadow-raised-200"
       >
         <SheetHeader className="px-5 py-4 border-b border-border text-left shrink-0">
           <div className="flex items-center gap-2">
             <BarChart3 className="size-4 text-foreground shrink-0" />
-            <SheetTitle className="text-sm font-semibold text-foreground tracking-tight">
+            <SheetTitle className="text-16 font-semibold text-foreground tracking-tight">
               Work item analytics
             </SheetTitle>
             <Badge
               variant="outline"
-              className="text-10 font-normal px-1.5 py-0 h-4 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
+              className="text-10 font-medium px-1.5 py-0 h-4 text-success border-success/30 bg-success/10"
             >
               Live SSOT
             </Badge>
           </div>
-          <SheetDescription className="text-xs text-muted-foreground">
+          <SheetDescription className="text-12 text-muted-foreground">
             Real-time performance and work item progress overview.
           </SheetDescription>
         </SheetHeader>
@@ -99,7 +99,7 @@ export function AnalyticsDrawer({
             <div className="p-3 rounded-md border border-border bg-card space-y-1">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>Completion</span>
-                <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
+                <CheckCircle2 className="size-3.5 text-success shrink-0" />
               </div>
               <div className="text-xl font-semibold text-foreground font-mono">
                 {isLoading ? <Skeleton className="h-7 w-16" /> : `${completionRate}%`}

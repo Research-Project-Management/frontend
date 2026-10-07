@@ -144,7 +144,7 @@ export function DynamicInspectorField({
                   href={`https://doi.org/${displayDoi}`}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer focus-visible:outline-none transition-colors"
+                  className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer focus-visible:outline-none transition-colors relative before:absolute before:-inset-2 md:before:hidden"
                   aria-label="Open DOI"
                 >
                   <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" strokeWidth={1.5} />
@@ -165,13 +165,13 @@ export function DynamicInspectorField({
 
         {/* Citation Key Quick Action */}
         {isCitationKey && isValidValue(currentVal) && (
-          <div className="invisible group-hover:visible group-focus-within:visible flex items-center shrink-0">
+          <div className="invisible group-hover:visible group-focus-within:visible max-md:visible flex items-center shrink-0">
             <Tooltip delayDuration={300}>
               <TooltipTrigger asChild>
                 <button
                   type="button"
                   onClick={() => onCopy(`\\cite{${currentVal}}`, 'Citation Key')}
-                  className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none transition-colors"
+                  className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none transition-colors relative before:absolute before:-inset-2 md:before:hidden"
                   aria-label="Copy citation key"
                 >
                   {copiedKey === 'Citation Key' ? (
@@ -207,7 +207,7 @@ export function DynamicInspectorField({
                   }
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer focus-visible:outline-none transition-colors"
+                  className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer focus-visible:outline-none transition-colors relative before:absolute before:-inset-2 md:before:hidden"
                   aria-label="Open in PubMed"
                 >
                   <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" strokeWidth={1.5} />
@@ -235,7 +235,7 @@ export function DynamicInspectorField({
                   href={`https://arxiv.org/abs/${encodeURIComponent(currentVal.replace(/^arxiv:/i, ''))}`}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer focus-visible:outline-none transition-colors"
+                  className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer focus-visible:outline-none transition-colors relative before:absolute before:-inset-2 md:before:hidden"
                   aria-label="Open in arXiv"
                 >
                   <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" strokeWidth={1.5} />
@@ -268,7 +268,7 @@ export function DynamicInspectorField({
                     href={toValidUrl(currentVal)}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer focus-visible:outline-none transition-colors"
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer focus-visible:outline-none transition-colors relative before:absolute before:-inset-2 md:before:hidden"
                     aria-label={`Open ${fieldDef.label} link`}
                   >
                     <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" strokeWidth={1.5} />

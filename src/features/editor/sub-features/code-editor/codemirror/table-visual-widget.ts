@@ -396,7 +396,7 @@ export class TableWidget extends WidgetType {
       }
 
       const container = document.createElement('div');
-      container.className = 'relative my-2 rounded-lg border border-border/70 bg-card p-2 shadow-xs';
+      container.className = 'relative my-2 rounded-lg border border-border/70 bg-card p-2';
 
       // 1. Floating Action Toolbar (Overleaf 1:1 Parity)
       const toolbar = this.buildToolbar(view, render);

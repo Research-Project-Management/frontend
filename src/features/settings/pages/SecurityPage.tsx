@@ -3,7 +3,7 @@
 import React from 'react';
 import { Lock } from 'lucide-react';
 import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
-import SecurityTab from '@/features/account/components/SecurityTab';
+import SecurityTab from '../components/security/SecurityTab';
 
 export default function SecurityPage() {
   return (

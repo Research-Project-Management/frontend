@@ -65,9 +65,9 @@ export function WorkspacePagesPage() {
       >
         <div className="flex items-center gap-2.5 min-w-0">
           <FileText className="size-4 text-primary shrink-0" />
-          <h1 className="text-sm font-semibold text-foreground tracking-tight">Pages</h1>
-          <span className="text-xs text-muted-foreground hidden sm:inline">·</span>
-          <span className="text-xs text-muted-foreground hidden sm:inline truncate">
+          <h1 className="text-13 font-semibold text-foreground tracking-tight">Pages</h1>
+          <span className="text-12 text-muted-foreground hidden sm:inline">·</span>
+          <span className="text-12 text-muted-foreground hidden sm:inline truncate">
             {selectedProject ? selectedProject.name : 'Workspace Knowledge Base'}
           </span>
         </div>
@@ -79,7 +79,7 @@ export function WorkspacePagesPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted font-normal cursor-pointer"
+                className="h-8 px-2.5 text-12 gap-1.5 text-foreground hover:bg-muted font-normal cursor-pointer shadow-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 {selectedProject ? (
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -92,14 +92,14 @@ export function WorkspacePagesPage() {
                 <ChevronDown className="size-3 text-muted-foreground shrink-0" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 p-1 text-xs">
+            <DropdownMenuContent align="end" className="w-56 p-1 text-12 shadow-overlay">
               {activeProjects.map((p) => {
                 const isSelected = p.id === targetProjectId;
                 return (
                   <DropdownMenuItem
                     key={p.id}
                     onClick={() => setSelectedProjectId(p.id)}
-                    className={cn('cursor-pointer font-medium flex items-center justify-between', isSelected && 'bg-muted font-semibold')}
+                    className={cn('cursor-pointer font-medium text-12 flex items-center justify-between', isSelected && 'bg-muted font-semibold')}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <ProjectAvatar avatar={p.avatar} name={p.name} id={p.id} size="xs" />
@@ -119,14 +119,14 @@ export function WorkspacePagesPage() {
               placeholder="Search pages..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 w-44 md:w-56 pl-8 pr-7 text-xs rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground outline-none focus:border-border transition-colors"
+              className="h-8 w-44 md:w-56 pl-8 pr-7 text-13 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-colors"
             />
             {searchQuery && (
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => setSearchQuery('')}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 size-5 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer rounded transition-colors"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 size-5 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer rounded transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none touch-manipulation sm:after:hidden after:absolute after:-inset-2 after:content-['']"
                 title="Clear search"
                 aria-label="Clear search"
               >
@@ -136,7 +136,7 @@ export function WorkspacePagesPage() {
           </div>
 
           {targetProjectId && (
-            <Button asChild size="sm" className="h-8 px-3 text-xs cursor-pointer shadow-none">
+            <Button asChild size="sm" className="h-8 px-3 text-12 font-medium cursor-pointer shadow-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
               <Link href={`/projects/${targetProjectId}/pages`}>
                 <span>New Page</span>
               </Link>
@@ -162,13 +162,13 @@ export function WorkspacePagesPage() {
         ) : isPagesLoading ? (
           <div className="p-6 md:p-8 space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-semibold text-muted-foreground tracking-normal">
+              <h2 className="text-12 font-medium text-muted-foreground tracking-normal">
                 Documents & Knowledge Pages
               </h2>
             </div>
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full rounded-md" />
+                <Skeleton key={i} className="h-16 w-full rounded-md motion-reduce:animate-none" />
               ))}
             </div>
           </div>
@@ -180,10 +180,10 @@ export function WorkspacePagesPage() {
         ) : (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-semibold text-muted-foreground tracking-normal">
+              <h2 className="text-12 font-medium text-muted-foreground tracking-normal">
                 Documents & Knowledge Pages
               </h2>
-              <span className="text-11 text-muted-foreground font-mono">
+              <span className="text-11 text-muted-foreground font-mono tabular-nums">
                 {filteredPages.length} document{filteredPages.length !== 1 ? 's' : ''}
               </span>
             </div>
@@ -197,10 +197,10 @@ export function WorkspacePagesPage() {
                   <div className="min-w-0 flex items-start gap-3">
                     <FileText className="size-4 text-primary shrink-0 mt-0.5" />
                     <div className="min-w-0">
-                      <span className="text-xs font-semibold text-foreground truncate block">
+                      <span className="text-13 font-medium text-foreground truncate block">
                         {page.title || 'Untitled Page'}
                       </span>
-                      <div className="flex items-center gap-3 text-10 text-muted-foreground font-mono mt-1">
+                      <div className="flex items-center gap-3 text-11 text-muted-foreground font-mono mt-1">
                         {selectedProject && <span>Project: {selectedProject.name}</span>}
                         {page.updatedAt && (
                           <span>Updated: {new Date(page.updatedAt).toLocaleDateString()}</span>
@@ -210,7 +210,7 @@ export function WorkspacePagesPage() {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                    <Button asChild size="sm" variant="ghost" className="h-7 text-xs px-2.5 gap-1.5 cursor-pointer text-foreground hover:bg-muted">
+                    <Button asChild size="sm" variant="ghost" className="h-7 text-12 font-medium px-2.5 gap-1.5 cursor-pointer text-foreground hover:bg-muted relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                       <Link href={`/projects/${page.projectId || targetProjectId}/pages`}>
                         <span>Open Doc</span>
                         <ExternalLink className="size-3" />

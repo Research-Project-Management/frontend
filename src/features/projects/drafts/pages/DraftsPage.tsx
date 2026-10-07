@@ -140,6 +140,7 @@ export default function DraftsPage() {
             <Button
               onClick={handleOpenCreate}
               size="sm"
+              className="h-8 px-3 text-12 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
             >
               Draft a work item
             </Button>
@@ -151,15 +152,15 @@ export default function DraftsPage() {
         {isLoading ? (
           <div className="flex flex-col divide-y divide-border border-b border-border">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-11 px-4 flex items-center justify-between gap-4 animate-pulse">
+              <div key={i} className="h-8 px-4 flex items-center justify-between gap-4 animate-pulse">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="h-3.5 w-24 rounded bg-muted shrink-0" />
-                  <div className="h-3.5 w-64 max-w-sm rounded bg-muted" />
+                  <div className="h-3 w-24 rounded bg-muted shrink-0" />
+                  <div className="h-3 w-64 max-w-sm rounded bg-muted" />
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <div className="h-6 w-20 rounded-md bg-muted" />
-                  <div className="h-6 w-16 rounded-md bg-muted" />
-                  <div className="size-6 rounded-md bg-muted" />
+                  <div className="h-5 w-20 rounded-md bg-muted" />
+                  <div className="h-5 w-16 rounded-md bg-muted" />
+                  <div className="size-5 rounded-md bg-muted" />
                 </div>
               </div>
             ))}

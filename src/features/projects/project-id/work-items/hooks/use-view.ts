@@ -339,7 +339,7 @@ export function useCard({
   const priorityMeta = useMemo(() => {
     switch (card.priority) {
       case 'urgent':
-        return { label: 'Urgent', icon: AlertCircle, colorClass: 'text-red-500' };
+        return { label: 'Urgent', icon: AlertCircle, colorClass: 'text-destructive' };
       case 'high':
         return { label: 'High', icon: ArrowUp, colorClass: 'text-orange-500' };
       case 'medium':

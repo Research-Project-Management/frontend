@@ -86,10 +86,10 @@ export function ProjectInvitesModal({
               <Mail className="size-4" />
             </div>
             <div>
-              <DialogTitle className="text-base font-semibold text-foreground tracking-tight">
+              <DialogTitle className="text-16 font-semibold text-foreground tracking-tight">
                 Project Invitations
               </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+              <DialogDescription className="text-12 text-muted-foreground mt-0.5">
                 Invitations from colleagues and researchers to join their projects.
               </DialogDescription>
             </div>
@@ -100,23 +100,23 @@ export function ProjectInvitesModal({
           {/* Pending Invitations Section */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-foreground">
+              <span className="text-12 font-medium text-foreground">
                 Pending Invitations ({invitations.length})
               </span>
             </div>
 
             {isLoading ? (
               <div className="flex items-center justify-center p-8 text-muted-foreground">
-                <Loader2 className="size-5 animate-spin mr-2" />
-                <span className="text-xs">Loading invitations...</span>
+                <Loader2 className="size-5 animate-spin motion-reduce:animate-none mr-2" />
+                <span className="text-12">Loading invitations...</span>
               </div>
             ) : invitations.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground bg-muted/10 space-y-2">
+              <div className="rounded-lg border border-dashed border-border p-6 text-center text-13 text-muted-foreground bg-muted/10 space-y-2">
                 <div className="size-10 rounded-full bg-muted/60 text-muted-foreground/70 flex items-center justify-center mx-auto">
                   <Mail className="size-5" />
                 </div>
                 <div>
-                  <p className="font-medium text-foreground text-xs">No pending project invitations</p>
+                  <p className="font-medium text-foreground text-12">No pending project invitations</p>
                   <p className="text-11 text-muted-foreground mt-1 max-w-xs mx-auto">
                     When other researchers invite you to collaborate on their project, their invitations will appear here.
                   </p>
@@ -139,7 +139,7 @@ export function ProjectInvitesModal({
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-semibold text-foreground truncate">
+                          <span className="text-12 font-medium text-foreground truncate">
                             {inv.project?.name}
                           </span>
                           {inv.project?.identifier && (
@@ -162,10 +162,10 @@ export function ProjectInvitesModal({
                         size="sm"
                         disabled={acceptMutation.isPending || declineMutation.isPending}
                         onClick={() => handleAccept(inv)}
-                        className="h-7 text-xs px-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-md gap-1"
+                        className="relative h-7 text-12 px-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-md gap-1 cursor-pointer focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
                       >
                         {acceptMutation.isPending ? (
-                          <Loader2 className="size-3 animate-spin" />
+                          <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />
                         ) : (
                           <Check className="size-3" />
                         )}
@@ -178,7 +178,7 @@ export function ProjectInvitesModal({
                         size="sm"
                         disabled={acceptMutation.isPending || declineMutation.isPending}
                         onClick={() => handleDecline(inv)}
-                        className="h-7 text-xs px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md"
+                        className="relative h-7 text-12 px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md cursor-pointer focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
                         title="Decline invitation"
                       >
                         <X className="size-3.5" />
@@ -192,7 +192,7 @@ export function ProjectInvitesModal({
 
           {/* Join with Invite Code Section */}
           <form onSubmit={handleJoinByCode} className="pt-2 border-t border-border/60 space-y-2">
-            <Label htmlFor="project-join-code" className="text-xs font-semibold text-foreground">
+            <Label htmlFor="project-join-code" className="text-12 font-medium text-foreground">
               Join with invite code or identifier
             </Label>
             <div className="flex gap-2">
@@ -201,16 +201,16 @@ export function ProjectInvitesModal({
                 placeholder="e.g. TT2, TIEPTUC, or paste invite token..."
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value)}
-                className="h-8.5 text-xs bg-background border-border"
+                className="h-8 text-13 bg-background border-border focus-visible:ring-1 focus-visible:ring-ring"
               />
               <Button
                 type="submit"
                 size="sm"
                 disabled={!joinCode.trim() || joinMutation.isPending}
-                className="h-8.5 text-xs px-3.5 shrink-0 font-medium"
+                className="relative h-8 text-13 px-3.5 shrink-0 font-medium cursor-pointer shadow-none focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
               >
                 {joinMutation.isPending ? (
-                  <Loader2 className="size-3.5 animate-spin mr-1.5" />
+                  <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none mr-1.5" />
                 ) : (
                   <ArrowRight className="size-3.5 mr-1.5 shrink-0" />
                 )}
@@ -226,7 +226,7 @@ export function ProjectInvitesModal({
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="h-8 text-xs font-medium"
+            className="relative h-8 text-13 font-medium cursor-pointer shadow-none focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
           >
             Close
           </Button>

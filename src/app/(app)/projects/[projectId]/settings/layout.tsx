@@ -9,9 +9,9 @@ export default function ProjectSettingLayout({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex h-full w-full bg-background overflow-hidden relative">
+    <div className="flex h-full w-full bg-background overflow-hidden relative flex-col md:flex-row">
       <Sidebar />
-      <main className="flex-1 min-w-0 flex flex-col overflow-hidden relative">
+      <main className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden relative">
         {children}
       </main>
     </div>

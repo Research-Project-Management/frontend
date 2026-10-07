@@ -156,7 +156,7 @@ export default function FigureWizardModal({
               className="gap-1.5 h-7 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground"
             >
               {uploadFile.isPending ? (
-                <Loader2 className="size-3 animate-spin text-primary" />
+                <Loader2 className="size-3 animate-spin text-primary motion-reduce:animate-none" />
               ) : (
                 <Upload className="size-3" />
               )}
@@ -166,7 +166,7 @@ export default function FigureWizardModal({
 
           {isLoading ? (
             <div className="h-32 rounded-md border border-border bg-muted/20 flex items-center justify-center">
-              <Loader2 className="size-5 animate-spin text-primary" />
+              <Loader2 className="size-5 animate-spin text-primary motion-reduce:animate-none" />
             </div>
           ) : imageFiles.length === 0 ? (
             <div className="h-32 rounded-md border-2 border-dashed border-border bg-muted/20 flex flex-col items-center justify-center gap-2 text-center p-4">

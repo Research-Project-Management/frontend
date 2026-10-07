@@ -595,7 +595,7 @@ function TimelineTopControls({
               type="button"
               onClick={() => onZoomChange(option.id)}
               className={cn(
-                'px-2.5 py-1 rounded-md text-xs transition-colors cursor-pointer select-none',
+                'px-2.5 py-1 rounded-md text-xs transition-colors cursor-pointer select-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring outline-none',
                 isActive
                   ? 'bg-muted text-foreground font-medium'
                   : 'text-foreground/75 hover:text-foreground'
@@ -611,7 +611,7 @@ function TimelineTopControls({
       <button
         type="button"
         onClick={onTodayClick}
-        className="px-2.5 py-1 text-xs font-normal text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer select-none"
+        className="px-2.5 py-1 text-xs font-normal text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer select-none relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring outline-none"
       >
         Today
       </button>
@@ -620,7 +620,7 @@ function TimelineTopControls({
       <button
         type="button"
         onClick={onToggleFullscreen}
-        className="p-1 text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer select-none"
+        className="p-1 text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer select-none relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring outline-none"
         title={isFullscreen ? 'Exit full screen' : 'Full screen'}
         aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}
       >
@@ -698,7 +698,7 @@ function TimelineSidebar({
                   onEditCard(item);
                 }
               }}
-              className="flex items-center justify-between px-4 border-b border-border hover:bg-muted/50 cursor-pointer transition-colors group text-xs shrink-0 outline-none focus-visible:bg-muted"
+              className="flex items-center justify-between px-4 border-b border-border hover:bg-muted/50 cursor-pointer transition-colors group text-xs shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-ring"
               style={{ height: `${ROW_HEIGHT}px` }}
               title={item.title}
             >
@@ -734,7 +734,7 @@ function TimelineSidebar({
           <button
             type="button"
             onClick={() => onAddCard(defaultColumnId)}
-            className="flex items-center gap-1.5 text-xs text-foreground hover:text-foreground font-medium transition-colors cursor-pointer w-full text-left"
+            className="flex items-center gap-1.5 text-xs text-foreground hover:text-foreground font-medium transition-colors cursor-pointer w-full text-left relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring outline-none"
           >
             <Plus className="size-3.5 shrink-0" />
             <span>New work item</span>

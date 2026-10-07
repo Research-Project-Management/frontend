@@ -1,7 +1,6 @@
 'use client';
 
-import React from 'react';
-import { Sparkles } from 'lucide-react';
+import { AlignLeft, Tag, Heading } from 'lucide-react';
 import {
   MenubarMenu,
   MenubarTrigger,
@@ -13,7 +12,6 @@ import {
   MenubarSeparator,
 } from "@/shared/components/ui";
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useSettingsStore } from '@/features/editor/store';
 import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 
@@ -31,7 +29,7 @@ export default function InsertMenu() {
   };
 
   const handleComment = () => {
-    EditorEventBus.emit('flux:open-panel', 'Review');
+    editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
   };
 
   return (
@@ -64,7 +62,7 @@ export default function InsertMenu() {
 
         {/* 2. Symbol */}
         <MenubarItem
-          onClick={() => EditorEventBus.emit('flux:open-symbol-palette')}
+          onClick={() => editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'symbol-palette' })}
           className="cursor-pointer"
         >
           Symbol
@@ -80,14 +78,13 @@ export default function InsertMenu() {
               onClick={() => {
                 useSettingsStore.getState().setActiveSidebarPanel('Files');
                 editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'add-files', payload: { initialTab: 'upload' } });
-                EditorEventBus.emit('flux:open-add-files', { initialTab: 'upload' });
               }}
               className="cursor-pointer"
             >
               Upload from computer
             </MenubarItem>
             <MenubarItem
-              onClick={() => EditorEventBus.emit('flux:open-figure-wizard')}
+              onClick={() => editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'figure-wizard' })}
               className="cursor-pointer"
             >
               From project files
@@ -96,7 +93,6 @@ export default function InsertMenu() {
               onClick={() => {
                 useSettingsStore.getState().setActiveSidebarPanel('Files');
                 editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'add-files', payload: { initialTab: 'project' } });
-                EditorEventBus.emit('flux:open-add-files', { initialTab: 'project' });
               }}
               className="cursor-pointer"
             >
@@ -113,7 +109,7 @@ export default function InsertMenu() {
 
         {/* 4. Table */}
         <MenubarItem
-          onClick={() => EditorEventBus.emit('flux:open-table-wizard')}
+          onClick={() => editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'table-wizard' })}
           className="cursor-pointer"
         >
           Table
@@ -121,7 +117,7 @@ export default function InsertMenu() {
 
         {/* 5. Citation */}
         <MenubarItem
-          onClick={() => EditorEventBus.emit('flux:open-citation-picker')}
+          onClick={() => editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'citation-picker' })}
           className="cursor-pointer"
         >
           Citation
@@ -162,7 +158,7 @@ export default function InsertMenu() {
           onClick={() => insertSnippet('\\begin{abstract}\n  \n\\end{abstract}\n')}
           className="flex items-center gap-2 cursor-pointer"
         >
-          <Sparkles className="size-3.5 text-primary shrink-0" />
+          <AlignLeft className="size-3.5 text-foreground shrink-0" />
           <span>Abstract</span>
         </MenubarItem>
 
@@ -171,7 +167,7 @@ export default function InsertMenu() {
           onClick={() => insertSnippet('\\begin{IEEEkeywords}\n  \n\\end{IEEEkeywords}\n')}
           className="flex items-center gap-2 cursor-pointer"
         >
-          <Sparkles className="size-3.5 text-primary shrink-0" />
+          <Tag className="size-3.5 text-foreground shrink-0" />
           <span>Keywords</span>
         </MenubarItem>
 
@@ -180,7 +176,7 @@ export default function InsertMenu() {
           onClick={() => insertSnippet('\\title{Document Title}\n')}
           className="flex items-center gap-2 cursor-pointer"
         >
-          <Sparkles className="size-3.5 text-primary shrink-0" />
+          <Heading className="size-3.5 text-foreground shrink-0" />
           <span>Title</span>
         </MenubarItem>
       </MenubarContent>

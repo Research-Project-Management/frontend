@@ -592,14 +592,14 @@ export function FilterPillsBar({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="size-6 rounded-md border border-border bg-background hover:bg-muted flex items-center justify-center text-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
+                className="relative size-6 rounded-md border border-border bg-background hover:bg-muted flex items-center justify-center text-foreground hover:text-foreground transition-colors cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
                 title="Filter by due date"
                 aria-label="Filter by due date"
               >
                 <Calendar className="size-3 shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48 rounded-md">
+            <DropdownMenuContent align="start" className="w-48 rounded-md shadow-overlay">
               <div className="px-2 py-1 text-11 font-medium text-foreground">
                 Due date
               </div>
@@ -624,14 +624,14 @@ export function FilterPillsBar({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="size-6 rounded-md border border-border bg-background hover:bg-muted flex items-center justify-center text-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
+                className="relative size-6 rounded-md border border-border bg-background hover:bg-muted flex items-center justify-center text-foreground hover:text-foreground transition-colors cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
                 title="Filter by assignee"
                 aria-label="Filter by assignee"
               >
                 <Users className="size-3 shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56 max-h-64 overflow-y-auto rounded-md">
+            <DropdownMenuContent align="start" className="w-56 max-h-64 overflow-y-auto rounded-md shadow-overlay">
               <div className="px-2 py-1 text-11 font-medium text-foreground">
                 Assignees
               </div>
@@ -674,7 +674,7 @@ export function FilterPillsBar({
       <button
         type="button"
         onClick={onClearAll}
-        className="inline-flex items-center gap-1 text-11 font-medium text-muted-foreground hover:text-foreground hover:underline cursor-pointer ml-auto shrink-0 px-1 py-0.5 rounded-md transition-colors"
+        className="relative inline-flex items-center gap-1 text-11 font-medium text-muted-foreground hover:text-foreground hover:underline cursor-pointer ml-auto shrink-0 px-1 py-0.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
       >
         <RotateCcw className="size-3 shrink-0" />
         <span>Clear all</span>

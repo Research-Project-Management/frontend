@@ -19,7 +19,7 @@ import {
   MenubarSeparator,
 } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import { useSettingsStore, useCompileStore } from '@/features/editor/store';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -393,25 +393,25 @@ export default function ViewMenu() {
           </MenubarSubTrigger>
           <MenubarSubContent className="min-w-36 text-xs">
             <MenubarItem
-              onClick={() => EditorEventBus.emit('flux:zoom-in')}
+              onClick={() => editorCommandBus.dispatch({ type: 'viewer:zoom-in' })}
               className="cursor-pointer"
             >
               Zoom in
             </MenubarItem>
             <MenubarItem
-              onClick={() => EditorEventBus.emit('flux:zoom-out')}
+              onClick={() => editorCommandBus.dispatch({ type: 'viewer:zoom-out' })}
               className="cursor-pointer"
             >
               Zoom out
             </MenubarItem>
             <MenubarItem
-              onClick={() => EditorEventBus.emit('flux:zoom-fit-width')}
+              onClick={() => editorCommandBus.dispatch({ type: 'viewer:fit-width' })}
               className="cursor-pointer"
             >
               Fit to width
             </MenubarItem>
             <MenubarItem
-              onClick={() => EditorEventBus.emit('flux:zoom-fit-height')}
+              onClick={() => editorCommandBus.dispatch({ type: 'viewer:fit-height' })}
               className="cursor-pointer"
             >
               Fit to height

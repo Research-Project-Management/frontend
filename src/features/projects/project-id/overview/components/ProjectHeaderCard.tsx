@@ -52,7 +52,7 @@ export function ProjectHeaderCard({ project }: ProjectHeaderCardProps) {
           <div className="pb-1">
             <Badge
               variant="outline"
-              className="text-xs font-mono font-semibold tracking-wider uppercase px-2.5 py-1 bg-muted/60 text-muted-foreground border-border"
+              className="text-11 font-mono font-medium tracking-wider uppercase px-2 py-0.5 bg-muted/60 text-muted-foreground border-border"
             >
               {project.identifier}
             </Badge>
@@ -61,12 +61,12 @@ export function ProjectHeaderCard({ project }: ProjectHeaderCardProps) {
 
         {/* Title and Charter/Description */}
         <div className="flex flex-col gap-1.5 mt-1">
-          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-20 sm:text-24 font-semibold tracking-tight text-foreground">
             {project.name}
           </h1>
 
           {description ? (
-            <div className="text-sm text-muted-foreground leading-relaxed">
+            <div className="text-13 text-muted-foreground leading-relaxed">
               <p className={!isExpanded && isLongDescription ? 'line-clamp-2' : ''}>
                 {description}
               </p>
@@ -74,7 +74,7 @@ export function ProjectHeaderCard({ project }: ProjectHeaderCardProps) {
                 <button
                   type="button"
                   onClick={() => setIsExpanded(!isExpanded)}
-                  className="mt-1 flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                  className="mt-1 flex items-center gap-1 text-12 font-medium text-primary hover:underline cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   {isExpanded ? (
                     <>
@@ -89,7 +89,7 @@ export function ProjectHeaderCard({ project }: ProjectHeaderCardProps) {
               )}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground italic">
+            <p className="text-13 text-muted-foreground italic">
               No description or project charter provided yet.
             </p>
           )}

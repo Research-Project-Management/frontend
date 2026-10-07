@@ -125,35 +125,37 @@ export function ProjectViewsPage() {
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
-      {/* Top Breadcrumb Bar */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-border/60 bg-background/95 backdrop-blur shrink-0">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      {/* Top Breadcrumb Bar (44px h-11 header) */}
+      <div className="h-11 flex items-center justify-between px-4 sm:px-6 border-b border-border/80 bg-background/95 backdrop-blur shrink-0">
+        <div className="flex items-center gap-1.5 text-13 text-muted-foreground select-none">
           <span className="font-medium text-foreground">{project?.name || 'Project'}</span>
-          <ChevronRight className="size-4 text-muted-foreground/50" />
+          <ChevronRight className="size-3.5 text-muted-foreground/50" />
           <span className="font-medium text-foreground">Views</span>
         </div>
       </div>
 
-      {/* Plane-style Subheader: Search, Order By, Filter, and Add View */}
-      <ViewListHeader
-        search={search}
-        onSearchChange={setSearch}
-        sortKey={sortKey}
-        sortBy={sortBy}
-        onSortChange={(newSortKey, newSortBy) => {
-          setSortKey(newSortKey);
-          setSortBy(newSortBy);
-        }}
-        accessFilter={accessFilter}
-        onAccessFilterChange={setAccessFilter}
-        onlyFavorites={onlyFavorites}
-        onFavoritesChange={setOnlyFavorites}
-        creatorFilter={creatorFilter}
-        onCreatorFilterChange={setCreatorFilter}
-        members={availableCreators}
-        onOpenCreateModal={handleOpenCreate}
-        isFiltersApplied={isFiltersApplied}
-      />
+      {/* Plane-style Subheader Toolbar (40px h-10 toolbar): Search, Order By, Filter, and Add View */}
+      <div className="h-10 px-4 sm:px-6 border-b border-border/80 flex items-center shrink-0 bg-background">
+        <ViewListHeader
+          search={search}
+          onSearchChange={setSearch}
+          sortKey={sortKey}
+          sortBy={sortBy}
+          onSortChange={(newSortKey, newSortBy) => {
+            setSortKey(newSortKey);
+            setSortBy(newSortBy);
+          }}
+          accessFilter={accessFilter}
+          onAccessFilterChange={setAccessFilter}
+          onlyFavorites={onlyFavorites}
+          onFavoritesChange={setOnlyFavorites}
+          creatorFilter={creatorFilter}
+          onCreatorFilterChange={setCreatorFilter}
+          members={availableCreators}
+          onOpenCreateModal={handleOpenCreate}
+          isFiltersApplied={isFiltersApplied}
+        />
+      </div>
 
       {/* Applied Filters Chips Bar */}
       <ViewAppliedFiltersList

@@ -99,7 +99,7 @@ export function Card({ project, onArchive, onManageTags }: CardProps) {
             type="button"
             onClick={handleToggleStar}
             className={cn(
-              'size-7 rounded-md flex items-center justify-center transition-all cursor-pointer',
+              'size-7 rounded-md flex items-center justify-center transition-all cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
               favorited
                 ? 'text-warning bg-muted backdrop-blur-xs'
                 : 'text-foreground hover:bg-muted opacity-0 group-hover:opacity-100 backdrop-blur-xs'
@@ -113,14 +113,14 @@ export function Card({ project, onArchive, onManageTags }: CardProps) {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="size-7 rounded-md flex items-center justify-center text-foreground hover:bg-muted transition-all opacity-0 group-hover:opacity-100 cursor-pointer backdrop-blur-xs"
+                className="size-7 rounded-md flex items-center justify-center text-foreground hover:bg-muted transition-all opacity-0 group-hover:opacity-100 cursor-pointer backdrop-blur-xs relative before:absolute before:-inset-1.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 title="Project options"
                 onClick={(e) => e.stopPropagation()}
               >
                 <MoreHorizontal className="size-4 shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 p-1 text-xs">
+            <DropdownMenuContent align="end" className="w-48 p-1 text-12 shadow-overlay">
               <DropdownMenuItem
                 onClick={handleCopyLink}
                 className="cursor-pointer font-medium flex items-center gap-2"
@@ -199,21 +199,21 @@ export function Card({ project, onArchive, onManageTags }: CardProps) {
           <div className="flex items-center gap-2 min-w-0">
             <Link
               href={`/projects/${projectId}/work-items`}
-              className="text-sm font-semibold text-foreground tracking-tight truncate block hover:underline shrink-0"
+              className="text-13 font-semibold text-foreground tracking-tight truncate block hover:underline shrink-0"
             >
               {project.name}
             </Link>
-            <span className="text-xs font-mono font-medium text-muted-foreground px-1 py-0.2 rounded bg-muted border border-border shrink-0">
+            <span className="text-11 font-mono font-medium text-muted-foreground px-1.5 py-0.5 rounded bg-muted border border-border shrink-0">
               {projectKey}
             </span>
           </div>
 
           {project.description ? (
-            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+            <p className="text-13 text-muted-foreground line-clamp-2 leading-relaxed">
               {project.description}
             </p>
           ) : (
-            <p className="text-xs text-muted-foreground/50 italic">No description provided</p>
+            <p className="text-13 text-muted-foreground/50 italic">No description provided</p>
           )}
 
           {/* Project Tags */}
@@ -246,16 +246,16 @@ export function Card({ project, onArchive, onManageTags }: CardProps) {
         </div>
 
         {/* Card Footer Info: Visibility & Members/Lead */}
-        <div className="pt-2 border-t border-border flex items-center justify-between text-xs text-muted-foreground min-w-0">
+        <div className="pt-2 border-t border-border flex items-center justify-between text-12 text-muted-foreground min-w-0">
           {/* Left: Visibility */}
           <div className="flex items-center gap-1.5 shrink-0">
             {isPrivate ? (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground font-medium">
+              <span className="inline-flex items-center gap-1 text-12 text-muted-foreground font-medium">
                 <Lock className="size-3 shrink-0" />
                 <span>Private</span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground font-medium">
+              <span className="inline-flex items-center gap-1 text-12 text-muted-foreground font-medium">
                 <Globe className="size-3 shrink-0" />
                 <span>Public</span>
               </span>
@@ -268,11 +268,11 @@ export function Card({ project, onArchive, onManageTags }: CardProps) {
               <div className="flex items-center gap-1">
                 <Avatar className="size-4.5 border border-background shrink-0">
                   <AvatarImage src={leadUser.avatar} alt={leadUser.name} />
-                  <AvatarFallback className="text-xs bg-muted font-medium">
+                  <AvatarFallback className="text-10 bg-muted font-medium">
                     {leadUser.name ? leadUser.name.charAt(0).toUpperCase() : 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-xs font-medium text-foreground truncate max-w-[80px]">
+                <span className="text-12 font-medium text-foreground truncate max-w-[80px]">
                   {leadUser.name || 'Lead'}
                 </span>
               </div>
@@ -283,20 +283,20 @@ export function Card({ project, onArchive, onManageTags }: CardProps) {
                   return (
                     <Avatar key={u.id || idx} className="size-4.5 border border-background shrink-0">
                       <AvatarImage src={u.avatar} alt={u.name} />
-                      <AvatarFallback className="text-xs bg-muted font-medium">
+                      <AvatarFallback className="text-10 bg-muted font-medium">
                         {u.name ? u.name.charAt(0).toUpperCase() : 'U'}
                       </AvatarFallback>
                     </Avatar>
                   );
                 })}
                 {extraMembersCount > 0 && (
-                  <span className="flex size-4.5 items-center justify-center rounded-full bg-muted text-xs font-medium border border-background">
+                  <span className="flex size-4.5 items-center justify-center rounded-full bg-muted text-10 font-medium border border-background">
                     +{extraMembersCount}
                   </span>
                 )}
               </div>
             ) : (
-              <span className="text-xs text-muted-foreground/60 italic">No members</span>
+              <span className="text-12 text-muted-foreground/60 italic">No members</span>
             )}
           </div>
         </div>

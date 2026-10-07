@@ -244,13 +244,16 @@ export function PresentationModeModal({
   return (
     <div
       ref={containerRef}
+      role="dialog"
+      aria-label="Presentation mode"
+      tabIndex={-1}
       onMouseMove={handleMouseMove}
       onClick={() => {
         if (isBlackout) setIsBlackout(false);
         if (isWhiteout) setIsWhiteout(false);
       }}
       className={cn(
-        'fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center select-none overflow-hidden',
+        'fixed inset-0 z-50 bg-black flex flex-col items-center justify-center select-none overflow-hidden',
         isLaserPointer ? 'cursor-none' : showControls ? 'cursor-default' : 'cursor-none',
       )}
     >
@@ -262,12 +265,12 @@ export function PresentationModeModal({
             options={documentOptions}
             loading={
               <div className="flex flex-col items-center gap-3 text-white/70">
-                <Loader2 className="size-8 animate-spin" />
+                <Loader2 className="size-8 animate-spin motion-reduce:animate-none" />
                 <span className="text-sm font-mono tracking-wide">Loading presentation...</span>
               </div>
             }
             error={
-              <div className="text-rose-400 text-sm font-medium">
+              <div className="text-destructive text-sm font-medium">
                 Failed to load slide presentation.
               </div>
             }
@@ -293,7 +296,7 @@ export function PresentationModeModal({
 
       {/* ── Blackout Screen Overlay (B) ─────────────────────────── */}
       {isBlackout && (
-        <div className="fixed inset-0 z-[101] bg-black flex flex-col items-center justify-center text-white/40 cursor-pointer animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center text-white/40 cursor-pointer animate-in fade-in duration-200 motion-reduce:animate-none">
           <Moon className="size-8 mb-2 opacity-50" />
           <p className="text-xs font-mono">Screen Blacked Out (Press B or Click to resume)</p>
         </div>
@@ -301,7 +304,7 @@ export function PresentationModeModal({
 
       {/* ── Whiteout Screen Overlay (W) ─────────────────────────── */}
       {isWhiteout && (
-        <div className="fixed inset-0 z-[101] bg-white flex flex-col items-center justify-center text-black/40 cursor-pointer animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center text-black/40 cursor-pointer animate-in fade-in duration-200 motion-reduce:animate-none">
           <Sun className="size-8 mb-2 opacity-50" />
           <p className="text-xs font-mono">Screen Whited Out (Press W or Click to resume)</p>
         </div>
@@ -310,21 +313,21 @@ export function PresentationModeModal({
       {/* ── Laser Pointer Dot (L) ───────────────────────────────── */}
       {isLaserPointer && laserPos && (
         <div
-          className="pointer-events-none fixed z-[102] transition-transform duration-75 ease-out"
+          className="pointer-events-none fixed z-50 transition-transform duration-75 ease-out"
           style={{
             left: laserPos.x - 7,
             top: laserPos.y - 7,
           }}
         >
           {/* Main glowing laser dot */}
-          <div className="size-3.5 rounded-full bg-red-500 shadow-[0_0_12px_3px_rgba(239,68,68,0.9),0_0_24px_6px_rgba(239,68,68,0.5)] animate-pulse" />
+          <div className="size-3.5 rounded-full bg-red-500 shadow-[0_0_12px_3px_rgba(239,68,68,0.9),0_0_24px_6px_rgba(239,68,68,0.5)] animate-pulse motion-reduce:animate-none" />
         </div>
       )}
 
       {/* ── Floating Presenter Control HUD ──────────────────────── */}
       <div
         className={cn(
-          'fixed bottom-6 z-[103] transition-all duration-300 ease-in-out',
+          'fixed bottom-6 z-50 transition-all duration-300 ease-in-out',
           showControls && !isBlackout && !isWhiteout
             ? 'opacity-100 translate-y-0'
             : 'opacity-0 translate-y-4 pointer-events-none',
@@ -411,7 +414,7 @@ export function PresentationModeModal({
             type="button"
             onClick={onClose}
             title="Exit presentation (Esc)"
-            className="size-7 rounded-sm flex items-center justify-center text-white/80 hover:text-rose-400 hover:bg-white/15 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-white"
+            className="size-7 rounded-sm flex items-center justify-center text-white/80 hover:text-destructive hover:bg-white/15 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-white"
           >
             <Minimize2 className="size-3.5 shrink-0" />
           </button>

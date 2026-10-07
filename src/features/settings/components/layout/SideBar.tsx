@@ -39,16 +39,16 @@ export function SideBar() {
         title={item.label}
         aria-current={isActive ? 'page' : undefined}
         className={cn(
-          'group/item relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors duration-150 outline-none select-none max-md:shrink-0',
+          'group/item relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors duration-150 select-none max-md:shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1.5 md:before:hidden',
           isActive
-            ? 'bg-muted text-foreground font-medium'
-            : 'text-foreground hover:bg-muted font-normal',
+            ? 'text-foreground font-medium'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/70 font-normal',
         )}
       >
         {isActive && (
           <motion.div
             layoutId={`settings-nav-active-${id}`}
-            className="absolute inset-0 rounded-md bg-muted"
+            className="absolute inset-0 rounded-md bg-muted motion-reduce:animate-none"
             initial={false}
             transition={{ type: 'spring', stiffness: 500, damping: 35 }}
           />
@@ -67,21 +67,21 @@ export function SideBar() {
   return (
     <aside
       aria-label="Settings navigation"
-      className="h-full w-60 shrink-0 border-r border-border bg-background md:bg-transparent flex flex-col select-none max-md:w-full max-md:border-r-0 max-md:border-b"
+      className="h-full w-60 shrink-0 border-r border-border bg-background md:bg-transparent flex flex-col select-none max-md:w-full max-md:h-auto max-md:border-r-0 max-md:border-b"
     >
-      <div className="flex-1 min-h-0 flex flex-col p-2.5 pt-4 pb-1 overflow-hidden">
-        {/* Header */}
-        <div className="mb-3 px-2 flex items-center justify-between font-semibold tracking-tight text-foreground select-none">
-          <span className="truncate min-w-0 font-semibold text-16 tracking-tight text-foreground">
-            Settings
-          </span>
-        </div>
+      {/* Topbar Header matching the h-11 border-b of PageHeader */}
+      <div className="h-11 border-b border-border px-4 flex items-center shrink-0 max-md:hidden">
+        <span className="font-semibold text-sm tracking-tight text-foreground">
+          Settings
+        </span>
+      </div>
 
+      <div className="flex-1 min-h-0 flex flex-col p-2.5 overflow-hidden">
         {/* Navigation Links */}
         <LayoutGroup id={`settings-nav-${id}`}>
           <nav
             aria-label="Settings Navigation"
-            className="flex-1 overflow-x-hidden overflow-y-auto flex flex-col gap-0.5 pr-1 max-md:flex-row max-md:overflow-x-auto"
+            className="flex-1 overflow-x-hidden overflow-y-auto flex flex-col gap-0.5 pr-1 max-md:flex-row max-md:overflow-x-auto max-md:py-1 max-md:px-1"
           >
             {navItems.map(renderItem)}
           </nav>

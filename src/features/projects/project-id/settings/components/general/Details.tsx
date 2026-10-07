@@ -68,58 +68,58 @@ export function GeneralDetails({
     <div className="space-y-5">
       {/* ── Project Name ── */}
       <div className="space-y-1.5">
-        <Label className="text-xs font-medium text-foreground">Project name</Label>
+        <Label className="text-12 font-medium text-foreground">Project name</Label>
         <Input
           value={name}
           onChange={(e) => onNameChange(e.target.value)}
           placeholder="Enter project name"
-          className={`h-10 text-xs rounded-md border-border bg-background focus:ring-0 focus:outline-none px-3 ${
+          className={`h-8 text-13 rounded-md border-border bg-background px-2.5 focus-visible:ring-1 focus-visible:ring-ring ${
             errors?.name ? 'border-destructive focus-visible:ring-destructive' : ''
           }`}
         />
         {errors?.name && (
-          <p className="text-xs text-destructive font-medium px-1">{errors.name.message}</p>
+          <p className="text-11 text-destructive font-medium px-0.5">{errors.name.message}</p>
         )}
       </div>
 
       {/* ── Description ── */}
       <div className="space-y-1.5">
-        <Label className="text-xs font-medium text-foreground">Description</Label>
+        <Label className="text-12 font-medium text-foreground">Description</Label>
         <Textarea
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
           placeholder="Enter project description"
-          className="text-xs min-h-[110px] rounded-md border-border bg-background focus:ring-0 focus:outline-none resize-none p-3 leading-relaxed"
+          className="text-13 min-h-[110px] rounded-md border-border bg-background focus-visible:ring-1 focus-visible:ring-ring resize-none p-2.5 leading-relaxed"
         />
       </div>
 
       {/* ── Project ID ── */}
       <div className="space-y-1.5 max-w-md">
-        <Label className="text-xs font-medium text-foreground">Project ID</Label>
+        <Label className="text-12 font-medium text-foreground">Project ID</Label>
         <div className="relative">
           <Input
             value={identifier}
             onChange={handleIdentifierInput}
             placeholder="e.g. XINCHAO23"
-            className={`h-10 text-xs font-mono font-medium rounded-md border-border bg-background focus:ring-0 focus:outline-none px-3 pr-9 ${
+            className={`h-8 text-13 font-mono font-medium rounded-md border-border bg-background px-2.5 pr-8 focus-visible:ring-1 focus-visible:ring-ring ${
               errors?.identifier ? 'border-destructive focus-visible:ring-destructive' : ''
             }`}
           />
           {errors?.identifier && (
-            <p className="text-xs text-destructive font-medium px-1 mt-1">{errors.identifier.message}</p>
+            <p className="text-11 text-destructive font-medium px-0.5 mt-1">{errors.identifier.message}</p>
           )}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 size-5 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring rounded transition-colors before:absolute before:-inset-2 md:before:hidden"
                   aria-label="Project ID info"
                 >
-                  <Info className="size-4 shrink-0" />
+                  <Info className="size-3.5 shrink-0" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent className="text-xs max-w-xs">
+              <TooltipContent className="text-12 max-w-xs shadow-overlay">
                 The project ID is used as the prefix for all work items in this project (e.g. {identifier || 'PRJ'}-1).
               </TooltipContent>
             </Tooltip>
@@ -132,13 +132,13 @@ export function GeneralDetails({
         <Button
           onClick={onSubmit}
           disabled={!hasChanges || isSaving || !name.trim()}
-          className="h-9 px-4 text-13 font-medium bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer rounded-md shadow-none shrink-0"
+          className="relative h-8 px-3.5 text-13 font-medium bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer rounded-md shadow-none shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
         >
-          {isSaving && <Loader2 className="mr-1.5 size-3.5 animate-spin shrink-0" />}
+          {isSaving && <Loader2 className="mr-1.5 size-3.5 animate-spin motion-reduce:animate-none shrink-0" />}
           Update project
         </Button>
 
-        <span className="text-13 text-muted-foreground">
+        <span className="text-12 text-muted-foreground">
           Created on {formattedDate}
         </span>
       </div>

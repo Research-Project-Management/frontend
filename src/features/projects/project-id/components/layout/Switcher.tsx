@@ -197,7 +197,7 @@ export function Switcher({
             aria-label="Switch project"
             title="Switch project"
             className={cn(
-              'size-6 flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0',
+              'size-6 flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer outline-none relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring shrink-0',
               open && 'bg-muted/60 text-foreground',
             )}
           >
@@ -214,7 +214,7 @@ export function Switcher({
         <PopoverContent
           align="start"
           sideOffset={6}
-          className="w-56 p-1.5 border border-border bg-popover text-popover-foreground rounded-lg shadow-raised-200 select-none z-50"
+          className="w-56 p-1.5 border border-border bg-popover text-popover-foreground rounded-md shadow-overlay select-none z-50"
         >
           {/* Search Box */}
           <div className="flex items-center gap-2 border border-border/70 rounded-md px-2.5 py-1.5 mb-1 bg-background">
@@ -225,14 +225,14 @@ export function Switcher({
               placeholder="Search projects…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+              className="flex-1 bg-transparent text-12 text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
           </div>
 
           {/* Project List */}
           <div className="max-h-56 overflow-y-auto space-y-0.5">
             {filteredProjects.length === 0 ? (
-              <div className="py-4 text-center text-xs text-muted-foreground">
+              <div className="py-4 text-center text-12 text-muted-foreground">
                 {search ? 'No projects found' : 'No projects yet'}
               </div>
             ) : (
@@ -244,14 +244,14 @@ export function Switcher({
                     type="button"
                     onClick={() => handleSelectProject(p.id)}
                     className={cn(
-                      'flex w-full items-center gap-2 px-2.5 py-1.5 rounded-md text-xs transition-colors cursor-pointer text-left',
+                      'flex w-full items-center gap-2 px-2.5 py-1.5 rounded-md text-12 transition-colors cursor-pointer text-left relative before:absolute before:-inset-0.5 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
                       isCurrent
                         ? 'bg-muted font-medium text-foreground'
                         : 'hover:bg-muted text-foreground',
                     )}
                   >
                     <ProjectAvatar avatar={p.avatar} name={p.name} id={p.id} size="xs" />
-                    <span className="truncate flex-1 text-xs text-foreground">{p.name}</span>
+                    <span className="truncate flex-1 text-12 text-foreground">{p.name}</span>
                     {isCurrent && (
                       <Check className="size-3.5 text-foreground shrink-0 ml-auto" strokeWidth={1.75} />
                     )}
@@ -270,7 +270,7 @@ export function Switcher({
           {moduleTitle}
         </span>
         {typeof count === 'number' && (
-          <span className="inline-flex items-center justify-center px-2 py-0.5 min-w-[20px] h-5 rounded-full text-11 font-mono font-medium bg-sky-500/15 text-sky-500 dark:bg-sky-500/20 dark:text-sky-400">
+          <span className="inline-flex items-center justify-center px-2 py-0.5 min-w-[20px] h-5 rounded-full text-11 font-mono font-medium bg-primary/10 text-primary">
             {count}
           </span>
         )}

@@ -15,7 +15,6 @@ import {
 } from "@/shared/components/ui";
 import { usePageStore, useCompileStore, useSettingsStore } from '@/features/editor/store';
 import { useProjectExport } from '@/features/editor/hooks/use-export';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import { duplicateProjectApi } from '@/features/projects/shell/services/project.service';
@@ -33,29 +32,25 @@ export default function FileMenu() {
   const handleNewFile = () => {
     useSettingsStore.getState().setActiveSidebarPanel('Files');
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'add-files', payload: { initialTab: 'new-file' } });
-    EditorEventBus.emit('flux:open-add-files', { initialTab: 'new-file' });
   };
 
   const handleNewFolder = () => {
     useSettingsStore.getState().setActiveSidebarPanel('Files');
-    EditorEventBus.emit('flux:new-folder');
+    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'new-folder' });
   };
 
   const handleUploadFile = () => {
     useSettingsStore.getState().setActiveSidebarPanel('Files');
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'add-files', payload: { initialTab: 'upload' } });
-    EditorEventBus.emit('flux:open-add-files', { initialTab: 'upload' });
   };
 
   const handleDeletedFiles = () => {
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'deleted-files' });
-    EditorEventBus.emit('flux:open-deleted-files');
   };
 
   const handleTemplateGallery = () => {
     setIsTemplateModalOpen(true);
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'template-gallery' });
-    EditorEventBus.emit('flux:open-template-gallery');
   };
 
   const {
@@ -96,7 +91,6 @@ export default function FileMenu() {
 
   const handleWordCount = () => {
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'word-count' });
-    EditorEventBus.emit('flux:open-word-count');
   };
 
   const handleDownloadPdf = () => {

@@ -127,7 +127,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
           <div className="flex-1 overflow-y-auto min-h-0 p-3">
             {isCommentsLoading || isSuggestionsLoading ? (
               <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
-                <Loader2 className="size-4 animate-spin shrink-0" />
+                <Loader2 className="size-4 animate-spin motion-reduce:animate-none shrink-0" />
                 <span className="text-xs">Loading review items…</span>
               </div>
             ) : totalAllItems === 0 ? (

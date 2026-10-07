@@ -98,7 +98,7 @@ export const Relations: React.FC<RelationsProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 px-1.5 text-11 font-medium text-foreground hover:bg-muted cursor-pointer flex items-center gap-1 rounded-md"
+                className="h-6 px-1.5 text-11 font-medium text-foreground hover:bg-muted cursor-pointer flex items-center gap-1 rounded-md relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <Plus className="size-3 shrink-0 text-foreground" />
                 <span>Add</span>
@@ -106,9 +106,9 @@ export const Relations: React.FC<RelationsProps> = ({
             </PopoverTrigger>
             <PopoverContent
               align="end"
-              className="w-88 p-3 rounded-md border border-border bg-popover z-100 space-y-3"
+              className="w-88 p-3 rounded-md border border-border bg-popover z-100 space-y-3 shadow-overlay"
             >
-              <div className="text-xs font-semibold text-foreground border-b border-border pb-2">
+              <div className="text-12 font-semibold text-foreground border-b border-border pb-2">
                 Add Issue Relation
               </div>
               <form onSubmit={handleAdd} className="space-y-3">
@@ -124,7 +124,7 @@ export const Relations: React.FC<RelationsProps> = ({
                           type="button"
                           onClick={() => setSelectedType(type)}
                           className={cn(
-                            'px-2 py-1.5 rounded-md text-11 font-medium text-left border transition-all cursor-pointer',
+                            'px-2 py-1.5 rounded-md text-11 font-medium text-left border transition-all cursor-pointer relative before:absolute before:-inset-1 md:before:hidden',
                             isSelected
                               ? 'bg-muted border-primary text-primary font-semibold'
                               : 'border-border hover:bg-muted text-foreground'
@@ -145,7 +145,7 @@ export const Relations: React.FC<RelationsProps> = ({
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search by title or ID..."
-                      className="h-8 pl-8 text-xs rounded-md border-border"
+                      className="h-8 pl-8 text-13 placeholder:text-muted-foreground rounded-md border-border focus-visible:ring-1 focus-visible:ring-ring"
                       autoFocus
                     />
                   </div>
@@ -189,7 +189,7 @@ export const Relations: React.FC<RelationsProps> = ({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-7 text-xs rounded-md text-foreground hover:bg-muted cursor-pointer"
+                    className="h-8 text-13 font-medium px-3 rounded-md text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
                     onClick={() => setOpenAddPopover(false)}
                   >
                     Cancel
@@ -197,7 +197,7 @@ export const Relations: React.FC<RelationsProps> = ({
                   <Button
                     type="submit"
                     size="sm"
-                    className="h-7 text-xs rounded-md shadow-none"
+                    className="h-8 text-13 font-medium px-3 rounded-md shadow-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
                     disabled={!selectedTargetItem}
                   >
                     Add Relation
@@ -213,7 +213,7 @@ export const Relations: React.FC<RelationsProps> = ({
         <div className="flex items-center gap-2 p-2.5 rounded-md bg-warning/10 border border-warning/20 text-warning text-xs">
           <ShieldAlert className="size-4 shrink-0" />
           <span>
-            This issue is <strong>blocked</strong> by {blockedByRelations.length} pending work item(s).
+            This issue is <span className="font-semibold">blocked</span> by {blockedByRelations.length} pending work item(s).
           </span>
         </div>
       )}
@@ -252,8 +252,9 @@ export const Relations: React.FC<RelationsProps> = ({
                   <button
                     type="button"
                     onClick={() => onRemoveRelation(rel.id, rel.targetId || rel.targetWorkItemId)}
-                    className="opacity-0 group-hover:opacity-100 hover:text-red-500 p-1 text-foreground cursor-pointer transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 hover:text-destructive p-1 text-foreground cursor-pointer transition-opacity rounded-md relative before:absolute before:-inset-2 md:before:hidden"
                     title="Remove relation"
+                    aria-label="Remove relation"
                   >
                     <X className="size-3.5 shrink-0" />
                   </button>

@@ -241,7 +241,7 @@ export function LibraryTopbar({
                   variant="ghost"
                   size="icon"
                   onClick={handleToggleSidebar}
-                  className="size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0"
+                  className="size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0 relative before:absolute before:-inset-1.5 md:before:hidden"
                   aria-label="Expand sidebar"
                 >
                   <PanelLeft className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
@@ -286,7 +286,7 @@ export function LibraryTopbar({
                   {!isLast && onNavigateCrumb ? (
                     <button
                       type="button"
-                      className="flex items-center gap-1.5 h-7 px-1.5 rounded-md text-13 font-medium text-foreground hover:bg-muted/60 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 select-none text-left"
+                      className="flex items-center gap-1.5 h-7 px-1.5 rounded-md text-13 font-medium text-foreground hover:bg-muted/60 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 select-none text-left relative before:absolute before:-inset-1.5 md:before:hidden"
                       onClick={() => onNavigateCrumb(crumb.id)}
                     >
                       {idx === 0 && Icon && (

@@ -97,7 +97,7 @@ export default function AiPage() {
       <PageLayout>
         <PageHeader title="AI Assistant" icon={Sparkles} />
         <PageContent maxWidth="md">
-          <div className="text-sm text-muted-foreground">
+          <div className="text-12 text-muted-foreground">
             Error loading project AI settings.
           </div>
         </PageContent>
@@ -110,7 +110,7 @@ export default function AiPage() {
       size="sm"
       onClick={handleSave}
       disabled={!hasChanges || updateMutation.isPending}
-      className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-none shrink-0"
+      className="relative h-8 text-12 font-medium px-3.5 rounded-md bg-ai hover:bg-ai-hover text-ai-foreground cursor-pointer shadow-none shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ai before:absolute before:-inset-1 md:before:hidden"
     >
       Save settings
     </Button>
@@ -140,7 +140,7 @@ export default function AiPage() {
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
               placeholder="Enter custom research guidance for the AI assistant..."
-              className="text-13 rounded-md border-border bg-background focus:ring-1 focus:ring-primary resize-y"
+              className="text-13 rounded-md border-border bg-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ai resize-y"
             />
 
             <div className="flex flex-wrap items-center gap-1.5 pt-1">
@@ -150,7 +150,7 @@ export default function AiPage() {
                   key={scope}
                   type="button"
                   onClick={() => setSystemPrompt((prev) => `${prev} Research scope: ${scope}.`)}
-                  className="text-11 px-2 py-0.5 rounded border border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer"
+                  className="relative text-11 px-2 py-0.5 rounded border border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ai before:absolute before:-inset-1 md:before:hidden"
                 >
                   + {scope}
                 </button>
@@ -179,15 +179,15 @@ export default function AiPage() {
                     key={m.id}
                     type="button"
                     onClick={() => setSelectedModel(m.id)}
-                    className={`flex flex-col text-left p-3.5 rounded-md border transition-all cursor-pointer ${
+                    className={`relative flex flex-col text-left p-3.5 rounded-md border transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ai before:absolute before:-inset-1 md:before:hidden ${
                       isSelected
-                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                        ? 'border-ai bg-ai/5 ring-1 ring-ai'
                         : 'border-border bg-background hover:bg-muted/50'
                     }`}
                   >
                     <div className="flex items-center justify-between w-full">
                       <span className="text-13 font-semibold text-foreground">{m.name}</span>
-                      {isSelected && <Check className="size-4 text-primary shrink-0" />}
+                      {isSelected && <Check className="size-4 text-ai shrink-0" />}
                     </div>
                     <span className="text-11 text-muted-foreground mt-1.5 leading-relaxed">
                       {m.desc}
@@ -204,7 +204,14 @@ export default function AiPage() {
                   Automatically index project attachments, papers, and manuscripts into vector context.
                 </p>
               </div>
-              <Switch checked={enableRAG} onCheckedChange={setEnableRAG} />
+              <div className="relative shrink-0 flex items-center">
+                <Switch
+                  checked={enableRAG}
+                  onCheckedChange={setEnableRAG}
+                  aria-label="Enable Project RAG Knowledge Indexing"
+                  className="relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ai"
+                />
+              </div>
             </div>
           </div>
 
@@ -227,7 +234,14 @@ export default function AiPage() {
                     Allow researchers to invoke AI code scaffolding and manuscript section drafting.
                   </p>
                 </div>
-                <Switch checked={contributorCanDraft} onCheckedChange={setContributorCanDraft} />
+                <div className="relative shrink-0 flex items-center">
+                  <Switch
+                    checked={contributorCanDraft}
+                    onCheckedChange={setContributorCanDraft}
+                    aria-label="Allow Contributor AI Code and Paper Draft Generation"
+                    className="relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ai"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center justify-between py-3">
@@ -239,7 +253,14 @@ export default function AiPage() {
                     Equip supervisors with one-click AI audit to check paper claims against references.
                   </p>
                 </div>
-                <Switch checked={commenterFactCheck} onCheckedChange={setCommenterFactCheck} />
+                <div className="relative shrink-0 flex items-center">
+                  <Switch
+                    checked={commenterFactCheck}
+                    onCheckedChange={setCommenterFactCheck}
+                    aria-label="Enable Supervisor AI Review and Fact-Check Tool"
+                    className="relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ai"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center justify-between py-3">
@@ -251,7 +272,14 @@ export default function AiPage() {
                     Restrict external council members to read-only synthesized progress reports.
                   </p>
                 </div>
-                <Switch checked={viewerSummaryOnly} onCheckedChange={setViewerSummaryOnly} />
+                <div className="relative shrink-0 flex items-center">
+                  <Switch
+                    checked={viewerSummaryOnly}
+                    onCheckedChange={setViewerSummaryOnly}
+                    aria-label="Restrict Viewer to Executive Summary Only"
+                    className="relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ai"
+                  />
+                </div>
               </div>
             </div>
           </div>

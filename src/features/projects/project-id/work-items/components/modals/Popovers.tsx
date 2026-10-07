@@ -183,7 +183,7 @@ export const ProjectSelectorPopover: React.FC<ProjectSelectorPopoverProps> = ({
         <button
           type="button"
           className={cn(
-            'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-normal text-foreground cursor-pointer transition-colors border border-border bg-background hover:bg-background outline-none select-none',
+            'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-normal text-foreground cursor-pointer transition-colors border border-border bg-background hover:bg-background outline-none select-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
             open && 'bg-muted border-border'
           )}
         >
@@ -198,7 +198,7 @@ export const ProjectSelectorPopover: React.FC<ProjectSelectorPopoverProps> = ({
         align="start"
         side="bottom"
         sideOffset={4}
-        className="w-64 p-1.5 rounded-md border border-border bg-popover z-100 flex flex-col"
+        className="w-64 p-1.5 rounded-md border border-border bg-popover shadow-overlay z-100 flex flex-col"
       >
         <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-background mb-1">
           <Search className="size-3.5 text-foreground shrink-0" />
@@ -206,6 +206,7 @@ export const ProjectSelectorPopover: React.FC<ProjectSelectorPopoverProps> = ({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search projects..."
+            aria-label="Search projects"
             className="w-full bg-transparent text-xs outline-none placeholder:text-foreground/70 text-foreground"
             autoFocus
           />
@@ -289,7 +290,10 @@ export const StatePopover: React.FC<StatePopoverProps> = ({
         <Button
           variant="outline"
           size="sm"
-          className={cn(actionBtnClass)}
+          className={cn(
+            'relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
+            actionBtnClass
+          )}
         >
           <StateItemIcon col={activeCol} />
           <span>{activeCol?.title || activeCol?.name || columnId || 'Backlog'}</span>
@@ -299,15 +303,16 @@ export const StatePopover: React.FC<StatePopoverProps> = ({
         align="start"
         side="bottom"
         sideOffset={6}
-        className="w-48 p-1.5 rounded-md border border-border bg-popover z-100 flex flex-col"
+        className="w-48 p-1.5 rounded-md border border-border bg-popover shadow-overlay z-100 flex flex-col"
       >
         <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1">
-          <Search className="size-3.5 text-foreground shrink-0" />
+          <Search className="size-3.5 text-muted-foreground shrink-0" />
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search states..."
-            className="w-full bg-transparent text-xs outline-none placeholder:text-foreground/70 text-foreground"
+            aria-label="Search states"
+            className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground text-foreground focus-visible:ring-1 focus-visible:ring-ring"
             autoFocus
           />
         </div>
@@ -388,7 +393,7 @@ export const PriorityPopover: React.FC<PriorityPopoverProps> = ({
           variant="outline"
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shrink-0',
+            'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
             actionBtnClass
           )}
         >
@@ -400,7 +405,7 @@ export const PriorityPopover: React.FC<PriorityPopoverProps> = ({
         align="start"
         side="bottom"
         sideOffset={6}
-        className="w-36 p-1 rounded-md border border-border bg-popover z-100 flex flex-col space-y-0.5"
+        className="w-36 p-1 rounded-md border border-border bg-popover shadow-overlay z-100 flex flex-col space-y-0.5"
       >
         {PRIORITY_OPTIONS.map((opt) => {
           const isSelected = currentKey === opt.id;
@@ -580,7 +585,7 @@ export function MemberPopover({
           variant="outline"
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+            'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
             actionBtnClass,
             open && 'bg-muted border-border',
             selectedMembers.length > 0 && 'font-medium'
@@ -613,15 +618,16 @@ export function MemberPopover({
         align="start"
         side="bottom"
         sideOffset={4}
-        className="w-64 p-1.5 rounded-md border border-border bg-popover z-100 flex flex-col"
+        className="w-64 p-1.5 rounded-md border border-border bg-popover shadow-overlay z-100 flex flex-col"
       >
         <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1">
-          <Search className="size-3.5 text-foreground shrink-0" />
+          <Search className="size-3.5 text-muted-foreground shrink-0" />
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search members..."
-            className="w-full bg-transparent text-xs outline-none placeholder:text-foreground/70 text-foreground"
+            aria-label="Search members"
+            className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground text-foreground focus-visible:ring-1 focus-visible:ring-ring"
             autoFocus
           />
         </div>
@@ -735,7 +741,7 @@ export function LabelPopover({
           variant="outline"
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shrink-0',
+            'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
             iconOnly && 'size-6 p-0 justify-center gap-0',
             actionBtnClass,
             isOpen && 'bg-muted border-border',
@@ -751,15 +757,16 @@ export function LabelPopover({
         align="start"
         side="bottom"
         sideOffset={4}
-        className="w-56 p-1.5 rounded-md border border-border bg-popover z-100 flex flex-col"
+        className="w-56 p-1.5 rounded-md border border-border bg-popover shadow-overlay z-100 flex flex-col"
       >
         <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1">
-          <Search className="size-3.5 text-foreground shrink-0" />
+          <Search className="size-3.5 text-muted-foreground shrink-0" />
           <input
             placeholder="Search labels..."
+            aria-label="Search labels"
             value={labelSearch}
             onChange={(e) => setLabelSearch(e.target.value)}
-            className="w-full bg-transparent text-xs outline-none placeholder:text-foreground/70 text-foreground"
+            className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground text-foreground focus-visible:ring-1 focus-visible:ring-ring"
             autoFocus
           />
         </div>
@@ -905,7 +912,7 @@ export function DatePopover({
             variant="outline"
             size="sm"
             className={cn(
-              'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+              'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
               actionBtnClass,
               open && 'bg-muted border-border'
             )}
@@ -920,7 +927,7 @@ export function DatePopover({
         side="bottom"
         sideOffset={6}
         collisionPadding={16}
-        className="w-[520px] p-0 rounded-md border border-border overflow-hidden flex flex-col z-100 bg-popover"
+        className="w-[520px] p-0 rounded-md border border-border overflow-hidden flex flex-col z-100 bg-popover shadow-overlay"
       >
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border shrink-0 bg-popover">
           <div className="flex items-center gap-2">
@@ -1006,6 +1013,7 @@ export function DatePopover({
                 </label>
                 <Input
                   readOnly
+                  aria-label="Start date"
                   value={selectedRange.from ? selectedRange.from.toLocaleDateString() : 'M/D/YYYY'}
                   className="h-7 w-24 text-11 text-center px-1 font-mono rounded-md border-border"
                 />
@@ -1022,6 +1030,7 @@ export function DatePopover({
                 </label>
                 <Input
                   readOnly
+                  aria-label="Due date"
                   value={
                     selectedRange.to
                       ? selectedRange.to.toLocaleDateString()
@@ -1112,11 +1121,11 @@ export function SingleDatePopover({
           size="sm"
           className={cn(
             variant === 'ghost'
-              ? 'h-7 px-2 text-xs font-normal rounded-md bg-transparent hover:bg-muted/50 text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 border-0'
-              : 'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+              ? 'h-7 px-2 text-xs font-normal rounded-md bg-transparent hover:bg-muted/50 text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 border-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring'
+              : 'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
             actionBtnClass,
             open && (variant === 'ghost' ? 'bg-muted/60' : 'bg-muted border-border'),
-            date && 'text-foreground font-semibold'
+            date && 'text-foreground font-medium'
           )}
         >
           <DateCalendarIcon />
@@ -1127,7 +1136,7 @@ export function SingleDatePopover({
         align="start"
         side="bottom"
         sideOffset={6}
-        className="w-auto p-0 rounded-md border border-border flex flex-col z-100 bg-popover"
+        className="w-auto p-0 rounded-md border border-border flex flex-col z-100 bg-popover shadow-overlay"
       >
         <div className="p-2 bg-background">
           <Calendar className="shrink-0"
@@ -1213,7 +1222,7 @@ export const ParentItemPopover: React.FC<ParentItemPopoverProps> = ({
           variant="outline"
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+            'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
             actionBtnClass,
             open && 'bg-muted border-border',
             selectedParent && 'font-medium'
@@ -1229,15 +1238,16 @@ export const ParentItemPopover: React.FC<ParentItemPopoverProps> = ({
         align="start"
         side="bottom"
         sideOffset={4}
-        className="w-64 p-1.5 rounded-md border border-border bg-popover z-100 flex flex-col"
+        className="w-64 p-1.5 rounded-md border border-border bg-popover shadow-overlay z-100 flex flex-col"
       >
         <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1">
-          <Search className="size-3.5 text-foreground shrink-0" />
+          <Search className="size-3.5 text-muted-foreground shrink-0" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search work items..."
-            className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+            aria-label="Search work items"
+            className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground text-foreground focus-visible:ring-1 focus-visible:ring-ring"
             autoFocus
           />
         </div>

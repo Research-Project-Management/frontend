@@ -11,7 +11,7 @@ import {
   MessageSquare,
   GitPullRequest,
   AtSign,
-  Sparkles,
+  Bot,
 } from 'lucide-react';
 import {
   usePendingBundles,
@@ -83,9 +83,9 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
       case 'mention':
         return <AtSign className="w-3.5 h-3.5 text-primary shrink-0" />;
       case 'suggestion':
-        return <GitPullRequest className="w-3.5 h-3.5 text-amber-500 shrink-0" />;
+        return <GitPullRequest className="w-3.5 h-3.5 text-warning shrink-0" />;
       default:
-        return <MessageSquare className="w-3.5 h-3.5 text-emerald-500 shrink-0" />;
+        return <MessageSquare className="w-3.5 h-3.5 text-primary shrink-0" />;
     }
   };
 
@@ -102,28 +102,38 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
         : '');
 
     return (
-      <div className="mb-3 rounded-md border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs transition-colors">
+      <div className="mb-3 rounded-md border border-warning/25 bg-warning/10 p-2.5 text-xs transition-colors">
         <div className="flex items-center justify-between gap-2">
           <div
-            className="flex items-center gap-2 cursor-pointer select-none flex-1 min-w-0"
+            role="button"
+            tabIndex={0}
+            aria-expanded={isExpanded}
+            aria-label="Toggle notification digest details"
+            className="flex items-center gap-2 cursor-pointer select-none flex-1 min-w-0 outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-sm"
             onClick={() => setIsExpanded(!isExpanded)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setIsExpanded(!isExpanded);
+              }
+            }}
           >
-            <div className="relative flex items-center justify-center p-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 shrink-0">
-              <Clock className="w-3.5 h-3.5 animate-pulse" />
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-500 rounded-full ring-2 ring-background" />
+            <div className="relative flex items-center justify-center p-1.5 rounded-full bg-warning/15 text-warning shrink-0">
+              <Clock className="w-3.5 h-3.5 animate-pulse motion-reduce:animate-none" />
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-warning rounded-full ring-2 ring-background" />
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 font-medium text-amber-900 dark:text-amber-200 truncate">
+              <div className="flex items-center gap-1.5 font-medium text-foreground truncate">
                 <span>
                   <span className="font-mono">{activeBundleInfo.itemCount}</span> review update
                   {activeBundleInfo.itemCount > 1 ? 's' : ''} buffered
                 </span>
-                <span className="text-11 font-mono text-amber-600/80 dark:text-amber-400/80 font-normal">
+                <span className="text-11 font-mono text-muted-foreground font-normal">
                   ({formatRemainingTime(remainingSecs)})
                 </span>
               </div>
-              <p className="text-12 text-amber-700/80 dark:text-amber-400/80 truncate leading-normal">
+              <p className="text-12 text-muted-foreground truncate leading-normal">
                 From {authorsText} · 10m Overleaf digest window
               </p>
             </div>
@@ -134,11 +144,11 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
               type="button"
               disabled={flushBundle.isPending}
               onClick={handleFlushNow}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-sm text-12 font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-100 transition-colors disabled:opacity-50 cursor-pointer leading-normal"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-sm text-12 font-medium bg-warning/20 hover:bg-warning/30 text-foreground transition-colors disabled:opacity-50 cursor-pointer leading-normal outline-none focus-visible:ring-1 focus-visible:ring-primary"
               title="Flush digest immediately to collaborators"
             >
               {flushBundle.isPending ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
+                <Loader2 className="w-3 h-3 animate-spin motion-reduce:animate-none" />
               ) : (
                 <Send className="w-3 h-3" />
               )}
@@ -148,7 +158,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
             <button
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="p-1 rounded-sm text-amber-700 dark:text-amber-300 hover:bg-amber-200/50 dark:hover:bg-amber-900/40 transition-colors cursor-pointer"
+              className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
               title={isExpanded ? 'Collapse' : 'Expand details'}
             >
               {isExpanded ? (
@@ -162,7 +172,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
 
         {/* Expandable list of buffered items */}
         {isExpanded && (
-          <div className="mt-2.5 pt-2 border-t border-amber-200/50 dark:border-amber-900/40 space-y-1.5 max-h-48 overflow-y-auto">
+          <div className="mt-2.5 pt-2 border-t border-warning/20 space-y-1.5 max-h-48 overflow-y-auto">
             {items.map((item: BundledNotificationItem) => (
               <div
                 key={item.id}
@@ -201,7 +211,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
     return (
       <div className="mb-3 rounded-md border border-border/60 bg-muted/30 p-2 text-xs flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+          <Bot className="w-3.5 h-3.5 text-foreground shrink-0" />
           <div className="truncate">
             <span className="font-medium text-foreground">Latest Digest: </span>
             <span className="text-muted-foreground">{latestDigest.summary}</span>

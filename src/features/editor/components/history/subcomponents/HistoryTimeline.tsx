@@ -51,27 +51,31 @@ export function HistoryTimeline({
     >
       {/* Top Switcher: [ All history | Labels ] */}
       <div className="p-3 border-b border-border shrink-0">
-        <div className="inline-flex w-full items-center rounded-md bg-muted p-1 gap-1 text-12">
+        <div className="inline-flex w-full items-center rounded-md bg-muted p-1 gap-1 text-12" role="tablist" aria-label="History view mode">
           <button
             type="button"
+            role="tab"
+            aria-selected={timelineTab === 'all'}
             onClick={() => onChangeTab('all')}
             className={cn(
               'flex-1 py-1 px-2.5 rounded-sm text-12 font-medium transition-colors cursor-pointer text-center outline-none focus-visible:ring-1 focus-visible:ring-primary',
               timelineTab === 'all'
-                ? 'bg-background text-foreground font-semibold shadow-xs'
-                : 'text-muted-foreground hover:text-foreground',
+                ? 'bg-background text-foreground font-semibold border border-border/60'
+                : 'text-muted-foreground hover:text-foreground border border-transparent',
             )}
           >
             All history
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={timelineTab === 'labels'}
             onClick={() => onChangeTab('labels')}
             className={cn(
               'flex-1 py-1 px-2.5 rounded-sm text-12 font-medium transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5 outline-none focus-visible:ring-1 focus-visible:ring-primary',
               timelineTab === 'labels'
-                ? 'bg-background text-foreground font-semibold shadow-xs'
-                : 'text-muted-foreground hover:text-foreground',
+                ? 'bg-background text-foreground font-semibold border border-border/60'
+                : 'text-muted-foreground hover:text-foreground border border-transparent',
             )}
           >
             <span>Labels</span>
@@ -88,7 +92,7 @@ export function HistoryTimeline({
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-48 text-muted-foreground text-12 gap-2">
-            <Clock className="size-5 animate-spin opacity-50 text-primary" />
+            <Clock className="size-5 animate-spin opacity-50 text-primary motion-reduce:animate-none" />
             <span>Loading revision history…</span>
           </div>
         ) : groupedTimeline.length === 0 ? (
@@ -128,6 +132,7 @@ export function HistoryTimeline({
                     role="button"
                     tabIndex={0}
                     aria-selected={isSelected}
+                    aria-current={isSelected ? 'true' : undefined}
                     aria-label={`Revision from ${timeStr} by ${item.author}`}
                     onClick={() => onSelectRevision(item.id)}
                     onKeyDown={(e) => {
@@ -139,7 +144,7 @@ export function HistoryTimeline({
                     className={cn(
                       'group relative rounded-md p-2.5 transition-colors cursor-pointer select-none border outline-none focus-visible:ring-2 focus-visible:ring-primary',
                       isSelected
-                        ? 'bg-primary/10 border-primary/40 text-foreground font-medium shadow-xs'
+                        ? 'bg-primary/10 border-primary/40 text-foreground font-medium'
                         : 'bg-card hover:bg-muted/50 border-border text-foreground',
                     )}
                   >

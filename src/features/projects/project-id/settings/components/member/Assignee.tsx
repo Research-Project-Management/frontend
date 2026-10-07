@@ -34,8 +34,8 @@ export function Assignee({
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
-        <h3 className="text-sm font-medium text-foreground">Default assignee</h3>
-        <p className="text-xs text-muted-foreground mt-0.5">
+        <h3 className="text-13 font-medium text-foreground">Default assignee</h3>
+        <p className="text-12 text-muted-foreground mt-0.5">
           Select the default assignee for the project.
         </p>
       </div>
@@ -46,7 +46,7 @@ export function Assignee({
             type="button"
             disabled={disabled}
             className={cn(
-              'w-full sm:w-72 h-9 flex items-center justify-between px-3 rounded-md border border-border bg-background hover:bg-muted text-xs transition-colors cursor-pointer outline-none focus:ring-0 focus:outline-none shrink-0',
+              'relative w-full sm:w-72 h-8 flex items-center justify-between px-2.5 rounded-md border border-border bg-background hover:bg-muted text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0 before:absolute before:-inset-1 md:before:hidden',
               disabled && 'opacity-60 cursor-not-allowed'
             )}
           >
@@ -57,7 +57,7 @@ export function Assignee({
                     {selected.user.avatar && (
                       <AvatarImage src={selected.user.avatar} className="object-cover" />
                     )}
-                    <AvatarFallback className="text-xs bg-muted font-medium">
+                    <AvatarFallback className="text-11 bg-muted font-medium">
                       {selected.user.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -67,7 +67,7 @@ export function Assignee({
                 </>
               ) : (
                 <>
-                  <UserIcon className="size-4 text-muted-foreground shrink-0" />
+                  <UserIcon className="size-3.5 text-muted-foreground shrink-0" />
                   <span className="text-muted-foreground">Select default assignee</span>
                 </>
               )}
@@ -76,13 +76,13 @@ export function Assignee({
           </button>
         </PopoverTrigger>
 
-        <PopoverContent align="end" className="w-72 p-1.5 rounded-md">
+        <PopoverContent align="end" className="w-72 p-1.5 rounded-md shadow-overlay">
           <div className="p-1 pb-1.5">
             <Input
               placeholder="Search members..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-8 text-xs border-border focus:ring-0 focus:outline-none"
+              className="h-8 text-12 border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
 
@@ -94,7 +94,7 @@ export function Assignee({
                   onSelect(null);
                   setOpen(false);
                 }}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
+                className="relative w-full h-8 flex items-center gap-2 px-2 rounded-md text-12 text-muted-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
               >
                 <X className="size-3.5 shrink-0 text-muted-foreground" />
                 <span>None (Clear default assignee)</span>
@@ -102,7 +102,7 @@ export function Assignee({
             )}
 
             {filtered.length === 0 ? (
-              <div className="p-4 text-center text-xs text-muted-foreground">
+              <div className="p-4 text-center text-12 text-muted-foreground">
                 No members found
               </div>
             ) : (
@@ -117,7 +117,7 @@ export function Assignee({
                       setOpen(false);
                     }}
                     className={cn(
-                      'w-full flex items-center justify-between px-2 py-1.5 rounded-md text-xs transition-colors cursor-pointer',
+                      'relative w-full h-8 flex items-center justify-between px-2 rounded-md text-12 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden',
                       isSelected
                         ? 'bg-muted text-foreground font-medium'
                         : 'text-foreground hover:bg-muted'
@@ -128,7 +128,7 @@ export function Assignee({
                         {m.user.avatar && (
                           <AvatarImage src={m.user.avatar} className="object-cover" />
                         )}
-                        <AvatarFallback className="text-xs bg-muted font-medium">
+                        <AvatarFallback className="text-11 bg-muted font-medium">
                           {m.user.name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>

@@ -21,6 +21,7 @@ import {
   type CollaboratorUser,
 } from '@/features/editor/collaboration/yjs-socket-provider';
 import * as Y from 'yjs';
+import { visibilityHibernationCoordinator } from '@/features/editor/core';
 
 export interface UseEditorCollaboratorsOptions {
   projectId: string;
@@ -46,7 +47,8 @@ export function useEditorCollaborators({
   providerRef.current = provider;
 
   useEffect(() => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    // RFC 4122 & RFC 9562 compliant regex allowing UUID versions 1 through 8 (including UUIDv7 used by database)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!pageId || !projectId || !uuidRegex.test(pageId) || !uuidRegex.test(projectId)) {
       setProvider(null);
       setConnectionStatus('disconnected');
@@ -100,9 +102,18 @@ export function useEditorCollaborators({
       })
       .catch(() => {});
 
-    // Send periodic heartbeat every 20s
+    // Register awareness presence toggler with VisibilityHibernationCoordinator
+    const unsubAwareness = visibilityHibernationCoordinator.registerAwarenessHandler((isOnline) => {
+      if (socketProvider.awareness) {
+        socketProvider.awareness.setLocalStateField('status', isOnline ? 'online' : 'away');
+      }
+    });
+
+    // Send periodic heartbeat every 20s only when tab is active
     const heartbeatTimer = setInterval(() => {
-      collaborationService.sendHeartbeat(pageId).catch(() => {});
+      if (visibilityHibernationCoordinator.isTabActive()) {
+        collaborationService.sendHeartbeat(pageId).catch(() => {});
+      }
     }, 20000);
 
     // Subscribe to SSE collaboration stream for locks & auxiliary events
@@ -124,6 +135,7 @@ export function useEditorCollaborators({
 
     return () => {
       isMounted = false;
+      unsubAwareness();
       clearInterval(heartbeatTimer);
       unsubscribeStream();
       socketProvider.destroy();
@@ -145,8 +157,7 @@ export function useEditorCollaborators({
     lockedBy,
     sendCursor,
     connectionStatus,
-    isSynced,
-    isRealtimeActive: true,
+    isRealtimeActive: Boolean(provider && connectionStatus === 'connected'),
     triggerCheckpoint: () => providerRef.current?.triggerCheckpoint(),
     yText: provider ? provider.yText : null,
     awareness: provider ? provider.awareness : null,

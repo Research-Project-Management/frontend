@@ -423,7 +423,7 @@ export const isDueSoon = WorkItemHelpers.isDueSoon;
 export const resolveWorkItemColumnColor = resolveColumnColor;
 export const resolveItemColumnColor = resolveColumnColor;
 export const resolveItemColumnId = resolveColumnId;
-export { DEFAULT_STATES };
+export { DEFAULT_STATES, PRIORITY_THEME_COLORS, GROUP_DEFAULT_COLORS } from '../types/work-item.types';
 
 export function getItemBucketKey(item: Item, groupBy?: string): string {
   if (!groupBy || groupBy === 'state') {

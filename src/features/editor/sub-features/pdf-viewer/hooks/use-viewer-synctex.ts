@@ -4,7 +4,6 @@ import { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePageStore } from '../../../store';
 import { LatexCompilerEngine, type SyncTeXMap } from '../../../utils/viewer.util';
-import { EditorEventBus } from '../../../utils/editor.util';
 import { editorCommandBus } from '../../../core/command-bus/editor-command-bus';
 import type { SurfaceHandle } from '../../../components/viewer/Surface';
 
@@ -174,19 +173,27 @@ export function useViewerSyncTeX({
     return unsub;
   }, [pageId, projectId, activeFilePage?.title, scale, numPages, setPageNumber, pdfSurfaceRef, synctexMapRef]);
 
-  // SyncTeX reverse search event listener (Floating widget backward arrow)
+  // SyncTeX reverse search event listener (Floating widget backward arrow & CommandBus)
   useEffect(() => {
-    return EditorEventBus.on('flux:synctex-backward', () => {
-      const p = pageNumber || 1;
+    const handleReverse = (customPage?: number, customX?: number, customY?: number) => {
+      const p = customPage || pageNumber || 1;
       const resolved = synctexMapRef.current
-        ? LatexCompilerEngine.resolveReverse(0.25, p, synctexMapRef.current)
+        ? LatexCompilerEngine.resolveReverse(0.25, p, synctexMapRef.current, customX, customY)
         : null;
       if (resolved?.line) {
-        handleJumpToSource(resolved.sourcePath, resolved.line, p);
+        handleJumpToSource(resolved.sourcePath, resolved.line, p, customX, customY);
       } else {
         handleJumpToSource(null, 1, p, 200, 200);
       }
+    };
+
+    const unsubCmd = editorCommandBus.subscribe('synctex:backward', (cmd) => {
+      handleReverse(cmd.page, cmd.x, cmd.y);
     });
+
+    return () => {
+      unsubCmd();
+    };
   }, [pageNumber, handleJumpToSource, synctexMapRef]);
 
   return {

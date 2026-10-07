@@ -17,11 +17,11 @@ export default function EmptyState({ searchQuery }: EmptyStateProps = {}) {
       <div className="size-12 rounded-md bg-muted border border-border flex items-center justify-center">
         <copy.Icon className="size-6 text-muted-foreground/50 shrink-0" />
       </div>
-      <p className="text-base font-semibold tracking-tight text-foreground">
+      <p className="text-16 font-semibold tracking-tight text-foreground">
         {searchQuery ? copy.emptySearch : copy.empty}
       </p>
       {!searchQuery && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-13 text-muted-foreground font-normal">
           {copy.cta}
         </p>
       )}

@@ -172,7 +172,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
     currentCslStyle,
   );
 
-  const rawCiteKey = paper ? getPaperCitationKey(paper) : '';
+  const rawCiteKey = paper?.citationKey || paper?.key || (paper ? getPaperCitationKey(paper) : '');
   const citeKey = useMemo(() => {
     return (rawCiteKey || 'ref').replace(/[^a-zA-Z0-9_-]/g, '');
   }, [rawCiteKey]);

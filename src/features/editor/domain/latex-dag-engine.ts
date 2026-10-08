@@ -37,23 +37,75 @@ export interface DependencyGraphAnalysis {
 }
 
 /**
- * Normalizes LaTeX file paths.
+ * Normalizes LaTeX file paths:
+ * - Strips quotes, spaces, and backslashes
+ * - Strips leading "./" and "/"
+ * - Appends default extension (.tex, .bib) if no extension present
  */
-export function normalizeLatexPath(rawPath: string): string {
+export function normalizeLatexPath(rawPath: string, defaultExt: string = '.tex'): string {
   if (!rawPath) return '';
   let clean = rawPath.trim().replace(/^["']|["']$/g, '').replace(/\\/g, '/');
 
-  if (clean.startsWith('./')) {
+  while (clean.startsWith('./')) {
     clean = clean.slice(2);
+  }
+  while (clean.startsWith('/')) {
+    clean = clean.slice(1);
   }
 
   const lastSlash = clean.lastIndexOf('/');
   const filename = lastSlash >= 0 ? clean.slice(lastSlash + 1) : clean;
   if (!filename.includes('.')) {
-    clean = `${clean}.tex`;
+    const ext = defaultExt.startsWith('.') ? defaultExt : `.${defaultExt}`;
+    clean = `${clean}${ext}`;
   }
 
   return clean;
+}
+
+/**
+ * Resolves relative LaTeX path against base directory of containing file.
+ * Handles "../" parent traversal, subfolder scoping, and extension normalization.
+ * E.g. baseDir="sections", target="../main.tex" -> "main.tex"
+ *      baseDir="sections", target="intro" -> "sections/intro.tex"
+ */
+export function resolveRelativeLatexPath(
+  baseDir: string,
+  targetPath: string,
+  defaultExt: string = '.tex',
+): string {
+  if (!targetPath) return '';
+  let cleanTarget = targetPath.trim().replace(/^["']|["']$/g, '').replace(/\\/g, '/');
+
+  while (cleanTarget.startsWith('./')) {
+    cleanTarget = cleanTarget.slice(2);
+  }
+
+  // Root-relative path
+  if (cleanTarget.startsWith('/')) {
+    return normalizeLatexPath(cleanTarget.slice(1), defaultExt);
+  }
+
+  if (!baseDir || baseDir === '.' || baseDir === '/') {
+    return normalizeLatexPath(cleanTarget, defaultExt);
+  }
+
+  const combined = `${baseDir}/${cleanTarget}`;
+  const parts = combined.split('/').filter(Boolean);
+  const resolved: string[] = [];
+
+  for (const part of parts) {
+    if (part === '.') continue;
+    if (part === '..') {
+      if (resolved.length > 0 && resolved[resolved.length - 1] !== '..') {
+        resolved.pop();
+      }
+    } else {
+      resolved.push(part);
+    }
+  }
+
+  return normalizeLatexPath(resolved.join('/'), defaultExt);
 }
 
 /**
@@ -80,15 +132,24 @@ export function stripLatexComments(source: string): string {
 }
 
 /**
- * Directives parser: extracts include targets and document class info from a LaTeX file.
+ * Directives parser: extracts include targets, bibliography files, and document class info from a LaTeX file.
+ * Automatically resolves relative targets against the file's containing directory.
  */
-export function parseLatexDirectives(content: string): {
+export function parseLatexDirectives(
+  content: string,
+  currentFilePath?: string,
+): {
   hasDocumentClass: boolean;
   isSubfile: boolean;
   subfileParentPath: string | null;
   includedFiles: string[];
 } {
   const cleanSource = stripLatexComments(content);
+
+  // Derive directory containing current file (e.g. "sections" from "sections/intro.tex")
+  const normCurrent = currentFilePath ? normalizeLatexPath(currentFilePath) : '';
+  const lastSlash = normCurrent.lastIndexOf('/');
+  const baseDir = lastSlash >= 0 ? normCurrent.slice(0, lastSlash) : '';
 
   // 1. Check \documentclass
   const docClassMatch = cleanSource.match(/\\documentclass(?:\[([^\]]*)\])?\{([^}]+)\}/);
@@ -103,7 +164,8 @@ export function parseLatexDirectives(content: string): {
 
     if (cls === 'subfiles' && opt) {
       isSubfile = true;
-      subfileParentPath = normalizeLatexPath(opt);
+      // Resolve subfile parent relative to baseDir (e.g. sections/ + ../main.tex -> main.tex)
+      subfileParentPath = resolveRelativeLatexPath(baseDir, opt);
     }
   }
 
@@ -115,7 +177,12 @@ export function parseLatexDirectives(content: string): {
   while ((m = inputIncludeRegex.exec(cleanSource)) !== null) {
     const rawTarget = m[1]?.trim();
     if (rawTarget) {
-      includedFilesSet.add(normalizeLatexPath(rawTarget));
+      const rootPath = normalizeLatexPath(rawTarget);
+      includedFilesSet.add(rootPath);
+      if (baseDir) {
+        const relPath = resolveRelativeLatexPath(baseDir, rawTarget);
+        if (relPath) includedFilesSet.add(relPath);
+      }
     }
   }
 
@@ -124,7 +191,12 @@ export function parseLatexDirectives(content: string): {
   while ((m = subfileRegex.exec(cleanSource)) !== null) {
     const rawTarget = m[1]?.trim();
     if (rawTarget) {
-      includedFilesSet.add(normalizeLatexPath(rawTarget));
+      const rootPath = normalizeLatexPath(rawTarget);
+      includedFilesSet.add(rootPath);
+      if (baseDir) {
+        const relPath = resolveRelativeLatexPath(baseDir, rawTarget);
+        if (relPath) includedFilesSet.add(relPath);
+      }
     }
   }
 
@@ -135,7 +207,7 @@ export function parseLatexDirectives(content: string): {
     const file = m[2]?.trim() || '';
     if (file) {
       const combined = dir ? `${dir.replace(/\/+$/, '')}/${file}` : file;
-      includedFilesSet.add(normalizeLatexPath(combined));
+      includedFilesSet.add(resolveRelativeLatexPath(baseDir, combined));
     }
   }
 
@@ -144,7 +216,49 @@ export function parseLatexDirectives(content: string): {
   while ((m = mintedRegex.exec(cleanSource)) !== null) {
     const rawTarget = m[1]?.trim();
     if (rawTarget) {
-      includedFilesSet.add(normalizeLatexPath(rawTarget));
+      includedFilesSet.add(resolveRelativeLatexPath(baseDir, rawTarget));
+    }
+  }
+
+  // 6. \bibliography{file1,file2} (comma-separated, .bib extension)
+  const bibRegex = /\\bibliography\{([^}]+)\}/g;
+  while ((m = bibRegex.exec(cleanSource)) !== null) {
+    const rawTarget = m[1]?.trim();
+    if (rawTarget) {
+      const entries = rawTarget.split(',').map((s) => s.trim()).filter(Boolean);
+      for (const entry of entries) {
+        const bibFile = entry.endsWith('.bib') ? entry : `${entry}.bib`;
+        includedFilesSet.add(normalizeLatexPath(bibFile, '.bib'));
+        if (baseDir) {
+          includedFilesSet.add(resolveRelativeLatexPath(baseDir, bibFile, '.bib'));
+        }
+      }
+    }
+  }
+
+  // 7. \addbibresource[options]{file.bib}
+  const biblatexRegex = /\\addbibresource(?:\[[^\]]*\])?\{([^}]+)\}/g;
+  while ((m = biblatexRegex.exec(cleanSource)) !== null) {
+    const rawTarget = m[1]?.trim();
+    if (rawTarget) {
+      const bibFile = rawTarget.endsWith('.bib') ? rawTarget : `${rawTarget}.bib`;
+      includedFilesSet.add(normalizeLatexPath(bibFile, '.bib'));
+      if (baseDir) {
+        includedFilesSet.add(resolveRelativeLatexPath(baseDir, bibFile, '.bib'));
+      }
+    }
+  }
+
+  // 8. \includepdf[options]{file.pdf}
+  const includePdfRegex = /\\includepdf(?:\[[^\]]*\])?\{([^}]+)\}/g;
+  while ((m = includePdfRegex.exec(cleanSource)) !== null) {
+    const rawTarget = m[1]?.trim();
+    if (rawTarget) {
+      const pdfFile = rawTarget.endsWith('.pdf') ? rawTarget : `${rawTarget}.pdf`;
+      includedFilesSet.add(normalizeLatexPath(pdfFile, '.pdf'));
+      if (baseDir) {
+        includedFilesSet.add(resolveRelativeLatexPath(baseDir, pdfFile, '.pdf'));
+      }
     }
   }
 
@@ -194,7 +308,7 @@ export class LatexDagEngine {
       }
     }
 
-    const parsed = parseLatexDirectives(content);
+    const parsed = parseLatexDirectives(content, filePath || normalizedPath);
 
     const node: LatexDependencyNode = {
       id: fileId,
@@ -225,6 +339,61 @@ export class LatexDagEngine {
       }
     }
   }
+
+  /**
+   * Safe registration helper invoked by Session and Workspace coordinators
+   */
+  public parseAndRegister(filePath: string, content: string, fileId?: string): void {
+    const normalized = normalizeLatexPath(filePath);
+    const effectiveId = fileId || this.pathToIdMap.get(normalized) || filePath;
+    this.updateFileNode(effectiveId, filePath, content);
+  }
+
+  /**
+   * Safely removes a file and cascades graph unlinking
+   */
+  public removeFileNode(fileIdOrPath: string): void {
+    const normalized = this.resolveNormalizedPath(fileIdOrPath) || normalizeLatexPath(fileIdOrPath);
+    const fileId = this.pathToIdMap.get(normalized) || fileIdOrPath;
+
+    const targets = this.forwardEdges.get(normalized) || new Set();
+    for (const target of targets) {
+      const rev = this.reverseEdges.get(target);
+      if (rev) {
+        rev.delete(normalized);
+      }
+      const targetNode = this.nodes.get(target);
+      if (targetNode) {
+        targetNode.inDegree = Math.max(0, targetNode.inDegree - 1);
+      }
+    }
+    this.forwardEdges.delete(normalized);
+
+    const parents = this.reverseEdges.get(normalized) || new Set();
+    for (const p of parents) {
+      const fwd = this.forwardEdges.get(p);
+      if (fwd) {
+        fwd.delete(normalized);
+      }
+      const pNode = this.nodes.get(p);
+      if (pNode) {
+        pNode.outDegree = Math.max(0, pNode.outDegree - 1);
+      }
+    }
+    this.reverseEdges.delete(normalized);
+
+    this.nodes.delete(normalized);
+    this.pathToIdMap.delete(normalized);
+    if (fileId) {
+      this.idToPathMap.delete(fileId);
+    }
+  }
+
+  public getNode(fileIdOrPath: string): LatexDependencyNode | undefined {
+    const normalized = this.resolveNormalizedPath(fileIdOrPath);
+    return normalized ? this.nodes.get(normalized) : undefined;
+  }
+
 
   public buildFromProjectFiles(
     files: Array<{ id: string; title: string; path?: string; content?: string }>
@@ -325,6 +494,23 @@ export class LatexDagEngine {
           hasCycleWarning,
         };
       }
+      for (const [path, node] of this.nodes) {
+        if (path === normalizedExplicit || path.endsWith(`/${normalizedExplicit}`)) {
+          return {
+            rootPath: node.path,
+            rootFileId: node.id,
+            inferredBy: 'explicit',
+            hasCycleWarning,
+          };
+        }
+      }
+      // Explicit setting takes top precedence
+      return {
+        rootPath: normalizedExplicit,
+        rootFileId: this.pathToIdMap.get(normalizedExplicit),
+        inferredBy: 'explicit',
+        hasCycleWarning,
+      };
     }
 
     const normalizedActive = activeFileIdOrPath ? this.resolveNormalizedPath(activeFileIdOrPath) : null;
@@ -341,10 +527,11 @@ export class LatexDagEngine {
 
     if (activeNode && activeNode.isSubfile && activeNode.subfileParentPath) {
       const parentNorm = normalizeLatexPath(activeNode.subfileParentPath);
-      if (this.nodes.has(parentNorm)) {
+      const resolvedParent = this.resolveNormalizedPath(parentNorm) || parentNorm;
+      if (this.nodes.has(resolvedParent)) {
         return {
-          rootPath: parentNorm,
-          rootFileId: this.pathToIdMap.get(parentNorm),
+          rootPath: resolvedParent,
+          rootFileId: this.pathToIdMap.get(resolvedParent),
           inferredBy: 'subfile',
           hasCycleWarning,
         };
@@ -442,14 +629,22 @@ export class LatexDagEngine {
     };
   }
 
-  private resolveNormalizedPath(idOrPath: string): string | null {
+  public resolveNormalizedPath(idOrPath: string): string | null {
+    if (!idOrPath) return null;
     if (this.nodes.has(idOrPath)) return idOrPath;
     const normalized = normalizeLatexPath(idOrPath);
     if (this.nodes.has(normalized)) return normalized;
     if (this.idToPathMap.has(idOrPath)) return this.idToPathMap.get(idOrPath)!;
 
     for (const [path] of this.nodes) {
-      if (path.endsWith(`/${idOrPath}`) || path.endsWith(`/${normalized}`)) {
+      if (
+        path === idOrPath ||
+        path === normalized ||
+        path.endsWith(`/${idOrPath}`) ||
+        path.endsWith(`/${normalized}`) ||
+        idOrPath.endsWith(`/${path}`) ||
+        normalized.endsWith(`/${path}`)
+      ) {
         return path;
       }
     }
@@ -457,6 +652,7 @@ export class LatexDagEngine {
     return null;
   }
 }
+
 
 export const latexDagEngine = new LatexDagEngine();
 // Alias for backward compatibility

@@ -219,6 +219,8 @@ export function toItemCreators(creatorEntries: CreatorEntry[]): CreatorCredit[] 
     if (creatorEntry.fieldMode === 1) {
       firstName = '';
       lastName = trimmedName;
+    } else if (firstName || lastName) {
+      // Explicit 2-field mode inputs preserved directly
     } else if (trimmedName) {
       const parsed = parseCreatorName(trimmedName);
       firstName = parsed.firstName;

@@ -18,6 +18,7 @@ import { VirtualizedCitationList } from './subcomponents/VirtualizedCitationList
 import { CitationValidationBanner } from './subcomponents/CitationValidationBanner';
 import { UnresolvedKeysList } from './subcomponents/UnresolvedKeysList';
 import { CitationBottomNav } from './subcomponents/CitationBottomNav';
+import { BibliographyInjectorCard } from './subcomponents/BibliographyInjectorCard';
 import { SidebarPanelHeader } from '../SidebarPanelHeader';
 
 interface CitationTabProps {
@@ -33,6 +34,8 @@ export default function CitationTab({ onClose }: CitationTabProps) {
     copiedKey,
     citationValidation,
     missingKeys,
+    citedEntries,
+    citedItems,
     filteredCitedEntries,
     filteredAvailableEntries,
     isLibraryLoading,
@@ -40,6 +43,11 @@ export default function CitationTab({ onClose }: CitationTabProps) {
     handleCopyKey,
     handleInsertKey,
     openPickerModal,
+    projectId,
+    activeFilePath,
+    engine,
+    getContent,
+    refreshContent,
   } = useCitationTabState();
 
   return (
@@ -108,6 +116,19 @@ export default function CitationTab({ onClose }: CitationTabProps) {
               onFind={(k) => openPickerModal(k, k)}
               onCopy={handleCopyKey}
             />
+
+            {/* One-Click Bibliography Injector Card */}
+            {citedEntries.length > 0 && (
+              <BibliographyInjectorCard
+                citedCount={citedEntries.length}
+                citedItems={citedItems}
+                projectId={projectId}
+                engine={engine}
+                getContent={getContent}
+                refreshContent={refreshContent}
+                activeFilePath={activeFilePath}
+              />
+            )}
 
             {/* Resolved Cited Items */}
             {filteredCitedEntries.length === 0 && missingKeys.length === 0 ? (

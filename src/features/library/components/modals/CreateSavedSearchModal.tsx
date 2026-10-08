@@ -30,6 +30,7 @@ import {
   Check,
   Search,
   X,
+  Clock,
 } from 'lucide-react';
 import {
   Dialog,
@@ -59,6 +60,8 @@ import { cn } from '@/shared/lib/utils';
 import { useItemTypes, libraryServices, useCollectionsQuery, useTags } from '../../data';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import {
+  FIELD_LABELS,
+  humanizeFieldName,
   mapRegistryItemTypes,
   ALL_ITEM_TYPES_FLAT,
 } from '../../types';
@@ -87,7 +90,7 @@ export interface CreateSavedSearchModalProps {
   isPending?: boolean;
 }
 
-interface FieldConfig {
+export interface FieldConfig {
   value: SavedSearchField;
   label: string;
   operators: { value: SavedSearchOperator; label: string }[];
@@ -115,6 +118,22 @@ export const HAS_ATTACHMENT_OPTIONS = [
   { value: 'false', label: 'No Attachments' },
 ];
 
+export function parseDurationParts(val: string): { count: string; unit: string } {
+  if (!val || typeof val !== 'string') return { count: '30', unit: 'days' };
+  const match = val.trim().match(/^(\d+)\s*([a-zA-Z]+)?$/);
+  if (match) {
+    const count = match[1] || '30';
+    let unit = (match[2] || 'days').toLowerCase();
+    if (unit.startsWith('d')) unit = 'days';
+    else if (unit.startsWith('w')) unit = 'weeks';
+    else if (unit.startsWith('m')) unit = 'months';
+    else if (unit.startsWith('y')) unit = 'years';
+    else unit = 'days';
+    return { count, unit };
+  }
+  return { count: '30', unit: 'days' };
+}
+
 export function formatConditionValue(
   field: SavedSearchField,
   value: string,
@@ -130,302 +149,246 @@ export function formatConditionValue(
   return trimmed;
 }
 
-const FIELD_CONFIGS: FieldConfig[] = [
-  {
-    value: 'title',
-    label: 'Title',
-    operators: [
-      { value: 'contains', label: 'contains' },
-      { value: 'doesNotContain', label: 'does not contain' },
-      { value: 'is', label: 'is (exact)' },
-      { value: 'isNot', label: 'is not' },
-      { value: 'isPresent', label: 'is not empty' },
-      { value: 'isAbsent', label: 'is empty' },
-      { value: 'beginsWith', label: 'begins with' },
-      { value: 'endsWith', label: 'ends with' },
-    ],
-    placeholder: 'Enter title keyword...',
-  },
-  {
-    value: 'creator',
-    label: 'Author / Creator',
-    operators: [
-      { value: 'contains', label: 'contains' },
-      { value: 'doesNotContain', label: 'does not contain' },
-      { value: 'is', label: 'is (exact)' },
-      { value: 'isNot', label: 'is not' },
-      { value: 'isPresent', label: 'is not empty' },
-      { value: 'isAbsent', label: 'is empty' },
-      { value: 'beginsWith', label: 'begins with' },
-      { value: 'endsWith', label: 'ends with' },
-    ],
-    placeholder: 'Enter author name...',
-  },
-  {
-    value: 'year',
-    label: 'Year',
-    operators: [
-      { value: 'is', label: 'equals (=)' },
-      { value: 'isGreaterThan', label: 'is after (>)' },
-      { value: 'isLessThan', label: 'is before (<)' },
-      { value: 'isNot', label: 'is not equal to (≠)' },
-      { value: 'isPresent', label: 'has year' },
-      { value: 'isAbsent', label: 'no year' },
-    ],
-    placeholder: 'YYYY',
-  },
-  {
-    value: 'itemType',
-    label: 'Item Type',
-    operators: [
-      { value: 'is', label: 'is' },
-      { value: 'isNot', label: 'is not' },
-      { value: 'isPresent', label: 'is not empty' },
-      { value: 'isAbsent', label: 'is empty' },
-    ],
-    placeholder: 'Select item type...',
-    defaultValue: 'journalArticle',
-  },
-  {
-    value: 'tag',
-    label: 'Tag',
-    operators: [
-      { value: 'contains', label: 'contains' },
-      { value: 'is', label: 'is exact tag' },
-      { value: 'doesNotContain', label: 'does not contain' },
-      { value: 'isPresent', label: 'has tags' },
-      { value: 'isAbsent', label: 'no tags' },
-    ],
-    placeholder: 'Enter tag name...',
-  },
-  {
-    value: 'collection',
-    label: 'Collection',
-    operators: [
-      { value: 'is', label: 'is in collection' },
-      { value: 'isNot', label: 'is not in collection' },
-      { value: 'isPresent', label: 'is in any collection' },
-      { value: 'isAbsent', label: 'is unfiled (no collection)' },
-    ],
-    placeholder: 'Select collection...',
-  },
-  {
-    value: 'dateAdded',
-    label: 'Date Added',
-    operators: [
-      { value: 'isGreaterThan', label: 'is after (>)' },
-      { value: 'isLessThan', label: 'is before (<)' },
-      { value: 'isPresent', label: 'is set' },
-    ],
-    placeholder: 'YYYY-MM-DD',
-  },
-  {
-    value: 'dateModified',
-    label: 'Date Modified',
-    operators: [
-      { value: 'isGreaterThan', label: 'is after (>)' },
-      { value: 'isLessThan', label: 'is before (<)' },
-      { value: 'isPresent', label: 'is set' },
-    ],
-    placeholder: 'YYYY-MM-DD',
-  },
-  {
-    value: 'publicationTitle',
-    label: 'Publication / Journal',
-    operators: [
-      { value: 'contains', label: 'contains' },
-      { value: 'doesNotContain', label: 'does not contain' },
-      { value: 'is', label: 'is (exact)' },
-      { value: 'isNot', label: 'is not' },
-      { value: 'isPresent', label: 'has publication' },
-      { value: 'isAbsent', label: 'no publication' },
-      { value: 'beginsWith', label: 'begins with' },
-      { value: 'endsWith', label: 'ends with' },
-    ],
-    placeholder: 'Enter publication name...',
-  },
-  {
-    value: 'abstract',
-    label: 'Abstract',
-    operators: [
-      { value: 'contains', label: 'contains' },
-      { value: 'doesNotContain', label: 'does not contain' },
-      { value: 'isPresent', label: 'has abstract' },
-      { value: 'isAbsent', label: 'no abstract' },
-    ],
-    placeholder: 'Enter abstract keyword...',
-  },
-  {
-    value: 'doi',
-    label: 'DOI',
-    operators: [
-      { value: 'contains', label: 'contains' },
-      { value: 'is', label: 'is exact DOI' },
-      { value: 'isPresent', label: 'has DOI' },
-      { value: 'isAbsent', label: 'no DOI' },
-    ],
-    placeholder: 'Enter DOI...',
-  },
-  {
-    value: 'isbn',
-    label: 'ISBN',
-    operators: [
-      { value: 'contains', label: 'contains' },
-      { value: 'is', label: 'is exact ISBN' },
-      { value: 'isPresent', label: 'has ISBN' },
-      { value: 'isAbsent', label: 'no ISBN' },
-    ],
-    placeholder: 'Enter ISBN...',
-  },
-  {
-    value: 'url',
-    label: 'URL',
-    operators: [
-      { value: 'contains', label: 'contains' },
-      { value: 'is', label: 'is exact URL' },
-      { value: 'doesNotContain', label: 'does not contain' },
-      { value: 'isPresent', label: 'has URL' },
-      { value: 'isAbsent', label: 'no URL' },
-    ],
-    placeholder: 'Enter URL...',
-  },
-  {
-    value: 'noteContent',
-    label: 'Note',
-    operators: [
-      { value: 'contains', label: 'contains' },
-      { value: 'doesNotContain', label: 'does not contain' },
-      { value: 'isPresent', label: 'has notes' },
-      { value: 'isAbsent', label: 'no notes' },
-    ],
-    placeholder: 'Enter note keyword...',
-  },
-  {
-    value: 'attachmentContent',
-    label: 'Attachment Content',
-    operators: [
-      { value: 'contains', label: 'contains' },
-      { value: 'doesNotContain', label: 'does not contain' },
-      { value: 'isPresent', label: 'has indexed attachment' },
-      { value: 'isAbsent', label: 'no indexed attachment' },
-    ],
-    placeholder: 'Enter attachment keyword...',
-  },
-  {
-    value: 'hasAttachment',
-    label: 'Has Attachment',
-    operators: [
-      { value: 'is', label: 'is' },
-    ],
-    placeholder: 'Select attachment status...',
-    defaultValue: 'true',
-  },
-  {
-    value: 'readStatus',
-    label: 'Read Status',
-    operators: [
-      { value: 'is', label: 'is' },
-      { value: 'isNot', label: 'is not' },
-    ],
-    placeholder: 'Select reading status...',
-    defaultValue: 'unread',
-  },
-  {
-    value: 'rating',
-    label: 'Rating',
-    operators: [
-      { value: 'is', label: 'equals (=)' },
-      { value: 'isGreaterThan', label: 'is greater than (>)' },
-      { value: 'isLessThan', label: 'is less than (<)' },
-      { value: 'isNot', label: 'is not equal to (≠)' },
-      { value: 'isPresent', label: 'is rated' },
-      { value: 'isAbsent', label: 'is unrated' },
-    ],
-    placeholder: 'Select rating...',
-    defaultValue: '3',
-  },
+export const PRIMARY_FIELDS: {
+  value: SavedSearchField;
+  label: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number | string }>;
+}[] = [
+  { value: 'title', label: 'Title', icon: Type },
+  { value: 'creator', label: 'Author / Creator', icon: User },
+  { value: 'year', label: 'Year', icon: Calendar },
+  { value: 'dateAdded', label: 'Date Added', icon: CalendarPlus },
+  { value: 'dateModified', label: 'Date Modified', icon: CalendarClock },
+  { value: 'anyField', label: 'Any Field', icon: Search },
+  { value: 'itemType', label: 'Item Type', icon: Layers },
+  { value: 'collection', label: 'Collection', icon: Folder },
+  { value: 'tag', label: 'Tag', icon: Tag },
+  { value: 'noteContent', label: 'Note', icon: StickyNote },
+  { value: 'attachmentContent', label: 'Attachment Content', icon: FileText },
+  { value: 'attachmentFilename', label: 'Attachment File Name', icon: Paperclip },
+  { value: 'doi', label: 'DOI', icon: Hash },
+  { value: 'isbn', label: 'ISBN', icon: Barcode },
+  { value: 'url', label: 'URL', icon: Globe },
+  { value: 'readStatus', label: 'Read Status', icon: CheckCircle2 },
+  { value: 'rating', label: 'Rating', icon: Star },
 ];
 
-export interface FieldCategory {
-  group: string;
-  fields: {
-    value: SavedSearchField;
-    label: string;
-    icon: React.ComponentType<{ className?: string; strokeWidth?: number | string }>;
-  }[];
-}
+export const PRIMARY_FIELD_SET = new Set(PRIMARY_FIELDS.map((f) => f.value));
 
-export const FIELD_CATEGORIES: FieldCategory[] = [
-  {
-    group: 'Bibliographic',
-    fields: [
-      { value: 'title', label: 'Title', icon: Type },
-      { value: 'creator', label: 'Author / Creator', icon: User },
-      { value: 'year', label: 'Year', icon: Calendar },
-      { value: 'itemType', label: 'Item Type', icon: Layers },
-      { value: 'publicationTitle', label: 'Publication / Journal', icon: BookOpen },
-      { value: 'abstract', label: 'Abstract', icon: AlignLeft },
-    ],
-  },
-  {
-    group: 'Identifiers & Web',
-    fields: [
-      { value: 'doi', label: 'DOI', icon: Hash },
-      { value: 'isbn', label: 'ISBN', icon: Barcode },
-      { value: 'url', label: 'URL', icon: Globe },
-    ],
-  },
-  {
-    group: 'Organization',
-    fields: [
-      { value: 'collection', label: 'Collection', icon: Folder },
-      { value: 'tag', label: 'Tag', icon: Tag },
-    ],
-  },
-  {
-    group: 'Dates',
-    fields: [
-      { value: 'dateAdded', label: 'Date Added', icon: CalendarPlus },
-      { value: 'dateModified', label: 'Date Modified', icon: CalendarClock },
-    ],
-  },
-  {
-    group: 'Content & Files',
-    fields: [
-      { value: 'noteContent', label: 'Note', icon: StickyNote },
-      { value: 'attachmentContent', label: 'Attachment Content', icon: FileText },
-      { value: 'hasAttachment', label: 'Has Attachment', icon: Paperclip },
-    ],
-  },
-  {
-    group: 'Reading & Status',
-    fields: [
-      { value: 'readStatus', label: 'Read Status', icon: CheckCircle2 },
-      { value: 'rating', label: 'Rating', icon: Star },
-    ],
-  },
-];
+export const ALL_SCHEMA_FIELDS: {
+  value: SavedSearchField;
+  label: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number | string }>;
+}[] = Object.entries(FIELD_LABELS)
+  .filter(
+    ([key]) =>
+      !PRIMARY_FIELD_SET.has(key as SavedSearchField) &&
+      key !== 'citationCount' &&
+      key !== 'referenceCount',
+  )
+  .map(([key, label]) => ({
+    value: key as SavedSearchField,
+    label,
+    icon: BookOpen,
+  }))
+  .sort((a, b) => a.label.localeCompare(b.label));
 
-export const FIELD_ICONS: Record<SavedSearchField, React.ComponentType<{ className?: string; strokeWidth?: number | string }>> = {
+export const FIELD_ICONS: Record<
+  string,
+  React.ComponentType<{ className?: string; strokeWidth?: number | string }>
+> = {
   title: Type,
   creator: User,
   year: Calendar,
+  dateAdded: CalendarPlus,
+  dateModified: CalendarClock,
+  anyField: Search,
   itemType: Layers,
-  publicationTitle: BookOpen,
-  abstract: AlignLeft,
+  collection: Folder,
+  tag: Tag,
+  noteContent: StickyNote,
+  attachmentContent: FileText,
+  attachmentFilename: Paperclip,
   doi: Hash,
   isbn: Barcode,
   url: Globe,
-  collection: Folder,
-  tag: Tag,
-  dateAdded: CalendarPlus,
-  dateModified: CalendarClock,
-  noteContent: StickyNote,
-  attachmentContent: FileText,
-  hasAttachment: Paperclip,
   readStatus: CheckCircle2,
   rating: Star,
+  publicationTitle: BookOpen,
+  abstract: AlignLeft,
 };
+
+export function getFieldConfig(field: SavedSearchField): FieldConfig {
+  if (field === 'anyField') {
+    return {
+      value: 'anyField',
+      label: 'Any Field',
+      operators: [
+        { value: 'contains', label: 'contains' },
+        { value: 'doesNotContain', label: 'does not contain' },
+        { value: 'is', label: 'is (exact)' },
+        { value: 'isNot', label: 'is not' },
+      ],
+      placeholder: 'Search across all fields, authors, notes, tags...',
+    };
+  }
+
+  if (
+    field === 'dateAdded' ||
+    field === 'dateModified' ||
+    field === 'date' ||
+    field === 'publicationDate' ||
+    field === 'accessDate' ||
+    field === 'accessedAt' ||
+    field === 'filingDate' ||
+    field === 'issueDate' ||
+    field === 'dateDecided' ||
+    field === 'dateEnacted'
+  ) {
+    const label =
+      field === 'dateAdded'
+        ? 'Date Added'
+        : field === 'dateModified'
+        ? 'Date Modified'
+        : FIELD_LABELS[field] || humanizeFieldName(field);
+
+    return {
+      value: field,
+      label,
+      operators: [
+        { value: 'isInTheLast', label: 'is in the last' },
+        { value: 'isGreaterThan', label: 'is after (>)' },
+        { value: 'isLessThan', label: 'is before (<)' },
+        { value: 'is', label: 'is' },
+        { value: 'isNot', label: 'is not' },
+        { value: 'isBetween', label: 'is between' },
+        { value: 'isPresent', label: 'is set' },
+        { value: 'isAbsent', label: 'is not set' },
+      ],
+      placeholder: 'YYYY-MM-DD',
+      defaultValue: '30 days',
+    };
+  }
+
+  if (field === 'year' || field === 'numberOfVolumes' || field === 'numPages') {
+    const label = FIELD_LABELS[field] || humanizeFieldName(field);
+    return {
+      value: field,
+      label,
+      operators: [
+        { value: 'is', label: 'equals (=)' },
+        { value: 'isGreaterThan', label: 'is greater than (>)' },
+        { value: 'isLessThan', label: 'is less than (<)' },
+        { value: 'isNot', label: 'is not equal to (≠)' },
+        { value: 'isBetween', label: 'is between' },
+        { value: 'isPresent', label: 'has value' },
+        { value: 'isAbsent', label: 'is empty' },
+      ],
+      placeholder: 'Enter number...',
+    };
+  }
+
+  if (field === 'itemType') {
+    return {
+      value: 'itemType',
+      label: 'Item Type',
+      operators: [
+        { value: 'is', label: 'is' },
+        { value: 'isNot', label: 'is not' },
+        { value: 'isPresent', label: 'is not empty' },
+        { value: 'isAbsent', label: 'is empty' },
+      ],
+      placeholder: 'Select item type...',
+      defaultValue: 'journalArticle',
+    };
+  }
+
+  if (field === 'collection') {
+    return {
+      value: 'collection',
+      label: 'Collection',
+      operators: [
+        { value: 'is', label: 'is in collection' },
+        { value: 'isNot', label: 'is not in collection' },
+        { value: 'isPresent', label: 'is in any collection' },
+        { value: 'isAbsent', label: 'is unfiled (no collection)' },
+      ],
+      placeholder: 'Select collection...',
+    };
+  }
+
+  if (field === 'tag') {
+    return {
+      value: 'tag',
+      label: 'Tag',
+      operators: [
+        { value: 'contains', label: 'contains' },
+        { value: 'is', label: 'is exact tag' },
+        { value: 'doesNotContain', label: 'does not contain' },
+        { value: 'isPresent', label: 'has tags' },
+        { value: 'isAbsent', label: 'no tags' },
+      ],
+      placeholder: 'Enter tag name...',
+    };
+  }
+
+  if (field === 'hasAttachment') {
+    return {
+      value: 'hasAttachment',
+      label: 'Has Attachment',
+      operators: [{ value: 'is', label: 'is' }],
+      placeholder: 'Select attachment status...',
+      defaultValue: 'true',
+    };
+  }
+
+  if (field === 'readStatus') {
+    return {
+      value: 'readStatus',
+      label: 'Read Status',
+      operators: [
+        { value: 'is', label: 'is' },
+        { value: 'isNot', label: 'is not' },
+      ],
+      placeholder: 'Select reading status...',
+      defaultValue: 'unread',
+    };
+  }
+
+  if (field === 'rating') {
+    return {
+      value: 'rating',
+      label: 'Rating',
+      operators: [
+        { value: 'is', label: 'equals (=)' },
+        { value: 'isGreaterThan', label: 'is greater than (>)' },
+        { value: 'isLessThan', label: 'is less than (<)' },
+        { value: 'isNot', label: 'is not equal to (≠)' },
+        { value: 'isPresent', label: 'is rated' },
+        { value: 'isAbsent', label: 'is unrated' },
+      ],
+      placeholder: 'Select rating...',
+      defaultValue: '3',
+    };
+  }
+
+  const label = FIELD_LABELS[field] || humanizeFieldName(field) || field;
+  return {
+    value: field,
+    label,
+    operators: [
+      { value: 'contains', label: 'contains' },
+      { value: 'doesNotContain', label: 'does not contain' },
+      { value: 'is', label: 'is (exact)' },
+      { value: 'isNot', label: 'is not' },
+      { value: 'beginsWith', label: 'begins with' },
+      { value: 'endsWith', label: 'ends with' },
+      { value: 'isPresent', label: 'is not empty' },
+      { value: 'isAbsent', label: 'is empty' },
+    ],
+    placeholder: `Enter ${label.toLowerCase()}...`,
+  };
+}
 
 interface ConditionFieldSelectProps {
   value: SavedSearchField;
@@ -442,21 +405,27 @@ export function ConditionFieldSelect({
   const [search, setSearch] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const activeConfig = FIELD_CONFIGS.find((f) => f.value === value) || FIELD_CONFIGS[0];
-  const ActiveIcon = FIELD_ICONS[value] || Type;
+  const activeConfig = getFieldConfig(value);
+  const ActiveIcon = FIELD_ICONS[value] || BookOpen;
 
-  const filteredCategories = useMemo(() => {
+  const filteredPrimary = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return FIELD_CATEGORIES;
-    return FIELD_CATEGORIES.map((cat) => ({
-      ...cat,
-      fields: cat.fields.filter(
-        (f) =>
-          f.label.toLowerCase().includes(q) ||
-          f.value.toLowerCase().includes(q) ||
-          cat.group.toLowerCase().includes(q),
-      ),
-    })).filter((cat) => cat.fields.length > 0);
+    if (!q) return PRIMARY_FIELDS;
+    return PRIMARY_FIELDS.filter(
+      (f) =>
+        f.label.toLowerCase().includes(q) ||
+        f.value.toLowerCase().includes(q),
+    );
+  }, [search]);
+
+  const filteredAZ = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return ALL_SCHEMA_FIELDS;
+    return ALL_SCHEMA_FIELDS.filter(
+      (f) =>
+        f.label.toLowerCase().includes(q) ||
+        f.value.toLowerCase().includes(q),
+    );
   }, [search]);
 
   useEffect(() => {
@@ -478,7 +447,7 @@ export function ConditionFieldSelect({
           role="combobox"
           aria-expanded={open}
           aria-label={ariaLabel || 'Select field'}
-          className="w-full sm:w-[155px] h-8 px-2.5 flex items-center justify-between gap-1.5 text-13 font-normal text-foreground bg-background border border-border rounded-md hover:border-foreground/30 focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 transition-colors shrink-0 select-none cursor-pointer"
+          className="w-full sm:w-[175px] h-8 px-2.5 flex items-center justify-between gap-1.5 text-13 font-normal text-foreground bg-background border border-border/80 rounded-md hover:border-foreground/30 focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 transition-colors shrink-0 select-none cursor-pointer"
         >
           <span className="flex items-center gap-1.5 min-w-0 truncate">
             <ActiveIcon className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -490,10 +459,10 @@ export function ConditionFieldSelect({
       <PopoverContent
         align="start"
         sideOffset={4}
-        className="w-[230px] p-0 rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-300 overflow-hidden z-50"
+        className="w-[230px] p-0 rounded-lg border border-border shadow-raised-300 bg-popover text-popover-foreground overflow-hidden z-50"
       >
-        <div className="p-1.5 border-b border-border/50">
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/40 border border-border/60 text-13">
+        <div className="p-1.5 border-b border-border">
+          <div className="flex items-center gap-1.5 h-8 px-2 rounded-md bg-background border border-border/80 text-13 focus-within:ring-1 focus-within:ring-primary/20 focus-within:border-primary transition-colors hover:border-foreground/30">
             <Search className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
             <input
               ref={inputRef}
@@ -505,20 +474,20 @@ export function ConditionFieldSelect({
                 if (e.key === 'Escape') {
                   setOpen(false);
                 } else if (e.key === 'Enter') {
-                  const first = filteredCategories[0]?.fields[0];
+                  const first = filteredPrimary[0] || filteredAZ[0];
                   if (first) {
                     onChange(first.value);
                     setOpen(false);
                   }
                 }
               }}
-              className="w-full bg-transparent text-13 text-foreground placeholder:text-foreground/50 outline-none"
+              className="flex-1 min-w-0 h-full bg-transparent text-13 text-foreground placeholder:text-foreground/50 outline-none leading-none"
             />
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch('')}
-                className="text-foreground hover:bg-muted p-0.5 rounded cursor-pointer flex items-center justify-center"
+                className="text-foreground hover:bg-muted p-0.5 rounded cursor-pointer flex items-center justify-center shrink-0"
                 aria-label="Clear filter"
               >
                 <X className="size-3 text-foreground shrink-0" strokeWidth={1.5} />
@@ -527,47 +496,85 @@ export function ConditionFieldSelect({
           </div>
         </div>
 
-        <div className="max-h-[260px] overflow-y-auto scrollbar-thin p-1 space-y-1.5">
-          {filteredCategories.length === 0 ? (
+        <div className="max-h-[280px] overflow-y-auto scrollbar-thin p-1 space-y-2">
+          {filteredPrimary.length === 0 && filteredAZ.length === 0 ? (
             <div className="py-6 text-center text-11 text-foreground select-none">
               No matching fields
             </div>
           ) : (
-            filteredCategories.map((group) => (
-              <div key={group.group} className="space-y-0.5">
-                <div className="px-2 pt-1 pb-0.5 text-10 font-semibold text-foreground select-none">
-                  {group.group}
+            <>
+              {filteredPrimary.length > 0 && (
+                <div className="space-y-0.5">
+                  <div className="px-2 pt-1 pb-0.5 text-10 font-semibold text-foreground/70 uppercase tracking-wider select-none">
+                    Primary Fields
+                  </div>
+                  {filteredPrimary.map((field) => {
+                    const isSelected = field.value === value;
+                    const Icon = field.icon;
+                    return (
+                      <button
+                        key={field.value}
+                        type="button"
+                        onClick={() => {
+                          onChange(field.value);
+                          setOpen(false);
+                        }}
+                        className={cn(
+                          'w-full h-7 px-2 py-1 flex items-center justify-between gap-2 rounded-sm text-13 text-left transition-colors cursor-pointer select-none',
+                          isSelected
+                            ? 'bg-muted font-medium text-foreground'
+                            : 'text-foreground/80 hover:bg-muted/70 hover:text-foreground',
+                        )}
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          <Icon className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                          <span className="truncate">{field.label}</span>
+                        </span>
+                        {isSelected && (
+                          <Check className="size-3.5 text-foreground shrink-0 ml-1" strokeWidth={1.5} />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
-                {group.fields.map((field) => {
-                  const isSelected = field.value === value;
-                  const Icon = field.icon;
-                  return (
-                    <button
-                      key={field.value}
-                      type="button"
-                      onClick={() => {
-                        onChange(field.value);
-                        setOpen(false);
-                      }}
-                      className={cn(
-                        'w-full h-7 px-2 py-1 flex items-center justify-between gap-2 rounded-sm text-13 text-left transition-colors cursor-pointer select-none',
-                        isSelected
-                          ? 'bg-muted font-medium text-foreground'
-                          : 'text-foreground/80 hover:bg-muted/70 hover:text-foreground',
-                      )}
-                    >
-                      <span className="flex items-center gap-2 truncate">
-                        <Icon className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                        <span className="truncate">{field.label}</span>
-                      </span>
-                      {isSelected && (
-                        <Check className="size-3.5 text-foreground shrink-0 ml-1" strokeWidth={1.5} />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            ))
+              )}
+
+              {filteredAZ.length > 0 && (
+                <div className="space-y-0.5 pt-1 border-t border-border">
+                  <div className="px-2 pt-1 pb-0.5 text-10 font-semibold text-foreground/70 uppercase tracking-wider select-none">
+                    All Fields (A–Z)
+                  </div>
+                  {filteredAZ.map((field) => {
+                    const isSelected = field.value === value;
+                    const Icon = field.icon;
+                    return (
+                      <button
+                        key={field.value}
+                        type="button"
+                        onClick={() => {
+                          onChange(field.value);
+                          setOpen(false);
+                        }}
+                        className={cn(
+                          'w-full h-7 px-2 py-1 flex items-center justify-between gap-2 rounded-sm text-13 text-left transition-colors cursor-pointer select-none',
+                          isSelected
+                            ? 'bg-muted font-medium text-foreground'
+                            : 'text-foreground/80 hover:bg-muted/70 hover:text-foreground',
+                        )}
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          <Icon className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                          <span className="truncate">{field.label}</span>
+                        </span>
+                        {isSelected && (
+                          <Check className="size-3.5 text-foreground shrink-0 ml-1" strokeWidth={1.5} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </div>
       </PopoverContent>
@@ -620,10 +627,10 @@ export function CreateSavedSearchModal({
   const [sortBy, setSortBy] = useState<'dateAdded' | 'year' | 'title' | 'creator'>('dateAdded');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  // Zotero standard search options
+  // Zotero standard search scope options
   const [searchSubcollections, setSearchSubcollections] = useState(true);
   const [showOnlyTopLevel, setShowOnlyTopLevel] = useState(false);
-  const [includeParentAndChild, setIncludeParentAndChild] = useState(false);
+  const [includeParentAndChild, setIncludeParentAndChild] = useState(true);
 
   const [conditions, setConditions] = useState<ConditionRow[]>([
     {
@@ -653,6 +660,15 @@ export function CreateSavedSearchModal({
         setConjunction(conj === 'OR' ? 'OR' : 'AND');
         setSortBy(savedSearch.sortBy || 'dateAdded');
         setSortOrder(savedSearch.sortOrder || 'desc');
+
+        const scopeOpts =
+          savedSearch.scopeOptions ||
+          (savedSearch.conditions as any)?.scopeOptions ||
+          {};
+        setSearchSubcollections(scopeOpts.searchSubcollections !== false);
+        setShowOnlyTopLevel(Boolean(scopeOpts.showOnlyTopLevel));
+        setIncludeParentAndChild(scopeOpts.includeParentsAndChildren !== false);
+
         const rawConds = (savedSearch.conditions as any)?.conditions;
         if (Array.isArray(rawConds) && rawConds.length > 0) {
           setConditions(
@@ -661,7 +677,7 @@ export function CreateSavedSearchModal({
               field: c.field || 'title',
               operator: c.operator || 'contains',
               value: c.value !== undefined && c.value !== null ? String(c.value) : '',
-            }))
+            })),
           );
         } else {
           setConditions([
@@ -678,6 +694,9 @@ export function CreateSavedSearchModal({
         setConjunction('AND');
         setSortBy('dateAdded');
         setSortOrder('desc');
+        setSearchSubcollections(true);
+        setShowOnlyTopLevel(false);
+        setIncludeParentAndChild(true);
         setConditions([
           {
             id: `row-${Date.now()}`,
@@ -738,6 +757,11 @@ export function CreateSavedSearchModal({
         const conditionGroup: SavedSearchConditionGroup = {
           conjunction,
           conditions: payloadConditions,
+          scopeOptions: {
+            searchSubcollections,
+            showOnlyTopLevel,
+            includeParentsAndChildren: includeParentAndChild,
+          },
         };
 
         const res = await libraryServices.savedSearches.preview(targetScope, conditionGroup);
@@ -753,7 +777,15 @@ export function CreateSavedSearchModal({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [conditions, conjunction, open, targetScope]);
+  }, [
+    conditions,
+    conjunction,
+    open,
+    targetScope,
+    searchSubcollections,
+    showOnlyTopLevel,
+    includeParentAndChild,
+  ]);
 
   const handleAddCondition = (afterIndex?: number) => {
     const newRow: ConditionRow = {
@@ -778,8 +810,8 @@ export function CreateSavedSearchModal({
   };
 
   const handleFieldChange = (id: string, newField: SavedSearchField) => {
-    const config = FIELD_CONFIGS.find((f) => f.value === newField);
-    const defaultOp = config?.operators[0]?.value || 'contains';
+    const config = getFieldConfig(newField);
+    const defaultOp = config.operators[0]?.value || 'contains';
     let defaultValue = '';
     if (newField === 'itemType') {
       defaultValue = itemTypeOptions[0]?.value || 'journalArticle';
@@ -791,7 +823,9 @@ export function CreateSavedSearchModal({
       defaultValue = '3';
     } else if (newField === 'hasAttachment') {
       defaultValue = 'true';
-    } else if (config?.defaultValue) {
+    } else if (defaultOp === 'isInTheLast') {
+      defaultValue = '30 days';
+    } else if (config.defaultValue) {
       defaultValue = config.defaultValue;
     }
 
@@ -811,7 +845,14 @@ export function CreateSavedSearchModal({
 
   const handleOperatorChange = (id: string, newOperator: SavedSearchOperator) => {
     setConditions((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, operator: newOperator } : c)),
+      prev.map((c) => {
+        if (c.id !== id) return c;
+        let nextVal = c.value;
+        if (newOperator === 'isInTheLast' && (!c.value || !c.value.includes(' '))) {
+          nextVal = '30 days';
+        }
+        return { ...c, operator: newOperator, value: nextVal };
+      }),
     );
   };
 
@@ -838,8 +879,8 @@ export function CreateSavedSearchModal({
     if (!resolvedName) {
       const firstCond = conditions[0];
       if (firstCond) {
-        const config = FIELD_CONFIGS.find((f) => f.value === firstCond.field);
-        const fieldLabel = config?.label || firstCond.field;
+        const config = getFieldConfig(firstCond.field);
+        const fieldLabel = config.label || firstCond.field;
         if (firstCond.operator === 'isPresent') {
           resolvedName = `Has ${fieldLabel}`;
         } else if (firstCond.operator === 'isAbsent') {
@@ -868,6 +909,11 @@ export function CreateSavedSearchModal({
         operator: c.operator,
         value: formatConditionValue(c.field, c.value),
       })),
+      scopeOptions: {
+        searchSubcollections,
+        showOnlyTopLevel,
+        includeParentsAndChildren: includeParentAndChild,
+      },
     };
 
     const payload: CreateSavedSearchInput = {
@@ -914,39 +960,43 @@ export function CreateSavedSearchModal({
                 }}
                 placeholder="Saved search name..."
                 autoFocus
-                className="h-8 text-13 text-foreground bg-background hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md border-border placeholder:text-foreground/50"
+                className="h-8 text-13 text-foreground bg-background hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md border-border/80 placeholder:text-foreground/50"
               />
             </div>
 
+            {/* Scope Selector: Personal vs Project library */}
             <div className="space-y-1.5">
-              <Label htmlFor="search-in-library-select" className="text-11 font-medium text-foreground">
-                Search in library
+              <Label htmlFor="smart-search-scope" className="text-11 font-medium text-foreground">
+                Search In
               </Label>
-              <Select value={targetScope} onValueChange={(val) => setTargetScope(val)}>
+              <Select
+                value={targetScope}
+                onValueChange={(val) => setTargetScope(val)}
+                disabled={Boolean(savedSearch)}
+              >
                 <SelectTrigger
-                  id="search-in-library-select"
+                  id="smart-search-scope"
                   size="sm"
-                  aria-label="Search in library"
-                  className="w-full text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
+                  className="w-full h-8 text-13 font-normal text-foreground bg-background border-border/80 hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
                 >
-                  <SelectValue placeholder="Select library..." />
+                  <SelectValue placeholder="Scope" />
                 </SelectTrigger>
-                <SelectContent
-                  position="popper"
-                  sideOffset={4}
-                  className="max-h-56 min-w-[200px] p-1 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md"
-                >
-                  <SelectItem value="user" className="text-13 py-1.5 px-2 rounded-sm cursor-pointer focus:bg-muted">
-                    <span className="flex items-center gap-1.5">
+                <SelectContent className="bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
+                  <SelectItem value="user" className="text-13 py-1.5 px-2 rounded-sm cursor-pointer">
+                    <span className="flex items-center gap-1.5 truncate">
                       <Library className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                      <span className="text-foreground">My Library</span>
+                      <span className="truncate">My Library</span>
                     </span>
                   </SelectItem>
-                  {projects.map((p: any) => (
-                    <SelectItem key={p.id} value={p.id} className="text-13 py-1.5 px-2 rounded-sm cursor-pointer focus:bg-muted">
+                  {projects.map((p) => (
+                    <SelectItem
+                      key={p.id}
+                      value={p.id}
+                      className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+                    >
                       <span className="flex items-center gap-1.5 truncate">
                         <Users className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                        <span className="truncate text-foreground">{p.name}</span>
+                        <span className="truncate">{p.name}</span>
                       </span>
                     </SelectItem>
                   ))}
@@ -962,7 +1012,7 @@ export function CreateSavedSearchModal({
               <div
                 role="radiogroup"
                 aria-label="Match criteria"
-                className="inline-flex rounded-md bg-muted/60 p-0.5 border border-border"
+                className="inline-flex rounded-md bg-muted/60 p-0.5 border border-border/80"
               >
                 <button
                   type="button"
@@ -1001,8 +1051,7 @@ export function CreateSavedSearchModal({
           <div className="space-y-2">
             <div className="max-h-40 overflow-y-auto pr-1 space-y-2 scrollbar-thin">
               {conditions.map((cond, idx) => {
-                const activeConfig =
-                  FIELD_CONFIGS.find((f) => f.value === cond.field) || FIELD_CONFIGS[0];
+                const activeConfig = getFieldConfig(cond.field);
                 const isNoValueOperator =
                   cond.operator === 'isPresent' || cond.operator === 'isAbsent';
 
@@ -1013,7 +1062,7 @@ export function CreateSavedSearchModal({
                   >
                     {/* Field & Operator controls: Side-by-side grid on mobile, inline on desktop */}
                     <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 shrink-0">
-                      {/* Field Select - Rescaled Categorized Combobox Popover */}
+                      {/* Field Select - 2-tier Schema Combobox Popover */}
                       <ConditionFieldSelect
                         value={cond.field}
                         onChange={(val) => handleFieldChange(cond.id, val)}
@@ -1022,6 +1071,7 @@ export function CreateSavedSearchModal({
 
                       {/* Operator Select - Scaled compact popper */}
                       <Select
+                        key={`${cond.id}-${cond.field}`}
                         value={cond.operator}
                         onValueChange={(val) =>
                           handleOperatorChange(cond.id, val as SavedSearchOperator)
@@ -1030,7 +1080,7 @@ export function CreateSavedSearchModal({
                         <SelectTrigger
                           size="sm"
                           aria-label={`Operator for condition ${idx + 1}`}
-                          className="w-full sm:w-[135px] text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md shrink-0"
+                          className="w-full sm:w-[135px] h-8 text-13 font-normal text-foreground bg-background border-border/80 hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md shrink-0"
                         >
                           <SelectValue placeholder="Operator" />
                         </SelectTrigger>
@@ -1055,7 +1105,54 @@ export function CreateSavedSearchModal({
                     {/* Value Input or Select & Action buttons */}
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       {!isNoValueOperator ? (
-                        cond.field === 'itemType' ? (
+                        cond.operator === 'isInTheLast' ? (
+                          <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                            <Input
+                              type="number"
+                              min={1}
+                              value={parseDurationParts(cond.value).count}
+                              onChange={(e) => {
+                                const count = e.target.value;
+                                const unit = parseDurationParts(cond.value).unit;
+                                handleValueChange(cond.id, `${count} ${unit}`);
+                              }}
+                              placeholder="30"
+                              className="w-20 h-8 text-13 text-foreground bg-background hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md border-border/80"
+                            />
+                            <Select
+                              value={parseDurationParts(cond.value).unit}
+                              onValueChange={(val) => {
+                                const count = parseDurationParts(cond.value).count;
+                                handleValueChange(cond.id, `${count} ${val}`);
+                              }}
+                            >
+                              <SelectTrigger
+                                size="sm"
+                                className="w-[105px] h-8 text-13 text-foreground bg-background border-border/80 hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md shrink-0"
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent
+                                position="popper"
+                                sideOffset={4}
+                                className="p-1 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md"
+                              >
+                                <SelectItem value="days" className="text-13 py-1.5 px-2 rounded-sm cursor-pointer">Days</SelectItem>
+                                <SelectItem value="weeks" className="text-13 py-1.5 px-2 rounded-sm cursor-pointer">Weeks</SelectItem>
+                                <SelectItem value="months" className="text-13 py-1.5 px-2 rounded-sm cursor-pointer">Months</SelectItem>
+                                <SelectItem value="years" className="text-13 py-1.5 px-2 rounded-sm cursor-pointer">Years</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ) : cond.field === 'anyField' ? (
+                          <Input
+                            value={cond.value}
+                            onChange={(e) => handleValueChange(cond.id, e.target.value)}
+                            placeholder={activeConfig.placeholder}
+                            aria-label={`Keyword for condition ${idx + 1}`}
+                            className="flex-1 min-w-0 h-8 text-13 text-foreground bg-background hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md border-border/80 placeholder:text-foreground/50"
+                          />
+                        ) : cond.field === 'itemType' ? (
                           <div className="flex-1 min-w-0">
                             <Select
                               value={cond.value || itemTypeOptions[0]?.value || 'journalArticle'}
@@ -1064,7 +1161,7 @@ export function CreateSavedSearchModal({
                               <SelectTrigger
                                 size="sm"
                                 aria-label={`Item type for condition ${idx + 1}`}
-                                className="w-full text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
+                                className="w-full h-8 text-13 font-normal text-foreground bg-background border-border/80 hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
                               >
                                 <SelectValue placeholder="Select item type" />
                               </SelectTrigger>
@@ -1094,7 +1191,7 @@ export function CreateSavedSearchModal({
                               <SelectTrigger
                                 size="sm"
                                 aria-label={`Collection for condition ${idx + 1}`}
-                                className="w-full text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
+                                className="w-full h-8 text-13 font-normal text-foreground bg-background border-border/80 hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
                               >
                                 <SelectValue placeholder="Select collection..." />
                               </SelectTrigger>
@@ -1132,7 +1229,7 @@ export function CreateSavedSearchModal({
                               onChange={(e) => handleValueChange(cond.id, e.target.value)}
                               placeholder="Enter tag name..."
                               aria-label={`Tag for condition ${idx + 1}`}
-                              className="h-8 text-13 text-foreground bg-background hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md border-border placeholder:text-foreground/50"
+                              className="h-8 text-13 text-foreground bg-background hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md border-border/80 placeholder:text-foreground/50"
                             />
                             <datalist id={`tag-suggestions-${cond.id}`}>
                               {tagList.map((tag) => (
@@ -1147,7 +1244,7 @@ export function CreateSavedSearchModal({
                             onChange={(e) => handleValueChange(cond.id, e.target.value)}
                             placeholder="YYYY"
                             aria-label={`Year for condition ${idx + 1}`}
-                            className="flex-1 min-w-0 h-8 text-13 text-foreground bg-background hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md border-border placeholder:text-foreground/50"
+                            className="flex-1 min-w-0 h-8 text-13 text-foreground bg-background hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md border-border/80 placeholder:text-foreground/50"
                           />
                         ) : cond.field === 'readStatus' ? (
                           <div className="flex-1 min-w-0">
@@ -1158,7 +1255,7 @@ export function CreateSavedSearchModal({
                               <SelectTrigger
                                 size="sm"
                                 aria-label={`Reading status for condition ${idx + 1}`}
-                                className="w-full text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
+                                className="w-full h-8 text-13 font-normal text-foreground bg-background border-border/80 hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
                               >
                                 <SelectValue placeholder="Select reading status..." />
                               </SelectTrigger>
@@ -1188,7 +1285,7 @@ export function CreateSavedSearchModal({
                               <SelectTrigger
                                 size="sm"
                                 aria-label={`Rating for condition ${idx + 1}`}
-                                className="w-full text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
+                                className="w-full h-8 text-13 font-normal text-foreground bg-background border-border/80 hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
                               >
                                 <SelectValue placeholder="Select rating..." />
                               </SelectTrigger>
@@ -1218,7 +1315,7 @@ export function CreateSavedSearchModal({
                               <SelectTrigger
                                 size="sm"
                                 aria-label={`Attachment filter for condition ${idx + 1}`}
-                                className="w-full text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
+                                className="w-full h-8 text-13 font-normal text-foreground bg-background border-border/80 hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md"
                               >
                                 <SelectValue placeholder="Select attachment status..." />
                               </SelectTrigger>
@@ -1245,16 +1342,16 @@ export function CreateSavedSearchModal({
                             onChange={(e) => handleValueChange(cond.id, e.target.value)}
                             placeholder={activeConfig.placeholder}
                             aria-label={`${activeConfig.label} for condition ${idx + 1}`}
-                            className="flex-1 min-w-0 h-8 text-13 text-foreground bg-background hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md border-border placeholder:text-foreground/50"
+                            className="flex-1 min-w-0 h-8 text-13 text-foreground bg-background hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md border-border/80 placeholder:text-foreground/50"
                           />
                         )
                       ) : (
-                        <div className="flex-1 min-w-0 h-8 flex items-center px-3 text-13 text-foreground italic rounded-md border border-dashed border-border bg-muted/20">
+                        <div className="flex-1 min-w-0 h-8 flex items-center px-3 text-13 text-muted-foreground italic rounded-md border border-dashed border-border bg-muted/20">
                           No value required
                         </div>
                       )}
 
-                      {/* Action buttons (+ / -) - Clean monochrome styling */}
+                      {/* Action buttons (+ / -) - Clean monochrome styling with project standard borders */}
                       <div className="flex items-center gap-1 shrink-0">
                         <Button
                           type="button"
@@ -1263,7 +1360,7 @@ export function CreateSavedSearchModal({
                           onClick={() => handleAddCondition(idx)}
                           title="Add condition below"
                           aria-label={`Add condition after condition ${idx + 1}`}
-                          className="size-8 text-foreground hover:bg-muted border border-border hover:border-foreground/30 rounded-md cursor-pointer flex items-center justify-center shrink-0 transition-colors"
+                          className="size-8 text-foreground hover:bg-muted border border-border/80 hover:border-foreground/30 rounded-md cursor-pointer flex items-center justify-center shrink-0 transition-colors"
                         >
                           <Plus className="size-3.5 shrink-0" strokeWidth={1.5} />
                         </Button>
@@ -1275,7 +1372,7 @@ export function CreateSavedSearchModal({
                           disabled={conditions.length <= 1}
                           title="Remove condition"
                           aria-label={`Remove condition ${idx + 1}`}
-                          className="size-8 text-foreground hover:bg-muted border border-border hover:border-foreground/30 rounded-md cursor-pointer disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center shrink-0 transition-colors"
+                          className="size-8 text-foreground hover:bg-muted border border-border/80 hover:border-foreground/30 rounded-md cursor-pointer disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center shrink-0 transition-colors"
                         >
                           <Minus className="size-3.5 shrink-0" strokeWidth={1.5} />
                         </Button>
@@ -1287,7 +1384,7 @@ export function CreateSavedSearchModal({
             </div>
           </div>
 
-          {/* 4. Checkbox Options - Clean inline layout with NO outer border box */}
+          {/* 4. Checkbox Options - Zotero Scope Options */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-1">
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <Checkbox
@@ -1340,7 +1437,7 @@ export function CreateSavedSearchModal({
                   <SelectTrigger
                     size="sm"
                     aria-label="Sort by field"
-                    className="w-[120px] text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md shrink-0"
+                    className="w-[130px] h-8 text-13 font-normal text-foreground bg-background border-border/80 hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md shrink-0"
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -1355,7 +1452,7 @@ export function CreateSavedSearchModal({
                   <SelectTrigger
                     size="sm"
                     aria-label="Sort direction"
-                    className="w-[115px] text-13 font-normal text-foreground bg-background border-border hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md shrink-0"
+                    className="w-[125px] h-8 text-13 font-normal text-foreground bg-background border-border/80 hover:border-foreground/30 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 rounded-md shrink-0"
                   >
                     <SelectValue />
                   </SelectTrigger>

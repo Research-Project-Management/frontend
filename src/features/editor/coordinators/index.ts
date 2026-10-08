@@ -14,3 +14,5 @@ export * from './workspace.coordinator';
 export * from './navigation.coordinator';
 export * from './keybinding.coordinator';
 export * from './ai.coordinator';
+
+export * from './services';

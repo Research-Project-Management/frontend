@@ -6,9 +6,9 @@
  */
 
 import { create } from 'zustand';
-import type { AssetInfo } from '../types/asset.types';
-import type { Page, PageFile } from '../types/core.types';
-import type { NodeTreeItem } from '../types/node.types';
+import type { AssetInfo } from '../domain/types/asset.types';
+import type { Page, PageFile } from '../domain/types/core.types';
+import type { NodeTreeItem } from '../domain/types/node.types';
 
 export interface DocumentEditorState {
   // ── Document & Project State ─────────────────────────────────────────────

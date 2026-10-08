@@ -15,14 +15,14 @@
 import { lruDocumentCache, type DocumentModelState } from '../domain/lru-document-cache';
 import { latexSymbolsIndex } from '../domain/latex-symbols-index';
 import { latexDagEngine } from '../domain/latex-dag-engine';
-import { manuscriptService } from '../services/manuscript.service';
-import { useCompileStore, usePageStore, useSettingsStore } from '../store';
+import { manuscriptService } from './services/manuscript.service';
+import { useCompileStore, usePageStore, useSettingsStore, useConnectivityStore } from '../store';
 import { editorCommandBus } from './command-bus';
 import { visibilityCoordinator } from './visibility.coordinator';
 import {
   draftStorageService,
   type DraftSnapshot,
-} from '../services/draft-storage.service';
+} from './services/draft-storage.service';
 
 export type { DraftSnapshot };
 
@@ -56,6 +56,29 @@ export class SessionCoordinatorRegistry {
 
   constructor() {
     this.initVisibilityFlushHandler();
+    this.initCommandSubscriptions();
+    this.initOnlineListener();
+  }
+
+  private initOnlineListener(): void {
+    if (typeof window === 'undefined') return;
+    window.addEventListener('online', () => {
+      useConnectivityStore.getState().setIsOnline(true);
+      void this.flushAllPending();
+    });
+    window.addEventListener('offline', () => {
+      useConnectivityStore.getState().setIsOnline(false);
+    });
+  }
+
+  private initCommandSubscriptions(): void {
+    editorCommandBus.subscribe('document:content-updated', (cmd) => {
+      // Remote collaborator updated a document over WebSocket
+      const model = lruDocumentCache.getModel(cmd.docId);
+      if (!model?.isDirty) {
+        lruDocumentCache.updateContent(cmd.docId, cmd.content, false);
+      }
+    });
   }
 
   private initVisibilityFlushHandler(): void {
@@ -142,12 +165,17 @@ export class SessionCoordinatorRegistry {
     }
 
     try {
+      useConnectivityStore.getState().incrementPending();
       await manuscriptService.docs.updateContent(fileId, model.content);
       lruDocumentCache.markClean(fileId);
       useCompileStore.getState().clearDirty(fileId);
       this.clearDraftSnapshot(fileId);
+      useConnectivityStore.getState().decrementPending();
+      useConnectivityStore.getState().setLastSavedAt(new Date());
       return true;
     } catch (err) {
+      useConnectivityStore.getState().decrementPending();
+      useConnectivityStore.getState().setSyncStatus('error');
       console.error(`[SessionCoordinator] Failed to flush file ${fileId}:`, err);
       return false;
     }
@@ -171,13 +199,18 @@ export class SessionCoordinatorRegistry {
 
     const flushPromises = dirtyModels.map(async (model) => {
       try {
+        useConnectivityStore.getState().incrementPending();
         await manuscriptService.docs.updateContent(model.fileId, model.content);
         lruDocumentCache.markClean(model.fileId);
         useCompileStore.getState().clearDirty(model.fileId);
         this.clearDraftSnapshot(model.fileId);
+        useConnectivityStore.getState().decrementPending();
+        useConnectivityStore.getState().setLastSavedAt(new Date());
         succeeded++;
         results.push({ fileId: model.fileId, success: true });
       } catch (err) {
+        useConnectivityStore.getState().decrementPending();
+        useConnectivityStore.getState().setSyncStatus('error');
         failed++;
         results.push({ fileId: model.fileId, success: false, error: err });
         console.error(`[SessionCoordinator] Error flushing file ${model.fileId}:`, err);
@@ -194,9 +227,7 @@ export class SessionCoordinatorRegistry {
     draftStorageService.saveDraft(
       fileId,
       content,
-      projectId || 'anonymous',
-      Date.now(),
-      true
+      projectId || 'anonymous'
     ).catch(() => {});
   }
 
@@ -215,9 +246,9 @@ export class SessionCoordinatorRegistry {
         draft: {
           fileId,
           content: memoryModel.content,
-          timestamp: memoryModel.lastActiveAt,
+          savedAt: memoryModel.lastActiveAt,
           projectId: memoryModel.projectId || '',
-          isDirty: true,
+          title: memoryModel.filePath,
         },
       };
     }
@@ -235,7 +266,6 @@ export class SessionCoordinatorRegistry {
       const persistedDraft = await draftStorageService.getDraft(fileId);
       if (
         persistedDraft &&
-        persistedDraft.isDirty &&
         persistedDraft.content &&
         persistedDraft.content !== serverContent
       ) {

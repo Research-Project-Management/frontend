@@ -10,9 +10,9 @@
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { filesQuery } from '@/features/editor/hooks/use-core';
-import { documentSearchService } from '@/features/editor/services/search.service';
-import type { IEditorEngine } from '@/features/editor/ports/editor-engine.port';
+import { filesQuery } from '@/features/editor/ui/hooks/use-core';
+import { documentSearchService } from '@/features/editor/coordinators/services/search.service';
+import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 
 interface UseProjectSearchActionsParams {
   engine: IEditorEngine | null;

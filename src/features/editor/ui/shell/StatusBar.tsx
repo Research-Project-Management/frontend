@@ -20,12 +20,16 @@ import {
   Loader2,
   Terminal,
   FileText,
+  Cloud,
+  CloudOff,
+  WifiOff,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useLayoutStore } from '../../store/layout.store';
 import { useCompilerStore } from '../../store/compiler.store';
 import { useSettingsStore } from '../../store/settings.store';
-import { useEditorInstance } from '../../core/context/editor-instance.context';
+import { useConnectivityStore } from '../../store/connectivity.store';
+import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { editorCommandBus } from '../../coordinators/command-bus';
 
 export function StatusBar() {
@@ -60,6 +64,10 @@ export function StatusBar() {
   const isCompiling = compileStatus === 'compiling';
   const hasErrors = errorCount > 0;
 
+  const isOnline = useConnectivityStore((s) => s.isOnline);
+  const syncStatus = useConnectivityStore((s) => s.syncStatus);
+  const pendingSaveCount = useConnectivityStore((s) => s.pendingSaveCount);
+
   return (
     <footer
       aria-label="Status Bar"
@@ -72,6 +80,32 @@ export function StatusBar() {
           <GitBranch className="size-3 shrink-0" />
           <span>main</span>
         </div>
+
+        {/* Cloud Sync Status Indicator */}
+        {!isOnline ? (
+          <div
+            className="flex items-center gap-1 text-amber-500 font-medium"
+            title="You are currently offline. Changes are saved locally and will sync once reconnected."
+          >
+            <WifiOff className="size-3 shrink-0" />
+            <span>Offline</span>
+          </div>
+        ) : syncStatus === 'saving' || pendingSaveCount > 0 ? (
+          <div className="flex items-center gap-1 text-sky-400" title="Saving changes to cloud...">
+            <Loader2 className="size-3 animate-spin shrink-0" />
+            <span>Saving...</span>
+          </div>
+        ) : syncStatus === 'error' ? (
+          <div className="flex items-center gap-1 text-destructive font-medium" title="Failed to sync changes with cloud. Will retry automatically.">
+            <CloudOff className="size-3 shrink-0" />
+            <span>Sync Error</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 text-muted-foreground/80 hover:text-foreground transition-colors cursor-default" title="All changes saved to cloud">
+            <Cloud className="size-3 shrink-0 text-emerald-500/80" />
+            <span className="hidden sm:inline">Saved</span>
+          </div>
+        )}
 
         {/* Problems Badge (Clickable to open Problems Panel) */}
         <button

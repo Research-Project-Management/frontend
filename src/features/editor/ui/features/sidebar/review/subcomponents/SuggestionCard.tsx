@@ -2,8 +2,8 @@
 
 import React, { useMemo } from 'react';
 import { CheckCircle2, User, X } from 'lucide-react';
-import type { PageSuggestion } from '@/features/editor/types';
-import type { MentionMember } from '@/features/editor/utils/mention.util';
+import type { PageSuggestion } from '@/features/editor/domain/types';
+import type { MentionMember } from '@/features/editor/domain/utils/mention.util';
 import { cn } from '@/shared/lib/utils';
 import { formatOverleafDate, resolveAuthorDisplay } from '../utils/review.util';
 

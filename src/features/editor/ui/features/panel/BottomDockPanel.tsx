@@ -115,12 +115,12 @@ export function BottomDockPanel() {
     }
   };
 
-  const handleJumpToProblem = (line?: number, file?: string) => {
+  const handleJumpToProblem = (line?: number | null, file?: string | null) => {
     if (line == null) return;
     editorCommandBus.dispatch({
       type: 'navigation:jump-to-line',
-      filePath: file,
-      fileId: file,
+      filePath: file || undefined,
+      fileId: file || undefined,
       line,
       highlight: 'error',
     });

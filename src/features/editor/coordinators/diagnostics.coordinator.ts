@@ -11,7 +11,7 @@
  * - Provides summary metrics per file and whole-project (errors, warnings, badboxes).
  */
 
-import type { CompileError } from '../types/compiler.types';
+import type { CompileError } from '../domain/types/compiler.types';
 import { normalizeLatexPath } from '../domain/latex-dag-engine';
 
 export interface IndexedDiagnosticItem {

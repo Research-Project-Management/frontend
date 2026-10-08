@@ -43,14 +43,13 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { cn } from '@/shared/lib/utils';
-import { useFileActions, pageKeys } from '@/features/editor/hooks/use-core';
-import { useEditorStorage } from '@/features/editor/hooks/use-storage';
+import { useFileActions, pageKeys } from '@/features/editor/ui/hooks/use-core';
+import { useEditorStorage } from '@/features/editor/ui/hooks/use-storage';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
-import { pageService } from '@/features/editor/services/core.service';
-import { manuscriptService } from '@/features/editor/services/manuscript.service';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
-import { formatItemToBibtex } from '@/features/editor/utils/citation.util';
+import { pageService } from '@/features/editor/coordinators/services/core.service';
+import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
+import { formatItemToBibtex } from '@/features/editor/domain/utils/citation.util';
 import { useViewItems, type Item } from '@/features/library';
 
 export type AddFilesTab = 'new-file' | 'upload' | 'project' | 'url' | 'library';

@@ -9,15 +9,15 @@
 
 import React from 'react';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from "@/shared/components/ui";
-import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
-import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
+import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { Bot, ShieldCheck } from 'lucide-react';
 
 export function EditMenu() {
   const { engine } = useEditorInstance();
 
-  const handleUndo = () => engine?.undo();
-  const handleRedo = () => engine?.redo();
+  const handleUndo = () => editorCommandBus.dispatch({ type: 'editor:undo' });
+  const handleRedo = () => editorCommandBus.dispatch({ type: 'editor:redo' });
   const handleSelectAll = () => engine?.selectAll();
   const handleFind = () => {
     editorCommandBus.dispatch({ type: 'editor:find', open: true });

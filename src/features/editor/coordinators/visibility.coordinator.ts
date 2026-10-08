@@ -119,7 +119,7 @@ export class VisibilityCoordinatorRegistry {
     this.awarenessCallback?.(false);
 
     editorCommandBus.dispatch({
-      type: 'lifecycle:state-change' as any,
+      type: 'lifecycle:state-change',
       state: 'hibernated',
     });
   }
@@ -128,7 +128,7 @@ export class VisibilityCoordinatorRegistry {
     this.awarenessCallback?.(true);
 
     editorCommandBus.dispatch({
-      type: 'lifecycle:state-change' as any,
+      type: 'lifecycle:state-change',
       state: 'active',
       durationMs,
     });

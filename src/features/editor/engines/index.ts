@@ -1,22 +1,28 @@
 /**
  * engines/index.ts
  *
- * Barrel export for Editor Technology Engines (Block 4: Engines Layer).
- * Houses CodeMirror 6 configuration, language grammars, extension slices, and collaboration adapters.
+ * Unified Barrel Export for Editor Technology Engines (Layer 2).
+ * Houses CodeMirror 6 configuration, extensions, collaboration, and workers.
  */
 
-// 1. CodeMirror 6 Baseline Preset & Dynamic Compartments
-export * from './codemirror-preset';
+// 1. CodeMirror 6 Infrastructure & Presets
+export * from './codemirror/codemirror-preset';
+export * from './codemirror/editor-themes';
 
-// 2. Real-time Collaboration Adapter (Yjs CRDT)
-export * from './yjs-codemirror-adapter';
+// 2. Independent CodeMirror Extension Slices
+export * from './extensions/latex-language';
+export * from './extensions/latex-autocomplete';
+export * from './extensions/latex-linter';
+export * from './extensions/latex-linter-core';
+export * from './extensions/latex-math-preview';
+export * from './extensions/latex-citation-hover';
+export * from './extensions/inline-diff';
+export * from './extensions/latex-folding';
+export * from './extensions/latex-error-lens';
 
-// 3. LaTeX Extension Slices
-export * from './latex-language';
-export * from './latex-macros';
-export * from './latex-linter';
-export * from './latex-math-preview';
-export * from './inline-diff';
-export * from './latex-folding';
-export * from './latex-error-lens';
-export * from './editor-themes';
+// 3. Real-time Collaboration Engine (Yjs CRDT & Persistence)
+export * from './collaboration/yjs-codemirror-adapter';
+export * from './collaboration/yjs-persistence-adapter';
+
+// 4. Platform Engine Adapters
+export * from './adapters';

@@ -1,20 +1,14 @@
 /**
- * Pure Domain Model: Creators & Authors
- * 100% Pure TypeScript - 0% React, 0% DOM dependencies
+ * Presentation Model: Creators & Authors
+ *
+ * NOTE: The Backend Server (BibliographicUtils, TrustedExtractionService,
+ * ItemMapper) is the authoritative single source of truth for author splitting,
+ * OCR junk cleaning, institution detection, and creator mapping.
+ *
+ * This file provides lightweight presentation helpers for splitting user
+ * input strings in forms, formatting compact names for tables/cards, and
+ * standardizing author display.
  */
-
-export const INSTITUTION_KEYWORDS: ReadonlyArray<string> = [
-  'organization', 'organizations', 'organisation', 'organisations', 'association', 'associations',
-  'institute', 'institutes', 'institution', 'institutions', 'university', 'universities',
-  'laboratory', 'laboratories', 'collab', 'collaboration', 'collaborations', 'group', 'team',
-  'consortium', 'network', 'department', 'departments', 'agency', 'agencies', 'center', 'centers',
-  'centre', 'centres', 'foundation', 'corporation', 'inc', 'llc', 'ltd', 'hospital', 'hospitals',
-  'openai', 'google', 'microsoft', 'meta', 'deepmind', 'anthropic', 'mit', 'cern', 'nasa', 'who', 'ieee', 'acm',
-];
-
-export const PREFIX_PARTICLES: ReadonlySet<string> = new Set([
-  'von', 'van', 'de', 'del', 'der', 'da', 'di', 'du', 'la', 'le',
-]);
 
 export interface ParsedCreator {
   firstName: string;
@@ -23,393 +17,161 @@ export interface ParsedCreator {
   isInstitution?: boolean;
 }
 
-export const GENERATIONAL_SUFFIX_REGEX =
-  /^(?:Jr\.?|Sr\.?|II|III|IV|V|Esq\.?)$/i;
-
-export const NOISE_AUTHOR_WORDS = new Set([
-  'abstract',
-  'introduction',
-  'indexterms',
-  'keywords',
-  'keyword',
-  'references',
-  'reference',
-  'bibliography',
-  'contents',
-  'tableofcontents',
-  'acknowledgments',
-  'acknowledgements',
-  'correspondence',
-  'correspondingauthor',
-  'allrightsreserved',
-  'copyright',
-  'unknown',
-  'none',
-  'na',
-  'nil',
-  'etal',
-  'andothers',
-  'visualgeometrygroup',
-]);
-
 /**
- * Validates if an extracted author name token is actually section noise, OCR artifact,
- * or academic affiliation header rather than a genuine author name.
+ * Splits raw author string by typical delimiter tokens (;, newline, or " and ")
+ * when a user pastes multiple authors into a single form input.
  */
-export function isNoiseAuthorName(raw?: string | null): boolean {
-  if (!raw || typeof raw !== 'string') return true;
-  const trimmed = raw.trim();
-  if (!trimmed) return true;
+export function splitAuthorString(rawInput?: string | null): string[] {
+  if (!rawInput || typeof rawInput !== 'string') return [];
+  const trimmed = rawInput.trim();
+  if (!trimmed) return [];
 
-  // Single non-word character or too short non-alphabetic
-  if (trimmed.length <= 1 && !/[a-zA-Z]/.test(trimmed)) return true;
-
-  // Collapse non-alpha characters to match against known noise blacklist
-  // Handles letter-spaced headers: "A B S T R A C T", "A BSTRACT", "I N T R O D U C T I O N"
-  const collapsed = trimmed.toLowerCase().replace(/[^a-z]/g, '');
-  if (NOISE_AUTHOR_WORDS.has(collapsed)) return true;
-
-  const lower = trimmed.toLowerCase();
-
-  // Academic affiliations/departments mistakenly extracted as author names
-  if (
-    /^(?:department|faculty|school|division|college)\s+of\s+/i.test(lower) ||
-    /^(?:lab|laboratory)\s+of\s+/i.test(lower) ||
-    /^(?:centre|center)\s+for\s+/i.test(lower) ||
-    /^(?:institute|university)\s+of\s+[a-z\s]+,\s*(?:department|faculty|school|division)/i.test(lower)
-  ) {
-    return true;
+  // Split by newlines or semicolons first
+  if (trimmed.includes('\n') || trimmed.includes(';')) {
+    return trimmed
+      .split(/[\n;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
 
-  // Reject emails or URLs mistakenly passed as author names
-  if (/@/.test(trimmed) || /^https?:\/\//i.test(trimmed)) {
-    return true;
+  // Split by " and " if present
+  if (/\s+and\s+/i.test(trimmed)) {
+    return trimmed
+      .split(/\s+and\s+/i)
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
 
-  return false;
+  return [trimmed];
 }
 
 /**
- * Strips OCR junk, footnote markers, email addresses, affiliations,
- * and academic titles from a single author string token.
- */
-export function cleanAuthorName(raw?: string | null): string {
-  if (!raw || typeof raw !== 'string') return '';
-
-  let cleaned = raw.trim();
-
-  // Strip emails: e.g. <user@domain.com> or user@domain.com
-  cleaned = cleaned.replace(/<[^>]+@[^>]+>/g, ' ');
-  cleaned = cleaned.replace(
-    /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
-    ' ',
-  );
-
-  // Strip leading list numbering, bullets, or prefix: e.g. "1. ", "[1] ", "- ", "By: "
-  cleaned = cleaned.replace(
-    /^(?:(?:\[?\d+\]?[\.\)]?|[-•*])\s+|(?:by|author|authors):\s*)/i,
-    '',
-  );
-
-  // Strip parenthetical roles/annotations: e.g. "(corresponding author)", "(equal contribution)", "(author)"
-  cleaned = cleaned.replace(
-    /\s*\((?:corresponding(?:\s*author)?|equal\s*contribution|author|lead\s*author|co-author|presenter|speaker|advisor|mentor|first\s*author)[^)]*\)/gi,
-    '',
-  );
-
-  // Strip leading honorifics / academic titles: e.g. "Prof. Dr.", "Prof.", "Dr.", "Mr.", "Mrs.", "Ms."
-  cleaned = cleaned.replace(
-    /^(?:(?:Prof(?:essor)?|Dr|Doctor|Mr|Mrs|Ms)\.?\s+)+/i,
-    '',
-  );
-
-  // Strip trailing professional degrees / fellowships: e.g. ", PhD", " PhD", " M.D.", " FRS"
-  cleaned = cleaned.replace(
-    /[,\s]+(?:PhD|M\.?D\.?|M\.?S\.?|B\.?S\.?|OBE|FRS|FRSE|FIEEE|CBE)\b/gi,
-    '',
-  );
-
-  // Strip trailing footnote markers, superscripts, and affiliation numbers:
-  // e.g. "1,2*", "*", "1", "†", "‡", "§", "1*", "*1"
-  cleaned = cleaned.replace(
-    /(?:[\s,]*[*†‡§^#~]+[\s,]*\d*|[\s,]*\d+[*†‡§^#~]*)+$/,
-    '',
-  );
-
-  // Normalize excessive internal whitespace
-  cleaned = cleaned.replace(/\s+/g, ' ').trim();
-
-  // Remove trailing comma or semicolon if leftover
-  cleaned = cleaned.replace(/[,;]+$/, '').trim();
-
-  if (isNoiseAuthorName(cleaned)) {
-    return '';
-  }
-
-  return cleaned;
-}
-
-/**
- * Splits a composite string of authors separated by ';', ' and ', ' & ', or commas.
- * Handles both "LastName, FirstName" pairs and forward names without mangling.
- */
-export function splitAuthorString(input: string): string[] {
-  if (!input || !input.trim()) return [];
-  const trimmed = input.trim();
-  const lines = trimmed
-    .split(/\r?\n+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const result: string[] = [];
-
-  for (const line of lines) {
-    // 1. Semicolons are unequivocal delimiters in academic metadata
-    if (line.includes(';')) {
-      const parts = line
-        .split(';')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      for (const p of parts) {
-        result.push(...splitAuthorString(p));
-      }
-      continue;
-    }
-
-    // 2. "and" / "&" conjunctions (e.g. "A, B, and C" or "A and B" or "A & B")
-    if (/\s+and\s+/i.test(line) || /\s+&\s+/.test(line)) {
-      const parts = line
-        .split(/(?:,\s*(?:and|&)\s*|\s+(?:and|&)\s+)/i)
-        .map((s) => s.trim())
-        .filter(Boolean);
-      for (const p of parts) {
-        result.push(...splitAuthorString(p));
-      }
-      continue;
-    }
-
-    // 3. Comma-separated lists
-    if (line.includes(',')) {
-      const rawTokens = line
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (rawTokens.length <= 1) {
-        result.push(line.trim());
-        continue;
-      }
-
-      if (rawTokens.length === 2) {
-        // Disambiguate: Is it "LastName, FirstName" (1 author) OR "FirstName1 LastName1, FirstName2 LastName2" (2 authors)?
-        const firstHasSpace = rawTokens[0].includes(' ');
-        const secondHasSpace = rawTokens[1].includes(' ');
-        const isSuffix = GENERATIONAL_SUFFIX_REGEX.test(rawTokens[1]);
-
-        if (isSuffix) {
-          result.push(line.trim());
-        } else if (firstHasSpace && secondHasSpace) {
-          result.push(rawTokens[0], rawTokens[1]);
-        } else {
-          result.push(line.trim());
-        }
-        continue;
-      }
-
-      // rawTokens.length >= 3:
-      const isEven = rawTokens.length % 2 === 0;
-      let looksLikeInvertedPairs = isEven;
-
-      if (isEven) {
-        for (let i = 0; i < rawTokens.length; i += 2) {
-          const surname = rawTokens[i];
-          if (
-            surname.includes(' ') &&
-            !/^(?:van|von|de|del|der|da|di|du|la|le)\s+/i.test(surname)
-          ) {
-            looksLikeInvertedPairs = false;
-            break;
-          }
-        }
-      }
-
-      if (looksLikeInvertedPairs) {
-        for (let i = 0; i < rawTokens.length; i += 2) {
-          result.push(`${rawTokens[i]}, ${rawTokens[i + 1]}`);
-        }
-      } else {
-        for (const t of rawTokens) {
-          result.push(t);
-        }
-      }
-      continue;
-    }
-
-    result.push(line.trim());
-  }
-
-  return result.map(cleanAuthorName).filter(Boolean);
-}
-
-/**
- * Parses a single author name into structured fields.
- * Handles institutions, "LastName, FirstName", "FirstName LastName", generational suffixes, particles (von/van/de), mononyms.
+ * Lightweight helper to parse an author input string into firstName / lastName.
+ * Handles "LastName, FirstName" or "FirstName LastName".
  */
 export function parseCreatorName(rawName: string): ParsedCreator {
-  const cleaned = cleanAuthorName(rawName);
-  if (!cleaned) return { firstName: '', lastName: '', fullName: '', isInstitution: false };
-
-  const lower = cleaned.toLowerCase();
-  const isInstitution = INSTITUTION_KEYWORDS.some((kw) =>
-    new RegExp(`\\b${kw}\\b`, 'i').test(lower),
-  );
-  if (isInstitution) {
-    return { firstName: '', lastName: cleaned, fullName: cleaned, isInstitution: true };
+  if (!rawName || typeof rawName !== 'string') {
+    return { firstName: '', lastName: '', fullName: '', isInstitution: false };
+  }
+  const trimmed = rawName.trim();
+  if (!trimmed) {
+    return { firstName: '', lastName: '', fullName: '', isInstitution: false };
   }
 
-  let workingName = cleaned;
-
-  // Comma-separated: "LastName, FirstName MiddleName" OR "Name, Jr."
-  if (workingName.includes(',')) {
-    const parts = workingName.split(',').map((p) => p.trim());
-    if (parts.length === 2 && GENERATIONAL_SUFFIX_REGEX.test(parts[1])) {
-      workingName = `${parts[0]} ${parts[1]}`;
-    } else {
-      const lastName = parts[0] || '';
-      const firstName = parts.slice(1).join(' ') || '';
-      const fullName = firstName ? `${firstName} ${lastName}` : lastName;
-      return { firstName, lastName, fullName, isInstitution: false };
-    }
+  // If format is "LastName, FirstName"
+  if (trimmed.includes(',')) {
+    const parts = trimmed.split(',').map((p) => p.trim());
+    const lastName = parts[0] || '';
+    const firstName = parts.slice(1).join(' ') || '';
+    return {
+      firstName,
+      lastName,
+      fullName: firstName ? `${firstName} ${lastName}` : lastName,
+      isInstitution: false,
+    };
   }
 
-  // Space-separated: "FirstName [Middle...] LastName [Suffix]"
-  const tokens = workingName.split(' ');
+  // If format is "FirstName LastName"
+  const tokens = trimmed.split(/\s+/).filter(Boolean);
   if (tokens.length === 1) {
     return { firstName: '', lastName: tokens[0], fullName: tokens[0], isInstitution: false };
   }
 
-  // Check generational suffix
-  let splitIndex = tokens.length - 1;
-  if (
-    tokens.length >= 3 &&
-    GENERATIONAL_SUFFIX_REGEX.test(tokens[tokens.length - 1])
-  ) {
-    splitIndex = tokens.length - 2;
-  } else if (
-    tokens.length >= 3 &&
-    PREFIX_PARTICLES.has(tokens[tokens.length - 2].toLowerCase())
-  ) {
-    splitIndex = tokens.length - 2;
-    if (
-      tokens.length >= 4 &&
-      PREFIX_PARTICLES.has(tokens[tokens.length - 3].toLowerCase())
-    ) {
-      splitIndex = tokens.length - 3;
-    }
-  }
-
-  const lastName = tokens.slice(splitIndex).join(' ');
-  const firstName = tokens.slice(0, splitIndex).join(' ');
-  const fullName = firstName ? `${firstName} ${lastName}` : lastName;
-  return { firstName, lastName, fullName, isInstitution: false };
+  const lastName = tokens.pop() || '';
+  const firstName = tokens.join(' ');
+  return {
+    firstName,
+    lastName,
+    fullName: `${firstName} ${lastName}`,
+    isInstitution: false,
+  };
 }
 
 export const parseAuthorName = parseCreatorName;
 
 /**
- * Standardizes raw authors or creators into a clean array of author name strings.
+ * Light compatibility helper for input cleaning.
+ */
+export function cleanAuthorName(raw?: string | null): string {
+  if (!raw || typeof raw !== 'string') return '';
+  return raw.trim().replace(/\s+/g, ' ');
+}
+
+export function isNoiseAuthorName(raw?: string | null): boolean {
+  if (!raw || typeof raw !== 'string') return true;
+  const s = raw.trim().toLowerCase();
+  return s.length <= 1 || s === 'unknown' || s === 'none' || s === 'n/a';
+}
+
+/**
+ * Extracts and normalizes authors array for UI presentation.
+ * Prefers `authors: string[]`, falls back to `creators: CreatorCredit[]`.
  */
 export function normalizeAuthors(
   rawAuthors?: unknown,
   creators?: Array<{ creatorType?: string; name?: string; fullName?: string; firstName?: string | null; lastName?: string | null; [key: string]: any }> | null,
   contributors?: Array<{ creatorType?: string; name?: string; fullName?: string; firstName?: string | null; lastName?: string | null; [key: string]: any }> | null,
 ): string[] {
+  // If passed an item-like object
   if (rawAuthors && typeof rawAuthors === 'object' && !Array.isArray(rawAuthors)) {
     const candidate = rawAuthors as {
       authors?: unknown;
-      creators?: Array<{ creatorType?: string; name?: string; fullName?: string; firstName?: string | null; lastName?: string | null }> | null;
-      contributors?: Array<{ creatorType?: string; name?: string; fullName?: string; firstName?: string | null; lastName?: string | null }> | null;
+      creators?: unknown[];
+      contributors?: unknown[];
     };
     if (candidate.authors !== undefined || candidate.creators !== undefined || candidate.contributors !== undefined) {
-      return normalizeAuthors(
-        candidate.authors,
-        candidate.creators,
-        candidate.contributors,
-      );
+      return normalizeAuthors(candidate.authors, candidate.creators as any, candidate.contributors as any);
     }
   }
 
+  // 1. Direct string array
   if (Array.isArray(rawAuthors) && rawAuthors.length > 0) {
-    const result: string[] = [];
+    const list: string[] = [];
     for (const item of rawAuthors) {
-      if (!item) continue;
-      if (typeof item === 'string') {
-        result.push(...splitAuthorString(item));
-      } else if (typeof item === 'object') {
-        const fullName = (item.fullName || item.name || '').trim();
-        if (fullName) {
-          result.push(...splitAuthorString(fullName));
-        } else if ('firstName' in item || 'lastName' in item || 'family' in item || 'given' in item) {
+      if (typeof item === 'string' && item.trim()) {
+        list.push(item.trim());
+      } else if (item && typeof item === 'object') {
+        const full = (item.fullName || item.name || '').trim();
+        if (full) {
+          list.push(full);
+        } else if (item.lastName || item.family) {
           const first = (item.firstName || item.given || '').trim();
           const last = (item.lastName || item.family || '').trim();
-          const full = [first, last].filter(Boolean).join(' ');
-          if (full) result.push(full);
+          list.push([last, first].filter(Boolean).join(', '));
         }
       }
     }
-    if (result.length > 0) return result;
+    if (list.length > 0) return list;
   } else if (typeof rawAuthors === 'string' && rawAuthors.trim()) {
     return splitAuthorString(rawAuthors);
   }
 
+  // 2. Structured creators / contributors
   const creatorList = (Array.isArray(creators) && creators.length > 0)
     ? creators
     : (Array.isArray(contributors) && contributors.length > 0)
     ? contributors
-    : (rawAuthors && typeof rawAuthors === 'object' && Array.isArray((rawAuthors as { creators?: unknown[] }).creators))
-    ? (rawAuthors as { creators: unknown[] }).creators
-    : (rawAuthors && typeof rawAuthors === 'object' && Array.isArray((rawAuthors as { contributors?: unknown[] }).contributors))
-    ? (rawAuthors as { contributors: unknown[] }).contributors
     : [];
 
   if (creatorList.length > 0) {
-    const fromCreators: string[] = [];
-    const hasExplicitAuthors = creatorList.some(
-      (c) => c && typeof c === 'object' && 'creatorType' in c && (c as { creatorType: unknown }).creatorType === 'author',
-    );
-
-    for (const c of creatorList) {
-      if (!c) continue;
-      if (typeof c === 'string') {
-        fromCreators.push(...splitAuthorString(c));
-        continue;
-      }
-      const creator = c as {
-        creatorType?: string;
-        fullName?: string;
-        name?: string;
-        firstName?: string;
-        given?: string;
-        lastName?: string;
-        family?: string;
-      };
-      if (hasExplicitAuthors && creator.creatorType && creator.creatorType !== 'author') {
-        continue;
-      }
-      const fullName = (creator.fullName || creator.name || '').trim();
-      if (fullName) {
-        fromCreators.push(...splitAuthorString(fullName));
+    const names: string[] = [];
+    for (const rawC of creatorList) {
+      if (!rawC) continue;
+      if (typeof rawC === 'string') {
+        names.push((rawC as string).trim());
       } else {
-        const first = (creator.firstName || creator.given || '').trim();
-        const last = (creator.lastName || creator.family || '').trim();
-        const full = [first, last].filter(Boolean).join(' ');
+        const c = rawC as Record<string, any>;
+        const full = (c.fullName || c.name || '').trim();
         if (full) {
-          const cleaned = cleanAuthorName(full);
-          if (cleaned && !isNoiseAuthorName(cleaned)) {
-            fromCreators.push(cleaned);
-          }
+          names.push(full);
+        } else if (c.lastName || c.firstName) {
+          const first = (c.firstName || '').trim();
+          const last = (c.lastName || '').trim();
+          names.push([last, first].filter(Boolean).join(', '));
         }
       }
     }
-    if (fromCreators.length > 0) return fromCreators;
+    if (names.length > 0) return names;
   }
 
   return [];
@@ -423,11 +185,9 @@ export function normalizeAuthors(
  * - 3+ authors: "Author 1 et al."
  */
 export function formatCreatorCompact(authors?: string[] | null): string {
-  if (!authors || authors.length === 0) return '-';
-  const clean = authors.filter(
-    (a) => !/^(FOR\s+[A-Z]|BY\s+[A-Z]|Reducing\s+Internal)/i.test(a.trim()),
-  );
-  if (clean.length === 0) return '-';
+  if (!authors || authors.length === 0) return '—';
+  const clean = authors.filter(Boolean);
+  if (clean.length === 0) return '—';
   if (clean.length === 1) return clean[0];
   if (clean.length === 2) return `${clean[0]} & ${clean[1]}`;
   return `${clean[0]} et al.`;

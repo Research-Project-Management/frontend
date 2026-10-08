@@ -1,526 +1,208 @@
 /**
- * Pure Domain Model: Academic Metadata Formatting, Abstract Normalization & Tags/Notes
- * 100% Pure TypeScript - 0% React, 0% DOM dependencies
+ * Presentation Model: Academic Metadata Formatting, Display Labels & Notes/Tags
+ *
+ * NOTE: The Backend Server is the authoritative single source of truth for
+ * metadata normalization, abstract cleaning, CSL validation, and noise filtering.
+ *
+ * This file provides UI presentation helpers for rendering item types, venue
+ * badges, notes, and tags.
  */
 
-import type { Item, Paper, Note } from '../types/library.types';
+import type { Item, Note } from '../types/library.types';
 import { getVenueFieldForType } from '../types';
-import { cleanDoi } from './identifiers';
-import {
-  ARXIV_CATEGORY_MAP,
-  CANONICAL_ARXIV_CATEGORIES,
-  resolveArxivCategory,
-} from './categories';
 
-const SCIENTIFIC_ACRONYMS = new Set([
-  'AI', 'ML', 'NLP', 'CV', 'CNN', 'RNN', 'LSTM', 'GAN', 'BERT', 'LLM', 'LLMS', 'COCO',
-  'YOLO', 'RESNET', 'VGG', 'SVM', 'RL', 'API', 'APIS', 'GPU', 'GPUS', 'CPU', 'CPUS',
-  'TPU', 'TPUS', 'DNA', 'RNA', 'SGD', 'ADAM', 'RMSPROP', 'FTS', 'RAG', 'OCR', 'DOI',
-  'URL', 'PDF', 'HTML', 'XML', 'JSON', 'DB', 'SQL', 'NOSQL', 'HCI', 'IOT', 'FPGA',
-  'ASIC', 'VAE', 'MCMC', 'ODE', 'PDE', 'SOTA', 'BLEU', 'ROUGE', 'TF-IDF', 'GLUE',
-  'SUPERGLUE', 'COVID', 'COVID-19', 'SARS', 'COV', 'CRISPR', 'MRI', 'FMRI', 'CT',
-  'EEG', 'ECG', 'PET', 'GNN', 'DQN', 'PPO', 'DDPG', 'A3C', 'CLIP', 'VIT', 'DINO',
-  'LLAMA', 'MAMBA', 'MOE', 'LORA', 'QLORA', 'PEFT', 'RLHF', 'DPO', 'KTO', 'SVD',
-  'PCA', 'UMAP', 'AGI',
-  'TCP', 'IP', 'TCP/IP', 'I/O', 'OS',
-]);
-
-export const NOISE_TAG_WORDS = new Set([
-  // Placeholders / Empty / Null indicators
-  'undefined', 'null', 'n/a', 'na', 'n.a.', 'not available', 'not applicable',
-  'none', 'unknown', 'nil', 'empty', 'void', 'sample', 'test', 'draft', 'untitled',
-  'etc', 'etc.', 'various', 'others', 'and others', 'et al', 'et al.', 'et-al',
-
-  // Document sections & structural headers
-  'introduction', 'conclusion', 'conclusions', 'background', 'paper', 'article',
-  'study', 'approach', 'method', 'methods', 'methodology', 'result', 'results',
-  'discussion', 'overview', 'experiment', 'experiments', 'experimental', 'analysis',
-  'abstract', 'summary', 'contents', 'table of contents', 'references',
-  'bibliography', 'appendix', 'acknowledgments', 'acknowledgements',
-
-  // Metadata field headers & taxonomy labels
-  'keywords', 'keyword', 'index terms', 'key words', 'subject', 'subjects',
-  'topics', 'topic', 'category', 'categories', 'classification', 'descriptor', 'descriptors',
-
-  // Publisher, copyright, repository noise
-  'all rights reserved', 'copyright', 'open access', 'creative commons', 'springer',
-  'elsevier', 'ieee', 'acm', 'wiley', 'nature', 'science', 'proceedings', 'conference',
-  'symposium', 'workshop', 'journal', 'volume', 'issue', 'page', 'pages', 'pp', 'no',
-  'vol', 'pdf', 'full text', 'full-text', 'fulltext', 'available online', 'downloaded',
-  'downloaded from', 'download', 'preprint', 'manuscript', 'author', 'authors',
-  'editor', 'editors', 'peer reviewed', 'peer-reviewed', 'original article',
-  'research article', 'review article', 'short communication', 'case report', 'editorial',
-  'erratum', 'corrigendum', 'author index', 'subject index', 'toc', 'in press',
-  'online first', 'accepted manuscript', 'author manuscript', 'version of record',
-  'unassigned', 'uncategorized', 'miscellaneous', 'misc', 'general', 'default',
-  'book review', 'letter to editor', 'announcement', 'preface', 'foreword',
-]);
-
-/** Strips LaTeX macros, font commands, and escaped symbols common in BibTeX keywords */
+/** Strips LaTeX macros and escaped symbols common in BibTeX keywords */
 export function stripLatexMarkup(str: string): string {
+  if (!str || typeof str !== 'string') return '';
   return str
     .replace(/\\([&%$#_{}])/g, '$1')
-    .replace(
-      /\\(?:textbf|textit|textsf|texttt|textsc|emph|text|mathrm|mathbf|mathit)\s*\{([^}]+)\}/gi,
-      '$1',
-    )
+    .replace(/\\(?:textbf|textit|textsf|texttt|textsc|emph|text|mathrm|mathbf|mathit)\s*\{([^}]+)\}/gi, '$1')
     .replace(/\\(?:bf|it|em|rm|sf|tt|large|Large|small|tiny)\b\s*/gi, '')
     .replace(/[{}]/g, '')
     .trim();
 }
 
+/**
+ * Lightweight helper to clean a single user-typed tag in the frontend UI.
+ */
 export function cleanSingleFrontendTag(raw: string): string | null {
   if (!raw || typeof raw !== 'string') return null;
   let str = raw
-    .replace(/â€“|â€”/g, '-')
-    .replace(/â€™|â€˜/g, "'")
-    .replace(/â€œ|â€ /g, '"')
-    .replace(/\uFFFD/g, '')
+    .replace(/[\uFFFD]/g, '')
+    .replace(/^[#"''`([{<•·*—\-\s]+/, '')
+    .replace(/["''`)\]}>.,;:—\-\s•·*]+$/, '')
     .trim();
 
-  // 0. Strip LaTeX markup and XML/HTML tags
   str = stripLatexMarkup(str);
   str = str.replace(/<[^>]+>/g, '').trim();
-  if (!str) return null;
 
-  // 1. Strip Wikipedia disambiguation
-  str = str.replace(/(?<=[\w\d])\s+\([^)]*\)$/g, '').trim();
-
-  // 2. Strip prefixes and boundary punctuation
-  str = str
-    .replace(
-      /^(?:tags?|keywords?|index terms?|categor(?:y|ies)|subject(?: areas?)?|topics?|terms?|classification|descriptors?|field(?: of study)?)[:—\-\s]+/i,
-      ''
-    )
-    .replace(/^[#"''`([{<•·*—\-\s]+/, '')
-    .replace(/^(?:\.{2,}|…)+/, '')
-    .replace(/["''`)\]}>]+$/, '')
-    .replace(/(?:\.{2,}|…|[.,;:—\-\s•·*])+$/, '')
-    .trim();
-
-  if (!str) return null;
-
-  // 3. Direct arXiv category mapping
-  const lower = str.toLowerCase();
-  if (ARXIV_CATEGORY_MAP[lower]) return ARXIV_CATEGORY_MAP[lower];
-  const withDot = lower.replace(/[-_]/g, '.');
-  if (ARXIV_CATEGORY_MAP[withDot]) return ARXIV_CATEGORY_MAP[withDot];
-
-  // 4. Reject metadata identifiers & web links
-  if (
-    /^(?:doi[:\s/]|https?:\/\/(?:dx\.)?doi\.org\/)/i.test(str) ||
-    /^10\.\d{4,9}\//i.test(str) ||
-    /(?:^|\s)10\.\d{4,9}\/[^\s]+/i.test(str) ||
-    /^(?:pmid|pmcid|isbn|issn|arxiv|corpusid|hdl|urn|bibcode)[:\s/]/i.test(str) ||
-    /^https?:\/\//i.test(str) ||
-    /^ftp:\/\//i.test(str) ||
-    /^www\./i.test(str) ||
-    /@/.test(str) ||
-    /\.(?:com|org|net|edu|gov|io|ai|dev|de|uk|fr|cn)\b/i.test(str)
-  ) {
-    return null;
-  }
-
-  // 5. Direct noise blacklist check
-  if (NOISE_TAG_WORDS.has(lower)) return null;
-
-  // 6. Sanity & garbage checks:
-  if (str.length < 2 || str.length > 60) return null;
-  if (!/[a-zA-Z0-9\u00C0-\u024F\u1EA0-\u1EF9]/.test(str)) return null;
-  if (/^[\p{P}\p{S}\s]+$/u.test(str)) return null;
-  if (/^\d+$/.test(str)) return null;
-  if (/^\d{1,4}[-–—/]\d{1,4}$/.test(str)) return null;
-  if (/^\d{4}[-/.](?:0?[1-9]|1[0-2])[-/.](?:0?[1-9]|[12]\d|3[01])$/.test(str)) return null;
-  if (/^(?:0?[1-9]|[12]\d|3[01])[-/.](?:0?[1-9]|1[0-2])[-/.]\d{4}$/.test(str)) return null;
-  if (
-    /^(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{2,4}$/i.test(
-      str
-    )
-  ) {
-    return null;
-  }
-  if (
-    /^(?:p|pp|page|pages|vol|volume|no|number|v|issue)\.?\s*\d+(?:\s*[-–—]\s*\d+)?$/i.test(
-      str
-    )
-  ) {
-    return null;
-  }
-  if (/^vol(?:ume)?\.?\s*\d+[\s,]+(?:no|issue|number)\.?\s*\d+$/i.test(str)) {
-    return null;
-  }
-  if (
-    !SCIENTIFIC_ACRONYMS.has(str.toUpperCase()) &&
-    /^(?:i{1,3}|iv|vi{0,3}|ix|x{1,3}|xi{1,3}|xiv|xvi{0,3}|xix|xx{0,2})$/i.test(
-      str
-    )
-  ) {
-    return null;
-  }
-  if (/^(\.{2,}|…)+$/.test(str)) return null;
-  if (NOISE_TAG_WORDS.has(str.toLowerCase())) return null;
-
-  // 7. Format with proper Title Case & Acronyms
-  const formatted = str
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) => {
-      const upper = word.toUpperCase();
-      if (SCIENTIFIC_ACRONYMS.has(upper)) return upper;
-      if (word === '-') return '-';
-      if (word.includes('-')) {
-        const wordUpper = word.toUpperCase();
-        if (SCIENTIFIC_ACRONYMS.has(wordUpper)) return wordUpper;
-        return word
-          .split('-')
-          .map((part) => {
-            const partUpper = part.toUpperCase();
-            if (SCIENTIFIC_ACRONYMS.has(partUpper)) return partUpper;
-            return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
-          })
-          .join('-');
-      }
-      if (word.includes('/')) {
-        const wordUpper = word.toUpperCase();
-        if (SCIENTIFIC_ACRONYMS.has(wordUpper)) return wordUpper;
-        return word
-          .split('/')
-          .map((part) => {
-            const partUpper = part.toUpperCase();
-            if (SCIENTIFIC_ACRONYMS.has(partUpper)) return partUpper;
-            return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
-          })
-          .join('/');
-      }
-      const lowerWord = word.toLowerCase();
-      if (['and', 'or', 'of', 'in', 'on', 'for', 'with', 'at', 'by'].includes(lowerWord)) {
-        return lowerWord;
-      }
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-    })
-    .join(' ');
-
-  let result = formatted.charAt(0).toUpperCase() + formatted.slice(1);
-  result = result.replace(/(?:\.{2,}|…|[.,;:—\-\s])+$/, '').trim();
-
-  if (result.length < 2) return null;
-  if (NOISE_TAG_WORDS.has(result.toLowerCase())) return null;
-
-  return result;
+  if (!str || str.length < 2) return null;
+  return str;
 }
 
-function parseMetadataObject(meta: unknown): Record<string, unknown> {
-  if (meta && typeof meta === 'object' && !Array.isArray(meta)) {
-    return meta as Record<string, unknown>;
-  }
-  if (typeof meta === 'string' && meta.trim().startsWith('{')) {
-    try {
-      const parsed = JSON.parse(meta);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        return parsed as Record<string, unknown>;
-      }
-    } catch {
-      return {};
-    }
-  }
-  return {};
-}
-
+/**
+ * Normalizes tags from an Item for inspector display.
+ */
 export function normalizeTags(
-  paper: Partial<Item> | null | undefined,
-  maxTags?: number
+  rawItem?: { tags?: unknown; keywords?: unknown; labels?: unknown } | unknown[] | string | null,
 ): string[] {
-  if (!paper) return [];
+  if (!rawItem) return [];
 
-  const metadataObj = parseMetadataObject(paper.metadata);
+  const candidates: unknown[] = [];
+  if (Array.isArray(rawItem)) {
+    candidates.push(...rawItem);
+  } else if (typeof rawItem === 'object') {
+    const obj = rawItem as Record<string, unknown>;
+    if (Array.isArray(obj.tags)) candidates.push(...obj.tags);
+    if (Array.isArray(obj.keywords)) candidates.push(...obj.keywords);
+    if (Array.isArray(obj.labels)) candidates.push(...obj.labels);
+    if (typeof obj.tags === 'string') candidates.push(obj.tags);
+    if (typeof obj.keywords === 'string') candidates.push(obj.keywords);
+    if (typeof obj.labels === 'string') candidates.push(obj.labels);
+  } else if (typeof rawItem === 'string') {
+    candidates.push(rawItem);
+  }
 
-  const raw: unknown[] = [
-    ...(Array.isArray(paper.tags) ? paper.tags : []),
-    ...(Array.isArray(paper.labels) ? paper.labels : []),
-    ...(Array.isArray(paper.keywords) ? paper.keywords : []),
-    ...(Array.isArray(paper.itemTags)
-      ? paper.itemTags.map((it) => it?.tag?.name ?? '')
-      : []),
-    ...(Array.isArray(metadataObj.tags) ? metadataObj.tags : []),
-    ...(Array.isArray(metadataObj.keywords) ? metadataObj.keywords : []),
-    ...(Array.isArray(metadataObj.labels) ? metadataObj.labels : []),
-  ];
-
-  const seen = new Set<string>();
-  const result: string[] = [];
-  for (const t of raw) {
-    const s =
-      typeof t === 'string'
-        ? t
-        : t && typeof t === 'object'
-          ? (typeof (t as { tag?: unknown }).tag === 'string'
-              ? ((t as { tag: string }).tag)
-              : typeof (t as { name?: unknown }).name === 'string'
-                ? ((t as { name: string }).name)
-                : '')
-          : '';
-    if (!s) continue;
-    const parts = s.split(/[,;\n\r|•·]|\s+[/]\s+/).map((p: string) => p.trim()).filter(Boolean);
-    for (const part of parts) {
-      const cleaned = cleanSingleFrontendTag(part);
-      if (cleaned) {
-        const lowerKey = cleaned.toLowerCase();
-        if (!seen.has(lowerKey)) {
-          seen.add(lowerKey);
-          result.push(cleaned);
-        }
+  const tagSet = new Set<string>();
+  for (const item of candidates) {
+    if (typeof item === 'string') {
+      const parts = item.includes(';') || item.includes(',') ? item.split(/[,;]+/) : [item];
+      for (const part of parts) {
+        const cleaned = cleanSingleFrontendTag(part);
+        if (cleaned) tagSet.add(cleaned);
+      }
+    } else if (item && typeof item === 'object') {
+      const tagObj = item as Record<string, unknown>;
+      const name = typeof tagObj.name === 'string' ? tagObj.name : typeof tagObj.tag === 'string' ? tagObj.tag : '';
+      if (name) {
+        const cleaned = cleanSingleFrontendTag(name);
+        if (cleaned) tagSet.add(cleaned);
       }
     }
   }
-  return typeof maxTags === 'number' && maxTags > 0 ? result.slice(0, maxTags) : result;
+
+  return Array.from(tagSet);
 }
 
 export interface NormalizedNote {
   id: string;
-  title?: string;
-  content: string;
-  contentMd?: string;
-  contentJson?: unknown;
   note?: string;
+  content: string;
+  title?: string;
+  tags?: string[];
   createdAt?: string;
   updatedAt?: string;
+  dateModified?: string;
 }
 
-export function normalizeNotes(
-  notes?: Array<string | Note | { id?: string; title?: string; content?: string; note?: string }> | null
-): NormalizedNote[] {
-  if (!Array.isArray(notes)) return [];
-
-  return notes.map((note, index) => {
-    if (typeof note === 'string') {
-      const contentHash = note.trim().slice(0, 32).replace(/[^a-z0-9]/gi, '').toLowerCase() || index.toString();
-      const firstLine = note.trim().split(/\r?\n/).find((l) => l.trim().length > 0)?.trim() || 'Untitled Note';
-      return {
-        id: `local-${contentHash}`,
-        title: firstLine.slice(0, 80),
-        content: note,
-        createdAt: new Date().toISOString(),
-      };
+/**
+ * Normalizes an array of notes from an Item for inspector display.
+ */
+export function normalizeNotes(rawNotes?: unknown): NormalizedNote[] {
+  if (!rawNotes) return [];
+  if (!Array.isArray(rawNotes)) {
+    if (typeof rawNotes === 'string' && rawNotes.trim()) {
+      return [{ id: 'note-0', note: rawNotes.trim(), content: rawNotes.trim() }];
     }
+    return [];
+  }
 
-    const noteObj = note as Record<string, unknown>;
-    const rawContent =
-      (typeof noteObj.content === 'string' ? noteObj.content : '') ||
-      (typeof noteObj.contentMd === 'string' ? noteObj.contentMd : '') ||
-      (typeof noteObj.note === 'string' ? noteObj.note : '') ||
-      (typeof noteObj.contentJson === 'string' ? noteObj.contentJson : '') ||
-      '';
-    const cleanPreview = /<\/?[a-z][\s\S]*>/i.test(rawContent)
-      ? rawContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-      : rawContent;
+  const results: NormalizedNote[] = [];
+  let index = 0;
+  for (const n of rawNotes) {
+    if (!n) continue;
+    if (typeof n === 'string' && n.trim()) {
+      results.push({ id: `note-${index++}`, note: n.trim(), content: n.trim() });
+    } else if (typeof n === 'object') {
+      const obj = n as Record<string, unknown>;
+      const text = typeof obj.content === 'string' ? obj.content : typeof obj.note === 'string' ? obj.note : '';
+      if (text.trim()) {
+        results.push({
+          id: typeof obj.id === 'string' && obj.id ? obj.id : `note-${index++}`,
+          note: text.trim(),
+          content: text.trim(),
+          title: typeof obj.title === 'string' ? obj.title : undefined,
+          tags: Array.isArray(obj.tags) ? obj.tags.filter((t): t is string => typeof t === 'string') : undefined,
+          createdAt: typeof obj.createdAt === 'string' ? obj.createdAt : undefined,
+          updatedAt: typeof obj.updatedAt === 'string' ? obj.updatedAt : undefined,
+          dateModified: typeof obj.dateModified === 'string' ? obj.dateModified : undefined,
+        });
+      }
+    }
+  }
 
-    const firstLine =
-      cleanPreview
-        .split(/\r?\n/)
-        .find((l: string) => l.trim().length > 0)
-        ?.replace(/^#+\s*/, '')
-        .replace(/^>\s*/, '')
-        .trim() || '';
-
-    const title =
-      (typeof noteObj.title === 'string' ? noteObj.title : '') ||
-      (firstLine ? (firstLine.length > 80 ? `${firstLine.slice(0, 77)}...` : firstLine) : 'Untitled Note');
-
-    return {
-      id: (typeof noteObj.id === 'string' ? noteObj.id : '') || `note-${index}`,
-      title,
-      content: cleanPreview,
-      contentMd: typeof noteObj.contentMd === 'string' ? noteObj.contentMd : (noteObj.note ? cleanPreview : rawContent),
-      contentJson: noteObj.contentJson,
-      note: typeof noteObj.note === 'string' ? noteObj.note : `<p>${cleanPreview}</p>`,
-      createdAt: typeof (note as Note).createdAt === 'string' ? (note as Note).createdAt : new Date().toISOString(),
-      updatedAt: typeof (note as Note).updatedAt === 'string' ? (note as Note).updatedAt : undefined,
-    };
-  });
+  return results;
 }
 
+/**
+ * Fallback abstract text cleaner for UI presentation.
+ * Server TrustedExtractionService performs authoritative cleaning.
+ */
 export function cleanAbstractText(text?: string | null): string {
   if (!text || typeof text !== 'string') return '';
-
-  let cleaned = text.replace(/<[^>]+>/g, ' ');
-  cleaned = cleaned
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ');
-
-  cleaned = cleaned.replace(/\\(?:textbf|textit|emph|underline|text)\{([^}]+)\}/g, '$1');
-  cleaned = cleaned.replace(/^(?:abstract|summary|résumé)\s*[:.—\-–\u2014\u2013]?\s*/i, '');
-  cleaned = cleaned.replace(/^(?:abstract|summary|résumé)\s*\r?\n+/i, '');
-
-  cleaned = cleaned.replace(/(?:\((?:19|20)\d{2}\)\s*){2,}\.?/g, '');
-  cleaned = cleaned.replace(/(?:\[(?:19|20)\d{2}\]\s*){2,}\.?/g, '');
-  cleaned = cleaned.replace(/\((?:(?:19|20)\d{2}[,\s;]*){3,}\)\.?/g, '');
-
-  cleaned = cleaned.replace(
-    /(?:(?:\n\s*|\.\s+|\s+)[*†‡§\d]*\s*(?:Equal contribution|Corresponding author|Correspondence to|Author ordering|Listing order|These authors contributed equally|Work performed while|Supported in part by|This work was supported by)[\s\S]*$)/i,
-    '.'
-  );
-
-  cleaned = cleaned.replace(
-    /(?:\n\s*|\s+)(?:ACM Reference [Ff]ormat|Index Terms|Keywords|Key words|Additional Key Words and Phrases)[—:\-\s]+[\s\S]*$/i,
-    ''
-  );
-
-  cleaned = cleaned.replace(
-    /(?:\n\s*|\.\s+|\s+)(?:Copyright\s*(?:\(c\)|©)?\s*(?:19|20)\d{2}|©\s*(?:19|20)\d{2}\s*IEEE)[\s\S]*$/i,
-    ''
-  );
-  cleaned = cleaned.replace(
-    /(?:\n\s*|\s+)\b\d{4}-\d{3}[\dX]\s*(?:\(c\)|©)?\s*\d{4}\s*IEEE[\s\S]*$/i,
-    ''
-  );
-
-  const rawParagraphs = cleaned.split(/\r?\n\s*\r?\n/);
-  const normalizedParagraphs = rawParagraphs
-    .map((paragraph) => {
-      let p = paragraph.replace(/([a-zA-Z]{2,})-\s*\r?\n\s*([a-zA-Z]{2,})/g, '$1$2');
-      p = p.replace(/\r?\n/g, ' ');
-      p = p.replace(/\s+/g, ' ').trim();
-      p = p.replace(/\s+([.,;:!?])/g, '$1');
-      p = p.replace(/\.\s*\.(?!\.)/g, '.');
-      return p;
-    })
-    .filter((p) => p.length > 0);
-
-  return normalizedParagraphs.join('\n\n').trim();
+  return text.trim();
 }
 
+/**
+ * Extracts publication venue (journal, conference, publisher) for UI cards and tables.
+ */
 export function getPublicationVenue(
-  item?: Partial<Item> | Partial<Paper> | Record<string, any> | null
+  item?: Partial<Item> | Record<string, unknown> | null,
 ): string {
-  if (!item) return '—';
-  const anyItem = item as Record<string, any>;
-  const rawItemType = anyItem.itemType || anyItem.item_type || anyItem.type || anyItem.cslType;
-  const itemType = String(rawItemType || 'journalArticle');
-  const typeLower = itemType.toLowerCase();
-  const ef = (anyItem.extraFields as Record<string, any>) || {};
+  if (!item || typeof item !== 'object') return '';
 
-  const venueField = getVenueFieldForType(itemType);
-  const directValue = anyItem[venueField] || ef[venueField];
-  if (directValue && typeof directValue === 'string' && directValue.trim()) {
-    return directValue.trim();
+  const clean = (val: unknown): string => {
+    if (val === null || val === undefined) return '';
+    const str = String(val).trim();
+    if (!str || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined') return '';
+    return str;
+  };
+
+  const itemType = (item as Item).itemType;
+  const preferredField = getVenueFieldForType(itemType);
+  if (preferredField && preferredField in item) {
+    const val = clean((item as Record<string, unknown>)[preferredField]);
+    if (val) return val;
   }
 
-  if (typeLower === 'preprint') {
-    if (typeof anyItem.repository === 'string' && anyItem.repository.trim()) {
-      return anyItem.repository.trim();
+  const fallbackFields = [
+    'journal',
+    'publicationTitle',
+    'bookTitle',
+    'proceedingsTitle',
+    'conferenceName',
+    'publisher',
+    'distributor',
+    'institution',
+    'university',
+    'websiteTitle',
+  ];
+
+  for (const field of fallbackFields) {
+    if (field in item) {
+      const val = clean((item as Record<string, unknown>)[field]);
+      if (val) return val;
     }
-    if (typeof ef.repository === 'string' && ef.repository.trim()) {
-      return ef.repository.trim();
+  }
+
+  const extra = item.extraFields as Record<string, unknown> | undefined;
+  if (extra && typeof extra === 'object') {
+    for (const field of fallbackFields) {
+      if (field in extra) {
+        const val = clean(extra[field]);
+        if (val) return val;
+      }
     }
-    if (
-      typeof anyItem.publisher === 'string' &&
-      anyItem.publisher.trim() &&
-      !/^arxiv$/i.test(anyItem.publisher.trim())
-    ) {
-      return anyItem.publisher.trim();
-    }
-    const isArxiv = Boolean(
-      anyItem.arxivId ||
-        (typeof anyItem.doi === 'string' && anyItem.doi.includes('arXiv')) ||
-        (typeof anyItem.callNumber === 'string' && anyItem.callNumber.toLowerCase().startsWith('arxiv:')) ||
-        (typeof anyItem.publicationTitle === 'string' && /arxiv/i.test(anyItem.publicationTitle)) ||
-        (typeof anyItem.publisher === 'string' && /arxiv/i.test(anyItem.publisher))
-    );
-    if (isArxiv) return 'arXiv';
-    if (
-      typeof anyItem.publicationTitle === 'string' &&
-      anyItem.publicationTitle.trim() &&
-      !/^(ieee|acm|arxiv(\s*preprint)?)$/i.test(anyItem.publicationTitle.trim())
-    ) {
-      return anyItem.publicationTitle.trim();
-    }
-    return '-';
   }
 
-  if (typeLower === 'conferencepaper') {
-    return (
-      (typeof anyItem.proceedingsTitle === 'string' && anyItem.proceedingsTitle.trim()) ||
-      (typeof anyItem.conferenceName === 'string' && anyItem.conferenceName.trim()) ||
-      (typeof ef.proceedingsTitle === 'string' && ef.proceedingsTitle.trim()) ||
-      (typeof ef.conferenceName === 'string' && ef.conferenceName.trim()) ||
-      (typeof anyItem.publicationTitle === 'string' && anyItem.publicationTitle.trim()) ||
-      '-'
-    );
-  }
-
-  if (typeLower === 'booksection') {
-    return (
-      (typeof anyItem.bookTitle === 'string' && anyItem.bookTitle.trim()) ||
-      (typeof ef.bookTitle === 'string' && ef.bookTitle.trim()) ||
-      (typeof anyItem.publicationTitle === 'string' && anyItem.publicationTitle.trim()) ||
-      '-'
-    );
-  }
-
-  if (typeLower === 'book') {
-    return (
-      (typeof anyItem.publisher === 'string' && anyItem.publisher.trim()) ||
-      (typeof ef.publisher === 'string' && ef.publisher.trim()) ||
-      (typeof anyItem.publicationTitle === 'string' && anyItem.publicationTitle.trim()) ||
-      '-'
-    );
-  }
-
-  if (typeLower === 'thesis') {
-    return (
-      (typeof anyItem.university === 'string' && anyItem.university.trim()) ||
-      (typeof anyItem.institution === 'string' && anyItem.institution.trim()) ||
-      (typeof ef.university === 'string' && ef.university.trim()) ||
-      (typeof ef.institution === 'string' && ef.institution.trim()) ||
-      (typeof anyItem.publisher === 'string' && anyItem.publisher.trim()) ||
-      '-'
-    );
-  }
-
-  if (typeLower === 'report') {
-    return (
-      (typeof anyItem.institution === 'string' && anyItem.institution.trim()) ||
-      (typeof ef.institution === 'string' && ef.institution.trim()) ||
-      (typeof anyItem.publisher === 'string' && anyItem.publisher.trim()) ||
-      '-'
-    );
-  }
-
-  if (typeLower === 'patent') {
-    return (
-      (typeof anyItem.issuingAuthority === 'string' && anyItem.issuingAuthority.trim()) ||
-      (typeof ef.issuingAuthority === 'string' && ef.issuingAuthority.trim()) ||
-      (typeof anyItem.assignee === 'string' && anyItem.assignee.trim()) ||
-      (typeof ef.assignee === 'string' && ef.assignee.trim()) ||
-      '-'
-    );
-  }
-
-  if (typeLower === 'webpage' || typeLower === 'blogpost') {
-    return (
-      (typeof anyItem.websiteTitle === 'string' && anyItem.websiteTitle.trim()) ||
-      (typeof anyItem.blogTitle === 'string' && anyItem.blogTitle.trim()) ||
-      (typeof ef.websiteTitle === 'string' && ef.websiteTitle.trim()) ||
-      (typeof ef.blogTitle === 'string' && ef.blogTitle.trim()) ||
-      (typeof anyItem.publicationTitle === 'string' && anyItem.publicationTitle.trim()) ||
-      '-'
-    );
-  }
-
-  const defaultVenue =
-    (typeof anyItem.publicationTitle === 'string' && anyItem.publicationTitle.trim()) ||
-    (typeof anyItem.journal === 'string' && anyItem.journal.trim()) ||
-    (typeof anyItem.publisher === 'string' && anyItem.publisher.trim());
-
-  return defaultVenue || '-';
+  return '';
 }
 
+/**
+ * Formats an academic itemType into a user-friendly label ("Journal Article", "Conference Paper").
+ */
 export function formatItemTypeLabel(rawType?: string | null): string {
-  if (!rawType) return '-';
+  if (!rawType) return '—';
   const str = String(rawType).trim();
   const withSpaces = str
     .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -530,6 +212,9 @@ export function formatItemTypeLabel(rawType?: string | null): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/**
+ * Formats the extra metadata field for inspector display.
+ */
 export function formatExtraDisplay(paper: Item): string {
   if (typeof paper.extra === 'string' && paper.extra.trim()) {
     const trimmed = paper.extra.trim();
@@ -538,24 +223,11 @@ export function formatExtraDisplay(paper: Item): string {
     }
   }
 
-  let fields: Record<string, unknown> | null = null;
-  if (paper.extraFields && typeof paper.extraFields === 'object' && !Array.isArray(paper.extraFields)) {
-    fields = paper.extraFields;
-  } else if (typeof paper.extra === 'string') {
-    const trimmed = paper.extra.trim();
-    if (trimmed.startsWith('{')) {
-      try {
-        fields = JSON.parse(trimmed) as Record<string, unknown>;
-      } catch {
-        // Ignore
-      }
-    }
-  }
-
+  const fields = paper.extraFields;
   if (fields && typeof fields === 'object') {
     const parts: string[] = [];
     for (const [k, v] of Object.entries(fields)) {
-      if (v !== null && v !== undefined && v !== '' && v !== 0 && v !== '0' && v !== '0000') {
+      if (v !== null && v !== undefined && v !== '' && v !== 0 && v !== '0') {
         const valStr = typeof v === 'object' ? JSON.stringify(v) : String(v);
         const keyLabel = k
           .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -563,197 +235,52 @@ export function formatExtraDisplay(paper: Item): string {
         parts.push(`${keyLabel}: ${valStr}`);
       }
     }
-    if (parts.length > 0) {
-      return parts.join(', ');
-    }
+    if (parts.length > 0) return parts.join(', ');
   }
 
-  return '-';
+  return '—';
 }
 
+/**
+ * Formats and cleans extra metadata text for the Inspector's Extra tab.
+ */
 export function formatAndSanitizeExtraMetadata(
   rawExtraMetadata?: string | null,
   additionalExtraFields?: Record<string, unknown> | null,
-  associatedPaperItem?: Partial<Item> | null
+  associatedPaperItem?: Partial<Item> | null,
 ): string {
-  let textContent = '';
+  const lines: string[] = [];
 
   if (typeof rawExtraMetadata === 'string' && rawExtraMetadata.trim()) {
     const trimmed = rawExtraMetadata.trim();
     if (trimmed.startsWith('{')) {
       try {
         const parsed = JSON.parse(trimmed);
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          const record = parsed as Record<string, unknown>;
-          if (typeof record._rawExtra === 'string') {
-            textContent = record._rawExtra.trim();
-          } else {
-            const customLines: string[] = [];
-            for (const [key, value] of Object.entries(parsed)) {
-              const normKey = key.toLowerCase().replace(/[-_\s]/g, '');
-              if (value === null || value === undefined) continue;
-              if (typeof value === 'object') continue;
-              const strVal = String(value).trim();
-              if (!strVal || value === 0 || strVal === '0' || strVal === '0000') continue;
-              if (normKey === 'arxiv' || normKey === 'arxivid' || normKey === 'archiveid') {
-                const cleanVal = strVal.replace(/^arxiv:\s*/i, '');
-                customLines.push(`arXiv: ${cleanVal}`);
-              } else {
-                customLines.push(`${key}: ${strVal}`);
-              }
+        if (parsed && typeof parsed === 'object') {
+          for (const [key, value] of Object.entries(parsed)) {
+            if (value !== null && value !== undefined && value !== '') {
+              lines.push(`${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`);
             }
-            textContent = customLines.join('\n');
           }
         }
       } catch {
-        textContent = trimmed;
+        lines.push(trimmed);
       }
     } else {
-      textContent = trimmed;
+      lines.push(trimmed);
     }
   }
 
-  const paperTitle = associatedPaperItem?.title?.trim().toLowerCase();
-  const paperUrl = associatedPaperItem?.url?.trim();
-  const paperFileUrl = associatedPaperItem?.fileUrl?.trim();
-  const paperOaUrl = associatedPaperItem?.openAccessPdfUrl?.trim();
-  const paperCiteKey = associatedPaperItem?.citationKey?.trim().toLowerCase();
-  const paperDoi = cleanDoi(associatedPaperItem?.doi || associatedPaperItem?.DOI);
-  const paperPmid = associatedPaperItem?.pmid?.trim();
-  const paperPmcid = associatedPaperItem?.pmcid?.trim();
-  const paperIsbn = associatedPaperItem?.isbn?.trim();
-  const paperIssn = associatedPaperItem?.issn?.trim();
-  const isPreprint = associatedPaperItem?.itemType === 'preprint';
-  const paperArchiveId = (associatedPaperItem?.archiveId || associatedPaperItem?.archiveID || associatedPaperItem?.arxivId)?.trim();
-
-  const lines = textContent ? textContent.split(/\r?\n/) : [];
-  const sanitizedLines: string[] = [];
-  let hasArxivLine = false;
-
-  for (const line of lines) {
-    const trimmedLine = line.trim();
-    if (!trimmedLine) continue;
-
-    const titleMatch = trimmedLine.match(/^title:\s*(.+)$/i);
-    if (titleMatch) {
-      const lineTitle = titleMatch[1].trim().toLowerCase();
-      if (!paperTitle || lineTitle === paperTitle) continue;
-    }
-
-    const citeKeyMatch = trimmedLine.match(/^(?:citation\s*key|cite\s*key|citekey):\s*(.+)$/i);
-    if (citeKeyMatch) {
-      const lineKey = citeKeyMatch[1].trim().toLowerCase();
-      if (!paperCiteKey || lineKey === paperCiteKey) continue;
-    }
-
-    if (/^open\s*access:?/i.test(trimmedLine)) continue;
-    if (trimmedLine === paperOaUrl || trimmedLine === paperFileUrl || trimmedLine === paperUrl) continue;
-
-    const urlMatch = trimmedLine.match(/^url:\s*(https?:\/\/.+)$/i);
-    if (urlMatch && paperUrl) continue;
-
-    const doiMatch = trimmedLine.match(/^doi:\s*(.+)$/i);
-    if (doiMatch && paperDoi) {
-      const lineDoi = cleanDoi(doiMatch[1]);
-      if (!lineDoi || lineDoi.toLowerCase() === paperDoi.toLowerCase()) continue;
-    }
-
-    const pmidMatch = trimmedLine.match(/^(?:pmid|pubmed\s*id):\s*(.+)$/i);
-    if (pmidMatch && paperPmid) continue;
-
-    const pmcidMatch = trimmedLine.match(/^(?:pmcid|pmc):\s*(.+)$/i);
-    if (pmcidMatch && paperPmcid) continue;
-
-    const isbnMatch = trimmedLine.match(/^isbn:\s*(.+)$/i);
-    if (isbnMatch && paperIsbn) continue;
-
-    const issnMatch = trimmedLine.match(/^issn:\s*(.+)$/i);
-    if (issnMatch && paperIssn) continue;
-
-    if (/^comments?:\s*/i.test(trimmedLine)) continue;
-    if (/^tl;?dr:\s*/i.test(trimmedLine)) continue;
-    if (/^(?:number\s*of\s*pages|num\s*pages|page\s*count|total\s*pages):\s*/i.test(trimmedLine)) continue;
-
-    const genericKvMatch = trimmedLine.match(/^([a-zA-Z0-9_\s]+):\s*(.+)$/);
-    if (genericKvMatch) {
-      const rawKey = genericKvMatch[1].trim();
-      const normKey = rawKey.toLowerCase().replace(/[\s_-]+/g, '');
-      const rawVal = genericKvMatch[2].trim();
-      if (rawVal === '0' || rawVal === '0000' || rawVal === 'null' || rawVal === 'undefined') continue;
-      const dedicatedFormFields = new Set([
-        'edition', 'eventplace', 'conferencename', 'proceedingstitle',
-        'booktitle', 'websitetitle', 'websitetype', 'blogtitle',
-        'university', 'institution', 'repository', 'reportnumber',
-        'reporttype', 'thesistype', 'patentnumber', 'issuingauthority',
-        'assignee', 'numpages', 'numberofpages', 'pages', 'volume',
-        'issue', 'section', 'publisher', 'place', 'series', 'seriestitle',
-        'seriesnumber', 'seriestext', 'journalabbr', 'journalabbreviation',
-        'publicationtitle', 'date', 'publicationdate', 'accessedat', 'accessdate',
-        'citationcount', 'referencecount', 'citations', 'references',
-      ]);
-      if (dedicatedFormFields.has(normKey)) continue;
-    }
-
-    if (/^arxiv:\s*/i.test(trimmedLine)) {
-      if (isPreprint && paperArchiveId) continue;
-
-      hasArxivLine = true;
-      const normalizedLine = trimmedLine.replace(
-        /^arxiv:\s*([^\s\[]+)(?:v\d+)?\s*(\[[^\]]+\])?/i,
-        (_, id, cat) => {
-          const cleanId = id.replace(/v\d+$/i, '').trim();
-          let category = cat ? cat.replace(/[\[\]]/g, '').trim() : '';
-          if (!category) {
-            category = resolveArxivCategory(cleanId, associatedPaperItem, additionalExtraFields) || '';
-          }
-          if (category) {
-            const canonicalCat = CANONICAL_ARXIV_CATEGORIES[category.toLowerCase()] || category;
-            return `arXiv: ${cleanId} [${canonicalCat}]`;
-          }
-          return `arXiv: ${cleanId}`;
+  if (additionalExtraFields && typeof additionalExtraFields === 'object') {
+    for (const [key, value] of Object.entries(additionalExtraFields)) {
+      if (value !== null && value !== undefined && value !== '') {
+        const line = `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`;
+        if (!lines.includes(line)) {
+          lines.push(line);
         }
-      );
-      sanitizedLines.push(normalizedLine);
-      continue;
-    }
-
-    sanitizedLines.push(trimmedLine);
-  }
-
-  if (!hasArxivLine && !isPreprint) {
-    const rawArxiv =
-      associatedPaperItem?.arxivId ||
-      (typeof additionalExtraFields?.arxivId === 'string' ? additionalExtraFields.arxivId : undefined) ||
-      (typeof additionalExtraFields?.archiveId === 'string' ? additionalExtraFields.archiveId : undefined) ||
-      (associatedPaperItem?.callNumber?.startsWith('arXiv:') ? associatedPaperItem.callNumber.replace(/^arXiv:/i, '').trim() : undefined);
-
-    if (rawArxiv) {
-      const cleanArxiv = rawArxiv
-        .replace(/^arxiv:\s*/i, '')
-        .replace(/\s*\[.*?\]\s*$/, '')
-        .replace(/v\d+$/i, '')
-        .trim();
-      const category = resolveArxivCategory(cleanArxiv, associatedPaperItem, additionalExtraFields);
-      const canonicalCat = category ? (CANONICAL_ARXIV_CATEGORIES[category.toLowerCase()] || category) : '';
-
-      const formattedArxivLine = canonicalCat
-        ? `arXiv: ${cleanArxiv} [${canonicalCat}]`
-        : `arXiv: ${cleanArxiv}`;
-
-      sanitizedLines.unshift(formattedArxivLine);
+      }
     }
   }
 
-  const structuredKeyValLines: string[] = [];
-  const freeTextNotesLines: string[] = [];
-
-  for (const line of sanitizedLines) {
-    if (/^[a-zA-Z_][a-zA-Z0-9_\-]*:\s*.+$/.test(line)) {
-      structuredKeyValLines.push(line);
-    } else {
-      freeTextNotesLines.push(line);
-    }
-  }
-
-  return [...structuredKeyValLines, ...freeTextNotesLines].join('\n');
+  return lines.join('\n').trim();
 }

@@ -11,12 +11,13 @@ import React, { useState, useEffect } from 'react';
 import { ChevronUp, ChevronDown, Minus, Plus } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
+import { useViewerStore } from '../../../store/viewer.store';
 
 export interface PdfPaginationControlsProps {
-  pageNumber: number;
-  numPages: number;
-  onPrevPage: () => void;
-  onNextPage: () => void;
+  pageNumber?: number;
+  numPages?: number;
+  onPrevPage?: () => void;
+  onNextPage?: () => void;
   onJumpToPage?: (page: number) => void;
   onZoomIn?: () => void;
   onZoomOut?: () => void;
@@ -24,15 +25,27 @@ export interface PdfPaginationControlsProps {
 }
 
 export const PdfPaginationControls = React.memo(function PdfPaginationControls({
-  pageNumber,
-  numPages,
-  onPrevPage,
-  onNextPage,
-  onJumpToPage,
+  pageNumber: propPageNumber,
+  numPages: propNumPages,
+  onPrevPage: propOnPrevPage,
+  onNextPage: propOnNextPage,
+  onJumpToPage: propOnJumpToPage,
   onZoomIn,
   onZoomOut,
   className,
 }: PdfPaginationControlsProps) {
+  const storePageNumber = useViewerStore((s) => s.pageNumber);
+  const storeNumPages = useViewerStore((s) => s.numPages);
+  const storePrevPage = useViewerStore((s) => s.prevPage);
+  const storeNextPage = useViewerStore((s) => s.nextPage);
+  const storeSetPage = useViewerStore((s) => s.setPageNumber);
+
+  const pageNumber = propPageNumber ?? storePageNumber;
+  const numPages = propNumPages ?? storeNumPages;
+  const onPrevPage = propOnPrevPage ?? storePrevPage;
+  const onNextPage = propOnNextPage ?? storeNextPage;
+  const onJumpToPage = propOnJumpToPage ?? storeSetPage;
+
   const [inputPage, setInputPage] = useState(String(pageNumber));
 
   useEffect(() => {

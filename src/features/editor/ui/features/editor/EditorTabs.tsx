@@ -21,6 +21,7 @@ import { X, FileText } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import { useTabsStore, type EditorTab } from '../../../store/tabs.store';
 import { sessionCoordinator } from '../../../coordinators/session.coordinator';
+import { editorCommandBus } from '../../../coordinators/command-bus';
 
 // ── Single Tab Item (Overleaf 1:1) ───────────────────────────────────────────
 
@@ -207,21 +208,8 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles }: TabsPro
   }, [rootPageId, updateQueryParams]);
 
   const handleTabClose = useCallback((tabId: string) => {
-    sessionCoordinator.closeTab(tabId);
-    closeTab(rootPageId, tabId, (nextId) => {
-      const isNextRoot =
-        !nextId ||
-        nextId === rootPageId ||
-        nextId === `${rootPageId}-main`;
-      if (!isNextRoot && nextId) {
-        useTabsStore.getState().setActive(rootPageId, nextId);
-        updateQueryParams(nextId);
-      } else {
-        useTabsStore.getState().setActive(rootPageId, rootPageId);
-        updateQueryParams(null);
-      }
-    });
-  }, [closeTab, rootPageId, updateQueryParams]);
+    editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId: tabId });
+  }, []);
 
   const handleTabListKeyDown = (e: React.KeyboardEvent) => {
     if (tabs.length === 0) return;

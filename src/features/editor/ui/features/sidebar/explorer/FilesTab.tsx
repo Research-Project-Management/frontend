@@ -29,13 +29,13 @@ import {
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
-import { useEditorStorage } from '@/features/editor/hooks/use-storage';
-import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
+import { useEditorStorage } from '@/features/editor/ui/hooks/use-storage';
+import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import {
   createFileSchema,
   createFolderSchema,
   renameItemSchema,
-} from '@/features/editor/schemas';
+} from '@/features/editor/domain/types/schemas';
 import {
   usePageStore,
   useTabsStore,
@@ -48,11 +48,11 @@ import {
   deletedFilesQuery,
   usePageActions,
   useFileActions,
-} from '@/features/editor/hooks/use-core';
-import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
+} from '@/features/editor/ui/hooks/use-core';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { workspaceCoordinator } from '@/features/editor/coordinators/workspace.coordinator';
-import type { EditorStorageItem as StorageItem } from '@/features/editor/services/storage.service';
-import { manuscriptService, type LinkedFileDto } from '@/features/editor/services/manuscript.service';
+import type { EditorStorageItem as StorageItem } from '@/features/editor/coordinators/services/storage.service';
+import { manuscriptService, type LinkedFileDto } from '@/features/editor/coordinators/services/manuscript.service';
 import {
   PlaneEmptyState,
   PlaneErrorState,
@@ -175,11 +175,27 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   });
 
   useEffect(() => {
-    if (!files) return;
-    const names = files.map((f: any) => f.title);
+    if (!files && !parentPage) return;
+    const allFiles: Array<{ id: string; title?: string; name?: string; content?: string }> = [];
+    if (parentPage?.id) {
+      const pageText = typeof parentPage.content === 'string'
+        ? parentPage.content
+        : (parentPage.content?.text || parentPage.content?.source || parentPage.content?.content || '');
+      allFiles.push({
+        id: parentPage.id,
+        title: parentPage.title || 'main.tex',
+        content: pageText,
+      });
+    }
+    if (files && Array.isArray(files)) {
+      for (const f of files) {
+        allFiles.push(f as any);
+      }
+    }
+    const names = allFiles.map((f) => f.title || f.name || 'untitled.tex');
     setTexFiles(names);
-    workspaceCoordinator.initProjectSymbols(files as any);
-  }, [files, setTexFiles]);
+    workspaceCoordinator.initProjectSymbols(allFiles);
+  }, [files, parentPage, setTexFiles]);
 
   const { createFile: createFileMutation, setMainFile: setMainFileMutation } = useFileActions();
   const {
@@ -230,8 +246,10 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     };
 
     window.addEventListener('flux:filetree-updated', handleFileTreeUpdated);
+    const unsubCmd = editorCommandBus.subscribe('filetree:updated', handleFileTreeUpdated);
     return () => {
       window.removeEventListener('flux:filetree-updated', handleFileTreeUpdated);
+      unsubCmd();
     };
   }, [queryClient, parentPageId, pageId]);
 

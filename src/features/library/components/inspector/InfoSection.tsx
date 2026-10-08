@@ -248,7 +248,7 @@ export default function InfoSection({
         return p.itemType === 'preprint' && clean ? `arXiv:${clean}` : clean;
       }
       if (keyLower === 'citationkey' || keyLower === 'citekey') {
-        return cleanValue(p.citationKey || generateCitationKey(p));
+        return cleanValue(p.citationKey || p.key || generateCitationKey(p));
       }
       if (keyLower === 'series') {
         return cleanValue(p.series || ef.series);
@@ -714,7 +714,7 @@ export default function InfoSection({
             : isReferences && rawVal && !isNaN(Number(rawVal))
             ? Number(rawVal) > 0 ? new Intl.NumberFormat('en-US').format(Number(rawVal)) : ''
             : isCitationKey
-            ? cleanValue(paper.citationKey || generateCitationKey(paper))
+            ? cleanValue(paper.citationKey || paper.key || generateCitationKey(paper))
             : isRights
             ? cleanValue(
                 paper.rights ??

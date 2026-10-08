@@ -41,21 +41,21 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { PlaneErrorState, PlaneEmptyState } from '@/shared/components/ui';
 import { usePageStore, useCompileStore } from '@/features/editor/store';
-import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
-import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
+import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import {
   suggestLatexFix,
   type AiErrorFixResult,
-} from '@/features/editor/services/ai-error-assist.service';
+} from '@/features/editor/coordinators/services/ai-error-assist.service';
 import {
   listAuxFiles,
   type AuxFileItem,
-} from '@/features/editor/services/compiler.service';
+} from '@/features/editor/coordinators/services/compiler.service';
 import {
   manuscriptService,
   type ErrorExplanationDto,
   type DiagnosticReportDto,
-} from '@/features/editor/services/manuscript.service';
+} from '@/features/editor/coordinators/services/manuscript.service';
 import { CompileButton } from './CompileButton';
 
 export interface LogEntry {

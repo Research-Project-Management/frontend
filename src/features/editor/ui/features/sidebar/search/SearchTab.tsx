@@ -21,12 +21,12 @@ import {
 } from "lucide-react";
 import { Input } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { usePageStore, useTabsStore } from "@/features/editor/store";
-import { filesQuery } from "@/features/editor/hooks/use-core";
+import { usePageStore, useTabsStore, useSearchStore } from "@/features/editor/store";
+import { filesQuery } from "@/features/editor/ui/hooks/use-core";
 import { useDebounce } from "@/shared/hooks";
-import { documentSearchService } from "@/features/editor/services/search.service";
-import { useEditorInstance } from "@/features/editor/core/context/editor-instance.context";
-import { editorCommandBus } from "@/features/editor/core/command-bus/editor-command-bus";
+import { documentSearchService } from "@/features/editor/coordinators/services/search.service";
+import { useEditorInstance } from "@/features/editor/ui/hooks/use-editor-instance";
+import { editorCommandBus } from "@/features/editor/coordinators/command-bus";
 import { PlaneEmptyState, PlaneErrorState } from "@/shared/components/ui";
 import { SidebarPanelHeader } from "../SidebarPanelHeader";
 
@@ -61,14 +61,24 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   const rootProjectId = typeof rawProjectId === "string" ? rawProjectId : (rawProjectId as any)?.id || "";
   const activeFileId = searchParams.get("file") ?? activeFilePage?.id ?? currentPage?.id;
 
-  const [query, setQuery] = useState("");
-  const [instantQuery, setInstantQuery] = useState<string | null>(null);
-  const [replaceText, setReplaceText] = useState("");
-  const [showReplace, setShowReplace] = useState(false);
-  const [caseSensitive, setCaseSensitive] = useState(false);
-  const [wholeWord, setWholeWord] = useState(false);
-  const [useRegex, setUseRegex] = useState(false);
-  const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
+  const {
+    query,
+    setQuery,
+    instantQuery,
+    setInstantQuery,
+    replaceText,
+    setReplaceText,
+    showReplace,
+    setShowReplace,
+    caseSensitive,
+    setCaseSensitive,
+    wholeWord,
+    setWholeWord,
+    useRegex,
+    setUseRegex,
+    collapsedFiles,
+    toggleFileCollapsed,
+  } = useSearchStore();
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(query, 250);
@@ -247,13 +257,8 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   );
 
   const toggleFileCollapse = useCallback((fileId: string) => {
-    setCollapsedFiles((prev) => {
-      const next = new Set(prev);
-      if (next.has(fileId)) next.delete(fileId);
-      else next.add(fileId);
-      return next;
-    });
-  }, []);
+    toggleFileCollapsed(fileId);
+  }, [toggleFileCollapsed]);
 
   const handleNavigate = useCallback(
     (fileId: string, fileName: string, line: number, _matchStart: number, _matchEnd: number) => {

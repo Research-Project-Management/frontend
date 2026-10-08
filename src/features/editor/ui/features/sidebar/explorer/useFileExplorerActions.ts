@@ -16,10 +16,10 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { pageService } from '@/features/editor/services/core.service';
-import { manuscriptService } from '@/features/editor/services/manuscript.service';
-import { filesQuery } from '@/features/editor/hooks/use-core';
-import type { Page, PageFile } from '@/features/editor/types';
+import { pageService } from '@/features/editor/coordinators/services/core.service';
+import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
+import { filesQuery } from '@/features/editor/ui/hooks/use-core';
+import type { Page, PageFile } from '@/features/editor/domain/types';
 import { displayName } from './TexFileRow';
 import { prepareAssetInsertion } from './file-actions.util';
 

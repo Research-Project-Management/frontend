@@ -1,26 +1,7 @@
 import { z } from 'zod';
 import { itemSchema } from './items.types';
 
-export const savedSearchFieldSchema = z.enum([
-  'title',
-  'abstract',
-  'creator',
-  'year',
-  'itemType',
-  'tag',
-  'collection',
-  'readStatus',
-  'rating',
-  'doi',
-  'isbn',
-  'hasAttachment',
-  'dateAdded',
-  'dateModified',
-  'publicationTitle',
-  'url',
-  'attachmentContent',
-  'noteContent',
-]);
+export const savedSearchFieldSchema = z.string();
 
 export const savedSearchOperatorSchema = z.enum([
   'is',
@@ -32,14 +13,29 @@ export const savedSearchOperatorSchema = z.enum([
   'isGreaterThan',
   'isLessThan',
   'isBetween',
+  'isInTheLast',
   'isPresent',
   'isAbsent',
 ]);
 
+export const savedSearchScopeOptionsSchema = z.object({
+  searchSubcollections: z.boolean().optional().default(true),
+  showOnlyTopLevel: z.boolean().optional().default(false),
+  includeParentsAndChildren: z.boolean().optional().default(true),
+});
+
+export type SavedSearchScopeOptions = z.infer<typeof savedSearchScopeOptionsSchema>;
+
 export const savedSearchConditionSchema = z.object({
   field: savedSearchFieldSchema,
   operator: savedSearchOperatorSchema,
-  value: z.union([z.string(), z.number(), z.boolean(), z.array(z.union([z.string(), z.number()]))]).optional(),
+  value: z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.union([z.string(), z.number()])),
+    z.record(z.string(), z.unknown()),
+  ]).optional(),
 });
 
 export type SavedSearchCondition = z.infer<typeof savedSearchConditionSchema>;
@@ -47,6 +43,7 @@ export type SavedSearchCondition = z.infer<typeof savedSearchConditionSchema>;
 export interface SavedSearchConditionGroup {
   conjunction: 'AND' | 'OR';
   conditions: (SavedSearchCondition | SavedSearchConditionGroup)[];
+  scopeOptions?: SavedSearchScopeOptions;
 }
 
 export const savedSearchConditionGroupSchema: z.ZodType<SavedSearchConditionGroup> = z.lazy(() =>
@@ -55,6 +52,7 @@ export const savedSearchConditionGroupSchema: z.ZodType<SavedSearchConditionGrou
     conditions: z.array(
       z.union([savedSearchConditionSchema, savedSearchConditionGroupSchema]),
     ),
+    scopeOptions: savedSearchScopeOptionsSchema.optional(),
   }),
 );
 
@@ -65,6 +63,7 @@ export const savedSearchSchema = z.object({
   icon: z.string().optional().default(''),
   color: z.string().optional().default('#3b82f6'),
   conditions: savedSearchConditionGroupSchema,
+  scopeOptions: savedSearchScopeOptionsSchema.optional(),
   conjunction: z.enum(['AND', 'OR']).default('AND'),
   sortBy: z.enum(['dateAdded', 'year', 'title', 'creator']).optional().default('dateAdded'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
@@ -91,6 +90,7 @@ export const createSavedSearchSchema = z.object({
   icon: z.string().optional(),
   color: z.string().optional(),
   conditions: savedSearchConditionGroupSchema,
+  scopeOptions: savedSearchScopeOptionsSchema.optional(),
   conjunction: z.enum(['AND', 'OR']).optional().default('AND'),
   sortBy: z.enum(['dateAdded', 'year', 'title', 'creator']).optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),

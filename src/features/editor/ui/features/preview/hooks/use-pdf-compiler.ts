@@ -9,8 +9,8 @@
 
 import { useRef, useEffect, useCallback } from 'react';
 import { useSettingsStore, useCompileStore } from '../../../../store';
-import { compilerLifecycleCoordinator } from '../../../../core';
-import type { SyncTeXMap } from '../../../../utils/viewer.util';
+import { compilerLifecycleCoordinator } from '../../../../coordinators/compiler.coordinator';
+import type { SyncTeXMap } from '../../../../domain/utils/viewer.util';
 import { toast } from 'sonner';
 
 export interface UsePdfCompilerOptions {
@@ -50,7 +50,7 @@ export function usePdfCompiler({
     async (options?: { forceClean?: boolean }) => {
       return compilerLifecycleCoordinator.compile({
         forceClean: options?.forceClean,
-        onThumbnailGenerated: (dataUrl) => {
+        onThumbnailGenerated: (dataUrl: string) => {
           if (pageId) {
             saveThumbnailMutation?.mutate({
               pageId,

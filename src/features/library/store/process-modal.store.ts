@@ -400,7 +400,7 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
         if (runId) {
           const targetRunId = runId;
           const startTime = Date.now();
-          const maxWaitMs = 60000;
+          const maxWaitMs = 120000;
           let isDone = false;
 
           while (Date.now() - startTime < maxWaitMs && !isDone) {

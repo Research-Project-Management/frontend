@@ -26,7 +26,8 @@ import React, {
 } from 'react';
 import { Document, Page } from 'react-pdf';
 import { Loader2 } from 'lucide-react';
-import { LatexCompilerEngine, type SyncTeXMap } from '@/features/editor/utils/viewer.util';
+import { LatexCompilerEngine, type SyncTeXMap } from '@/features/editor/domain/utils/viewer.util';
+import { compilerCoordinator } from '@/features/editor/coordinators/compiler.coordinator';
 import { useIntersectionObserver } from "@/shared/hooks";
 import { logger, cn } from "@/shared/lib/utils";
 import { PlaneErrorState, PlaneEmptyState } from '@/shared/components/ui';
@@ -385,8 +386,9 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
       triggerClickIndicator(pageNum, pixelX, pixelY);
     }
     if (!onJumpToSource) return;
-    const resolved = synctexMap
-      ? LatexCompilerEngine.resolveReverse(clickFraction, pageNum, synctexMap, ptX, ptY)
+    const effectiveMap = synctexMap || compilerCoordinator.getSynctexMap();
+    const resolved = effectiveMap
+      ? LatexCompilerEngine.resolveReverse(clickFraction, pageNum, effectiveMap, ptX, ptY)
       : null;
     onJumpToSource(
       resolved?.sourcePath ?? null,

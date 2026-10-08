@@ -28,8 +28,8 @@ import {
 import { toast } from 'sonner';
 import { useShallow } from 'zustand/react/shallow';
 import { apiPost, apiDelete } from '@/shared/lib/api';
-import { exportProjectAsZip } from '@/features/editor/utils/export-zip.util';
-import { useSpellingDictionary } from '@/features/editor/hooks/use-spelling';
+import { exportProjectAsZip } from '@/features/editor/domain/utils/export-zip.util';
+import { useSpellingDictionary } from '@/features/editor/ui/hooks/use-spelling';
 import { ProjectReferencesTab } from './ProjectReferencesTab';
 import { ProjectGithubTab } from './ProjectGithubTab';
 import { GitHubIcon } from '@/shared/components/icons';
@@ -62,9 +62,9 @@ import {
 } from '@/features/editor/store';
 import { EDITOR_THEMES } from '@/features/editor/engines';
 import { useTheme } from '@/shared/providers';
-import { filesQuery, pageQuery, useFileActions } from '@/features/editor/hooks/use-core';
+import { filesQuery, pageQuery, useFileActions } from '@/features/editor/ui/hooks/use-core';
 import { useQuery } from '@tanstack/react-query';
-import { editorCommandBus } from '@/features/editor/core';
+import { editorCommandBus } from '@/features/editor/coordinators';
 
 export const EDITOR_FONT_FAMILIES = [
   { id: 'default', label: 'Default Monospace (Monaco / Menlo)' },

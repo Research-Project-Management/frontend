@@ -27,7 +27,7 @@ import {
 } from '@/shared/components/ui/context-menu';
 import { libraryServices } from '../../data';
 import { useLibraryUIStore } from '../../store';
-import type { Item, Collection } from '../../types';
+import type { Item, Collection, CslStyle } from '../../types';
 
 export interface ItemContextMenuProps {
   children: React.ReactNode;
@@ -72,33 +72,35 @@ export function ItemContextMenu({
     Boolean(item.isStarred) ||
     Boolean(typeof item.rating === 'number' && item.rating > 0);
 
-  const handleCopyBibliography = async () => {
+  const handleCopyBibliography = async (style: CslStyle = 'apa') => {
+    const toastId = toast.loading(`Đang tạo trích dẫn (${style.toUpperCase()})...`);
     try {
-      const res = await libraryServices.citations.formatCitation(undefined, item.id, 'apa');
+      const res = await libraryServices.citations.formatCitation(scopeId, item.id, style);
       const text = res.bibliography || res.inText || '';
       if (text) {
         await copyToClipboard(text);
-        toast.success('Copied bibliography (APA) to clipboard');
+        toast.success(`Đã sao chép trích dẫn (${style.toUpperCase()})`, { id: toastId });
       } else {
-        toast.error('Unable to generate bibliography');
+        toast.error('Không thể tạo trích dẫn', { id: toastId });
       }
     } catch (err: any) {
-      toast.error('Citation copy failed', { description: err?.message });
+      toast.error('Sao chép trích dẫn thất bại', { description: err?.message, id: toastId });
     }
   };
 
-  const handleCopyInTextCitation = async () => {
+  const handleCopyInTextCitation = async (style: CslStyle = 'apa') => {
+    const toastId = toast.loading(`Đang tạo trích dẫn trong bài (${style.toUpperCase()})...`);
     try {
-      const res = await libraryServices.citations.formatCitation(undefined, item.id, 'apa');
-      const text = res.inText || res.citation || '';
+      const res = await libraryServices.citations.formatCitation(scopeId, item.id, style);
+      const text = res.inText || (res as any).citation || '';
       if (text) {
         await copyToClipboard(text);
-        toast.success('Copied in-text citation to clipboard');
+        toast.success(`Đã sao chép trích dẫn trong bài (${style.toUpperCase()})`, { id: toastId });
       } else {
-        toast.error('Unable to generate in-text citation');
+        toast.error('Không thể tạo trích dẫn trong bài', { id: toastId });
       }
     } catch (err: any) {
-      toast.error('Citation copy failed', { description: err?.message });
+      toast.error('Sao chép trích dẫn thất bại', { description: err?.message, id: toastId });
     }
   };
 
@@ -106,7 +108,7 @@ export function ItemContextMenu({
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
 
-      <ContextMenuContent className="w-48 text-12 shadow-raised-200 select-none p-1 rounded-md">
+      <ContextMenuContent className="w-52 text-12 shadow-raised-200 select-none p-1 rounded-md">
         {!isTrash ? (
           <>
             <ContextMenuItem
@@ -134,21 +136,60 @@ export function ItemContextMenu({
 
             <ContextMenuSeparator className="mx-1.5 my-1" />
 
-            <ContextMenuItem
-              onClick={handleCopyBibliography}
-              className="gap-2 text-12 py-1.5 px-2 cursor-pointer"
-            >
-              <Copy className="size-3.5 text-foreground" />
-              Copy Citation
-            </ContextMenuItem>
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="gap-2 text-12 py-1.5 px-2 cursor-pointer">
+                <Copy className="size-3.5 text-foreground" />
+                Copy Citation
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-48 text-12 shadow-raised-200 p-1">
+                <ContextMenuItem onClick={() => handleCopyBibliography('apa')} className="cursor-pointer text-12 py-1.5 px-2">
+                  APA (7th Edition)
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleCopyBibliography('ieee')} className="cursor-pointer text-12 py-1.5 px-2">
+                  IEEE
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleCopyBibliography('mla')} className="cursor-pointer text-12 py-1.5 px-2">
+                  MLA (9th Edition)
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleCopyBibliography('chicago')} className="cursor-pointer text-12 py-1.5 px-2">
+                  Chicago (Author-Date)
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleCopyBibliography('harvard')} className="cursor-pointer text-12 py-1.5 px-2">
+                  Harvard
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleCopyBibliography('vancouver')} className="cursor-pointer text-12 py-1.5 px-2">
+                  Vancouver
+                </ContextMenuItem>
+                <ContextMenuSeparator className="my-1" />
+                <ContextMenuItem onClick={() => handleCopyBibliography('bibtex')} className="cursor-pointer text-12 py-1.5 px-2 font-mono text-11">
+                  BibTeX
+                </ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
 
-            <ContextMenuItem
-              onClick={handleCopyInTextCitation}
-              className="gap-2 text-12 py-1.5 px-2 cursor-pointer"
-            >
-              <Quote className="size-3.5 text-foreground" />
-              Copy In-text Citation
-            </ContextMenuItem>
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="gap-2 text-12 py-1.5 px-2 cursor-pointer">
+                <Quote className="size-3.5 text-foreground" />
+                Copy In-text Citation
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-48 text-12 shadow-raised-200 p-1">
+                <ContextMenuItem onClick={() => handleCopyInTextCitation('apa')} className="cursor-pointer text-12 py-1.5 px-2">
+                  APA (e.g. Nguyễn, 2023)
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleCopyInTextCitation('ieee')} className="cursor-pointer text-12 py-1.5 px-2">
+                  IEEE (e.g. [1])
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleCopyInTextCitation('mla')} className="cursor-pointer text-12 py-1.5 px-2">
+                  MLA (e.g. Nguyễn 12)
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleCopyInTextCitation('chicago')} className="cursor-pointer text-12 py-1.5 px-2">
+                  Chicago (Author-Date)
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleCopyInTextCitation('harvard')} className="cursor-pointer text-12 py-1.5 px-2">
+                  Harvard
+                </ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
 
             <ContextMenuItem
               onClick={() => {

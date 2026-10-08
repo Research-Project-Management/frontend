@@ -5,7 +5,7 @@
  */
 
 import { create } from 'zustand';
-import type { CompileStatus, CompileError } from '../types/compiler.types';
+import type { CompileStatus, CompileError } from '../domain/types/compiler.types';
 
 export interface DocumentCompilerState {
   // ── Dirty content tracking ─────────────────────────────────────────────
@@ -38,6 +38,7 @@ export interface DocumentCompilerState {
   /** Sets the PDF blob URL, revoking the previous blob URL to prevent leaks */
   setPdfUrl: (url: string | null) => void;
   setLastCompiledAt: (date: Date | null) => void;
+  clearLogs: () => void;
   setPendingCompile: (pending: boolean) => void;
   setIsViewerPoppedOut: (poppedOut: boolean) => void;
 }
@@ -130,6 +131,10 @@ export const useDocumentCompilerStore = create<DocumentCompilerState>()((set, ge
 
   setLastCompiledAt(date) {
     set({ lastCompiledAt: date });
+  },
+
+  clearLogs() {
+    set({ compileLog: null, compileErrors: [] });
   },
 
   setPendingCompile(pending) {

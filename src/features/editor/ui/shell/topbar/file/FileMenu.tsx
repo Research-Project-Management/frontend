@@ -21,9 +21,9 @@ import {
   MenubarSeparator,
 } from "@/shared/components/ui";
 import { usePageStore, useCompileStore, useSettingsStore } from '@/features/editor/store';
-import { useProjectExport } from '@/features/editor/hooks/use-export';
-import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
-import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
+import { useProjectExport } from '@/features/editor/ui/hooks/use-export';
+import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { duplicateProjectApi } from '@/features/projects/shell/services/project.service';
 
 export function FileMenu() {

@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { editorCommandBus } from '../../../coordinators/command-bus';
+import { editorCommandBus, getActiveEditorEngine } from '../../../coordinators/command-bus';
 import { cn } from '@/shared/lib/utils';
 
 export interface EditorToolbarProps {
@@ -67,8 +67,9 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
     }
 
     editorCommandBus.dispatch({
-      type: 'editor:insert-text',
-      text: `${action.snippet.prefix}${action.snippet.suffix}`,
+      type: 'editor:wrap-selection',
+      prefix: action.snippet.prefix,
+      suffix: action.snippet.suffix,
     });
   };
 
@@ -111,7 +112,15 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
             variant="ghost"
             size="sm"
             disabled={readOnly}
-            onClick={() => editorCommandBus.dispatch({ type: 'synctex:forward' })}
+            onClick={() => {
+              const engine = getActiveEditorEngine();
+              const pos = engine?.getCursorPosition?.();
+              editorCommandBus.dispatch({
+                type: 'synctex:forward',
+                line: pos?.line ?? 1,
+                column: pos?.column ?? 1,
+              });
+            }}
             className="size-7 p-0 text-text-muted hover:text-text-primary hover:bg-muted rounded cursor-pointer"
             aria-label="View in PDF (SyncTeX)"
           >

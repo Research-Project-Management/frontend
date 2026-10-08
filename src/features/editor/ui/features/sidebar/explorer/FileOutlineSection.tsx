@@ -3,9 +3,9 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
-import { parseDocumentOutline, OUTLINE_INDENT } from '@/features/editor/utils/pdf-outline.util';
-import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import { parseDocumentOutline, OUTLINE_INDENT } from '@/features/editor/domain/utils/pdf-outline.util';
+import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 
 export interface FileOutlineSectionProps {
   isFileTreeOpen: boolean;
@@ -44,12 +44,12 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
       setContent(currentText);
     }
 
-    const unsubCursor = engine.onCursorChange((line) => {
+    const unsubCursor = engine.onCursorChange((line: number) => {
       setActiveLine(line);
     });
 
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-    const unsubContent = engine.onContentChange((latestContent) => {
+    const unsubContent = engine.onContentChange((latestContent: string) => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         setContent(latestContent);

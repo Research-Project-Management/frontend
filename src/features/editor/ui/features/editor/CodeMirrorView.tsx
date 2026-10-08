@@ -27,17 +27,18 @@ import {
   reconfigureLineWrapping,
   reconfigureVimMode,
   reconfigureReadOnly,
-} from '../../../engines/codemirror-preset';
-import { YjsCodeMirrorAdapter } from '../../../engines/yjs-codemirror-adapter';
-import { CodeMirrorEngineAdapter } from '../../../adapters/codemirror/codemirror.adapter';
+  YjsCodeMirrorAdapter,
+} from '../../../engines';
+import { CodeMirrorEngineAdapter } from '@/features/editor/engines/adapters/codemirror/codemirror.adapter';
 import { lruDocumentCache } from '../../../domain/lru-document-cache';
 import { visibilityCoordinator } from '../../../coordinators/visibility.coordinator';
 import { diagnosticsCoordinator } from '../../../coordinators/diagnostics.coordinator';
 import { sessionCoordinator } from '../../../coordinators/session.coordinator';
+import { setActiveEditorEngine, editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { useSettingsStore } from '../../../store/settings.store';
 import { createDiagnosticsGutter } from './DiagnosticsGutter';
-import { setErrorLensDiagnosticsEffect } from '../../../engines/latex-error-lens';
-import { useEditorInstance } from '../../../core/context/editor-instance.context';
+import { setErrorLensDiagnosticsEffect } from '../../../engines';
+import type { LatexFormatType } from '@/features/editor/domain/types/ports/editor-engine.port';
 import { cn } from '@/shared/lib/utils';
 
 export interface CodeMirrorViewProps {
@@ -68,7 +69,6 @@ export function CodeMirrorView({
   const adapterRef = useRef<CodeMirrorEngineAdapter | null>(null);
   const collabAdapter = useMemo(() => new YjsCodeMirrorAdapter(), []);
 
-  const { setEngine } = useEditorInstance();
   // Narrow selectors to prevent useless re-renders when other settings mutate
   const keybinding = useSettingsStore((s) => s.keybinding);
   const lineNumbers = useSettingsStore((s) => s.lineNumbers);
@@ -160,7 +160,7 @@ export function CodeMirrorView({
     // 5. Connect Concrete Engine Adapter to Global Context
     const engineAdapter = new CodeMirrorEngineAdapter(view);
     adapterRef.current = engineAdapter;
-    setEngine(engineAdapter);
+    setActiveEditorEngine(engineAdapter);
 
     // 6. Restore cached selection & scroll position
     if (cachedModel?.selection) {
@@ -212,15 +212,102 @@ export function CodeMirrorView({
       }
     });
 
+    // 9. Subscribe to EditorCommandBus commands
+    const unsubJump = editorCommandBus.subscribe('editor:jump-to-line', (cmd) => {
+      engineAdapter.jumpToLine(cmd.line, cmd.highlight);
+    });
+
+    const unsubFocus = editorCommandBus.subscribe('editor:focus', () => {
+      engineAdapter.focus();
+    });
+
+    const unsubFormat = editorCommandBus.subscribe('editor:format', (cmd) => {
+      engineAdapter.format(cmd.format);
+    });
+
+    const unsubInsertText = editorCommandBus.subscribe('editor:insert-text', (cmd) => {
+      engineAdapter.insertText(cmd.text);
+    });
+
+    const unsubWrapSelection = editorCommandBus.subscribe('editor:wrap-selection', (cmd) => {
+      engineAdapter.wrapSelection(cmd.prefix, cmd.suffix, cmd.placeholder);
+    });
+
+    const unsubUndo = editorCommandBus.subscribe('editor:undo', () => {
+      engineAdapter.undo();
+    });
+
+    const unsubRedo = editorCommandBus.subscribe('editor:redo', () => {
+      engineAdapter.redo();
+    });
+
+    const unsubFind = editorCommandBus.subscribe('editor:find', () => {
+      engineAdapter.openFind();
+    });
+
+    const unsubCitation = editorCommandBus.subscribe('editor:insert-citation', (cmd) => {
+      if (cmd.bibKey) {
+        engineAdapter.insertText(`\\cite{${cmd.bibKey}}`);
+      }
+    });
+
+    const unsubLint = editorCommandBus.subscribe('editor:lint-project', () => {
+      if (viewRef.current) {
+        forceLinting(viewRef.current);
+        syncErrorLens(viewRef.current);
+      }
+    });
+
+    const unsubVisualCmd = editorCommandBus.subscribe('editor:visual-command', (cmd) => {
+      const formatCommands: Record<string, LatexFormatType> = {
+        bold: 'bold',
+        italic: 'italic',
+        underline: 'underline',
+        strikethrough: 'strikethrough',
+        strike: 'strikethrough',
+        code: 'code',
+        math: 'inlineMath',
+        inlineMath: 'inlineMath',
+        section: 'section',
+        subsection: 'subsection',
+        subsubsection: 'subsubsection',
+        paragraph: 'paragraph',
+        subparagraph: 'subparagraph',
+      };
+
+      if (cmd.command in formatCommands) {
+        engineAdapter.format(formatCommands[cmd.command]);
+      } else if (cmd.command === 'bulletList') {
+        engineAdapter.insertText('\\begin{itemize}\n  \\item \n\\end{itemize}\n');
+      } else if (cmd.command === 'orderedList') {
+        engineAdapter.insertText('\\begin{enumerate}\n  \\item \n\\end{enumerate}\n');
+      } else if (cmd.command === 'codeBlock') {
+        engineAdapter.insertText('\\begin{verbatim}\n\n\\end{verbatim}\n');
+      } else if (cmd.contentHtml) {
+        engineAdapter.insertText(cmd.contentHtml);
+      }
+    });
+
     return () => {
+      unsubJump();
+      unsubFocus();
+      unsubFormat();
+      unsubInsertText();
+      unsubWrapSelection();
+      unsubUndo();
+      unsubRedo();
+      unsubFind();
+      unsubCitation();
+      unsubLint();
+      unsubVisualCmd();
       unsubDiagnostics();
       unsubVisibility();
-      setEngine(null);
+      setActiveEditorEngine(null);
       adapterRef.current = null;
       view.destroy();
       viewRef.current = null;
     };
-  }, [fileId, filePath, setEngine]);
+  }, [fileId, filePath]);
 
   // ── 0ms Dynamic Compartment Reconfigurations (No View Re-mount) ───────────
   useEffect(() => {

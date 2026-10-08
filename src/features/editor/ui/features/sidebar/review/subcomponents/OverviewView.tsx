@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
-import type { MentionMember } from '@/features/editor/utils/mention.util';
+import type { MentionMember } from '@/features/editor/domain/utils/mention.util';
 import { OverviewFileGroup } from './OverviewFileGroup';
 import { EmptyReviewState } from './EmptyReviewState';
 

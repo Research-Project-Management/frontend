@@ -24,7 +24,9 @@ import {
   Minus,
   Plus,
   Search,
+  ArrowLeftToLine,
 } from 'lucide-react';
+import { editorCommandBus } from '../../../coordinators/command-bus';
 import {
   Tooltip,
   TooltipContent,
@@ -40,8 +42,8 @@ import { CompileButton } from './CompileButton';
 import { PdfPaginationControls } from './PdfPaginationControls';
 import { PdfZoomControls } from './PdfZoomControls';
 import type { CompileStatus } from '../../../store';
-import type { CompileMode } from '../../../types/compiler.types';
-import type { PdfOutlineItem } from '../../../utils/pdf-outline.util';
+import type { CompileMode } from '../../../domain/types/compiler.types';
+import type { PdfOutlineItem } from '../../../domain/utils/pdf-outline.util';
 
 function InvertColorsIcon({ className }: { className?: string }) {
   return (
@@ -249,6 +251,26 @@ export const PdfToolbar = React.memo(function PdfToolbar({
             {/* View utility buttons: only shown on toolbar when not ultra-compact */}
             {!isUltraCompact && (
               <>
+                {/* Sync to Code (SyncTeX) */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        editorCommandBus.dispatch({ type: 'synctex:backward', page: pageNumber });
+                      }}
+                      disabled={!pdfUrl}
+                      aria-label="Jump to LaTeX source (SyncTeX)"
+                      className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
+                    >
+                      <ArrowLeftToLine className="size-3.5 shrink-0" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    Jump to LaTeX source (SyncTeX)
+                  </TooltipContent>
+                </Tooltip>
+
                 {/* Find in document (Ctrl+F) */}
                 {onToggleSearch && (
                   <Tooltip>

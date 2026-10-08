@@ -10,3 +10,6 @@ export * from './tabs.store';
 export * from './layout.store';
 export * from './settings.store';
 export * from './collaboration.store';
+export * from './search.store';
+export * from './viewer.store';
+export * from './connectivity.store';

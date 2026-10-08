@@ -15,7 +15,7 @@
 import { lruDocumentCache } from './lru-document-cache';
 import { useCompileStore } from '../store/compiler.store';
 import { usePageStore } from '../store/editor.store';
-import { getActiveEditorContent } from '../core/context/editor-instance.context';
+import { getActiveEditorContent } from '../coordinators/command-bus';
 import { normalizeLatexPath } from './latex-dag-engine';
 
 export interface ProjectCompilationSnapshot {
@@ -47,19 +47,21 @@ export class CompilationSnapshotProvider {
     const activeTitle = activeDoc?.title || 'main.tex';
     const activeContent = getActiveEditorContent() || (activeDoc?.content as string) || '';
 
-    const resolvedMainFile = options.resolvedMainFile || 'main.tex';
+    const resolvedMainFile = normalizeLatexPath(options.resolvedMainFile || 'main.tex');
     const files: Record<string, string> = {};
     const dirtyFileIds: string[] = [];
 
-    // 1. Ingest all in-memory models from LRU Cache (MRU to LRU)
-    const cachedModels = lruDocumentCache.getDirtyModels();
-    for (const model of cachedModels) {
+    // 1. Ingest all in-memory models from LRU Cache (both dirty and warm clean models)
+    const allModels = lruDocumentCache.getAllModels();
+    for (const model of allModels) {
       const cleanPath = normalizeLatexPath(model.filePath || model.fileId);
       files[cleanPath] = model.content;
       if (!files[model.fileId]) {
         files[model.fileId] = model.content;
       }
-      dirtyFileIds.push(model.fileId);
+      if (model.isDirty && !dirtyFileIds.includes(model.fileId)) {
+        dirtyFileIds.push(model.fileId);
+      }
     }
 
     // 2. Ingest all dirty buffers from compileStore
@@ -71,7 +73,20 @@ export class CompilationSnapshotProvider {
       }
     }
 
-    // 3. Inject latest editor buffer for active file (guaranteed freshest keystroke)
+    // 3. Ingest currentPage if present and not yet in files
+    const currentPage = pageStore.currentPage as any;
+    if (currentPage && currentPage.id && currentPage.content) {
+      const pageTitle = currentPage.title || 'main.tex';
+      const cleanPagePath = normalizeLatexPath(pageTitle);
+      const pageContent =
+        typeof currentPage.content === 'string'
+          ? currentPage.content
+          : currentPage.content?.source || '';
+      if (!files[cleanPagePath]) files[cleanPagePath] = pageContent;
+      if (!files[currentPage.id]) files[currentPage.id] = pageContent;
+    }
+
+    // 4. Inject latest editor buffer for active file (guaranteed freshest keystroke)
     if (activeDocId && activeContent) {
       files[activeDocId] = activeContent;
       const cleanActivePath = normalizeLatexPath(activeTitle);
@@ -81,16 +96,25 @@ export class CompilationSnapshotProvider {
       }
     }
 
-    // 4. Resolve sourcePayload (if active file is the main file or default)
+    // 5. Resolve sourcePayload (content of the resolved root document)
+    const normActiveTitle = normalizeLatexPath(activeTitle);
     let sourcePayload: string | undefined;
+
     if (
+      normActiveTitle === resolvedMainFile ||
       activeTitle === resolvedMainFile ||
-      activeTitle.endsWith(`/${resolvedMainFile}`) ||
-      activeDocId === options.rootFileId
+      activeTitle.endsWith(`/${resolvedMainFile}`)
     ) {
       sourcePayload = activeContent;
     } else if (files[resolvedMainFile]) {
       sourcePayload = files[resolvedMainFile];
+    } else if (options.rootFileId && files[options.rootFileId]) {
+      sourcePayload = files[options.rootFileId];
+    } else if (
+      activeContent.includes('\\documentclass') &&
+      !activeContent.includes('{subfiles}')
+    ) {
+      sourcePayload = activeContent;
     }
 
     const timestamp = Date.now();

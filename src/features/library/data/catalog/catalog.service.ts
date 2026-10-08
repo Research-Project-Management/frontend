@@ -36,66 +36,18 @@ export type {
 };
 
 // ── Payload sanitization ──────────────────────────────────────────────────────
-const VALID_ITEM_PAYLOAD_KEYS = new Set([
-  // Core bibliographic
-  'title', 'year', 'doi', 'abstract', 'abstractNote', 'itemType',
-  // Authors & creators
-  'authors', 'creators', 'contributors', 'editors',
-  // Publication venue
-  'journal', 'publicationTitle', 'publicationDate', 'publisher', 'place', 'date',
-  'volume', 'issue', 'section', 'partNumber', 'partTitle', 'pages',
-  'series', 'seriesTitle', 'seriesText', 'seriesNumber',
-  // Identifiers
-  'issn', 'isbn', 'pmid', 'pmcid', 'arxivId', 'arxiv',
-  // Web & access
-  'url', 'type', 'accessDate', 'accessedAt',
-  // Style & formatting
-  'language', 'journalAbbr', 'journalAbbreviation', 'shortTitle',
-  'rights', 'license', 'citationKey', 'libraryCatalog',
-  'archive', 'archiveLocation', 'callNumber',
-  // Extra/custom fields
-  'extra', 'extraFields', 'keywords', 'labels', 'tags',
-  // Canonical relation inputs
-  'identifiers',
-  // File upload reference
-  'fileId', 'fileUrl', 'filename', 'mimeType', 'size',
-  // Collection targeting
-  'collectionId', 'collectionIds',
-  // Citation metrics
-  'citationCount', 'referenceCount',
-  // Type-specific fields across 37 item types
-  'edition', 'numPages', 'numberOfVolumes', 'bookTitle', 'proceedingsTitle',
-  'conferenceName', 'eventPlace', 'websiteTitle', 'websiteType',
-  'university', 'institution', 'organization', 'identifier', 'country',
-  'assignee', 'issuingAuthority', 'patentNumber', 'applicationNumber',
-  'reportNumber', 'reportType', 'thesisType', 'genre', 'filingDate', 'issueDate',
-  'priorityDate', 'priorityNumbers', 'references', 'legalStatus',
-  'versionNumber', 'blogTitle', 'forumTitle', 'postType', 'presentationType',
-  'meetingName', 'letterType', 'manuscriptType', 'mapType', 'scale',
-  'artworkMedium', 'artworkSize', 'distributor', 'videoRecordingFormat',
-  'audioRecordingFormat', 'runningTime', 'label', 'studio', 'network',
-  'programTitle', 'episodeNumber', 'podcastType', 'interviewMedium',
-  'dictionaryTitle', 'encyclopediaTitle', 'originalDate', 'originalPublisher',
-  'originalPlace', 'session', 'history', 'committee', 'documentNumber',
-  'court', 'docketNumber', 'firstPage', 'dateDecided', 'reporter',
-  'reporterVolume', 'codeNumber', 'publicLawNumber', 'dateEnacted',
-  'billNumber', 'codeVolume', 'codePages', 'legislativeBody',
-  'code', 'system', 'company', 'programmingLanguage', 'standardNumber',
-  'archiveID', 'format', 'repository', 'repositoryLocation',
-  // Optimistic concurrency
-  'version', 'expectedVersion',
-  // User state inputs
-  'cslType', 'readStatus', 'rating',
-  // Quality flags
-  'crossrefEnriched',
-]);
-
+/**
+ * Prepares payload for API dispatch by stripping undefined values, functions,
+ * and client-only transient state flags (e.g. `_isProcessing`, `_isSelected`).
+ * The Backend Server (CreateItemDto, UpdateItemDto, ItemValidatorService)
+ * is the authoritative validator for allowed bibliographic fields and types.
+ */
 export function sanitizeItemPayload(data: Record<string, unknown>): Record<string, unknown> {
   if (!data || typeof data !== 'object') return {};
   const cleaned: Record<string, unknown> = {};
-  for (const key of Object.keys(data)) {
-    if (VALID_ITEM_PAYLOAD_KEYS.has(key) && data[key] !== undefined) {
-      cleaned[key] = data[key];
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined && typeof value !== 'function' && !key.startsWith('_')) {
+      cleaned[key] = value;
     }
   }
   return cleaned;

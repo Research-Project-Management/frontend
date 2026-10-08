@@ -18,6 +18,7 @@
 
 import { useCallback } from 'react';
 import { toast } from 'sonner';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 
 export interface UseAiChatActionsOptions {
   engine?: any;
@@ -26,15 +27,11 @@ export interface UseAiChatActionsOptions {
 export function useAiChatActions({ engine }: UseAiChatActionsOptions = {}) {
   const insertAtCursor = useCallback(
     (text: string) => {
-      if (!engine) {
-        toast.error('Editor not ready');
-        return;
-      }
-      engine.insertText(text);
-      engine.focus();
+      editorCommandBus.dispatch({ type: 'editor:insert-text', text });
+      editorCommandBus.dispatch({ type: 'editor:focus' });
       toast.success('Inserted code into document');
     },
-    [engine],
+    [],
   );
 
   const replaceSelection = useCallback(
@@ -63,7 +60,7 @@ export function useAiChatActions({ engine }: UseAiChatActionsOptions = {}) {
         const from = offsets?.from ?? 0;
         const to = offsets?.to ?? from;
 
-        engine.proposeDiff({
+        const proposal = {
           id: `diff-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           from,
           to,
@@ -71,7 +68,9 @@ export function useAiChatActions({ engine }: UseAiChatActionsOptions = {}) {
           replacementText: code,
           title: title || (to > from ? 'AI Selection Diff' : 'AI Suggested Insertion'),
           createdAt: Date.now(),
-        });
+        };
+
+        editorCommandBus.dispatch({ type: 'ai:propose-diff', proposal });
         engine.focus();
         toast.info('Active diff proposal in editor (⌘⏎ Accept, Esc Reject)');
       } else {

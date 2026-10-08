@@ -2,9 +2,9 @@
 
 import React, { useMemo } from 'react';
 import { Check, Loader2, MoreVertical, RotateCcw } from 'lucide-react';
-import { useResolveComment, useDeleteComment, useDeleteReply } from '@/features/editor/hooks/use-comment';
-import type { PageComment, CommentReply } from '@/features/editor/types';
-import type { MentionMember } from '@/features/editor/utils/mention.util';
+import { useResolveComment, useDeleteComment, useDeleteReply } from '@/features/editor/ui/hooks/use-comment';
+import type { PageComment, CommentReply } from '@/features/editor/domain/types';
+import type { MentionMember } from '@/features/editor/domain/utils/mention.util';
 import { cn } from '@/shared/lib/utils';
 import {
   DropdownMenu,

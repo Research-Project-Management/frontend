@@ -9,4 +9,13 @@ export * from './label.schema';
 export * from './profile.types';
 export * from './security.types';
 export * from './integration.types';
-export * from './label.types';
+export type {
+  Label,
+  CreateLabelInput,
+  UpdateLabelInput,
+  CreateProjectLabelInput,
+  UpdateProjectLabelInput,
+  ReorderLabelItem,
+  ImportLabelRow,
+  ImportLabelResult,
+} from './label.types';

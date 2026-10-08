@@ -266,7 +266,9 @@ export function useLibraryBatchCoordinator({
     async (style: CslStyle | 'latex' = 'apa') => {
       warnIfRetractedPresent('citation formatting');
       if (style === 'latex') {
-        const keys = selectedItems.map((p) => generateCitationKey(p)).filter(Boolean);
+        const keys = selectedItems
+          .map((p) => (p.citationKey || p.key || generateCitationKey(p))?.trim())
+          .filter(Boolean);
         const citeCmd = `\\cite{${keys.join(', ')}}`;
         await copyWithToast(citeCmd, `Copied ${citeCmd} to clipboard`);
         return;

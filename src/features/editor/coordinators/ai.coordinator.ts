@@ -10,15 +10,15 @@
  * - Applies AI-generated code diffs directly into CodeMirror and LRU Cache.
  */
 
-import { getActiveEditorInstance, getActiveEditorContent } from '../core/context/editor-instance.context';
+import { getActiveEditorInstance, getActiveEditorContent } from './command-bus';
 import { usePageStore } from '../store/editor.store';
 import { useLayoutStore } from '../store/layout.store';
 import { diagnosticsCoordinator, type IndexedDiagnosticItem } from './diagnostics.coordinator';
 import { sessionCoordinator } from './session.coordinator';
 import { editorCommandBus } from './command-bus';
 import { lruDocumentCache } from '../domain/lru-document-cache';
-import { suggestLatexFix } from '../services/ai-error-assist.service';
-import type { DiffProposal } from '../ports/editor-engine.port';
+import { suggestLatexFix } from './services/ai-error-assist.service';
+import type { DiffProposal } from '../domain/types/ports/editor-engine.port';
 import { toast } from 'sonner';
 
 export interface AiContextPayload {
@@ -46,6 +46,10 @@ export class AiCoordinatorRegistry {
 
     editorCommandBus.subscribe('ai:autofix-diagnostic', (cmd) => {
       void this.autoFixDiagnostic(cmd.diagnostic);
+    });
+
+    editorCommandBus.subscribe('editor:autofix', () => {
+      void this.autoFixCurrentFile();
     });
 
     editorCommandBus.registerExecutor('ai:apply-fix', async (cmd) => {
@@ -120,6 +124,27 @@ export class AiCoordinatorRegistry {
       type: 'sidebar:open-ai-panel',
       initialPrompt: `Please explain and fix this LaTeX error on line ${error.line || 'unknown'}:\n"${error.message}"\n\nContext:\n${error.context || ''}`,
     });
+  }
+
+  /**
+   * 1-Click AutoFix for active document: finds the most critical diagnostic
+   * and runs AI AutoFix with interactive inline diff.
+   */
+  public async autoFixCurrentFile(): Promise<boolean> {
+    const pageStore = usePageStore.getState();
+    const activeDoc = pageStore.activeFilePage || pageStore.currentPage;
+    const fileId = activeDoc?.id || 'main.tex';
+    const filePath = (activeDoc as any)?.path || activeDoc?.title || fileId;
+
+    const diags = diagnosticsCoordinator.getDiagnosticsForFile(filePath);
+    const firstIssue = diags.find((d) => d.severity === 'error') || diags[0];
+
+    if (!firstIssue) {
+      toast.info('No syntax or compile errors found in this file.');
+      return false;
+    }
+
+    return this.autoFixDiagnostic(firstIssue);
   }
 
   /**

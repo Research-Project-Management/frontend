@@ -15,15 +15,16 @@
  * - Dispatches typed progress events on IEditorCommandBus (compiler:started, compiler:progress, compiler:finished).
  */
 
-import { LatexCompilerEngine, type SyncTeXMap } from '../utils/viewer.util';
+import { LatexCompilerEngine, type SyncTeXMap } from '../domain/utils/viewer.util';
 import { latexDagEngine } from '../domain/latex-dag-engine';
+import { lruDocumentCache } from '../domain/lru-document-cache';
 import { CompilationSnapshotProvider } from '../domain/compilation-snapshot';
 import { diagnosticsCoordinator } from './diagnostics.coordinator';
 import { sessionCoordinator } from './session.coordinator';
 import { editorCommandBus } from './command-bus';
 import { useCompileStore, usePageStore, useSettingsStore } from '../store';
-import { getActiveEditorContent } from '../core/context/editor-instance.context';
-import type { CompileError } from '../types/compiler.types';
+import { getActiveEditorContent, getActiveEditorEngine } from './command-bus';
+import type { CompileError } from '../domain/types/compiler.types';
 
 export interface CompileOptions {
   forceClean?: boolean;
@@ -69,12 +70,36 @@ export class CompilerCoordinatorRegistry {
     });
 
     editorCommandBus.subscribe('synctex:forward', (cmd) => {
-      if (cmd.line !== undefined) {
-        const target = this.resolveForward(cmd.line);
+      let targetLine = cmd.line;
+      if (targetLine === undefined) {
+        const engine = getActiveEditorEngine();
+        targetLine = engine?.getCursorPosition?.()?.line ?? 1;
+      }
+      if (targetLine !== undefined) {
+        const activeDoc = usePageStore.getState().activeFilePage || usePageStore.getState().currentPage;
+        const activeTitle = activeDoc?.title;
+        const target = this.resolveForward(targetLine, activeTitle);
         if (target !== null) {
           editorCommandBus.dispatch({ type: 'viewer:goto-page', page: target });
         }
       }
+    });
+
+    editorCommandBus.subscribe('compiler:started', () => {
+      useCompileStore.getState().setCompileStatus('compiling');
+    });
+
+    editorCommandBus.subscribe('compiler:progress', (cmd) => {
+      if (cmd.status) {
+        useCompileStore.getState().setCompileStatus(cmd.status as any);
+      }
+      if (cmd.logs && cmd.logs.length > 0) {
+        useCompileStore.getState().setCompileLog(cmd.logs.join('\n'));
+      }
+    });
+
+    editorCommandBus.subscribe('compiler:finished', (cmd) => {
+      useCompileStore.getState().setCompileStatus(cmd.success ? 'idle' : 'error');
     });
   }
 
@@ -124,7 +149,19 @@ export class CompilerCoordinatorRegistry {
     const activeTitle = activeFilePage?.title || (currentPage as any)?.title || 'main.tex';
     const currentVal = getActiveEditorContent() || (currentPage as any)?.content || '';
 
-    // 4. Update LaTeX DAG with latest buffers
+    // 4. Update LaTeX DAG with all active in-memory buffers
+    const allModels = lruDocumentCache.getAllModels();
+    for (const m of allModels) {
+      latexDagEngine.updateFileNode(m.fileId, m.filePath || m.fileId, m.content);
+    }
+    if (currentPage && (currentPage as any).content) {
+      const cTitle = (currentPage as any).title || 'main.tex';
+      const cContent =
+        typeof (currentPage as any).content === 'string'
+          ? (currentPage as any).content
+          : (currentPage as any).content?.source || '';
+      latexDagEngine.updateFileNode((currentPage as any).id, cTitle, cContent);
+    }
     if (effectiveActiveFileId) {
       latexDagEngine.updateFileNode(effectiveActiveFileId, activeTitle, currentVal);
     }
@@ -140,6 +177,9 @@ export class CompilerCoordinatorRegistry {
     if (resolvedMainFile) {
       diagnosticsCoordinator.registerAlias(resolvedMainFile, resolvedMainFile);
     }
+    if (inferred.rootFileId) {
+      diagnosticsCoordinator.registerAlias(inferred.rootFileId, resolvedMainFile);
+    }
 
     if (inferred.hasCycleWarning) {
       console.warn('[CompilerCoordinator] Circular include dependency detected in LaTeX project DAG');
@@ -152,7 +192,7 @@ export class CompilerCoordinatorRegistry {
 
     // 6. Create an atomic in-memory snapshot across open tabs & editor buffer (0ms latency)
     const snapshot = CompilationSnapshotProvider.createSnapshot({
-      rootFileId: effectiveActiveFileId,
+      rootFileId: inferred.rootFileId || (currentPage as any)?.id || pageStore.projectId,
       resolvedMainFile,
     });
 

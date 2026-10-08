@@ -12,7 +12,7 @@
  * - Dispatches typed notifications on `editorCommandBus`.
  */
 
-import { manuscriptService, type LinkedFileDto } from '../services/manuscript.service';
+import { manuscriptService, type LinkedFileDto } from './services/manuscript.service';
 import { lruDocumentCache } from '../domain/lru-document-cache';
 import { latexDagEngine, normalizeLatexPath } from '../domain/latex-dag-engine';
 import { latexSymbolsIndex } from '../domain/latex-symbols-index';
@@ -88,27 +88,26 @@ export class WorkspaceCoordinatorRegistry {
     }
 
     try {
-      const newFile = await manuscriptService.createFile(effectiveProjectId, {
+      const res: any = await manuscriptService.structure.createNode(effectiveProjectId, {
         name,
         parentId: folderId,
         content,
+        type: 'DOC',
       });
+      const newFile = res?.data || res;
 
       if (!newFile) return null;
 
       // 1. Warm LRU cache
       lruDocumentCache.warm(newFile.id, {
-        fileId: newFile.id,
-        filePath: newFile.title || name,
+        filePath: newFile.title || newFile.name || name,
         content: newFile.content || content,
-        isDirty: false,
-        lastActiveAt: Date.now(),
         projectId: effectiveProjectId,
       });
 
       // 2. Register in LaTeX DAG Engine & Symbol Index
-      latexDagEngine.parseAndRegister(newFile.title || name, newFile.content || content);
-      latexSymbolsIndex.indexFile(newFile.id, newFile.title || name, newFile.content || content);
+      latexDagEngine.parseAndRegister(newFile.title || newFile.name || name, newFile.content || content);
+      latexSymbolsIndex.indexFile(newFile.id, newFile.title || newFile.name || name, newFile.content || content);
 
       // 3. Notify FileTree & CommandBus
       editorCommandBus.dispatch({ type: 'filetree:updated', payload: { action: 'create', file: newFile } });
@@ -118,8 +117,8 @@ export class WorkspaceCoordinatorRegistry {
         editorCommandBus.dispatch({
           type: 'navigation:open-tab',
           fileId: newFile.id,
-          title: newFile.title || name,
-          path: newFile.title || name,
+          title: newFile.title || newFile.name || name,
+          path: newFile.title || newFile.name || name,
         });
       }
 
@@ -142,13 +141,14 @@ export class WorkspaceCoordinatorRegistry {
     if (!effectiveProjectId) return false;
 
     try {
-      await manuscriptService.renameItem(effectiveProjectId, itemId, newName);
+      await manuscriptService.structure.renameNode(effectiveProjectId, itemId, { name: newName });
 
       // 1. Cascade rename to Tabs Store
       const tabsStore = useTabsStore.getState();
-      const existingTab = tabsStore.tabs.find((t) => t.id === itemId);
+      const allTabs = Object.values(tabsStore.tabsByProject).flat();
+      const existingTab = allTabs.find((t: any) => t.id === itemId);
       if (existingTab) {
-        tabsStore.updateTabTitle(itemId, newName);
+        tabsStore.updateTabTitle(effectiveProjectId, itemId, newName);
       }
 
       // 2. Cascade rename to LRU Cache
@@ -161,8 +161,9 @@ export class WorkspaceCoordinatorRegistry {
       diagnosticsCoordinator.registerAlias(newName, oldName);
 
       // 4. Re-index in LaTeX DAG & Symbols
+      latexDagEngine.removeFileNode(oldName);
       if (model?.content) {
-        latexDagEngine.parseAndRegister(newName, model.content);
+        latexDagEngine.parseAndRegister(newName, model.content, itemId);
         latexSymbolsIndex.indexFile(itemId, newName, model.content);
       }
 
@@ -189,13 +190,14 @@ export class WorkspaceCoordinatorRegistry {
     if (!effectiveProjectId) return false;
 
     try {
-      await manuscriptService.deleteItem(effectiveProjectId, fileId);
+      await manuscriptService.structure.deleteNode(effectiveProjectId, fileId);
 
       // 1. Close open tab if present
       useTabsStore.getState().closeTab(fileId);
 
-      // 2. Evict from LRU Cache & Symbol Index
+      // 2. Evict from LRU Cache, DAG, & Symbol Index
       lruDocumentCache.evictModel(fileId);
+      latexDagEngine.removeFileNode(fileId);
       latexSymbolsIndex.removeFile(fileId);
 
       // 3. Notify CommandBus
@@ -222,7 +224,9 @@ export class WorkspaceCoordinatorRegistry {
     if (!effectiveProjectId) return false;
 
     try {
-      await manuscriptService.moveItem(effectiveProjectId, itemId, targetFolderId);
+      await manuscriptService.structure.moveNode(effectiveProjectId, itemId, {
+        destParentId: targetFolderId,
+      });
 
       editorCommandBus.dispatch({
         type: 'filetree:updated',
@@ -241,13 +245,13 @@ export class WorkspaceCoordinatorRegistry {
   /**
    * High-speed initial bulk indexing of all project files for cross-referencing and DAG
    */
-  public initProjectSymbols(files: Array<{ id: string; title?: string; name?: string; content?: string }>): void {
+  public initProjectSymbols(files: Array<{ id: string; title?: string; name?: string; path?: string; content?: string }>): void {
     latexSymbolsIndex.clear();
     for (const file of files) {
-      const path = file.title || file.name || file.id;
+      const path = file.path || file.title || file.name || file.id;
       const content = file.content || '';
       latexSymbolsIndex.indexFile(file.id, path, content);
-      latexDagEngine.parseAndRegister(path, content);
+      latexDagEngine.parseAndRegister(path, content, file.id);
     }
   }
 }

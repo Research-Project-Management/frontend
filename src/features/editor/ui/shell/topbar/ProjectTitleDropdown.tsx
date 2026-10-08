@@ -28,7 +28,7 @@ import {
 } from '@/shared/components/ui/tooltip';
 
 import { usePageStore } from '@/features/editor/store';
-import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
+import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { useProject } from '@/features/projects/shell/hooks/use-project';
 
 import {

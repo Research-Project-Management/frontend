@@ -1,9 +1,9 @@
 /**
  * Public API Surface for features/editor
- * Conforms to ADR 002 Deep Modules & Hexagonal Architecture
+ * Conforms to ADR 002 Deep Modules & 5-Tier Pure Client Architecture
  */
 
-// Block 7: UI Shell
+// Layer 5: UI Shell & Features
 export { default as EditorPage } from './ui/shell/EditorPage';
 export { default as ClientEditor } from './ui/shell/ClientEditor';
 export { WorkbenchShell } from './ui/shell/WorkbenchShell';
@@ -14,7 +14,6 @@ export { StatusBar } from './ui/shell/StatusBar';
 export { default as StandaloneViewerPage } from './ui/shell/StandaloneViewerPage';
 export { default as ClientStandaloneViewer } from './ui/shell/ClientStandaloneViewer';
 
-// Block 6: UI Features
 export { EditorArea } from './ui/features/editor/EditorArea';
 export { CodeMirrorView } from './ui/features/editor/CodeMirrorView';
 export { EditorToolbar } from './ui/features/editor/EditorToolbar';
@@ -32,41 +31,24 @@ export { PrimarySidebar } from './ui/features/sidebar/PrimarySidebar';
 export { OutlineTab } from './ui/features/sidebar/OutlineTab';
 export { BottomDockPanel } from './ui/features/panel/BottomDockPanel';
 
-// Modals
 export * from './ui/modals';
+export * from './ui/hooks';
 
-// Block 5: Coordinators
+// Layer 4: State & Stores
+export * from './store';
+
+// Layer 3: Coordinators Spine & Infrastructure Services
 export * from './coordinators';
 
-// Block 4: Engines
-export * from './engines/codemirror-preset';
-export * from './engines/yjs-codemirror-adapter';
-export * from './engines/latex-language';
-export * from './engines/latex-macros';
-export * from './engines/latex-linter';
-export * from './engines/latex-math-preview';
-export * from './engines/inline-diff';
-export * from './engines/latex-folding';
-export * from './engines/latex-error-lens';
+// Layer 2: Runtime Engines & Presets
+export * from './engines';
 
-// Block 3: IO & Adapters
-export * from './io/yjs-persistence-adapter';
+// Layer 1: Domain Core, Types & Pure Algorithms
+export * from './domain';
 
-// Block 2: Domain (Core Business Logic)
-export * from './domain/lru-document-cache';
-export * from './domain/latex-dag-engine';
-export * from './domain/latex-symbols-core';
-export * from './domain/latex-symbols-index';
-export * from './domain/compilation-snapshot';
+// Explicit re-exports to resolve TS2308 ambiguity
+export { historyKeys } from './coordinators';
+export type { DiffChunk } from './domain';
+export { runLatexLinter } from './engines';
+export type { LaTeXEngine } from './domain';
 
-// Block 1: State & Stores
-export { useEditorStore } from './store/editor.store';
-export { useTabsStore } from './store/tabs.store';
-export { useCompilerStore } from './store/compiler.store';
-export { useSettingsStore } from './store/settings.store';
-export { useCollaborationStore } from './store/collaboration.store';
-export { useLayoutStore } from './store/layout.store';
-
-// Types & Schemas (Single Source of Truth)
-export * from './types';
-export * from './schemas';

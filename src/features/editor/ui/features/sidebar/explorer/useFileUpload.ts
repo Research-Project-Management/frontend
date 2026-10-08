@@ -3,10 +3,10 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { filesQuery } from '@/features/editor/hooks/use-core';
-import type { EditorStorageItem as StorageItem } from '@/features/editor/services/storage.service';
+import { filesQuery } from '@/features/editor/ui/hooks/use-core';
+import type { EditorStorageItem as StorageItem } from '@/features/editor/coordinators/services/storage.service';
 import { TEX_EXTS, type PendingUploadItem as PendingItem } from './UploadConflictDialog';
-import { parseZipArchive, extractAndImportZipToProject } from '@/features/editor/utils/import-zip.util';
+import { parseZipArchive, extractAndImportZipToProject } from '@/features/editor/domain/utils/import-zip.util';
 
 export interface UseFileUploadOptions {
   parentPageId: string | null;

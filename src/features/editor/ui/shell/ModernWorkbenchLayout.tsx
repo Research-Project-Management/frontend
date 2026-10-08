@@ -33,9 +33,13 @@ import { PrimarySidebar } from '../features/sidebar/PrimarySidebar';
 import { EditorArea } from '../features/editor/EditorArea';
 import { BottomDockPanel } from '../features/panel/BottomDockPanel';
 
-import { filesQuery } from '../../hooks/use-core';
+import { filesQuery } from '../hooks/use-core';
 import { usePageStore, useSettingsStore } from '../../store';
-import { useEditorInstance, editorCommandBus } from '../../core';
+import { useLayoutStore, type ActivityBarTab } from '../../store/layout.store';
+import { useEditorInstance } from '../hooks/use-editor-instance';
+import { editorCommandBus } from '../../coordinators/command-bus';
+import { useViewItems } from '@/features/library';
+import { latexSymbolsIndex } from '../../domain/latex-symbols-index';
 
 const PdfViewer = dynamic(() => import('../features/preview/PdfViewer'), { ssr: false });
 const ProjectSettingsModal = dynamic(
@@ -76,6 +80,14 @@ export function ModernWorkbenchLayout() {
 
   const [wordCountOpen, setWordCountOpen] = useState(false);
   const [deletedFilesOpen, setDeletedFilesOpen] = useState(false);
+
+  // Sync workspace library references into latexSymbolsIndex for instant autocomplete & hover
+  const { data: libraryData } = useViewItems(rawProjectId || 'me', 'all');
+  useEffect(() => {
+    if (libraryData?.items && libraryData.items.length > 0) {
+      latexSymbolsIndex.setLibraryCitations(libraryData.items);
+    }
+  }, [libraryData?.items]);
 
   const currentPage = usePageStore((s) => s.currentPage);
   const activeFilePage = usePageStore((s) => s.activeFilePage);
@@ -133,9 +145,29 @@ export function ModernWorkbenchLayout() {
       }
     });
 
+    const unsubSidebarToggle = editorCommandBus.subscribe('sidebar:toggle-panel', (cmd) => {
+      const tabMap: Record<string, ActivityBarTab> = {
+        Files: 'files',
+        Explorer: 'files',
+        Outline: 'outline',
+        Search: 'search',
+        Citations: 'citations',
+        Review: 'review',
+        AI: 'ai',
+      };
+      const targetTab = tabMap[cmd.panel] || 'files';
+      useLayoutStore.getState().selectActivityTab(targetTab);
+    });
+
+    const unsubAiToggle = editorCommandBus.subscribe('sidebar:toggle-ai-panel', () => {
+      useLayoutStore.getState().selectActivityTab('ai');
+    });
+
     return () => {
       unsubCmd();
       unsubClose();
+      unsubSidebarToggle();
+      unsubAiToggle();
     };
   }, []);
 
@@ -160,7 +192,7 @@ export function ModernWorkbenchLayout() {
       {wordCountOpen && (
         <WordCountDialog
           open={wordCountOpen}
-          onClose={() => setWordCountOpen(false)}
+          onClose={() => editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'word-count' })}
           content={
             engine?.getContent() ||
             (currentDoc?.content
@@ -172,14 +204,23 @@ export function ModernWorkbenchLayout() {
           selectedText={engine?.getSelectedText() || ''}
           activeFileName={currentDoc?.title || 'main.tex'}
           projectFiles={combinedProjectFiles}
-          onInsertSnippet={(snippet) => engine?.insertText(snippet)}
+          onInsertSnippet={(snippet) => {
+            editorCommandBus.dispatch({ type: 'editor:insert-text', text: snippet });
+            editorCommandBus.dispatch({ type: 'editor:focus' });
+          }}
         />
       )}
 
       {deletedFilesOpen && (
         <DeletedFilesModal
           open={deletedFilesOpen}
-          onOpenChange={setDeletedFilesOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'deleted-files' });
+            } else {
+              setDeletedFilesOpen(true);
+            }
+          }}
           pageId={rootPageId || (currentPage as any)?.id || ''}
         />
       )}

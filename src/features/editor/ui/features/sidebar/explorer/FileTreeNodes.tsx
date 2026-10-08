@@ -40,8 +40,8 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { useEditorStorageFiles, useEditorStorageMutations } from '@/features/editor/hooks/use-storage';
-import type { EditorStorageItem as StorageItem } from '@/features/editor/services/storage.service';
+import { useEditorStorageFiles, useEditorStorageMutations } from '@/features/editor/ui/hooks/use-storage';
+import type { EditorStorageItem as StorageItem } from '@/features/editor/coordinators/services/storage.service';
 
 export function getStorageIcon(item: StorageItem) {
   const mime = item.mimeType ?? '';

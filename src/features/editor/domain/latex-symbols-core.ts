@@ -19,14 +19,22 @@ export interface BibEntry {
   title?: string;
   author?: string;
   year?: string;
+  journal?: string;
+  doi?: string;
   sourceFile: string;
 }
 
 export interface LabelEntry {
   name: string;
-  type: 'fig' | 'tab' | 'sec' | 'eq' | 'lst' | 'other';
+  type: 'fig' | 'tab' | 'sec' | 'eq' | 'lst' | 'thm' | 'lem' | 'def' | 'prop' | 'cor' | 'alg' | 'app' | 'other';
   line: number;
   sourceFile: string;
+}
+
+export interface EnvironmentEntry {
+  name: string;
+  sourceFile: string;
+  line: number;
 }
 
 export interface CommandEntry {
@@ -95,6 +103,7 @@ export interface SymbolSnapshot {
   citations: BibEntry[];
   labels: LabelEntry[];
   commands: CommandEntry[];
+  environments: EnvironmentEntry[];
   includeFiles: string[];
   outlineByFile: Record<string, OutlineNode[]>;
   flatOutlineByFile: Record<string, OutlineItem[]>;
@@ -105,6 +114,7 @@ export class LatexSymbolsIndexCore {
   private bibEntries = new Map<string, Map<string, BibEntry>>(); // fileId -> (key -> BibEntry)
   private labelEntries = new Map<string, Map<string, LabelEntry>>(); // fileId -> (name -> LabelEntry)
   private commandEntries = new Map<string, Map<string, CommandEntry>>(); // fileId -> (name -> CommandEntry)
+  private environmentEntries = new Map<string, Map<string, EnvironmentEntry>>(); // fileId -> (name -> EnvironmentEntry)
   private outlineEntries = new Map<string, OutlineItem[]>(); // fileId -> OutlineItem[]
   private filePaths = new Map<string, string>(); // fileId -> normalized filePath
   private knownFiles = new Set<string>(); // List of known project file paths
@@ -133,6 +143,7 @@ export class LatexSymbolsIndexCore {
     this.bibEntries.delete(fileId);
     this.labelEntries.delete(fileId);
     this.commandEntries.delete(fileId);
+    this.environmentEntries.delete(fileId);
     this.outlineEntries.delete(fileId);
     this.filePaths.delete(fileId);
     if (filePath) {
@@ -148,6 +159,7 @@ export class LatexSymbolsIndexCore {
     this.bibEntries.clear();
     this.labelEntries.clear();
     this.commandEntries.clear();
+    this.environmentEntries.clear();
     this.outlineEntries.clear();
     this.filePaths.clear();
     this.knownFiles.clear();
@@ -179,6 +191,13 @@ export class LatexSymbolsIndexCore {
       }
     }
 
+    const environments: EnvironmentEntry[] = [];
+    for (const fileMap of this.environmentEntries.values()) {
+      for (const env of fileMap.values()) {
+        environments.push(env);
+      }
+    }
+
     const includeFiles = Array.from(this.knownFiles).filter((p) => p.endsWith('.tex'));
 
     const outlineByFile: Record<string, OutlineNode[]> = {};
@@ -197,6 +216,7 @@ export class LatexSymbolsIndexCore {
       citations,
       labels,
       commands,
+      environments,
       includeFiles,
       outlineByFile,
       flatOutlineByFile,
@@ -223,10 +243,12 @@ export class LatexSymbolsIndexCore {
         continue;
       }
 
-      // Extract title, author, year from entry body
+      // Extract title, author, year, journal, doi from entry body
       const titleMatch = /title\s*=\s*[{"]([^}"]+)[}"]/i.exec(body);
       const authorMatch = /author\s*=\s*[{"]([^}"]+)[}"]/i.exec(body);
       const yearMatch = /year\s*=\s*[{"]?(\d{4})[}"]?/i.exec(body);
+      const journalMatch = /(?:journal|booktitle)\s*=\s*[{"]([^}"]+)[}"]/i.exec(body);
+      const doiMatch = /doi\s*=\s*[{"]([^}"]+)[}"]/i.exec(body);
 
       fileBibMap.set(key, {
         key,
@@ -234,6 +256,8 @@ export class LatexSymbolsIndexCore {
         title: titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : undefined,
         author: authorMatch ? authorMatch[1].replace(/\s+/g, ' ').trim() : undefined,
         year: yearMatch ? yearMatch[1] : undefined,
+        journal: journalMatch ? journalMatch[1].replace(/\s+/g, ' ').trim() : undefined,
+        doi: doiMatch ? doiMatch[1].trim() : undefined,
         sourceFile: filePath,
       });
     }
@@ -242,12 +266,33 @@ export class LatexSymbolsIndexCore {
   }
 
   /**
+   * Fast utility to strip Vietnamese diacritics for search and autocompletion
+   */
+  public static stripVietnameseDiacritics(str: string): string {
+    if (!str) return '';
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+      .toLowerCase();
+  }
+
+  /**
    * Fast regex parsing of LaTeX labels, commands, and structural sections (Overleaf Parity)
    */
   private indexTexContent(fileId: string, filePath: string, content: string): void {
     const fileLabelMap = new Map<string, LabelEntry>();
     const fileCommandMap = new Map<string, CommandEntry>();
+    const fileEnvironmentMap = new Map<string, EnvironmentEntry>();
     const fileOutlineItems: OutlineItem[] = [];
+
+    // Also support embedded \bibitem references directly in .tex files
+    let fileBibMap = this.bibEntries.get(fileId);
+    if (!fileBibMap) {
+      fileBibMap = new Map<string, BibEntry>();
+      this.bibEntries.set(fileId, fileBibMap);
+    }
 
     const lines = content.split('\n');
 
@@ -284,6 +329,32 @@ export class LatexSymbolsIndexCore {
         });
       }
 
+      // 2b. Match \newtheorem{envname} or \newenvironment{envname}
+      const envRegex = /\\(?:newtheorem|(?:re)?newenvironment)\{([a-zA-Z*0-9_]+)\}/g;
+      let envMatch: RegExpExecArray | null;
+      while ((envMatch = envRegex.exec(activeLine)) !== null) {
+        const envName = envMatch[1].trim();
+        fileEnvironmentMap.set(envName, {
+          name: envName,
+          sourceFile: filePath,
+          line: lineIdx + 1,
+        });
+      }
+
+      // 2c. Match embedded \bibitem[label]{key} (e.g. \begin{thebibliography})
+      const bibitemRegex = /\\bibitem(?:\[([^\]]*)\])?\{([^}]+)\}/g;
+      let bibMatch: RegExpExecArray | null;
+      while ((bibMatch = bibitemRegex.exec(activeLine)) !== null) {
+        const key = bibMatch[2].trim();
+        const shortAuthor = bibMatch[1] ? bibMatch[1].trim() : undefined;
+        fileBibMap.set(key, {
+          key,
+          type: 'bibitem',
+          author: shortAuthor,
+          sourceFile: filePath,
+        });
+      }
+
       // 3. Match LaTeX Document Structure: \part, \chapter, \section, \subsection, etc.
       const sectionRegex = /\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)(\*?)\{([^}]+)\}/;
       const sectionMatch = sectionRegex.exec(activeLine);
@@ -311,17 +382,26 @@ export class LatexSymbolsIndexCore {
 
     this.labelEntries.set(fileId, fileLabelMap);
     this.commandEntries.set(fileId, fileCommandMap);
+    this.environmentEntries.set(fileId, fileEnvironmentMap);
     this.outlineEntries.set(fileId, fileOutlineItems);
   }
 
   private registerLabel(map: Map<string, LabelEntry>, name: string, line: number, sourceFile: string): void {
     if (!name) return;
     let type: LabelEntry['type'] = 'other';
-    if (name.startsWith('fig:') || name.startsWith('figure:')) type = 'fig';
-    else if (name.startsWith('tab:') || name.startsWith('table:')) type = 'tab';
-    else if (name.startsWith('sec:') || name.startsWith('section:')) type = 'sec';
-    else if (name.startsWith('eq:') || name.startsWith('equation:')) type = 'eq';
-    else if (name.startsWith('lst:') || name.startsWith('listing:')) type = 'lst';
+    const lower = name.toLowerCase();
+    if (lower.startsWith('fig:') || lower.startsWith('figure:')) type = 'fig';
+    else if (lower.startsWith('tab:') || lower.startsWith('table:')) type = 'tab';
+    else if (lower.startsWith('sec:') || lower.startsWith('section:')) type = 'sec';
+    else if (lower.startsWith('eq:') || lower.startsWith('equation:')) type = 'eq';
+    else if (lower.startsWith('lst:') || lower.startsWith('listing:')) type = 'lst';
+    else if (lower.startsWith('thm:') || lower.startsWith('theorem:')) type = 'thm';
+    else if (lower.startsWith('lem:') || lower.startsWith('lemma:')) type = 'lem';
+    else if (lower.startsWith('def:') || lower.startsWith('definition:')) type = 'def';
+    else if (lower.startsWith('prop:') || lower.startsWith('proposition:')) type = 'prop';
+    else if (lower.startsWith('cor:') || lower.startsWith('corollary:')) type = 'cor';
+    else if (lower.startsWith('alg:') || lower.startsWith('algorithm:')) type = 'alg';
+    else if (lower.startsWith('app:') || lower.startsWith('appendix:')) type = 'app';
 
     map.set(name, {
       name,

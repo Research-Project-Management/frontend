@@ -9,10 +9,11 @@
 
 import { useCallback, useEffect } from 'react';
 import { usePageStore } from '../../../../store';
-import { LatexCompilerEngine, type SyncTeXMap } from '../../../../utils/viewer.util';
-import { editorCommandBus } from '../../../../core/command-bus/editor-command-bus';
+import { LatexCompilerEngine, type SyncTeXMap } from '../../../../domain/utils/viewer.util';
+import { editorCommandBus, getActiveEditorEngine } from '../../../../coordinators/command-bus';
 import { navigationCoordinator } from '../../../../coordinators/navigation.coordinator';
-import { getActiveEditorEngine } from '../../../../core/context/editor-instance.context';
+import { compilerCoordinator } from '../../../../coordinators/compiler.coordinator';
+import { lruDocumentCache } from '../../../../domain/lru-document-cache';
 import type { SurfaceHandle } from '../PdfSurface';
 
 export interface UseViewerSyncTeXOptions {
@@ -44,29 +45,89 @@ export function useViewerSyncTeX({
     (basename: string) => {
       const cleanName = basename.replace(/^\.\//, '').toLowerCase();
       const baseNoExt = cleanName.replace(/\.(tex|bib|sty|cls)$/i, '');
-      return pageFiles.find((p: any) => {
+      const bareName = cleanName.split('/').pop() || cleanName;
+      const bareNoExt = bareName.replace(/\.(tex|bib|sty|cls)$/i, '');
+
+      // 1. Match root document (main.tex) from currentPage
+      const currentPage = usePageStore.getState().currentPage;
+      if (currentPage) {
+        const rootTitle = (currentPage.title || 'main.tex').toLowerCase();
+        if (
+          rootTitle === cleanName ||
+          rootTitle.replace(/\.(tex|bib|sty|cls)$/i, '') === baseNoExt ||
+          rootTitle === bareName ||
+          rootTitle.replace(/\.(tex|bib|sty|cls)$/i, '') === bareNoExt
+        ) {
+          return {
+            id: currentPage.id,
+            title: currentPage.title || 'main.tex',
+            path: currentPage.title || 'main.tex',
+          };
+        }
+      }
+
+      // 2. Match project child files
+      const match = pageFiles.find((p: any) => {
         const titleLower = (p.title || '').toLowerCase();
+        const pPathLower = (p.path || '').toLowerCase();
+        const pBare = titleLower.split('/').pop() || titleLower;
         return (
           titleLower === cleanName ||
-          titleLower.replace(/\.(tex|bib|sty|cls)$/i, '') === baseNoExt
+          titleLower.replace(/\.(tex|bib|sty|cls)$/i, '') === baseNoExt ||
+          pBare === bareName ||
+          pBare.replace(/\.(tex|bib|sty|cls)$/i, '') === bareNoExt ||
+          (pPathLower && (pPathLower.endsWith(cleanName) || pPathLower.endsWith(bareName)))
         );
       });
+      if (match) return match;
+
+      // 3. Match LRU Document in-memory cache
+      const cached = lruDocumentCache.findByPath(cleanName) || lruDocumentCache.findByPath(bareName);
+      if (cached) {
+        return {
+          id: cached.fileId,
+          title: cached.filePath,
+          path: cached.filePath,
+        };
+      }
+
+      return undefined;
     },
     [pageFiles],
   );
 
   // Jump from PDF click / SyncTeX backward jump directly to source line in editor
   const handleJumpToSource = useCallback(
-    (
+    async (
       sourcePath: string | null,
       line: number,
-      _pageNum?: number,
-      _x?: number,
-      _y?: number,
+      pageNum?: number,
+      x?: number,
+      y?: number,
       highlightType: 'error' | 'synctex' = 'synctex',
     ) => {
-      if (sourcePath) {
-        const cleanPath = sourcePath.replace(/^\.\//, '');
+      let targetPath = sourcePath;
+      let targetLine = line;
+
+      // Remote fallback: if local map had no target or line <= 1, query backend SyncTeX processor
+      const rootId = pageId || projectId;
+      if ((!targetPath || targetLine <= 1) && rootId && pageNum && x !== undefined && y !== undefined) {
+        try {
+          const remoteRes = await LatexCompilerEngine.resolveReverseRemote(
+            rootId,
+            pageNum,
+            x,
+            y,
+          );
+          if (remoteRes && remoteRes.line) {
+            targetPath = remoteRes.sourcePath;
+            targetLine = remoteRes.line;
+          }
+        } catch {}
+      }
+
+      if (targetPath) {
+        const cleanPath = targetPath.replace(/^\.\//, '');
         const targetPage = findPageByBasename(cleanPath);
 
         if (targetPage) {
@@ -75,7 +136,7 @@ export function useViewerSyncTeX({
             fileId: targetPage.id,
             title: targetPage.title,
             path: targetPage.path,
-            line,
+            line: targetLine,
             highlight: highlightType,
           });
           return;
@@ -84,13 +145,15 @@ export function useViewerSyncTeX({
 
       navigationCoordinator.jumpToLine({
         fileId: activeFilePage?.id,
-        line,
+        line: targetLine,
         highlight: highlightType,
       });
     },
     [
       findPageByBasename,
       activeFilePage?.id,
+      pageId,
+      projectId,
     ],
   );
 
@@ -114,11 +177,7 @@ export function useViewerSyncTeX({
   // SyncTeX forward sync (Code cursor -> PDF highlight)
   useEffect(() => {
     const handleForwardSync = async (line?: number) => {
-      let targetLine = line;
-      if (targetLine === undefined || targetLine === null) {
-        const engine = getActiveEditorEngine();
-        targetLine = engine?.getCursorPosition?.()?.line ?? 1;
-      }
+      const targetLine: number = line ?? getActiveEditorEngine()?.getCursorPosition?.()?.line ?? 1;
 
       const rootId = pageId || projectId;
       if (!rootId) return;
@@ -138,9 +197,10 @@ export function useViewerSyncTeX({
       let targetH = remoteRes && remoteRes.h !== undefined ? remoteRes.h * scale : undefined;
 
       if (!targetPage) {
+        const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
         const localDetail = LatexCompilerEngine.resolveForwardDetail(
           targetLine,
-          synctexMapRef.current,
+          effectiveMap,
           activeFilePage?.title,
           numPages || 1,
         );
@@ -156,9 +216,10 @@ export function useViewerSyncTeX({
       }
 
       if (!targetPage) {
+        const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
         targetPage = LatexCompilerEngine.resolveForward(
           targetLine,
-          synctexMapRef.current,
+          effectiveMap,
           activeFilePage?.title,
           numPages || 1,
         );
@@ -189,26 +250,45 @@ export function useViewerSyncTeX({
 
   // SyncTeX reverse search event listener
   useEffect(() => {
-    const handleReverse = (customPage?: number, customX?: number, customY?: number) => {
+    const handleReverse = async (customPage?: number, customX?: number, customY?: number) => {
       const p = customPage || pageNumber || 1;
-      const resolved = synctexMapRef.current
-        ? LatexCompilerEngine.resolveReverse(0.25, p, synctexMapRef.current, customX, customY)
+      const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
+      let resolved = effectiveMap
+        ? LatexCompilerEngine.resolveReverse(0.25, p, effectiveMap, customX, customY)
         : null;
+
+      if (!resolved || !resolved.line) {
+        const rootId = pageId || projectId;
+        if (rootId && customX !== undefined && customY !== undefined) {
+          try {
+            const remoteRes = await LatexCompilerEngine.resolveReverseRemote(
+              rootId,
+              p,
+              customX,
+              customY,
+            );
+            if (remoteRes && remoteRes.line) {
+              resolved = remoteRes;
+            }
+          } catch {}
+        }
+      }
+
       if (resolved?.line) {
-        handleJumpToSource(resolved.sourcePath, resolved.line, p, customX, customY);
+        void handleJumpToSource(resolved.sourcePath, resolved.line, p, customX, customY);
       } else {
-        handleJumpToSource(null, 1, p, 200, 200);
+        void handleJumpToSource(null, 1, p, 200, 200);
       }
     };
 
     const unsubCmd = editorCommandBus.subscribe('synctex:backward', (cmd) => {
-      handleReverse(cmd.page, cmd.x, cmd.y);
+      void handleReverse(cmd.page, cmd.x, cmd.y);
     });
 
     return () => {
       unsubCmd();
     };
-  }, [pageNumber, handleJumpToSource, synctexMapRef]);
+  }, [pageNumber, handleJumpToSource, synctexMapRef, pageId, projectId]);
 
   return {
     handleJumpToSource,

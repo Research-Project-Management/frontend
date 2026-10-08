@@ -2,8 +2,8 @@
 
 import React, { useMemo } from 'react';
 import { Trash2 } from 'lucide-react';
-import type { CommentReply } from '@/features/editor/types';
-import type { MentionMember } from '@/features/editor/utils/mention.util';
+import type { CommentReply } from '@/features/editor/domain/types';
+import type { MentionMember } from '@/features/editor/domain/utils/mention.util';
 import { MentionRenderer } from './MentionBadge';
 import { formatOverleafDate, resolveAuthorDisplay } from '../utils/review.util';
 

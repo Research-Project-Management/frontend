@@ -31,8 +31,8 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
-import { useEditorStorage } from '@/features/editor/hooks/use-storage';
-import { resolveFileUrl } from '@/features/editor/utils/editor.util';
+import { useEditorStorage } from '@/features/editor/ui/hooks/use-storage';
+import { resolveFileUrl } from '@/features/editor/domain/utils/editor.util';
 import { useFigureWizard } from './hooks/useFigureWizard';
 
 export interface FigureWizardModalProps {

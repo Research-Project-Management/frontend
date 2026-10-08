@@ -31,7 +31,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
-import { manuscriptService } from '@/features/editor/services/manuscript.service';
+import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
 import { pageKeys } from '../../hooks/use-page';
 
 export interface TemplateItem {

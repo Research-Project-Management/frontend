@@ -8,8 +8,8 @@
  * - DOM scroll helpers
  */
 
-import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
-import type { MentionMember } from '@/features/editor/utils/mention.util';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import type { MentionMember } from '@/features/editor/domain/utils/mention.util';
 
 const MONTH_NAMES = [
   'January',

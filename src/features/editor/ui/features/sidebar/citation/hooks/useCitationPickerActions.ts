@@ -17,10 +17,10 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { manuscriptService } from '@/features/editor/services/manuscript.service';
-import { formatBibEntryToBibtex } from '@/features/editor/utils/citation.util';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
-import type { BibEntry } from '@/features/editor/utils/bib-parser.util';
+import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
+import { formatBibEntryToBibtex } from '@/features/editor/domain/utils/citation.util';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import type { BibEntry } from '@/features/editor/domain/utils/bib-parser.util';
 
 export function useCitationPickerActions() {
   const [isResolving, setIsResolving] = useState(false);
@@ -73,7 +73,8 @@ export function useCitationPickerActions() {
         engine.focus();
         toast.success(`Inserted \\cite{${key}}`);
         if (refreshContent) refreshContent();
-        EditorEventBus.emit('flux:insert-citation', {
+        editorCommandBus.dispatch({
+          type: 'editor:insert-citation',
           bibKey: key,
           textInserted: true,
           entry: entryPayload,
@@ -81,7 +82,8 @@ export function useCitationPickerActions() {
         return;
       }
 
-      EditorEventBus.emit('flux:insert-citation', {
+      editorCommandBus.dispatch({
+        type: 'editor:insert-citation',
         bibKey: key,
         textInserted: false,
         entry: entryPayload,

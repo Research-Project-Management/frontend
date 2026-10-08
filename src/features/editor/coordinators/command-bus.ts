@@ -10,7 +10,7 @@ import type {
   EditorCommand,
   CommandHandler,
   IEditorCommandBus,
-} from '../ports/command-bus.port';
+} from '../domain/types/ports/command-bus.port';
 
 class EditorCommandBusImpl implements IEditorCommandBus {
   private handlers = new Map<string, Set<CommandHandler<any>>>();
@@ -112,3 +112,31 @@ if (!globalAny[GLOBAL_BUS_KEY]) {
 export const editorCommandBus: EditorCommandBusImpl = globalAny[GLOBAL_BUS_KEY];
 export const commandBus = editorCommandBus;
 export type { EditorCommand, CommandHandler, IEditorCommandBus };
+
+// ── Active Engine & Viewer Registry (Context-Free Architecture) ──────────────
+
+let activeEngineInstance: any = null;
+let activeViewerInstance: any = null;
+
+export function setActiveEditorEngine(engine: any): void {
+  activeEngineInstance = engine;
+}
+
+export function getActiveEditorEngine(): any {
+  return activeEngineInstance;
+}
+
+export function getActiveEditorContent(): string {
+  return activeEngineInstance?.getContent() ?? '';
+}
+
+export function setActivePdfViewer(viewer: any): void {
+  activeViewerInstance = viewer;
+}
+
+export function getActivePdfViewer(): any {
+  return activeViewerInstance;
+}
+
+export const getActiveEditorInstance = getActiveEditorEngine;
+export const getActiveViewerInstance = getActivePdfViewer;

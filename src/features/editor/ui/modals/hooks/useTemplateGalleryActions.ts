@@ -11,7 +11,7 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { manuscriptService } from '@/features/editor/services/manuscript.service';
+import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
 
 export interface UseTemplateGalleryActionsOptions {
   selectedTemplate: any;

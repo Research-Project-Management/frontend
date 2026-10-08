@@ -17,11 +17,11 @@ import {
   usePendingBundles,
   useFlushBundle,
   useDigestHistory,
-} from '@/features/editor/hooks/use-notification-bundler';
+} from '@/features/editor/ui/hooks/use-notification-bundler';
 import {
   formatRemainingTime,
   BundledNotificationItem,
-} from '@/features/editor/utils/notification-digest.util';
+} from '@/features/editor/domain/utils/notification-digest.util';
 import { cn } from '@/shared/lib/utils';
 
 interface NotificationDigestBadgeProps {

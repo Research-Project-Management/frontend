@@ -5,12 +5,12 @@ import { useParams } from 'next/navigation';
 import {
   ViewerBroadcastBridge,
   type PopoutViewerState,
-} from '@/features/editor/utils/popout-channel.util';
+} from '@/features/editor/domain/utils/popout-channel.util';
 import {
   extractPdfBookmarks,
   type PdfOutlineItem,
-} from '@/features/editor/utils/pdf-outline.util';
-import { parseSyncTeX, type SyncTeXMap } from '@/features/editor/utils/viewer.util';
+} from '@/features/editor/domain/utils/pdf-outline.util';
+import { parseSyncTeX, type SyncTeXMap } from '@/features/editor/domain/utils/viewer.util';
 import {
   PdfToolbar,
   PdfSurface as Surface,

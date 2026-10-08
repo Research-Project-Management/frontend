@@ -47,6 +47,14 @@ function formatSourceLabel(raw?: string): string {
   return str;
 }
 
+function formatIngestionError(rawError?: string): string {
+  if (!rawError) return 'Extraction failed';
+  // Strip internal saga rollback stage prefix for clean UI presentation
+  const sagaMatch = rawError.match(/Saga rolled back after stage \w+:\s*(.*)/i);
+  const clean = sagaMatch ? sagaMatch[1] : rawError;
+  return clean || 'Extraction failed';
+}
+
 export default function ProcessModal({
   state,
   onClose,
@@ -157,7 +165,7 @@ export default function ProcessModal({
         }
       }}
     >
-      <DialogContent className="sm:max-w-[580px] p-5 sm:p-6 rounded-xl border border-border bg-background shadow-raised-200 font-sans gap-0 overflow-hidden">
+      <DialogContent className="w-[95vw] sm:max-w-[720px] p-5 sm:p-6 rounded-xl border border-border bg-background shadow-raised-200 font-sans gap-0 overflow-hidden">
         {/* Modal Header */}
         <div className="pb-3 flex items-start justify-between">
           <DialogHeader className="text-left">
@@ -210,79 +218,81 @@ export default function ProcessModal({
             </div>
           )}
 
-          {/* 2-Column List: Attachment Name | Item Name (Clean line dividers without board box) */}
+          {/* 2-Column Table: Attachment Name | Item Name */}
           {items.length > 0 && (
             <div className="pt-1">
-              {/* Column Headers with subtle line */}
-              <div className="grid grid-cols-[45%_55%] px-1 pb-2 border-b border-border text-11 font-medium text-foreground select-none">
-                <span>Attachment Name</span>
-                <span>Item Name</span>
-              </div>
+              <div className="rounded-lg border border-border overflow-hidden bg-background">
+                {/* Column Headers with gray fill */}
+                <div className="grid grid-cols-[40%_60%] px-3.5 py-2 bg-muted border-b border-border text-11 font-medium text-foreground select-none">
+                  <span>Attachment Name</span>
+                  <span>Item Name</span>
+                </div>
 
-              {/* Rows separated by clean subtle dividers */}
-              <div className="max-h-[250px] overflow-y-auto divide-y divide-border/40">
-                {items.map((item, idx) => {
-                  const status = String(item.status);
-                  const isItemFailed = ['FAILED', 'FAILED_FINAL', 'FAILED_RETRYABLE'].includes(status);
-                  const isItemSuccess =
-                    ['SUCCEEDED', 'COMPLETED', 'READY'].includes(status) ||
-                    (state.isComplete && !isItemFailed && !state.error);
-                  const isItemProcessing =
-                    !isItemSuccess &&
-                    !isItemFailed &&
-                    (['PROCESSING', 'RUNNING', 'UPLOADING'].includes(status) || idx === activeIndex);
+                {/* Rows separated by clean subtle dividers */}
+                <div className="max-h-[300px] overflow-y-auto divide-y divide-border/40">
+                  {items.map((item, idx) => {
+                    const status = String(item.status);
+                    const isItemFailed = ['FAILED', 'FAILED_FINAL', 'FAILED_RETRYABLE'].includes(status);
+                    const isItemSuccess =
+                      ['SUCCEEDED', 'COMPLETED', 'READY'].includes(status) ||
+                      (state.isComplete && !isItemFailed && !state.error);
+                    const isItemProcessing =
+                      !isItemSuccess &&
+                      !isItemFailed &&
+                      (['PROCESSING', 'RUNNING', 'UPLOADING'].includes(status) || idx === activeIndex);
 
-                  return (
-                    <div
-                      key={item.title || idx}
-                      className="grid grid-cols-[45%_55%] px-1 py-3 items-center gap-3 hover:bg-muted/20 transition-colors"
-                    >
-                      {/* Column 1: Attachment Name */}
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        {isItemSuccess ? (
-                          <CheckCircle2 className="size-4 text-success shrink-0" />
-                        ) : isItemProcessing ? (
-                          <RefreshCw className="size-3.5 text-primary animate-spin [animation-duration:2s] shrink-0" />
-                        ) : isItemFailed ? (
-                          <AlertCircle className="size-4 text-destructive shrink-0" />
-                        ) : (
-                          <span className="size-4 rounded-full border border-border shrink-0" />
-                        )}
-                        <span
-                          className="truncate text-12 text-foreground font-normal"
-                          title={item.title}
-                        >
-                          {formatSourceLabel(item.title)}
-                        </span>
-                      </div>
-
-                      {/* Column 2: Item Name */}
-                      <div className="min-w-0">
-                        {isItemSuccess ? (
+                    return (
+                      <div
+                        key={item.title || idx}
+                        className="grid grid-cols-[40%_60%] px-3.5 py-2.5 items-center gap-3 hover:bg-muted/20 transition-colors"
+                      >
+                        {/* Column 1: Attachment Name */}
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {isItemSuccess ? (
+                            <CheckCircle2 className="size-4 text-success shrink-0" />
+                          ) : isItemProcessing ? (
+                            <RefreshCw className="size-3.5 text-primary animate-spin [animation-duration:2s] shrink-0" />
+                          ) : isItemFailed ? (
+                            <AlertCircle className="size-4 text-destructive shrink-0" />
+                          ) : (
+                            <span className="size-4 rounded-full border border-border shrink-0" />
+                          )}
                           <span
-                            className="truncate block text-foreground font-normal text-12"
-                            title={item.itemName || item.title}
+                            className="truncate text-12 text-foreground font-normal"
+                            title={item.title}
                           >
-                            {item.itemName || item.title}
+                            {formatSourceLabel(item.title)}
                           </span>
-                        ) : isItemProcessing ? (
-                          <span className="text-foreground text-12 font-normal flex items-center gap-1.5">
-                            {(item.status as string) === 'UPLOADING' ? 'Uploading file...' : 'Extracting metadata...'}
-                          </span>
-                        ) : isItemFailed ? (
-                          <span
-                            className="truncate block text-destructive text-12 font-normal"
-                            title={item.error || 'Failed'}
-                          >
-                            {item.error || 'Extraction failed'}
-                          </span>
-                        ) : (
-                          <span className="text-foreground text-12 font-normal">-</span>
-                        )}
+                        </div>
+
+                        {/* Column 2: Item Name */}
+                        <div className="min-w-0">
+                          {isItemSuccess ? (
+                            <span
+                              className="truncate block text-foreground font-normal text-12"
+                              title={item.itemName || item.title}
+                            >
+                              {item.itemName || item.title}
+                            </span>
+                          ) : isItemProcessing ? (
+                            <span className="text-foreground text-12 font-normal flex items-center gap-1.5">
+                              {(item.status as string) === 'UPLOADING' ? 'Uploading file...' : 'Extracting metadata...'}
+                            </span>
+                          ) : isItemFailed ? (
+                            <span
+                              className="truncate block text-destructive text-12 font-normal"
+                              title={item.error || 'Failed'}
+                            >
+                              {formatIngestionError(item.error)}
+                            </span>
+                          ) : (
+                            <span className="text-foreground text-12 font-normal">-</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}

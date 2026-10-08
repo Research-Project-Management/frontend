@@ -12,6 +12,7 @@
  */
 
 import { editorCommandBus } from './command-bus';
+import { sessionCoordinator } from './session.coordinator';
 import { useLayoutStore } from '../store/layout.store';
 
 export type KeybindingScope = 'any' | 'editorTextFocus' | 'viewerFocus';
@@ -70,7 +71,7 @@ export class KeybindingCoordinatorRegistry {
       scope: 'any',
       handler: (e) => {
         e.preventDefault();
-        editorCommandBus.dispatch({ type: 'compiler:started' }); // triggers flush
+        void sessionCoordinator.flushAllPending();
       },
     });
 
@@ -145,6 +146,18 @@ export class KeybindingCoordinatorRegistry {
       handler: (e) => {
         e.preventDefault();
         useLayoutStore.getState().toggleBottomPanel();
+      },
+    });
+
+    // 9. Toggle AI Research Assistant (Mod-i)
+    this.register({
+      id: 'workbench.toggleAiPanel',
+      key: 'Mod-i',
+      description: 'Toggle AI Research Assistant Panel',
+      scope: 'any',
+      handler: (e) => {
+        e.preventDefault();
+        editorCommandBus.dispatch({ type: 'sidebar:toggle-ai-panel' });
       },
     });
   }

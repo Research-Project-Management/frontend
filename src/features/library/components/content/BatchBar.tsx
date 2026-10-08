@@ -131,7 +131,9 @@ export function BatchBar({
   const fallbackCopyMultiCite = async (style: CslStyle | 'latex' = 'apa') => {
     warnIfRetractedPresent('citation formatting');
     if (style === 'latex') {
-      const keys = resolvedItems.map((p) => generateCitationKey(p)).filter(Boolean);
+      const keys = resolvedItems
+        .map((p) => (p.citationKey || p.key || generateCitationKey(p))?.trim())
+        .filter(Boolean);
       const citeCmd = `\\cite{${keys.join(', ')}}`;
       await copyWithToast(citeCmd, `Copied ${citeCmd} to clipboard`);
       return;

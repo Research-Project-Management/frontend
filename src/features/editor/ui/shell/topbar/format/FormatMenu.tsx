@@ -33,10 +33,10 @@ import {
   MenubarSeparator,
   MenubarShortcut,
 } from '@/shared/components/ui/menubar';
-import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
+import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { useSettingsStore } from '@/features/editor/store';
-import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
-import type { LatexFormatType } from '@/features/editor/ports/editor-engine.port';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import type { LatexFormatType } from '@/features/editor/domain/types/ports/editor-engine.port';
 
 export function FormatMenu() {
   const { engine } = useEditorInstance();
@@ -72,7 +72,7 @@ export function FormatMenu() {
         const selected = engine.getSelectedText();
         if (selected) {
           const lines = selected.split('\n');
-          const indented = lines.map((l) => `  \\item ${l}`).join('\n');
+          const indented = lines.map((l: string) => `  \\item ${l}`).join('\n');
           engine.insertText(`\\begin{${env}}\n${indented}\n\\end{${env}}\n`);
         } else {
           engine.insertText(`\\begin{${env}}\n  \\item \n\\end{${env}}\n`);

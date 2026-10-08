@@ -15,7 +15,7 @@ import {
   Link2,
   RefreshCw,
 } from 'lucide-react';
-import type { LinkedFileDto } from '@/features/editor/services/manuscript.service';
+import type { LinkedFileDto } from '@/features/editor/coordinators/services/manuscript.service';
 import {
   ContextMenu,
   ContextMenuTrigger,

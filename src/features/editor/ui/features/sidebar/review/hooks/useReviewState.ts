@@ -4,19 +4,19 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { usePageStore, useDocumentCollaborationStore } from '@/features/editor/store';
-import { useActiveDocument, filesQuery } from '@/features/editor/hooks/use-core';
+import { useActiveDocument, filesQuery } from '@/features/editor/ui/hooks/use-core';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { usePageComments } from '@/features/editor/hooks/use-comment';
+import { usePageComments } from '@/features/editor/ui/hooks/use-comment';
 import {
   usePageSuggestions,
   useAcceptSuggestion,
   useRejectSuggestion,
   useAcceptAllSuggestions,
   useRejectAllSuggestions,
-} from '@/features/editor/hooks/use-suggestion';
+} from '@/features/editor/ui/hooks/use-suggestion';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
-import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
-import type { MentionMember } from '@/features/editor/utils/mention.util';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import type { MentionMember } from '@/features/editor/domain/utils/mention.util';
 import { useReviewRealtimeNotifications } from '../useReviewRealtimeNotifications';
 import { jumpToEditorLine, scrollToReviewItem } from '../utils/review.util';
 

@@ -22,15 +22,15 @@ import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 
-import { usePageStore, useSettingsStore } from '../../../store';
-import { filesQuery, usePageActions } from '../../../hooks/use-core';
+import { usePageStore, useSettingsStore, useViewerStore } from '../../../store';
+import { filesQuery, usePageActions } from '../../hooks/use-core';
 import {
   extractPdfBookmarks,
   extractOutlineFromContent,
   type PdfOutlineItem,
-} from '../../../utils/pdf-outline.util';
-import { useEditorInstance } from '../../../core/context/editor-instance.context';
-import { editorCommandBus } from '../../../core/command-bus/editor-command-bus';
+} from '../../../domain/utils/pdf-outline.util';
+import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
+import { editorCommandBus } from '../../../coordinators/command-bus';
 
 import { PdfToolbar } from './PdfToolbar';
 import { PdfFindBar } from './PdfFindBar';
@@ -79,11 +79,17 @@ export function PdfViewer() {
   const pdfSurfaceRef = useRef<SurfaceHandle | null>(null);
   const downloadRef = useRef<HTMLAnchorElement | null>(null);
 
-  const [numPages, setNumPages] = useState<number>(0);
-  const [pageNumber, setPageNumber] = useState(1);
+  const pageNumber = useViewerStore((s) => s.pageNumber);
+  const setPageNumber = useViewerStore((s) => s.setPageNumber);
+  const numPages = useViewerStore((s) => s.numPages);
+  const setNumPages = useViewerStore((s) => s.setNumPages);
+  const invertColors = useViewerStore((s) => s.invertColors);
+  const toggleInvertColors = useViewerStore((s) => s.toggleInvertColors);
+  const handlePrevPage = useViewerStore((s) => s.prevPage);
+  const handleNextPage = useViewerStore((s) => s.nextPage);
+
   const [showLog, setShowLog] = useState(false);
   const [pdfOutline, setPdfOutline] = useState<PdfOutlineItem[]>([]);
-  const [invertColors, setInvertColors] = useState(false);
   const [isPresentationOpen, setIsPresentationOpen] = useState(false);
 
   // 1. Compilation Controller
@@ -232,9 +238,6 @@ export function PdfViewer() {
     setPdfOutline(fallback);
   }, [editorEngine, synctexMapRef]);
 
-  const handlePrevPage = useCallback(() => setPageNumber((p) => Math.max(p - 1, 1)), []);
-  const handleNextPage = useCallback(() => setPageNumber((p) => Math.min(p + 1, numPages)), [numPages]);
-
   const handleDownload = useCallback(() => {
     if (!pdfUrl) return;
     const a = downloadRef.current || document.createElement('a');
@@ -245,7 +248,7 @@ export function PdfViewer() {
 
   const handleToggleLog = useCallback(() => setShowLog((p) => !p), []);
   const handleToggleAutoCompile = useCallback(() => setAutoCompile(!autoCompile), [autoCompile, setAutoCompile]);
-  const handleToggleInvertColors = useCallback(() => setInvertColors((v) => !v), []);
+  const handleToggleInvertColors = toggleInvertColors;
   const handleSetCompileMode = useCallback((m: 'full' | 'draft') => setCompileMode(m), [setCompileMode]);
 
   // If detached, show placeholder with toolbar controls

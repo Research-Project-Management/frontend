@@ -7,7 +7,7 @@
  * Automatically flushes dirty documents to Tier 2 Persistent Storage (IndexedDB) upon eviction.
  */
 
-import { draftStorageService } from '../services/draft-storage.service';
+import { draftStorageService } from '../coordinators/services/draft-storage.service';
 
 export interface DocumentCursorSelection {
   anchor: number;
@@ -101,6 +101,8 @@ export class LRUDocumentCache {
   /**
    * Registers a document model in the in-memory cache or updates existing metadata.
    */
+  public warm = this.registerModel.bind(this);
+
   public registerModel(
     fileId: string,
     initialData: {
@@ -280,6 +282,13 @@ export class LRUDocumentCache {
   }
 
   /**
+   * Returns all document models currently retained in RAM.
+   */
+  public getAllModels(): DocumentModelState[] {
+    return Array.from(this.models.values());
+  }
+
+  /**
    * Evicts a model from RAM and safely flushes it to IndexedDB if dirty.
    */
   public evictModel(fileId: string): void {
@@ -372,8 +381,7 @@ export class LRUDocumentCache {
         fileId,
         model.content,
         model.projectId || 'anonymous',
-        Date.now(),
-        true
+        model.filePath
       ).catch(() => {});
     }
 

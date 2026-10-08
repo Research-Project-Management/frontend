@@ -7,7 +7,7 @@
  * - Deep recursive filtering by file/folder name
  */
 
-import type { EditorStorageItem as StorageItem } from '@/features/editor/services/storage.service';
+import type { EditorStorageItem as StorageItem } from '@/features/editor/coordinators/services/storage.service';
 import { displayName } from './TexFileRow';
 
 export type FileTreeFolderNode = {

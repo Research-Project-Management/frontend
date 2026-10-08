@@ -11,7 +11,7 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 
 export interface UseReviewRealtimeNotificationsOptions {
   pageId?: string;

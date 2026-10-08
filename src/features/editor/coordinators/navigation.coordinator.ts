@@ -11,13 +11,13 @@
  * - CodeMirror focus and selection restoration.
  */
 
-import { useTabsStore } from '../store/tabs.store';
+import { useTabsStore, type EditorTab } from '../store/tabs.store';
 import { usePageStore } from '../store/editor.store';
 import { lruDocumentCache } from '../domain/lru-document-cache';
 import { diagnosticsCoordinator } from './diagnostics.coordinator';
 import { editorCommandBus } from './command-bus';
 import { sessionCoordinator } from './session.coordinator';
-import { getActiveEditorInstance } from '../core/context/editor-instance.context';
+import { getActiveEditorInstance } from './command-bus';
 
 export interface OpenDocumentOptions {
   fileId: string;
@@ -136,35 +136,43 @@ export class NavigationCoordinatorRegistry {
   public closeDocument(fileId: string): void {
     const tabsStore = useTabsStore.getState();
     const pageStore = usePageStore.getState();
+    const projectId = pageStore.projectId || pageStore.currentPage?.id || 'default';
 
     // 1. Save and evict from session coordinator
     sessionCoordinator.closeTab(fileId);
 
-    // 2. Close in tabsStore
-    tabsStore.closeTab(fileId);
+    // 2. Close in tabsStore and gracefully route to adjacent tab
+    tabsStore.closeTab(projectId, fileId, (nextId) => {
+      const rootPageId = pageStore.currentPage?.id || projectId;
+      const isNextRoot = !nextId || nextId === rootPageId || nextId === `${rootPageId}-main`;
 
-    // 3. If closing the currently active tab, activate next tab
-    const nextActiveTab = tabsStore.tabs.find((t) => t.id === tabsStore.activeTabId);
-    if (nextActiveTab) {
-      this.openDocument({
-        fileId: nextActiveTab.id,
-        title: nextActiveTab.title,
-        path: nextActiveTab.path,
-      });
-    } else {
-      // Revert to root document
-      const rootPage = pageStore.currentPage;
-      if (rootPage) {
-        pageStore.setActiveFilePage(rootPage);
-        if (typeof window !== 'undefined') {
-          try {
-            const url = new URL(window.location.href);
-            url.searchParams.delete('file');
-            window.history.replaceState(window.history.state, '', url.pathname + url.search);
-          } catch {}
+      if (!isNextRoot && nextId) {
+        tabsStore.setActive(projectId, nextId);
+        const tabs = tabsStore.tabsByProject[projectId] || [];
+        const nextActiveTab = tabs.find((t) => t.id === nextId);
+        if (nextActiveTab) {
+          this.openDocument({
+            fileId: nextActiveTab.id,
+            title: nextActiveTab.title,
+            path: nextActiveTab.path,
+          });
+        }
+      } else {
+        // Revert to root document
+        tabsStore.setActive(projectId, rootPageId);
+        const rootPage = pageStore.currentPage;
+        if (rootPage) {
+          pageStore.setActiveFilePage(rootPage);
+          if (typeof window !== 'undefined') {
+            try {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('file');
+              window.history.replaceState(window.history.state, '', url.pathname + url.search);
+            } catch {}
+          }
         }
       }
-    }
+    });
   }
 
   /**
@@ -191,9 +199,10 @@ export class NavigationCoordinatorRegistry {
         resolvedFileId = model.fileId;
         resolvedTitle = model.filePath;
       } else {
-        const tabs = useTabsStore.getState().tabs;
-        const matchingTab = tabs.find(
-          (t) => t.path === filePath || t.title === filePath || t.id === filePath
+        const tabsByProject = useTabsStore.getState().tabsByProject;
+        const allTabs = Object.values(tabsByProject).flat();
+        const matchingTab = allTabs.find(
+          (t: EditorTab) => t.path === filePath || t.title === filePath || t.id === filePath
         );
         if (matchingTab) {
           resolvedFileId = matchingTab.id;
@@ -214,7 +223,13 @@ export class NavigationCoordinatorRegistry {
       return;
     }
 
-    // Dispatch jump command directly to active CodeMirror instance
+    // 1. Direct engine jump for instant 0ms response
+    const engine = getActiveEditorInstance();
+    if (engine && typeof engine.jumpToLine === 'function') {
+      engine.jumpToLine(line, highlight);
+    }
+
+    // 2. Dispatch jump command across global command bus
     editorCommandBus.dispatch({
       type: 'editor:jump-to-line',
       line,

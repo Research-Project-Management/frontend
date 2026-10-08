@@ -7,7 +7,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { CompilerEngine, CompileMode } from '../types/compiler.types';
+import type { CompilerEngine, CompileMode } from '../domain/types/compiler.types';
 
 export type LaTeXEngine = CompilerEngine;
 export type { CompilerEngine, CompileMode };

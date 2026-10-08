@@ -16,7 +16,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { Send, Users, Loader2 } from 'lucide-react';
-import { useProjectChat } from '@/features/editor/hooks/use-project-chat';
+import { useProjectChat } from '@/features/editor/ui/hooks/use-project-chat';
 import { cn } from '@/shared/lib/utils';
 import { PlaneEmptyState, PlaneErrorState } from '@/shared/components/ui';
 import { SidebarPanelHeader } from '../SidebarPanelHeader';

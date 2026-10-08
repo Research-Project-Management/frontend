@@ -39,7 +39,7 @@ import ProjectTitleDropdown from './topbar/ProjectTitleDropdown';
 import { editorCommandBus } from '../../coordinators/command-bus';
 import { sessionCoordinator } from '../../coordinators/session.coordinator';
 import { useSettingsStore, useCompileStore, usePageStore } from '../../store';
-import { usePageActions } from '../../hooks/use-core';
+import { usePageActions } from '../hooks/use-core';
 
 const TemplateGalleryModal = dynamic(
   () => import('../modals/TemplateGalleryModal'),

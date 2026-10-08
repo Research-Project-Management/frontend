@@ -2,9 +2,9 @@
 
 import React, { useMemo, useEffect } from 'react';
 import { FileText, Loader2 } from 'lucide-react';
-import { usePageComments } from '@/features/editor/hooks/use-comment';
-import { usePageSuggestions, useAcceptSuggestion, useRejectSuggestion } from '@/features/editor/hooks/use-suggestion';
-import type { MentionMember } from '@/features/editor/utils/mention.util';
+import { usePageComments } from '@/features/editor/ui/hooks/use-comment';
+import { usePageSuggestions, useAcceptSuggestion, useRejectSuggestion } from '@/features/editor/ui/hooks/use-suggestion';
+import type { MentionMember } from '@/features/editor/domain/utils/mention.util';
 import { CommentCard } from './CommentCard';
 import { SuggestionCard } from './SuggestionCard';
 

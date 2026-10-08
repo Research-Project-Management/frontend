@@ -426,7 +426,7 @@ export function CreateModal({
     setAttachments((prev) => ({
       ...prev,
       pages: (prev.pages || []).filter(
-        (p) => p.pageId !== pageId && p.id !== pageId
+        (p) => (p as any).pageId !== pageId && p.id !== pageId
       ),
     }));
   };
@@ -458,7 +458,7 @@ export function CreateModal({
     setAttachments((prev) => ({
       ...prev,
       papers: (prev.papers || []).filter(
-        (p) => p.paperId !== paperId && p.id !== paperId
+        (p) => (p as any).paperId !== paperId && p.id !== paperId
       ),
     }));
   };

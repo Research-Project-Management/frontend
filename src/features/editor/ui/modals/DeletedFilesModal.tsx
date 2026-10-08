@@ -31,8 +31,8 @@ import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 import { useQuery } from '@tanstack/react-query';
-import { deletedFilesQuery, usePageActions } from '@/features/editor/hooks/use-core';
-import type { PageFile } from '@/features/editor/types';
+import { deletedFilesQuery, usePageActions } from '@/features/editor/ui/hooks/use-core';
+import type { PageFile } from '@/features/editor/domain/types';
 
 export interface DeletedFilesModalProps {
   open: boolean;

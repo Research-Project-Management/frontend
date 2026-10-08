@@ -4,15 +4,15 @@ import { useState, useEffect, useMemo, useCallback, useRef, useDeferredValue } f
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { usePageStore } from '@/features/editor/store';
-import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
-import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
-import { useEditorCitations } from '@/features/editor/hooks/use-citation';
+import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import { useEditorCitations } from '@/features/editor/ui/hooks/use-citation';
 import { useCitationPickerActions } from './useCitationPickerActions';
-import { manuscriptService, type CitationValidationResult } from '@/features/editor/services/manuscript.service';
+import { manuscriptService, type CitationValidationResult } from '@/features/editor/coordinators/services/manuscript.service';
 import { generateCitationKey } from '@/features/library';
-import { filesQuery } from '@/features/editor/hooks/use-core';
-import { parseBibContent, type BibEntry } from '@/features/editor/utils/bib-parser.util';
-import { extractCitationKeys, stripLatexComments } from '@/features/editor/utils/citation.util';
+import { filesQuery } from '@/features/editor/ui/hooks/use-core';
+import { parseBibContent, type BibEntry } from '@/features/editor/domain/utils/bib-parser.util';
+import { extractCitationKeys, stripLatexComments } from '@/features/editor/domain/utils/citation.util';
 
 export interface UnifiedCitation {
   id: string;
@@ -51,6 +51,12 @@ export function useCitationTabState() {
     (typeof currentPage?.projectId === 'string' ? currentPage.projectId : currentPage?.projectId?.id) ||
     '';
 
+  const activeFilePath =
+    (currentPage as any)?.path ||
+    (currentPage as any)?.title ||
+    (currentPage as any)?.name ||
+    '';
+
   const [content, setContent] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterTab, setFilterTab] = useState<CitationFilterTab>('document');
@@ -72,7 +78,7 @@ export function useCitationTabState() {
   useEffect(() => {
     refreshContent();
     if (!engine) return;
-    const unsub = engine.onContentChange((val) => {
+    const unsub = engine.onContentChange((val: string) => {
       if (contentTimerRef.current) {
         clearTimeout(contentTimerRef.current);
       }
@@ -156,6 +162,7 @@ export function useCitationTabState() {
   // Load workspace library items
   const {
     libraryItems,
+    citedItems,
     isLoading: isLibraryLoading,
     isError: isLibraryError,
     getAuthorSummary,
@@ -325,6 +332,8 @@ export function useCitationTabState() {
     setSelectedCollectionId,
     citationValidation,
     missingKeys,
+    citedEntries,
+    citedItems,
     filteredCitedEntries,
     filteredAvailableEntries,
     isLibraryLoading,
@@ -332,5 +341,10 @@ export function useCitationTabState() {
     handleCopyKey,
     handleInsertKey,
     openPickerModal,
+    projectId,
+    activeFilePath,
+    engine,
+    getContent,
+    refreshContent,
   };
 }

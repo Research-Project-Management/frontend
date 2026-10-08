@@ -26,7 +26,7 @@ import {
   MenubarSeparator,
 } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { useSettingsStore, useCompileStore } from '@/features/editor/store';
 import { useShallow } from 'zustand/react/shallow';
 

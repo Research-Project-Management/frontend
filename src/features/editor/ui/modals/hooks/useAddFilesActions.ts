@@ -11,9 +11,8 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { manuscriptService } from '@/features/editor/services/manuscript.service';
-import { pageKeys } from '@/features/editor/hooks/use-core';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
+import { pageKeys } from '@/features/editor/ui/hooks/use-core';
 
 export interface UseAddFilesActionsOptions {
   parentPageId: string | null;
@@ -52,7 +51,6 @@ export function useAddFilesActions({
           toast.success(`Linked and imported ${targetName} from URL`);
           queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
           queryClient.invalidateQueries({ queryKey: ['storage-files', parentPageId] });
-          EditorEventBus.emit('flux:upload-file');
           onClose();
           return;
         } catch (backendErr: any) {
@@ -91,7 +89,6 @@ export function useAddFilesActions({
           }
           queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
           queryClient.invalidateQueries({ queryKey: ['storage-files', parentPageId] });
-          EditorEventBus.emit('flux:upload-file');
           onClose();
         }
       } catch (err: any) {

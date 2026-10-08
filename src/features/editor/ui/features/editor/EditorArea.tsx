@@ -26,7 +26,7 @@ import { ImagePanel } from './ImagePanel';
 import { CodeMirrorView } from './CodeMirrorView';
 import { EditorToolbar } from './EditorToolbar';
 
-import { useActiveDocument } from '../../../hooks/use-core';
+import { useActiveDocument } from '../../hooks/use-core';
 import { useSettingsStore } from '../../../store/settings.store';
 import { usePageStore } from '../../../store/editor.store';
 

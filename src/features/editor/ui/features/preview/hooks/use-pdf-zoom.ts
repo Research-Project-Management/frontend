@@ -8,8 +8,9 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { editorCommandBus } from '../../../../core/command-bus/editor-command-bus';
+import { editorCommandBus } from '../../../../coordinators/command-bus';
 import { useCompileStore } from '../../../../store/compiler.store';
+import { useViewerStore } from '../../../../store/viewer.store';
 
 export interface UsePdfZoomOptions {
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -22,8 +23,13 @@ export function usePdfZoom({
   pdfSpreadView = false,
   pdfUrl,
 }: UsePdfZoomOptions) {
-  const [scale, setScale] = useState(1.0);
-  const [autoFit, setAutoFit] = useState(true);
+  const scale = useViewerStore((s) => s.scale);
+  const setScale = useViewerStore((s) => s.setScale);
+  const autoFit = useViewerStore((s) => s.autoFit);
+  const setAutoFit = useViewerStore((s) => s.setAutoFit);
+  const zoomIn = useViewerStore((s) => s.zoomIn);
+  const zoomOut = useViewerStore((s) => s.zoomOut);
+  const resetZoom = useViewerStore((s) => s.resetZoom);
   const [containerWidth, setContainerWidth] = useState(600);
 
   // ResizeObserver on the container to dynamically compute available width
@@ -89,32 +95,26 @@ export function usePdfZoom({
   }, [autoFit, fittedScale]);
 
   const handleZoomIn = useCallback(() => {
-    setAutoFit(false);
-    setScale((s) => Math.min(s + 0.15, 3.0));
-  }, []);
+    zoomIn();
+  }, [zoomIn]);
 
   const handleZoomOut = useCallback(() => {
-    setAutoFit(false);
-    setScale((s) => Math.max(s - 0.15, 0.4));
-  }, []);
+    zoomOut();
+  }, [zoomOut]);
 
   const handleResetZoom = useCallback(() => {
-    setAutoFit(false);
-    setScale(1.0);
-  }, []);
+    resetZoom();
+  }, [resetZoom]);
 
   const handleToggleAutoFit = useCallback(() => {
-    setAutoFit((prev) => {
-      const next = !prev;
-      if (next) setScale(fittedScale);
-      return next;
-    });
-  }, [fittedScale]);
+    const next = !autoFit;
+    setAutoFit(next);
+    if (next) setScale(fittedScale);
+  }, [autoFit, setAutoFit, setScale, fittedScale]);
 
   const handleSetScale = useCallback((s: number) => {
-    setAutoFit(false);
     setScale(s);
-  }, []);
+  }, [setScale]);
 
   // Listen to global zoom shortcut events
   useEffect(() => {

@@ -294,7 +294,7 @@ export function LibrarySidebar() {
                         setIsLibraryExpanded((v) => !v);
                       }}
                       aria-label={isLibraryExpanded ? 'Collapse My Library' : 'Expand My Library'}
-                      className="absolute right-1.5 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-foreground/10 active:bg-foreground/20 cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-2 md:before:hidden"
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-foreground/10 active:bg-foreground/20 cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary before:absolute before:-inset-2 md:before:hidden"
                     >
                       <ChevronRight
                         className={cn(

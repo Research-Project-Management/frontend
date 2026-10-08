@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { cn } from '@/shared/lib/utils';
-import { parseMentionTokens } from '@/features/editor/utils/mention.util';
+import { parseMentionTokens } from '@/features/editor/domain/utils/mention.util';
 import { AtSign } from 'lucide-react';
 
 export interface MentionBadgeProps {

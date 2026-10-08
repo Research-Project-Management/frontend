@@ -25,7 +25,7 @@ import {
   X,
 } from 'lucide-react';
 import { usePageStore } from '../../../store/editor.store';
-import { useEditorInstance } from '../../../core/context/editor-instance.context';
+import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { editorCommandBus } from '../../../coordinators/command-bus';
 import {
   latexSymbolsIndex,
@@ -56,7 +56,7 @@ export function OutlineTab({ onClose }: OutlineTabProps) {
   const currentPage = usePageStore((s) => s.currentPage);
   const activeFilePage = usePageStore((s) => s.activeFilePage);
   const activeDoc = activeFilePage || currentPage;
-  const filePath = activeDoc?.path || activeDoc?.title || 'main.tex';
+  const filePath = (activeDoc as any)?.path || activeDoc?.title || 'main.tex';
   const fileId = activeDoc?.id || '';
 
   const { engine } = useEditorInstance();
@@ -95,7 +95,7 @@ export function OutlineTab({ onClose }: OutlineTabProps) {
     const initialPos = engine.getCursorPosition();
     if (initialPos) setCursorLine(initialPos.line);
 
-    return engine.onCursorChange((line) => {
+    return engine.onCursorChange((line: number) => {
       setCursorLine(line);
     });
   }, [engine]);

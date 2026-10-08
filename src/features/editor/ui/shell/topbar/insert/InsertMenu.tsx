@@ -19,9 +19,9 @@ import {
   MenubarSubContent,
   MenubarSeparator,
 } from "@/shared/components/ui";
-import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
+import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { useSettingsStore } from '@/features/editor/store';
-import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 
 export function InsertMenu() {
   const { engine } = useEditorInstance();

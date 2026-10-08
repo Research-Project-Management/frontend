@@ -53,8 +53,8 @@ import { useAiChatActions } from './useAiChatActions';
 import { AIIcon } from '@/shared/components/icons';
 
 import { usePageStore } from '@/features/editor/store';
-import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
-import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
+import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import {
   streamEditorChat,
   getPageChat,

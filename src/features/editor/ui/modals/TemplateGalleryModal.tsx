@@ -34,8 +34,8 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 import { useSettingsStore, usePageStore } from '@/features/editor/store';
-import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
-import { manuscriptService } from '@/features/editor/services/manuscript.service';
+import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
+import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
 
 export interface AcademicTemplate {
   id: string;

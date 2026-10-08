@@ -5,7 +5,6 @@ import { Check } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { Item } from '@/features/library/types/library.types';
 import { SchemaItemTypeDefinition, ALL_ITEM_TYPES_FLAT } from '../../../types';
-import { cleanPaperTitle } from '../../../domain';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -154,7 +153,7 @@ export function GeneralFields({
           Title
         </span>
         <InlineTextarea
-          value={cleanPaperTitle(cleanValue(paper.title))}
+          value={cleanValue(paper.title)}
           ariaLabel="Item Title"
           onSave={handleTitleChange}
           className="font-normal text-foreground text-13 leading-normal"

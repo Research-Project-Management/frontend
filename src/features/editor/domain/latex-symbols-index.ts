@@ -19,6 +19,7 @@ import {
   type BibEntry,
   type LabelEntry,
   type CommandEntry,
+  type EnvironmentEntry,
   type OutlineItem,
   type OutlineNode,
   type SectionLevel,
@@ -27,12 +28,13 @@ import {
 import type {
   SymbolsWorkerMessageIn,
   SymbolsWorkerMessageOut,
-} from '../engines/latex-symbols.worker';
+} from '../engines/workers/latex-symbols.worker';
 
 export type {
   BibEntry,
   LabelEntry,
   CommandEntry,
+  EnvironmentEntry,
   OutlineItem,
   OutlineNode,
   SectionLevel,
@@ -46,11 +48,13 @@ export class LatexSymbolsIndex {
   private requestIdCounter = 0;
   private debounceTimers = new Map<string, NodeJS.Timeout>();
   private changeListeners = new Set<(snapshot: SymbolSnapshot) => void>();
+  private libraryCitations: BibEntry[] = [];
 
   private snapshot: SymbolSnapshot = {
     citations: [],
     labels: [],
     commands: [],
+    environments: [],
     includeFiles: [],
     outlineByFile: {},
     flatOutlineByFile: {},
@@ -66,13 +70,22 @@ export class LatexSymbolsIndex {
 
     try {
       this.worker = new Worker(
-        new URL('../engines/latex-symbols.worker.ts', import.meta.url)
+        new URL('../engines/workers/latex-symbols.worker.ts', import.meta.url)
       );
 
       this.worker.onmessage = (event: MessageEvent<SymbolsWorkerMessageOut>) => {
         const { snapshot } = event.data;
         if (snapshot && snapshot.version >= this.snapshot.version) {
-          this.snapshot = snapshot;
+          if (this.libraryCitations.length > 0) {
+            const existingKeys = new Set(snapshot.citations.map((c) => c.key.toLowerCase()));
+            const additions = this.libraryCitations.filter((b) => !existingKeys.has(b.key.toLowerCase()));
+            this.snapshot = {
+              ...snapshot,
+              citations: [...snapshot.citations, ...additions],
+            };
+          } else {
+            this.snapshot = snapshot;
+          }
           this.notifyListeners();
         }
       };
@@ -164,6 +177,7 @@ export class LatexSymbolsIndex {
     }
     this.debounceTimers.clear();
 
+    this.libraryCitations = [];
     if (this.worker && !this.isWorkerFailed) {
       this.worker.postMessage({
         type: 'clear',
@@ -177,17 +191,96 @@ export class LatexSymbolsIndex {
   }
 
   /**
-   * Instant 0ms synchronous lookup for BibTeX citations
+   * Instant 0ms synchronous lookup for BibTeX & Workspace Library citations
+   * Includes Vietnamese diacritic-insensitive fuzzy matching
    */
   public getCitations(query = ''): BibEntry[] {
-    const q = query.toLowerCase();
+    const q = query.trim().toLowerCase();
     if (!q) return this.snapshot.citations;
 
-    return this.snapshot.citations.filter((entry) =>
-      entry.key.toLowerCase().includes(q) ||
-      (entry.author && entry.author.toLowerCase().includes(q)) ||
-      (entry.title && entry.title.toLowerCase().includes(q))
-    );
+    const normQ = LatexSymbolsIndexCore.stripVietnameseDiacritics(q);
+
+    return this.snapshot.citations.filter((entry) => {
+      if (entry.key.toLowerCase().includes(q)) return true;
+      if (entry.year && entry.year.includes(q)) return true;
+      if (entry.author) {
+        if (entry.author.toLowerCase().includes(q)) return true;
+        if (LatexSymbolsIndexCore.stripVietnameseDiacritics(entry.author).includes(normQ)) return true;
+      }
+      if (entry.title) {
+        if (entry.title.toLowerCase().includes(q)) return true;
+        if (LatexSymbolsIndexCore.stripVietnameseDiacritics(entry.title).includes(normQ)) return true;
+      }
+      if (entry.journal) {
+        if (entry.journal.toLowerCase().includes(q)) return true;
+        if (LatexSymbolsIndexCore.stripVietnameseDiacritics(entry.journal).includes(normQ)) return true;
+      }
+      return false;
+    });
+  }
+
+  /**
+   * Instant 0ms synchronous exact lookup for a specific citation key
+   */
+  public getCitationByKey(key: string): BibEntry | undefined {
+    if (!key) return undefined;
+    const cleanKey = key.trim().toLowerCase();
+    return this.snapshot.citations.find((entry) => entry.key.toLowerCase() === cleanKey);
+  }
+
+  /**
+   * Seamlessly ingests workspace library items into symbols snapshot so citations
+   * are immediately autocomplete-able and hover-able even before any .bib file is exported.
+   */
+  public setLibraryCitations(items: any[]): void {
+    if (!Array.isArray(items) || items.length === 0) return;
+
+    const newBibs: BibEntry[] = items
+      .filter((it) => it && (it.citationKey || it.id))
+      .map((it) => {
+        let authorStr = '';
+        if (Array.isArray(it.authors) && it.authors.length > 0) {
+          authorStr = it.authors
+            .map((a: any) =>
+              typeof a === 'string'
+                ? a
+                : a.fullName || `${a.lastName || ''} ${a.firstName || ''}`.trim()
+            )
+            .filter(Boolean)
+            .join(' and ');
+        } else if (Array.isArray(it.creators) && it.creators.length > 0) {
+          authorStr = it.creators
+            .map((c: any) =>
+              c.name || `${c.lastName || ''} ${c.firstName || ''}`.trim()
+            )
+            .filter(Boolean)
+            .join(' and ');
+        }
+
+        return {
+          key: it.citationKey || it.id,
+          type: it.itemType || 'article',
+          title: it.title || '',
+          author: authorStr,
+          year: it.year ? String(it.year) : undefined,
+          journal: it.journal || it.publicationTitle || undefined,
+          doi: it.doi || undefined,
+          sourceFile: 'workspace-library',
+        };
+      });
+
+    this.libraryCitations = newBibs;
+    const existingKeys = new Set(this.snapshot.citations.map((c) => c.key.toLowerCase()));
+    const additions = newBibs.filter((b) => !existingKeys.has(b.key.toLowerCase()));
+
+    if (additions.length > 0) {
+      this.snapshot = {
+        ...this.snapshot,
+        citations: [...this.snapshot.citations, ...additions],
+        version: this.snapshot.version + 1,
+      };
+      this.notifyListeners();
+    }
   }
 
   /**
@@ -205,6 +298,13 @@ export class LatexSymbolsIndex {
    */
   public getCommands(): CommandEntry[] {
     return this.snapshot.commands;
+  }
+
+  /**
+   * Instant 0ms synchronous lookup for custom project environments (\newenvironment, \newtheorem)
+   */
+  public getEnvironments(): EnvironmentEntry[] {
+    return this.snapshot.environments || [];
   }
 
   /**

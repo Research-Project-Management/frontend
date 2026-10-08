@@ -27,7 +27,7 @@ import {
 } from '@/shared/components/ui/command';
 import { cn } from '@/shared/lib/utils';
 import { usePageStore, useTabsStore } from '@/features/editor/store';
-import { filesQuery } from '@/features/editor/hooks/use-core';
+import { filesQuery } from '@/features/editor/ui/hooks/use-core';
 
 interface QuickOpenModalProps {
   open: boolean;

@@ -15,7 +15,7 @@ import { usePageStore } from '../store/editor.store';
 import { useLayoutStore } from '../store/layout.store';
 import { diagnosticsCoordinator, type IndexedDiagnosticItem } from './diagnostics.coordinator';
 import { sessionCoordinator } from './session.coordinator';
-import { suggestLatexFix } from './services/ai-error-assist.service';
+import { suggestLatexFix } from '@/features/editor/coordinators/services/ai-error-assist.service';
 import { lruDocumentCache } from '../domain/document/lru-document-cache';
 import type { DiffProposal } from '../domain/types/ports/editor-engine.port';
 import { toast } from 'sonner';

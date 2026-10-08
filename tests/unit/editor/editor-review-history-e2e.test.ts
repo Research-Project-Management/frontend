@@ -232,7 +232,7 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
       setActiveEditorEngine(null);
       view?.destroy();
       container?.remove();
-      vi.restoreAllMocks();
+      vi.clearAllMocks();
     });
 
     it('syncs editor decorations through reviewCoordinator.syncEditorDecorations', () => {
@@ -331,7 +331,7 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
 
   describe('3. Project History & Snapshot Diff Engine (history.service.ts)', () => {
     beforeEach(() => {
-      vi.restoreAllMocks();
+      vi.clearAllMocks();
     });
 
     it('fetches project versions timeline with snapshots and labels', async () => {

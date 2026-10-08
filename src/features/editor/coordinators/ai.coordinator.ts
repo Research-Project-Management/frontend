@@ -10,13 +10,12 @@
  * - Applies AI-generated code diffs directly into CodeMirror and LRU Cache.
  */
 
-import { getActiveEditorInstance, getActiveEditorContent } from './command-bus';
+import { getActiveEditorInstance, getActiveEditorContent, editorCommandBus } from './command-bus';
 import { usePageStore } from '../store/editor.store';
 import { useLayoutStore } from '../store/layout.store';
 import { diagnosticsCoordinator, type IndexedDiagnosticItem } from './diagnostics.coordinator';
 import { sessionCoordinator } from './session.coordinator';
-import { editorCommandBus } from './command-bus';
-import * as aiErrorAssistService from '@/features/editor/coordinators/services/ai-error-assist.service';
+import { suggestLatexFix } from './services/ai-error-assist.service';
 import { lruDocumentCache } from '../domain/document/lru-document-cache';
 import type { DiffProposal } from '../domain/types/ports/editor-engine.port';
 import { toast } from 'sonner';
@@ -182,7 +181,7 @@ export class AiCoordinatorRegistry {
       : null;
 
     try {
-      const fixResult = await aiErrorAssistService.suggestLatexFix({
+      const fixResult = await suggestLatexFix({
         errorMessage: diagnostic.message,
         errorLine: diagnostic.line,
         errorFile: fileName,

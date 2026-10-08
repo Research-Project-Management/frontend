@@ -13,13 +13,6 @@ vi.mock('sonner', () => ({
   },
 }));
 
-vi.mock('@/features/editor/coordinators/services/ai-error-assist.service', () => ({
-  suggestLatexFix: vi.fn().mockResolvedValue({
-    fixedSnippet: 'fixed',
-    explanation: 'fixed explanation',
-    confidence: 'high',
-  }),
-}));
 
 vi.mock('@/features/editor/coordinators/services/compiler.service', () => ({
   listAuxFiles: vi.fn().mockResolvedValue([]),

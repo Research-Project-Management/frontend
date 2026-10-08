@@ -3,5 +3,10 @@
  * Location: `features/editor/ui/modals/project-settings/index.ts`
  */
 
-export { ProjectGithubTab } from './ProjectGithubTab';
-export { ProjectReferencesTab } from './ProjectReferencesTab';
+export * from './settings-common';
+export * from './ProjectEditorTab';
+export * from './ProjectCompilerTab';
+export * from './ProjectReferencesTab';
+export * from './ProjectGithubTab';
+export * from './ProjectAppearanceTab';
+export * from './ProjectNotificationsTab';

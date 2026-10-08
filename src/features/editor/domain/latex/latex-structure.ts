@@ -3,6 +3,8 @@
  */
 
 import { API_BASE_URL } from '@/config/env';
+import type { LogEntry, ParsedLog } from '../types/compiler.types';
+
 
 // ── Document Structure ────────────────────────────────────────────────────────
 
@@ -401,25 +403,7 @@ export const EditorEventBus = new EditorEventBusImpl();
 
 // ── Raw LaTeX Log Parser ──────────────────────────────────────────────────────
 
-export interface LogEntry {
-  message: string;
-  file?: string;
-  line?: number;
-  detail?: string;
-  code?: string;
-  rawExcerpt?: string;
-  explanation?: any;
-  quickFix?: {
-    description: string;
-    replacementText: string;
-  };
-}
-
-export interface ParsedLog {
-  errors: LogEntry[];
-  warnings: LogEntry[];
-  badBoxes: LogEntry[];
-}
+export type { LogEntry, ParsedLog };
 
 const PARSED_LOG_CACHE_MAX = 5;
 const parsedLogCache = new Map<string, ParsedLog>();

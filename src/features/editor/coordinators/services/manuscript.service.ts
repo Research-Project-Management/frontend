@@ -24,7 +24,7 @@
 
 import * as api from '@/shared/lib/api';
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete, getAuthToken, getEffectiveBaseUrl } from '@/shared/lib/api';
-import type { Page, PageFile, PageComment, PageSuggestion, SuggestionStatus, SuggestionType, PageVersion, ProjectEvent } from '../../domain/types';
+import type { Page, PageFile, PageComment, PageSuggestion, SuggestionStatus, SuggestionType, PageVersion, ProjectEvent, ErrorExplanationDto } from '../../domain/types';
 import type {
   ProjectVersionListItem,
   ProjectSnapshotDetail,
@@ -85,6 +85,7 @@ export interface AutoFixResultDto {
     description: string;
   }>;
 }
+
 
 export type { ErrorExplanationDto } from '../../domain/types';
 

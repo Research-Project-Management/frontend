@@ -4,7 +4,12 @@
  */
 
 export { default as ProjectTitleDropdown } from './ProjectTitleDropdown';
-export * from './project-title.schema';
+export {
+  projectRenameSchema,
+  projectCopySchema,
+  type ProjectRenameInput,
+  type ProjectCopyInput,
+} from '@/features/editor/domain/types';
 export * from './useProjectTitleActions';
 export { default as FileMenu } from './file/FileMenu';
 export { default as EditMenu } from './edit/EditMenu';

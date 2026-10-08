@@ -34,7 +34,7 @@ import { useProject } from '@/features/projects/shell/hooks/use-project';
 import {
   projectRenameSchema,
   type ProjectRenameInput,
-} from './project-title.schema';
+} from '@/features/editor/domain/types';
 import { useProjectTitleActions } from './useProjectTitleActions';
 
 export function ProjectTitleDropdown() {

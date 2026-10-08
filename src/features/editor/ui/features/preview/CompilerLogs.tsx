@@ -56,13 +56,18 @@ import {
 } from '@/features/editor/coordinators/services/compiler.service';
 import {
   manuscriptService,
-  type ErrorExplanationDto,
   type DiagnosticReportDto,
 } from '@/features/editor/coordinators/services/manuscript.service';
 import { CompileButton } from './CompileButton';
 
-import type { LogEntry, ParsedLog, CompilerLogsProps, LogsProps } from '@/features/editor/domain/types';
-export type { LogEntry, ParsedLog, CompilerLogsProps, LogsProps };
+import type {
+  LogEntry,
+  ParsedLog,
+  CompilerLogsProps,
+  LogsProps,
+  ErrorExplanationDto,
+} from '@/features/editor/domain/types';
+export type { LogEntry, ParsedLog, CompilerLogsProps, LogsProps, ErrorExplanationDto };
 
 const PARSED_LOG_CACHE_MAX = 5;
 const parsedLogCache = new Map<string, ParsedLog>();
@@ -380,7 +385,7 @@ const EntryRow = React.memo(function EntryRow({
             <div className="space-y-1 pt-0.5">
               <span className="font-medium text-xs text-foreground/80">Common Causes:</span>
               <ul className="list-disc pl-4 space-y-1 text-xs text-muted-foreground">
-                {activeExplanation.commonCauses.map((cause, cIdx) => (
+                {activeExplanation.commonCauses.map((cause: string, cIdx: number) => (
                   <li key={cIdx}>{cause}</li>
                 ))}
               </ul>

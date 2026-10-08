@@ -34,7 +34,7 @@ import { ProjectReferencesTab, ProjectGithubTab } from './project-settings';
 import { GitHubIcon } from '@/shared/components/icons';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { learnedWordSchema, type LearnedWordFormValues } from './schemas/settings.schema';
+import { learnedWordSchema, type LearnedWordFormValues } from '@/features/editor/domain/types';
 
 import {
   Dialog,

@@ -1,7 +1,7 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import AiTab from '@/features/editor/components/sidebar/ai/AiTab';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import AiTab from '@/features/editor/ui/features/sidebar/ai/AiTab';
 import { usePageStore } from '@/features/editor/store';
 
 // Mock next/navigation
@@ -10,7 +10,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock editor context
-vi.mock('@/features/editor/core/context/editor-instance.context', () => ({
+vi.mock('@/features/editor/ui/hooks/use-editor-instance', () => ({
   useEditorInstance: () => ({
     engine: {
       getSelectedText: () => '',
@@ -31,6 +31,10 @@ vi.mock('@/features/ai/services/chat.service', () => ({
 describe('AiTab Synchronized Design System Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it('renders unified header with title and action buttons', () => {

@@ -12,12 +12,17 @@ import { manuscriptService } from './manuscript.service';
 export type { CreateSuggestionPayload } from './manuscript.service';
 
 export const suggestionService = {
-  getSuggestions: manuscriptService.suggestions.getSuggestions,
-  createSuggestion: manuscriptService.suggestions.createSuggestion,
-  acceptSuggestion: manuscriptService.suggestions.acceptSuggestion,
-  rejectSuggestion: manuscriptService.suggestions.rejectSuggestion,
-  acceptAllSuggestions: manuscriptService.suggestions.acceptAllSuggestions,
-  rejectAllSuggestions: manuscriptService.suggestions.rejectAllSuggestions,
+  getSuggestions: (docId: string, status?: any) =>
+    manuscriptService.suggestions.getSuggestions(docId, status),
+  createSuggestion: (payload: any) => manuscriptService.suggestions.createSuggestion(payload),
+  acceptSuggestion: (docId: string, suggestionId: string) =>
+    manuscriptService.suggestions.acceptSuggestion(docId, suggestionId),
+  rejectSuggestion: (docId: string, suggestionId: string) =>
+    manuscriptService.suggestions.rejectSuggestion(docId, suggestionId),
+  acceptAllSuggestions: (docId: string) =>
+    manuscriptService.suggestions.acceptAllSuggestions(docId),
+  rejectAllSuggestions: (docId: string) =>
+    manuscriptService.suggestions.rejectAllSuggestions(docId),
 };
 
 export const DocumentSuggestionService = suggestionService;

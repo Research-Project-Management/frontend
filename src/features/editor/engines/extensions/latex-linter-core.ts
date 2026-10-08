@@ -29,6 +29,7 @@ export interface LinterDiagnostic {
 export interface LinterOptions {
   knownBibKeys?: string[];
   knownLabels?: string[];
+  retractedCitationsMap?: Map<string, { title?: string; reason?: string; nature?: string; noticeUrl?: string }>;
 }
 
 interface OpenEnv {
@@ -296,23 +297,43 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
           }
         }
 
-        // 5d. \cite{...} - undefined citation check
+        // 5d. \cite{...} - undefined citation check & retracted paper warning
         if (['cite', 'citep', 'citet', 'nocite', 'textcite', 'autocite'].includes(cmdName)) {
           const citeMatch = /^(?:\*?(?:\[[^\]]*\])*)\s*\{([^}]+)\}/.exec(text.slice(cmdTo));
-          if (citeMatch && options.knownBibKeys && options.knownBibKeys.length > 0) {
+          if (citeMatch) {
             const keys = citeMatch[1].split(',').map((k) => k.trim());
-            const knownSet = new Set(options.knownBibKeys);
-            for (const k of keys) {
-              if (k && !knownSet.has(k)) {
-                const keyOffset = text.indexOf(k, cmdTo);
-                if (keyOffset !== -1) {
-                  diagnostics.push({
-                    from: keyOffset,
-                    to: keyOffset + k.length,
-                    severity: 'warning',
-                    message: `Citation key "${k}" is not defined in project bibliography (.bib)`,
-                    source: 'LaTeX Linter',
-                  });
+            if (options.knownBibKeys && options.knownBibKeys.length > 0) {
+              const knownSet = new Set(options.knownBibKeys.map((k) => k.toLowerCase()));
+              for (const k of keys) {
+                if (k && !knownSet.has(k.toLowerCase())) {
+                  const keyOffset = text.indexOf(k, cmdTo);
+                  if (keyOffset !== -1) {
+                    diagnostics.push({
+                      from: keyOffset,
+                      to: keyOffset + k.length,
+                      severity: 'warning',
+                      message: `Citation key "${k}" is not defined in project bibliography (.bib)`,
+                      source: 'LaTeX Linter',
+                    });
+                  }
+                }
+              }
+            }
+
+            if (options.retractedCitationsMap && options.retractedCitationsMap.size > 0) {
+              for (const k of keys) {
+                if (k && options.retractedCitationsMap.has(k)) {
+                  const info = options.retractedCitationsMap.get(k);
+                  const keyOffset = text.indexOf(k, cmdTo);
+                  if (keyOffset !== -1) {
+                    diagnostics.push({
+                      from: keyOffset,
+                      to: keyOffset + k.length,
+                      severity: 'warning',
+                      message: `⚠️ Retracted Paper: Citation "${k}" (${info?.title || 'Untitled'}) has been officially retracted${info?.reason ? `: ${info.reason}` : '.'}`,
+                      source: 'LaTeX Linter',
+                    });
+                  }
                 }
               }
             }

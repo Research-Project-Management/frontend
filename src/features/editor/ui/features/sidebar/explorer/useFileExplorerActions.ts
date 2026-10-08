@@ -20,8 +20,7 @@ import { pageService } from '@/features/editor/coordinators/services/core.servic
 import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
 import { filesQuery } from '@/features/editor/ui/hooks/use-core';
 import type { Page, PageFile } from '@/features/editor/domain/types';
-import { displayName } from './TexFileRow';
-import { prepareAssetInsertion } from './file-actions.util';
+import { displayName, prepareAssetInsertion } from './file-actions.util';
 
 export interface UseFileExplorerActionsOptions {
   projectId?: string;

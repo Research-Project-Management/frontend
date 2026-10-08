@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { extractCitationKeys } from '@/features/editor/domain/utils/citation.util';
+import { extractCitationKeys } from '@/features/editor/domain/citation/citation-formatter';
 import {
   isLatexDocument,
   detectDocumentCitationStyle,
   buildBibliographySection,
   injectBibliographyIntoDocument,
-} from '@/features/editor/domain/utils/bibliography-generator.util';
+} from '@/features/editor/domain/citation/bibliography-generator';
 import { libraryServices } from '@/features/library';
 
 describe('Live Editor Citation & Bibliography Walkthrough', () => {

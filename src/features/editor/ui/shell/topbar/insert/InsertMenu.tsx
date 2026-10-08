@@ -42,28 +42,28 @@ export function InsertMenu() {
 
   return (
     <MenubarMenu>
-      <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md">
+      <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary select-none transition-colors">
         Insert
       </MenubarTrigger>
 
-      <MenubarContent className="min-w-48 text-xs">
+      <MenubarContent className="min-w-56 text-xs select-none">
         {/* 1. Math > */}
         <MenubarSub>
           <MenubarSubTrigger className="cursor-pointer">
-            <span>Math</span>
+            <span className="whitespace-nowrap">Math</span>
           </MenubarSubTrigger>
-          <MenubarSubContent className="min-w-36 text-xs">
+          <MenubarSubContent className="min-w-40 text-xs select-none">
             <MenubarItem
               onClick={() => insertSnippet('$E = mc^2$')}
               className="cursor-pointer"
             >
-              Inline math
+              <span className="whitespace-nowrap">Inline math</span>
             </MenubarItem>
             <MenubarItem
               onClick={() => insertSnippet('\\[\n  \\int_{a}^{b} f(x)\\,dx\n\\]\n')}
               className="cursor-pointer"
             >
-              Display math
+              <span className="whitespace-nowrap">Display math</span>
             </MenubarItem>
           </MenubarSubContent>
         </MenubarSub>
@@ -73,15 +73,15 @@ export function InsertMenu() {
           onClick={() => editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'symbol-palette' })}
           className="cursor-pointer"
         >
-          Symbol
+          <span className="whitespace-nowrap">Symbol</span>
         </MenubarItem>
 
         {/* 3. Figure > */}
         <MenubarSub>
           <MenubarSubTrigger className="cursor-pointer">
-            <span>Figure</span>
+            <span className="whitespace-nowrap">Figure</span>
           </MenubarSubTrigger>
-          <MenubarSubContent className="min-w-48 text-xs">
+          <MenubarSubContent className="min-w-52 text-xs select-none">
             <MenubarItem
               onClick={() => {
                 useSettingsStore.getState().setActiveSidebarPanel('Files');
@@ -89,13 +89,13 @@ export function InsertMenu() {
               }}
               className="cursor-pointer"
             >
-              Upload from computer
+              <span className="whitespace-nowrap">Upload from computer</span>
             </MenubarItem>
             <MenubarItem
               onClick={() => editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'figure-wizard' })}
               className="cursor-pointer"
             >
-              From project files
+              <span className="whitespace-nowrap">From project files</span>
             </MenubarItem>
             <MenubarItem
               onClick={() => {
@@ -104,13 +104,13 @@ export function InsertMenu() {
               }}
               className="cursor-pointer"
             >
-              From another project
+              <span className="whitespace-nowrap">From another project</span>
             </MenubarItem>
             <MenubarItem
               onClick={handleInsertFigureUrl}
               className="cursor-pointer"
             >
-              From URL
+              <span className="whitespace-nowrap">From URL</span>
             </MenubarItem>
           </MenubarSubContent>
         </MenubarSub>
@@ -120,7 +120,15 @@ export function InsertMenu() {
           onClick={() => editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'table-wizard' })}
           className="cursor-pointer"
         >
-          Table
+          <span className="whitespace-nowrap">Table (Tabular)</span>
+        </MenubarItem>
+
+        {/* 4b. Matrix */}
+        <MenubarItem
+          onClick={() => editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'matrix-wizard' })}
+          className="cursor-pointer"
+        >
+          <span className="whitespace-nowrap">Matrix (Math)</span>
         </MenubarItem>
 
         {/* 5. Citation */}
@@ -128,7 +136,7 @@ export function InsertMenu() {
           onClick={() => editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'citation-picker' })}
           className="cursor-pointer"
         >
-          Citation
+          <span className="whitespace-nowrap">Citation</span>
         </MenubarItem>
 
         {/* 6. Link */}
@@ -136,7 +144,7 @@ export function InsertMenu() {
           onClick={() => insertSnippet('\\href{https://example.com}{Link text}')}
           className="cursor-pointer"
         >
-          Link
+          <span className="whitespace-nowrap">Link</span>
         </MenubarItem>
 
         {/* 7. Cross reference */}
@@ -144,7 +152,7 @@ export function InsertMenu() {
           onClick={() => insertSnippet('\\ref{fig:figure}')}
           className="cursor-pointer"
         >
-          Cross reference
+          <span className="whitespace-nowrap">Cross reference</span>
         </MenubarItem>
 
         {/* Divider */}
@@ -155,7 +163,7 @@ export function InsertMenu() {
           onClick={handleComment}
           className="cursor-pointer"
         >
-          Comment
+          <span className="whitespace-nowrap">Comment</span>
         </MenubarItem>
 
         {/* Divider */}
@@ -167,7 +175,7 @@ export function InsertMenu() {
           className="flex items-center gap-2 cursor-pointer"
         >
           <AlignLeft className="size-3.5 text-foreground shrink-0" />
-          <span>Abstract</span>
+          <span className="whitespace-nowrap">Abstract</span>
         </MenubarItem>
 
         {/* 10. Keywords */}
@@ -176,7 +184,7 @@ export function InsertMenu() {
           className="flex items-center gap-2 cursor-pointer"
         >
           <Tag className="size-3.5 text-foreground shrink-0" />
-          <span>Keywords</span>
+          <span className="whitespace-nowrap">Keywords</span>
         </MenubarItem>
 
         {/* 11. Title */}
@@ -185,7 +193,7 @@ export function InsertMenu() {
           className="flex items-center gap-2 cursor-pointer"
         >
           <Heading className="size-3.5 text-foreground shrink-0" />
-          <span>Title</span>
+          <span className="whitespace-nowrap">Title</span>
         </MenubarItem>
       </MenubarContent>
     </MenubarMenu>

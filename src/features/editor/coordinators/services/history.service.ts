@@ -19,35 +19,49 @@ export type {
 } from './manuscript.service';
 
 export const versionService = {
-  getByPageId: manuscriptService.history.getByDocId,
-  getById: manuscriptService.history.getById,
-  save: manuscriptService.history.save,
-  restore: manuscriptService.history.restore,
-  updateLabel: manuscriptService.history.updateLabel,
-  getDiff: manuscriptService.history.getDiff,
-  compareVersions: manuscriptService.history.compareVersions,
+  getByPageId: (docId: string) => manuscriptService.history.getByDocId(docId),
+  getById: (docId: string, versionId: string) => manuscriptService.history.getById(docId, versionId),
+  save: (payload: any) => manuscriptService.history.save(payload),
+  restore: (payload: any) => manuscriptService.history.restore(payload),
+  updateLabel: (docId: string, versionId: string, label: string, title?: string) =>
+    manuscriptService.history.updateLabel(docId, versionId, label, title),
+  getDiff: (docId: string, fromVersionId: string, toVersionId: string) =>
+    manuscriptService.history.getDiff(docId, fromVersionId, toVersionId),
+  compareVersions: (docId: string, fromVersionId: string, toVersionId: string) =>
+    manuscriptService.history.compareVersions(docId, fromVersionId, toVersionId),
   delete: async (_pageId: string, _versionId: string): Promise<void> => {},
 };
 
 export const PageVersionService = versionService;
 
 export const historyService = {
-  getByProjectId: manuscriptService.history.getByProjectId,
-  getProjectVersions: manuscriptService.history.getProjectVersions,
-  getProjectSnapshot: manuscriptService.history.getProjectSnapshot,
-  compareProjectVersions: manuscriptService.history.compareProjectVersions,
-  labelProjectVersion: manuscriptService.history.labelProjectVersion,
-  deleteProjectLabel: manuscriptService.history.deleteProjectLabel,
-  restoreProjectVersion: manuscriptService.history.restoreProjectVersion,
-  createProjectSnapshot: manuscriptService.history.createProjectSnapshot,
+  getByProjectId: (projectId: string) => manuscriptService.history.getByProjectId(projectId),
+  getProjectVersions: (projectId: string) => manuscriptService.history.getProjectVersions(projectId),
+  getProjectSnapshot: (projectId: string, version: number) =>
+    manuscriptService.history.getProjectSnapshot(projectId, version),
+  compareProjectVersions: (projectId: string, baseVersion: number, targetVersion: number) =>
+    manuscriptService.history.compareProjectVersions(projectId, baseVersion, targetVersion),
+  labelProjectVersion: (projectId: string, version: number, label: string) =>
+    manuscriptService.history.labelProjectVersion(projectId, version, label),
+  deleteProjectLabel: (projectId: string, labelId: string) =>
+    manuscriptService.history.deleteProjectLabel(projectId, labelId),
+  restoreProjectVersion: (projectId: string, targetVersion: number) =>
+    manuscriptService.history.restoreProjectVersion(projectId, targetVersion),
+  createProjectSnapshot: (
+    projectId: string,
+    summary?: string | { summary?: string; label?: string; isAutomatic?: boolean }
+  ) => {
+    const dto = typeof summary === 'string' ? { summary } : (summary ?? {});
+    return manuscriptService.history.createProjectSnapshot(projectId, dto);
+  },
   restoreToEvent: async (payload: { rootPageId: string; eventId?: string; versionNumber?: number }) => {
     if (payload.versionNumber) {
       return manuscriptService.history.restoreProjectVersion(payload.rootPageId, payload.versionNumber);
     }
     return [];
   },
-  getTimeline: manuscriptService.history.getTimeline,
-  getContentAt: manuscriptService.history.getContentAt,
+  getTimeline: (docId: string) => manuscriptService.history.getTimeline(docId),
+  getContentAt: (docId: string, versionId: string) => manuscriptService.history.getContentAt(docId, versionId),
 };
 
 export const ProjectHistoryService = historyService;

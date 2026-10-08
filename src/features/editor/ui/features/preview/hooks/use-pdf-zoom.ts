@@ -45,13 +45,7 @@ export function usePdfZoom({
         for (const entry of entries) {
           const w = Math.round(entry.contentRect.width);
           if (w > 0) {
-            setContainerWidth((prevWidth) => {
-              if (Math.abs(prevWidth - w) < 4) return prevWidth;
-              if (!isInitial) {
-                setAutoFit(true);
-              }
-              return w;
-            });
+            setContainerWidth((prevWidth) => (Math.abs(prevWidth - w) < 4 ? prevWidth : w));
             isInitial = false;
           }
         }
@@ -90,9 +84,9 @@ export function usePdfZoom({
 
   useEffect(() => {
     if (autoFit) {
-      setScale(fittedScale);
+      setScale(fittedScale, false);
     }
-  }, [autoFit, fittedScale]);
+  }, [autoFit, fittedScale, setScale]);
 
   const handleZoomIn = useCallback(() => {
     zoomIn();

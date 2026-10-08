@@ -125,12 +125,12 @@ export function WorkbenchShell({
   }, [bottomPanelHeight, setBottomPanelHeight]);
 
   return (
-    <div className={cn('h-screen w-screen flex flex-col overflow-hidden bg-background select-none', className)}>
+    <div className={cn('h-screen w-screen flex flex-col bg-background select-none', className)}>
       {/* ── Slot 1: Global Topbar ─────────────────────────────────────────── */}
       {topBar && <header className="shrink-0 z-30">{topBar}</header>}
 
       {/* ── Core Workspace (Horizontal Shell Area) ────────────────────────── */}
-      <main className="flex-1 flex overflow-hidden relative">
+      <main className="flex-1 flex relative min-h-0">
         {/* ── Slot 2: Far-Left Activity Bar (Icon Strip) ──────────────────── */}
         {activityBar && (
           <div className="h-full shrink-0 z-20">
@@ -156,12 +156,12 @@ export function WorkbenchShell({
         )}
 
         {/* ── Center Work Area: Editor, Preview, and Bottom Panel ──────────── */}
-        <div ref={containerRef} className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
-          <div className="flex-1 flex overflow-hidden min-h-0">
+        <div ref={containerRef} className="flex-1 flex flex-col h-full min-w-0 min-h-0">
+          <div className="flex-1 flex min-h-0 min-w-0">
             {/* ── Slot 4: Center Editor Area ────────────────────────────────── */}
             <section
               style={{ flex: `${splitRatio} 1 0%` }}
-              className="h-full flex flex-col overflow-hidden min-w-[200px] bg-background"
+              className="h-full flex flex-col min-w-[200px] min-h-0 bg-canvas relative"
             >
               {editor}
             </section>
@@ -179,7 +179,7 @@ export function WorkbenchShell({
             {preview && (
               <section
                 style={{ flex: `${1 - splitRatio} 1 0%` }}
-                className="h-full flex flex-col overflow-hidden min-w-[200px] border-l border-border bg-panel"
+                className="h-full flex flex-col min-w-[200px] min-h-0 border-l border-border bg-canvas relative"
               >
                 {preview}
               </section>
@@ -192,8 +192,8 @@ export function WorkbenchShell({
               <ResizeHandle
                 onMouseDown={handleBottomPanelResize}
                 onTouchStart={() => {}}
+                orientation="horizontal"
                 label="Resize bottom problems panel"
-                className="h-1.5 w-full cursor-row-resize"
               />
               <div
                 style={{ height: `${bottomPanelHeight}px` }}

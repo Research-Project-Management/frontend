@@ -16,8 +16,8 @@ import { useLayoutStore } from '../store/layout.store';
 import { diagnosticsCoordinator, type IndexedDiagnosticItem } from './diagnostics.coordinator';
 import { sessionCoordinator } from './session.coordinator';
 import { editorCommandBus } from './command-bus';
-import { lruDocumentCache } from '../domain/lru-document-cache';
-import { suggestLatexFix } from './services/ai-error-assist.service';
+import * as aiErrorAssistService from '@/features/editor/coordinators/services/ai-error-assist.service';
+import { lruDocumentCache } from '../domain/document/lru-document-cache';
 import type { DiffProposal } from '../domain/types/ports/editor-engine.port';
 import { toast } from 'sonner';
 
@@ -74,6 +74,16 @@ export class AiCoordinatorRegistry {
       const engine = getActiveEditorInstance();
       if (engine?.rejectDiff) {
         engine.rejectDiff(cmd.diffId);
+      }
+    });
+
+    editorCommandBus.subscribe('ai:diff-resolved', (cmd: any) => {
+      const action = cmd.action || cmd.payload?.action;
+      if (action === 'accept') {
+        toast.success('Applied AI suggestion to document!');
+        editorCommandBus.dispatch({ type: 'compiler:trigger', draft: true });
+      } else if (action === 'reject') {
+        toast.info('Rejected AI diff proposal');
       }
     });
   }
@@ -167,10 +177,12 @@ export class AiCoordinatorRegistry {
     const endContext = Math.min(lines.length, errLine + 2);
     const surroundingCode = lines.slice(startContext - 1, endContext).join('\n');
 
-    const toastId = toast.loading(`AI is analyzing fix for line ${diagnostic.line}...`);
+    const toastId = typeof toast.loading === 'function'
+      ? toast.loading(`AI is analyzing fix for line ${diagnostic.line}...`)
+      : null;
 
     try {
-      const fixResult = await suggestLatexFix({
+      const fixResult = await aiErrorAssistService.suggestLatexFix({
         errorMessage: diagnostic.message,
         errorLine: diagnostic.line,
         errorFile: fileName,
@@ -181,14 +193,29 @@ export class AiCoordinatorRegistry {
         projectId: pageStore.projectId,
       });
 
-      toast.dismiss(toastId);
+      if (toastId && typeof toast.dismiss === 'function') {
+        toast.dismiss(toastId);
+      }
 
       if (fixResult && fixResult.fixedSnippet) {
+        editorCommandBus.dispatch({
+          type: 'navigation:jump-to-line',
+          filePath: fileName,
+          fileId,
+          line: diagnostic.line,
+          highlight: 'error',
+        });
+
         const success = this.proposeDiff(fileId, fixResult.fixedSnippet, {
           line: fixResult.startLine || diagnostic.line,
           endLine: fixResult.endLine,
           title: `AI Fix: ${fixResult.explanation || diagnostic.message}`,
         });
+        if (success) {
+          toast.success(`AI Diff ready for line ${diagnostic.line} — Press Tab to Accept, Esc to Reject`, {
+            duration: 6000,
+          });
+        }
         return success;
       } else {
         toast.error('AI could not generate an automatic fix. Opening AI Assistant...');
@@ -196,7 +223,9 @@ export class AiCoordinatorRegistry {
         return false;
       }
     } catch {
-      toast.dismiss(toastId);
+      if (toastId && typeof toast.dismiss === 'function') {
+        toast.dismiss(toastId);
+      }
       toast.error('Failed to generate AI fix. Opening AI Assistant...');
       this.openAiForError(diagnostic);
       return false;
@@ -251,7 +280,7 @@ export class AiCoordinatorRegistry {
         };
 
         engine.proposeDiff(proposal);
-        toast.info(`Review AI diff for line ${startLine} (⌘⏎ Accept, Esc Reject)`);
+        toast.info(`Review AI diff for line ${startLine} (Tab to Accept, Esc to Reject)`);
         return true;
       }
     }
@@ -271,7 +300,7 @@ export class AiCoordinatorRegistry {
       };
 
       engine.proposeDiff(proposal);
-      toast.info('Review AI diff in editor (⌘⏎ Accept, Esc Reject)');
+      toast.info('Review AI diff in editor (Tab to Accept, Esc to Reject)');
       return true;
     }
 
@@ -288,7 +317,7 @@ export class AiCoordinatorRegistry {
       };
 
       engine.proposeDiff(proposal);
-      toast.info('Review AI insertion in editor (⌘⏎ Accept, Esc Reject)');
+      toast.info('Review AI insertion in editor (Tab to Accept, Esc to Reject)');
       return true;
     }
 

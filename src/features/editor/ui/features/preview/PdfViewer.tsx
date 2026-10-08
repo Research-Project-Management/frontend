@@ -22,20 +22,20 @@ import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 
-import { usePageStore, useSettingsStore, useViewerStore } from '../../../store';
+import { usePageStore, useSettingsStore, useViewerStore, useLayoutStore } from '../../../store';
 import { filesQuery, usePageActions } from '../../hooks/use-core';
 import {
   extractPdfBookmarks,
   extractOutlineFromContent,
   type PdfOutlineItem,
-} from '../../../domain/utils/pdf-outline.util';
+} from '@/features/editor/domain/document/pdf-outline';
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
-import { editorCommandBus } from '../../../coordinators/command-bus';
+import { editorCommandBus, setActivePdfViewer } from '../../../coordinators/command-bus';
 
 import { PdfToolbar } from './PdfToolbar';
 import { PdfFindBar } from './PdfFindBar';
 import PdfSurface, { type SurfaceHandle } from './PdfSurface';
-import CompilerLogs, { parseLatexLog } from './CompilerLogs';
+import { parseLatexLog } from './CompilerLogs';
 import DetachedViewerPlaceholder from './DetachedViewerPlaceholder';
 
 import { usePdfZoom } from './hooks/use-pdf-zoom';
@@ -43,6 +43,7 @@ import { usePdfCompiler } from './hooks/use-pdf-compiler';
 import { useViewerSyncTeX } from './hooks/use-viewer-synctex';
 import { useViewerPopout } from './hooks/use-viewer-popout';
 import { usePdfSearch } from './hooks/use-pdf-search';
+import { useSynchronizedScroll } from './hooks/use-synchronized-scroll';
 
 const PresentationModeModal = dynamic(
   () => import('./PresentationModeModal').then((mod) => mod.PresentationModeModal),
@@ -67,6 +68,9 @@ export function PdfViewer() {
 
   const pdfSpreadView = useSettingsStore((s) => s.pdfSpreadView);
   const togglePdfSpreadView = useSettingsStore((s) => s.togglePdfSpreadView);
+  const syncScroll = useSettingsStore((s) => s.syncScroll);
+  const toggleSyncScroll = useSettingsStore((s) => s.toggleSyncScroll);
+  const activeFilePage = usePageStore((s) => s.activeFilePage);
 
   const { updateThumbnail: saveThumbnailMutation } = usePageActions();
 
@@ -88,9 +92,14 @@ export function PdfViewer() {
   const handlePrevPage = useViewerStore((s) => s.prevPage);
   const handleNextPage = useViewerStore((s) => s.nextPage);
 
-  const [showLog, setShowLog] = useState(false);
   const [pdfOutline, setPdfOutline] = useState<PdfOutlineItem[]>([]);
   const [isPresentationOpen, setIsPresentationOpen] = useState(false);
+
+  const bottomPanelOpen = useLayoutStore((s) => s.bottomPanelOpen);
+  const activeBottomTab = useLayoutStore((s) => s.activeBottomTab);
+  const toggleBottomPanel = useLayoutStore((s) => s.toggleBottomPanel);
+  const setBottomPanelOpen = useLayoutStore((s) => s.setBottomPanelOpen);
+  const setActiveBottomTab = useLayoutStore((s) => s.setActiveBottomTab);
 
   // 1. Compilation Controller
   const {
@@ -116,6 +125,23 @@ export function PdfViewer() {
     saveThumbnailMutation,
   });
 
+  const parsedLog = useMemo(
+    () => (compileLog ? parseLatexLog(compileLog) : null),
+    [compileLog],
+  );
+
+  const handleToggleLog = useCallback(() => {
+    const hasIssues = (parsedLog?.errors.length ?? 0) > 0 || (parsedLog?.warnings.length ?? 0) > 0;
+    const targetTab = hasIssues ? 'problems' : 'output';
+
+    if (bottomPanelOpen && activeBottomTab === targetTab) {
+      toggleBottomPanel();
+    } else {
+      setActiveBottomTab(targetTab);
+      setBottomPanelOpen(true);
+    }
+  }, [bottomPanelOpen, activeBottomTab, toggleBottomPanel, setActiveBottomTab, setBottomPanelOpen, parsedLog]);
+
   // 2. Zoom & Scaling Controller
   const {
     scale,
@@ -139,6 +165,8 @@ export function PdfViewer() {
     pageId: rootPageId,
     projectId,
     scale,
+    autoFit,
+    containerWidth,
     numPages,
     pageNumber,
     setPageNumber,
@@ -146,6 +174,16 @@ export function PdfViewer() {
     synctexMapRef,
     pageFiles,
   });
+
+  useEffect(() => {
+    setActivePdfViewer({
+      scrollToPage: handleJumpToPage,
+      surface: pdfSurfaceRef.current,
+    });
+    return () => {
+      setActivePdfViewer(null);
+    };
+  }, [handleJumpToPage]);
 
   // 4. Detached Window & Popout Broadcast Controller
   const {
@@ -186,6 +224,18 @@ export function PdfViewer() {
     onScrollToPage: (p) => pdfSurfaceRef.current?.scrollToPage(p),
   });
 
+  // 6. Split-View Synchronized Dual Scrolling Controller
+  const { handleViewerScroll } = useSynchronizedScroll({
+    enabled: syncScroll,
+    pdfSurfaceRef,
+    synctexMapRef,
+    numPages,
+    scale,
+    autoFit,
+    containerWidth,
+    activeFilePath: activeFilePage?.title || 'main.tex',
+  });
+
   // F5 shortcut for Presentation mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -198,26 +248,20 @@ export function PdfViewer() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [pdfUrl, isPresentationOpen]);
 
-  // Auto-switch to Logs on error and back to PDF on success
+  // Auto-open Bottom Panel with Problems on compile error
   useEffect(() => {
     if (compileStatus === 'error') {
-      setShowLog(true);
-    } else if (compileStatus === 'done' && pdfUrl) {
-      setShowLog(false);
+      useLayoutStore.getState().openBottomPanelWithTab('problems');
     }
-  }, [compileStatus, pdfUrl]);
+  }, [compileStatus]);
 
-  // Open Logs panel when editor requests AI fix
+  // Open AI Assistant in Left Sidebar when editor requests AI fix
   useEffect(() => {
     return editorCommandBus.subscribe('editor:suggest-fix', () => {
-      setShowLog(true);
+      useLayoutStore.getState().setSidebarLeftOpen(true);
     });
   }, []);
 
-  const parsedLog = useMemo(
-    () => (compileLog ? parseLatexLog(compileLog) : null),
-    [compileLog],
-  );
 
   const onDocumentLoadSuccess = useCallback(async (pdf: any) => {
     pdfDocRef.current = pdf;
@@ -246,7 +290,6 @@ export function PdfViewer() {
     a.click();
   }, [pdfUrl, documentTitle]);
 
-  const handleToggleLog = useCallback(() => setShowLog((p) => !p), []);
   const handleToggleAutoCompile = useCallback(() => setAutoCompile(!autoCompile), [autoCompile, setAutoCompile]);
   const handleToggleInvertColors = toggleInvertColors;
   const handleSetCompileMode = useCallback((m: 'full' | 'draft') => setCompileMode(m), [setCompileMode]);
@@ -254,7 +297,7 @@ export function PdfViewer() {
   // If detached, show placeholder with toolbar controls
   if (isViewerPoppedOut) {
     return (
-      <div className="h-full flex flex-col bg-background select-none relative min-h-0">
+      <div className="h-full flex flex-col bg-canvas select-none relative min-h-0">
         <PdfToolbar
           compileStatus={compileStatus}
           engine={engine}
@@ -280,7 +323,7 @@ export function PdfViewer() {
           onNextPage={handleNextPage}
           pdfUrl={pdfUrl}
           compileLog={compileLog || ''}
-          showLog={false}
+          showLog={bottomPanelOpen}
           showUtilityGroup={showUtilityGroup}
           onToggleLog={handleToggleLog}
           onDownload={handleDownload}
@@ -294,6 +337,8 @@ export function PdfViewer() {
           onOpenPresentationMode={() => setIsPresentationOpen(true)}
           errorCount={parsedLog?.errors.length ?? 0}
           warningCount={parsedLog?.warnings.length ?? 0}
+          syncScroll={syncScroll}
+          onToggleSyncScroll={toggleSyncScroll}
         />
         <DetachedViewerPlaceholder
           compileStatus={compileStatus}
@@ -307,101 +352,89 @@ export function PdfViewer() {
 
   return (
     <div className="h-full w-full flex flex-col bg-canvas select-none relative min-h-0">
-      {showLog ? (
-        <CompilerLogs
-          log={compileLog || ''}
-          parsedLog={parsedLog || undefined}
-          onClose={() => setShowLog(false)}
-          onJumpToError={(file, line) =>
-            handleJumpToSource(file || null, line, undefined, undefined, undefined, 'error')
-          }
-          onClearCacheAndCompile={handleClearCacheAndCompile}
-          onCompile={handleCompile}
+      <PdfToolbar
+        compileStatus={compileStatus}
+        engine={engine}
+        setEngine={setEngine}
+        compileMode={compileMode as 'full' | 'draft'}
+        setCompileMode={handleSetCompileMode}
+        autoCompile={autoCompile}
+        onToggleAutoCompile={handleToggleAutoCompile}
+        onClearCacheAndCompile={handleClearCacheAndCompile}
+        onStopCompilation={handleStopCompilation}
+        onCompile={handleCompile}
+        onForceSync={handleForceSync}
+        scale={scale}
+        autoFit={autoFit}
+        showZoomGroup={showZoomGroup}
+        onToggleAutoFit={handleToggleAutoFit}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onResetZoom={handleResetZoom}
+        onSetScale={handleSetScale}
+        pageNumber={pageNumber}
+        numPages={numPages}
+        onPrevPage={handlePrevPage}
+        onNextPage={handleNextPage}
+        pdfUrl={pdfUrl}
+        compileLog={compileLog || ''}
+        showLog={bottomPanelOpen}
+        showUtilityGroup={showUtilityGroup}
+        onToggleLog={handleToggleLog}
+        onDownload={handleDownload}
+        onPopout={handlePopoutWindow}
+        isPoppedOut={false}
+        outline={pdfOutline}
+        onJumpToPage={handleJumpToPage}
+        invertColors={invertColors}
+        onToggleInvertColors={handleToggleInvertColors}
+        isSpreadView={pdfSpreadView}
+        onToggleSpreadView={togglePdfSpreadView}
+        isSearchOpen={isSearchOpen}
+        onToggleSearch={toggleSearch}
+        onOpenPresentationMode={() => setIsPresentationOpen(true)}
+        errorCount={parsedLog?.errors.length ?? 0}
+        warningCount={parsedLog?.warnings.length ?? 0}
+        syncScroll={syncScroll}
+        onToggleSyncScroll={toggleSyncScroll}
+      />
+
+      <a ref={downloadRef} className="hidden" aria-hidden="true" />
+
+      {/* PDF Viewer Surface */}
+      <div ref={pdfContainerRef} className="flex-1 min-h-0 relative flex flex-col">
+        <PdfFindBar
+          isOpen={isSearchOpen}
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          matchesCount={searchMatches.length}
+          currentMatchIndex={currentMatchIndex}
+          isSearching={isSearching}
+          onNext={nextMatch}
+          onPrev={prevMatch}
+          onClose={closeSearch}
         />
-      ) : (
-        <>
-          <PdfToolbar
-            compileStatus={compileStatus}
-            engine={engine}
-            setEngine={setEngine}
-            compileMode={compileMode as 'full' | 'draft'}
-            setCompileMode={handleSetCompileMode}
-            autoCompile={autoCompile}
-            onToggleAutoCompile={handleToggleAutoCompile}
-            onClearCacheAndCompile={handleClearCacheAndCompile}
-            onStopCompilation={handleStopCompilation}
-            onCompile={handleCompile}
-            onForceSync={handleForceSync}
-            scale={scale}
-            autoFit={autoFit}
-            showZoomGroup={showZoomGroup}
-            onToggleAutoFit={handleToggleAutoFit}
-            onZoomIn={handleZoomIn}
-            onZoomOut={handleZoomOut}
-            onResetZoom={handleResetZoom}
-            onSetScale={handleSetScale}
-            pageNumber={pageNumber}
-            numPages={numPages}
-            onPrevPage={handlePrevPage}
-            onNextPage={handleNextPage}
-            pdfUrl={pdfUrl}
-            compileLog={compileLog || ''}
-            showLog={showLog}
-            showUtilityGroup={showUtilityGroup}
-            onToggleLog={handleToggleLog}
-            onDownload={handleDownload}
-            onPopout={handlePopoutWindow}
-            isPoppedOut={false}
-            outline={pdfOutline}
-            onJumpToPage={handleJumpToPage}
-            invertColors={invertColors}
-            onToggleInvertColors={handleToggleInvertColors}
-            isSpreadView={pdfSpreadView}
-            onToggleSpreadView={togglePdfSpreadView}
-            isSearchOpen={isSearchOpen}
-            onToggleSearch={toggleSearch}
-            onOpenPresentationMode={() => setIsPresentationOpen(true)}
-            errorCount={parsedLog?.errors.length ?? 0}
-            warningCount={parsedLog?.warnings.length ?? 0}
-          />
-
-          <a ref={downloadRef} className="hidden" aria-hidden="true" />
-
-          {/* PDF Viewer Surface */}
-          <div ref={pdfContainerRef} className="flex-1 min-h-0 relative flex flex-col">
-            <PdfFindBar
-              isOpen={isSearchOpen}
-              query={searchQuery}
-              onQueryChange={setSearchQuery}
-              matchesCount={searchMatches.length}
-              currentMatchIndex={currentMatchIndex}
-              isSearching={isSearching}
-              onNext={nextMatch}
-              onPrev={prevMatch}
-              onClose={closeSearch}
-            />
-            <PdfSurface
-              ref={pdfSurfaceRef}
-              pdfUrl={pdfUrl}
-              synctexMap={synctexMapRef.current}
-              scale={scale}
-              autoFit={autoFit}
-              containerWidth={containerWidth}
-              scrollMode={true}
-              pageNumber={pageNumber}
-              numPages={numPages}
-              compileStatus={compileStatus}
-              onPageNumberChange={setPageNumber}
-              onNumPagesChange={setNumPages}
-              onDocumentLoadSuccess={onDocumentLoadSuccess}
-              onJumpToSource={handleJumpToSource}
-              onCompile={handleCompile}
-              invertColors={invertColors}
-              isSpreadView={pdfSpreadView}
-            />
-          </div>
-        </>
-      )}
+        <PdfSurface
+          ref={pdfSurfaceRef}
+          pdfUrl={pdfUrl}
+          synctexMap={synctexMapRef.current}
+          scale={scale}
+          autoFit={autoFit}
+          containerWidth={containerWidth}
+          scrollMode={true}
+          pageNumber={pageNumber}
+          numPages={numPages}
+          compileStatus={compileStatus}
+          onPageNumberChange={setPageNumber}
+          onNumPagesChange={setNumPages}
+          onDocumentLoadSuccess={onDocumentLoadSuccess}
+          onJumpToSource={handleJumpToSource}
+          onCompile={handleCompile}
+          invertColors={invertColors}
+          isSpreadView={pdfSpreadView}
+          onScroll={handleViewerScroll}
+        />
+      </div>
 
       {/* Presentation Mode Fullscreen Modal */}
       {isPresentationOpen && (

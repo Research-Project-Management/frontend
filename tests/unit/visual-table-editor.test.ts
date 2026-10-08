@@ -3,7 +3,7 @@ import {
   latexToHtml,
   htmlToLatex,
   convertLatexTableToHtml,
-} from '@/features/editor/utils/latex-converter.util';
+} from '@/features/editor/domain/latex/latex-converter';
 
 describe('Visual Table Editing (WYSIWYG Overleaf Parity)', () => {
   describe('convertLatexTableToHtml', () => {

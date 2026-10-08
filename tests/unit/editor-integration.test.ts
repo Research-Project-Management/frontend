@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { collaborationService, type CollaborationEvent } from '@/features/editor/services/collaboration.service';
+import { collaborationService, type CollaborationEvent } from '@/features/editor/coordinators/services/collaboration.service';
 import { useSettingsStore } from '@/features/editor/store';
-import { parseSyncTeX, LatexCompilerEngine } from '@/features/editor/utils/viewer.util';
+import { parseSyncTeX, LatexCompilerEngine } from '@/features/editor/coordinators/services/latex-compiler-engine.service';
 import { fromAny, fromPartial } from '@/shared/lib/type-utilities';
 
 describe('Editor & Document End-to-End Integration Tests', () => {

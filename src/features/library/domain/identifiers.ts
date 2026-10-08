@@ -107,3 +107,58 @@ export function getArxivPdfUrl(arxivId?: string | null): string {
   const id = extractArxivId(arxivId);
   return id ? `https://arxiv.org/pdf/${id}.pdf` : '';
 }
+
+/**
+ * Normalizes title string by collapsing whitespace and fixing spaced hyphens (e.g. "Large - Scale" -> "Large-Scale").
+ */
+export function cleanPaperTitle(raw?: string | null): string {
+  if (!raw || typeof raw !== 'string') return '';
+  let cleaned = raw.trim();
+  cleaned = cleaned.replace(/\s+/g, ' ');
+  // Normalize spaced hyphens: e.g. "Large - Scale" -> "Large-Scale", "Auto - Encoding" -> "Auto-Encoding"
+  cleaned = cleaned.replace(/(\p{L})\s+-\s+(\p{L})/gu, '$1-$2');
+  return cleaned.trim();
+}
+
+/**
+ * Converts a title to standard academic title case, lowercasing common prepositions/articles
+ * except when at the start or end of the title.
+ */
+export function normalizeAcademicTitleCase(title?: string | null): string {
+  if (!title || typeof title !== 'string') return '';
+  const cleaned = cleanPaperTitle(title);
+  if (!cleaned) return '';
+
+  const stopWords = new Set([
+    'a',
+    'an',
+    'the',
+    'and',
+    'but',
+    'or',
+    'for',
+    'nor',
+    'on',
+    'at',
+    'to',
+    'from',
+    'by',
+    'with',
+    'in',
+    'of',
+    'over',
+    'into',
+    'onto',
+  ]);
+
+  const words = cleaned.split(' ');
+  return words
+    .map((word, index) => {
+      const lower = word.toLowerCase();
+      if (index > 0 && index < words.length - 1 && stopWords.has(lower)) {
+        return lower;
+      }
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(' ');
+}

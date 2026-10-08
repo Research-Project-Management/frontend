@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   ViewerBroadcastBridge,
   type PopoutMessage,
-} from '@/features/editor/utils/popout-channel.util';
+} from '@/features/editor/coordinators/channels/popout-channel';
 
 describe('ViewerBroadcastBridge (Cross-Window Communication)', () => {
   it('should deliver messages between two bridge instances on the same pageId', () => {

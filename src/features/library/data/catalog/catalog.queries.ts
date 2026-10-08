@@ -1247,7 +1247,11 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
         toast.success('Item updated', { id: 'item-update' });
       }
     },
-    onError: (err: any) => {
+    onError: (err: any, variables) => {
+      const targetId = variables?.id || variables?.itemId;
+      if (targetId) {
+        queryClient.invalidateQueries({ queryKey: itemKeys.byId(effectiveScope, targetId) });
+      }
       toast.error('Failed to update item', {
         description: err?.message || 'Please try again.',
         id: 'item-update',

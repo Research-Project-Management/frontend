@@ -4,7 +4,7 @@ import {
   htmlToLatex,
   extractLatexBodyAndPreamble,
   renderMathHtml,
-} from '@/features/editor/utils/latex-converter.util';
+} from '@/features/editor/domain/latex/latex-converter';
 
 describe('latex-converter.util (AST-Guarded Lossless Conversion)', () => {
   describe('extractLatexBodyAndPreamble', () => {
@@ -47,14 +47,12 @@ Hello world!
   });
 
   describe('latexToHtml & htmlToLatex Round-trip Lossless Integrity', () => {
-    it('should preserve protected environments (figure, table, tikz)', () => {
+    it('should preserve protected environments (table, tikz, algorithm)', () => {
       const raw = `
-\\begin{figure}[htbp]
-\\centering
-\\includegraphics[width=0.8\\textwidth]{plot.png}
-\\caption{Experimental Results}
-\\label{fig:results}
-\\end{figure}
+\\begin{tikzpicture}
+\\draw (0,0) -- (1,1);
+\\node at (0.5,0.5) {test};
+\\end{tikzpicture}
       `.trim();
 
       const html = latexToHtml(raw);
@@ -62,10 +60,60 @@ Hello world!
       expect(html).toContain('Protected Block');
 
       const restored = htmlToLatex(html);
+      expect(restored).toContain('\\begin{tikzpicture}');
+      expect(restored).toContain('\\draw (0,0) -- (1,1);');
+      expect(restored).toContain('\\end{tikzpicture}');
+    });
+
+    it('should convert figure and figure* to interactive WYSIWYG figures and restore faithfully', () => {
+      const raw = `
+\\begin{figure}[htbp]
+\\centering
+\\includegraphics[width=0.8\\linewidth]{plot.png}
+\\caption{Experimental Results}
+\\label{fig:results}
+\\end{figure}
+      `.trim();
+
+      const html = latexToHtml(raw);
+      expect(html).toContain('latex-figure-wrapper');
+      expect(html).toContain('data-src="plot.png"');
+      expect(html).toContain('data-width="0.8%5Clinewidth"');
+      expect(html).toContain('data-caption="Experimental%20Results"');
+      expect(html).toContain('data-label="fig%3Aresults"');
+      expect(html).toContain('data-placement="htbp"');
+      expect(html).toContain('data-centering="true"');
+      expect(html).toContain('Experimental Results');
+      expect(html).toContain('style="width: 80%;"');
+
+      const restored = htmlToLatex(html);
       expect(restored).toContain('\\begin{figure}[htbp]');
-      expect(restored).toContain('\\includegraphics[width=0.8\\textwidth]{plot.png}');
+      expect(restored).toContain('\\centering');
+      expect(restored).toContain('\\includegraphics[width=0.8\\linewidth]{plot.png}');
       expect(restored).toContain('\\caption{Experimental Results}');
+      expect(restored).toContain('\\label{fig:results}');
       expect(restored).toContain('\\end{figure}');
+
+      // Test figure* (starred two-column figure)
+      const rawStarred = `
+\\begin{figure*}[!t]
+\\includegraphics[width=\\textwidth]{wide-diagram.pdf}
+\\caption{Wide Diagram across two columns}
+\\label{fig:wide}
+\\end{figure*}
+      `.trim();
+
+      const htmlStarred = latexToHtml(rawStarred);
+      expect(htmlStarred).toContain('latex-figure-wrapper');
+      expect(htmlStarred).toContain('data-starred="true"');
+      expect(htmlStarred).toContain('data-placement="!t"');
+
+      const restoredStarred = htmlToLatex(htmlStarred);
+      expect(restoredStarred).toContain('\\begin{figure*}[!t]');
+      expect(restoredStarred).toContain('\\includegraphics[width=\\textwidth]{wide-diagram.pdf}');
+      expect(restoredStarred).toContain('\\caption{Wide Diagram across two columns}');
+      expect(restoredStarred).toContain('\\label{fig:wide}');
+      expect(restoredStarred).toContain('\\end{figure*}');
     });
 
     it('should preserve LaTeX comments without dropping them', () => {
@@ -145,6 +193,27 @@ Some text here.
       expect(restored).toContain('\\section{Methods}');
       expect(restored).toContain('Some text here.');
       expect(restored).toContain('\\end{document}');
+    });
+
+    it('should assign accurate data-line attributes to headings, blocks, figures and tables for SyncTeX', () => {
+      const latex = [
+        '\\section{First Section}',
+        'First paragraph of text.',
+        '\\begin{equation}',
+        'y = mx + b',
+        '\\end{equation}',
+        '\\begin{figure}[htbp]',
+        '\\centering',
+        '\\includegraphics{chart.png}',
+        '\\caption{Chart}',
+        '\\end{figure}',
+      ].join('\n');
+
+      const html = latexToHtml(latex);
+      expect(html).toContain('data-line="1"'); // section
+      expect(html).toContain('data-line="2"'); // paragraph
+      expect(html).toContain('data-line="3"'); // equation
+      expect(html).toContain('data-line="6"'); // figure
     });
   });
 });

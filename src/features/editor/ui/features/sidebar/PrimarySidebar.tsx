@@ -20,7 +20,7 @@ import dynamic from 'next/dynamic';
 import { Loader2 } from 'lucide-react';
 import { useLayoutStore } from '../../../store/layout.store';
 
-import FilesTab from './FilesTab';
+import FilesTab from './explorer/FilesTab';
 
 const PanelLoadingFallback = () => (
   <div className="flex h-full w-full items-center justify-center p-6 text-muted-foreground">
@@ -29,32 +29,32 @@ const PanelLoadingFallback = () => (
   </div>
 );
 
-const SearchTab = dynamic(() => import('./SearchTab'), {
+const SearchTab = dynamic(() => import('./search/SearchTab'), {
   ssr: false,
   loading: PanelLoadingFallback,
 });
 
-const CitationTab = dynamic(() => import('./CitationTab'), {
+const CitationTab = dynamic(() => import('./citation/CitationTab'), {
   ssr: false,
   loading: PanelLoadingFallback,
 });
 
-const ReviewTab = dynamic(() => import('./ReviewTab'), {
+const ReviewTab = dynamic(() => import('./review/ReviewTab'), {
   ssr: false,
   loading: PanelLoadingFallback,
 });
 
-const ChatTab = dynamic(() => import('./ChatTab'), {
+const ChatTab = dynamic(() => import('./chat/ChatTab'), {
   ssr: false,
   loading: PanelLoadingFallback,
 });
 
-const AiTab = dynamic(() => import('./AiTab'), {
+const AiTab = dynamic(() => import('./ai/AiTab'), {
   ssr: false,
   loading: PanelLoadingFallback,
 });
 
-const OutlineTab = dynamic(() => import('./OutlineTab'), {
+const OutlineTab = dynamic(() => import('./outline/OutlineTab'), {
   ssr: false,
   loading: PanelLoadingFallback,
 });
@@ -91,7 +91,7 @@ export function PrimarySidebar() {
   };
 
   return (
-    <div className="h-full w-full flex flex-col bg-background overflow-hidden select-none">
+    <div className="h-full w-full flex flex-col bg-surface overflow-hidden select-none">
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {renderContent()}
       </div>

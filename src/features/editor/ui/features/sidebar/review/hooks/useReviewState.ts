@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { usePageStore, useDocumentCollaborationStore } from '@/features/editor/store';
+import { usePageStore, useDocumentCollaborationStore, useSettingsStore } from '@/features/editor/store';
 import { useActiveDocument, filesQuery } from '@/features/editor/ui/hooks/use-core';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { usePageComments } from '@/features/editor/ui/hooks/use-comment';
@@ -16,10 +16,13 @@ import {
 } from '@/features/editor/ui/hooks/use-suggestion';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import type { MentionMember } from '@/features/editor/domain/utils/mention.util';
+import { reviewCoordinator } from '@/features/editor/coordinators/review.coordinator';
+import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
 import { useReviewRealtimeNotifications } from '../useReviewRealtimeNotifications';
 import { jumpToEditorLine, scrollToReviewItem } from '../utils/review.util';
 
+export type { ReviewPendingCountResult } from './useReviewPendingCount';
+export { useReviewPendingCount } from './useReviewPendingCount';
 export type ReviewScope = 'current' | 'overview';
 
 export function useReviewState() {
@@ -183,6 +186,20 @@ export function useReviewState() {
     () => suggestions.filter((s) => s.status === 'accepted' || s.status === 'rejected'),
     [suggestions],
   );
+
+  const reviewMode = useSettingsStore((s) => s.reviewMode);
+  const trackChangesViewMode = useSettingsStore((s) => s.trackChangesViewMode);
+
+  // Sync active suggestions and comments into CodeMirror editor decorations
+  useEffect(() => {
+    reviewCoordinator.syncEditorDecorations(
+      null,
+      suggestions,
+      comments,
+      trackChangesViewMode === 'clean' ? 'hide' : 'show',
+      Boolean(reviewMode)
+    );
+  }, [suggestions, comments, trackChangesViewMode, reviewMode]);
 
   const currentFileResolvedCount = resolvedComments.length + resolvedSuggestions.length;
   const activeResolvedCount = scope === 'current' ? currentFileResolvedCount : overviewResolvedCount;

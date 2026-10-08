@@ -35,7 +35,7 @@ import {
   createFileSchema,
   createFolderSchema,
   renameItemSchema,
-} from '@/features/editor/domain/types/schemas';
+} from '@/features/editor/domain/types';
 import {
   usePageStore,
   useTabsStore,
@@ -326,6 +326,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     displayTree,
     toggleFolder,
     isFolderExpanded,
+    collapseAll,
   } = useFileTree({
     projectFiles,
     files,
@@ -336,6 +337,8 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     configuredMainFile,
     fileFilter,
   });
+
+
 
   const handleOpenPreview = useCallback(
     (item: StorageItem) => {
@@ -688,7 +691,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         {/* ── File tree ──────────────────────────────────────────────────────── */}
         {isFileTreeOpen && (
           <div
-            className="relative min-h-0 flex-1 overflow-y-auto pl-2 pr-1 pb-3 thin-scrollbar"
+            className="relative min-h-0 flex-1 overflow-y-auto px-2 pt-2.5 pb-3 thin-scrollbar space-y-0.5 border-b border-border"
             onDragEnter={(e) => {
               if (!e.dataTransfer.types.includes('application/flux-file-id')) {
                 handleDragEnter(e);

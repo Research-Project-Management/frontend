@@ -15,15 +15,16 @@
  * - Dispatches typed progress events on IEditorCommandBus (compiler:started, compiler:progress, compiler:finished).
  */
 
-import { LatexCompilerEngine, type SyncTeXMap } from '../domain/utils/viewer.util';
-import { latexDagEngine } from '../domain/latex-dag-engine';
-import { lruDocumentCache } from '../domain/lru-document-cache';
-import { CompilationSnapshotProvider } from '../domain/compilation-snapshot';
+import { LatexCompilerEngine } from './services/latex-compiler-engine.service';
+import type { SyncTeXMap } from '@/features/editor/domain';
+import { latexDagEngine } from '../domain/latex/latex-dag-engine';
+import { lruDocumentCache } from '../domain/document/lru-document-cache';
+import { CompilationSnapshotProvider } from '../domain/document/compilation-snapshot';
 import { diagnosticsCoordinator } from './diagnostics.coordinator';
 import { sessionCoordinator } from './session.coordinator';
 import { editorCommandBus } from './command-bus';
 import { useCompileStore, usePageStore, useSettingsStore } from '../store';
-import { getActiveEditorContent, getActiveEditorEngine } from './command-bus';
+import { getActiveEditorContent, getActiveEditorEngine, getActivePdfViewer } from './command-bus';
 import type { CompileError } from '../domain/types/compiler.types';
 
 export interface CompileOptions {
@@ -70,6 +71,9 @@ export class CompilerCoordinatorRegistry {
     });
 
     editorCommandBus.subscribe('synctex:forward', (cmd) => {
+      // If a full PDF preview surface is active, useViewerSyncTeX handles forward sync with coordinate precision
+      if (getActivePdfViewer()) return;
+
       let targetLine = cmd.line;
       if (targetLine === undefined) {
         const engine = getActiveEditorEngine();
@@ -132,9 +136,11 @@ export class CompilerCoordinatorRegistry {
       return false;
     }
 
-    // 1. Guard against overlapping compilations: cancel previous in-flight job
+    // 1. Guard against overlapping compilations: cancel previous in-flight job and queue next
     if (this.isCompiling) {
+      compileStore.setPendingCompile(true);
       LatexCompilerEngine.cancelInFlightCompile();
+      return false;
     }
     this.isCompiling = true;
 

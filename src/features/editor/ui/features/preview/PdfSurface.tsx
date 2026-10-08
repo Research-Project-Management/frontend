@@ -24,9 +24,10 @@ import React, {
   useCallback,
   useMemo,
 } from 'react';
-import { Document, Page } from 'react-pdf';
+import { Document, Page, pdfjs } from 'react-pdf';
 import { Loader2 } from 'lucide-react';
-import { LatexCompilerEngine, type SyncTeXMap } from '@/features/editor/domain/utils/viewer.util';
+import { LatexCompilerEngine } from '@/features/editor/coordinators/services/latex-compiler-engine.service';
+import type { SyncTeXMap } from '@/features/editor/domain';
 import { compilerCoordinator } from '@/features/editor/coordinators/compiler.coordinator';
 import { useIntersectionObserver } from "@/shared/hooks";
 import { logger, cn } from "@/shared/lib/utils";
@@ -34,21 +35,94 @@ import { PlaneErrorState, PlaneEmptyState } from '@/shared/components/ui';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-import { setupPdfWorker } from '@/shared/lib/pdfjs-worker';
 
-// Ensure PDF.js worker is properly configured
-setupPdfWorker();
+// Official React-PDF standard: configure workerSrc directly in the module where <Document> is rendered
+if (typeof window !== 'undefined' && pdfjs?.GlobalWorkerOptions) {
+  pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+}
 
 // ── Optimized PDF Page with IntersectionObserver ──────────────────────────────
 
-interface ClickIndicator {
+export interface SynctexHighlightState {
   page: number;
   x: number;
   y: number;
   w?: number;
   h?: number;
   id: number;
+  type?: 'forward' | 'backward';
 }
+
+export type ClickIndicator = SynctexHighlightState;
+
+export interface PdfSyncTeXHighlightBoxProps {
+  indicator: SynctexHighlightState;
+  pageWidth: number;
+  scale: number;
+}
+
+export const PdfSyncTeXHighlightBox = React.memo(function PdfSyncTeXHighlightBox({
+  indicator,
+  pageWidth,
+  scale,
+}: PdfSyncTeXHighlightBoxProps) {
+  const isForward = indicator.type === 'forward' || (indicator.w !== undefined && indicator.h !== undefined);
+
+  if (isForward) {
+    const left = Math.max(8, indicator.x - 4);
+    const width =
+      indicator.w !== undefined && indicator.w > 0
+        ? Math.max(indicator.w + 8, 48)
+        : Math.max(160, Math.min(pageWidth - left - 24, 480));
+    const height =
+      indicator.h !== undefined && indicator.h > 0
+        ? Math.max(indicator.h + 4, 16)
+        : Math.max(18 * (scale > 0 ? scale : 1), 18);
+
+    return (
+      <div
+        key={indicator.id}
+        data-testid="synctex-pdf-highlight-box"
+        role="presentation"
+        aria-hidden="true"
+        className="synctex-pdf-highlight-box pointer-events-none"
+        style={{
+          left: `${left}px`,
+          top: `${indicator.y}px`,
+          width: `${width}px`,
+          height: `${height}px`,
+        }}
+      >
+        {/* Left Accent Indicator / Baseline Pin (Overleaf Parity) */}
+        <div
+          data-testid="synctex-pdf-accent-bar"
+          className="absolute -left-2 top-1/2 -translate-y-1/2 w-1.5 h-4/5 max-h-5 rounded-full bg-amber-500 dark:bg-amber-400 shadow-sm"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      key={indicator.id}
+      data-testid="synctex-pdf-backward-ripple"
+      role="presentation"
+      aria-hidden="true"
+      className="pointer-events-none absolute z-30 transition-opacity duration-300"
+      style={{
+        left: `${indicator.x}px`,
+        top: `${indicator.y}px`,
+        transform: 'translate(-50%, -50%)',
+      }}
+    >
+      <span className="relative flex size-9 items-center justify-center">
+        <span className="absolute inline-flex size-full animate-ping motion-reduce:animate-none rounded-full bg-primary/60 opacity-80" />
+        <span className="absolute inline-flex size-6 rounded-full border-2 border-primary bg-primary/20" />
+        <span className="relative inline-flex size-2 rounded-full bg-primary" />
+      </span>
+    </div>
+  );
+});
 
 interface OptimizedPDFPageProps {
   pageIndex: number; // 0-based
@@ -65,7 +139,7 @@ interface OptimizedPDFPageProps {
     pixelX?: number,
     pixelY?: number,
   ) => void;
-  clickIndicator?: ClickIndicator | null;
+  clickIndicator?: SynctexHighlightState | null;
   invertColors?: boolean;
   isSpreadView?: boolean;
 }
@@ -177,38 +251,11 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
         </div>
       )}
       {clickIndicator && clickIndicator.page === pageNum && (
-        <div
-          key={clickIndicator.id}
-          className="pointer-events-none absolute z-30 transition-opacity duration-300"
-          style={
-            clickIndicator.w && clickIndicator.h
-              ? {
-                  left: `${clickIndicator.x}px`,
-                  top: `${clickIndicator.y}px`,
-                  width: `${Math.max(clickIndicator.w, 48)}px`,
-                  height: `${Math.max(clickIndicator.h, 16)}px`,
-                  transform: 'translate(0, -50%)',
-                }
-              : {
-                  left: `${clickIndicator.x}px`,
-                  top: `${clickIndicator.y}px`,
-                  transform: 'translate(-50%, -50%)',
-                }
-          }
-        >
-          {clickIndicator.w && clickIndicator.h ? (
-            <div className="relative w-full h-full">
-              <div className="absolute inset-0 rounded-sm bg-primary/20 border-y-2 border-primary animate-pulse motion-reduce:animate-none" />
-              <div className="absolute -left-2 top-1/2 -translate-y-1/2 size-2 rounded-full bg-primary ring-2 ring-background" />
-            </div>
-          ) : (
-            <span className="relative flex size-9 items-center justify-center">
-              <span className="absolute inline-flex size-full animate-ping motion-reduce:animate-none rounded-full bg-primary/60 opacity-80" />
-              <span className="absolute inline-flex size-6 rounded-full border-2 border-primary bg-primary/20" />
-              <span className="relative inline-flex size-2 rounded-full bg-primary" />
-            </span>
-          )}
-        </div>
+        <PdfSyncTeXHighlightBox
+          indicator={clickIndicator}
+          pageWidth={pageWidth}
+          scale={scale}
+        />
       )}
     </div>
   );
@@ -218,7 +265,9 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
 
 export interface SurfaceHandle {
   scrollToPage: (pageNum: number) => void;
+  scrollToCoords?: (page: number, y: number, behavior?: ScrollBehavior) => void;
   highlightTarget?: (page: number, x: number, y: number, w?: number, h?: number) => void;
+  clearHighlight?: () => void;
   getContainer: () => HTMLDivElement | null;
 }
 
@@ -249,6 +298,7 @@ export interface SurfaceProps {
   onCompile?: () => void;
   invertColors?: boolean;
   isSpreadView?: boolean;
+  onScroll?: (info: { page: number; y: number; fraction: number }) => void;
 }
 
 export type PdfSurfaceProps = SurfaceProps;
@@ -271,18 +321,21 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
     onCompile,
     invertColors = false,
     isSpreadView = false,
+    onScroll,
   },
   ref,
 ) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const pageElemRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const approxHeightRef = useRef<number>(0);
-  const [clickIndicator, setClickIndicator] = useState<ClickIndicator | null>(null);
+  const [clickIndicator, setClickIndicator] = useState<SynctexHighlightState | null>(null);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [docLoadError, setDocLoadError] = useState<Error | null>(null);
 
   useEffect(() => {
-    setupPdfWorker();
+    if (typeof window !== 'undefined' && pdfjs?.GlobalWorkerOptions) {
+      pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+    }
   }, []);
 
   const documentOptions = useMemo(
@@ -304,12 +357,19 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
   }, [pdfUrl]);
 
   const triggerClickIndicator = useCallback(
-    (page: number, x: number, y: number, w?: number, h?: number) => {
+    (
+      page: number,
+      x: number,
+      y: number,
+      w?: number,
+      h?: number,
+      type: 'forward' | 'backward' = 'backward',
+    ) => {
       if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
-      setClickIndicator({ page, x, y, w, h, id: Date.now() });
+      setClickIndicator({ page, x, y, w, h, id: Date.now(), type });
       clickTimerRef.current = setTimeout(() => {
         setClickIndicator(null);
-      }, 2000);
+      }, 1900);
     },
     [],
   );
@@ -327,7 +387,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
     return pairs;
   }, [numPages, isSpreadView]);
 
-  // Expose container, scrollToPage, and target highlighting via ref
+  // Expose container, scrollToPage, scrollToCoords, and target highlighting via ref
   useImperativeHandle(ref, () => ({
     scrollToPage(pageNum: number) {
       const el = pageElemRefs.current[pageNum];
@@ -335,8 +395,21 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     },
+    scrollToCoords(page: number, y: number, behavior: ScrollBehavior = 'smooth') {
+      const el = pageElemRefs.current[page];
+      if (el) {
+        const container = scrollContainerRef.current;
+        if (container) {
+          const elTop = el.offsetTop;
+          const targetScrollTop = Math.max(0, elTop + y - container.clientHeight / 4);
+          container.scrollTo({ top: targetScrollTop, behavior });
+        } else {
+          el.scrollIntoView({ behavior, block: 'center' });
+        }
+      }
+    },
     highlightTarget(page: number, x: number, y: number, w?: number, h?: number) {
-      triggerClickIndicator(page, x, y, w, h);
+      triggerClickIndicator(page, x, y, w, h, 'forward');
       const el = pageElemRefs.current[page];
       if (el) {
         const container = scrollContainerRef.current;
@@ -349,28 +422,61 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
         }
       }
     },
+    clearHighlight() {
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+      setClickIndicator(null);
+    },
     getContainer() {
       return scrollContainerRef.current;
     },
   }));
 
+  const handleContainerScroll = useCallback(() => {
+    if (!onScroll) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const containerTop = container.scrollTop;
+    const containerHeight = container.clientHeight;
+    const scrollFocus = containerTop + containerHeight / 4;
+
+    for (let p = 1; p <= numPages; p++) {
+      const el = pageElemRefs.current[p];
+      if (el) {
+        const elTop = el.offsetTop;
+        const elHeight = el.offsetHeight;
+        if (scrollFocus >= elTop && scrollFocus <= elTop + elHeight) {
+          const relativeY = scrollFocus - elTop;
+          const effectiveScale = el.offsetWidth > 0 ? el.offsetWidth / 595 : (scale > 0 ? scale : 1);
+          const ptY = relativeY / effectiveScale;
+          const fraction = elHeight > 0 ? relativeY / elHeight : 0;
+          onScroll({ page: p, y: ptY, fraction });
+          break;
+        }
+      }
+    }
+  }, [onScroll, numPages, scale]);
+
   const handleDocumentLoadSuccess = useCallback((pdf: any) => {
-    setDocLoadError(null);
-    onNumPagesChange?.(pdf.numPages);
-    parentOnLoadSuccess?.(pdf);
+    queueMicrotask(() => {
+      setDocLoadError(null);
+      onNumPagesChange?.(pdf.numPages);
+      parentOnLoadSuccess?.(pdf);
+    });
   }, [onNumPagesChange, parentOnLoadSuccess]);
 
   const handleDocumentLoadError = useCallback((error: unknown) => {
     logger.warn('[Surface] Document load error', { error });
-    setDocLoadError(
-      error instanceof Error
-        ? error
-        : new Error(
-            typeof error === 'object' && error !== null && 'message' in error
-              ? String((error as { message: unknown }).message)
-              : 'The compiled PDF document could not be decoded by the viewer engine.',
-          ),
-    );
+    queueMicrotask(() => {
+      setDocLoadError(
+        error instanceof Error
+          ? error
+          : new Error(
+              typeof error === 'object' && error !== null && 'message' in error
+                ? String((error as { message: unknown }).message)
+                : 'The compiled PDF document could not be decoded by the viewer engine.',
+            ),
+      );
+    });
   }, []);
 
   // SyncTeX inverse search (PDF double-click -> LaTeX source jump)
@@ -383,7 +489,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
     pixelY?: number,
   ) => {
     if (pixelX !== undefined && pixelY !== undefined) {
-      triggerClickIndicator(pageNum, pixelX, pixelY);
+      triggerClickIndicator(pageNum, pixelX, pixelY, undefined, undefined, 'backward');
     }
     if (!onJumpToSource) return;
     const effectiveMap = synctexMap || compilerCoordinator.getSynctexMap();
@@ -437,6 +543,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
       ref={scrollContainerRef}
       role="region"
       aria-label="PDF document preview"
+      onScroll={handleContainerScroll}
       className={cn(
         "flex-1 h-full min-h-0 overflow-y-auto flex flex-col items-center justify-start select-text relative transition-colors duration-200 thin-scrollbar",
         autoFit ? "overflow-x-hidden" : "overflow-x-auto",
@@ -561,21 +668,11 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
                 devicePixelRatio={typeof window !== 'undefined' ? Math.min(2, Math.max(1, window.devicePixelRatio || 1)) : 1}
               />
               {clickIndicator && clickIndicator.page === pageNumber && (
-                <div
-                  key={clickIndicator.id}
-                  className="pointer-events-none absolute z-30 transition-opacity duration-300"
-                  style={{
-                    left: `${clickIndicator.x}px`,
-                    top: `${clickIndicator.y}px`,
-                    transform: 'translate(-50%, -50%)',
-                  }}
-                >
-                  <span className="relative flex size-9 items-center justify-center">
-                    <span className="absolute inline-flex size-full animate-ping motion-reduce:animate-none rounded-full bg-primary/40 opacity-70" />
-                    <span className="absolute inline-flex size-6 rounded-full border-2 border-primary bg-primary/20" />
-                    <span className="relative inline-flex size-2 rounded-full bg-primary" />
-                  </span>
-                </div>
+                <PdfSyncTeXHighlightBox
+                  indicator={clickIndicator}
+                  pageWidth={autoFit ? currentContainerWidth : Math.round(595 * scale)}
+                  scale={scale}
+                />
               )}
             </div>
           )}

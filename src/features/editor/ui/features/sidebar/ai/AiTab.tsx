@@ -875,8 +875,8 @@ export default function AiTab({ onClose }: AiTabProps) {
             </div>
           )}
 
-          {/* Input Card */}
-          <div className="rounded-lg border border-border bg-muted/20 focus-within:border-ai/50 focus-within:bg-background transition-all p-2 flex flex-col gap-1.5">
+          {/* Input Box */}
+          <div className="rounded-md border border-border/80 bg-muted/20 focus-within:border-ai/50 focus-within:bg-background transition-all p-2 flex flex-col gap-1.5">
             {/* Attached Files List */}
             {(attachedFiles.length > 0 || uploadingFiles.length > 0) && (
               <div className="flex items-center gap-1.5 flex-wrap pb-1.5 pt-0.5 max-h-32 overflow-y-auto">
@@ -1131,7 +1131,7 @@ export default function AiTab({ onClose }: AiTabProps) {
             </div>
           </div>
 
-          <p className="text-11 text-muted-foreground text-center select-none pt-2 pb-0.5 leading-normal">
+          <p className="text-12 text-muted-foreground text-center select-none pt-2 pb-0.5 leading-normal">
             Flux AI can make mistakes, please double-check responses.
           </p>
         </div>

@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { CheckCircle2, User, X } from 'lucide-react';
 import type { PageSuggestion } from '@/features/editor/domain/types';
-import type { MentionMember } from '@/features/editor/domain/utils/mention.util';
+import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
 import { cn } from '@/shared/lib/utils';
 import { formatOverleafDate, resolveAuthorDisplay } from '../utils/review.util';
 
@@ -84,6 +84,7 @@ export const SuggestionCard = React.memo(function SuggestionCard({
             <button
               type="button"
               onClick={() => onNavigate?.(suggestion.fromLine)}
+              aria-label={`Jump to line ${suggestion.fromLine}`}
               className="px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-11 font-mono text-muted-foreground hover:text-foreground border border-border transition-colors cursor-pointer"
               title={`Jump to line ${suggestion.fromLine}`}
             >

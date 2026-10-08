@@ -9,7 +9,7 @@
  */
 
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import type { MentionMember } from '@/features/editor/domain/utils/mention.util';
+import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
 
 const MONTH_NAMES = [
   'January',
@@ -127,7 +127,7 @@ export function resolveAuthorDisplay(
  */
 export function jumpToEditorLine(line: number): void {
   if (line <= 0) return;
-  editorCommandBus.dispatch({ type: 'editor:jump-to-line', line });
+  editorCommandBus.dispatch({ type: 'editor:jump-to-line', line, highlight: 'synctex' });
   editorCommandBus.dispatch({ type: 'viewer:jump-to-line', line });
 }
 

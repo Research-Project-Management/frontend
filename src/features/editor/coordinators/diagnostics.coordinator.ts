@@ -12,7 +12,7 @@
  */
 
 import type { CompileError } from '../domain/types/compiler.types';
-import { normalizeLatexPath } from '../domain/latex-dag-engine';
+import { normalizeLatexPath } from '../domain/latex/latex-dag-engine';
 
 export interface IndexedDiagnosticItem {
   id: string;

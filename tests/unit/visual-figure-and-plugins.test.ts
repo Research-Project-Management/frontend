@@ -6,11 +6,11 @@ import {
 import {
   renderChemHtml,
   renderMathHtml,
-} from '@/features/editor/utils/latex-converter.util';
+} from '@/features/editor/domain/latex/latex-converter';
 import {
   isTableData,
   parseTableToLatex,
-} from '@/features/editor/utils/smart-paste.util';
+} from '@/features/editor/domain/latex/smart-paste';
 import { EditorState } from '@codemirror/state';
 import { latexVisualField } from '@/features/editor/sub-features/code-editor/codemirror/latex-visual-plugin';
 

@@ -312,6 +312,29 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
     this.view.focus();
   }
 
+  scrollToLine(line: number, smooth: boolean = true): void {
+    const totalLines = this.view.state.doc.lines;
+    const targetLineNum = Math.max(1, Math.min(line, totalLines));
+    const lineObj = this.view.state.doc.line(targetLineNum);
+    const block = this.view.lineBlockAt(lineObj.from);
+    if (this.view.scrollDOM) {
+      this.view.scrollDOM.scrollTo({
+        top: Math.max(0, block.top - 30),
+        behavior: smooth ? 'smooth' : 'auto',
+      });
+    }
+  }
+
+  getVisibleLine(): number {
+    if (!this.view.scrollDOM) return 1;
+    const block = this.view.lineBlockAtHeight(this.view.scrollDOM.scrollTop + 40);
+    return this.view.state.doc.lineAt(block.from).number;
+  }
+
+  getScrollContainer(): HTMLElement | null {
+    return this.view.scrollDOM || null;
+  }
+
   undo(): void {
     undo(this.view);
   }

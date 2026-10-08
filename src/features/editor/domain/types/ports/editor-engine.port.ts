@@ -91,6 +91,15 @@ export interface IEditorEngine {
   /** Navigates editor viewport to line and optionally decorates highlight */
   jumpToLine(line: number, highlight?: 'error' | 'synctex'): void;
 
+  /** Smoothly scrolls editor viewport to line without stealing focus or moving cursor */
+  scrollToLine?(line: number, smooth?: boolean): void;
+
+  /** Retrieves the line number currently at the top of the editor viewport */
+  getVisibleLine?(): number;
+
+  /** Returns the scrollable DOM element of the editor */
+  getScrollContainer?(): HTMLElement | null;
+
   /** Triggers editor undo operation */
   undo(): void;
 

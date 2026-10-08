@@ -14,13 +14,14 @@
  */
 
 import { hoverTooltip, type Tooltip, type EditorView } from '@codemirror/view';
-import { latexSymbolsIndex, type BibEntry } from '../../domain/latex-symbols-index';
+import { latexSymbolsIndex, type BibEntry } from '../../domain/latex/latex-symbols-index';
 import {
   isVietnameseAuthorName,
   formatShortAuthor,
   formatInTextCitationPreview,
   formatBibliographyPreview,
-} from '../../domain/utils/citation.util';
+} from '@/features/editor/domain/citation/citation-formatter';
+import { formatRetractionReason } from '@/features/library';
 import { editorCommandBus } from '../../coordinators/command-bus';
 
 /**
@@ -178,6 +179,14 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
   keyPill.textContent = `@${entry.key || citeKey}`;
   leftPills.appendChild(keyPill);
 
+  if (entry.isRetracted) {
+    const retractedBadge = document.createElement('span');
+    retractedBadge.className =
+      'px-1.5 py-0.5 rounded text-[10px] font-bold bg-destructive/15 text-destructive border border-destructive/30 uppercase tracking-wide flex items-center gap-1';
+    retractedBadge.innerHTML = '🚨 <span>THU HỒI / RETRACTED</span>';
+    leftPills.appendChild(retractedBadge);
+  }
+
   header.appendChild(leftPills);
 
   const sourceBadge = document.createElement('span');
@@ -185,10 +194,57 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
   if (entry.sourceFile === 'workspace-library') {
     sourceBadge.innerHTML = '📚 <span class="hidden sm:inline">Thư viện số</span>';
   } else if (entry.sourceFile) {
-    sourceBadge.innerHTML = `📁 <span class="font-mono text-[10px]">${escapeHtml(entry.sourceFile)}</span>`;
+    const bibBtn = document.createElement('button');
+    bibBtn.type = 'button';
+    bibBtn.className = 'font-mono text-[10px] text-primary hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-0 p-0';
+    bibBtn.innerHTML = `📁 <span>${escapeHtml(entry.sourceFile)}</span>`;
+    bibBtn.title = `Mở ${entry.sourceFile} (nhảy tới định nghĩa)`;
+    bibBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      editorCommandBus.dispatch({
+        type: 'workspace:open-file',
+        fileId: entry.sourceFile!,
+        filePath: entry.sourceFile!,
+      });
+    });
+    sourceBadge.appendChild(bibBtn);
   }
   header.appendChild(sourceBadge);
   container.appendChild(header);
+
+  // Retraction Callout Alert Box
+  if (entry.isRetracted) {
+    const alertBox = document.createElement('div');
+    alertBox.className =
+      'rounded-md bg-destructive/10 border border-destructive/30 p-2.5 my-2 text-xs flex flex-col gap-1 text-destructive';
+
+    const alertHeader = document.createElement('div');
+    alertHeader.className = 'flex items-center gap-1.5 font-bold text-[11px] uppercase tracking-wider text-destructive';
+    alertHeader.innerHTML = '<span>🚨 CẢNH BÁO: BÀI BÁO ĐÃ BỊ THU HỒI</span>';
+    alertBox.appendChild(alertHeader);
+
+    const reasonDesc = entry.retractionReason
+      ? formatRetractionReason(entry.retractionReason, entry.retractionNature)
+      : 'Bài báo này đã bị nhà xuất bản hoặc ủy ban liêm chính học thuật thu hồi chính thức.';
+    const alertBody = document.createElement('div');
+    alertBody.className = 'text-[11px] text-destructive/90 leading-relaxed font-medium';
+    alertBody.textContent = reasonDesc;
+    alertBox.appendChild(alertBody);
+
+    if (entry.retractionNoticeUrl) {
+      const noticeLink = document.createElement('a');
+      noticeLink.href = entry.retractionNoticeUrl;
+      noticeLink.target = '_blank';
+      noticeLink.rel = 'noopener noreferrer';
+      noticeLink.className =
+        'inline-flex items-center gap-1 text-[11px] text-destructive underline font-semibold hover:opacity-80 mt-0.5';
+      noticeLink.innerHTML = '<span>Xem thông báo chính thức của nhà xuất bản</span> <span>↗</span>';
+      alertBox.appendChild(noticeLink);
+    }
+
+    container.appendChild(alertBox);
+  }
 
   // 2. Publication Title
   if (entry.title) {
@@ -272,6 +328,48 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
   previewBox.appendChild(previewText);
 
   container.appendChild(previewBox);
+
+  // 6. Action Bar: Rename Citekey & Definition jump
+  const footerRow = document.createElement('div');
+  footerRow.className = 'flex items-center justify-between gap-2 pt-2.5 mt-2.5 border-t border-border/60 text-[11px]';
+
+  const renameBtn = document.createElement('button');
+  renameBtn.type = 'button';
+  renameBtn.className =
+    'inline-flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 px-2 py-0.5 rounded transition-colors cursor-pointer border border-border/40';
+  renameBtn.innerHTML = '✏️ <span>Đổi tên key (Refactor)</span>';
+  renameBtn.title = 'Đổi tên khóa trích dẫn trong toàn bộ dự án mà không làm hỏng tài liệu';
+  renameBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    editorCommandBus.dispatch({
+      type: 'dialog:open',
+      dialog: 'rename-symbol',
+      payload: { type: 'citation', oldKey: entry.key || citeKey },
+    });
+  });
+  footerRow.appendChild(renameBtn);
+
+  if (entry.sourceFile && entry.sourceFile !== 'workspace-library') {
+    const jumpBtn = document.createElement('button');
+    jumpBtn.type = 'button';
+    jumpBtn.className =
+      'inline-flex items-center gap-1 text-primary hover:underline cursor-pointer bg-transparent border-0 p-0 text-[11px]';
+    jumpBtn.innerHTML = '<span>Tới .bib</span> ↗';
+    jumpBtn.title = `Mở ${entry.sourceFile}`;
+    jumpBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      editorCommandBus.dispatch({
+        type: 'workspace:open-file',
+        fileId: entry.sourceFile!,
+        filePath: entry.sourceFile!,
+      });
+    });
+    footerRow.appendChild(jumpBtn);
+  }
+
+  container.appendChild(footerRow);
 }
 
 /**

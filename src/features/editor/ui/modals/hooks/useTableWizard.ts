@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import {
   tableWizardSchema,
   type TableWizardFormValues,
-} from '../schemas/table-wizard.schema';
+} from '@/features/editor/domain/types';
 
 export interface UseTableWizardOptions {
   onInsert: (latexCode: string) => void;

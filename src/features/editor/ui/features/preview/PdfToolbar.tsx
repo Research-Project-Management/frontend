@@ -25,6 +25,8 @@ import {
   Plus,
   Search,
   ArrowLeftToLine,
+  Link2,
+  Link2Off,
 } from 'lucide-react';
 import { editorCommandBus } from '../../../coordinators/command-bus';
 import {
@@ -43,7 +45,7 @@ import { PdfPaginationControls } from './PdfPaginationControls';
 import { PdfZoomControls } from './PdfZoomControls';
 import type { CompileStatus } from '../../../store';
 import type { CompileMode } from '../../../domain/types/compiler.types';
-import type { PdfOutlineItem } from '../../../domain/utils/pdf-outline.util';
+import type { PdfOutlineItem } from '@/features/editor/domain/document/pdf-outline';
 
 function InvertColorsIcon({ className }: { className?: string }) {
   return (
@@ -103,6 +105,8 @@ export interface PdfToolbarProps {
   onToggleSpreadView?: () => void;
   isSearchOpen?: boolean;
   onToggleSearch?: () => void;
+  syncScroll?: boolean;
+  onToggleSyncScroll?: () => void;
 
   // Actions
   pdfUrl: string | null;
@@ -139,6 +143,8 @@ export const PdfToolbar = React.memo(function PdfToolbar({
   onToggleSpreadView,
   isSearchOpen,
   onToggleSearch,
+  syncScroll = true,
+  onToggleSyncScroll,
   onOpenPresentationMode,
   onPopout,
   isPoppedOut,
@@ -146,6 +152,8 @@ export const PdfToolbar = React.memo(function PdfToolbar({
   showLog,
   onToggleLog,
   onDownload,
+  errorCount = 0,
+  warningCount = 0,
 }: PdfToolbarProps) {
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [toolbarWidth, setToolbarWidth] = useState<number>(600);
@@ -155,10 +163,15 @@ export const PdfToolbar = React.memo(function PdfToolbar({
   useEffect(() => {
     const el = toolbarRef.current;
     if (!el) return;
-    setToolbarWidth(el.getBoundingClientRect().width);
+    const initialWidth = el.getBoundingClientRect().width;
+    if (initialWidth > 0) {
+      setToolbarWidth(initialWidth);
+    }
     const ro = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setToolbarWidth(entry.contentRect.width);
+        if (entry.contentRect.width > 0) {
+          setToolbarWidth(entry.contentRect.width);
+        }
       }
     });
     ro.observe(el);
@@ -175,7 +188,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
       ref={toolbarRef}
       role="toolbar"
       aria-label="PDF viewer controls"
-      className="relative h-9 bg-background px-2 flex items-center justify-between gap-1.5 shrink-0 select-none overflow-visible border-b border-border"
+      className="h-9 bg-surface px-2 flex items-center justify-between gap-1.5 shrink-0 select-none border-b border-border"
     >
       {/* 1. Left section: Compilation actions */}
       <div className="flex items-center gap-1.5 shrink-0">
@@ -185,7 +198,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
           onStopCompilation={onStopCompilation}
         />
 
-        {/* Overleaf Logs and output files (Pure icon button with tooltip) */}
+        {/* Overleaf Logs and output files */}
         <Tooltip>
           <TooltipTrigger asChild>
             <button
@@ -193,7 +206,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
               onClick={onToggleLog}
               aria-label="Logs and output files"
               className={cn(
-                'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
+                'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
                 showLog
                   ? 'bg-primary/10 text-primary font-medium'
                   : 'text-foreground hover:bg-muted',
@@ -270,6 +283,30 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                     Jump to LaTeX source (SyncTeX)
                   </TooltipContent>
                 </Tooltip>
+
+                {/* Sync Scrolling toggle */}
+                {onToggleSyncScroll && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={onToggleSyncScroll}
+                        aria-label={syncScroll ? 'Disable synchronized scrolling' : 'Enable synchronized scrolling'}
+                        className={cn(
+                          'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
+                          syncScroll
+                            ? 'bg-primary/10 text-primary font-medium'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                        )}
+                      >
+                        {syncScroll ? <Link2 className="size-3.5 shrink-0" /> : <Link2Off className="size-3.5 shrink-0" />}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">
+                      {syncScroll ? 'Sync Scrolling: ON' : 'Sync Scrolling: OFF'}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
 
                 {/* Find in document (Ctrl+F) */}
                 {onToggleSearch && (
@@ -508,6 +545,25 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                       );
                     })}
                   </div>
+
+                  {onToggleSyncScroll && (
+                    <div className="flex items-center justify-between pt-1.5 mt-2 border-t border-border/60">
+                      <span className="font-semibold text-foreground text-xs">Sync Scrolling</span>
+                      <button
+                        type="button"
+                        onClick={onToggleSyncScroll}
+                        className={cn(
+                          'h-6 px-2 rounded text-[11px] font-medium flex items-center gap-1 transition-colors cursor-pointer',
+                          syncScroll
+                            ? 'bg-primary/10 text-primary font-semibold border border-primary/30'
+                            : 'hover:bg-muted text-muted-foreground border border-border/60',
+                        )}
+                      >
+                        {syncScroll ? <Link2 className="size-3" /> : <Link2Off className="size-3" />}
+                        <span>{syncScroll ? 'ON' : 'OFF'}</span>
+                      </button>
+                    </div>
+                  )}
                 </PopoverContent>
               </Popover>
             )}

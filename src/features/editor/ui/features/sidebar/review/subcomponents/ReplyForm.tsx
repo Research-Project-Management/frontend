@@ -4,7 +4,7 @@ import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Send } from 'lucide-react';
-import { createReplySchema, type CreateReplyInput } from '@/features/editor/domain/types/schemas';
+import { createReplySchema, type CreateReplyInput } from '@/features/editor/domain/types';
 import { useAddReply } from '@/features/editor/ui/hooks/use-comment';
 
 interface ReplyFormProps {

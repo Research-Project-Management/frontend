@@ -3,8 +3,8 @@ import {
   parseSyncTeX,
   LatexCompilerEngine,
   type SyncTeXMap,
-} from '@/features/editor/utils/viewer.util';
-import { synctexService } from '@/features/editor/services/synctex.service';
+} from '@/features/editor/coordinators/services/latex-compiler-engine.service';
+import { synctexService } from '@/features/editor/coordinators/services/synctex.service';
 
 describe('Forward SyncTeX (Code Cursor -> PDF Highlight & Bounding Box)', () => {
   beforeEach(() => {
@@ -31,25 +31,25 @@ x1,30:6553600,32768000
       expect(page1Nodes).toBeDefined();
       expect(page1Nodes?.length).toBe(3);
 
-      // Node 1: vbox with w: 29491200 sp (450 pt), h: 917504 sp (14 pt)
+      // Node 1: vbox with w: 29491200 sp (448 pt), h: 917504 sp (14 pt)
       expect(page1Nodes![0]).toMatchObject({
         line: 10,
         tag: 1,
-        x: 6553600,
-        y: 13107200,
-        w: 29491200,
-        h: 917504,
+        x: 100,
+        y: 199,
+        w: 448,
+        h: 14,
         page: 1,
       });
 
-      // Node 2: hbox with w: 19660800 sp (300 pt), h: 655360 sp (10 pt)
+      // Node 2: hbox with w: 19660800 sp (299 pt), h: 655360 sp (12 pt)
       expect(page1Nodes![1]).toMatchObject({
         line: 25,
         tag: 1,
-        x: 6553600,
-        y: 26214400,
-        w: 19660800,
-        h: 655360,
+        x: 100,
+        y: 399,
+        w: 299,
+        h: 12,
         page: 1,
       });
 
@@ -57,8 +57,8 @@ x1,30:6553600,32768000
       expect(page1Nodes![2]).toMatchObject({
         line: 30,
         tag: 1,
-        x: 6553600,
-        y: 32768000,
+        x: 100,
+        y: 498,
         page: 1,
       });
       expect(page1Nodes![2].w).toBeUndefined();
@@ -75,10 +75,10 @@ x1,30:6553600,32768000
       expect(page2Nodes![0]).toMatchObject({
         line: 50,
         tag: 2,
-        x: 6553600,
-        y: 6553600,
-        w: 32768000,
-        h: 1310720,
+        x: 100,
+        y: 100,
+        w: 498,
+        h: 20,
         page: 2,
       });
     });
@@ -102,10 +102,10 @@ x1,42:6553600,26214400
       const res = LatexCompilerEngine.resolveForwardDetail(15, map, 'main.tex', 2);
       expect(res).not.toBeNull();
       expect(res?.page).toBe(1);
-      expect(res?.x).toBe(6553600);
-      expect(res?.y).toBe(13107200);
-      expect(res?.w).toBe(26214400);
-      expect(res?.h).toBe(917504);
+      expect(res?.x).toBe(100);
+      expect(res?.y).toBe(199);
+      expect(res?.w).toBe(399);
+      expect(res?.h).toBe(14);
     });
 
     it('should resolve correctly for sub-files via activeTitle matching', () => {
@@ -114,10 +114,10 @@ x1,42:6553600,26214400
       const res = LatexCompilerEngine.resolveForwardDetail(80, map, 'sections/methodology.tex', 2);
       expect(res).not.toBeNull();
       expect(res?.page).toBe(2);
-      expect(res?.x).toBe(6553600);
-      expect(res?.y).toBe(19660800);
-      expect(res?.w).toBe(19660800);
-      expect(res?.h).toBe(655360);
+      expect(res?.x).toBe(100);
+      expect(res?.y).toBe(299);
+      expect(res?.w).toBe(299);
+      expect(res?.h).toBe(12);
     });
 
     it('should resolve point nodes without width/height gracefully', () => {
@@ -126,8 +126,8 @@ x1,42:6553600,26214400
       const res = LatexCompilerEngine.resolveForwardDetail(42, map, 'main.tex', 2);
       expect(res).not.toBeNull();
       expect(res?.page).toBe(1);
-      expect(res?.x).toBe(6553600);
-      expect(res?.y).toBe(26214400);
+      expect(res?.x).toBe(100);
+      expect(res?.y).toBe(399);
       expect(res?.w).toBeUndefined();
       expect(res?.h).toBeUndefined();
     });

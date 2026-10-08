@@ -35,6 +35,7 @@ import InsertMenu from './topbar/insert/InsertMenu';
 import FormatMenu from './topbar/format/FormatMenu';
 import LayoutSwitcher from './topbar/view/LayoutSwitcher';
 import ProjectTitleDropdown from './topbar/ProjectTitleDropdown';
+import CollaboratorAvatarStack from './topbar/CollaboratorAvatarStack';
 
 import { editorCommandBus } from '../../coordinators/command-bus';
 import { sessionCoordinator } from '../../coordinators/session.coordinator';
@@ -167,7 +168,7 @@ export function Topbar() {
             </TooltipContent>
           </Tooltip>
 
-          <div className="h-4 w-px bg-border/60 mx-1 shrink-0 hidden sm:block" />
+          <div className="h-4 w-px bg-border mx-1 shrink-0 hidden sm:block" />
 
           <Menubar className="h-8 border-none bg-transparent p-0 gap-0.5 shadow-none hidden sm:flex">
             {/* Sub-menu Tabs */}
@@ -198,6 +199,9 @@ export function Topbar() {
               </span>
             </div>
           )}
+
+          {/* Collaborator Presence Avatar Stack (Real-time Overleaf Parity) */}
+          <CollaboratorAvatarStack />
 
           {/* History Button */}
           <Tooltip>

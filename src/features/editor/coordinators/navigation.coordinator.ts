@@ -13,7 +13,7 @@
 
 import { useTabsStore, type EditorTab } from '../store/tabs.store';
 import { usePageStore } from '../store/editor.store';
-import { lruDocumentCache } from '../domain/lru-document-cache';
+import { lruDocumentCache } from '../domain/document/lru-document-cache';
 import { diagnosticsCoordinator } from './diagnostics.coordinator';
 import { editorCommandBus } from './command-bus';
 import { sessionCoordinator } from './session.coordinator';

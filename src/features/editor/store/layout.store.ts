@@ -26,6 +26,10 @@ export interface LayoutState {
   sidebarLeftWidth: number;
   activeSidebarTab: ActivityBarTab;
 
+  // Right Review Pane (Overleaf Parity: Review comments & Track Changes alongside CodeMirror)
+  reviewPanelOpen: boolean;
+  reviewPanelWidth: number;
+
   // Center Splitter (Editor vs Preview)
   splitRatio: number; // 0.0 - 1.0 (e.g. 0.5 = 50/50)
 
@@ -44,6 +48,10 @@ export interface LayoutState {
   setActiveSidebarTab: (tab: ActivityBarTab) => void;
   selectActivityTab: (tab: ActivityBarTab) => void; // Toggle if active, open if inactive
 
+  toggleReviewPanel: () => void;
+  setReviewPanelOpen: (open: boolean) => void;
+  setReviewPanelWidth: (width: number) => void;
+
   setSplitRatio: (ratio: number) => void;
 
   toggleBottomPanel: () => void;
@@ -51,6 +59,7 @@ export interface LayoutState {
   setBottomPanelHeight: (height: number) => void;
   setActiveBottomTab: (tab: BottomPanelTab) => void;
   openBottomTab: (tab: BottomPanelTab) => void;
+  openBottomPanelWithTab: (tab: BottomPanelTab) => void;
 
   toggleStatusBar: () => void;
   setStatusBarOpen: (open: boolean) => void;
@@ -62,6 +71,8 @@ const DEFAULT_LAYOUT = {
   sidebarLeftOpen: true,
   sidebarLeftWidth: 260,
   activeSidebarTab: 'files' as ActivityBarTab,
+  reviewPanelOpen: false,
+  reviewPanelWidth: 340,
   splitRatio: 0.5,
   bottomPanelOpen: false,
   bottomPanelHeight: 220,
@@ -88,6 +99,12 @@ export const useLayoutStore = create<LayoutState>()(
           return { activeSidebarTab: tab, sidebarLeftOpen: true };
         }),
 
+      toggleReviewPanel: () =>
+        set((state) => ({ reviewPanelOpen: !state.reviewPanelOpen })),
+      setReviewPanelOpen: (open) => set({ reviewPanelOpen: open }),
+      setReviewPanelWidth: (width) =>
+        set({ reviewPanelWidth: Math.max(260, Math.min(width, 520)) }),
+
       setSplitRatio: (ratio) =>
         set({ splitRatio: Math.max(0.15, Math.min(ratio, 0.85)) }),
 
@@ -98,6 +115,8 @@ export const useLayoutStore = create<LayoutState>()(
         set({ bottomPanelHeight: Math.max(120, Math.min(height, 500)) }),
       setActiveBottomTab: (tab) => set({ activeBottomTab: tab }),
       openBottomTab: (tab) =>
+        set({ activeBottomTab: tab, bottomPanelOpen: true }),
+      openBottomPanelWithTab: (tab) =>
         set({ activeBottomTab: tab, bottomPanelOpen: true }),
 
       toggleStatusBar: () =>

@@ -6,8 +6,8 @@ import {
   formatMention,
   filterMentionMembers,
   type MentionMember,
-} from '@/features/editor/utils/mention.util';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+} from '@/features/editor/domain/collaboration/mention';
+import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
 
 describe('@mention Autocomplete & Parsing (Overleaf Parity S)', () => {
   const mockMembers: MentionMember[] = [

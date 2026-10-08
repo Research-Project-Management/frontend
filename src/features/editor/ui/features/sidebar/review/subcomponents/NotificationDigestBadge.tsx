@@ -21,7 +21,7 @@ import {
 import {
   formatRemainingTime,
   BundledNotificationItem,
-} from '@/features/editor/domain/utils/notification-digest.util';
+} from '@/features/editor/domain/collaboration/notification-digest';
 import { cn } from '@/shared/lib/utils';
 
 interface NotificationDigestBadgeProps {

@@ -4,13 +4,13 @@ import { EditorView } from '@codemirror/view';
 import {
   LatexSymbolsIndex,
   latexSymbolsIndex,
-} from '@/features/editor/domain/latex-symbols-index';
+} from '@/features/editor/domain/latex/latex-symbols-index';
 import {
   isVietnameseAuthorName,
   formatShortAuthor,
   formatInTextCitationPreview,
   formatBibliographyPreview,
-} from '@/features/editor/domain/utils/citation.util';
+} from '@/features/editor/domain/citation/citation-formatter';
 import {
   latexCitationHoverTooltip,
   citationHoverSource,

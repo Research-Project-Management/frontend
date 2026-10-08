@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useEditorSave } from '@/features/editor/components/editor/hooks/use-editor-save';
 import { useCompileStore, useSettingsStore } from '@/features/editor/store';
 import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
 
 // Mock usePageActions
 vi.mock('@/features/editor/hooks/use-core', () => ({

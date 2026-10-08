@@ -14,5 +14,7 @@ export * from './workspace.coordinator';
 export * from './navigation.coordinator';
 export * from './keybinding.coordinator';
 export * from './ai.coordinator';
+export * from './review.coordinator';
 
 export * from './services';
+export * from './channels/popout-channel';

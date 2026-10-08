@@ -14,7 +14,7 @@
 import {
   LatexSymbolsIndexCore,
   type SymbolSnapshot,
-} from '../../domain/latex-symbols-core';
+} from '../../domain/latex/latex-symbols-core';
 
 export type SymbolsWorkerMessageIn =
   | { type: 'indexFile'; fileId: string; filePath: string; content: string; id: number }

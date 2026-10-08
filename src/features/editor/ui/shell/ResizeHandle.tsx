@@ -17,6 +17,7 @@ export interface ResizeHandleProps {
   onDoubleClick?: () => void;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   isDragging?: boolean;
+  orientation?: 'vertical' | 'horizontal';
   label?: string;
   valueNow?: number;
   valueMin?: number;
@@ -32,6 +33,7 @@ export function ResizeHandle({
   onDoubleClick,
   onKeyDown,
   isDragging = false,
+  orientation = 'vertical',
   label = 'Resize pane',
   valueNow,
   valueMin,
@@ -39,11 +41,13 @@ export function ResizeHandle({
   className,
   children,
 }: ResizeHandleProps) {
+  const isHorizontal = orientation === 'horizontal' || className?.includes('cursor-row-resize');
+
   return (
     <div
       role="separator"
       tabIndex={0}
-      aria-orientation="vertical"
+      aria-orientation={isHorizontal ? 'horizontal' : 'vertical'}
       aria-label={label}
       aria-valuenow={valueNow}
       aria-valuemin={valueMin}
@@ -53,13 +57,33 @@ export function ResizeHandle({
       onDoubleClick={onDoubleClick}
       onKeyDown={onKeyDown}
       className={cn(
-        'group relative w-1 h-full cursor-col-resize shrink-0 outline-none select-none bg-transparent hover:bg-primary/30 transition-colors z-20',
-        isDragging && 'bg-primary/50',
+        'group relative shrink-0 outline-none select-none z-20',
+        isHorizontal
+          ? 'h-0 w-full cursor-row-resize'
+          : 'w-0 h-full cursor-col-resize',
         className,
       )}
     >
+      {/* Visual active line / highlight centered exactly on the 1px border seam */}
+      <div
+        className={cn(
+          'absolute transition-colors pointer-events-none',
+          isHorizontal
+            ? 'inset-x-0 -top-[1px] h-[2px] bg-transparent group-hover:bg-primary/40'
+            : 'inset-y-0 -left-[1px] w-[2px] bg-transparent group-hover:bg-primary/40',
+          isDragging && 'bg-primary/60',
+        )}
+      />
+
       {/* Invisible expanded hit target for touch and easy cursor grabbing */}
-      <span className="absolute inset-y-0 -left-1.5 -right-1.5 z-10" />
+      <span
+        className={cn(
+          'absolute z-10',
+          isHorizontal
+            ? 'inset-x-0 -top-2 -bottom-2 cursor-row-resize'
+            : 'inset-y-0 -left-2 -right-2 cursor-col-resize',
+        )}
+      />
       {children}
     </div>
   );

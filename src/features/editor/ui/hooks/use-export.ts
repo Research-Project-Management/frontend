@@ -16,28 +16,55 @@ import {
   exportVersionAsZip,
   type ExportZipOptions,
   type ExportVersionZipOptions,
-} from '../../domain/utils/export-zip.util';
+} from '@/features/editor/coordinators/services/archive-export.service';
 import {
   exportDocumentAsWord,
   exportDocumentAsMarkdown,
   exportDocumentAsHtml,
   triggerFileDownload,
   type ExportSingleDocOptions,
-} from '../../domain/utils/export-document.util';
-import { getExportFilename } from '../../domain/utils/core.util';
+} from '@/features/editor/coordinators/services/document-download.service';
+import { getExportFilename } from '@/features/editor/domain/document/document-naming';
 
 export function useProjectExport() {
   const [isExporting, setIsExporting] = useState(false);
 
-  const downloadPdf = useCallback((pdfUrl: string | null | undefined, projectTitle?: string) => {
+  const downloadPdf = useCallback(async (pdfUrl: string | null | undefined, projectTitle?: string) => {
     if (!pdfUrl) {
-      toast.error('Please compile the PDF first.');
+      toast.error('Vui lòng biên dịch tài liệu sang PDF trước (Please compile the PDF first).');
       return;
     }
-    const a = document.createElement('a');
-    a.href = pdfUrl;
-    a.download = getExportFilename(projectTitle || 'document', 'pdf');
-    a.click();
+    const filename = getExportFilename(projectTitle || 'document', 'pdf');
+    try {
+      if (pdfUrl.startsWith('blob:') || pdfUrl.startsWith('data:')) {
+        const a = document.createElement('a');
+        a.href = pdfUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else {
+        const resp = await fetch(pdfUrl);
+        const blob = await resp.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      }
+      toast.success(`Đã tải xuống ${filename}`);
+    } catch {
+      const a = document.createElement('a');
+      a.href = pdfUrl;
+      a.download = filename;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   }, []);
 
   const downloadCopy = useCallback((content?: string, projectTitle?: string) => {

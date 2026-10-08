@@ -33,3 +33,12 @@ export * from './SymbolPaletteModal';
 export { default as AddFilesModal } from './AddFilesModal';
 export * from './AddFilesModal';
 
+export { default as CitationPickerModal } from './CitationPickerModal';
+export * from './CitationPickerModal';
+
+export { default as RenameCitationModal } from './RenameCitationModal';
+export * from './RenameCitationModal';
+
+export { default as ProjectHistoryModal } from './ProjectHistoryModal';
+export * from './ProjectHistoryModal';
+

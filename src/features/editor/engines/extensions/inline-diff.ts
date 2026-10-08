@@ -82,7 +82,8 @@ class InlineDiffWidget extends WidgetType {
     const acceptBtn = document.createElement('button');
     acceptBtn.type = 'button';
     acceptBtn.className = 'cm-diff-btn cm-diff-btn-accept';
-    acceptBtn.innerHTML = `<span>Accept</span> <kbd>⌘⏎</kbd>`;
+    acceptBtn.title = 'Accept suggestion (Tab or ⌘⏎)';
+    acceptBtn.innerHTML = `<span>Accept</span> <kbd>Tab</kbd>`;
     acceptBtn.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -93,6 +94,7 @@ class InlineDiffWidget extends WidgetType {
     const rejectBtn = document.createElement('button');
     rejectBtn.type = 'button';
     rejectBtn.className = 'cm-diff-btn cm-diff-btn-reject';
+    rejectBtn.title = 'Reject suggestion (Esc)';
     rejectBtn.innerHTML = `<span>Reject</span> <kbd>Esc</kbd>`;
     rejectBtn.onclick = (e) => {
       e.preventDefault();
@@ -234,6 +236,17 @@ export const diffProposalField = StateField.define<{
 
 const inlineDiffKeymap = keymap.of([
   {
+    key: 'Tab',
+    run(view: EditorView) {
+      const current = view.state.field(diffProposalField, false);
+      if (current?.proposal) {
+        executeAcceptDiff(view, current.proposal);
+        return true;
+      }
+      return false;
+    },
+  },
+  {
     key: 'Mod-Enter',
     run(view: EditorView) {
       const current = view.state.field(diffProposalField, false);
@@ -270,12 +283,18 @@ const inlineDiffTheme = EditorView.baseTheme({
   '.cm-inline-diff-widget': {
     margin: '6px 0',
     borderRadius: '6px',
-    border: '1px solid rgba(139, 92, 246, 0.35)',
+    border: '1px solid rgba(139, 92, 246, 0.4)',
     backgroundColor: 'var(--card, #18181b)',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(139, 92, 246, 0.15)',
     overflow: 'hidden',
     fontSize: '12px',
     fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+    animation: 'cmDiffFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+  },
+
+  '@keyframes cmDiffFadeIn': {
+    '0%': { opacity: '0', transform: 'translateY(-4px)' },
+    '100%': { opacity: '1', transform: 'translateY(0)' },
   },
 
   '.cm-inline-diff-header': {

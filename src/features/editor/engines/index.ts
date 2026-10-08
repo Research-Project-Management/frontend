@@ -19,6 +19,7 @@ export * from './extensions/latex-citation-hover';
 export * from './extensions/inline-diff';
 export * from './extensions/latex-folding';
 export * from './extensions/latex-error-lens';
+export * from './extensions/track-changes.extension';
 
 // 3. Real-time Collaboration Engine (Yjs CRDT & Persistence)
 export * from './collaboration/yjs-codemirror-adapter';

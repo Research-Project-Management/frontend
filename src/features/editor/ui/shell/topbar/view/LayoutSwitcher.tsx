@@ -215,7 +215,7 @@ export function LayoutSwitcher() {
         </DropdownMenuItem>
 
         {/* Divider */}
-        <DropdownMenuSeparator className="my-1 bg-border" />
+        <DropdownMenuSeparator />
 
         {/* 5. Focus mode */}
         <DropdownMenuItem

@@ -4,7 +4,7 @@ import {
   getLineContext,
   formatContextForPrompt,
   type RichEditorContext,
-} from '../../src/features/editor/domain/ast/latex-ast.parser';
+} from '@/features/editor/domain/latex/latex-structure';
 
 describe('Domain: LaTeX AST Parser', () => {
   const sampleLatex = `\\documentclass{article}

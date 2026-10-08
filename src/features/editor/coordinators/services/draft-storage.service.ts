@@ -284,6 +284,50 @@ class DraftStorageServiceRegistry {
 
     return { hasRecoverableDraft: false };
   }
+
+  /**
+   * Retrieves all recent drafts for a specific project.
+   */
+  public async getRecentDraftsForProject(projectId: string): Promise<DraftSnapshot[]> {
+    if (!projectId || typeof window === 'undefined') return [];
+
+    const drafts: DraftSnapshot[] = [];
+    const seen = new Set<string>();
+
+    // 1. From memory cache
+    for (const d of this.memoryCache.values()) {
+      if (d.projectId === projectId) {
+        drafts.push(d);
+        seen.add(d.fileId);
+      }
+    }
+
+    // 2. From LocalStorage
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(LOCAL_STORAGE_PREFIX)) {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const parsed = JSON.parse(raw) as DraftSnapshot;
+            if (parsed.projectId === projectId && !seen.has(parsed.fileId)) {
+              drafts.push(parsed);
+              seen.add(parsed.fileId);
+            }
+          }
+        }
+      }
+    } catch {}
+
+    return drafts.sort((a, b) => b.savedAt - a.savedAt);
+  }
+
+  /**
+   * Clears memory cache (useful for testing or cache reset).
+   */
+  public clearMemory(): void {
+    this.memoryCache.clear();
+  }
 }
 
 export const draftStorageService = new DraftStorageServiceRegistry();

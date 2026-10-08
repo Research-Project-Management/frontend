@@ -22,8 +22,8 @@ import {
   type CompletionResult,
   snippet,
 } from '@codemirror/autocomplete';
-import { latexSymbolsIndex, type BibEntry, type LabelEntry } from '../../domain/latex-symbols-index';
-import { isVietnameseAuthorName, formatShortAuthor } from '../../domain/utils/citation.util';
+import { latexSymbolsIndex, type BibEntry, type LabelEntry } from '../../domain/latex/latex-symbols-index';
+import { isVietnameseAuthorName, formatShortAuthor } from '@/features/editor/domain/citation/citation-formatter';
 
 // ── 1. Environments ──────────────────────────────────────────────────────────
 
@@ -265,7 +265,9 @@ export const LATEX_ENVIRONMENTS: Completion[] = [
 export const LATEX_PACKAGES: Completion[] = [
   { label: 'amsmath', type: 'namespace', detail: 'AMS math facilities and environments' },
   { label: 'amssymb', type: 'namespace', detail: 'AMS mathematical symbol fonts' },
+  { label: 'amsfonts', type: 'namespace', detail: 'AMS font symbols (\\mathbb, \\mathfrak)' },
   { label: 'amsthm', type: 'namespace', detail: 'Theorem styling and proof environments' },
+  { label: 'inputenc', type: 'namespace', detail: 'Input encoding management (utf8, etc.)' },
   { label: 'mathtools', type: 'namespace', detail: 'Mathematical tools to use with amsmath' },
   { label: 'graphicx', type: 'namespace', detail: 'Enhanced support for figures & graphics' },
   { label: 'hyperref', type: 'namespace', detail: 'Hypertext marks, URLs & PDF links' },
@@ -854,4 +856,252 @@ export function createLatexAutocompleteExtension() {
     defaultKeymap: true,
     icons: true,
   });
+}
+
+// ── 7. Factory Export for Custom Source Injection ────────────────────────────
+
+export type LatexBibEntryInput =
+  | string
+  | {
+      key?: string;
+      citationKey?: string;
+      id?: string;
+      title?: string;
+      authors?: string[];
+      author?: string;
+      year?: string | number;
+      journal?: string;
+      source?: string;
+    };
+
+export type LatexFileInput =
+  | string
+  | {
+      name?: string;
+      path?: string;
+      title?: string;
+    };
+
+export interface NormalizedCiteItem {
+  key: string;
+  title?: string;
+  authors: string[];
+  authorStr?: string;
+  year?: string;
+  journal?: string;
+  source: 'bib' | 'library' | 'server';
+}
+
+interface DocTokens {
+  bibItems: NormalizedCiteItem[];
+  labels: string[];
+}
+
+function scanDocTokens(docText: string): DocTokens {
+  const bibItems: NormalizedCiteItem[] = [];
+  const bibitemRegex = /\\bibitem(?:\[[^\]]*\])?\{([^}]+)\}/g;
+  let bMatch: RegExpExecArray | null;
+  while ((bMatch = bibitemRegex.exec(docText)) !== null) {
+    const key = bMatch[1]?.trim();
+    if (key) {
+      bibItems.push({
+        key,
+        authors: [],
+        authorStr: 'Document bibliography',
+        source: 'bib',
+      });
+    }
+  }
+
+  const labels = new Set<string>();
+  const labelRegex = /\\label\{([^}]+)\}/g;
+  let lMatch: RegExpExecArray | null;
+  while ((lMatch = labelRegex.exec(docText)) !== null) {
+    labels.add(lMatch[1]);
+  }
+
+  return { bibItems, labels: Array.from(labels) };
+}
+
+export function createLatexCompletionSource(
+  bibSource: LatexBibEntryInput[] | (() => LatexBibEntryInput[]) = [],
+  fileSource: LatexFileInput[] | (() => LatexFileInput[]) = [],
+) {
+  return function latexCompletionSource(context: CompletionContext): CompletionResult | null {
+    const rawKeys = typeof bibSource === 'function' ? bibSource() : bibSource;
+    const rawFiles = typeof fileSource === 'function' ? fileSource() : fileSource;
+    const docText = context.state.doc.toString();
+    const docTokens = scanDocTokens(docText);
+
+    // 1. Check for \begin{...}
+    const beginMatch = context.matchBefore(/\\begin\{[a-zA-Z0-9*_-]*/);
+    if (beginMatch) {
+      const from = beginMatch.from + 7;
+      const options: Completion[] = LATEX_ENVIRONMENTS.map((env) => ({
+        label: env.label,
+        type: 'class',
+        apply: snippet(`${env.label}}\n  \${1}\n\\end{${env.label}}`),
+        detail: env.detail,
+      }));
+      return { from, options, validFor: /^[a-zA-Z0-9*_-]*$/ };
+    }
+
+    // 2. Check for citation commands
+    const citeMatch = context.matchBefore(
+      /\\(?:auto|paren|text|foot|no)?cite(?:p|t|alt|alp|author|year|date|num)?\*?(?:\[[^\]]*\])*\{[^}]*$/i,
+    );
+    if (citeMatch) {
+      const matchText = citeMatch.text;
+      const lastSep = Math.max(matchText.lastIndexOf('{'), matchText.lastIndexOf(','));
+      const afterSep = matchText.slice(lastSep + 1);
+      const leadingSpaces = afterSep.length - afterSep.trimStart().length;
+      const searchQuery = afterSep.trimStart().toLowerCase();
+      const from = citeMatch.from + lastSep + 1 + leadingSpaces;
+
+      const allBibItems = new Map<string, NormalizedCiteItem>();
+
+      for (const item of rawKeys) {
+        if (typeof item === 'string' && item) {
+          allBibItems.set(item.toLowerCase(), {
+            key: item,
+            authors: [],
+            source: 'bib',
+          });
+        } else if (item && typeof item === 'object') {
+          const key = item.key || item.citationKey || item.id;
+          if (key) {
+            const authors = Array.isArray(item.authors)
+              ? item.authors
+              : item.author
+              ? [item.author]
+              : [];
+            const authorStr =
+              authors.length > 0
+                ? authors.length <= 2
+                  ? authors.join(' & ')
+                  : `${authors[0]} et al.`
+                : '';
+            const year = item.year ? String(item.year) : undefined;
+            allBibItems.set(key.toLowerCase(), {
+              key,
+              title: item.title,
+              authors,
+              authorStr,
+              year,
+              journal: item.journal,
+              source: (item.source as 'bib' | 'library' | 'server') || 'bib',
+            });
+          }
+        }
+      }
+
+      for (const b of docTokens.bibItems) {
+        const lowerKey = b.key.toLowerCase();
+        if (!allBibItems.has(lowerKey)) {
+          allBibItems.set(lowerKey, b);
+        }
+      }
+
+      const itemsList = Array.from(allBibItems.values());
+      const options: Completion[] = itemsList.map((item) => {
+        const isProject = item.source === 'bib';
+        const authorYear = [item.authorStr, item.year ? `(${item.year})` : ''].filter(Boolean).join(' ');
+        const detail = authorYear
+          ? `${authorYear}${isProject ? '' : ' · [Library]'}`
+          : isProject
+          ? 'Project Reference'
+          : 'Library Reference';
+
+        return {
+          label: item.key,
+          type: isProject ? 'constant' : 'variable',
+          detail,
+          info: item.title,
+          boost: isProject ? 2 : 1,
+          apply: `${item.key}}`,
+        };
+      });
+
+      return {
+        from,
+        options,
+        validFor: /^[^},\s]*$/,
+      };
+    }
+
+    // 3. Check for cross-references
+    const refMatch = context.matchBefore(/\\(?:eq|page|auto|c|C|name)?ref\{[a-zA-Z0-9:_-]*/);
+    if (refMatch) {
+      const from = refMatch.text.lastIndexOf('{') + refMatch.from + 1;
+      const options: Completion[] = docTokens.labels.map((lbl) => ({
+        label: lbl,
+        type: 'variable',
+        apply: `${lbl}}`,
+        detail: 'Cross-reference label',
+      }));
+
+      return { from, options, validFor: /^[a-zA-Z0-9:_-]*$/ };
+    }
+
+    // 4. Check for \usepackage[...]{...} or \usepackage{...}
+    const pkgMatch = context.matchBefore(/\\usepackage(?:\[[^\]]*\])?\{[a-zA-Z0-9_-]*/);
+    if (pkgMatch) {
+      const from = pkgMatch.text.lastIndexOf('{') + pkgMatch.from + 1;
+      return {
+        from,
+        options: LATEX_PACKAGES,
+        validFor: /^[a-zA-Z0-9_-]*$/,
+      };
+    }
+
+    // 5. Check for \input{...}, \include{...}, \subfile{...}
+    const inputMatch = context.matchBefore(/\\(?:input|include|subfile)\{[a-zA-Z0-9_\-\./]*/);
+    if (inputMatch) {
+      const from = inputMatch.text.lastIndexOf('{') + inputMatch.from + 1;
+      const fileNames = rawFiles
+        .map((f) => (typeof f === 'string' ? f : f.name || f.path || f.title || ''))
+        .filter(Boolean);
+
+      const texFiles = fileNames.filter(
+        (name) => name.toLowerCase().endsWith('.tex') || !name.includes('.')
+      );
+      const candidateFiles = texFiles.length > 0 ? texFiles : fileNames;
+
+      const options: Completion[] = candidateFiles.map((name) => ({
+        label: name,
+        type: 'text',
+        apply: `${name}}`,
+        detail: 'Document file',
+      }));
+
+      return { from, options, validFor: /^[a-zA-Z0-9_\-\./]*$/ };
+    }
+
+    // 6. Check for \includegraphics[...]{...} or \includegraphics{...}
+    const graphicsMatch = context.matchBefore(/\\includegraphics(?:\[[^\]]*\])?\{[a-zA-Z0-9_\-\./]*/);
+    if (graphicsMatch) {
+      const from = graphicsMatch.text.lastIndexOf('{') + graphicsMatch.from + 1;
+      const fileNames = rawFiles
+        .map((f) => (typeof f === 'string' ? f : f.name || f.path || f.title || ''))
+        .filter(Boolean);
+
+      const imageExts = ['.png', '.jpg', '.jpeg', '.pdf', '.eps', '.svg'];
+      const imgFiles = fileNames.filter((name) => {
+        const lower = name.toLowerCase();
+        return imageExts.some((ext) => lower.endsWith(ext));
+      });
+      const candidateFiles = imgFiles.length > 0 ? imgFiles : fileNames;
+
+      const options: Completion[] = candidateFiles.map((name) => ({
+        label: name,
+        type: 'constant',
+        apply: `${name}}`,
+        detail: 'Graphic file',
+      }));
+
+      return { from, options, validFor: /^[a-zA-Z0-9_\-\./]*$/ };
+    }
+
+    return latexAutocompleteSource(context);
+  };
 }

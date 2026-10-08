@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import {
   figureWizardSchema,
   type FigureWizardFormValues,
-} from '../schemas/figure-wizard.schema';
+} from '@/features/editor/domain/types';
 
 export interface UseFigureWizardOptions {
   onInsert: (latexCode: string) => void;

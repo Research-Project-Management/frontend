@@ -18,3 +18,4 @@ export * from './diff';
 export * from './item-url';
 export * from './metadata';
 export * from './library-permissions.policy';
+export * from './categories';

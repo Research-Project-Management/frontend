@@ -4,9 +4,9 @@ import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Send, X, Loader2 } from 'lucide-react';
-import { createCommentSchema, type CreateCommentInput } from '@/features/editor/domain/types/schemas';
+import { createCommentSchema, type CreateCommentInput } from '@/features/editor/domain/types';
 import { useCreateComment } from '@/features/editor/ui/hooks/use-comment';
-import type { MentionMember } from '@/features/editor/domain/utils/mention.util';
+import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
 import { MentionTextarea } from './MentionTextarea';
 
 interface NewCommentFormProps {

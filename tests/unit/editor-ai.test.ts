@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
 import { useDocumentEditorStore } from '@/features/editor/store/editor.store';
-import { CodeMirrorEngineAdapter } from '@/features/editor/adapters/codemirror/codemirror.adapter';
+import { CodeMirrorEngineAdapter } from '@/features/editor/engines/adapters/codemirror/codemirror.adapter';
 import { getPageChat, clearPageChat, streamEditorChat } from '@/features/ai/services/chat.service';
 
 describe('Editor AI Assistant (Copilot) Subsystem Tests', () => {

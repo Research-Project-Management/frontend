@@ -20,11 +20,13 @@ export {
   LogPanel,
   default as DefaultCompilerLogs,
   parseLatexLog,
-  type LogEntry,
-  type ParsedLog,
-  type CompilerLogsProps,
-  type LogsProps,
 } from './CompilerLogs';
+export type {
+  LogEntry,
+  ParsedLog,
+  CompilerLogsProps,
+  LogsProps,
+} from '@/features/editor/domain/types';
 export { PdfFindBar } from './PdfFindBar';
 export { CompileButton } from './CompileButton';
 export { PdfPaginationControls } from './PdfPaginationControls';

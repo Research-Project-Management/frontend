@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as api from '@/shared/lib/api';
-import { spellingService } from '@/features/editor/services/spelling.service';
+import { spellingService } from '@/features/editor/coordinators/services/spelling.service';
 
 describe('Spelling & Custom Dictionary (Overleaf Parity)', () => {
   beforeEach(() => {

@@ -53,7 +53,7 @@ export const CompileButton = React.memo(function CompileButton({
     compileStatus === 'syncing';
 
   return (
-    <div className="inline-flex items-center rounded-md border border-border shadow-xs bg-sidebar select-none">
+    <div className="inline-flex items-center rounded-md shadow-xs select-none">
       {/* ── Left: Main Action Button ── */}
       <button
         type="button"
@@ -62,10 +62,10 @@ export const CompileButton = React.memo(function CompileButton({
         aria-label="Recompile document (Ctrl+Enter)"
         title="Recompile (Ctrl+Enter)"
         className={cn(
-          'flex items-center gap-1.5 h-7 px-2.5 rounded-l-md text-xs font-semibold transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer select-none',
+          'flex items-center gap-1.5 h-7 px-2.5 rounded-l-md text-xs font-semibold transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary select-none bg-primary text-primary-foreground',
           isRunning
-            ? 'bg-muted text-muted-foreground cursor-not-allowed'
-            : 'bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]'
+            ? 'opacity-90 cursor-wait'
+            : 'hover:bg-primary/90 active:scale-[0.98] cursor-pointer'
         )}
       >
         {isRunning ? (
@@ -84,7 +84,10 @@ export const CompileButton = React.memo(function CompileButton({
           <button
             type="button"
             aria-label="Compilation Options"
-            className="flex items-center justify-center size-7 border-l border-primary/20 rounded-r-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
+            className={cn(
+              'flex items-center justify-center size-7 border-l border-primary-foreground/20 rounded-r-md bg-primary text-primary-foreground transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer',
+              isRunning ? 'opacity-90 hover:opacity-100' : 'hover:bg-primary/90'
+            )}
           >
             <ChevronDown className="size-3.5 shrink-0 opacity-80" />
           </button>
@@ -113,7 +116,7 @@ export const CompileButton = React.memo(function CompileButton({
             {!autoCompile && <Check className="size-3.5 text-primary" />}
           </DropdownMenuItem>
 
-          <DropdownMenuSeparator className="my-1 border-t border-border" />
+          <DropdownMenuSeparator />
 
           {/* Group 2: Compile Mode */}
           <div className="px-2 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -134,7 +137,7 @@ export const CompileButton = React.memo(function CompileButton({
             {compileMode === 'draft' && <Check className="size-3.5 text-primary" />}
           </DropdownMenuItem>
 
-          <DropdownMenuSeparator className="my-1 border-t border-border" />
+          <DropdownMenuSeparator />
 
           {/* Group 3: Stop on first error */}
           <DropdownMenuItem
@@ -148,7 +151,7 @@ export const CompileButton = React.memo(function CompileButton({
           {/* Group 4: Advanced Clear Cache Actions */}
           {onClearCacheAndCompile && (
             <>
-              <DropdownMenuSeparator className="my-1 border-t border-border" />
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={onClearCacheAndCompile}
                 className="flex items-center px-2 py-1.5 text-destructive hover:bg-destructive/10 rounded-sm cursor-pointer"

@@ -36,7 +36,7 @@ export interface DocumentViewerState {
   prevPage: () => void;
   setNumPages: (numPages: number) => void;
 
-  setScale: (scale: number) => void;
+  setScale: (scale: number, disableAutoFit?: boolean) => void;
   zoomIn: () => void;
   zoomOut: () => void;
   resetZoom: () => void;
@@ -101,10 +101,10 @@ export const useDocumentViewerStore = create<DocumentViewerState>((set) => ({
       };
     }),
 
-  setScale: (scale) =>
+  setScale: (scale, disableAutoFit = true) =>
     set({
       scale: Math.max(0.25, Math.min(scale, 4.0)),
-      autoFit: false,
+      ...(disableAutoFit ? { autoFit: false } : {}),
     }),
 
   zoomIn: () =>

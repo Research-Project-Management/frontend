@@ -4,10 +4,11 @@
  */
 
 export { PrimarySidebar } from './PrimarySidebar';
-export { default as FilesTab } from './FilesTab';
-export { default as OutlineTab, OutlineTab as OutlineViewlet } from './OutlineTab';
-export { default as SearchTab } from './SearchTab';
-export { default as CitationTab } from './CitationTab';
-export { default as ReviewTab } from './ReviewTab';
-export { default as ChatTab } from './ChatTab';
-export { default as AiTab } from './AiTab';
+export { SidebarPanelHeader } from './SidebarPanelHeader';
+export { default as FilesTab } from './explorer/FilesTab';
+export { default as OutlineTab, OutlineTab as OutlineViewlet } from './outline/OutlineTab';
+export { default as SearchTab } from './search/SearchTab';
+export { default as CitationTab } from './citation/CitationTab';
+export { default as ReviewTab } from './review/ReviewTab';
+export { default as ChatTab } from './chat/ChatTab';
+export { default as AiTab } from './ai/AiTab';

@@ -22,6 +22,7 @@ export type DialogName =
   | 'word-count'
   | 'citation-picker'
   | 'table-wizard'
+  | 'matrix-wizard'
   | 'figure-wizard'
   | 'symbol-palette'
   | 'upload-file'
@@ -31,7 +32,8 @@ export type DialogName =
   | 'suggest-edit'
   | 'deleted-files'
   | 'add-files'
-  | 'template-gallery';
+  | 'template-gallery'
+  | 'history';
 
 export type EditorCommand =
   | { type: 'editor:jump-to-line'; line: number; highlight?: 'error' | 'synctex' }
@@ -46,17 +48,40 @@ export type EditorCommand =
   | { type: 'editor:autofix' }
   | { type: 'editor:lint-project'; projectId?: string }
   | { type: 'editor:insert-citation'; bibKey: string; textInserted?: boolean; entry?: any }
+  | { type: 'editor:rename-citekey'; oldKey: string; newKey: string }
   | { type: 'editor:open-suggestion-widget'; suggestionId: string; x?: number; y?: number }
   | { type: 'editor:suggest-fix'; error: { message: string; line?: number; file?: string; context?: string } }
   | { type: 'editor:visual-command'; command: string; level?: 1 | 2 | 3; rows?: number; cols?: number; withHeaderRow?: boolean; contentHtml?: string }
   | { type: 'editor:review-event'; pageId: string; event: string; payload?: any }
+  | { type: 'collab:presence-update'; collaborators: any[] }
+  | { type: 'collab:user-joined'; collaborator: any }
+  | { type: 'collab:user-left'; userId: string }
+  | {
+      type: 'collab:cursor';
+      userId: string;
+      activeFileId?: string;
+      activeFile?: string;
+      cursor?: {
+        line: number;
+        column: number;
+        selection?: {
+          startLineNumber: number;
+          startColumn?: number;
+          endLineNumber: number;
+          endColumn?: number;
+        };
+      };
+    }
   | { type: 'compiler:trigger'; forceSync?: boolean; draft?: boolean }
   | { type: 'compiler:started' }
   | { type: 'compiler:progress'; status?: string; logs?: string[] }
   | { type: 'compiler:finished'; success: boolean; aborted?: boolean }
   | { type: 'viewer:goto-page'; page: number }
   | { type: 'viewer:jump-to-line'; line: number }
-  | { type: 'viewer:scroll-to-coords'; page: number; x: number; y: number }
+  | { type: 'viewer:scroll-to-coords'; page: number; y: number; x?: number; behavior?: ScrollBehavior }
+  | { type: 'editor:scroll-to-line'; line: number; smooth?: boolean }
+  | { type: 'sync:editor-scrolled'; line: number }
+  | { type: 'sync:viewer-scrolled'; page: number; y: number; fraction?: number }
   | { type: 'viewer:zoom-in' }
   | { type: 'viewer:zoom-out' }
   | { type: 'viewer:fit-width' }
@@ -95,7 +120,13 @@ export type EditorCommand =
       proposal?: DiffProposal;
       payload?: { action: 'accept' | 'reject'; proposalId?: string; proposal?: DiffProposal };
     }
-  | { type: 'lifecycle:state-change'; state: 'hibernated' | 'active'; durationMs?: number };
+  | { type: 'lifecycle:state-change'; state: 'hibernated' | 'active'; durationMs?: number }
+  | { type: 'review:navigate-to-comment'; commentId: string; line?: number }
+  | { type: 'review:navigate-to-change'; suggestionId: string; line?: number }
+  | { type: 'review:accept-suggestion'; suggestionId: string }
+  | { type: 'review:reject-suggestion'; suggestionId: string }
+  | { type: 'review:create-comment'; line?: number; selectedText?: string }
+  | { type: 'history:open-modal'; initialVersion?: number; projectId?: string; baseVersion?: number; targetVersion?: number };
 
 export type CommandHandler<T extends EditorCommand = EditorCommand, R = any> = (command: T) => R | Promise<R>;
 

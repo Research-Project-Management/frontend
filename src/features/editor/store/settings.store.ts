@@ -66,13 +66,18 @@ export interface DocumentSettingsState {
   pdfViewer: 'overleaf' | 'browser';
   notifyComments: boolean;
   notifyUpdates: boolean;
-  showBreadcrumbs: boolean;
   showEditorTabs: boolean;
+  showBreadcrumbs: boolean;
   showEquationPreview: boolean;
   pdfSpreadView: boolean;
+  syncScroll: boolean;
   isLocked: boolean;
 
+  setShowBreadcrumbs: (showBreadcrumbs: boolean) => void;
+  toggleShowBreadcrumbs: () => void;
   setIsLocked: (isLocked: boolean) => void;
+  setSyncScroll: (syncScroll: boolean) => void;
+  toggleSyncScroll: () => void;
   setAutoComplete: (autoComplete: boolean) => void;
   setNonBlinkingCursor: (nonBlinkingCursor: boolean) => void;
   setPreviewEditorTabs: (previewEditorTabs: boolean) => void;
@@ -126,8 +131,6 @@ export interface DocumentSettingsState {
   toggleAutoCloseBrackets: () => void;
   setLinterEnabled: (linterEnabled: boolean) => void;
   toggleLinterEnabled: () => void;
-  setShowBreadcrumbs: (show: boolean) => void;
-  toggleShowBreadcrumbs: () => void;
   setShowEditorTabs: (show: boolean) => void;
   toggleShowEditorTabs: () => void;
   setShowEquationPreview: (show: boolean) => void;
@@ -175,8 +178,8 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       pdfViewer: 'overleaf',
       notifyComments: true,
       notifyUpdates: false,
-      showBreadcrumbs: true,
       showEditorTabs: true,
+      showBreadcrumbs: true,
       showEquationPreview: true,
       stopOnFirstError: false,
 
@@ -243,14 +246,17 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       toggleAutoCloseBrackets: () => set((s) => ({ autoCloseBrackets: !s.autoCloseBrackets })),
       setLinterEnabled: (linterEnabled) => set({ linterEnabled }),
       toggleLinterEnabled: () => set((s) => ({ linterEnabled: !s.linterEnabled })),
-      setShowBreadcrumbs: (showBreadcrumbs) => set({ showBreadcrumbs }),
-      toggleShowBreadcrumbs: () => set((s) => ({ showBreadcrumbs: !s.showBreadcrumbs })),
       setShowEditorTabs: (showEditorTabs) => set({ showEditorTabs }),
       toggleShowEditorTabs: () => set((s) => ({ showEditorTabs: !s.showEditorTabs })),
+      setShowBreadcrumbs: (showBreadcrumbs) => set({ showBreadcrumbs }),
+      toggleShowBreadcrumbs: () => set((s) => ({ showBreadcrumbs: !s.showBreadcrumbs })),
       setShowEquationPreview: (showEquationPreview) => set({ showEquationPreview }),
       toggleShowEquationPreview: () => set((s) => ({ showEquationPreview: !s.showEquationPreview })),
       setPdfSpreadView: (pdfSpreadView) => set({ pdfSpreadView }),
       togglePdfSpreadView: () => set((s) => ({ pdfSpreadView: !s.pdfSpreadView })),
+      syncScroll: true,
+      setSyncScroll: (syncScroll) => set({ syncScroll }),
+      toggleSyncScroll: () => set((s) => ({ syncScroll: !s.syncScroll })),
       setAutoComplete: (autoComplete) => set({ autoComplete }),
       setNonBlinkingCursor: (nonBlinkingCursor) => set({ nonBlinkingCursor }),
       setPreviewEditorTabs: (previewEditorTabs) => set({ previewEditorTabs }),

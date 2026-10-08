@@ -9,17 +9,21 @@
 
 import { useCallback, useEffect } from 'react';
 import { usePageStore } from '../../../../store';
-import { LatexCompilerEngine, type SyncTeXMap } from '../../../../domain/utils/viewer.util';
+import { useTabsStore, type EditorTab } from '../../../../store/tabs.store';
+import { LatexCompilerEngine } from '@/features/editor/coordinators/services/latex-compiler-engine.service';
+import type { SyncTeXMap } from '@/features/editor/domain';
 import { editorCommandBus, getActiveEditorEngine } from '../../../../coordinators/command-bus';
 import { navigationCoordinator } from '../../../../coordinators/navigation.coordinator';
 import { compilerCoordinator } from '../../../../coordinators/compiler.coordinator';
-import { lruDocumentCache } from '../../../../domain/lru-document-cache';
+import { lruDocumentCache } from '../../../../domain/document/lru-document-cache';
 import type { SurfaceHandle } from '../PdfSurface';
 
 export interface UseViewerSyncTeXOptions {
   pageId: string | null;
   projectId?: string;
   scale: number;
+  autoFit?: boolean;
+  containerWidth?: number;
   numPages: number;
   pageNumber: number;
   setPageNumber: (p: number | ((prev: number) => number)) => void;
@@ -32,6 +36,8 @@ export function useViewerSyncTeX({
   pageId,
   projectId,
   scale,
+  autoFit,
+  containerWidth,
   numPages,
   pageNumber,
   setPageNumber,
@@ -43,7 +49,8 @@ export function useViewerSyncTeX({
 
   const findPageByBasename = useCallback(
     (basename: string) => {
-      const cleanName = basename.replace(/^\.\//, '').toLowerCase();
+      const normalized = basename.replace(/\\/g, '/');
+      const cleanName = normalized.replace(/^\.\//, '').toLowerCase();
       const baseNoExt = cleanName.replace(/\.(tex|bib|sty|cls)$/i, '');
       const bareName = cleanName.split('/').pop() || cleanName;
       const bareNoExt = bareName.replace(/\.(tex|bib|sty|cls)$/i, '');
@@ -51,7 +58,7 @@ export function useViewerSyncTeX({
       // 1. Match root document (main.tex) from currentPage
       const currentPage = usePageStore.getState().currentPage;
       if (currentPage) {
-        const rootTitle = (currentPage.title || 'main.tex').toLowerCase();
+        const rootTitle = (currentPage.title || 'main.tex').replace(/\\/g, '/').toLowerCase();
         if (
           rootTitle === cleanName ||
           rootTitle.replace(/\.(tex|bib|sty|cls)$/i, '') === baseNoExt ||
@@ -68,8 +75,8 @@ export function useViewerSyncTeX({
 
       // 2. Match project child files
       const match = pageFiles.find((p: any) => {
-        const titleLower = (p.title || '').toLowerCase();
-        const pPathLower = (p.path || '').toLowerCase();
+        const titleLower = (p.title || '').replace(/\\/g, '/').toLowerCase();
+        const pPathLower = (p.path || '').replace(/\\/g, '/').toLowerCase();
         const pBare = titleLower.split('/').pop() || titleLower;
         return (
           titleLower === cleanName ||
@@ -78,7 +85,9 @@ export function useViewerSyncTeX({
           pBare.replace(/\.(tex|bib|sty|cls)$/i, '') === bareNoExt ||
           (pPathLower && (pPathLower.endsWith(cleanName) || pPathLower.endsWith(bareName))) ||
           (pPathLower && cleanName.endsWith(pPathLower)) ||
-          cleanName.endsWith(titleLower)
+          cleanName.endsWith(titleLower) ||
+          cleanName.endsWith('/' + titleLower) ||
+          cleanName.endsWith('/' + pBare)
         );
       });
       if (match) return match;
@@ -88,14 +97,30 @@ export function useViewerSyncTeX({
         lruDocumentCache.findByPath(cleanName) ||
         lruDocumentCache.findByPath(bareName) ||
         lruDocumentCache.getAllModels().find((m) => {
-          const mLower = m.filePath.toLowerCase();
-          return cleanName.endsWith(mLower) || mLower.endsWith(cleanName);
+          const mLower = m.filePath.replace(/\\/g, '/').toLowerCase();
+          return cleanName.endsWith(mLower) || mLower.endsWith(cleanName) || cleanName.endsWith('/' + mLower);
         });
       if (cached) {
         return {
           id: cached.fileId,
           title: cached.filePath,
           path: cached.filePath,
+        };
+      }
+
+      // 4. Match open tabs in useTabsStore
+      const tabsByProject = useTabsStore.getState().tabsByProject;
+      const allTabs = Object.values(tabsByProject).flat();
+      const matchingTab = allTabs.find((t: EditorTab) => {
+        const tPath = (t.path || t.title || '').replace(/\\/g, '/').toLowerCase();
+        const tBare = tPath.split('/').pop() || tPath;
+        return tPath === cleanName || tBare === bareName || cleanName.endsWith(tPath);
+      });
+      if (matchingTab) {
+        return {
+          id: matchingTab.id,
+          title: matchingTab.title,
+          path: matchingTab.path || matchingTab.title,
         };
       }
 
@@ -151,11 +176,16 @@ export function useViewerSyncTeX({
         }
       }
 
-      navigationCoordinator.jumpToLine({
-        fileId: activeFilePage?.id,
-        line: targetLine,
-        highlight: highlightType,
-      });
+      // Fallback: If no file was specified in the error or SyncTeX node, jump in root/active document
+      const pageStore = usePageStore.getState();
+      const fallbackDoc = pageStore.activeFilePage || pageStore.currentPage;
+      if (fallbackDoc) {
+        navigationCoordinator.jumpToLine({
+          fileId: fallbackDoc.id,
+          line: targetLine,
+          highlight: highlightType,
+        });
+      }
     },
     [
       findPageByBasename,
@@ -191,6 +221,11 @@ export function useViewerSyncTeX({
       if (!rootId) return;
       const filename = activeFilePage?.title || 'main.tex';
 
+      const effectiveScale =
+        autoFit && containerWidth && containerWidth > 0
+          ? containerWidth / 595
+          : (scale > 0 ? scale : 1);
+
       // 1. Try Backend Single Source of Truth
       const remoteRes = await LatexCompilerEngine.resolveForwardRemote(
         rootId,
@@ -199,10 +234,10 @@ export function useViewerSyncTeX({
       );
 
       let targetPage = remoteRes?.page ?? null;
-      let targetX = remoteRes ? remoteRes.x * scale : undefined;
-      let targetY = remoteRes ? remoteRes.y * scale : undefined;
-      let targetW = remoteRes && remoteRes.w !== undefined ? remoteRes.w * scale : undefined;
-      let targetH = remoteRes && remoteRes.h !== undefined ? remoteRes.h * scale : undefined;
+      let targetX = remoteRes ? remoteRes.x * effectiveScale : undefined;
+      let targetY = remoteRes ? remoteRes.y * effectiveScale : undefined;
+      let targetW = remoteRes && remoteRes.w !== undefined ? remoteRes.w * effectiveScale : undefined;
+      let targetH = remoteRes && remoteRes.h !== undefined ? remoteRes.h * effectiveScale : undefined;
 
       if (!targetPage) {
         const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
@@ -215,10 +250,10 @@ export function useViewerSyncTeX({
         if (localDetail) {
           targetPage = localDetail.page;
           if (localDetail.x !== undefined && localDetail.y !== undefined) {
-            targetX = localDetail.x * scale;
-            targetY = localDetail.y * scale;
-            targetW = localDetail.w !== undefined ? localDetail.w * scale : undefined;
-            targetH = localDetail.h !== undefined ? localDetail.h * scale : undefined;
+            targetX = localDetail.x * effectiveScale;
+            targetY = localDetail.y * effectiveScale;
+            targetW = localDetail.w !== undefined ? localDetail.w * effectiveScale : undefined;
+            targetH = localDetail.h !== undefined ? localDetail.h * effectiveScale : undefined;
           }
         }
       }
@@ -235,9 +270,12 @@ export function useViewerSyncTeX({
 
       if (targetPage) {
         setPageNumber(targetPage);
-        pdfSurfaceRef.current?.scrollToPage(targetPage);
         if (targetX !== undefined && targetY !== undefined) {
           pdfSurfaceRef.current?.highlightTarget?.(targetPage, targetX, targetY, targetW, targetH);
+        } else {
+          const fallbackX = 72 * effectiveScale;
+          const fallbackY = 100 * effectiveScale;
+          pdfSurfaceRef.current?.highlightTarget?.(targetPage, fallbackX, fallbackY, targetW, targetH);
         }
       }
     };
@@ -254,7 +292,7 @@ export function useViewerSyncTeX({
       unsubJump();
       unsubForward();
     };
-  }, [pageId, projectId, activeFilePage?.title, scale, numPages, setPageNumber, pdfSurfaceRef, synctexMapRef]);
+  }, [pageId, projectId, activeFilePage?.title, scale, autoFit, containerWidth, numPages, setPageNumber, pdfSurfaceRef, synctexMapRef]);
 
   // SyncTeX reverse search event listener
   useEffect(() => {

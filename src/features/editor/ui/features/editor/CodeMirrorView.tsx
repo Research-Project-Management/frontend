@@ -28,12 +28,16 @@ import {
   reconfigureVimMode,
   reconfigureReadOnly,
   YjsCodeMirrorAdapter,
+  createTrackChangesExtension,
+  setTrackChangesViewModeEffect,
+  setTrackChangesReviewModeEffect,
 } from '../../../engines';
 import { CodeMirrorEngineAdapter } from '@/features/editor/engines/adapters/codemirror/codemirror.adapter';
-import { lruDocumentCache } from '../../../domain/lru-document-cache';
+import { lruDocumentCache } from '../../../domain/document/lru-document-cache';
 import { visibilityCoordinator } from '../../../coordinators/visibility.coordinator';
 import { diagnosticsCoordinator } from '../../../coordinators/diagnostics.coordinator';
 import { sessionCoordinator } from '../../../coordinators/session.coordinator';
+import { reviewCoordinator } from '../../../coordinators/review.coordinator';
 import { setActiveEditorEngine, editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { useSettingsStore } from '../../../store/settings.store';
 import { createDiagnosticsGutter } from './DiagnosticsGutter';
@@ -73,6 +77,8 @@ export function CodeMirrorView({
   const keybinding = useSettingsStore((s) => s.keybinding);
   const lineNumbers = useSettingsStore((s) => s.lineNumbers);
   const wordWrap = useSettingsStore((s) => s.wordWrap);
+  const reviewMode = useSettingsStore((s) => s.reviewMode);
+  const trackChangesViewMode = useSettingsStore((s) => s.trackChangesViewMode);
 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -95,6 +101,7 @@ export function CodeMirrorView({
       vimMode: keybinding === 'vim',
       enableMathPreview: true,
       enableAutocomplete: true,
+      enableErrorLens: false,
     });
 
     const diagnosticsExtension = createDiagnosticsGutter({
@@ -139,6 +146,11 @@ export function CodeMirrorView({
       }
     });
 
+    const trackChangesExtension = createTrackChangesExtension({
+      initialViewMode: trackChangesViewMode === 'clean' ? 'hide' : 'show',
+      initialReviewMode: Boolean(reviewMode),
+    });
+
     // 4. Assemble State & View
     const state = EditorState.create({
       doc: initialText,
@@ -146,6 +158,7 @@ export function CodeMirrorView({
         ...presetExtensions,
         diagnosticsExtension,
         collabExtension,
+        trackChangesExtension,
         viewUpdateListener,
       ],
     });
@@ -156,6 +169,7 @@ export function CodeMirrorView({
     });
 
     viewRef.current = view;
+    reviewCoordinator.bindEditorView(view, fileId);
 
     // 5. Connect Concrete Engine Adapter to Global Context
     const engineAdapter = new CodeMirrorEngineAdapter(view);
@@ -212,10 +226,30 @@ export function CodeMirrorView({
       }
     });
 
-    // 9. Subscribe to EditorCommandBus commands
     const unsubJump = editorCommandBus.subscribe('editor:jump-to-line', (cmd) => {
       engineAdapter.jumpToLine(cmd.line, cmd.highlight);
     });
+
+    const unsubScroll = editorCommandBus.subscribe('editor:scroll-to-line', (cmd) => {
+      engineAdapter.scrollToLine(cmd.line, cmd.smooth !== false);
+    });
+
+    // Synchronized Dual-Scroll Producer (Editor -> Preview)
+    let scrollRafId: number | null = null;
+    let lastDispatchedLine = -1;
+    const handleScroll = () => {
+      if (scrollRafId !== null) return;
+      scrollRafId = requestAnimationFrame(() => {
+        scrollRafId = null;
+        if (!viewRef.current) return;
+        const line = engineAdapter.getVisibleLine();
+        if (line !== lastDispatchedLine) {
+          lastDispatchedLine = line;
+          editorCommandBus.dispatch({ type: 'sync:editor-scrolled', line });
+        }
+      });
+    };
+    view.scrollDOM.addEventListener('scroll', handleScroll, { passive: true });
 
     const unsubFocus = editorCommandBus.subscribe('editor:focus', () => {
       engineAdapter.focus();
@@ -289,7 +323,10 @@ export function CodeMirrorView({
     });
 
     return () => {
+      if (scrollRafId !== null) cancelAnimationFrame(scrollRafId);
+      view.scrollDOM.removeEventListener('scroll', handleScroll);
       unsubJump();
+      unsubScroll();
       unsubFocus();
       unsubFormat();
       unsubInsertText();
@@ -302,6 +339,7 @@ export function CodeMirrorView({
       unsubVisualCmd();
       unsubDiagnostics();
       unsubVisibility();
+      reviewCoordinator.bindEditorView(null, fileId);
       setActiveEditorEngine(null);
       adapterRef.current = null;
       view.destroy();
@@ -329,6 +367,17 @@ export function CodeMirrorView({
     if (!viewRef.current) return;
     reconfigureReadOnly(viewRef.current, readOnly);
   }, [readOnly]);
+
+  // Reconfigure Track Changes mode & viewMode dynamically in-place
+  useEffect(() => {
+    if (!viewRef.current) return;
+    viewRef.current.dispatch({
+      effects: [
+        setTrackChangesViewModeEffect.of(trackChangesViewMode === 'clean' ? 'hide' : 'show'),
+        setTrackChangesReviewModeEffect.of(Boolean(reviewMode)),
+      ],
+    });
+  }, [reviewMode, trackChangesViewMode]);
 
   // Reconfigure Yjs collab extension on prop change
   useEffect(() => {

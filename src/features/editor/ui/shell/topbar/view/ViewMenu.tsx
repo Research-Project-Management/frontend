@@ -111,8 +111,6 @@ export function ViewMenu() {
     setEditorMode,
     reviewMode,
     setReviewMode,
-    showBreadcrumbs,
-    toggleShowBreadcrumbs,
     showEditorTabs,
     toggleShowEditorTabs,
     showEquationPreview,
@@ -125,8 +123,6 @@ export function ViewMenu() {
       setEditorMode: s.setEditorMode,
       reviewMode: s.reviewMode,
       setReviewMode: s.setReviewMode,
-      showBreadcrumbs: s.showBreadcrumbs,
-      toggleShowBreadcrumbs: s.toggleShowBreadcrumbs,
       showEditorTabs: s.showEditorTabs,
       toggleShowEditorTabs: s.toggleShowEditorTabs,
       showEquationPreview: s.showEquationPreview,
@@ -172,13 +168,13 @@ export function ViewMenu() {
 
   return (
     <MenubarMenu>
-      <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md">
+      <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary select-none transition-colors">
         View
       </MenubarTrigger>
 
-      <MenubarContent className="min-w-60 text-xs">
+      <MenubarContent className="min-w-64 text-xs select-none">
         {/* ── Section 1: Layout options ── */}
-        <div className="text-12 font-medium text-muted-foreground px-2.5 py-1.5 select-none">
+        <div className="text-12 font-medium text-muted-foreground px-2.5 py-1.5 select-none whitespace-nowrap">
           Layout options
         </div>
 
@@ -199,7 +195,7 @@ export function ViewMenu() {
               <Columns2 className="size-4 opacity-70" strokeWidth={1.8} />
             )}
           </div>
-          <span className="flex-1 text-xs">Split view</span>
+          <span className="flex-1 text-xs whitespace-nowrap">Split view</span>
         </MenubarItem>
 
         {/* 2. Editor only */}
@@ -219,7 +215,7 @@ export function ViewMenu() {
               <PenIcon className="size-3.5 opacity-70" />
             )}
           </div>
-          <span className="flex-1 text-xs">Editor only</span>
+          <span className="flex-1 text-xs whitespace-nowrap">Editor only</span>
         </MenubarItem>
 
         {/* 3. PDF only */}
@@ -239,7 +235,7 @@ export function ViewMenu() {
               <PdfDocIcon className="size-4 opacity-70" />
             )}
           </div>
-          <span className="flex-1 text-xs">PDF only</span>
+          <span className="flex-1 text-xs whitespace-nowrap">PDF only</span>
         </MenubarItem>
 
         {/* 4. Open PDF in separate tab */}
@@ -250,7 +246,7 @@ export function ViewMenu() {
           <div className="size-4 flex items-center justify-center shrink-0">
             <ExternalLink className="size-4 opacity-70" strokeWidth={1.8} />
           </div>
-          <span className="flex-1 text-xs">Open PDF in separate tab</span>
+          <span className="flex-1 text-xs whitespace-nowrap">Open PDF in separate tab</span>
         </MenubarItem>
 
         {/* 5. Focus mode */}
@@ -261,9 +257,11 @@ export function ViewMenu() {
           <div className="size-4 flex items-center justify-center shrink-0">
             <Scan className="size-4 opacity-70" strokeWidth={1.8} />
           </div>
-          <span className="flex-1 text-xs">Focus mode</span>
-          <kbd className="text-11 font-mono text-muted-foreground ml-auto">Ctrl Shift M</kbd>
+          <span className="flex-1 text-xs whitespace-nowrap">Focus mode</span>
+          <kbd className="text-11 font-mono text-muted-foreground ml-auto whitespace-nowrap shrink-0">Ctrl Shift M</kbd>
         </MenubarItem>
+
+        <MenubarSeparator />
 
         {/* ── Section 2: Editor display mode (Source vs Visual) ── */}
         <MenubarSub>
@@ -339,21 +337,13 @@ export function ViewMenu() {
           </MenubarSubContent>
         </MenubarSub>
 
+        {/* Divider */}
+        <MenubarSeparator />
+
         {/* ── Section 3: Editor settings ── */}
-        <div className="text-12 font-medium text-muted-foreground px-2.5 py-1.5 select-none">
+        <div className="text-12 font-medium text-muted-foreground px-2.5 py-1.5 select-none whitespace-nowrap">
           Editor settings
         </div>
-
-        {/* Show breadcrumbs */}
-        <MenubarItem
-          onClick={toggleShowBreadcrumbs}
-          className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors text-xs font-medium select-none"
-        >
-          <div className="size-4 flex items-center justify-center shrink-0">
-            {showBreadcrumbs && <Check className="size-3.5 text-primary stroke-[2.5]" />}
-          </div>
-          <span className="flex-1 text-xs">Show breadcrumbs</span>
-        </MenubarItem>
 
         {/* Show editor tabs */}
         <MenubarItem
@@ -363,7 +353,7 @@ export function ViewMenu() {
           <div className="size-4 flex items-center justify-center shrink-0">
             {showEditorTabs && <Check className="size-3.5 text-primary stroke-[2.5]" />}
           </div>
-          <span className="flex-1 text-xs">Show editor tabs</span>
+          <span className="flex-1 text-xs whitespace-nowrap">Show editor tabs</span>
         </MenubarItem>
 
         {/* Show equation preview */}
@@ -374,7 +364,7 @@ export function ViewMenu() {
           <div className="size-4 flex items-center justify-center shrink-0">
             {showEquationPreview && <Check className="size-3.5 text-primary stroke-[2.5]" />}
           </div>
-          <span className="flex-1 text-xs">Show equation preview</span>
+          <span className="flex-1 text-xs whitespace-nowrap">Show equation preview</span>
         </MenubarItem>
 
         {/* Divider */}

@@ -21,9 +21,9 @@ import { Skeleton } from '@/shared/components/ui/skeleton';
 import { PlaneEmptyState, Button } from '@/shared/components/ui';
 
 import Tabs from './EditorTabs';
-import { EditorBreadcrumbs } from './EditorBreadcrumbs';
 import { ImagePanel } from './ImagePanel';
 import { CodeMirrorView } from './CodeMirrorView';
+import { VisualEditorView } from './VisualEditorView';
 import { EditorToolbar } from './EditorToolbar';
 
 import { useActiveDocument } from '../../hooks/use-core';
@@ -106,6 +106,7 @@ export function EditorArea() {
   } = useActiveDocument();
 
   const showEditorTabs = useSettingsStore((s) => s.showEditorTabs);
+  const editorMode = useSettingsStore((s) => s.editorMode);
 
   const handleOpenDefault = React.useCallback(() => {
     if (pageId) {
@@ -141,31 +142,37 @@ export function EditorArea() {
         />
       )}
 
-      {/* ── Breadcrumb Navigation ─────────────────────────────────────────── */}
-      <EditorBreadcrumbs
-        projectTitle={parentPage?.title || activePage?.title || 'Project'}
-        fileName={displayPage?.title || activePage?.title || 'main.tex'}
-        onNavigateRoot={handleOpenDefault}
-      />
-
       {/* ── Core Editor Body ──────────────────────────────────────────────── */}
-      <div className="flex-1 min-h-0 min-w-0 w-full h-full flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 min-w-0 w-full h-full flex flex-col">
         {isAssetTab ? (
           <ImagePanel asset={selectedAsset!} />
         ) : displayPage ? (
-          <div className="flex-1 min-h-0 min-w-0 w-full h-full flex flex-col overflow-hidden bg-background">
+          <div className="flex-1 min-h-0 min-w-0 w-full h-full flex flex-col bg-canvas">
             <EditorToolbar />
             <div className="flex-1 min-h-0 min-w-0 w-full h-full overflow-hidden">
-              <CodeMirrorView
-                fileId={displayPage.id}
-                filePath={displayPage.title || 'main.tex'}
-                value={rawContent}
-                onChange={(nextText) => {
-                  usePageStore.getState().setCurrentPage((prev: any) =>
-                    prev ? { ...prev, content: nextText } : prev
-                  );
-                }}
-              />
+              {editorMode === 'visual' ? (
+                <VisualEditorView
+                  fileId={displayPage.id}
+                  filePath={displayPage.title || 'main.tex'}
+                  value={rawContent}
+                  onChange={(nextText) => {
+                    usePageStore.getState().setCurrentPage((prev: any) =>
+                      prev ? { ...prev, content: nextText } : prev
+                    );
+                  }}
+                />
+              ) : (
+                <CodeMirrorView
+                  fileId={displayPage.id}
+                  filePath={displayPage.title || 'main.tex'}
+                  value={rawContent}
+                  onChange={(nextText) => {
+                    usePageStore.getState().setCurrentPage((prev: any) =>
+                      prev ? { ...prev, content: nextText } : prev
+                    );
+                  }}
+                />
+              )}
             </div>
           </div>
         ) : (

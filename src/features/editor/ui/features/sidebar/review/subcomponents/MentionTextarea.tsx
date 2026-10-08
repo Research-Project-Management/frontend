@@ -12,7 +12,7 @@ import {
   detectMentionQuery,
   filterMentionMembers,
   formatMention,
-} from '@/features/editor/domain/utils/mention.util';
+} from '@/features/editor/domain/collaboration/mention';
 import { cn } from '@/shared/lib/utils';
 import { User, Users } from 'lucide-react';
 

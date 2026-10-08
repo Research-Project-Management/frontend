@@ -13,9 +13,14 @@
  */
 
 import { manuscriptService, type LinkedFileDto } from './services/manuscript.service';
-import { lruDocumentCache } from '../domain/lru-document-cache';
-import { latexDagEngine, normalizeLatexPath } from '../domain/latex-dag-engine';
-import { latexSymbolsIndex } from '../domain/latex-symbols-index';
+import { fileService } from './services/core.service';
+import { lruDocumentCache } from '../domain/document/lru-document-cache';
+import { latexDagEngine, normalizeLatexPath } from '../domain/latex/latex-dag-engine';
+import { latexSymbolsIndex } from '../domain/latex/latex-symbols-index';
+import {
+  validateCitationKey,
+  refactorCitationKeyAcrossFiles,
+} from '@/features/editor/domain/citation/citation-refactor';
 import { diagnosticsCoordinator } from './diagnostics.coordinator';
 import { editorCommandBus } from './command-bus';
 import { useTabsStore } from '../store/tabs.store';
@@ -72,6 +77,10 @@ export class WorkspaceCoordinatorRegistry {
 
     editorCommandBus.registerExecutor('workspace:delete-file', async (cmd) => {
       return this.deleteFile(cmd.fileId);
+    });
+
+    editorCommandBus.registerExecutor('editor:rename-citekey', async (cmd) => {
+      return this.refactorCitekey(cmd.oldKey, cmd.newKey);
     });
   }
 
@@ -253,6 +262,86 @@ export class WorkspaceCoordinatorRegistry {
       latexSymbolsIndex.indexFile(file.id, path, content);
       latexDagEngine.parseAndRegister(path, content, file.id);
     }
+  }
+
+  /**
+   * Refactors a citation key across all files in the project without breaking references
+   */
+  public async refactorCitekey(
+    oldKey: string,
+    newKey: string,
+    optProjectId?: string
+  ): Promise<{ success: boolean; modifiedCount: number; replacedCount: number }> {
+    const validation = validateCitationKey(newKey, oldKey);
+    if (!validation.isValid) {
+      toast.error(validation.error || 'Khóa trích dẫn không hợp lệ');
+      return { success: false, modifiedCount: 0, replacedCount: 0 };
+    }
+
+    const effectiveProjectId = optProjectId || usePageStore.getState().projectId;
+    if (!effectiveProjectId) {
+      toast.error('Không tìm thấy dự án đang mở');
+      return { success: false, modifiedCount: 0, replacedCount: 0 };
+    }
+
+    // 1. Collect all project files (from LRU cache and/or manuscript files)
+    const cachedModels = lruDocumentCache.getAllModels();
+    let projectFiles: Array<{ id: string; path: string; content: string }> = [];
+
+    if (cachedModels.length > 0) {
+      projectFiles = cachedModels.map((m) => ({
+        id: m.fileId,
+        path: m.filePath,
+        content: m.content,
+      }));
+    } else {
+      const files = await fileService.getByPageId(effectiveProjectId);
+      projectFiles = files.map((f) => ({
+        id: f.id,
+        path: f.title,
+        content: f.content || '',
+      }));
+    }
+
+    // 2. Perform safe domain refactoring across all files
+    const { modifiedFiles, totalCount } = refactorCitationKeyAcrossFiles(projectFiles, oldKey, newKey);
+
+    if (modifiedFiles.length === 0) {
+      toast.info(`Không tìm thấy trích dẫn nào tham chiếu tới @${oldKey}`);
+      return { success: true, modifiedCount: 0, replacedCount: 0 };
+    }
+
+    // 3. Apply updates to LRU cache, backend, symbol index, and active editor
+    const activePage = usePageStore.getState().activeFilePage || usePageStore.getState().currentPage;
+
+    for (const mod of modifiedFiles) {
+      lruDocumentCache.updateContent(mod.id, mod.newContent, true);
+
+      // Re-index in Symbol Index & DAG
+      latexSymbolsIndex.indexFile(mod.id, mod.path, mod.newContent, true);
+      latexDagEngine.parseAndRegister(mod.path, mod.newContent, mod.id);
+
+      // Persist to backend
+      try {
+        await manuscriptService.docs.updateContent(mod.id, mod.newContent);
+      } catch (err) {
+        console.warn(`[WorkspaceCoordinator] Failed to save updated file ${mod.path} to backend:`, err);
+      }
+
+      // If this file is currently open in the active editor, notify command bus to update view
+      if (activePage && activePage.id === mod.id) {
+        editorCommandBus.dispatch({ type: 'editor:set-content', content: mod.newContent });
+      }
+    }
+
+    // 4. Notify UI & filetree
+    editorCommandBus.dispatch({
+      type: 'filetree:updated',
+      payload: { action: 'refactor-citekey', oldKey, newKey, totalCount },
+    });
+
+    toast.success(`Đã đổi tên @${oldKey} thành @${newKey} thành công (${totalCount} vị trí trong ${modifiedFiles.length} tệp)!`);
+    return { success: true, modifiedCount: modifiedFiles.length, replacedCount: totalCount };
   }
 }
 

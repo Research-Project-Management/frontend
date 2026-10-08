@@ -74,17 +74,17 @@ const TabItem = React.memo(function TabItem({ tab, isActive, rootPageId, onActiv
       onKeyDown={handleKeyDown}
       className={cn(
         'group/tab relative flex items-center gap-1.5 h-full px-3 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
-        'border-r border-border/50 min-w-0 max-w-[200px] shrink-0 transition-colors motion-reduce:transition-none',
+        'border-r border-border/60 min-w-0 max-w-[200px] shrink-0 transition-colors motion-reduce:transition-none text-12',
         isActive
-          ? 'bg-canvas text-foreground font-medium border-b-transparent before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-primary'
-          : 'bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+          ? 'bg-canvas text-foreground font-medium relative z-10 -mb-px border-b border-b-canvas before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-primary'
+          : 'bg-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground',
       )}
     >
       {/* File Document Icon - Clean project style */}
       <FileText className="size-3.5 shrink-0 text-foreground" />
 
       {/* Title */}
-      <span className="text-12 font-mono truncate leading-normal min-w-0">{tab.title}</span>
+      <span className="text-xs font-mono truncate leading-normal min-w-0">{tab.title}</span>
 
       {/* Close button (visible on hover across all tabs, and when focused via keyboard) */}
       <button
@@ -241,7 +241,7 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles }: TabsPro
   if (tabs.length === 0) return null;
 
   return (
-    <div className="flex items-stretch h-9 bg-panel select-none border-b border-border">
+    <div className="flex items-stretch h-9 bg-muted/20 select-none border-b border-border w-full">
       {/* ── File tabs ── */}
       <LayoutGroup id={`tab-bar-${rootPageId}`}>
         <div

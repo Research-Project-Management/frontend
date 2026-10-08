@@ -23,7 +23,9 @@ import {
   Info,
   ChevronRight,
   ChevronUp,
+  ChevronDown,
   ChevronLeft,
+  CornerDownLeft,
   Trash2,
   Download,
   Check,
@@ -31,6 +33,7 @@ import {
   Loader2,
   Copy,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useLogViewerActions, copySnippetToClipboard, fetchLogEntryExplanation } from './hooks/useLogViewerActions';
 import { cn } from '@/shared/lib/utils';
 import {
@@ -58,25 +61,8 @@ import {
 } from '@/features/editor/coordinators/services/manuscript.service';
 import { CompileButton } from './CompileButton';
 
-export interface LogEntry {
-  message: string;
-  file?: string;
-  line?: number;
-  detail?: string;
-  code?: string;
-  rawExcerpt?: string;
-  explanation?: ErrorExplanationDto;
-  quickFix?: {
-    description: string;
-    replacementText: string;
-  };
-}
-
-export interface ParsedLog {
-  errors: LogEntry[];
-  warnings: LogEntry[];
-  badBoxes: LogEntry[];
-}
+import type { LogEntry, ParsedLog, CompilerLogsProps, LogsProps } from '@/features/editor/domain/types';
+export type { LogEntry, ParsedLog, CompilerLogsProps, LogsProps };
 
 const PARSED_LOG_CACHE_MAX = 5;
 const parsedLogCache = new Map<string, ParsedLog>();
@@ -94,10 +80,16 @@ export function parseLatexLog(raw: string): ParsedLog {
 
   const tryAdd = (arr: LogEntry[], entry: LogEntry, max: number = 300) => {
     if (arr.length >= max) return;
-    const key = `${entry.file ?? ''}|${entry.line ?? ''}|${entry.message}`;
+    const sanitizedEntry: LogEntry = {
+      ...entry,
+      message: entry.message ? entry.message.replace(/—/g, '-') : '',
+      detail: entry.detail ? entry.detail.replace(/—/g, '-') : undefined,
+      rawExcerpt: entry.rawExcerpt ? entry.rawExcerpt.replace(/—/g, '-') : undefined,
+    };
+    const key = `${sanitizedEntry.file ?? ''}|${sanitizedEntry.line ?? ''}|${sanitizedEntry.message}`;
     if (!seen.has(key)) {
       seen.add(key);
-      arr.push(entry);
+      arr.push(sanitizedEntry);
     }
   };
 
@@ -250,19 +242,7 @@ const EntryRow = React.memo(function EntryRow({
   return (
     <div
       id={id}
-      role={isClickable ? 'button' : undefined}
-      tabIndex={isClickable ? 0 : undefined}
       onClick={isClickable ? onClick : undefined}
-      onKeyDown={
-        isClickable
-          ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onClick?.();
-              }
-            }
-          : undefined
-      }
       className={cn(
         'flex flex-col gap-1.5 px-3 py-2.5 border-b border-border last:border-b-0 transition-colors',
         isClickable && 'cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/70 outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset',
@@ -278,6 +258,21 @@ const EntryRow = React.memo(function EntryRow({
               {entry.message}
             </p>
             <div className="flex items-center gap-1.5 shrink-0">
+              {entry.line !== undefined && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClick?.();
+                  }}
+                  className="flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-medium text-primary bg-primary/10 border border-primary/25 hover:bg-primary/20 hover:border-primary/40 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors shrink-0"
+                  title={`Nhảy tới dòng ${entry.line}${entry.file ? ` trong ${entry.file}` : ''} (Go to code)`}
+                >
+                  <CornerDownLeft className="size-3" />
+                  <span>Dòng {entry.line}</span>
+                </button>
+              )}
+
               {entry.quickFix && onApplyQuickFix && (
                 <button
                   type="button"
@@ -285,7 +280,7 @@ const EntryRow = React.memo(function EntryRow({
                     e.stopPropagation();
                     onApplyQuickFix(entry, entry.quickFix!);
                   }}
-                  className="flex items-center gap-1 text-11 px-2 py-0.5 rounded-md font-medium text-primary bg-primary/10 border border-primary/20 hover:bg-primary/20 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors"
+                  className="flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-medium text-primary bg-primary/10 border border-primary/20 hover:bg-primary/20 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors"
                   title={`Quick fix: ${entry.quickFix.description}`}
                 >
                   <Wand2 className="size-3" />
@@ -301,7 +296,7 @@ const EntryRow = React.memo(function EntryRow({
                     handleToggleExplain();
                   }}
                   className={cn(
-                    'flex items-center gap-1 text-11 px-2 py-0.5 rounded-md font-medium shrink-0 transition-colors border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                    'flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-medium shrink-0 transition-colors border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                     isExplainOpen
                       ? 'bg-primary/15 text-primary border-primary/30 font-semibold'
                       : 'bg-muted/60 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
@@ -323,7 +318,7 @@ const EntryRow = React.memo(function EntryRow({
                     onSuggestFix(entry);
                   }}
                   className={cn(
-                    'flex items-center gap-1 text-11 px-2 py-0.5 rounded-md font-medium shrink-0 transition-colors border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai',
+                    'flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-medium shrink-0 transition-colors border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai',
                     fixResult || isFixLoading
                       ? 'bg-ai/15 text-ai border-ai/30 font-semibold'
                       : 'bg-ai/10 text-ai border-ai/25 hover:bg-ai/20'
@@ -350,24 +345,24 @@ const EntryRow = React.memo(function EntryRow({
             </p>
           )}
           {entry.rawExcerpt ? (
-            <div className="mt-1.5 p-2 rounded-md bg-muted/40 border border-border/40 font-mono text-11 text-muted-foreground whitespace-pre-wrap leading-relaxed select-text overflow-x-auto">
+            <pre className="mt-1.5 pl-3 py-1 border-l-2 border-border/70 font-mono text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed select-text overflow-x-auto bg-transparent">
               {entry.rawExcerpt}
-            </div>
+            </pre>
           ) : (
             entry.detail && !/^[@^~.?!\s]+$/.test(entry.detail) && entry.detail.length > 1 && (
-              <p className="text-muted-foreground text-xs mt-0.5 truncate">{entry.detail}</p>
+              <p className="text-muted-foreground text-xs mt-0.5 truncate font-mono">{entry.detail}</p>
             )
           )}
         </div>
       </div>
 
-      {/* LaTeX Error Guide Expansion Card */}
+      {/* LaTeX Error Guide Expansion Panel */}
       {isExplainOpen && activeExplanation && (
         <div
           role="region"
           aria-label="LaTeX Error Guide"
           onClick={(e) => e.stopPropagation()}
-          className="ml-6 mt-2 p-3.5 rounded-md bg-muted/30 border border-border text-xs space-y-2.5 select-text"
+          className="ml-6 mt-2 pl-3.5 pr-2 py-2 border-l-2 border-primary/40 text-xs space-y-2.5 select-text"
         >
           <div className="flex items-center justify-between">
             <h4 className="font-semibold text-13 text-foreground tracking-tight">
@@ -376,15 +371,15 @@ const EntryRow = React.memo(function EntryRow({
           </div>
 
           {activeExplanation.explanation && (
-            <p className="text-12 text-foreground/90 leading-relaxed font-normal">
+            <p className="text-xs text-foreground/90 leading-relaxed font-normal">
               {activeExplanation.explanation}
             </p>
           )}
 
           {activeExplanation.commonCauses && activeExplanation.commonCauses.length > 0 && (
             <div className="space-y-1 pt-0.5">
-              <span className="font-medium text-11 text-foreground/80">Common Causes:</span>
-              <ul className="list-disc pl-4 space-y-1 text-11 text-muted-foreground">
+              <span className="font-medium text-xs text-foreground/80">Common Causes:</span>
+              <ul className="list-disc pl-4 space-y-1 text-xs text-muted-foreground">
                 {activeExplanation.commonCauses.map((cause, cIdx) => (
                   <li key={cIdx}>{cause}</li>
                 ))}
@@ -394,8 +389,8 @@ const EntryRow = React.memo(function EntryRow({
 
           {activeExplanation.suggestedFix && (
             <div className="space-y-1 pt-0.5">
-              <span className="font-medium text-11 text-foreground/80">Suggested Fix:</span>
-              <p className="text-11 text-muted-foreground bg-background/60 p-2 rounded border border-border/60">
+              <span className="font-medium text-xs text-foreground/80">Suggested Fix:</span>
+              <p className="text-xs text-muted-foreground pl-3 py-1 border-l-2 border-border/60 font-mono leading-relaxed">
                 {activeExplanation.suggestedFix}
               </p>
             </div>
@@ -404,17 +399,17 @@ const EntryRow = React.memo(function EntryRow({
           {activeExplanation.exampleSnippet && (
             <div className="space-y-1 pt-0.5">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-11 text-foreground/80">Example Snippet:</span>
+                <span className="font-medium text-xs text-foreground/80">Example Snippet:</span>
                 <button
                   type="button"
                   onClick={() => copySnippetToClipboard(activeExplanation.exampleSnippet)}
-                  className="text-10 text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
+                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
                 >
                   <Copy className="size-3" />
                   <span>Copy</span>
                 </button>
               </div>
-              <pre className="font-mono text-11 bg-background p-2 rounded border border-border text-foreground overflow-x-auto">
+              <pre className="font-mono text-xs pl-3 py-1 border-l-2 border-border/60 text-foreground overflow-x-auto leading-relaxed bg-transparent">
                 {activeExplanation.exampleSnippet}
               </pre>
             </div>
@@ -422,13 +417,13 @@ const EntryRow = React.memo(function EntryRow({
         </div>
       )}
 
-      {/* AI Error Assist Expansion Card */}
+      {/* AI Error Assist Expansion Panel */}
       {(isFixLoading || fixResult) && (
         <div
           role="region"
           aria-label="AI Error Assist"
           onClick={(e) => e.stopPropagation()}
-          className="ml-6 mt-2 p-3.5 rounded-md bg-card border border-border text-xs space-y-2.5 select-text"
+          className="ml-6 mt-2 pl-3.5 pr-2 py-2 border-l-2 border-ai/40 text-xs space-y-2.5 select-text"
         >
           <div className="flex items-center justify-between">
             <h4 className="font-semibold text-13 text-foreground tracking-tight">
@@ -437,7 +432,7 @@ const EntryRow = React.memo(function EntryRow({
             {fixResult && (
               <span
                 className={cn(
-                  'text-11 px-2 py-0.5 rounded-md font-medium capitalize border',
+                  'text-xs px-2 py-0.5 rounded-md font-medium capitalize border',
                   fixResult.confidence === 'high'
                     ? 'border-success/30 bg-success/10 text-success'
                     : fixResult.confidence === 'medium'
@@ -453,7 +448,7 @@ const EntryRow = React.memo(function EntryRow({
           {isFixLoading ? (
             <div className="flex items-center gap-2 py-2 text-muted-foreground">
               <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none text-ai shrink-0" />
-              <span className="text-12">Analyzing LaTeX error and generating fix...</span>
+              <span className="text-xs">Analyzing LaTeX error and generating fix...</span>
             </div>
           ) : fixResult ? (
             <>
@@ -463,7 +458,7 @@ const EntryRow = React.memo(function EntryRow({
 
               {/* Code Diff Preview */}
               {fixResult.fixedSnippet && (
-                <div className="rounded-md border border-border bg-background overflow-hidden font-mono text-11 my-1.5">
+                <div className="rounded-md border border-border/70 overflow-hidden font-mono text-xs my-1.5">
                   {fixResult.originalSnippet &&
                   fixResult.originalSnippet !== fixResult.fixedSnippet &&
                   !fixResult.originalSnippet.startsWith('%') ? (
@@ -518,16 +513,6 @@ const EntryRow = React.memo(function EntryRow({
   );
 });
 
-export interface CompilerLogsProps {
-  log: string;
-  parsedLog?: ParsedLog;
-  onClose: () => void;
-  onJumpToError?: (file: string | undefined, line: number) => void;
-  onClearCacheAndCompile?: () => void;
-  onCompile?: () => void;
-}
-
-export type LogsProps = CompilerLogsProps;
 
 export function CompilerLogs({
   log,
@@ -723,8 +708,48 @@ export function CompilerLogs({
           highlight: 'error',
         });
       }
+      toast.info(`Đã chuyển đến dòng ${entry.line}${entry.file ? ` (${entry.file})` : ''}`);
     }
   }, [onJumpToError]);
+
+  // Overleaf-parity error stepping (F8 / Shift+F8)
+  const [currentErrorIdx, setCurrentErrorIdx] = useState<number>(0);
+
+  const handleNextError = useCallback(() => {
+    if (parsed.errors.length === 0) return;
+    const nextIdx = (currentErrorIdx + 1) % parsed.errors.length;
+    setCurrentErrorIdx(nextIdx);
+    const err = parsed.errors[nextIdx];
+    handleEntryClick(err);
+    const el = document.getElementById(`log-entry-err-${nextIdx}`);
+    el?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+  }, [currentErrorIdx, parsed.errors, handleEntryClick]);
+
+  const handlePrevError = useCallback(() => {
+    if (parsed.errors.length === 0) return;
+    const prevIdx = (currentErrorIdx - 1 + parsed.errors.length) % parsed.errors.length;
+    setCurrentErrorIdx(prevIdx);
+    const err = parsed.errors[prevIdx];
+    handleEntryClick(err);
+    const el = document.getElementById(`log-entry-err-${prevIdx}`);
+    el?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+  }, [currentErrorIdx, parsed.errors, handleEntryClick]);
+
+  // Global F8 / Shift+F8 keyboard shortcut for stepping through compilation errors
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F8') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          handlePrevError();
+        } else {
+          handleNextError();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleNextError, handlePrevError]);
 
   const handleDownloadFile = (fileName: string) => {
     downloadFile(fileName);
@@ -737,9 +762,9 @@ export function CompilerLogs({
   const totalLogsCount = parsed.errors.length + parsed.warnings.length + parsed.badBoxes.length;
 
   return (
-    <div className="h-full w-full flex flex-col bg-background text-foreground select-none overflow-hidden">
+    <div className="h-full w-full flex flex-col bg-canvas text-foreground select-none overflow-hidden font-sans">
       {/* ── Top Header Toolbar (Overleaf 1:1 Parity, Synchronized with Flux Design) ── */}
-      <header className="h-10 px-3 bg-background border-b border-border flex items-center justify-between gap-2 shrink-0">
+      <header className="h-10 px-3 border-b border-border/60 flex items-center justify-between gap-2 shrink-0 font-sans">
         <div className="flex items-center gap-2">
           {onCompile && (
             <CompileButton
@@ -751,19 +776,48 @@ export function CompilerLogs({
             type="button"
             onClick={onClose}
             aria-label="Back to PDF"
-            className="h-7.5 px-2.5 flex items-center gap-1.5 rounded-md border border-border bg-background hover:bg-muted text-foreground text-xs font-medium transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="h-7.5 px-2.5 flex items-center gap-1.5 rounded-md border border-border/80 bg-canvas hover:bg-muted text-foreground text-xs font-medium transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <ChevronLeft className="size-3.5 shrink-0 text-muted-foreground" />
             <span>Back to PDF</span>
           </button>
         </div>
+
+        {/* ── Overleaf Error Stepper (Next Error / Previous Error / F8) ── */}
+        {parsed.errors.length > 0 && (
+          <div className="flex items-center gap-1.5 font-sans">
+            <span className="text-xs text-muted-foreground font-mono">
+              {currentErrorIdx + 1}/{parsed.errors.length} lỗi
+            </span>
+            <div className="flex items-center rounded-md bg-muted/50 p-0.5">
+              <button
+                type="button"
+                onClick={handlePrevError}
+                aria-label="Lỗi trước (Shift+F8)"
+                title="Lỗi trước (Shift+F8)"
+                className="size-6 flex items-center justify-center hover:bg-background rounded-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                <ChevronUp className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleNextError}
+                aria-label="Lỗi tiếp theo (F8)"
+                title="Lỗi tiếp theo (F8)"
+                className="size-6 flex items-center justify-center hover:bg-background rounded-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                <ChevronDown className="size-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* ── Filter Tabs (All logs, Errors, Warnings, Info) ── */}
       <nav
         role="tablist"
         aria-label="Log filter categories"
-        className="h-9 px-3 bg-background border-b border-border flex items-center gap-4 shrink-0 overflow-x-auto no-scrollbar"
+        className="h-9 px-3 bg-canvas border-b border-border/70 flex items-center gap-4 shrink-0 overflow-x-auto no-scrollbar font-sans"
       >
         <button
           type="button"
@@ -778,7 +832,7 @@ export function CompilerLogs({
           )}
         >
           <span>All logs</span>
-          <span className="px-1.5 py-0.2 rounded-full text-11 font-mono font-medium bg-muted text-muted-foreground">
+          <span className="px-1.5 py-0.5 rounded-full text-xs font-mono font-medium bg-muted text-foreground/80">
             {totalLogsCount}
           </span>
         </button>
@@ -798,8 +852,8 @@ export function CompilerLogs({
           <span>Errors</span>
           <span
             className={cn(
-              'px-1.5 py-0.2 rounded-full text-11 font-mono font-semibold',
-              parsed.errors.length > 0 ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-muted-foreground font-medium'
+              'px-1.5 py-0.5 rounded-full text-xs font-mono font-semibold',
+              parsed.errors.length > 0 ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-foreground/80 font-medium'
             )}
           >
             {parsed.errors.length}
@@ -821,8 +875,8 @@ export function CompilerLogs({
           <span>Warnings</span>
           <span
             className={cn(
-              'px-1.5 py-0.2 rounded-full text-11 font-mono font-semibold',
-              parsed.warnings.length > 0 ? 'bg-warning/20 text-warning font-semibold' : 'bg-muted text-muted-foreground font-medium'
+              'px-1.5 py-0.5 rounded-full text-xs font-mono font-semibold',
+              parsed.warnings.length > 0 ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300' : 'bg-muted text-foreground/80 font-medium'
             )}
           >
             {parsed.warnings.length}
@@ -842,7 +896,7 @@ export function CompilerLogs({
           )}
         >
           <span>Info</span>
-          <span className="px-1.5 py-0.2 rounded-full text-11 font-mono font-medium bg-muted text-muted-foreground">
+          <span className="px-1.5 py-0.5 rounded-full text-xs font-mono font-medium bg-muted text-foreground/80">
             {parsed.badBoxes.length}
           </span>
         </button>
@@ -850,7 +904,7 @@ export function CompilerLogs({
 
       {/* ── Main Body ── */}
       {compileStatus === 'error' && parsed.errors.length === 0 ? (
-        <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center bg-background">
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center bg-transparent">
           <PlaneErrorState
             title="Compilation failed"
             description="The LaTeX compiler encountered an error or terminated prematurely. Check the raw logs below to diagnose the issue."
@@ -858,7 +912,7 @@ export function CompilerLogs({
           />
         </div>
       ) : activeTab === 'all' && totalLogsCount === 0 && !log ? (
-        <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center bg-background">
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center bg-transparent">
           <PlaneEmptyState
             variant="review"
             title="No compilation issues"
@@ -878,10 +932,10 @@ export function CompilerLogs({
           />
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-background">
+        <div className="flex-1 overflow-y-auto bg-background divide-y divide-border/60 font-mono">
           {/* Compilation Error Banner (when errors exist) */}
           {parsed.errors.length > 0 && (activeTab === 'all' || activeTab === 'errors') && (
-            <div className="flex items-center justify-between p-3 rounded-md bg-destructive/5 border border-destructive/20 text-destructive text-xs animate-in fade-in-50 duration-150">
+            <div className="flex items-center justify-between p-3 bg-destructive/5 text-destructive text-xs animate-in fade-in-50 duration-150">
               <div className="flex items-center gap-2">
                 <AlertCircle className="size-4 shrink-0 text-destructive" />
                 <span className="font-medium text-foreground">
@@ -907,7 +961,7 @@ export function CompilerLogs({
           )}
 
           {/* Collapsible: > Raw logs accordion (Overleaf 1:1 Match) */}
-          <div id="raw-latex-logs" className="rounded-md border border-border bg-background overflow-hidden">
+          <div id="raw-latex-logs" className="bg-background">
             <button
               type="button"
               aria-expanded={isRawLogsOpen}
@@ -921,14 +975,14 @@ export function CompilerLogs({
               <span>Raw logs</span>
             </button>
             {isRawLogsOpen && (
-              <pre id="raw-latex-logs-content" className="p-3 border-t border-border/60 bg-muted/20 font-mono text-11 text-foreground/90 whitespace-pre-wrap break-words leading-relaxed max-h-96 overflow-y-auto select-text">
+              <pre id="raw-latex-logs-content" className="p-3 border-t border-border/60 bg-muted/20 font-mono text-12 text-foreground/90 whitespace-pre-wrap break-words leading-relaxed max-h-96 overflow-y-auto select-text">
                 {log || 'No compilation logs recorded yet.'}
               </pre>
             )}
           </div>
 
           {/* Diagnostic Entries List */}
-          <div className="rounded-md border border-border bg-background overflow-hidden">
+          <div className="bg-background">
             {/* Errors */}
             {(activeTab === 'all' || activeTab === 'errors') &&
               parsed.errors.map((e, i) => {
@@ -1028,12 +1082,12 @@ export function CompilerLogs({
       )}
 
       {/* ── Bottom Action Bar (Clear cached files & Other logs and files) ── */}
-      <footer className="h-10 px-3 bg-background border-t border-border flex items-center justify-between shrink-0 select-none">
+      <footer className="h-10 px-3 border-t border-border/60 flex items-center justify-between shrink-0 select-none font-sans">
         {/* Left: Clear cached files button */}
         <button
           type="button"
           onClick={onClearCacheAndCompile}
-          className="h-7.5 px-2.5 rounded-md bg-muted/60 hover:bg-destructive/10 text-muted-foreground hover:text-destructive border border-border hover:border-destructive/30 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+          className="h-7 px-2.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-destructive"
         >
           <Trash2 className="size-3.5 shrink-0" />
           <span>Clear cached files</span>
@@ -1044,7 +1098,7 @@ export function CompilerLogs({
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="h-7.5 px-2.5 rounded-md bg-background hover:bg-muted border border-border text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="h-7 px-2.5 rounded-md hover:bg-muted text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary border border-border/60"
             >
               <span>Other logs and files</span>
               <ChevronUp className="size-3.5 shrink-0 text-muted-foreground" />

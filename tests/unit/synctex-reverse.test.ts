@@ -3,8 +3,8 @@ import {
   parseSyncTeX,
   LatexCompilerEngine,
   type SyncTeXMap,
-} from '@/features/editor/utils/viewer.util';
-import { synctexService } from '@/features/editor/services/synctex.service';
+} from '@/features/editor/coordinators/services/latex-compiler-engine.service';
+import { synctexService } from '@/features/editor/coordinators/services/synctex.service';
 
 describe('Reverse SyncTeX (PDF Double-Click -> LaTeX Source Jump)', () => {
   beforeEach(() => {
@@ -71,12 +71,12 @@ x2,80:6553600,19660800
       expect(page1Nodes).toBeDefined();
       expect(page1Nodes?.length).toBe(2);
 
-      // Node 1: line 10, tag 1, x: 6553600 (100pt * 65536), y: 13107200 (200pt * 65536)
+      // Node 1: line 10, tag 1, x: 100pt, y: 199pt
       expect(page1Nodes![0]).toMatchObject({
         line: 10,
         tag: 1,
-        x: 6553600,
-        y: 13107200,
+        x: 100,
+        y: 199,
         page: 1,
       });
 

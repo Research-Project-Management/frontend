@@ -14,7 +14,7 @@
 
 import { linter, type Diagnostic } from '@codemirror/lint';
 import type { EditorView } from '@codemirror/view';
-import { latexSymbolsIndex } from '../../domain/latex-symbols-index';
+import { latexSymbolsIndex } from '../../domain/latex/latex-symbols-index';
 import { runLatexLinter, type LinterDiagnostic, type LinterOptions } from './latex-linter-core';
 import type { LinterWorkerMessageIn, LinterWorkerMessageOut } from '../workers/latex-linter.worker';
 
@@ -108,10 +108,12 @@ export async function latexLinterSource(view: EditorView): Promise<Diagnostic[]>
   const knownCitations = latexSymbolsIndex.getCitations();
   const knownBibKeys = knownCitations.length > 0 ? knownCitations.map((c) => c.key) : [];
   const knownLabels = latexSymbolsIndex.getLabels().map((l) => l.name);
+  const retractedCitationsMap = latexSymbolsIndex.getRetractedCitationsMap();
 
   return await latexLinterWorkerClient.lint(text, {
     knownBibKeys,
     knownLabels,
+    retractedCitationsMap,
   });
 }
 

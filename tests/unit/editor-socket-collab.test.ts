@@ -4,7 +4,7 @@ import {
   YjsSocketIOProvider,
   getOffsetFromRowCol,
   getRowColFromOffset,
-} from '@/features/editor/collaboration/yjs-socket-provider';
+} from '@/features/editor/coordinators/services/realtime/yjs-socket-provider';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { yCollab } from 'y-codemirror.next';

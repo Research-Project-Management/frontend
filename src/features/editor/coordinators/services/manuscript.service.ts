@@ -86,17 +86,7 @@ export interface AutoFixResultDto {
   }>;
 }
 
-export interface ErrorExplanationDto {
-  code: string;
-  title: string;
-  summary?: string;
-  explanation?: string;
-  commonCauses?: string[];
-  suggestedFix?: string;
-  exampleSnippet?: string;
-  documentationUrl?: string;
-  latexSnippet?: string;
-}
+export type { ErrorExplanationDto } from '../../domain/types';
 
 export interface LinkedFileDto {
   id: string;
@@ -1830,6 +1820,7 @@ const updater = {
     return await apiPost<FlushResultDto>(
       `${MANUSCRIPTS_API_BASE}/projects/${projectId}/updater/flush`,
       { force },
+      { silent: true },
     );
   },
 

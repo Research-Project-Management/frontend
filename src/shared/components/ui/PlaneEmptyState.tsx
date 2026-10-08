@@ -851,7 +851,7 @@ export function PlaneEmptyState({
   return (
     <div
       className={cn(
-        'w-full h-full flex flex-col items-center justify-center text-center select-none bg-background text-foreground',
+        'w-full h-full flex flex-col items-center justify-center text-center select-none bg-transparent text-foreground',
         isCompact ? 'min-h-[160px] p-4 gap-2' : 'min-h-[220px] p-8 gap-3',
         className,
       )}

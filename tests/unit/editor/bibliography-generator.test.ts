@@ -3,7 +3,7 @@ import {
   detectDocumentCitationStyle,
   buildBibliographySection,
   injectBibliographyIntoDocument,
-} from '@/features/editor/domain/utils/bibliography-generator.util';
+} from '@/features/editor/domain/citation/bibliography-generator';
 
 describe('bibliography-generator.util', () => {
   describe('isLatexDocument', () => {

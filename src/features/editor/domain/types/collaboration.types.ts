@@ -1,17 +1,28 @@
 /**
  * collaboration.types.ts
  *
- * Types for real-time collaboration, SSE awareness, cursor broadcast, and line locks.
+ * Types and validation schemas for real-time collaboration, SSE awareness, cursor broadcast, and line locks.
  * Matches backend document/collaboration module.
  */
 
-import type {
-  CursorPositionInput,
-  HeartbeatInput,
-} from './schemas/collaboration.schema';
+import { z } from 'zod';
+
+export const cursorPositionSchema = z.object({
+  line: z.number().int().min(0),
+  ch: z.number().int().min(0),
+  selectionEndLine: z.number().int().min(0).optional(),
+  selectionEndCh: z.number().int().min(0).optional(),
+});
+
+export type CursorPositionInput = z.infer<typeof cursorPositionSchema>;
+
+export const heartbeatSchema = z.object({
+  cursor: cursorPositionSchema.optional(),
+});
+
+export type HeartbeatInput = z.infer<typeof heartbeatSchema>;
 
 export type CursorPosition = CursorPositionInput;
-export type { HeartbeatInput };
 
 export interface CollaboratorPresence {
   userId: string;

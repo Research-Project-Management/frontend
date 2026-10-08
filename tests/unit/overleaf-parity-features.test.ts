@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { EDITOR_THEMES, MONACO_THEMES, type EditorThemeDefinition } from '@/features/editor/components/editor/editor-themes';
 import { pageKeys } from '@/features/editor/hooks/use-core';
-import { fileService, pageService } from '@/features/editor/services/core.service';
+import { fileService, pageService } from '@/features/editor/coordinators/services/core.service';
 import * as api from '@/shared/lib/api';
 
 describe('Overleaf Parity Features Suite', () => {

@@ -1,12 +1,29 @@
 /**
  * export.types.ts
  *
- * Types for document compilation export bundles and output formats.
+ * Types and validation schemas for document compilation export bundles and output formats.
  * Matches backend document/export module.
  */
 
-// Derived directly from Zod schemas (Single Source of Truth)
-export type {
-  DocumentExportFormat,
-  ExportDocumentInput,
-} from './schemas/export.schema';
+import { z } from 'zod';
+
+export const documentExportFormatSchema = z.enum([
+  'pdf',
+  'docx',
+  'markdown',
+  'md',
+  'latex-source',
+  'latex-bundle',
+  'zip',
+  'arxiv-zip',
+  'log',
+  'bbl',
+]);
+
+export const exportDocumentSchema = z.object({
+  format: documentExportFormatSchema.default('pdf'),
+  includeChildren: z.boolean().default(true).optional(),
+});
+
+export type DocumentExportFormat = z.infer<typeof documentExportFormatSchema>;
+export type ExportDocumentInput = z.infer<typeof exportDocumentSchema>;

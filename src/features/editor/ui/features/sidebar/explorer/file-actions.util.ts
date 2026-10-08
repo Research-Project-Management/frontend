@@ -29,3 +29,21 @@ export function prepareAssetInsertion(
 
   return { snippet };
 }
+
+/**
+ * Pure display name formatter for LaTeX and manuscript project files.
+ */
+export const displayName = (title: string): string => {
+  const lower = (title || '').trim().toLowerCase();
+  if (lower === 'flux' || lower === 'flux.tex') {
+    return 'main.tex';
+  }
+  return /\.[a-z0-9]+$/i.test(title) ? title : `${title}.tex`;
+};
+
+/**
+ * Strips file extension from display name to get clean basename.
+ */
+export const cleanBasename = (title: string): string =>
+  displayName(title).replace(/\.[a-z0-9]+$/i, '');
+

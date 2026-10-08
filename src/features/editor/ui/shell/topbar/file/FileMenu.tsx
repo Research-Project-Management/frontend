@@ -24,6 +24,7 @@ import { usePageStore, useCompileStore, useSettingsStore } from '@/features/edit
 import { useProjectExport } from '@/features/editor/ui/hooks/use-export';
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import { Download, FileArchive, FileText, FileCode, Archive } from 'lucide-react';
 import { duplicateProjectApi } from '@/features/projects/shell/services/project.service';
 
 export function FileMenu() {
@@ -155,48 +156,48 @@ export function FileMenu() {
 
   return (
     <MenubarMenu>
-      <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md">
+      <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary select-none transition-colors">
         File
       </MenubarTrigger>
-      <MenubarContent className="min-w-48 text-xs">
+      <MenubarContent className="min-w-56 text-xs select-none">
         <MenubarItem
           onClick={handleNewFile}
           className="cursor-pointer"
         >
-          New file
+          <span className="whitespace-nowrap">New file</span>
         </MenubarItem>
         <MenubarItem
           onClick={handleNewFolder}
           className="cursor-pointer"
         >
-          New folder
+          <span className="whitespace-nowrap">New folder</span>
         </MenubarItem>
         <MenubarItem
           onClick={handleUploadFile}
           className="cursor-pointer"
         >
-          Upload file
+          <span className="whitespace-nowrap">Upload file</span>
         </MenubarItem>
         <MenubarItem
           onClick={handleMakeCopy}
           disabled={isCopying}
           className="cursor-pointer"
         >
-          {isCopying ? 'Duplicating project...' : 'Make a copy'}
+          <span className="whitespace-nowrap">{isCopying ? 'Duplicating project...' : 'Make a copy'}</span>
         </MenubarItem>
 
         <MenubarItem
           onClick={handleDeletedFiles}
           className="cursor-pointer"
         >
-          Deleted files
+          <span className="whitespace-nowrap">Deleted files</span>
         </MenubarItem>
         <MenubarItem
           onClick={handleWordCount}
           onSelect={handleWordCount}
           className="cursor-pointer"
         >
-          Word count
+          <span className="whitespace-nowrap">Word count</span>
         </MenubarItem>
 
         <MenubarSeparator />
@@ -205,54 +206,75 @@ export function FileMenu() {
           onClick={handleTemplateGallery}
           className="cursor-pointer"
         >
-          Template gallery
+          <span className="whitespace-nowrap">Template gallery</span>
         </MenubarItem>
 
         <MenubarSeparator />
 
         <MenubarSub>
-          <MenubarSubTrigger className="cursor-pointer">
-            Download
+          <MenubarSubTrigger className="cursor-pointer flex items-center justify-between">
+            <span className="flex items-center gap-2 whitespace-nowrap">
+              <Download className="size-3.5 text-muted-foreground shrink-0" />
+              <span>Download</span>
+            </span>
           </MenubarSubTrigger>
-          <MenubarSubContent className="min-w-56 text-xs">
+          <MenubarSubContent className="min-w-[280px] text-xs select-none">
             <MenubarItem
               onClick={handleDownloadZip}
               disabled={isZipping}
-              className="cursor-pointer"
+              className="cursor-pointer flex items-center gap-2"
             >
-              Download as source (.zip)
+              <FileArchive className="size-3.5 text-primary shrink-0" />
+              <div className="flex flex-col">
+                <span className="font-medium whitespace-nowrap">Download Source (.zip)</span>
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">Tải toàn bộ mã nguồn LaTeX & thư viện</span>
+              </div>
             </MenubarItem>
             <MenubarItem
               onClick={handleDownloadArxiv}
               disabled={isZipping}
-              className="cursor-pointer"
+              className="cursor-pointer flex items-center gap-2"
             >
-              Download as arXiv submission (.zip)
+              <Archive className="size-3.5 text-foreground/80 shrink-0" />
+              <div className="flex flex-col">
+                <span className="font-medium whitespace-nowrap">Download arXiv submission (.zip)</span>
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">Gói chuẩn hóa cho arXiv / tạp chí</span>
+              </div>
             </MenubarItem>
             <MenubarItem
               onClick={handleDownloadPdf}
               disabled={!pdfUrl}
-              className="cursor-pointer"
+              className="cursor-pointer flex items-center gap-2"
             >
-              Download as PDF
+              <FileText className="size-3.5 text-rose-500 shrink-0" />
+              <div className="flex flex-col">
+                <span className="font-medium whitespace-nowrap">Download PDF</span>
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                  {pdfUrl ? 'Tệp PDF đã biên dịch mới nhất' : 'Cần biên dịch tài liệu trước'}
+                </span>
+              </div>
             </MenubarItem>
+            <MenubarSeparator />
             <MenubarItem
               onClick={handleExportWord}
-              className="cursor-pointer"
+              className="cursor-pointer flex items-center gap-2"
             >
-              Export as Word document (.docx)
+              <FileText className="size-3.5 text-blue-500 shrink-0" />
+              <span className="whitespace-nowrap">Export as Word document (.docx)</span>
             </MenubarItem>
             <MenubarItem
               onClick={handleExportMarkdown}
-              className="cursor-pointer"
+              className="cursor-pointer flex items-center gap-2"
             >
-              Export as Markdown (.md)
+              <FileCode className="size-3.5 text-amber-500 shrink-0" />
+              <span className="whitespace-nowrap">Export as Markdown (.md)</span>
             </MenubarItem>
             <MenubarItem
               onClick={handleExportHtml}
-              className="cursor-pointer"
+              className="cursor-pointer flex items-center gap-2"
             >
-              Export as HTML (.html)
+              <FileCode className="size-3.5 text-emerald-500 shrink-0" />
+              <span className="whitespace-nowrap">Export as HTML (.html)</span>
             </MenubarItem>
           </MenubarSubContent>
         </MenubarSub>
@@ -261,7 +283,7 @@ export function FileMenu() {
           onClick={() => setSettingsPanelOpen(true)}
           className="cursor-pointer"
         >
-          Settings
+          <span className="whitespace-nowrap">Settings</span>
         </MenubarItem>
       </MenubarContent>
     </MenubarMenu>

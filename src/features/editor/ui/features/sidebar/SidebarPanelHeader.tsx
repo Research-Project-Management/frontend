@@ -34,7 +34,7 @@ export function SidebarPanelHeader({
   return (
     <div
       className={cn(
-        'flex h-9 shrink-0 items-center justify-between border-b border-border px-3 bg-background select-none',
+        'flex h-9 shrink-0 items-center justify-between border-b border-border px-3 bg-surface select-none',
         className,
       )}
     >

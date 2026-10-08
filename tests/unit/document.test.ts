@@ -4,8 +4,8 @@ import {
   LatexCompilerEngine,
   extractDoiFromText,
   parsePdfDate,
-} from '@/features/editor/utils/viewer.util';
-import { parseCompileErrors } from '@/features/editor/utils/editor.util';
+} from '@/features/editor/coordinators/services/latex-compiler-engine.service';
+import { parseCompileErrors } from '@/features/editor/domain/latex/latex-structure';
 
 describe('Document & LaTeX Compiler Frontend Utilities', () => {
   const sampleSyncTeX = `SyncTeX Version:1

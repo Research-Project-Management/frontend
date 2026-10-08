@@ -5,7 +5,7 @@ import {
   parseTableToLatex,
   isImageData,
   generateFigureLatex,
-} from '@/features/editor/utils/smart-paste.util';
+} from '@/features/editor/domain/latex/smart-paste';
 
 // Mock helper to build a fake DataTransfer object
 function createMockClipboard(data: {

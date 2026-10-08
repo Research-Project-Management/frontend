@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseLatexLog,
   parseCompileErrors,
-} from '../../src/features/editor/domain/log-parser/latex-log-parser';
+} from '@/features/editor/domain/latex/latex-structure';
 
 describe('Domain: LaTeX Log Parser', () => {
   const sampleLog = `This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022)

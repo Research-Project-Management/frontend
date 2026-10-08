@@ -10,7 +10,7 @@ import {
   runLatexLinter,
   type RetractedItemInfo,
   type LatexLintDiagnostic,
-} from '@/features/editor/utils/latex-linter.util';
+} from '@/features/editor/domain/latex/latex-linter';
 
 describe('LaTeX Syntax & Structural Diagnostics Engine (Overleaf Parity)', () => {
   describe('1. Unmatched Curly Braces {}', () => {

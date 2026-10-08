@@ -16,6 +16,10 @@
  *  - ai-academic-assistant.service.ts
  *  - ai-error-assist.service.ts
  *  - notification-bundler.service.ts
+ *  - archive-export.service.ts
+ *  - archive-import.service.ts
+ *  - document-download.service.ts
+ *  - latex-compiler-engine.service.ts
  */
 
 export * from './core.service';
@@ -34,4 +38,8 @@ export * from './search.service';
 export * from './ai-academic-assistant.service';
 export * from './ai-error-assist.service';
 export * from './notification-bundler.service';
+export * from './archive-export.service';
+export * from './archive-import.service';
+export * from './document-download.service';
+export * from './latex-compiler-engine.service';
 export * from './realtime';

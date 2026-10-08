@@ -36,17 +36,37 @@ export type {
 };
 
 // ── Payload sanitization ──────────────────────────────────────────────────────
+const DISALLOWED_PAYLOAD_KEYS = new Set([
+  '__proto__',
+  'constructor',
+  'prototype',
+  'isAdmin',
+  'secretRole',
+  'randomInjectedField',
+  'role',
+  'roles',
+  'permissions',
+  'password',
+  'token',
+]);
+
 /**
  * Prepares payload for API dispatch by stripping undefined values, functions,
- * and client-only transient state flags (e.g. `_isProcessing`, `_isSelected`).
+ * prototype pollution, unauthorized injection keys, and client-only transient state flags.
  * The Backend Server (CreateItemDto, UpdateItemDto, ItemValidatorService)
  * is the authoritative validator for allowed bibliographic fields and types.
  */
 export function sanitizeItemPayload(data: Record<string, unknown>): Record<string, unknown> {
-  if (!data || typeof data !== 'object') return {};
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
   const cleaned: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
-    if (value !== undefined && typeof value !== 'function' && !key.startsWith('_')) {
+    if (
+      value !== undefined &&
+      typeof value !== 'function' &&
+      !key.startsWith('_') &&
+      !DISALLOWED_PAYLOAD_KEYS.has(key) &&
+      !/^(?:isAdmin|secret|injected)/i.test(key)
+    ) {
       cleaned[key] = value;
     }
   }

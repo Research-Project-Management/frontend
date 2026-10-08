@@ -9,12 +9,12 @@
 
 import { useEffect, useMemo, useCallback } from 'react';
 import { useViewItems, type Item } from '@/features/library';
-import { latexSymbolsIndex } from '../../domain/latex-symbols-index';
+import { latexSymbolsIndex } from '../../domain/latex/latex-symbols-index';
 import {
   extractCitationKeys,
   formatCitationSnippet,
   formatItemAuthorSummary,
-} from '../../domain/utils/citation.util';
+} from '@/features/editor/domain/citation/citation-formatter';
 
 export interface UseEditorCitationsOptions {
   projectId?: string;

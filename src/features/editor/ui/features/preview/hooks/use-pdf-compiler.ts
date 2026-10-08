@@ -10,7 +10,7 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { useSettingsStore, useCompileStore } from '../../../../store';
 import { compilerLifecycleCoordinator } from '../../../../coordinators/compiler.coordinator';
-import type { SyncTeXMap } from '../../../../domain/utils/viewer.util';
+import type { SyncTeXMap } from '@/features/editor/domain/document/synctex-index';
 import { toast } from 'sonner';
 
 export interface UsePdfCompilerOptions {

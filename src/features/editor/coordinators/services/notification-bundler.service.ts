@@ -13,7 +13,7 @@ import type {
   PendingBundleInfo,
   NotificationDigest,
   NotificationBundlingSettings,
-} from '../../domain/utils/notification-digest.util';
+} from '@/features/editor/domain/collaboration/notification-digest';
 
 // Notification bundling feature is currently disabled (feature not deployed yet)
 const NOTIFICATIONS_BUNDLER_ENABLED = false;

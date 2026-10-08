@@ -28,10 +28,9 @@ import {
 import { toast } from 'sonner';
 import { useShallow } from 'zustand/react/shallow';
 import { apiPost, apiDelete } from '@/shared/lib/api';
-import { exportProjectAsZip } from '@/features/editor/domain/utils/export-zip.util';
+import { exportProjectAsZip } from '@/features/editor/coordinators/services/archive-export.service';
 import { useSpellingDictionary } from '@/features/editor/ui/hooks/use-spelling';
-import { ProjectReferencesTab } from './ProjectReferencesTab';
-import { ProjectGithubTab } from './ProjectGithubTab';
+import { ProjectReferencesTab, ProjectGithubTab } from './project-settings';
 import { GitHubIcon } from '@/shared/components/icons';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';

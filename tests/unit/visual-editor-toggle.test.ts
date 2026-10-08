@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useSettingsStore } from '@/features/editor/store';
-import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
 import {
   latexToHtml,
   htmlToLatex,
   renderMathHtml,
-} from '@/features/editor/utils/latex-converter.util';
+} from '@/features/editor/domain/latex/latex-converter';
 
 describe('Source vs Visual Editor Mode (Overleaf 1:1 Parity)', () => {
   beforeEach(() => {
@@ -83,7 +83,7 @@ This is \\textbf{bold} and \\textit{italic} text.
       expect(html).toContain('Introduction');
       expect(html).toContain('<strong>bold</strong>');
       expect(html).toContain('<em>italic</em>');
-      expect(html).toContain('<ul>');
+      expect(html).toContain('<ul');
       expect(html).toContain('<li>First bullet</li>');
 
       // Convert back to LaTeX for Source Mode
@@ -123,7 +123,7 @@ Inline equation $E = mc^2$ in paragraph.`;
 \\end{figure}`;
 
       const html = latexToHtml(protectedSource);
-      expect(html).toContain('latex-protected-block');
+      expect(html).toContain('latex-figure-wrapper');
 
       const restored = htmlToLatex(html, protectedSource);
       expect(restored).toContain('\\begin{figure}[htbp]');

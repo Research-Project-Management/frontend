@@ -3,11 +3,11 @@ import {
   exportDocumentSchema,
   documentExportFormatSchema,
 } from '@/features/editor/schemas/export.schema';
-import { exportService } from '@/features/editor/services/export.service';
+import { exportService } from '@/features/editor/coordinators/services/export.service';
 import {
   exportDocumentAsWord,
   exportDocumentAsMarkdown,
-} from '@/features/editor/utils/export-document.util';
+} from '@/features/editor/coordinators/services/document-download.service';
 
 describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
   beforeEach(() => {

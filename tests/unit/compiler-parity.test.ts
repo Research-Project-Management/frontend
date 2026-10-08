@@ -3,10 +3,10 @@ import {
   downloadAuxFileUrl,
   downloadAllArtifactsZipUrl,
   compileService,
-} from '@/features/editor/services/compiler.service';
-import { manuscriptService } from '@/features/editor/services/manuscript.service';
+} from '@/features/editor/coordinators/services/compiler.service';
+import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
 import { parseLatexLog } from '@/features/editor/components/viewer/Logs';
-import { createPdfBlobAndUrl } from '@/features/editor/utils/viewer.util';
+import { createPdfBlobAndUrl } from '@/features/editor/coordinators/services/latex-compiler-engine.service';
 
 describe('Phase 2: Compiler & Artifacts Overleaf Parity', () => {
   beforeEach(() => {

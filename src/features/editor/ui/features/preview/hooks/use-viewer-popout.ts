@@ -9,7 +9,7 @@
 
 import { useRef, useEffect, useCallback } from 'react';
 import { useCompileStore, type CompileStatus } from '../../../../store';
-import { ViewerBroadcastBridge } from '../../../../domain/utils/popout-channel.util';
+import { ViewerBroadcastBridge } from '@/features/editor/coordinators/channels/popout-channel';
 
 export interface UseViewerPopoutOptions {
   pageId: string | null;

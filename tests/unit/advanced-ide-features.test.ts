@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { detectMathAtPosition } from '@/features/editor/components/editor/math-hover.provider';
 import { SHORTCUT_LIST } from '@/features/editor/components/modals/KeyboardShortcutsModal';
-import { LatexCompilerEngine, parseSyncTeX } from '@/features/editor/utils/viewer.util';
+import { LatexCompilerEngine, parseSyncTeX } from '@/features/editor/coordinators/services/latex-compiler-engine.service';
 
 describe('Advanced IDE Features (Overleaf Parity)', () => {
   describe('Math Hover Detection (detectMathAtPosition)', () => {

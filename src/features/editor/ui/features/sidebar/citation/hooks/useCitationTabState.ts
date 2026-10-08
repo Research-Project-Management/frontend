@@ -11,8 +11,8 @@ import { useCitationPickerActions } from './useCitationPickerActions';
 import { manuscriptService, type CitationValidationResult } from '@/features/editor/coordinators/services/manuscript.service';
 import { generateCitationKey } from '@/features/library';
 import { filesQuery } from '@/features/editor/ui/hooks/use-core';
-import { parseBibContent, type BibEntry } from '@/features/editor/domain/utils/bib-parser.util';
-import { extractCitationKeys, stripLatexComments } from '@/features/editor/domain/utils/citation.util';
+import { parseBibContent, type BibEntry } from '@/features/editor/domain/citation/bib-parser';
+import { extractCitationKeys, stripLatexComments } from '@/features/editor/domain/citation/citation-formatter';
 
 export interface UnifiedCitation {
   id: string;

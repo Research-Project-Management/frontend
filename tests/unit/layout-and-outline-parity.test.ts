@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   parseDocumentOutline,
   type OutlineEntry,
-} from '@/features/editor/utils/pdf-outline.util';
-import { EditorEventBus, type SidebarTabName } from '@/features/editor/utils/editor.util';
+} from '@/features/editor/domain/document/pdf-outline';
+import { EditorEventBus, type SidebarTabName } from '@/features/editor/domain/latex/latex-structure';
 
 describe('Phase 1 Parity: Document Outline Parsing (OutlineTab)', () => {
   const sampleLatex = `\\documentclass{article}

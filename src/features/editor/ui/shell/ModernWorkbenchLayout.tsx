@@ -39,7 +39,7 @@ import { useLayoutStore, type ActivityBarTab } from '../../store/layout.store';
 import { useEditorInstance } from '../hooks/use-editor-instance';
 import { editorCommandBus } from '../../coordinators/command-bus';
 import { useViewItems } from '@/features/library';
-import { latexSymbolsIndex } from '../../domain/latex-symbols-index';
+import { latexSymbolsIndex } from '../../domain/latex/latex-symbols-index';
 
 const PdfViewer = dynamic(() => import('../features/preview/PdfViewer'), { ssr: false });
 const ProjectSettingsModal = dynamic(
@@ -52,6 +52,22 @@ const DeletedFilesModal = dynamic(
 );
 const WordCountDialog = dynamic(
   () => import('../modals/WordCountDialog').then((mod) => (mod.WordCountDialog || mod.default)),
+  { ssr: false }
+);
+const CitationPickerModal = dynamic(
+  () => import('../modals/CitationPickerModal'),
+  { ssr: false }
+);
+const RenameCitationModal = dynamic(
+  () => import('../modals/RenameCitationModal'),
+  { ssr: false }
+);
+const ProjectHistoryModal = dynamic(
+  () => import('../modals/ProjectHistoryModal'),
+  { ssr: false }
+);
+const TableWizardModal = dynamic(
+  () => import('../modals/TableWizardModal'),
   { ssr: false }
 );
 
@@ -71,15 +87,26 @@ export function ModernWorkbenchLayout() {
   const {
     layout,
     settingsPanelOpen,
+    isHistoryOpen,
+    setIsHistoryOpen,
   } = useSettingsStore(
     useShallow((s) => ({
       layout: s.layout,
       settingsPanelOpen: s.settingsPanelOpen,
+      isHistoryOpen: s.isHistoryOpen,
+      setIsHistoryOpen: s.setIsHistoryOpen,
     }))
   );
 
   const [wordCountOpen, setWordCountOpen] = useState(false);
   const [deletedFilesOpen, setDeletedFilesOpen] = useState(false);
+  const [citationPickerOpen, setCitationPickerOpen] = useState(false);
+  const [citationPickerInitialQuery, setCitationPickerInitialQuery] = useState<string | undefined>(undefined);
+  const [renameCitationOpen, setRenameCitationOpen] = useState(false);
+  const [renameCitationOldKey, setRenameCitationOldKey] = useState('');
+  const [tableWizardOpen, setTableWizardOpen] = useState(false);
+  const [tableWizardTab, setTableWizardTab] = useState<'table' | 'matrix'>('table');
+  const [tableWizardInitialLatex, setTableWizardInitialLatex] = useState('');
 
   // Sync workspace library references into latexSymbolsIndex for instant autocomplete & hover
   const { data: libraryData } = useViewItems(rawProjectId || 'me', 'all');
@@ -133,6 +160,19 @@ export function ModernWorkbenchLayout() {
         setWordCountOpen(true);
       } else if (cmd.dialog === 'deleted-files') {
         setDeletedFilesOpen(true);
+      } else if (cmd.dialog === 'citation-picker') {
+        setCitationPickerInitialQuery(cmd.payload?.initialQuery || undefined);
+        setCitationPickerOpen(true);
+      } else if (cmd.dialog === 'rename-symbol' || (cmd.dialog as any) === 'rename-citation') {
+        const key = cmd.payload?.oldKey || cmd.payload?.key || '';
+        setRenameCitationOldKey(key);
+        setRenameCitationOpen(true);
+      } else if (cmd.dialog === 'table-wizard' || (cmd.dialog as any) === 'matrix-wizard') {
+        const initialTab = cmd.dialog === 'matrix-wizard' ? 'matrix' : (cmd.payload?.initialTab || 'table');
+        const selectedText = engine?.getSelectedText?.() || cmd.payload?.initialLatex || '';
+        setTableWizardTab(initialTab);
+        setTableWizardInitialLatex(selectedText);
+        setTableWizardOpen(true);
       }
     });
 
@@ -143,31 +183,55 @@ export function ModernWorkbenchLayout() {
       if (!cmd.dialog || cmd.dialog === 'deleted-files') {
         setDeletedFilesOpen(false);
       }
+      if (!cmd.dialog || cmd.dialog === 'citation-picker') {
+        setCitationPickerOpen(false);
+      }
+      if (!cmd.dialog || cmd.dialog === 'rename-symbol' || (cmd.dialog as any) === 'rename-citation') {
+        setRenameCitationOpen(false);
+      }
+      if (!cmd.dialog || cmd.dialog === 'table-wizard' || (cmd.dialog as any) === 'matrix-wizard') {
+        setTableWizardOpen(false);
+      }
     });
 
+    const tabMap: Record<string, ActivityBarTab> = {
+      Files: 'files',
+      Explorer: 'files',
+      Outline: 'outline',
+      Search: 'search',
+      Citations: 'citations',
+      Review: 'review',
+      AI: 'ai',
+    };
+
     const unsubSidebarToggle = editorCommandBus.subscribe('sidebar:toggle-panel', (cmd) => {
-      const tabMap: Record<string, ActivityBarTab> = {
-        Files: 'files',
-        Explorer: 'files',
-        Outline: 'outline',
-        Search: 'search',
-        Citations: 'citations',
-        Review: 'review',
-        AI: 'ai',
-      };
       const targetTab = tabMap[cmd.panel] || 'files';
       useLayoutStore.getState().selectActivityTab(targetTab);
+    });
+
+    const unsubSidebarOpen = editorCommandBus.subscribe('sidebar:open-panel', (cmd) => {
+      const targetTab = tabMap[cmd.panel];
+      if (targetTab) {
+        useLayoutStore.getState().setActiveSidebarTab(targetTab);
+        useLayoutStore.getState().setSidebarLeftOpen(true);
+      }
     });
 
     const unsubAiToggle = editorCommandBus.subscribe('sidebar:toggle-ai-panel', () => {
       useLayoutStore.getState().selectActivityTab('ai');
     });
 
+    const unsubHistory = editorCommandBus.subscribe('history:open-modal', () => {
+      setIsHistoryOpen(true);
+    });
+
     return () => {
       unsubCmd();
       unsubClose();
       unsubSidebarToggle();
+      unsubSidebarOpen();
       unsubAiToggle();
+      unsubHistory();
     };
   }, []);
 
@@ -222,6 +286,59 @@ export function ModernWorkbenchLayout() {
             }
           }}
           pageId={rootPageId || (currentPage as any)?.id || ''}
+        />
+      )}
+
+      {citationPickerOpen && (
+        <CitationPickerModal
+          open={citationPickerOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'citation-picker' });
+            } else {
+              setCitationPickerOpen(true);
+            }
+          }}
+          initialQuery={citationPickerInitialQuery}
+        />
+      )}
+
+      {renameCitationOpen && (
+        <RenameCitationModal
+          open={renameCitationOpen}
+          oldKey={renameCitationOldKey}
+          onOpenChange={(open) => {
+            setRenameCitationOpen(open);
+            if (!open) {
+              editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'rename-symbol' });
+            }
+          }}
+        />
+      )}
+
+      {isHistoryOpen && (
+        <ProjectHistoryModal
+          open={isHistoryOpen}
+          onOpenChange={(open) => setIsHistoryOpen(open)}
+          projectId={rawProjectId}
+        />
+      )}
+
+      {tableWizardOpen && (
+        <TableWizardModal
+          open={tableWizardOpen}
+          onOpenChange={(open) => {
+            setTableWizardOpen(open);
+            if (!open) {
+              editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'table-wizard' });
+            }
+          }}
+          initialTab={tableWizardTab}
+          initialLatex={tableWizardInitialLatex}
+          onInsert={(latexCode) => {
+            editorCommandBus.dispatch({ type: 'editor:insert-text', text: latexCode });
+            editorCommandBus.dispatch({ type: 'editor:focus' });
+          }}
         />
       )}
     </>

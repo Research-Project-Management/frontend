@@ -64,16 +64,8 @@ export function getFileIcon(filename: string) {
   }
 }
 
-export const displayName = (title: string) => {
-  const lower = (title || '').trim().toLowerCase();
-  if (lower === 'flux' || lower === 'flux.tex') {
-    return 'main.tex';
-  }
-  return /\.[a-z0-9]+$/i.test(title) ? title : `${title}.tex`;
-};
-
-export const cleanBasename = (title: string) =>
-  displayName(title).replace(/\.[a-z0-9]+$/i, '');
+import { displayName, cleanBasename } from './file-actions.util';
+export { displayName, cleanBasename };
 
 export interface TexFileRowProps {
   file: { id: string; title: string; updatedAt?: string };

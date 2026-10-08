@@ -5,8 +5,8 @@ import {
   DEFAULT_BUNDLING_SETTINGS,
   type NotificationDigest,
   type NotificationBundle,
-} from '@/features/editor/utils/notification-digest.util';
-import { notificationBundlerService } from '@/features/editor/services/notification-bundler.service';
+} from '@/features/editor/domain/collaboration/notification-digest';
+import { notificationBundlerService } from '@/features/editor/coordinators/services/notification-bundler.service';
 import { notificationBundlerKeys } from '@/features/editor/hooks/use-notification-bundler';
 import * as api from '@/shared/lib/api';
 

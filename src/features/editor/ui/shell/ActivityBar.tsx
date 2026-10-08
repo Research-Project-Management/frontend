@@ -32,7 +32,9 @@ import {
 import { cn } from '@/shared/lib/utils';
 import { useLayoutStore, type ActivityBarTab } from '../../store/layout.store';
 import { useSettingsStore } from '../../store/settings.store';
+import { usePageStore } from '../../store/editor.store';
 import { useDocumentCollaborationStore } from '../../store/collaboration.store';
+import { useReviewPendingCount } from '../features/sidebar/review/hooks/useReviewPendingCount';
 
 interface ActivityItem {
   id: ActivityBarTab;
@@ -61,6 +63,8 @@ export function ActivityBar() {
   const toggleSettingsPanel = useSettingsStore((s) => s.toggleSettingsPanel);
   const settingsPanelOpen = useSettingsStore((s) => s.settingsPanelOpen);
   const unreadChatCount = useDocumentCollaborationStore((s) => s.unreadChatCount);
+  const pageId = usePageStore((s) => s.activePageId || s.currentPage?.id);
+  const { totalPendingCount } = useReviewPendingCount(pageId);
 
   return (
     <aside
@@ -74,7 +78,13 @@ export function ActivityBar() {
             const isActive = sidebarLeftOpen && activeSidebarTab === item.id;
             const Icon = item.icon;
             const isChat = item.id === 'chat';
-            const showBadge = isChat && unreadChatCount > 0;
+            const isReview = item.id === 'review';
+            const showBadge = (isChat && unreadChatCount > 0) || (isReview && totalPendingCount > 0);
+            const badgeCount = isChat ? unreadChatCount : totalPendingCount;
+
+            const handleClick = () => {
+              selectActivityTab(item.id);
+            };
 
             return (
               <Tooltip key={item.id}>
@@ -84,7 +94,7 @@ export function ActivityBar() {
                     role="tab"
                     aria-selected={isActive}
                     aria-label={item.label}
-                    onClick={() => selectActivityTab(item.id)}
+                    onClick={handleClick}
                     className={cn(
                       'group relative flex size-9 items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                       isActive
@@ -98,10 +108,10 @@ export function ActivityBar() {
                     )}
                     <Icon className="size-4.5 shrink-0" strokeWidth={1.8} />
 
-                    {/* Unread badge */}
+                    {/* Unread / Pending badge */}
                     {showBadge && (
-                      <span className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full text-[10px] font-mono font-semibold bg-primary text-primary-foreground">
-                        {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                      <span className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full text-[10px] font-mono font-semibold bg-primary text-primary-foreground leading-none">
+                        {badgeCount > 99 ? '99+' : badgeCount}
                       </span>
                     )}
                   </button>

@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { Check, Loader2, MoreVertical, RotateCcw } from 'lucide-react';
 import { useResolveComment, useDeleteComment, useDeleteReply } from '@/features/editor/ui/hooks/use-comment';
 import type { PageComment, CommentReply } from '@/features/editor/domain/types';
-import type { MentionMember } from '@/features/editor/domain/utils/mention.util';
+import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
 import { cn } from '@/shared/lib/utils';
 import {
   DropdownMenu,

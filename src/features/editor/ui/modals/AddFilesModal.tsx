@@ -23,7 +23,7 @@ import {
   type NewFileModalFormValues,
   type UrlImportModalFormValues,
   type LibraryBibtexModalFormValues,
-} from './schemas/add-files.schema';
+} from '@/features/editor/domain/types';
 
 import {
   Dialog,
@@ -49,7 +49,7 @@ import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
 import { pageService } from '@/features/editor/coordinators/services/core.service';
 import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
-import { formatItemToBibtex } from '@/features/editor/domain/utils/citation.util';
+import { formatItemToBibtex } from '@/features/editor/domain/citation/citation-formatter';
 import { useViewItems, type Item } from '@/features/library';
 
 export type AddFilesTab = 'new-file' | 'upload' | 'project' | 'url' | 'library';

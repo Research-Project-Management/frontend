@@ -5,7 +5,7 @@ import {
   createLatexCompletionSource,
   type LatexBibEntryInput,
   type LatexFileInput,
-} from '@/features/editor/sub-features/code-editor/codemirror/latex-autocomplete';
+} from '@/features/editor/engines/extensions/latex-autocomplete';
 import { useSettingsStore } from '@/features/editor/store';
 
 describe('Editor Autocompletion & Typography (Overleaf Parity)', () => {
@@ -218,7 +218,7 @@ describe('Editor Autocompletion & Typography (Overleaf Parity)', () => {
 
   describe('5. Real-Time LaTeX Code Check Diagnostics (Overleaf Parity)', () => {
     it('should detect unclosed environment and unescaped characters in document', async () => {
-      const { runLatexLinter } = await import('@/features/editor/utils/latex-linter.util');
+      const { runLatexLinter } = await import('@/features/editor/domain/latex/latex-linter');
       const text = '\\begin{equation}\nx = y\n\n\\section{Introduction}\nHere is a 50% discount and an unescaped_variable.';
       const diagnostics = runLatexLinter(text);
 

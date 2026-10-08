@@ -7,7 +7,7 @@ import {
   detectCommonRootPrefix,
   isTextFile,
   parseZipArchive,
-} from '@/features/editor/utils/import-zip.util';
+} from '@/features/editor/coordinators/services/archive-import.service';
 
 describe('import-zip.util', () => {
   describe('isZipFile', () => {

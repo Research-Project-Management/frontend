@@ -41,6 +41,34 @@ import { createLatexFoldExtension } from '../extensions/latex-folding';
 import { createLatexErrorLensExtension } from '../extensions/latex-error-lens';
 import { editorCommandBus } from '../../coordinators/command-bus';
 
+export const editorBaseTheme = EditorView.theme({
+  '&': {
+    height: '100%',
+  },
+  '.cm-scroller': {
+    overflow: 'auto',
+    fontFamily: 'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+  },
+  '.cm-content': {
+    padding: '0 0 32px 0',
+  },
+  '.cm-line': {
+    padding: '3px 0',
+    lineHeight: '1.54',
+  },
+  '&.cm-editor .cm-activeLine, .cm-activeLine': {
+    padding: '3px 0',
+    backgroundColor: 'var(--editor-active-line, #e2f2ff)',
+  },
+  '&.cm-editor .cm-activeLineGutter, .cm-activeLineGutter': {
+    backgroundColor: 'var(--editor-active-line, #e2f2ff)',
+  },
+  '.cm-gutters': {
+    borderRight: '1px solid var(--border)',
+    backgroundColor: 'transparent',
+  },
+});
+
 export interface CodeMirrorPresetOptions {
   lineNumbers?: boolean;
   lineWrapping?: boolean;
@@ -94,10 +122,13 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
     enableLinter = true,
     enableInlineDiff = true,
     enableFolding = true,
-    enableErrorLens = true,
+    enableErrorLens = false,
   } = options;
 
   const extensions: Extension[] = [
+    // 0. Base Editor Layout & Typography Theme
+    editorBaseTheme,
+
     // 1. Core Document Editing & History
     history(),
     search({ top: false }),

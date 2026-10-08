@@ -14,7 +14,7 @@
 
 import { useCallback } from 'react';
 import { toast } from 'sonner';
-import type { LogEntry } from '../CompilerLogs';
+import type { LogEntry } from '@/features/editor/domain/types';
 import type { AiErrorFixResult } from '@/features/editor/coordinators/services/ai-error-assist.service';
 import {
   downloadAuxFileUrl,

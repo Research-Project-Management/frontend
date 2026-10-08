@@ -313,7 +313,7 @@ export function PlaneErrorState({
     <div
       role="alert"
       className={cn(
-        'flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200 bg-background',
+        'flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200 bg-transparent',
         isFullPage && 'min-h-screen',
         className
       )}
@@ -367,22 +367,22 @@ export function PlaneErrorState({
             </svg>
             <span>Error details</span>
             {errorDigest && (
-              <span className="text-10 px-1.5 py-0.5 rounded-md bg-muted font-mono border border-border/70 text-muted-foreground">
+              <span className="text-11 px-1.5 py-0.5 rounded-md bg-muted font-mono border border-border/70 text-muted-foreground">
                 #{String(errorDigest).slice(0, 8)}
               </span>
             )}
           </div>
 
           {isDetailsOpen && (
-            <div className="mt-3 w-full overflow-hidden rounded-md border border-border/80 bg-muted/40 backdrop-blur-xs text-left animate-in fade-in-50 zoom-in-98 duration-150">
-              <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/60 bg-muted/60 text-10 font-mono text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <span className="size-1.5 rounded-full bg-destructive/80" />
+            <div className="mt-3 w-full rounded-md bg-muted/50 p-3 text-left space-y-2 animate-in fade-in-50 duration-150">
+              <div className="flex items-center justify-between text-11 font-mono text-muted-foreground select-none">
+                <div className="flex items-center gap-1.5 font-medium text-destructive">
+                  <span className="size-1.5 rounded-full bg-destructive shrink-0" />
                   <span>Runtime Exception</span>
                 </div>
                 {errorDigest && <span className="opacity-75">ID: {String(errorDigest)}</span>}
               </div>
-              <div className="p-3 text-11 font-mono text-muted-foreground overflow-x-auto max-h-36 leading-relaxed select-text font-normal whitespace-pre-wrap break-all">
+              <div className="text-12 font-mono text-foreground/80 overflow-x-auto max-h-36 leading-relaxed select-text font-normal whitespace-pre-wrap break-all">
                 {errorMessage}
               </div>
             </div>

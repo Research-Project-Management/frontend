@@ -18,7 +18,6 @@ export { EditorArea } from './ui/features/editor/EditorArea';
 export { CodeMirrorView } from './ui/features/editor/CodeMirrorView';
 export { EditorToolbar } from './ui/features/editor/EditorToolbar';
 export { EditorTabs } from './ui/features/editor/EditorTabs';
-export { EditorBreadcrumbs } from './ui/features/editor/EditorBreadcrumbs';
 export { SourceVisualSwitcher } from './ui/features/editor/SourceVisualSwitcher';
 export { CollaboratorCursors } from './ui/features/editor/CollaboratorCursors';
 export { createDiagnosticsGutter } from './ui/features/editor/DiagnosticsGutter';
@@ -27,8 +26,7 @@ export { PdfToolbar } from './ui/features/preview/PdfToolbar';
 export { PdfSurface } from './ui/features/preview/PdfSurface';
 export { CompilerLogs } from './ui/features/preview/CompilerLogs';
 export { PdfFindBar } from './ui/features/preview/PdfFindBar';
-export { PrimarySidebar } from './ui/features/sidebar/PrimarySidebar';
-export { OutlineTab } from './ui/features/sidebar/OutlineTab';
+export { PrimarySidebar, OutlineTab } from './ui/features/sidebar';
 export { BottomDockPanel } from './ui/features/panel/BottomDockPanel';
 
 export * from './ui/modals';
@@ -48,7 +46,8 @@ export * from './domain';
 
 // Explicit re-exports to resolve TS2308 ambiguity
 export { historyKeys } from './coordinators';
-export type { DiffChunk } from './domain';
+export type { DiffChunk, SyncTeXMap, SyncTeXNode } from './domain';
 export { runLatexLinter } from './engines';
 export type { LaTeXEngine } from './domain';
+export { forEachLine, parseSyncTeX, resolvePageForLine } from './domain';
 

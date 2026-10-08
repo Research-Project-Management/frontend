@@ -88,7 +88,7 @@ export const PdfZoomControls = React.memo(function PdfZoomControls({
             {autoFit && <Check className="size-3.5 text-primary" />}
           </DropdownMenuItem>
 
-          <DropdownMenuSeparator className="my-1 border-t border-border" />
+          <DropdownMenuSeparator />
 
           {ZOOM_PRESETS.map((preset) => {
             const isSelected = !autoFit && Math.abs(scale - preset) < 0.05;

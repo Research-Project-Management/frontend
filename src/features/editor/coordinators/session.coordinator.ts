@@ -12,9 +12,9 @@
  * - Provides window beforeunload protection against accidental data loss.
  */
 
-import { lruDocumentCache, type DocumentModelState } from '../domain/lru-document-cache';
-import { latexSymbolsIndex } from '../domain/latex-symbols-index';
-import { latexDagEngine } from '../domain/latex-dag-engine';
+import { lruDocumentCache, type DocumentModelState } from '../domain/document/lru-document-cache';
+import { latexSymbolsIndex } from '../domain/latex/latex-symbols-index';
+import { latexDagEngine } from '../domain/latex/latex-dag-engine';
 import { manuscriptService } from './services/manuscript.service';
 import { useCompileStore, usePageStore, useSettingsStore, useConnectivityStore } from '../store';
 import { editorCommandBus } from './command-bus';

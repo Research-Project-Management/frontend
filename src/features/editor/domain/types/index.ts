@@ -16,5 +16,5 @@ export * from './export.types';
 export * from './asset.types';
 export * from './node.types';
 export * from './template.types';
+export * from './forms.types';
 export * from './ports';
-export * from './schemas';

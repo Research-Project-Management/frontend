@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { filesQuery } from '@/features/editor/ui/hooks/use-core';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/coordinators/services/storage.service';
 import { TEX_EXTS, type PendingUploadItem as PendingItem } from './UploadConflictDialog';
-import { parseZipArchive, extractAndImportZipToProject } from '@/features/editor/domain/utils/import-zip.util';
+import { parseZipArchive, extractAndImportZipToProject } from '@/features/editor/coordinators/services/archive-import.service';
 
 export interface UseFileUploadOptions {
   parentPageId: string | null;

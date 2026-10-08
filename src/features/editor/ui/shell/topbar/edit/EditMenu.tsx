@@ -28,36 +28,36 @@ export function EditMenu() {
 
   return (
     <MenubarMenu>
-      <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md">
+      <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary select-none transition-colors">
         Edit
       </MenubarTrigger>
-      <MenubarContent className="min-w-56 text-xs">
-        <MenubarItem onClick={handleUndo}>
-          Undo
+      <MenubarContent className="min-w-64 text-xs select-none">
+        <MenubarItem onClick={handleUndo} className="cursor-pointer">
+          <span className="whitespace-nowrap">Undo</span>
           <MenubarShortcut>Ctrl Z</MenubarShortcut>
         </MenubarItem>
-        <MenubarItem onClick={handleRedo}>
-          Redo
+        <MenubarItem onClick={handleRedo} className="cursor-pointer">
+          <span className="whitespace-nowrap">Redo</span>
           <MenubarShortcut>Ctrl Y</MenubarShortcut>
         </MenubarItem>
         <MenubarSeparator />
-        <MenubarItem onClick={handleFind}>
-          Find
+        <MenubarItem onClick={handleFind} className="cursor-pointer">
+          <span className="whitespace-nowrap">Find</span>
           <MenubarShortcut>Ctrl F</MenubarShortcut>
         </MenubarItem>
-        <MenubarItem onClick={handleSelectAll}>
-          Select all
+        <MenubarItem onClick={handleSelectAll} className="cursor-pointer">
+          <span className="whitespace-nowrap">Select all</span>
           <MenubarShortcut>Ctrl A</MenubarShortcut>
         </MenubarItem>
         <MenubarSeparator />
         <MenubarItem onClick={handleAutoFix} className="cursor-pointer">
-          <Bot className="size-3.5 mr-2 text-foreground" />
-          <span>Auto-Fix Page Syntax</span>
+          <Bot className="size-3.5 mr-2 text-foreground shrink-0" />
+          <span className="whitespace-nowrap">Auto-Fix Page Syntax</span>
           <MenubarShortcut>Alt Shift F</MenubarShortcut>
         </MenubarItem>
         <MenubarItem onClick={handleLintPage} className="cursor-pointer">
-          <ShieldCheck className="size-3.5 mr-2 text-foreground" />
-          <span>Check Page Syntax</span>
+          <ShieldCheck className="size-3.5 mr-2 text-foreground shrink-0" />
+          <span className="whitespace-nowrap">Check Page Syntax</span>
         </MenubarItem>
       </MenubarContent>
     </MenubarMenu>

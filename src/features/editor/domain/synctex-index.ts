@@ -22,6 +22,7 @@ export interface SyncTeXMap {
   tagLineToNode: Map<string, SyncTeXNode & { page: number }>;
   tagToPath: Map<number, string>;
   pathToTag: Map<string, number>;
+  tagToSortedLines?: Map<number, number[]>;
 }
 
 /**
@@ -49,7 +50,7 @@ export function resolvePageForLine(
   synctexMap: SyncTeXMap | null | undefined,
   line: number,
   tag?: number,
-  maxTolerance: number = 5,
+  maxTolerance: number = 20,
 ): number | null {
   if (!synctexMap) return null;
 
@@ -57,6 +58,27 @@ export function resolvePageForLine(
     const key = `${tag}:${line}`;
     if (synctexMap.tagLineToPage.has(key)) {
       return synctexMap.tagLineToPage.get(key)!;
+    }
+
+    const tagSorted = synctexMap.tagToSortedLines?.get(tag);
+    if (tagSorted && tagSorted.length > 0) {
+      let low = 0;
+      let high = tagSorted.length - 1;
+      let bestCandidate: number | null = null;
+
+      while (low <= high) {
+        const mid = (low + high) >> 1;
+        if (tagSorted[mid] <= line) {
+          bestCandidate = tagSorted[mid];
+          low = mid + 1;
+        } else {
+          high = mid - 1;
+        }
+      }
+
+      if (bestCandidate !== null && Math.abs(line - bestCandidate) <= maxTolerance) {
+        return synctexMap.tagLineToPage.get(`${tag}:${bestCandidate}`) ?? null;
+      }
     }
   }
 

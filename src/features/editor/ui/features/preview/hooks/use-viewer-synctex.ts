@@ -76,13 +76,21 @@ export function useViewerSyncTeX({
           titleLower.replace(/\.(tex|bib|sty|cls)$/i, '') === baseNoExt ||
           pBare === bareName ||
           pBare.replace(/\.(tex|bib|sty|cls)$/i, '') === bareNoExt ||
-          (pPathLower && (pPathLower.endsWith(cleanName) || pPathLower.endsWith(bareName)))
+          (pPathLower && (pPathLower.endsWith(cleanName) || pPathLower.endsWith(bareName))) ||
+          (pPathLower && cleanName.endsWith(pPathLower)) ||
+          cleanName.endsWith(titleLower)
         );
       });
       if (match) return match;
 
       // 3. Match LRU Document in-memory cache
-      const cached = lruDocumentCache.findByPath(cleanName) || lruDocumentCache.findByPath(bareName);
+      const cached =
+        lruDocumentCache.findByPath(cleanName) ||
+        lruDocumentCache.findByPath(bareName) ||
+        lruDocumentCache.getAllModels().find((m) => {
+          const mLower = m.filePath.toLowerCase();
+          return cleanName.endsWith(mLower) || mLower.endsWith(cleanName);
+        });
       if (cached) {
         return {
           id: cached.fileId,

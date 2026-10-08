@@ -34,6 +34,7 @@ export interface SyncTeXMap {
   tagLineToNode: Map<string, SyncTeXNode & { page: number }>;
   tagToPath: Map<number, string>;
   pathToTag: Map<string, number>;
+  tagToSortedLines: Map<number, number[]>;
 }
 
 /**
@@ -61,7 +62,7 @@ export function resolvePageForLine(
   synctexMap: SyncTeXMap | null | undefined,
   line: number,
   tag?: number,
-  maxTolerance: number = 5,
+  maxTolerance: number = 20,
 ): number | null {
   if (!synctexMap) return null;
 
@@ -69,6 +70,27 @@ export function resolvePageForLine(
     const key = `${tag}:${line}`;
     if (synctexMap.tagLineToPage.has(key)) {
       return synctexMap.tagLineToPage.get(key)!;
+    }
+
+    const tagSorted = synctexMap.tagToSortedLines?.get(tag);
+    if (tagSorted && tagSorted.length > 0) {
+      let low = 0;
+      let high = tagSorted.length - 1;
+      let bestCandidate: number | null = null;
+
+      while (low <= high) {
+        const mid = (low + high) >> 1;
+        if (tagSorted[mid] <= line) {
+          bestCandidate = tagSorted[mid];
+          low = mid + 1;
+        } else {
+          high = mid - 1;
+        }
+      }
+
+      if (bestCandidate !== null && Math.abs(line - bestCandidate) <= maxTolerance) {
+        return synctexMap.tagLineToPage.get(`${tag}:${bestCandidate}`) ?? null;
+      }
     }
   }
 
@@ -116,11 +138,23 @@ export function parseSyncTeX(text: string): SyncTeXMap {
   const tagLineToNode = new Map<string, SyncTeXNode & { page: number }>();
   const tagToPath = new Map<number, string>();
   const pathToTag = new Map<string, number>();
+  const tagToLinesMap = new Map<number, Set<number>>();
+  let unit = 1;
+  let scaleFactor = (unit / 65536) * 0.996264;
   let currentPage = 0;
 
   forEachLine(text, (raw) => {
     const s = raw.trimEnd();
     if (!s) return;
+
+    if (s.startsWith("Unit:")) {
+      const parsedUnit = parseFloat(s.substring(5).trim());
+      if (!isNaN(parsedUnit) && parsedUnit > 0) {
+        unit = parsedUnit;
+        scaleFactor = (unit / 65536) * 0.996264;
+      }
+      return;
+    }
 
     if (s.startsWith("Input:")) {
       const parts = s.split(":");
@@ -134,6 +168,16 @@ export function parseSyncTeX(text: string): SyncTeXMap {
         pathToTag.set(basename, tag);
         pathToTag.set(normalized, tag);
         pathToTag.set(normalized.replace(/^\.\//, ''), tag);
+
+        // Also register relative subpaths (e.g. /workspace/sections/intro.tex -> sections/intro.tex)
+        const cleanNorm = normalized.replace(/^\.\//, '');
+        const segments = cleanNorm.split('/');
+        for (let i = 0; i < segments.length; i++) {
+          const subPath = segments.slice(i).join('/');
+          if (subPath && !pathToTag.has(subPath)) {
+            pathToTag.set(subPath, tag);
+          }
+        }
       }
       return;
     }
@@ -150,16 +194,27 @@ export function parseSyncTeX(text: string): SyncTeXMap {
       return;
     }
 
-    if (first === 125 /* } */ || currentPage === 0) return;
+    if (first === 125 /* } */) {
+      currentPage = 0;
+      return;
+    }
+
+    if (currentPage === 0) return;
 
     const m = s.match(/^([\[\(\)hvgxk$])(\d+)[:,\.](\d+)(?:[:,\.](\d+))?:(-?\d+),(-?\d+)(?::(-?\d+),(-?\d+))?/);
     if (m) {
       const tag = parseInt(m[2], 10);
       const line = parseInt(m[3], 10);
-      const x = parseInt(m[5], 10);
-      const y = parseInt(m[6], 10);
-      const w = m[7] !== undefined ? parseInt(m[7], 10) : undefined;
-      const h = m[8] !== undefined ? parseInt(m[8], 10) : undefined;
+      const rawX = parseInt(m[5], 10);
+      const rawY = parseInt(m[6], 10);
+      const rawW = m[7] !== undefined ? parseInt(m[7], 10) : undefined;
+      const rawH = m[8] !== undefined ? parseInt(m[8], 10) : undefined;
+
+      // Scale coordinates from scaled points (sp) to standard PDF points (pt)
+      const x = Math.round(rawX * scaleFactor);
+      const y = Math.round(rawY * scaleFactor);
+      const w = rawW !== undefined ? Math.max(Math.round(rawW * scaleFactor), 50) : undefined;
+      const h = rawH !== undefined ? Math.max(Math.round(rawH * scaleFactor), 12) : undefined;
 
       const node: SyncTeXNode & { page: number } = {
         line,
@@ -186,6 +241,13 @@ export function parseSyncTeX(text: string): SyncTeXMap {
       if (!tagLineToNode.has(tagKey)) {
         tagLineToNode.set(tagKey, node);
       }
+
+      let tagSet = tagToLinesMap.get(tag);
+      if (!tagSet) {
+        tagSet = new Set<number>();
+        tagToLinesMap.set(tag, tagSet);
+      }
+      tagSet.add(line);
     }
   });
 
@@ -200,6 +262,11 @@ export function parseSyncTeX(text: string): SyncTeXMap {
 
   const sortedLines = Array.from(lineToPage.keys()).sort((a, b) => a - b);
 
+  const tagToSortedLines = new Map<number, number[]>();
+  for (const [t, set] of tagToLinesMap.entries()) {
+    tagToSortedLines.set(t, Array.from(set).sort((a, b) => a - b));
+  }
+
   return {
     lineToPage,
     tagLineToPage,
@@ -209,6 +276,7 @@ export function parseSyncTeX(text: string): SyncTeXMap {
     tagLineToNode,
     tagToPath,
     pathToTag,
+    tagToSortedLines,
   };
 }
 
@@ -583,16 +651,17 @@ export const LatexCompilerEngine = {
 
     let targetPage: number | null = null;
     let targetNode: (SyncTeXNode & { page?: number }) | null = null;
+    let targetTag: number | undefined;
 
     if (activeTitle && synctexMap.pathToTag) {
       const normalizedTitle = activeTitle.replace(/\\/g, '/').toLowerCase();
       const baseTitle = normalizedTitle.split('/').pop() || normalizedTitle;
-      const tag =
-        synctexMap.pathToTag.get(baseTitle) ??
+      targetTag =
         synctexMap.pathToTag.get(normalizedTitle) ??
+        synctexMap.pathToTag.get(baseTitle) ??
         synctexMap.pathToTag.get(`./${normalizedTitle}`);
-      if (tag !== undefined) {
-        const key = `${tag}:${line}`;
+      if (targetTag !== undefined) {
+        const key = `${targetTag}:${line}`;
         if (synctexMap.tagLineToPage.has(key)) {
           targetPage = synctexMap.tagLineToPage.get(key)!;
           targetNode = synctexMap.tagLineToNode?.get(key) || null;
@@ -601,10 +670,21 @@ export const LatexCompilerEngine = {
     }
 
     if (targetPage === null) {
-      targetPage = resolvePageForLine(synctexMap, line);
+      targetPage = resolvePageForLine(synctexMap, line, targetTag);
       if (targetPage !== null) {
-        const pNodes = synctexMap.pageToNodes?.get(targetPage);
-        targetNode = pNodes?.find((n) => n.line === line) || pNodes?.[0] || null;
+        if (targetTag !== undefined && synctexMap.tagToSortedLines?.has(targetTag)) {
+          const sorted = synctexMap.tagToSortedLines.get(targetTag)!;
+          let bestLine = sorted[0];
+          for (const l of sorted) {
+            if (l <= line) bestLine = l;
+            else break;
+          }
+          targetNode = synctexMap.tagLineToNode?.get(`${targetTag}:${bestLine}`) || null;
+        }
+        if (!targetNode) {
+          const pNodes = synctexMap.pageToNodes?.get(targetPage);
+          targetNode = pNodes?.find((n) => n.line === line) || pNodes?.[0] || null;
+        }
       }
     }
 
@@ -649,8 +729,8 @@ export const LatexCompilerEngine = {
     // 1. Direct page node mapping (nearest coordinate with O(log N) binary search + pruning)
     const nodes = synctexMap.pageToNodes?.get(pageNum);
     if (nodes && nodes.length > 0) {
-      const targetY = ptY !== undefined ? ptY * 65536 : clickFraction * 842 * 65536;
-      const targetX = ptX !== undefined ? ptX * 65536 : undefined;
+      const targetY = ptY !== undefined ? ptY : clickFraction * 842;
+      const targetX = ptX !== undefined ? ptX : undefined;
 
       // Binary search for node closest in y-coordinate
       let low = 0;

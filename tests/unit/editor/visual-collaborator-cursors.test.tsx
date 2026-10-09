@@ -85,7 +85,7 @@ describe('VisualCollaboratorCursors - Real-Time Presence & Carets in Visual Mode
 
   afterEach(() => {
     document.body.innerHTML = '';
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders remote collaborator cursor caret and name flag accurately', () => {

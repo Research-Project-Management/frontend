@@ -87,7 +87,7 @@ describe('VisualReferenceHoverCard - Citations & References in Visual Mode', () 
   afterEach(() => {
     vi.useRealTimers();
     document.body.innerHTML = '';
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders rich citation hover card with title, author, year and DOI on mouseover', async () => {

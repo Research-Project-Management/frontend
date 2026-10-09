@@ -19,7 +19,7 @@ describe('LRU Document Cache & Local-First Offline Draft Sync (Overleaf Parity)'
 
   afterEach(() => {
     vi.useRealTimers();
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
     draftStorageService.clearMemory();
     try {
       localStorage.clear();

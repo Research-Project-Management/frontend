@@ -13,10 +13,10 @@ import type { FileTreeNode } from './tree-builder.util';
 
 export interface FileTreeContainerProps {
   isDragging: boolean;
-  handleDragEnter: (e: React.DragEvent) => void;
-  handleDragLeave: (e: React.DragEvent) => void;
-  handleDragOver: (e: React.DragEvent) => void;
-  handleDrop: (e: React.DragEvent) => void;
+  handleDragEnter: (e: React.DragEvent<HTMLDivElement>) => void;
+  handleDragLeave: (e: React.DragEvent<HTMLDivElement>) => void;
+  handleDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
+  handleDrop: (e: React.DragEvent<HTMLDivElement>) => Promise<void> | void;
   handleMoveItem: (itemId: string, targetFolderId: string | null) => void;
 
   isCreatingFile: boolean;

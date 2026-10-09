@@ -27,6 +27,7 @@ import {
   reconfigureLineWrapping,
   reconfigureVimMode,
   reconfigureReadOnly,
+  reconfigureSpellCheck,
   YjsCodeMirrorAdapter,
   createTrackChangesExtension,
   setTrackChangesViewModeEffect,
@@ -54,6 +55,7 @@ export interface CodeMirrorViewProps {
   awareness?: any | null;
   readOnly?: boolean;
   className?: string;
+  projectId?: string;
   onCursorChange?: (line: number, column: number) => void;
 }
 
@@ -66,6 +68,7 @@ export function CodeMirrorView({
   awareness,
   readOnly = false,
   className,
+  projectId,
   onCursorChange,
 }: CodeMirrorViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -79,6 +82,8 @@ export function CodeMirrorView({
   const wordWrap = useSettingsStore((s) => s.wordWrap);
   const reviewMode = useSettingsStore((s) => s.reviewMode);
   const trackChangesViewMode = useSettingsStore((s) => s.trackChangesViewMode);
+  const spellCheck = useSettingsStore((s) => s.spellCheck);
+  const spellCheckLanguage = useSettingsStore((s) => s.spellCheckLanguage);
 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -102,6 +107,9 @@ export function CodeMirrorView({
       enableMathPreview: true,
       enableAutocomplete: true,
       enableErrorLens: false,
+      enableSpellCheck: spellCheck,
+      spellCheckLanguage,
+      projectId,
     });
 
     const diagnosticsExtension = createDiagnosticsGutter({
@@ -367,6 +375,11 @@ export function CodeMirrorView({
     if (!viewRef.current) return;
     reconfigureReadOnly(viewRef.current, readOnly);
   }, [readOnly]);
+
+  useEffect(() => {
+    if (!viewRef.current) return;
+    reconfigureSpellCheck(viewRef.current, spellCheck, projectId, spellCheckLanguage);
+  }, [spellCheck, spellCheckLanguage, projectId]);
 
   // Reconfigure Track Changes mode & viewMode dynamically in-place
   useEffect(() => {

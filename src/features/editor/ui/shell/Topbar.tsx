@@ -168,8 +168,6 @@ export function Topbar() {
             </TooltipContent>
           </Tooltip>
 
-          <div className="h-4 w-px bg-border mx-1 shrink-0 hidden sm:block" />
-
           <Menubar className="h-8 border-none bg-transparent p-0 gap-0.5 shadow-none hidden sm:flex">
             {/* Sub-menu Tabs */}
             <FileMenu />

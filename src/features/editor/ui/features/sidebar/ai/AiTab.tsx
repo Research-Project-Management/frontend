@@ -17,9 +17,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
-  X,
-  RefreshCw,
   SquarePen,
+  RefreshCw,
 } from 'lucide-react';
 import { AIIcon } from '@/shared/components/icons';
 import { useAiChatActions } from './useAiChatActions';
@@ -301,6 +300,7 @@ export default function AiTab({ onClose }: AiTabProps) {
     setMessages([]);
     setStreamingMessage('');
     setSelectionContext(null);
+    setInputPrompt('');
     notifyChatCleared();
   };
 
@@ -314,12 +314,11 @@ export default function AiTab({ onClose }: AiTabProps) {
     <TooltipProvider delayDuration={150}>
       <aside
         aria-label="AI Research Assistant"
-        className="flex flex-col h-full bg-background border-r border-border select-none overflow-hidden"
+        className="flex flex-col h-full bg-background select-none overflow-hidden"
       >
         {/* ── Top Header ── */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-background shrink-0 select-none">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <AIIcon className="size-4 text-ai shrink-0" />
+        <div className="flex h-9 items-center justify-between px-3 border-b border-border bg-background shrink-0 select-none">
+          <div className="flex items-center min-w-0">
             <h2 className="text-13 font-semibold text-foreground truncate">AI Assistant</h2>
           </div>
 
@@ -329,35 +328,17 @@ export default function AiTab({ onClose }: AiTabProps) {
                 <button
                   type="button"
                   onClick={handleClearChat}
-                  disabled={messages.length === 0 || isStreaming}
-                  className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors disabled:opacity-30 cursor-pointer"
+                  disabled={isStreaming}
+                  className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
                   aria-label="New chat"
                 >
-                  <SquarePen className="size-3.5" />
+                  <SquarePen className="size-3.5 text-foreground" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={4}>
                 New chat
               </TooltipContent>
             </Tooltip>
-
-            {onClose && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
-                    aria-label="Close AI panel"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={4}>
-                  Close panel
-                </TooltipContent>
-              </Tooltip>
-            )}
           </div>
         </div>
 

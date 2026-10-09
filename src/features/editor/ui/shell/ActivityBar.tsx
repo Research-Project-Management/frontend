@@ -13,6 +13,7 @@
 'use client';
 
 import React from 'react';
+import dynamic from 'next/dynamic';
 import {
   FileText,
   ListTree,
@@ -35,6 +36,10 @@ import { useSettingsStore } from '../../store/settings.store';
 import { usePageStore } from '../../store/editor.store';
 import { useDocumentCollaborationStore } from '../../store/collaboration.store';
 import { useReviewPendingCount } from '../features/sidebar/review/hooks/useReviewPendingCount';
+
+const StickyDock = dynamic(() => import('@/features/shell/components/StickyDock'), {
+  ssr: false,
+});
 
 interface ActivityItem {
   id: ActivityBarTab;
@@ -129,8 +134,13 @@ export function ActivityBar() {
           })}
         </div>
 
-        {/* Bottom Section: Global Settings */}
+        {/* Bottom Section: Stickies + Global Settings */}
         <div className="flex flex-col items-center gap-1.5 w-full mt-auto">
+          <StickyDock
+            className="size-9"
+            buttonClassName="size-9 text-muted-foreground hover:text-foreground"
+          />
+
           <Tooltip>
             <TooltipTrigger asChild>
               <button

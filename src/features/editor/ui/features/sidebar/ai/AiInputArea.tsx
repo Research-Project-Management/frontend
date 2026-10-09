@@ -120,7 +120,7 @@ export function AiInputArea({
   };
 
   return (
-    <div className="shrink-0 p-2.5 sm:p-3 border-t border-border bg-background select-none">
+    <div className="shrink-0 p-2.5 sm:p-3 bg-background select-none">
       {/* Quick action chips above textarea if conversation is active */}
       {hasMessages && (
         <div className="flex items-center gap-1 overflow-x-auto pb-2 scrollbar-none">
@@ -235,7 +235,7 @@ export function AiInputArea({
           placeholder={
             selectionContext
               ? 'Ask AI about the selected text...'
-              : 'Ask AI about paper, LaTeX syntax, theorem...'
+              : 'Ask AI about paper, LaTeX syntax...'
           }
           disabled={isStreaming}
           className="w-full resize-none bg-transparent text-13 text-foreground placeholder:text-muted-foreground outline-none leading-relaxed min-h-[32px] max-h-[140px] px-0.5 py-1"
@@ -393,10 +393,6 @@ export function AiInputArea({
           </div>
         </div>
       </div>
-
-      <p className="text-12 text-muted-foreground text-center select-none pt-2 pb-0.5 leading-normal">
-        Flux AI can make mistakes, please double-check responses.
-      </p>
 
       {/* Hidden File Input for Device Upload */}
       <input

@@ -39,6 +39,7 @@ import { latexCitationHoverTooltip } from '../extensions/latex-citation-hover';
 import { createInlineDiffExtension } from '../extensions/inline-diff';
 import { createLatexFoldExtension } from '../extensions/latex-folding';
 import { createLatexErrorLensExtension } from '../extensions/latex-error-lens';
+import { createLatexSpellingExtension } from '../extensions/latex-spelling';
 import { editorCommandBus } from '../../coordinators/command-bus';
 
 export const editorBaseTheme = EditorView.theme({
@@ -83,6 +84,9 @@ export interface CodeMirrorPresetOptions {
   enableInlineDiff?: boolean;
   enableFolding?: boolean;
   enableErrorLens?: boolean;
+  enableSpellCheck?: boolean;
+  projectId?: string;
+  spellCheckLanguage?: string;
 }
 
 /**
@@ -103,7 +107,11 @@ export const editorCompartments = {
   inlineDiff: new Compartment(),
   folding: new Compartment(),
   errorLens: new Compartment(),
+  spellCheck: new Compartment(),
 };
+
+import { wrapFormatting, handleAutoCloseEnvironment } from './latex-formatting.util';
+export { wrapFormatting, handleAutoCloseEnvironment };
 
 /**
  * Generates an immutable Extension[] array for CodeMirror 6 EditorState creation.
@@ -123,6 +131,9 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
     enableInlineDiff = true,
     enableFolding = true,
     enableErrorLens = false,
+    enableSpellCheck = true,
+    projectId,
+    spellCheckLanguage = 'en_US',
   } = options;
 
   const extensions: Extension[] = [
@@ -142,11 +153,58 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
 
     // 3. Keybindings (Overleaf 1:1 Parity)
     keymap.of([
-      ...defaultKeymap,
-      ...historyKeymap,
-      ...foldKeymap,
-      ...searchKeymap,
-      ...closeBracketsKeymap,
+      // Priority 1: Overleaf Core LaTeX Shortcuts
+      {
+        key: 'Mod-Enter',
+        run: () => {
+          editorCommandBus.dispatch({ type: 'compiler:trigger', reason: 'shortcut' } as any);
+          return true;
+        },
+      },
+      {
+        key: 'Mod-b',
+        run: (view) => wrapFormatting(view, '\\textbf{', '}'),
+      },
+      {
+        key: 'Mod-i',
+        run: (view) => wrapFormatting(view, '\\textit{', '}'),
+      },
+      {
+        key: 'Mod-u',
+        run: (view) => wrapFormatting(view, '\\underline{', '}'),
+      },
+      {
+        key: 'Enter',
+        run: (view) => handleAutoCloseEnvironment(view),
+      },
+      {
+        key: 'F8',
+        run: () => {
+          editorCommandBus.dispatch({ type: 'navigation:next-error' });
+          return true;
+        },
+      },
+      {
+        key: 'Shift-F8',
+        run: () => {
+          editorCommandBus.dispatch({ type: 'navigation:prev-error' });
+          return true;
+        },
+      },
+      {
+        key: 'Mod-Shift-f',
+        run: () => {
+          editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Search' });
+          return true;
+        },
+      },
+      {
+        key: 'Mod-Alt-c',
+        run: () => {
+          editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
+          return true;
+        },
+      },
       { key: 'Mod-/', run: toggleComment },
       { key: 'Mod-Shift-l', run: gotoLine },
       { key: 'Mod-g', run: gotoLine },
@@ -183,6 +241,13 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
           return true;
         },
       },
+
+      // Priority 2: Standard Editor & Language Keymaps
+      ...defaultKeymap,
+      ...historyKeymap,
+      ...foldKeymap,
+      ...searchKeymap,
+      ...closeBracketsKeymap,
     ]),
 
     // 4. Dynamic Compartments (Zero-cost reconfiguration)
@@ -219,12 +284,30 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
     editorCompartments.errorLens.of(
       enableErrorLens ? createLatexErrorLensExtension() : []
     ),
+    editorCompartments.spellCheck.of(
+      enableSpellCheck
+        ? createLatexSpellingExtension({ projectId, language: spellCheckLanguage, enabled: true })
+        : []
+    ),
   ];
 
   return extensions;
 }
 
 // ── Compartment Reconfiguration Helpers (0ms Runtime Mutations) ───────────────
+
+export function reconfigureSpellCheck(
+  view: EditorView,
+  enabled: boolean,
+  projectId?: string,
+  language?: string,
+): void {
+  view.dispatch({
+    effects: editorCompartments.spellCheck.reconfigure(
+      enabled ? createLatexSpellingExtension({ projectId, language, enabled: true }) : []
+    ),
+  });
+}
 
 export function reconfigureCitationHover(view: EditorView, enabled: boolean): void {
   view.dispatch({

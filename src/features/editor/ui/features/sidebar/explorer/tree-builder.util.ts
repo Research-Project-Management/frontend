@@ -121,9 +121,9 @@ export function getRootFilePriority(
 ): number {
   const lower = item.displayLabel.toLowerCase();
   if (
-    item.id === mainFileId ||
+    (mainFileId && item.id === mainFileId) ||
     (configuredMainFile && lower === configuredMainFile.toLowerCase()) ||
-    item.id === parentPageId
+    (!mainFileId && !configuredMainFile && item.id === parentPageId)
   ) {
     return 1;
   }

@@ -105,6 +105,27 @@ export const SHORTCUT_LIST: ShortcutItem[] = [
     keys: ['Ctrl', 'Y'],
   },
   {
+    id: 'underline',
+    label: 'Underline',
+    category: 'Editing',
+    keys: ['Ctrl', 'U'],
+    description: 'Underline text (\\underline)',
+  },
+  {
+    id: 'auto-close-env',
+    label: 'Auto-close Environment',
+    category: 'Editing',
+    keys: ['Enter'],
+    description: 'Auto-close \\begin{...} on enter',
+  },
+  {
+    id: 'citation-picker',
+    label: 'Insert Citation',
+    category: 'Editing',
+    keys: ['Ctrl', 'Shift', 'K'],
+    description: 'Open Citation Picker modal',
+  },
+  {
     id: 'format-code',
     label: 'Format Document',
     category: 'Editing',
@@ -120,6 +141,34 @@ export const SHORTCUT_LIST: ShortcutItem[] = [
   },
 
   // Navigation & Search
+  {
+    id: 'next-error',
+    label: 'Next Error',
+    category: 'Navigation',
+    keys: ['F8'],
+    description: 'Jump to next compiler error',
+  },
+  {
+    id: 'prev-error',
+    label: 'Previous Error',
+    category: 'Navigation',
+    keys: ['Shift', 'F8'],
+    description: 'Jump to previous compiler error',
+  },
+  {
+    id: 'synctex-forward',
+    label: 'Jump to PDF (SyncTeX)',
+    category: 'Navigation',
+    keys: ['Ctrl', 'Alt', 'J'],
+    description: 'Pinpoint location in PDF',
+  },
+  {
+    id: 'search-files',
+    label: 'Search in Files',
+    category: 'Navigation',
+    keys: ['Ctrl', 'Shift', 'F'],
+    description: 'Search across all project files',
+  },
   {
     id: 'quick-open',
     label: 'Quick Open',

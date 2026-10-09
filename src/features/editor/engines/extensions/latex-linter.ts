@@ -29,7 +29,10 @@ class LatexLinterWorkerClient {
   }
 
   private initWorker(): void {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || typeof Worker === 'undefined' || process.env.NODE_ENV === 'test') {
+      this.isWorkerFailed = true;
+      return;
+    }
 
     try {
       this.worker = new Worker(new URL('../workers/latex-linter.worker.ts', import.meta.url));

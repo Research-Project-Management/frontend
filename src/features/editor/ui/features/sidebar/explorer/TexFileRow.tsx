@@ -200,12 +200,13 @@ export const TexFileRow = React.memo(function TexFileRow({
       {isMain && (
         <Tooltip delayDuration={300}>
           <TooltipTrigger asChild>
-            <span className="shrink-0 text-11 font-mono px-1.5 py-0.5 rounded-md font-medium border border-border bg-muted text-foreground cursor-default">
-              main
+            <span className="shrink-0 flex items-center gap-1 text-10 font-mono px-1.5 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium cursor-default select-none">
+              <Star className="size-2.5 fill-current shrink-0" />
+              <span>main</span>
             </span>
           </TooltipTrigger>
           <TooltipContent side="top" className="text-11">
-            Main document
+            Main document (compilation entry point)
           </TooltipContent>
         </Tooltip>
       )}
@@ -239,7 +240,7 @@ export const TexFileRow = React.memo(function TexFileRow({
             <span>Refresh from {linkedFile.providerType || 'source'}</span>
           </DropdownMenuItem>
         )}
-        {!isMain && (
+        {!isMain ? (
           <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation();
@@ -247,8 +248,16 @@ export const TexFileRow = React.memo(function TexFileRow({
             }}
             className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
           >
-            <Star className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+            <Star className="size-4 text-amber-500 shrink-0" strokeWidth={1.5} />
             <span>Set as Main Document</span>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem
+            disabled
+            className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap text-muted-foreground/80 rounded-md cursor-default select-none opacity-80"
+          >
+            <Star className="size-4 text-amber-500 fill-amber-500 shrink-0" />
+            <span>Current Main Document</span>
           </DropdownMenuItem>
         )}
         <DropdownMenuItem
@@ -309,7 +318,7 @@ export const TexFileRow = React.memo(function TexFileRow({
             <span>Refresh from {linkedFile.providerType || 'source'}</span>
           </ContextMenuItem>
         )}
-        {!isMain && (
+        {!isMain ? (
           <ContextMenuItem
             onClick={(e) => {
               e.stopPropagation();
@@ -317,8 +326,16 @@ export const TexFileRow = React.memo(function TexFileRow({
             }}
             className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
           >
-            <Star className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+            <Star className="size-4 text-amber-500 shrink-0" strokeWidth={1.5} />
             <span>Set as Main Document</span>
+          </ContextMenuItem>
+        ) : (
+          <ContextMenuItem
+            disabled
+            className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap text-muted-foreground/80 rounded-md cursor-default select-none opacity-80"
+          >
+            <Star className="size-4 text-amber-500 fill-amber-500 shrink-0" />
+            <span>Current Main Document</span>
           </ContextMenuItem>
         )}
         <ContextMenuItem

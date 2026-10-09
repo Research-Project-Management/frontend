@@ -132,6 +132,10 @@ export class KeybindingCoordinatorRegistry {
       description: 'Toggle Primary Sidebar',
       scope: 'any',
       handler: (e) => {
+        if (this.isEditorFocused()) {
+          // Let CodeMirror / Visual editor handle Overleaf bold formatting (\textbf)
+          return;
+        }
         e.preventDefault();
         useLayoutStore.getState().toggleSidebarLeft();
       },
@@ -156,8 +160,26 @@ export class KeybindingCoordinatorRegistry {
       description: 'Toggle AI Research Assistant Panel',
       scope: 'any',
       handler: (e) => {
+        if (this.isEditorFocused()) {
+          // Let CodeMirror / Visual editor handle Overleaf italic formatting (\textit)
+          return;
+        }
         e.preventDefault();
         editorCommandBus.dispatch({ type: 'sidebar:toggle-ai-panel' });
+      },
+    });
+
+    // 10. Global Search Across Files (Mod-Shift-f)
+    this.register({
+      id: 'workbench.findInFiles',
+      key: 'Mod-Shift-f',
+      description: 'Search across all project files',
+      scope: 'any',
+      handler: (e) => {
+        e.preventDefault();
+        useLayoutStore.getState().setSidebarLeftOpen(true);
+        useLayoutStore.getState().setActiveSidebarTab('search');
+        editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Search' });
       },
     });
   }
@@ -221,6 +243,17 @@ export class KeybindingCoordinatorRegistry {
     }
 
     return true;
+  }
+
+  private isEditorFocused(): boolean {
+    if (typeof document === 'undefined') return false;
+    const activeEl = document.activeElement;
+    if (!activeEl) return false;
+    return (
+      activeEl.classList.contains('cm-content') ||
+      Boolean(activeEl.closest('.cm-editor')) ||
+      Boolean(activeEl.closest('.ProseMirror'))
+    );
   }
 }
 

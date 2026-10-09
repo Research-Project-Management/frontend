@@ -166,6 +166,7 @@ export function EditorArea() {
                   fileId={displayPage.id}
                   filePath={displayPage.title || 'main.tex'}
                   value={rawContent}
+                  projectId={(activePage as any)?.projectId ?? (parentPage as any)?.projectId}
                   onChange={(nextText) => {
                     usePageStore.getState().setCurrentPage((prev: any) =>
                       prev ? { ...prev, content: nextText } : prev

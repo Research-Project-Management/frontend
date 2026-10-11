@@ -76,6 +76,13 @@ describe('ProjectHistoryModal Component (Overleaf Parity)', () => {
   };
 
   beforeEach(() => {
+    cleanup();
+    document.body.innerHTML = '';
+    document.body.removeAttribute('data-scroll-locked');
+    document.body.style.pointerEvents = '';
+    document.querySelectorAll('[aria-hidden]').forEach((el) => {
+      el.removeAttribute('aria-hidden');
+    });
     vi.clearAllMocks();
     queryClient = new QueryClient({
       defaultOptions: {
@@ -131,6 +138,12 @@ describe('ProjectHistoryModal Component (Overleaf Parity)', () => {
 
   afterEach(() => {
     cleanup();
+    document.body.innerHTML = '';
+    document.body.removeAttribute('data-scroll-locked');
+    document.body.style.pointerEvents = '';
+    document.querySelectorAll('[aria-hidden]').forEach((el) => {
+      el.removeAttribute('aria-hidden');
+    });
   });
 
   function renderModal(props = {}) {

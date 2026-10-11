@@ -47,6 +47,16 @@ vi.mock('@/features/editor/ui/features/editor/CodeMirrorView', () => ({
   ),
 }));
 
+// Mock VisualEditorView to prevent TipTap/DOM measurement issues in JSDOM
+vi.mock('@/features/editor/ui/features/editor/VisualEditorView', () => ({
+  VisualEditorView: (props: { fileId?: string }) => (
+    <div data-testid="mock-visual-view" data-file-id={props.fileId} className="visual-editor-surface">
+      <span>Visual Engine Mock</span>
+      <span>Introduction</span>
+    </div>
+  ),
+}));
+
 describe('EditorArea - Source vs Visual Mode Integration', () => {
   beforeEach(() => {
     document.body.removeAttribute('data-scroll-locked');

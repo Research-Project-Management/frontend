@@ -108,8 +108,27 @@ export default function ProjectHistoryModal({
   const [confirmingRestore, setConfirmingRestore] = useState(false);
   const [confirmingFileRestore, setConfirmingFileRestore] = useState(false);
 
+  const prevSelectionRef = React.useRef({
+    file: activeFilePath,
+    base: selectedBaseVersion,
+    target: selectedTargetVersion,
+  });
+
   useEffect(() => {
-    setConfirmingFileRestore(false);
+    const prev = prevSelectionRef.current;
+    if (
+      (prev.file && prev.file !== activeFilePath) ||
+      (prev.base !== null && prev.base !== selectedBaseVersion) ||
+      (prev.target !== null && prev.target !== selectedTargetVersion)
+    ) {
+      setConfirmingFileRestore(false);
+      setConfirmingRestore(false);
+    }
+    prevSelectionRef.current = {
+      file: activeFilePath,
+      base: selectedBaseVersion,
+      target: selectedTargetVersion,
+    };
   }, [activeFilePath, selectedBaseVersion, selectedTargetVersion]);
 
   // ── Queries ──
@@ -445,11 +464,11 @@ export default function ProjectHistoryModal({
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-14 font-semibold text-foreground tracking-tight">Project History</h2>
-                  {selectedTargetVersion && selectedBaseVersion && (
+                  {selectedTargetVersion != null && selectedBaseVersion != null ? (
                     <Badge variant="outline" className="text-[11px] font-mono py-0 h-5">
                       v{selectedBaseVersion} → v{selectedTargetVersion}
                     </Badge>
-                  )}
+                  ) : null}
                 </div>
                 <p className="text-12 text-muted-foreground mt-0.5">
                   {versions.length} total {versions.length === 1 ? 'version' : 'versions'} recorded

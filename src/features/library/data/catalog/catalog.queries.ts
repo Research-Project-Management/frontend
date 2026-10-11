@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useMemo, type MouseEvent } from 'react';
-import { useQuery, useInfiniteQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useState, useCallback, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   ItemsService,
@@ -38,7 +38,6 @@ import type {
   SavedSearch,
 } from '../../types/library.types';
 import { updateLibrarySchemaRegistry } from '../../types';
-import { getPublicationVenue } from '../../domain/metadata';
 import { itemKeys, libraryKeys, invalidateCollections } from '../query-keys';
 
 export { itemKeys, invalidateCollections };
@@ -58,7 +57,6 @@ export function useLibraryCountsQuery(scopeId?: string) {
     staleTime: 1000 * 30,
   });
 }
-export const useLibraryCounts = useLibraryCountsQuery;
 
 export type UseCollectionsScopeInput = string | { scopeId?: string; projectId?: string };
 
@@ -216,18 +214,6 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
     deleteCollection: deleteMutation.mutateAsync,
     refetch: collectionsQuery.refetch,
   };
-}
-
-export function useLibraryCollectionTreeQuery(scopeId?: string) {
-  const targetScope = scopeId || 'user';
-  return useQuery({
-    queryKey: libraryKeys.collections(targetScope),
-    queryFn: async () => {
-      const res = await CollectionsService.getTree(targetScope);
-      return res?.tree || [];
-    },
-    staleTime: 1000 * 60,
-  });
 }
 
 export function useCollectionsQuery(scopeId?: string) {
@@ -879,191 +865,6 @@ export function useTrash(scopeId?: string) {
   };
 }
 
-export type SortField =
-  | 'title'
-  | 'authors'
-  | 'year'
-  | 'publicationTitle'
-  | 'journal'
-  | 'createdAt'
-  | 'updatedAt'
-  | 'lastReadAt'
-  | 'citationCount'
-  | 'itemType';
-export type SortOrder = 'asc' | 'desc';
-
-export interface UseItemTableOptions {
-  papers?: Item[];
-  items?: Item[];
-  initialActiveId?: string | null;
-  initialSortField?: SortField;
-  initialSortOrder?: SortOrder;
-}
-
-const EMPTY_ITEMS: Item[] = [];
-
-export function useItemTable({
-  papers,
-  items,
-  initialActiveId = null,
-  initialSortField = 'createdAt',
-  initialSortOrder = 'desc',
-}: UseItemTableOptions) {
-  const targetItems = useMemo(() => items || papers || EMPTY_ITEMS, [items, papers]);
-  const [sortField, setSortField] = useState<SortField>(initialSortField);
-  const [sortOrder, setSortOrder] = useState<SortOrder>(initialSortOrder);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [activeItemId, setActiveItemId] = useState<string | null>(initialActiveId);
-
-  const handleSort = useCallback((field: SortField) => {
-    if (sortField === field) {
-      setSortOrder((previousOrder) => (previousOrder === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortField(field);
-      setSortOrder('asc');
-    }
-  }, [sortField]);
-
-  const selectableItems = useMemo(
-    () => targetItems.filter((item) => !item.isPending),
-    [targetItems],
-  );
-
-  const toggleSelect = useCallback((itemId: string, clickEvent?: MouseEvent) => {
-    if (clickEvent) clickEvent.stopPropagation();
-    const item = targetItems.find((i) => i.id === itemId);
-    if (item && item.isPending) return;
-
-    setSelectedIds((previousSelectedIds) => {
-      const nextSelectedIds = new Set(previousSelectedIds);
-      if (nextSelectedIds.has(itemId)) {
-        nextSelectedIds.delete(itemId);
-      } else {
-        nextSelectedIds.add(itemId);
-      }
-      return nextSelectedIds;
-    });
-  }, [targetItems]);
-
-  const toggleSelectAll = useCallback(() => {
-    setSelectedIds((previousSelectedIds) => {
-      if (previousSelectedIds.size === selectableItems.length && selectableItems.length > 0) {
-        return new Set();
-      }
-      return new Set(selectableItems.map((targetItem) => targetItem.id));
-    });
-  }, [selectableItems]);
-
-  const clearSelection = useCallback(() => {
-    setSelectedIds(new Set());
-  }, []);
-
-  const sortedItems = useMemo(() => {
-    return [...targetItems].sort((firstItem, secondItem) => {
-      const aPending = Boolean(firstItem.isPending);
-      const bPending = Boolean(secondItem.isPending);
-      if (aPending && !bPending) return -1;
-      if (!aPending && bPending) return 1;
-      if (aPending && bPending) {
-        return (
-          new Date(secondItem.createdAt || 0).getTime() -
-          new Date(firstItem.createdAt || 0).getTime()
-        );
-      }
-
-      let comparisonResult = 0;
-      switch (sortField) {
-        case 'title':
-          comparisonResult = (firstItem.title || '').localeCompare(secondItem.title || '');
-          break;
-        case 'authors':
-          comparisonResult = (firstItem.authors?.[0] || '').localeCompare(secondItem.authors?.[0] || '');
-          break;
-        case 'itemType':
-          comparisonResult = (firstItem.itemType || '').localeCompare(secondItem.itemType || '');
-          break;
-        case 'year':
-          comparisonResult = Number(firstItem.year || 0) - Number(secondItem.year || 0);
-          break;
-        case 'citationCount': {
-          const firstCitationCount = Number(
-            firstItem.citationCount ?? (firstItem.extraFields as Record<string, unknown> | undefined)?.citationCount ?? 0,
-          );
-          const secondCitationCount = Number(
-            secondItem.citationCount ?? (secondItem.extraFields as Record<string, unknown> | undefined)?.citationCount ?? 0,
-          );
-          comparisonResult = firstCitationCount - secondCitationCount;
-          break;
-        }
-        case 'publicationTitle':
-        case 'journal': {
-          const v1 = getPublicationVenue(firstItem);
-          const v2 = getPublicationVenue(secondItem);
-          comparisonResult = v1.localeCompare(v2);
-          break;
-        }
-        case 'lastReadAt': {
-          const firstTimestamp = new Date(
-            firstItem.lastReadAt || firstItem.accessedAt || firstItem.updatedAt || firstItem.createdAt || 0,
-          ).getTime();
-          const secondTimestamp = new Date(
-            secondItem.lastReadAt || secondItem.accessedAt || secondItem.updatedAt || secondItem.createdAt || 0,
-          ).getTime();
-          comparisonResult = firstTimestamp - secondTimestamp;
-          break;
-        }
-        case 'createdAt':
-          comparisonResult =
-            new Date(firstItem.createdAt || 0).getTime() -
-            new Date(secondItem.createdAt || 0).getTime();
-          break;
-        case 'updatedAt':
-          comparisonResult =
-            new Date(firstItem.updatedAt || 0).getTime() -
-            new Date(secondItem.updatedAt || 0).getTime();
-          break;
-        default:
-          comparisonResult = 0;
-      }
-      return sortOrder === 'asc' ? comparisonResult : -comparisonResult;
-    });
-  }, [targetItems, sortField, sortOrder]);
-
-  const isAllSelected = selectableItems.length > 0 && selectedIds.size === selectableItems.length;
-  const isPartiallySelected = selectedIds.size > 0 && selectedIds.size < selectableItems.length;
-
-  const state = {
-    sortedItems,
-    sortedPapers: sortedItems,
-    sortField,
-    sortOrder,
-    selectedIds,
-    activeItemId,
-    activePaperId: activeItemId,
-    isAllSelected,
-    isPartiallySelected,
-    selectedCount: selectedIds.size,
-  };
-
-  const actions = {
-    handleSort,
-    setSortField,
-    setSortOrder,
-    setActiveItemId,
-    setActivePaperId: setActiveItemId,
-    toggleSelect,
-    toggleSelectAll,
-    clearSelection,
-  };
-
-  return {
-    state,
-    actions,
-    ...state,
-    ...actions,
-  };
-}
-
 export function useItem(id?: string, scopeId?: string) {
   const targetScope = scopeId || 'user';
   return useQuery({
@@ -1112,49 +913,6 @@ export function useLibraryItemsQuery(
         nextCursor,
       };
     },
-    staleTime: 1000 * 30,
-  });
-}
-
-export function useInfiniteLibraryItemsQuery(
-  scopeId?: string,
-  params?: ItemQueryParams,
-  options?: { enabled?: boolean },
-) {
-  const targetScope = scopeId || 'user';
-  return useInfiniteQuery({
-    queryKey: [...libraryKeys.items(targetScope, params), 'infinite'],
-    enabled: options?.enabled ?? true,
-    queryFn: async ({ pageParam, signal }): Promise<LibraryItemsQueryResult> => {
-      const res = await ItemsService.getAll(
-        targetScope,
-        {
-          ...params,
-          cursor: pageParam ? String(pageParam) : undefined,
-        },
-        { signal },
-      );
-      const items: Item[] = res?.items || [];
-      const pagination = (res?.pagination || res?.meta || null) as CursorPaginationMeta | null;
-      const total =
-        pagination?.totalCount ??
-        res?.total ??
-        items.length;
-      const hasNextPage = Boolean(pagination?.hasNextPage);
-      const nextCursor = pagination?.nextCursor || null;
-
-      return {
-        items,
-        total,
-        meta: pagination,
-        pagination,
-        hasNextPage,
-        nextCursor,
-      };
-    },
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) =>
-      lastPage?.hasNextPage && lastPage?.nextCursor ? lastPage.nextCursor : undefined,
     staleTime: 1000 * 30,
   });
 }
@@ -1436,7 +1194,6 @@ export function useItemMetadataSourcesQuery(
 
 export type { ItemMetadataSourceItem, ItemMetadataSourcesResponse } from './catalog.service';
 
-export const useLibraryItemsData = useItems;
 
 // ── TAGS QUERY HOOKS ──────────────────────────────────────────────────────────
 
@@ -1517,7 +1274,6 @@ export function useTags(scopeId?: string) {
   };
 }
 
-export const useTagsQuery = useTags;
 
 // ── NOTES QUERY HOOKS ─────────────────────────────────────────────────────────
 
@@ -1624,48 +1380,6 @@ export function useNotes(scopeId?: string, itemId?: string) {
   };
 }
 
-export const useNotesQuery = useNotes;
-
-// ── STATE QUERY HOOKS ─────────────────────────────────────────────────────────
-
-export const stateKeys = {
-  all: ['library', 'state'] as const,
-  item: (scopeId?: string, itemId?: string) =>
-    [...stateKeys.all, scopeId || 'user', itemId || 'none'] as const,
-  batch: (scopeId?: string, itemIds: string[] = []) =>
-    [...stateKeys.all, 'batch', scopeId || 'user', itemIds.join(',')] as const,
-};
-
-export function useItemStateQuery(scopeId?: string, itemId?: string) {
-  return useQuery({
-    queryKey: stateKeys.item(scopeId, itemId),
-    queryFn: async () => {
-      const res = await StateService.getState(scopeId || 'user', itemId || '');
-      return res ?? null;
-    },
-    enabled: Boolean(itemId),
-    staleTime: 1000 * 60 * 5,
-  });
-}
-
-export function useUpdateItemState(scopeId?: string, itemId?: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: {
-      readStatus?: 'unread' | 'reading' | 'completed';
-      rating?: number;
-    }) => {
-      return StateService.updateState(scopeId || 'user', itemId || '', data);
-    },
-    onSuccess: () => {
-      if (itemId) {
-        queryClient.invalidateQueries({ queryKey: stateKeys.item(scopeId, itemId) });
-        queryClient.invalidateQueries({ queryKey: stateKeys.all });
-      }
-    },
-  });
-}
 
 // ── SAVED SEARCHES QUERY HOOKS ────────────────────────────────────────────────
 
@@ -1883,7 +1597,6 @@ export function useRelations(
   };
 }
 
-export const useRelationsQuery = useRelations;
 
 // ── CONVERSION QUERY HOOKS ────────────────────────────────────────────────────
 

@@ -26,10 +26,7 @@ const ImagePanel = dynamic(
   { ssr: false }
 );
 
-const VisualEditorView = dynamic(
-  () => import('./VisualEditorView').then((m) => m.VisualEditorView),
-  { ssr: false }
-);
+import { VisualEditorView } from './VisualEditorView';
 
 import { EditorToolbar } from './EditorToolbar';
 import { EditorContextMenu } from './EditorContextMenu';

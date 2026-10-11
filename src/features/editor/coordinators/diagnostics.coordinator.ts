@@ -14,23 +14,9 @@
 import type { CompileError } from '../domain/types/compiler.types';
 import { normalizeLatexPath } from '../domain/latex/latex-dag-engine';
 import { heuristicLatexErrorFix } from '../domain/ai/ai-error-assist';
+import type { EditorDiagnosticItem } from '../domain/types/ports/command-bus.port';
 
-export interface IndexedDiagnosticItem {
-  id: string;
-  file?: string;
-  normalizedPath?: string;
-  line: number;
-  column?: number;
-  message: string;
-  severity: 'error' | 'warning' | 'info';
-  context?: string;
-  code?: string;
-  suggestion?: string;
-  fixedSnippet?: string;
-  originalSnippet?: string;
-  confidence?: 'high' | 'medium' | 'low';
-  source: 'LaTeX Compiler' | 'LaTeX Linter' | 'Retracted Citation' | 'System';
-}
+export type IndexedDiagnosticItem = EditorDiagnosticItem;
 
 export interface FileDiagnosticsSummary {
   errorCount: number;

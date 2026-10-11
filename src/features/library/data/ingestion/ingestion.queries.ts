@@ -324,11 +324,6 @@ export function useResolveIdentifier(scopeId?: string) {
   };
 }
 
-export const useIngest = useIngestion;
-export const useUnifiedIngest = useIngestion;
-export const useIngestionRunStatus = useIngestStatus;
-export const useAsyncJobStatus = useIngestStatus;
-
 // ── Curation & Duplicates Queries ─────────────────────────────────────────────
 
 export const curationKeys = {
@@ -392,13 +387,6 @@ export function useLibraryIntegrity(scopeId?: string) {
     enabled: true,
   });
 }
-
-export const useMergePapers = useMergeDuplicates;
-export const useMergeItems = useMergeDuplicates;
-export const useMergeDuplicatesMutation = useMergeDuplicates;
-export const useDuplicateGroupsQuery = useDuplicateGroups;
-export const useDuplicates = useDuplicateGroups;
-export const useIntegrity = useLibraryIntegrity;
 
 // ── Retraction Queries ────────────────────────────────────────────────────────
 

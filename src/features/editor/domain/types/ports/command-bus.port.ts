@@ -40,6 +40,23 @@ export type DialogName =
   | 'github-sync'
   | 'project-settings';
 
+export interface EditorDiagnosticItem {
+  id: string;
+  file?: string;
+  normalizedPath?: string;
+  line: number;
+  column?: number;
+  message: string;
+  severity: 'error' | 'warning' | 'info';
+  context?: string;
+  code?: string;
+  suggestion?: string;
+  fixedSnippet?: string;
+  originalSnippet?: string;
+  confidence?: 'high' | 'medium' | 'low';
+  source?: 'LaTeX Compiler' | 'LaTeX Linter' | 'Retracted Citation' | 'System';
+}
+
 export type EditorCommand =
   | { type: 'editor:jump-to-line'; line: number; highlight?: 'error' | 'synctex' }
   | { type: 'editor:set-content'; content: string }
@@ -57,7 +74,7 @@ export type EditorCommand =
   | { type: 'editor:swap-panes' }
   | { type: 'editor:autofix' }
   | { type: 'editor:lint-project'; projectId?: string }
-  | { type: 'editor:insert-citation'; bibKey: string; textInserted?: boolean; entry?: any }
+  | { type: 'editor:insert-citation'; bibKey: string; textInserted?: boolean; entry?: Record<string, unknown> }
   | { type: 'editor:rename-citekey'; oldKey: string; newKey: string }
   | { type: 'editor:open-suggestion-widget'; suggestionId: string; x?: number; y?: number }
   | { type: 'editor:suggest-fix'; error: { message: string; line?: number; file?: string; context?: string } }
@@ -126,12 +143,12 @@ export type EditorCommand =
   | { type: 'navigation:jump-to-line'; fileId?: string; filePath?: string; line: number; column?: number; highlight?: 'error' | 'synctex' }
   | { type: 'navigation:next-error' }
   | { type: 'navigation:prev-error' }
-  | { type: 'ai:request-completion'; prompt: string; context?: any }
+  | { type: 'ai:request-completion'; prompt: string; context?: Record<string, unknown> }
   | { type: 'ai:apply-fix'; fileId: string; line?: number; replacement: string }
   | { type: 'ai:propose-diff'; proposal: DiffProposal }
   | { type: 'ai:accept-diff'; diffId?: string }
   | { type: 'ai:reject-diff'; diffId?: string }
-  | { type: 'ai:autofix-diagnostic'; diagnostic: any }
+  | { type: 'ai:autofix-diagnostic'; diagnostic: EditorDiagnosticItem }
   | {
       type: 'ai:diff-resolved';
       action?: 'accept' | 'reject';
@@ -147,7 +164,7 @@ export type EditorCommand =
   | { type: 'review:create-comment'; line?: number; selectedText?: string }
   | { type: 'history:open-modal'; initialVersion?: number; projectId?: string; baseVersion?: number; targetVersion?: number };
 
-export type CommandHandler<T extends EditorCommand = EditorCommand, R = any> = (command: T) => R | Promise<R>;
+export type CommandHandler<T extends EditorCommand = EditorCommand, R = unknown> = (command: T) => R | Promise<R>;
 
 export interface IEditorCommandBus {
   /** Dispatches an editor command to registered handlers (fire-and-forget) */
@@ -163,7 +180,7 @@ export interface IEditorCommandBus {
   ): () => void;
 
   /** Registers a primary command executor that returns a result */
-  registerExecutor<K extends EditorCommand['type'], R = any>(
+  registerExecutor<K extends EditorCommand['type'], R = unknown>(
     type: K,
     executor: (command: Extract<EditorCommand, { type: K }>) => Promise<R> | R,
   ): () => void;

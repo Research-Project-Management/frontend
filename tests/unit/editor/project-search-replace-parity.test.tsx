@@ -158,7 +158,7 @@ describe('Project Search & Replace (Overleaf Parity: Ctrl+Shift+F & Replace)', (
       'First algorithm in Section 1.\nSecond method in Section 2.'
     );
     expect(mockEngine.jumpToLine).toHaveBeenCalledWith(2);
-    expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('Replaced occurrence'));
+    expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('Replaced occurrence'), expect.anything());
   });
 
   it('useProjectSearchActions replaces all matches in active file', () => {
@@ -200,6 +200,6 @@ describe('Project Search & Replace (Overleaf Parity: Ctrl+Shift+F & Replace)', (
     expect(mockEngine.setContent).toHaveBeenCalledWith(
       'First procedure in Section 1.\nSecond procedure in Section 2.'
     );
-    expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('active file'));
+    expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('active file'), expect.anything());
   });
 });

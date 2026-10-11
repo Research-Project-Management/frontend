@@ -187,7 +187,7 @@ export function CompilerLogs({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success('Downloaded output.log', { id: 'download-raw-log' });
+    toast.success('Downloaded output.log');
   }, [log]);
 
   const handleDownloadOutputFile = useCallback((fileName: string) => {
@@ -289,6 +289,7 @@ export function CompilerLogs({
           highlight: 'error',
         });
       }
+      toast.info(`Jumped to line ${entry.line}${entry.file ? ` in ${entry.file}` : ''}`);
     }
   }, [onJumpToError]);
 
@@ -425,9 +426,10 @@ export function CompilerLogs({
                   onClick={handleDownloadRawLog}
                   className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 rounded hover:bg-muted transition-colors cursor-pointer"
                   title="Download output.log"
+                  aria-label="Download output.log"
                 >
                   <Download className="size-3" />
-                  <span>Download raw log</span>
+                  <span>Download .log</span>
                 </button>
               )}
             </div>

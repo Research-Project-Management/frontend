@@ -53,6 +53,7 @@ export const DockProblemsTab = React.memo(function DockProblemsTab({
         suggestion: err.suggestion,
         fixedSnippet: err.fixedSnippet,
         originalSnippet: err.originalSnippet,
+        source: 'LaTeX Compiler',
       },
     });
 

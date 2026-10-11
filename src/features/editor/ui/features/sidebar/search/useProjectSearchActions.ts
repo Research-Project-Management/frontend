@@ -125,6 +125,7 @@ export function useProjectSearchActions({
       engine.setContent(newContent);
       engine.jumpToLine(line);
       engine.focus();
+      toast.success('Replaced occurrence', { id: 'search-replace-status' });
     },
     [engine, activeFileId, replaceText]
   );

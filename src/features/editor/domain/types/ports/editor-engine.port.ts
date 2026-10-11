@@ -169,7 +169,7 @@ export interface IEditorEngine {
   }): { current: number; total: number };
 
   /** Optional access to underlying editor view instance (e.g. EditorView) */
-  getView?<T = unknown>(): T;
+  getView?(): unknown;
 
   /** Cleanup handler invoked when engine unmounts */
   onDestroy(): void;

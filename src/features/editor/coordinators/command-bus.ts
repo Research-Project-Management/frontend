@@ -14,8 +14,8 @@ import type {
 import type { IEditorEngine } from '../domain/types/ports/editor-engine.port';
 
 class EditorCommandBusImpl implements IEditorCommandBus {
-  private handlers = new Map<string, Set<CommandHandler<any>>>();
-  private executors = new Map<string, (command: any) => Promise<any> | any>();
+  private handlers = new Map<string, Set<CommandHandler<EditorCommand, unknown>>>();
+  private executors = new Map<string, (command: EditorCommand) => Promise<unknown> | unknown>();
   private globalHandlers = new Set<CommandHandler>();
 
   public dispatch(command: EditorCommand): void {
@@ -43,7 +43,7 @@ class EditorCommandBusImpl implements IEditorCommandBus {
 
   public async execute<R = void>(command: EditorCommand): Promise<R> {
     const executor = this.executors.get(command.type);
-    let result: any = undefined;
+    let result: unknown = undefined;
 
     if (executor) {
       try {
@@ -60,13 +60,13 @@ class EditorCommandBusImpl implements IEditorCommandBus {
     return result as R;
   }
 
-  public registerExecutor<K extends EditorCommand['type'], R = any>(
+  public registerExecutor<K extends EditorCommand['type'], R = unknown>(
     type: K,
     executor: (command: Extract<EditorCommand, { type: K }>) => Promise<R> | R,
   ): () => void {
-    this.executors.set(type, executor);
+    this.executors.set(type, executor as (command: EditorCommand) => Promise<unknown> | unknown);
     return () => {
-      if (this.executors.get(type) === executor) {
+      if (this.executors.get(type) === (executor as unknown)) {
         this.executors.delete(type);
       }
     };
@@ -80,10 +80,10 @@ class EditorCommandBusImpl implements IEditorCommandBus {
       this.handlers.set(type, new Set());
     }
     const set = this.handlers.get(type)!;
-    set.add(handler as CommandHandler<any>);
+    set.add(handler as unknown as CommandHandler<EditorCommand, unknown>);
 
     return () => {
-      set.delete(handler as CommandHandler<any>);
+      set.delete(handler as unknown as CommandHandler<EditorCommand, unknown>);
       if (set.size === 0) {
         this.handlers.delete(type);
       }

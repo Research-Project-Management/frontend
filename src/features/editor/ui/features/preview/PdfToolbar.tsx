@@ -25,8 +25,10 @@ import {
   Link2Off,
   ExternalLink,
   Check,
+  ArrowLeft,
+  ArrowRight,
 } from 'lucide-react';
-import { editorCommandBus } from '../../../coordinators/command-bus';
+import { editorCommandBus, getActiveEditorEngine } from '../../../coordinators/command-bus';
 import {
   Tooltip,
   TooltipContent,
@@ -152,7 +154,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
   warningCount = 0,
 }: PdfToolbarProps) {
   const toolbarRef = useRef<HTMLDivElement>(null);
-  const [toolbarWidth, setToolbarWidth] = useState<number>(600);
+  const [toolbarWidth, setToolbarWidth] = useState<number>(800);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuTooltipOpen, setMenuTooltipOpen] = useState(false);
 
@@ -174,8 +176,8 @@ export const PdfToolbar = React.memo(function PdfToolbar({
     return () => ro.disconnect();
   }, []);
 
-  // Display secondary viewer toggles directly on toolbar only when width >= 660px
-  const showExtendedUtilities = toolbarWidth >= 660;
+  // Display secondary viewer toggles directly on toolbar only when width >= 500px
+  const showExtendedUtilities = toolbarWidth >= 500;
   // Keep zoom scale controls visible unless viewport is extremely narrow (< 400px)
   const collapseScale = toolbarWidth < 400;
   // Hide SyncTeX when viewport is ultra narrow (< 360px)
@@ -258,6 +260,54 @@ export const PdfToolbar = React.memo(function PdfToolbar({
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">
             Download PDF
+          </TooltipContent>
+        </Tooltip>
+
+        {/* SyncTeX Navigation: Backward (PDF -> Code) and Forward (Code -> PDF) */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => {
+                editorCommandBus.dispatch({
+                  type: 'synctex:backward',
+                  page: pageNumber || 1,
+                });
+              }}
+              disabled={!pdfUrl}
+              aria-label="Jump to LaTeX source (SyncTeX)"
+              className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:cursor-not-allowed transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
+            >
+              <ArrowLeft className="size-3.5 shrink-0" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            Jump to LaTeX source (SyncTeX)
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => {
+                const activeEngine = getActiveEditorEngine();
+                const pos = activeEngine?.getCursorPosition?.() || { line: 1, column: 1 };
+                editorCommandBus.dispatch({
+                  type: 'synctex:forward',
+                  line: pos.line,
+                  column: pos.column,
+                });
+              }}
+              disabled={!pdfUrl}
+              aria-label="Jump to PDF location (SyncTeX)"
+              className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:cursor-not-allowed transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
+            >
+              <ArrowRight className="size-3.5 shrink-0" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            Jump to PDF location (SyncTeX)
           </TooltipContent>
         </Tooltip>
       </div>
@@ -379,7 +429,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                           onClick={() => {
                             editorCommandBus.dispatch({ type: 'preview:detach' });
                           }}
-                          aria-label="Open PDF in separate window"
+                          aria-label="Open PDF in separate window (Mở PDF ra cửa sổ riêng biệt)"
                           className="size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[''] text-foreground hover:bg-muted"
                         >
                           <ExternalLink className="size-3.5 shrink-0" />

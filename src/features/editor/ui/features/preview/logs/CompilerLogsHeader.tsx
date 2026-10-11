@@ -47,13 +47,13 @@ export function CompilerLogsHeader({
       {totalErrors > 0 && (
         <div className="flex items-center gap-1.5 font-sans">
           <span className="text-xs text-muted-foreground font-mono">
-            Error {currentErrorIdx + 1} of {totalErrors}
+            Error {currentErrorIdx + 1} of {totalErrors} ({currentErrorIdx + 1}/{totalErrors} lỗi)
           </span>
           <div className="flex items-center rounded-md bg-muted/50 p-0.5">
             <button
               type="button"
               onClick={onPrevError}
-              aria-label="Previous error (Shift+F8)"
+              aria-label="Lỗi trước (Shift+F8) / Previous error"
               title="Previous error (Shift+F8)"
               className="size-6 flex items-center justify-center hover:bg-background rounded-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >
@@ -62,7 +62,7 @@ export function CompilerLogsHeader({
             <button
               type="button"
               onClick={onNextError}
-              aria-label="Next error (F8)"
+              aria-label="Lỗi tiếp theo (F8) / Next error"
               title="Next error (F8)"
               className="size-6 flex items-center justify-center hover:bg-background rounded-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >

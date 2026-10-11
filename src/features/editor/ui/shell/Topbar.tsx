@@ -103,46 +103,11 @@ export function Topbar() {
   }, [isHistoryOpen, toggleHistory]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
-      const modKey = isMac ? e.metaKey : e.ctrlKey;
-
-      // Ctrl+P or Cmd+P -> Quick Open
-      if (modKey && e.key.toLowerCase() === 'p') {
-        e.preventDefault();
-        setIsQuickOpenOpen((prev) => !prev);
-        return;
-      }
-
-      // Ctrl+/ or Cmd+/ or F1 -> Keyboard shortcuts cheat sheet
-      if ((modKey && e.key === '/') || (e.key === 'F1' && !e.shiftKey && !e.altKey)) {
-        const activeEl = typeof document !== 'undefined' ? document.activeElement : null;
-        const isEditorFocused =
-          activeEl?.classList.contains('cm-content') ||
-          Boolean(activeEl?.closest('.cm-editor') || activeEl?.closest('.ProseMirror'));
-
-        if (modKey && e.key === '/' && isEditorFocused) {
-          return;
-        }
-
-        e.preventDefault();
-        setIsShortcutsOpen((prev) => !prev);
-        return;
-      }
-
-      // Ctrl+Shift+V -> Toggle Source vs Visual mode
-      if (modKey && e.shiftKey && (e.key === 'V' || e.key === 'v')) {
-        e.preventDefault();
-        useSettingsStore.getState().toggleEditorMode();
-        return;
-      }
-    };
-
     const unsubOpen = editorCommandBus.subscribe('dialog:open', (cmd) => {
       if (cmd.dialog === 'quick-open') {
-        setIsQuickOpenOpen(true);
+        setIsQuickOpenOpen((prev) => (cmd.payload?.forceOpen ? true : !prev));
       } else if (cmd.dialog === 'shortcuts') {
-        setIsShortcutsOpen(true);
+        setIsShortcutsOpen((prev) => (cmd.payload?.forceOpen ? true : !prev));
       }
     });
 
@@ -155,9 +120,7 @@ export function Topbar() {
       }
     });
 
-    window.addEventListener('keydown', handleKeyDown);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
       unsubOpen();
       unsubClose();
     };

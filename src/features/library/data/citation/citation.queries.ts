@@ -38,8 +38,6 @@ export function useCslCitation(
   });
 }
 
-export const useCitation = useCslCitation;
-
 export function useBatchCitations(
   scopeId?: string,
   itemIds: string[] = [],
@@ -125,5 +123,3 @@ export function useExports(scopeId?: string) {
     downloadAnnotatedPdf: downloadAnnotatedPdfMutation.mutateAsync,
   };
 }
-
-export const useExportLibrary = useExports;

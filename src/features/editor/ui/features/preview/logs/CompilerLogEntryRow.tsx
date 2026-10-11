@@ -95,6 +95,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
                     e.stopPropagation();
                     onClick?.();
                   }}
+                  aria-label={`Go to line ${entry.line} (Dòng ${entry.line})`}
                   className="flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-medium text-foreground bg-muted hover:bg-muted/80 border border-border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors shrink-0"
                   title={`Go to line ${entry.line}${entry.file ? ` in ${entry.file}` : ''}`}
                 >
@@ -168,9 +169,18 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
               {entry.file && <span className="text-foreground/80 font-medium">{entry.file}</span>}
               {entry.file && entry.line !== undefined && <span> · </span>}
               {entry.line !== undefined && (
-                <span className={cn(isClickable && 'underline underline-offset-2 decoration-primary/40 hover:text-primary')}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClick?.();
+                  }}
+                  className={cn(
+                    isClickable && 'underline underline-offset-2 decoration-primary/40 hover:text-primary cursor-pointer text-xs font-mono border-none bg-transparent p-0 text-left'
+                  )}
+                >
                   Line {entry.line}
-                </span>
+                </button>
               )}
             </p>
           )}

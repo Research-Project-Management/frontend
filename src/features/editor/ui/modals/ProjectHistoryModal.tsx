@@ -262,7 +262,7 @@ export default function ProjectHistoryModal({
       // 1. Fetch snapshot of base version if not already cached
       let snap = baseSnapshot;
       if (!snap) {
-        snap = await historyService.getProjectSnapshot(effectiveProjectId, selectedBaseVersion);
+        snap = await manuscriptService.history.getProjectSnapshot(effectiveProjectId, selectedBaseVersion);
       }
       if (!snap || !snap.files) {
         throw new Error(`Snapshot for Version ${selectedBaseVersion} not found`);
@@ -332,7 +332,7 @@ export default function ProjectHistoryModal({
       }
 
       // 4. Capture automated non-destructive checkpoint
-      await historyService.createProjectSnapshot(effectiveProjectId, {
+      await manuscriptService.history.createProjectSnapshot(effectiveProjectId, {
         summary: `Restored ${activeFilePath} from Version ${selectedBaseVersion}`,
         isAutomatic: false,
       });
@@ -361,7 +361,7 @@ export default function ProjectHistoryModal({
     try {
       let snap = baseSnapshot;
       if (!snap && effectiveProjectId && selectedBaseVersion) {
-        snap = await historyService.getProjectSnapshot(effectiveProjectId, selectedBaseVersion);
+        snap = await manuscriptService.history.getProjectSnapshot(effectiveProjectId, selectedBaseVersion);
       }
       if (!snap || !activeFilePath) return;
       const fileData =

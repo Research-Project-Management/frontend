@@ -815,8 +815,6 @@ export const TagsService = {
   },
 };
 
-export const TagService = TagsService;
-
 // ── 4. NotesService ───────────────────────────────────────────────────────────
 
 export interface CreateNoteDTO {
@@ -945,12 +943,10 @@ export const NotesService = {
   },
 };
 
-export const getNotes = NotesService.list;
 export const getNote = NotesService.get;
 export const createNote = NotesService.create;
 export const updateNote = NotesService.update;
 export const deleteNote = NotesService.delete;
-export const NoteService = NotesService;
 
 // ── 5. StateService ───────────────────────────────────────────────────────────
 
@@ -1020,8 +1016,6 @@ export const StateService = {
     return unwrapState(res) ?? {};
   },
 };
-
-export const ItemStateService = StateService;
 
 // ── 6. ItemTypesService ───────────────────────────────────────────────────────
 
@@ -1164,8 +1158,6 @@ export const SavedSearchesService = {
       },
     ),
 };
-
-export const SavedSearchService = SavedSearchesService;
 
 // ── 8. RelationsService ───────────────────────────────────────────────────────
 

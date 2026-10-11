@@ -323,15 +323,7 @@ export const ExportService = {
   },
 };
 
-// Aliases
-export const ReferenceService = CitationService;
-export const formatCslCitation = CitationService.formatCitation;
-export const batchFormatCslCitations = CitationService.batchFormat;
-export const resolveAcademicQuery = CitationService.resolve;
-export const formatRawCitation = CitationService.formatRawItem;
-export const batchFormatRawCitations = CitationService.formatRawBatch;
-
-export const ExportsService = ExportService;
+// Convenience Exports
 export const exportBibtex = ExportService.exportBibtex;
 export const exportBundle = ExportService.exportBundle;
 export const exportAnnotatedPdf = ExportService.exportAnnotatedPdf;

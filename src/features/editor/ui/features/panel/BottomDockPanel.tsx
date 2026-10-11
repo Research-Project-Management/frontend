@@ -196,6 +196,7 @@ export function BottomDockPanel() {
         file: firstErr.file || 'main.tex',
         severity: firstErr.severity === 'warning' ? 'warning' : 'error',
         context: firstErr.context,
+        source: 'LaTeX Compiler',
       },
     });
   };

@@ -585,7 +585,7 @@ export function ProjectSettingsModal() {
                 </div>
                 <div className="pt-1 border-t border-border/40 text-[11px] text-muted-foreground space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span>Xác thực: HTTP Basic (Password = Git Token)</span>
+                    <span>Authentication: HTTP Basic (Password = Git Token)</span>
                     <Button
                       variant="outline"
                       size="sm"
@@ -593,7 +593,7 @@ export function ProjectSettingsModal() {
                       disabled={isCreatingToken}
                       className="h-5 px-2 text-[10px] cursor-pointer"
                     >
-                      {isCreatingToken ? 'Đang tạo...' : 'Tạo Git Token'}
+                      {isCreatingToken ? 'Generating...' : 'Generate Git Token'}
                     </Button>
                   </div>
                   {gitToken && (

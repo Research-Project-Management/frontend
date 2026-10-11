@@ -436,8 +436,9 @@ export function useTableMatrixWizard({
 
   const insertSnippet = useCallback(() => {
     onInsert(activeLatex);
+    toast.success(tab === 'matrix' ? 'Matrix inserted into document' : 'Table inserted into document');
     onClose();
-  }, [onInsert, activeLatex, onClose]);
+  }, [onInsert, activeLatex, onClose, tab]);
 
   const copySnippet = useCallback(() => {
     navigator.clipboard.writeText(activeLatex);

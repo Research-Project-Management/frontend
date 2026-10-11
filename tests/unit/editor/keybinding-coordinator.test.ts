@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { keybindingCoordinator } from '@/features/editor/coordinators/keybinding.coordinator';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
 
 describe('KeybindingCoordinatorRegistry (Global & Scoped Shortcuts)', () => {
   let cleanup: () => void;
@@ -104,4 +105,77 @@ describe('KeybindingCoordinatorRegistry (Global & Scoped Shortcuts)', () => {
       dialog: 'shortcuts',
     });
   });
+
+  it('triggers quick-open dialog on Mod-p', () => {
+    const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
+    const event = new KeyboardEvent('keydown', {
+      key: 'p',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    window.dispatchEvent(event);
+
+    expect(dispatchSpy).toHaveBeenCalledWith({
+      type: 'dialog:open',
+      dialog: 'quick-open',
+    });
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('toggles editor mode on Mod-Shift-v', () => {
+    const toggleSpy = vi.spyOn(useSettingsStore.getState(), 'toggleEditorMode');
+    const event = new KeyboardEvent('keydown', {
+      key: 'v',
+      ctrlKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    window.dispatchEvent(event);
+
+    expect(toggleSpy).toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('opens word count dialog on Mod-Shift-w', () => {
+    const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
+    const event = new KeyboardEvent('keydown', {
+      key: 'w',
+      ctrlKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    window.dispatchEvent(event);
+
+    expect(dispatchSpy).toHaveBeenCalledWith({
+      type: 'dialog:open',
+      dialog: 'word-count',
+    });
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('opens table wizard on Mod-Shift-t', () => {
+    const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
+    const event = new KeyboardEvent('keydown', {
+      key: 't',
+      ctrlKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    window.dispatchEvent(event);
+
+    expect(dispatchSpy).toHaveBeenCalledWith({
+      type: 'dialog:open',
+      dialog: 'table-wizard',
+    });
+    expect(event.defaultPrevented).toBe(true);
+  });
 });
+

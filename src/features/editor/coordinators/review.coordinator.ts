@@ -130,7 +130,7 @@ export class ReviewCoordinatorRegistry {
   public async acceptSuggestion(pageId: string, suggestionId: string): Promise<boolean> {
     try {
       await suggestionService.acceptSuggestion(pageId, suggestionId);
-      toast.success('Change accepted');
+      toast.success('Change accepted', { id: `sug-${suggestionId}` });
       editorCommandBus.dispatch({
         type: 'editor:review-event',
         pageId,
@@ -138,8 +138,8 @@ export class ReviewCoordinatorRegistry {
         payload: { suggestionId },
       });
       return true;
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to accept change');
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to accept change', { id: `sug-${suggestionId}` });
       return false;
     }
   }
@@ -150,7 +150,7 @@ export class ReviewCoordinatorRegistry {
   public async rejectSuggestion(pageId: string, suggestionId: string): Promise<boolean> {
     try {
       await suggestionService.rejectSuggestion(pageId, suggestionId);
-      toast.success('Change rejected');
+      toast.success('Change rejected', { id: `sug-${suggestionId}` });
       editorCommandBus.dispatch({
         type: 'editor:review-event',
         pageId,
@@ -158,8 +158,8 @@ export class ReviewCoordinatorRegistry {
         payload: { suggestionId },
       });
       return true;
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to reject change');
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to reject change', { id: `sug-${suggestionId}` });
       return false;
     }
   }
@@ -170,15 +170,15 @@ export class ReviewCoordinatorRegistry {
   public async acceptAll(pageId: string): Promise<boolean> {
     try {
       await suggestionService.acceptAllSuggestions(pageId);
-      toast.success('All changes accepted');
+      toast.success('All changes accepted', { id: 'sug-bulk' });
       editorCommandBus.dispatch({
         type: 'editor:review-event',
         pageId,
         event: 'suggestion:accepted-all',
       });
       return true;
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to accept all changes');
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to accept all changes', { id: 'sug-bulk' });
       return false;
     }
   }
@@ -189,15 +189,15 @@ export class ReviewCoordinatorRegistry {
   public async rejectAll(pageId: string): Promise<boolean> {
     try {
       await suggestionService.rejectAllSuggestions(pageId);
-      toast.success('All changes rejected');
+      toast.success('All changes rejected', { id: 'sug-bulk' });
       editorCommandBus.dispatch({
         type: 'editor:review-event',
         pageId,
         event: 'suggestion:rejected-all',
       });
       return true;
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to reject all changes');
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to reject all changes', { id: 'sug-bulk' });
       return false;
     }
   }
@@ -209,7 +209,7 @@ export class ReviewCoordinatorRegistry {
     if (!suggestionIds || suggestionIds.length === 0) return true;
     try {
       await suggestionService.acceptSelectedSuggestions(pageId, suggestionIds);
-      toast.success(`${suggestionIds.length} changes accepted`);
+      toast.success(`${suggestionIds.length} changes accepted`, { id: 'sug-bulk' });
       editorCommandBus.dispatch({
         type: 'editor:review-event',
         pageId,
@@ -217,8 +217,8 @@ export class ReviewCoordinatorRegistry {
         payload: { suggestionIds },
       });
       return true;
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to accept selected changes');
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to accept selected changes', { id: 'sug-bulk' });
       return false;
     }
   }
@@ -230,7 +230,7 @@ export class ReviewCoordinatorRegistry {
     if (!suggestionIds || suggestionIds.length === 0) return true;
     try {
       await suggestionService.rejectSelectedSuggestions(pageId, suggestionIds);
-      toast.success(`${suggestionIds.length} changes rejected`);
+      toast.success(`${suggestionIds.length} changes rejected`, { id: 'sug-bulk' });
       editorCommandBus.dispatch({
         type: 'editor:review-event',
         pageId,
@@ -238,8 +238,8 @@ export class ReviewCoordinatorRegistry {
         payload: { suggestionIds },
       });
       return true;
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to reject selected changes');
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to reject selected changes', { id: 'sug-bulk' });
       return false;
     }
   }

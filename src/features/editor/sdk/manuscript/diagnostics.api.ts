@@ -10,7 +10,29 @@ import type { DiagnosticReportDto, AutoFixResultDto, ErrorExplanationDto } from 
 
 export const diagnostics = {
   parseLog: async (logText: string, engine = 'pdflatex'): Promise<DiagnosticReportDto> => {
-    return await apiPost<DiagnosticReportDto>(`${MANUSCRIPTS_API_BASE}/diagnostics/parse-log`, { logText, engine });
+    if (!logText || !logText.trim()) {
+      return {
+        id: `report-${Date.now()}`,
+        isSuccess: true,
+        errorsCount: 0,
+        warningsCount: 0,
+        badboxesCount: 0,
+        infoCount: 0,
+        totalCount: 0,
+        items: [],
+      };
+    }
+    const MAX_LOG_SIZE = 5 * 1024 * 1024;
+    const payload =
+      logText.length > MAX_LOG_SIZE
+        ? logText.slice(logText.length - MAX_LOG_SIZE)
+        : logText;
+
+    return await apiPost<DiagnosticReportDto>(
+      `${MANUSCRIPTS_API_BASE}/diagnostics/parse-log`,
+      { logText: payload, engine },
+      { silent: true }
+    );
   },
 
   lint: async (source: string, filename = 'main.tex'): Promise<DiagnosticReportDto> => {

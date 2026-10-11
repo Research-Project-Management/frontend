@@ -17,13 +17,23 @@ import React from 'react';
 import { Columns2, ArrowLeftRight, X, FileCode2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
+import dynamic from 'next/dynamic';
 import Tabs from './EditorTabs';
-import { ImagePanel } from './ImagePanel';
 import { CodeMirrorView } from './CodeMirrorView';
-import { VisualEditorView } from './VisualEditorView';
+
+const ImagePanel = dynamic(
+  () => import('./ImagePanel').then((m) => m.ImagePanel),
+  { ssr: false }
+);
+
+const VisualEditorView = dynamic(
+  () => import('./VisualEditorView').then((m) => m.VisualEditorView),
+  { ssr: false }
+);
+
 import { EditorToolbar } from './EditorToolbar';
-import { SourceVisualSwitcher } from './SourceVisualSwitcher';
 import { EditorContextMenu } from './EditorContextMenu';
+import { SourceVisualSwitcher } from './SourceVisualSwitcher';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { useEditorCollaboration } from '@/features/editor/ui/hooks/use-collaboration';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
@@ -63,6 +73,7 @@ export function EditorPane({
 }: EditorPaneProps) {
   const editorMode = useSettingsStore((s) => s.editorMode);
   const showEditorTabs = useSettingsStore((s) => s.showEditorTabs);
+  const isLocked = useSettingsStore((s) => s.isLocked);
 
   const fileId = file?.id;
   const fileName =
@@ -117,8 +128,10 @@ export function EditorPane({
     >
       {/* ── Pane Header ────────────────────────────────────────────────────── */}
       {isSplitActive ? (
-        <div className="flex items-center justify-between h-9 px-3 bg-secondary/50 border-b border-border shrink-0 select-none">
+        <div className="flex items-center justify-between h-9 px-3 bg-surface border-b border-border shrink-0 select-none">
           <div className="flex items-center gap-2 min-w-0">
+            <SourceVisualSwitcher />
+            <div className="h-4 w-px bg-border/60 mx-0.5 shrink-0" />
             <FileCode2 className="size-3.5 text-primary shrink-0" />
             <span className="text-xs font-medium text-foreground truncate max-w-[160px]">
               {fileName}
@@ -126,13 +139,12 @@ export function EditorPane({
             {cachedModel?.isDirty && (
               <span className="size-1.5 rounded-full bg-primary shrink-0" title="Unsaved changes" />
             )}
-            <span className="text-[10px] text-muted-foreground uppercase font-mono px-1 py-0.5 rounded-sm bg-muted/60">
+            <span className="text-[10px] text-muted-foreground uppercase font-mono font-medium tracking-wider px-1.5 py-0.5 bg-muted/60 rounded">
               {paneId}
             </span>
           </div>
 
           <div className="flex items-center gap-1">
-            <SourceVisualSwitcher />
             {onSwapPanes && (
               <Button
                 variant="ghost"
@@ -186,10 +198,12 @@ export function EditorPane({
           }
         />
       ) : (
-        <div className="flex items-center justify-between h-8 bg-muted/20 border-b border-border px-2 shrink-0">
-          <span className="text-xs text-muted-foreground">{fileName}</span>
-          <div className="flex items-center gap-1">
+        <div className="flex items-center justify-between h-9 bg-surface border-b border-border px-2 shrink-0">
+          <div className="flex items-center gap-2">
             <SourceVisualSwitcher />
+            <span className="text-xs text-muted-foreground">{fileName}</span>
+          </div>
+          <div className="flex items-center gap-1">
             {onSplitRight && (
               <Button
                 variant="ghost"
@@ -228,13 +242,14 @@ export function EditorPane({
           />
         ) : fileId ? (
           <div className="flex-1 min-h-0 min-w-0 w-full h-full flex flex-col bg-canvas">
-            {editorMode === 'visual' && <EditorToolbar />}
+            {editorMode === 'visual' && <EditorToolbar readOnly={isLocked} />}
             <div className="flex-1 min-h-0 min-w-0 w-full h-full overflow-hidden">
               {editorMode === 'visual' ? (
                 <VisualEditorView
                   fileId={fileId}
                   filePath={fileName}
                   value={rawContent}
+                  readOnly={isLocked}
                   onChange={(nextText) => {
                     lruDocumentCache.updateContent(fileId, nextText, true);
                     sessionCoordinator.notifyContentChange(fileId, nextText, {
@@ -248,6 +263,7 @@ export function EditorPane({
                     fileId={fileId}
                     filePath={fileName}
                     value={rawContent}
+                    readOnly={isLocked}
                     yText={yText}
                     awareness={awareness}
                     isRealtimeConnected={isRealtimeConnected}

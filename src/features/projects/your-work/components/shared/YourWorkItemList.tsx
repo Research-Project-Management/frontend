@@ -18,9 +18,9 @@ import {
   FolderGit2,
   Layers,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { ProjectAvatar } from "@/shared/components/icons";
-import { Input } from "@/shared/components/ui";
+import { Input } from '@/shared/components/ui/input';
 import { cn } from "@/shared/lib/utils";
 import { getWorkItemProject, type ProjectMap } from '../../utils/your-work.util';
 import {

@@ -8,7 +8,7 @@ import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 import { manuscriptService } from '@/features/editor/sdk';
-import { LatexCompilerEngine } from '@/features/editor/coordinators';
+import { LatexCompilerEngine } from '@/features/editor/coordinators/compilation-pipeline';
 
 describe('Phase 8: Offline Durability & Network Disconnect Recovery (Overleaf Parity)', () => {
   beforeEach(() => {

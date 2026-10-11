@@ -29,6 +29,7 @@ export interface CanonicalMathSymbol {
   visualCategory?: VisualSymbolCategory;
   previewLatex?: string;
   keywords: string[];
+  requiredPackage?: string;
 }
 
 export interface MathSymbol {
@@ -36,6 +37,7 @@ export interface MathSymbol {
   display: string;
   name: string;
   category: ModalSymbolCategory;
+  requiredPackage?: string;
 }
 
 export const CANONICAL_MATH_SYMBOLS: CanonicalMathSymbol[] = [
@@ -122,8 +124,8 @@ export const CANONICAL_MATH_SYMBOLS: CanonicalMathSymbol[] = [
 
   // ── Calculus & Big Operators ──
   { id: 'int', command: '\\int_{a}^{b} f(x)\\,dx', display: '∫', previewLatex: '\\int', name: 'Definite Integral', modalCategory: 'operators', visualCategory: 'operators', keywords: ['integral', 'calculus', 'int'] },
-  { id: 'iint', command: '\\iint_{D} f(x,y)\\,dx\\,dy', display: '∬', previewLatex: '\\iint', name: 'Double Integral', modalCategory: 'operators', visualCategory: 'operators', keywords: ['double', 'integral', 'iint'] },
-  { id: 'iiint', command: '\\iiint', display: '∭', previewLatex: '\\iiint', name: 'Triple Integral', modalCategory: 'operators', visualCategory: 'operators', keywords: ['triple', 'integral'] },
+  { id: 'iint', command: '\\iint_{D} f(x,y)\\,dx\\,dy', display: '∬', previewLatex: '\\iint', name: 'Double Integral', modalCategory: 'operators', visualCategory: 'operators', keywords: ['double', 'integral', 'iint'], requiredPackage: 'amsmath' },
+  { id: 'iiint', command: '\\iiint', display: '∭', previewLatex: '\\iiint', name: 'Triple Integral', modalCategory: 'operators', visualCategory: 'operators', keywords: ['triple', 'integral'], requiredPackage: 'amsmath' },
   { id: 'oint', command: '\\oint_{\\gamma} f(z)\\,dz', display: '∮', previewLatex: '\\oint', name: 'Contour Integral', modalCategory: 'operators', visualCategory: 'operators', keywords: ['contour', 'integral', 'line'] },
   { id: 'sum', command: '\\sum_{i=1}^{n}', display: '∑', previewLatex: '\\sum', name: 'Summation', modalCategory: 'operators', visualCategory: 'operators', keywords: ['sum', 'summation', 'sigma', 'series'] },
   { id: 'prod', command: '\\prod_{i=1}^{n}', display: '∏', previewLatex: '\\prod', name: 'Product', modalCategory: 'operators', visualCategory: 'operators', keywords: ['product', 'prod', 'pi'] },
@@ -151,8 +153,8 @@ export const CANONICAL_MATH_SYMBOLS: CanonicalMathSymbol[] = [
   { id: 'to', command: '\\to', display: '→', previewLatex: '\\to', name: 'Right Arrow', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['to', 'arrow', 'right', 'limit'] },
   { id: 'leftarrow', command: '\\leftarrow', display: '←', previewLatex: '\\leftarrow', name: 'Left Arrow', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['leftarrow', 'left'] },
   { id: 'leftrightarrow', command: '\\leftrightarrow', display: '↔', previewLatex: '\\leftrightarrow', name: 'Left-Right Arrow', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['leftrightarrow', 'both'] },
-  { id: 'implies', command: '\\implies', display: '⇒', previewLatex: '\\implies', name: 'Implies', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['implies', 'implication', 'arrow'] },
-  { id: 'iff', command: '\\iff', display: '⇔', previewLatex: '\\iff', name: 'If and only if', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['iff', 'equivalence', 'arrow'] },
+  { id: 'implies', command: '\\implies', display: '⇒', previewLatex: '\\implies', name: 'Implies', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['implies', 'implication', 'arrow'], requiredPackage: 'amsmath' },
+  { id: 'iff', command: '\\iff', display: '⇔', previewLatex: '\\iff', name: 'If and only if', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['iff', 'equivalence', 'arrow'], requiredPackage: 'amsmath' },
   { id: 'mapsto', command: '\\mapsto', display: '↦', previewLatex: '\\mapsto', name: 'Maps To', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['mapsto', 'maps', 'function'] },
   { id: 'uparrow', command: '\\uparrow', display: '↑', previewLatex: '\\uparrow', name: 'Up Arrow', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['uparrow', 'up'] },
   { id: 'downarrow', command: '\\downarrow', display: '↓', previewLatex: '\\downarrow', name: 'Down Arrow', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['downarrow', 'down'] },
@@ -162,12 +164,17 @@ export const CANONICAL_MATH_SYMBOLS: CanonicalMathSymbol[] = [
   { id: 'land', command: '\\land', display: '∧', previewLatex: '\\land', name: 'Logical And', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['land', 'and', 'wedge'] },
   { id: 'lor', command: '\\lor', display: '∨', previewLatex: '\\lor', name: 'Logical Or', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['lor', 'or', 'vee'] },
 
+  // ── AMS Symbols ──
+  { id: 'mathbb-R', command: '\\mathbb{R}', display: 'ℝ', previewLatex: '\\mathbb{R}', name: 'Real Numbers (R)', modalCategory: 'operators', visualCategory: 'basic', keywords: ['mathbb', 'real', 'numbers', 'set'], requiredPackage: 'amssymb' },
+  { id: 'blacksquare', command: '\\blacksquare', display: '■', previewLatex: '\\blacksquare', name: 'Black Square (QED)', modalCategory: 'operators', visualCategory: 'basic', keywords: ['qed', 'square', 'proof'], requiredPackage: 'amssymb' },
+  { id: 'checkmark', command: '\\checkmark', display: '✓', previewLatex: '\\checkmark', name: 'Checkmark', modalCategory: 'operators', visualCategory: 'basic', keywords: ['check', 'tick'], requiredPackage: 'amssymb' },
+
   // ── Matrices & Advanced Environments ──
-  { id: 'pmatrix', command: '\\begin{pmatrix}\n  a & b \\\\\n  c & d\n\\end{pmatrix}', display: '(matrix)', previewLatex: '\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}', name: '2x2 Matrix', modalCategory: 'operators', visualCategory: 'matrix', keywords: ['matrix', 'pmatrix', 'round', '2x2'] },
-  { id: 'bmatrix', command: '\\begin{bmatrix}\n  a & b \\\\\n  c & d\n\\end{bmatrix}', display: '[matrix]', previewLatex: '\\begin{bmatrix} a & b \\\\ c & d \\end{bmatrix}', name: 'Bracket Matrix', modalCategory: 'operators', visualCategory: 'matrix', keywords: ['matrix', 'bmatrix', 'square', '2x2'] },
-  { id: 'vmatrix', command: '\\begin{vmatrix}\n  a & b \\\\\n  c & d\n\\end{vmatrix}', display: '|det|', previewLatex: '\\begin{vmatrix} a & b \\\\ c & d \\end{vmatrix}', name: 'Determinant Matrix', modalCategory: 'operators', visualCategory: 'matrix', keywords: ['matrix', 'vmatrix', 'det', 'determinant'] },
-  { id: 'cases', command: '\\begin{cases}\n  x, & \\text{if } x > 0 \\\\\n  -x, & \\text{otherwise}\n\\end{cases}', display: '{cases', previewLatex: '\\begin{cases} a \\\\ b \\end{cases}', name: 'Piecewise Cases', modalCategory: 'delimiters', visualCategory: 'matrix', keywords: ['cases', 'piecewise', 'condition'] },
-  { id: 'aligned', command: '\\begin{aligned}\n  a &= b + c \\\\\n  &= d + e\n\\end{aligned}', display: 'align', previewLatex: '\\begin{aligned} a &= b \\\\ &= c \\end{aligned}', name: 'Aligned Equations', modalCategory: 'delimiters', visualCategory: 'matrix', keywords: ['aligned', 'align', 'multiline', 'equation'] },
+  { id: 'pmatrix', command: '\\begin{pmatrix}\n  a & b \\\\\n  c & d\n\\end{pmatrix}', display: '(matrix)', previewLatex: '\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}', name: '2x2 Matrix', modalCategory: 'operators', visualCategory: 'matrix', keywords: ['matrix', 'pmatrix', 'round', '2x2'], requiredPackage: 'amsmath' },
+  { id: 'bmatrix', command: '\\begin{bmatrix}\n  a & b \\\\\n  c & d\n\\end{bmatrix}', display: '[matrix]', previewLatex: '\\begin{bmatrix} a & b \\\\ c & d \\end{bmatrix}', name: 'Bracket Matrix', modalCategory: 'operators', visualCategory: 'matrix', keywords: ['matrix', 'bmatrix', 'square', '2x2'], requiredPackage: 'amsmath' },
+  { id: 'vmatrix', command: '\\begin{vmatrix}\n  a & b \\\\\n  c & d\n\\end{vmatrix}', display: '|det|', previewLatex: '\\begin{vmatrix} a & b \\\\ c & d \\end{vmatrix}', name: 'Determinant Matrix', modalCategory: 'operators', visualCategory: 'matrix', keywords: ['matrix', 'vmatrix', 'det', 'determinant'], requiredPackage: 'amsmath' },
+  { id: 'cases', command: '\\begin{cases}\n  x, & \\text{if } x > 0 \\\\\n  -x, & \\text{otherwise}\n\\end{cases}', display: '{cases', previewLatex: '\\begin{cases} a \\\\ b \\end{cases}', name: 'Piecewise Cases', modalCategory: 'delimiters', visualCategory: 'matrix', keywords: ['cases', 'piecewise', 'condition'], requiredPackage: 'amsmath' },
+  { id: 'aligned', command: '\\begin{aligned}\n  a &= b + c \\\\\n  &= d + e\n\\end{aligned}', display: 'align', previewLatex: '\\begin{aligned} a &= b \\\\ &= c \\end{aligned}', name: 'Aligned Equations', modalCategory: 'delimiters', visualCategory: 'matrix', keywords: ['aligned', 'align', 'multiline', 'equation'], requiredPackage: 'amsmath' },
 ];
 
 /**
@@ -179,6 +186,7 @@ export function getModalSymbols(): MathSymbol[] {
     display: s.display,
     name: s.name,
     category: s.modalCategory,
+    requiredPackage: s.requiredPackage,
   }));
 }
 

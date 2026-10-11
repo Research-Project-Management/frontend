@@ -8,6 +8,7 @@ describe('countLatexWords (TeXcount utility)', () => {
       wordsInText: 0,
       wordsInHeaders: 0,
       wordsInCaptions: 0,
+      wordsInBibliography: 0,
       headers: 0,
       floats: 0,
       mathInlines: 0,
@@ -76,5 +77,37 @@ In this \\textbf{critical} document, we show \\textit{experimental} data.`;
     expect(res.totalWords).toBe(12);
     expect(res.charactersWithSpaces).toBeGreaterThan(0);
     expect(res.charactersNoSpaces).toBeGreaterThan(0);
+  });
+
+  it('should support \\book heading in header word counting', () => {
+    const text = `\\book{Volume One: Principles}
+Introductory paragraph text.`;
+    const res = countLatexWords(text);
+    expect(res.headers).toBe(1);
+    expect(res.wordsInHeaders).toBe(3); // Volume, One, Principles
+    expect(res.wordsInText).toBe(3); // Introductory, paragraph, text
+    expect(res.totalWords).toBe(6);
+  });
+
+  it('should include bibliography words when %TC:incbib is present or includeBib is true', () => {
+    const text = `This is the main body text.
+\\begin{thebibliography}{99}
+\\bibitem{einstein1905} Albert Einstein. Zur Elektrodynamik bewegter Korper. Annalen der Physik, 1905.
+\\end{thebibliography}`;
+
+    // Without incbib
+    const withoutBib = countLatexWords(text);
+    expect(withoutBib.wordsInText).toBe(6);
+    expect(withoutBib.wordsInBibliography).toBe(10);
+    expect(withoutBib.totalWords).toBe(6);
+
+    // With %TC:incbib directive
+    const withDirective = countLatexWords(`%TC:incbib\n` + text);
+    expect(withDirective.wordsInBibliography).toBe(10);
+    expect(withDirective.totalWords).toBe(16); // 6 + 10
+
+    // With options flag
+    const withOption = countLatexWords(text, { includeBib: true });
+    expect(withOption.totalWords).toBe(16);
   });
 });

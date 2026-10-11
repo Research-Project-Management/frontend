@@ -1,0 +1,9 @@
+\section{Parameter sharing}\label{sec:parameter_sharing_app}
+
+\paragraph{Feed-forward layer of auxiliary model:} In a standard auxiliary transformer, like GPT-2, the feed-forward layer is a token-wise operation that takes in an input $\vx \in \RR^{\aux{D}}$ and returns $\vy = \mA \sigma( \mW \vx )$, with $\mA \in \RR^{\aux{D} \times 4\aux{D}}$ and $\mW \in \RR^{4\aux{D} \times \aux{D}}$. 
+A naive construction of the \simulator to simulate its forward operation will have 2  Linear Forward modules (\cref{sec:exposition_linear_forward}), separated by an activation. However, this requires $4\times$ more prefix embeddings to represent the parameters, compared to other linear operations in the auxiliary transformer that use $ \RR^{\aux{D} \times \aux{D}}$ weight parameters. 
+
+
+
+
+To avoid this, we can instead break down the computation into 4 sub-feed-forward layers, each with its own parameters $\{\{\mW^i, \mA^i\}\}_{1 \leq i \leq 4}$. Here $\{\mW^i\}_{1 \leq i \leq 4}$ represent $4$-shards of the rows of $\mW$, and $\{\mA^i\}_{1 \leq i \leq 4}$ represent $4$-shards of the columns of $\mA$. The forward, backward, and descent operations on these 4 sub-feed-forward layers can be effectively parallelized. For example, the forward operation of each layer can be simulated by a single \simulator module, consisting of two Linear Forward modules and activation, changing only the prefix embeddings to correspond to $\{\{\mW^i, \mA^i\}\}_{1 \leq i \leq 4}$. 

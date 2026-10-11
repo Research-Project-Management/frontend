@@ -10,6 +10,7 @@ export interface TeXcountStats {
   wordsInText: number;
   wordsInHeaders: number;
   wordsInCaptions: number;
+  wordsInBibliography?: number;
   headers: number;
   floats: number;
   mathInlines: number;
@@ -22,12 +23,13 @@ export interface TeXcountStats {
 /**
  * Client-side fallback LaTeX word counter matching TeXcount extraction rules
  */
-export function countLatexWords(latex: string): TeXcountStats {
+export function countLatexWords(latex: string, options?: { includeBib?: boolean }): TeXcountStats {
   if (!latex || !latex.trim()) {
     return {
       wordsInText: 0,
       wordsInHeaders: 0,
       wordsInCaptions: 0,
+      wordsInBibliography: 0,
       headers: 0,
       floats: 0,
       mathInlines: 0,
@@ -38,8 +40,31 @@ export function countLatexWords(latex: string): TeXcountStats {
     };
   }
 
+  // TeXcount %TC:incbib directive auto-detection or option flag
+  const hasIncBibDirective = /%TC:incbib\b/i.test(latex);
+  const includeBib = options?.includeBib ?? hasIncBibDirective;
+
   // 1. Remove TeXcount ignored regions: %TC:ignore ... %TC:endignore
   let text = latex.replace(/%TC:ignore[\s\S]*?%TC:endignore/gi, '');
+
+  // 1.1 Process bibliography (extract words if %TC:incbib or includeBib is active, then strip from body)
+  let wordsInBibliography = 0;
+  const bibMatches = text.match(/\\begin\{thebibliography\}[\s\S]*?\\end\{thebibliography\}/gi) || [];
+  for (const bibBlock of bibMatches) {
+    const cleanedBib = bibBlock
+      .replace(/\\begin\{thebibliography\}\{[^}]*\}/gi, '')
+      .replace(/\\end\{thebibliography\}/gi, '')
+      .replace(/\\bibitem\*?(?:\[[^\]]*\])?\{[^}]*\}/gi, ' ')
+      .replace(/\\[a-zA-Z]+/g, ' ')
+      .replace(/[{}]/g, ' ');
+    const bibWords = cleanedBib
+      .trim()
+      .split(/\s+/)
+      .filter((w) => w.length > 0 && /[a-zA-Z0-9\u00C0-\u024F\u1EA0-\u1EF9]/.test(w));
+    wordsInBibliography += bibWords.length;
+  }
+  // Strip thebibliography blocks from body text so they aren't double counted in wordsInText
+  text = text.replace(/\\begin\{thebibliography\}[\s\S]*?\\end\{thebibliography\}/gi, ' ');
 
   // 2. Remove comments (% to end of line, avoiding escaped \%)
   text = text.replace(/(^|[^\\])%.*$/gm, '$1');
@@ -61,8 +86,8 @@ export function countLatexWords(latex: string): TeXcountStats {
     text.match(/\\begin\{(figure|table|algorithm|table\*|figure\*)\*?\}[\s\S]*?\\end\{\1\*?\}/g) || [];
   const floats = floatMatches.length;
 
-  // 6. Count headers & words in headers: \section{...}, \subsection{...}, \chapter{...}, etc.
-  const headerRegex = /\\(?:part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\{([^}]+)\}/g;
+  // 6. Count headers & words in headers: \book{...}, \part{...}, \chapter{...}, \section{...}, etc.
+  const headerRegex = /\\(?:book|part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\{([^}]+)\}/g;
   let headers = 0;
   let wordsInHeaders = 0;
   let match: RegExpExecArray | null;
@@ -102,7 +127,7 @@ export function countLatexWords(latex: string): TeXcountStats {
   bodyText = bodyText.replace(/\$\$[\s\S]*?\$\$/g, ' ');
   bodyText = bodyText.replace(/\$(?:\\\$|[^\$])+\$/g, ' ');
   bodyText = bodyText.replace(/\\\([\s\S]*?\\\)/g, ' ');
-  bodyText = bodyText.replace(/\\(?:part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\{[^}]+\}/g, ' ');
+  bodyText = bodyText.replace(/\\(?:book|part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\{[^}]+\}/g, ' ');
   bodyText = bodyText.replace(/\\caption\*?(?:\[[^\]]*\])?\{[^}]+\}/g, ' ');
   bodyText = bodyText.replace(/\\footnote\*?(?:\[[^\]]*\])?\{[^}]+\}/g, ' ');
   bodyText = bodyText.replace(/\\begin\{(figure|table|algorithm)\*?\}[\s\S]*?\\end\{\1\*?\}/g, ' ');
@@ -115,7 +140,7 @@ export function countLatexWords(latex: string): TeXcountStats {
     .filter((w) => w.length > 0 && /[a-zA-Z0-9\u00C0-\u024F\u1EA0-\u1EF9]/.test(w));
 
   const wordsInText = bodyWords.length;
-  const totalWords = wordsInText + wordsInHeaders + wordsInCaptions;
+  const totalWords = wordsInText + wordsInHeaders + wordsInCaptions + (includeBib ? wordsInBibliography : 0);
   const normalizedBody = bodyText.replace(/\s+/g, ' ').trim();
   const charactersWithSpaces = normalizedBody.length;
   const charactersNoSpaces = normalizedBody.replace(/\s/g, '').length;
@@ -124,6 +149,7 @@ export function countLatexWords(latex: string): TeXcountStats {
     wordsInText,
     wordsInHeaders,
     wordsInCaptions,
+    wordsInBibliography,
     headers,
     floats,
     mathInlines,

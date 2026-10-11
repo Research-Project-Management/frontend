@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import { PlaneErrorState } from '@/shared/components/ui';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { useReviewState } from './hooks/useReviewState';
 import {
   ReviewHeader,

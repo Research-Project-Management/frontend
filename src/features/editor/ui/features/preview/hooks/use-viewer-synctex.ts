@@ -8,7 +8,6 @@
  */
 
 import { useCallback, useEffect } from 'react';
-import { toast } from 'sonner';
 import { usePageStore } from '@/features/editor/store/editor.store';
 import { useViewerStore } from '@/features/editor/store/viewer.store';
 import { useTabsStore, type EditorTab } from '../../../../store/tabs.store';
@@ -331,9 +330,6 @@ export function useViewerSyncTeX({
 
       if (resolved?.line && resolved.line >= 1) {
         void handleJumpToSource(resolved.sourcePath, resolved.line, p, customX, customY);
-      } else {
-        // No SyncTeX data for this location: do not jump (previously fell back to line 1)
-        toast.info('SyncTeX data unavailable for this location');
       }
     };
 

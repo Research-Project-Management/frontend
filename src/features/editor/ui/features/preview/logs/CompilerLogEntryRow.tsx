@@ -96,10 +96,10 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
                     onClick?.();
                   }}
                   className="flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-medium text-foreground bg-muted hover:bg-muted/80 border border-border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors shrink-0"
-                  title={`Nhảy tới dòng ${entry.line}${entry.file ? ` trong ${entry.file}` : ''} (Go to code)`}
+                  title={`Go to line ${entry.line}${entry.file ? ` in ${entry.file}` : ''}`}
                 >
                   <CornerDownLeft className="size-3 text-muted-foreground" />
-                  <span>Dòng {entry.line}</span>
+                  <span>Line {entry.line}</span>
                 </button>
               )}
 

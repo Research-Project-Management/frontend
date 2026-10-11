@@ -18,8 +18,12 @@ import { pageKeys } from '@/features/editor/ui/hooks/document.queries';
 export interface UrlTabPaneProps {
   parentPageId: string | null;
   effectiveProjectId: string;
-  createFile: any;
-  uploadFile: any;
+  createFile: {
+    mutateAsync: (vars: { parentPageId: string; title: string; content?: string }) => Promise<{ id: string }>;
+  };
+  uploadFile: {
+    mutateAsync: (vars: { file: File; projectId: string; pageId: string }) => Promise<unknown>;
+  };
   setSearchParams: (params: Record<string, string>) => void;
   onClose: () => void;
 }
@@ -49,12 +53,12 @@ export function UrlTabPane({
             providerType: 'URL',
             provider: 'url',
           });
-          toast.success(`Linked and imported ${targetName} from URL`);
+          toast.success(`Linked and imported ${targetName} from URL`, { id: `url-import-${targetName}` });
           queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
           queryClient.invalidateQueries({ queryKey: ['storage-files', parentPageId] });
           onClose();
           return;
-        } catch (backendErr: any) {
+        } catch (backendErr: unknown) {
           console.warn('Backend linked-file create failed, falling back to direct browser fetch:', backendErr);
           // 2. Fallback path: Direct browser fetch
           const response = await fetch(rawUrl);
@@ -90,13 +94,15 @@ export function UrlTabPane({
           }
           queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
           queryClient.invalidateQueries({ queryKey: ['storage-files', parentPageId] });
+          toast.success(`Imported ${targetName} from URL`, { id: `url-import-${targetName}` });
           onClose();
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('External URL fetch error:', err);
         toast.error(
-          err?.message ||
+          (err as Error)?.message ||
             'Could not fetch file directly. If this domain blocks cross-origin requests (CORS), please download the file to your computer and upload it via the Upload tab.',
+          { id: 'url-import-error' }
         );
       } finally {
         setIsFetchingUrl(false);

@@ -8,13 +8,9 @@ import {
   ArrowUpNarrowWide,
   ArrowDownNarrowWide,
 } from 'lucide-react';
-import {
-  Button,
-  Checkbox,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { cn } from "@/shared/lib/utils";
 import type {
   DisplayOptions,

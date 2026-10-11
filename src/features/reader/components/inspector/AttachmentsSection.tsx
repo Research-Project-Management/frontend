@@ -24,14 +24,8 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import { setupPdfWorker } from '@/shared/lib/pdfjs-worker';
 
 setupPdfWorker();
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
 import {
   readerService,
   getPaperFileUrl,

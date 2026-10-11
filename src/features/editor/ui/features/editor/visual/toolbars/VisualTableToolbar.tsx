@@ -30,6 +30,9 @@ import {
   Check,
   Tag,
   FileText,
+  Combine,
+  Grid,
+  Maximize2,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -54,6 +57,9 @@ export interface VisualTableToolbarProps {
   onUpdateMetadata: (caption: string, label: string) => void;
   onDeleteTable: () => void;
   onClose: () => void;
+  onMergeCells?: () => void;
+  onToggleBorder?: () => void;
+  onToggleColumnWidth?: (mode: 'auto' | 'fixed' | 'stretch') => void;
 }
 
 export function VisualTableToolbar({
@@ -75,6 +81,9 @@ export function VisualTableToolbar({
   onUpdateMetadata,
   onDeleteTable,
   onClose,
+  onMergeCells,
+  onToggleBorder,
+  onToggleColumnWidth,
 }: VisualTableToolbarProps) {
   const [isEditingMeta, setIsEditingMeta] = useState(false);
   const [captionInput, setCaptionInput] = useState(caption);
@@ -242,6 +251,53 @@ export function VisualTableToolbar({
           >
             <AlignRight className="size-3.5" />
           </Button>
+        </div>
+
+        <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />
+
+        {/* Merge & Formatting Controls (Overleaf Parity) */}
+        <div className="flex items-center gap-0.5">
+          {onMergeCells && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer"
+              onClick={onMergeCells}
+              title="Merge / Split Cells (colSpan)"
+              aria-label="Merge cells"
+            >
+              <Combine className="size-3.5" />
+            </Button>
+          )}
+
+          {onToggleBorder && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer"
+              onClick={onToggleBorder}
+              title="Toggle Border Style (booktabs / bordered / minimal)"
+              aria-label="Toggle table borders"
+            >
+              <Grid className="size-3.5" />
+            </Button>
+          )}
+
+          {onToggleColumnWidth && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer"
+              onClick={() => onToggleColumnWidth('stretch')}
+              title="Toggle Column Width (Auto / Stretch / Fixed)"
+              aria-label="Toggle column width"
+            >
+              <Maximize2 className="size-3.5" />
+            </Button>
+          )}
         </div>
 
         <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />

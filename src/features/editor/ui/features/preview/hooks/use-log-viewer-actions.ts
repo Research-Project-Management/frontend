@@ -27,7 +27,7 @@ import { usePageStore } from '@/features/editor/store/editor.store';
 export function copySnippetToClipboard(snippet?: string): void {
   if (!snippet) return;
   navigator.clipboard.writeText(snippet);
-  toast.success('Snippet copied to clipboard');
+  toast.success('Snippet copied to clipboard', { id: 'copy-snippet' });
 }
 
 export async function fetchLogEntryExplanation(entry: LogEntry): Promise<any | null> {
@@ -68,7 +68,7 @@ export function useLogViewerActions({
       quickFix: { description: string; replacementText: string },
     ) => {
       if (!engine) {
-        toast.error('Editor is not ready');
+        toast.error('Editor is not ready', { id: 'log-quick-fix' });
         return;
       }
 
@@ -76,7 +76,7 @@ export function useLogViewerActions({
         engine.jumpToLine(entry.line, 'error');
       }
 
-      toast.success(`Applied fix: ${quickFix.description}`);
+      toast.success(`Applied fix: ${quickFix.description}`, { id: 'log-quick-fix' });
       onCompile?.();
     },
     [engine, onCompile],
@@ -101,24 +101,24 @@ export function useLogViewerActions({
   const downloadAuxFile = useCallback(
     (filename: string) => {
       if (!projectId) {
-        toast.error('Project ID not found');
+        toast.error('Project ID not found', { id: 'download-aux' });
         return;
       }
       const url = downloadAuxFileUrl(projectId, filename);
       window.open(url, '_blank');
-      toast.success(`Downloading ${filename}...`);
+      toast.success(`Downloading ${filename}...`, { id: `download-aux-${filename}` });
     },
     [projectId],
   );
 
   const downloadAllAux = useCallback(() => {
     if (!projectId) {
-      toast.error('Project ID not found');
+      toast.error('Project ID not found', { id: 'download-all-aux' });
       return;
     }
     const url = downloadAllArtifactsZipUrl(projectId);
     window.open(url, '_blank');
-    toast.success('Downloading all auxiliary files...');
+    toast.success('Downloading all auxiliary files...', { id: 'download-all-aux' });
   }, [projectId]);
 
   return {

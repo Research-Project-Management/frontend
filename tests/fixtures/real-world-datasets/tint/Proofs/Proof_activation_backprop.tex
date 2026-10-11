@@ -1,0 +1,69 @@
+\subsection{Proofs of theorems}
+We restate the theorems, before presenting their proofs for easy referencing.
+
+
+\firstorderactbckprop*
+\begin{proof}
+    The proof follows along the lines of \cref{thm:first_order_LN_backprop}. Recall that given an input $\vx$, the activation layer outputs $\vy = \act(\vx)$, where the function $\act$ is applied coordinate-wise on $\vx$. Given input $\vx$ and the output gradient $\losspartial{\vy}$, the gradient w.r.t. the input is given by $\losspartial{\vx} = \act'(\vx) \odot \losspartial{\vy}$, where the $\act'$ function is also applied coordinate wise to $\vx$. We defined $\Hat{\losspartial{\vx}}$ as an $\epsilon$-approximate gradient, given by $\frac{1}{\epsilon} ( \act(\vx + \epsilon \losspartial{\vy}) - \act(\vx ) ).$ Since both $\act$ and $\act'$ are applied coordinate-wise, we can look at the coordinate-wise difference between $\losspartial{\vx}$ and $\Hat{\losspartial{\vx}}$.
+
+    Consider an arbitrary coordinate $i \le \aux{D}$. Under the assumption that $\act$ is second-order differentiable, we have
+    \begin{align*}
+       (\Hat{\losspartial{\vx}})_i &= \frac{1}{\epsilon} \left( \act( x_i + \epsilon (\losspartial{\vy})_i ) - \act( x_i) \right) \\&
+        = \act'(x_i)  (\losspartial{\vy})_i + \frac{1}{\epsilon} \int_{\theta=0}^{\epsilon} \frac{\partial^2 \act( x_{\theta} ) }{ \partial x^2_{\theta} } (\losspartial{\vy})^2_i  \theta d\theta \\&
+        = \act'(x_i)  (\losspartial{\vy})_i + \mathcal{O}( \epsilon B_{act} (\losspartial{\vy})_i^2 ),
+    \end{align*}
+    where $x_{\theta}$ represents $ x_i + \theta (\losspartial{\vy})_i$ in the second step. In the final step, we utilize the upper bound assumption on $\frac{\partial^2 \act(x)}{ \partial x^2 }.$
+
+    Thus, $(\losspartial{\vx})_i - (\Hat{\losspartial{\vx}})_i = \mathcal{O}( \epsilon B_{act} (\losspartial{\vy})_i^2 )$, and so
+    \begin{align*}
+        \norm{ \losspartial{\vx} - \Hat{\losspartial{\vx}} }_2 = \mathcal{O} ( \epsilon B_{act} \sum_{i=1}^{\aux{D}}(\losspartial{\vy})_i^2 ) = \mathcal{O} ( \epsilon B_{act} \norm{ \losspartial{\vy} }_2^2 ) \le \mathcal{O} ( \epsilon B_{act}  B_y^2 ).
+    \end{align*}
+\end{proof}
+
+
+
+\examplealignment*
+\begin{proof}
+    Recall the definition of $(\epsilon, \rho)$-alignment from \cref{def:eps-rho_aligned}. Input and gradient $\vx, \losspartial{\vy} \in \RR^{\aux{D}}$ are said to be $(\epsilon, \rho)$-aligned, if there exist a set $C \subseteq [\aux{D}]$, with  $\abs{C} \ge (1 - \rho) \aux{D}$, such that for each $i$ in $C$, $\abs{x_i} > \epsilon \abs{ (\losspartial{\vy} )_i }.$ 
+
+    Consider an arbitrary coordinate $i \le \aux{D}$. We have $\abs{x_i} > \epsilon  \abs{(\losspartial{\vy})_i}$ for any $\epsilon < \abs{x_i} / \abs{(\losspartial{\vy})_i}$. Under the assumption that $\abs{x_i} > B_{min}$, and $\abs{(\losspartial{\vy})_i} \le B_{max}$, a bound of $B_{min} / B_{max}$ suffices. 
+\end{proof}
+
+\firstorderactbckproprelu*
+\begin{proof}
+    Recall that given an input $\vx$, the activation layer outputs $\vy = \act(\vx)$, where the function $\act$ is applied coordinate-wise on $\vx$. Given input $\vx$ and the output gradient $\losspartial{\vy}$, the gradient w.r.t. the input is given by $\losspartial{\vx} = \act'(\vx) \odot \losspartial{\vy}$, where the $\act'$ function is also applied coordinate wise to $\vx$. We defined $\Hat{\losspartial{\vx}}$ as an $\epsilon$-approximate gradient, given by $\frac{1}{\epsilon} ( \act(\vx + \epsilon \losspartial{\vy}) - \act(\vx ) ).$ Since both $\act$ and $\act'$ are applied coordinate-wise, we can look at the coordinate-wise difference between $\losspartial{\vx}$ and $\Hat{\losspartial{\vx}}$. For $\mathrm{ReLU}$ activation, $\act'(x) = \mathrm{sign}(x)$ for all $x \in \RR \setminus \{0\}$, with $\act'(0) = 1$ to avoid ambiguity. 
+    
+    Going by the definition of $(\epsilon, \rho)$-alignment of the input and gradient from \cref{def:eps-rho_aligned}, we have a set $C$ with $\abs{C} \ge (1-\rho) \aux{D}$ such that for each $i \in \aux{D}$, $\abs{x_i} > \epsilon  \abs{(\losspartial{\vy})_i}$. For all coordinates $i \in C$, we can then observe that $\mathrm{sign} (x_i + \epsilon (\losspartial{\vy})_i) = \mathrm{sign} (x_i)$, implying 
+    $$
+    \act( x_i + \epsilon (\losspartial{\vy})_i ) - \act( x_i ) = \epsilon (\losspartial{\vy})_i \act'(x_i) = \epsilon (\losspartial{\vx})_i
+    $$
+
+    
+    For coordinates $i \notin C$, we have three possible cases:
+    \begin{itemize}
+        \item $\mathrm{sign} (x_i) = \mathrm{sign} (x_i + \epsilon (\losspartial{\vy})_i ) $: In this case, we can again show $\act( x_i + \epsilon (\losspartial{\vy})_i ) - \act( x_i ) = \epsilon (\losspartial{\vy})_i \act'(x_i) = \epsilon (\losspartial{\vx})_i.$
+
+        \item $\mathrm{sign} (x_i) = 0$, $\mathrm{sign} (x_i + \epsilon (\losspartial{\vy})_i ) = 1$: In this case, we have $\act'(x_i) = 0$, and so $(\losspartial{\vx})_i = 0$. Additionally, $\mathrm{sign} ( (\losspartial{\vy})_i ) = 1$, and so
+        \begin{align*}
+        \abs{ \act( x_i + \epsilon (\losspartial{\vy})_i ) - \act( x_i ) - \epsilon (\losspartial{\vx})_i } &= \abs{ x_i + \epsilon (\losspartial{\vy})_i} 
+        \leq \epsilon \abs{  (\losspartial{\vy})_i },
+        \end{align*}
+        where in the final step, we use the fact that $x_i < 0$ and $\abs{x_i} < \epsilon \abs{ (\losspartial{\vy})_i }.$ 
+        
+        \item  $\mathrm{sign} (x_i) = 1$, $\mathrm{sign} (x_i + \epsilon (\losspartial{\vy})_i ) = 0$: In this case, we have $\act'(x_i) = 1$, and so $(\losspartial{\vx})_i = (\losspartial{\vy})_i$.  Additionally, $\mathrm{sign} ( (\losspartial{\vy})_i ) = 0$, and so
+        \begin{align*}
+        \abs{ \act( x_i + \epsilon (\losspartial{\vy})_i ) - \act( x_i ) - \epsilon (\losspartial{\vx})_i } &= \abs{ - x_i  - \epsilon (\losspartial{\vy})_i } 
+        \leq \abs{ \epsilon (\losspartial{\vy})_i },
+        \end{align*}
+        where in the final step, we use the fact that $x_i \ge 0$ and $\abs{x_i} < \epsilon \abs{ (\losspartial{\vy})_i }.$ 
+        
+    \end{itemize}
+
+    Thus, from the above discussion, we have
+    \begin{align*}
+        \norm{ \losspartial{\vx} - \Hat{\losspartial{\vx}} }_2 &= \frac{1}{\epsilon} \left( \sum_{i=1}^{\aux{D}} (\act( x_i + \epsilon (\losspartial{\vy})_i ) - \act( x_i ) - \epsilon (\losspartial{\vx})_i)^2 \right)^{1/2} \\&
+        = \frac{1}{\epsilon} \left(  \sum_{i \notin C} (\act( x_i + \epsilon (\losspartial{\vy})_i ) - \act( x_i ) - \epsilon (\losspartial{\vx})_i)^2 \right)^{1/2} \\&
+        \leq \left(  \sum_{i \notin C}  (\losspartial{\vy})_i^2 \right)^{1/2} \leq \sqrt{\rho \aux{D}} \sqrt{\max_{i \notin C}  (\losspartial{\vy})^2_i } \leq \sqrt{\rho \aux{D}} B_y.
+    \end{align*}
+    The final step includes a simple Cauchy Schwartz inequality and the desired bound comes from the assumed bound on $\norm{ \losspartial{\vy} }_2 $.
+\end{proof}

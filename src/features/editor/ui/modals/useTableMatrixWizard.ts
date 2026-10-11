@@ -267,7 +267,7 @@ export function useTableMatrixWizard({
       if (parsedLatex.placement) setPlacement(parsedLatex.placement);
       setCentering(Boolean(parsedLatex.centering));
       setHasHeaderRow(Boolean(parsedLatex.hasHeaderRow));
-      toast.success('Imported LaTeX table into visual editor');
+      toast.success('Imported LaTeX table into visual editor', { id: 'import-table' });
       setPastedText('');
       return;
     }
@@ -284,10 +284,10 @@ export function useTableMatrixWizard({
       setTableHeaders(headers);
       setTableData(data.length > 0 ? data : [Array(cols).fill('')]);
       setTableAlignments(Array(cols).fill('c'));
-      toast.success(`Imported ${rows} rows and ${cols} columns`);
+      toast.success(`Imported ${rows} rows and ${cols} columns`, { id: 'import-table' });
       setPastedText('');
     } else {
-      toast.error('Could not parse table data');
+      toast.error('Could not parse table data', { id: 'import-table' });
     }
   }, [pastedText, hasHeaderRow]);
 
@@ -358,7 +358,6 @@ export function useTableMatrixWizard({
   const applyMatrixPreset = useCallback((preset: 'identity' | 'zero' | 'symbolic' | 'diagonal') => {
     const newCells = generateMatrixPreset(preset, matrixRows, matrixCols);
     setMatrixCells(newCells);
-    toast.success(`Applied ${preset} matrix preset`);
   }, [matrixRows, matrixCols]);
 
   const addMatrixRow = useCallback(() => {
@@ -437,13 +436,12 @@ export function useTableMatrixWizard({
 
   const insertSnippet = useCallback(() => {
     onInsert(activeLatex);
-    toast.success(tab === 'table' ? 'Table inserted into document' : 'Matrix inserted into document');
     onClose();
-  }, [onInsert, activeLatex, tab, onClose]);
+  }, [onInsert, activeLatex, onClose]);
 
   const copySnippet = useCallback(() => {
     navigator.clipboard.writeText(activeLatex);
-    toast.info('LaTeX code copied to clipboard');
+    toast.info('LaTeX code copied to clipboard', { id: 'copy-latex-snippet' });
   }, [activeLatex]);
 
   return {

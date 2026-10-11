@@ -17,7 +17,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type ActivityBarTab = 'files' | 'search' | 'outline' | 'citations' | 'review' | 'ai';
+export type ActivityBarTab = 'files' | 'search' | 'citations' | 'review' | 'ai';
 export type BottomPanelTab = 'problems' | 'output';
 export type EditorSplitMode = 'none' | 'vertical' | 'horizontal';
 export type ActiveEditorPane = 'primary' | 'secondary';
@@ -27,6 +27,9 @@ export interface LayoutState {
   sidebarLeftOpen: boolean;
   sidebarLeftWidth: number;
   activeSidebarTab: ActivityBarTab;
+
+  // File Outline (Overleaf Parity: Integrated accordion inside Files tab)
+  fileOutlineOpen: boolean;
 
   // Right Review Pane (Overleaf Parity: Review comments & Track Changes alongside CodeMirror)
   reviewPanelOpen: boolean;
@@ -56,8 +59,11 @@ export interface LayoutState {
   toggleSidebarLeft: () => void;
   setSidebarLeftOpen: (open: boolean) => void;
   setSidebarLeftWidth: (width: number) => void;
-  setActiveSidebarTab: (tab: ActivityBarTab) => void;
-  selectActivityTab: (tab: ActivityBarTab) => void; // Toggle if active, open if inactive
+  setActiveSidebarTab: (tab: ActivityBarTab | 'outline') => void;
+  selectActivityTab: (tab: ActivityBarTab | 'outline') => void; // Toggle if active, open if inactive
+
+  toggleFileOutline: () => void;
+  setFileOutlineOpen: (open: boolean) => void;
 
   toggleReviewPanel: () => void;
   setReviewPanelOpen: (open: boolean) => void;
@@ -91,6 +97,7 @@ const DEFAULT_LAYOUT = {
   sidebarLeftOpen: true,
   sidebarLeftWidth: 260,
   activeSidebarTab: 'files' as ActivityBarTab,
+  fileOutlineOpen: true,
   reviewPanelOpen: false,
   reviewPanelWidth: 340,
   splitRatio: 0.5,
@@ -115,14 +122,33 @@ export const useLayoutStore = create<LayoutState>()(
       setSidebarLeftOpen: (open) => set({ sidebarLeftOpen: open }),
       setSidebarLeftWidth: (width) =>
         set({ sidebarLeftWidth: Math.max(180, Math.min(width, 480)) }),
-      setActiveSidebarTab: (tab) => set({ activeSidebarTab: tab }),
+      setActiveSidebarTab: (tab) => {
+        if ((tab as string) === 'outline') {
+          set({ activeSidebarTab: 'files', fileOutlineOpen: true });
+        } else {
+          set({ activeSidebarTab: tab as ActivityBarTab });
+        }
+      },
       selectActivityTab: (tab) =>
         set((state) => {
-          if (state.activeSidebarTab === tab && state.sidebarLeftOpen) {
+          const targetTab = (tab as string) === 'outline' ? 'files' : (tab as ActivityBarTab);
+          const shouldEnsureOutlineOpen = (tab as string) === 'outline';
+          if (state.activeSidebarTab === targetTab && state.sidebarLeftOpen) {
+            if (shouldEnsureOutlineOpen && !state.fileOutlineOpen) {
+              return { fileOutlineOpen: true };
+            }
             return { sidebarLeftOpen: false };
           }
-          return { activeSidebarTab: tab, sidebarLeftOpen: true };
+          return {
+            activeSidebarTab: targetTab,
+            sidebarLeftOpen: true,
+            ...(shouldEnsureOutlineOpen ? { fileOutlineOpen: true } : {}),
+          };
         }),
+
+      toggleFileOutline: () =>
+        set((state) => ({ fileOutlineOpen: !state.fileOutlineOpen })),
+      setFileOutlineOpen: (open) => set({ fileOutlineOpen: open }),
 
       toggleReviewPanel: () =>
         set((state) => ({ reviewPanelOpen: !state.reviewPanelOpen })),

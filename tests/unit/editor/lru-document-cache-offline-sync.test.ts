@@ -14,7 +14,7 @@ import { usePageStore } from '@/features/editor/store/editor.store';
 describe('LRU Document Cache & Local-First Offline Draft Sync (Overleaf Parity)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    useConnectivityStore.setState({ isOnline: true, syncStatus: 'saved', pendingCount: 0 });
+    useConnectivityStore.setState({ isOnline: true, syncStatus: 'synced', pendingSaveCount: 0 });
     try {
       Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
     } catch {}

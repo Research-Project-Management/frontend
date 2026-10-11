@@ -1,0 +1,231 @@
+\section{Layer normalization}\label{sec:LNappendix}
+%Before defining layer normalization, we first define the function $\normalize: \RR^N \to \RR^N$. $\normalize$ takes in input $\vx$ and returns $(\vx - \mu)/\sigma$, where $\mu = \frac{1}{N} \sum_{i=1}^{N} x_i$ and $\sigma = ( \frac{1}{N} \sum_{i=1}^N (x_i - \mu)^2 )^{1/2}.$ 
+
+
+%\begin{definition}[Layer normalization]\label{def:layernorm}
+%    For a linear vector $\vgamma \in \RR^N$ and bias $\vb \in \RR^N$, a Layer normalization layer takes $\vx\in\RR^N$ as input and outputs $\vy = \vgamma \odot \normalize(\vx) + \vb $.
+%\end{definition}
+%We repeat the definition of layer normalization from the main paper below.
+%\layernormdefine*
+
+\begin{restatable}{definition}{layernormdefine}[Layer Normalization]\label{def:layernorm}
+Define a normalization function $f:\RR^d\to\RR^d$ that performs $f(\vx) = (\vx-\mu) / \sigma$, where $\mu$ and $\sigma$ are the mean and standard deviation of $\vx$, respectively.
+	Then, layer normalization with parameters $\vgamma, \vb \in \RR^{\aux{D}}$ takes as input  $\vx \in \RR^{\aux{D}}$ and outputs $\vy\in\RR^{\aux{D}}$, which is computed as $\vz = f(\vx), \vy = \vgamma \odot \vz + \vb.$
+\end{restatable}
+\begin{restatable}{definition}{layernormbackprop}[Exact Gradient for Layer Normalization]\label{def:layernorm_backprop}
+	Using notations in \cref{def:layernorm}, given the gradient of the loss w.r.t the output of the Layer Normalization $\losspartial{\vy}$, backpropagation computes $\losspartial{\vx}$	as
+	\begin{align*}
+	    \losspartial{\vx} = ( \losspartial{\vz} -  {\aux{D}}^{-1} 
+ \sum_{i=1}^{ \aux{D} } \losspartial{z_i} -  \langle \losspartial{\vz}, \vz \rangle \vz ) / \sigma \qquad \losspartial{\vz} = \vgamma \odot \losspartial{\vy}.
+	\end{align*} 
+\end{restatable}
+\looseness-1 Exact backpropagation is expensive because $\langle \losspartial{ \vz }, \vz \rangle \vz$ requires using at least two sequential MLPs. We thus approximate it with a first-order Taylor expansion, which is entry-wise close to the true gradient.
+% to approximate the above operation.
+\begin{restatable}{definition}{layernormapprgradient}[$\epsilon$-approximate Layer Normalization Gradient]\label{def:layernorm_appr_backprop}
+     With notations defined above, this layer takes $\losspartial{ \vy }, \vx \in\RR^{\aux{D}}$ as input and outputs
+   $\Hat{ \losspartial{ \vx } } = \frac{1}{\epsilon} ( f(\vx + \epsilon \gamma \odot \losspartial{ \vy } ) - f(\vx) ).$
+\end{restatable}
+
+In the discussions below, we consider a layer normalization layer in the auxiliary model with parameters $\{\vgamma, \vb\}$ that takes in input sequence $\vx_1, \cdots, \vx_{ \aux{T} }$ and outputs $\vy_1, \cdots, \vy_{ \aux{T} }$, with $\vy_t = \vgamma \odot \vz_t + \vb; \vz_t = f(\vx_t)$ for each $t \le \aux{T}$. Since this involves a token-wise operation, we will present our constructed modules with a general token position $t$ and the prefix tokens $\{\vv_j\}.$ We will use $\mW_{\vgamma}$ as a diagonal matrix in $\RR^{\aux{D} \times \aux{D}}$, containing $\vgamma$ on its main diagonal.
+
+
+\paragraph{\simulator{} Layer normalization Forward module}
+The input embedding to this  module $\ve_t$ will contain $\vx_t$ in its first $\aux{D}$ coordinates. 
+The layer normalization computation can be divided into two sub-operations: (a) application of $\normalize$, and (b) linear computation using $\vgamma, \vb$. We will present a \simulator{} module for each sub-operation.
+
+We can represent the function $\normalize$ using a layer normalization operation itself, with its weight and bias parameters set as $\mathbf{1}$ and $\mathbf{0}$ respectively. However, since the relevant input exists only in the first $\aux{D}$ coordinates, the operation on the first $\aux{D}$ coordinates needs to be independent of the rest of the coordinates. To do so, we instead use Group normalization (\cref{def:group_norm}) on $\ve_t$, with groups of size $\aux{D}$.
+
+Now, the embedding $\ve_t$ contains $\normalize(\vx_t)$ in its first $\aux{D}$ coordinates. The second sub-operation can then be viewed as a Linear Layer computation, i.e. $\vy_t = \mW_{\vgamma} \vx_t + \vb$. Hence, we simply stack the rows of $\mW_{\vgamma}$ and $\vb_{\vgamma}$ onto the prefix tokens $\{ \vv_j \}$ and call the \simulator{} Linear Forward module (\cref{sec:Linearappendix}).
+
+%To compute (a), we can use group norm on $\ve_t$, with the groups of size $\aux{D}$. To compute (b), we simply use the module for the forward computation of the Linear layer, with $W_{\vgamma}, \vb$ stored in the $\{ \vv_j \}$, where $W_{\vgamma} \in \RR^{\aux{D} \times \aux{D}}$ is a diagonal matrix formed from $\vgamma$.
+
+
+\paragraph{Auxiliary's gradient backpropagation through layer normalization } With the definition of layer normalization and the normalization function $f$ in \cref{def:layernorm}, the auxiliary's backpropagation operation takes in the loss gradient w.r.t. output ($\losspartial{\vy}$) and computes the loss gradient  w.r.t. input ($\losspartial{\vx}$).
+
+\iffalse
+\begin{definition}[Layer normalization backpropagation]\label{def:layernorm_backprop}
+    For a linear vector $\vgamma \in \RR^{\aux{D}}$ and bias $\vb \in \RR^{\aux{D}}$, a Layer normalization backpropagation layer takes $\losspartial{ \vy }, \vx \in\RR^{\aux{D}}$ as input and outputs
+    \begin{align*}
+        \losspartial{ \vx } = \frac{1}{\sigma} \left( \losspartial{ \vz } - \normalize( \losspartial{ \vz } ) - \frac{1}{\aux{D}} \langle \losspartial{ \vz }, \vz \rangle \vz \right), \quad \mu = \frac{1}{\aux{D}} \sum_{i=1}^{\aux{D}} x_i, \quad \sigma = ( \frac{1}{\aux{D}} \sum_{i=1}^{\aux{D}} (x_i - \mu)^2 )^{1/2},
+    \end{align*}
+    where $\vz$ represents $\normalize(  \vx )$ and $\losspartial{ \vz }$ is given by $\gamma \odot \losspartial{\vy}.$
+\end{definition}
+\fi
+
+\layernormbackprop*
+\paragraph{Complexity of true backpropagation} The above operation is computation heavy since it involves computing (a) $\losspartial{ \vz }$, (b) $\normalize( \losspartial{ \vz } )$, (c) $\langle \losspartial{ \vz }, \vz \rangle \vz$, and (d) multiplying by a factor of $\frac{1}{\sigma}$. $\langle \losspartial{ \vz }, \vz \rangle \vz$ in itself will require two MLP layers, following \cref{thm:gelu_multiplication}. In order to reduce the number of layers, we turn to first-order Taylor expansion for approximating the above operation.
+
+
+
+\iffalse
+\begin{definition}[First-order layer normalization backpropagation]%\label{def:layernorm_appr_backprop}
+    For a linear vector $\vgamma \in \RR^{\aux{D}}$ and bias $\vb \in \RR^{\aux{D}}$ and an additional hyperparameter $\epsilon$, a "First-order" layer normalization backpropagation layer takes $\losspartial{ \vy } \in\RR^{\aux{D}}$ as input and outputs
+    \begin{align*}
+        \Hat{ \losspartial{ \vx } } = \frac{1}{\epsilon} ( \normalize(\vx + \epsilon  \losspartial{ \vz } ) - \normalize(\vx) ),
+    \end{align*}
+    where $\vz$ represents $\normalize(  \vx )$ and $\losspartial{ \vz }$ is given by $\gamma \odot \losspartial{\vy}.$
+\end{definition}
+\fi 
+
+
+\layernormapprgradient*
+
+\input{Theorems/LN_backprop}
+
+
+\paragraph{\simulator{} Layer normalization backpropagation module}
+The input embeddings $\ve_t$ contain $\losspartial{\vy_t}$ at each position $t$ in the first $\aux{D}$ coordinates. Since we further need the input to the auxiliary's layer normalization layer under consideration, we copy $\vx_t$ from the \simulator{} Layer normalization Forward module at each position $t$ using residual connections. Furthermore, residual connections have been used to copy the contents of the prefix tokens $\{ \vv_j \}$ from the Layer normalization Forward module, which contain $\mW_{\vgamma}, \vb$. Recall that for ease of presentation, we use $\vz_t$ to represent $\normalize(\vx_t)$.
+
+%\cref{thm:first_order_LN_backprop} shows that $\losspartial{ \vx }$ and $\Hat{ \losspartial{ \vx } }$ differ by atmost $\mathcal{O}(\epsilon)$, which can be reduced with decreasing values of $\epsilon$.
+We set $\epsilon$ as a hyperparameter and return $\Hat{ \losspartial{ \vx } }$ as the output of this module. The computation of $\Hat{ \losspartial{ \vx } }$ can be divided into two sub-operations: (a) computation of $\losspartial{\vz_t} := \vgamma \odot \losspartial{\vy_t}$,  and (b) computation of $\frac{1}{\epsilon} ( \normalize(\vx_t + \epsilon  \losspartial{ \vz_t } ) - \normalize(\vx_t) )$. We represent each sub-operation as a \simulator{} module.
+
+To compute $\losspartial{\vz_t} := \vgamma \odot \losspartial{\vy_t}  = W_{\vgamma} \losspartial{\vy_t}$, we can observe that the required operation is identical to backpropagating through a linear layer with parameters $\mW_{\vgamma}$ and $\vb$. Hence, we simply call the Linear Backpropagation module on the current embeddings. We use residual connections to retain $\vx_t$ at each location $t$, and the contents of the prefix tokens $\{ \vv_j \}$.
+
+Now, the embedding $\ve_t$ contains $\losspartial{\vz_t}$ and  $\vx_t$. In order to backpropagate through $\normalize$, we first use a linear layer to compute $\vx_t + \epsilon  \losspartial{ \vz_t }$ and retain $\vx_t$. Following the same procedure as the Forward module, we use a Group normalization layer with weight and bias parameters $\mathbf{1}$ and $\mathbf{0}$ respectively, to compute $\normalize(\vx_t + \epsilon  \losspartial{ \vz_t } )$ and $\normalize(\vx_t)$. Finally, we use a linear layer to compute $ \frac{1}{\epsilon} ( \normalize(\vx_t + \epsilon  \losspartial{ \vz_t } ) - \normalize(\vx_t) ).$
+
+
+%Given $\losspartial{\vy_t}$ and $\vx_t$, we can show that for any $\epsilon>0$
+%\begin{align*}
+%    \losspartial {\vx_t} =  \frac{1}{\epsilon} (\normalize( \vx_t + \epsilon \vz_t ) - \normalize( \vx_t ) ) + \mathcal{O}(\epsilon),
+%\end{align*}
+%where $\vz_t = \vgamma \odot \losspartial{\vy_t}$.
+
+
+%This can be computed by first applying the backpropagation module of Linear layer to compute $\vz_t$, followed by a group norm and linear layer.
+
+
+%We can encode the above computation, with a single MLP layer.
+
+\paragraph{Auxiliary's Descent update} 
+
+And finally, the auxiliary's descent operation updates parameters $\vgamma, \vb$ using a batch of inputs $\{\vx_t\}_{t \le T}$ and the loss gradient w.r.t. the corresponding outputs $\{ \losspartial{\vy_t} \}_{t \le T}$.
+
+\begin{definition}[Auxiliary's layer normalization descent]\label{def:layernorm_descent}
+    For parameters $\vgamma, \vb \in \RR^{\aux{D}}$, descent update takes in a batch of inputs $\{ \vx_t \in \RR^{\aux{D}} \}_{t \le {\aux{T}}}$ and gradients $\{ \losspartial{\vy_t} \in \RR^{\aux{D}} \}_{t \le {\aux{T}}}$ and updates the parameters as follows:
+    \begin{align*}
+        \vgamma \gets \vgamma - \eta \sum_{t \le {\aux{T}}} \losspartial{\vy_t} \odot \vz_t; \quad \quad
+        \vb \gets \vb - \eta \sum_{t \le {\aux{T}}} \losspartial{\vy_t},
+    \end{align*}
+    where $\vz_t$ represents $\normalize(\vx_t)$.
+\end{definition}
+
+The update of $\vgamma$ involves an elementwise multiplication between $\losspartial{\vy_t}$ and $\vz_t$, which requires an MLP layer (\cref{thm:gelu_multiplication}). %If we decide to use an attention module, similar to the Linear Descent module, we require $\aux{D}$ attention heads 
+With the prefix tokens containing the rows of $\mW_{\vgamma}$ and $\vb$, we instead consider the update of $\vb$ alone with the descent update. 
+%We can decide to \ap{Write about Wgamma}
+
+
+
+%However, instead of $\gamma$, we have $\mW_{\gamma}$ in the pre
+\paragraph{\simulator{} Layer normalization descent module}
+The input embeddings contain $\losspartial{\vy_t}$ in the first $\aux{D}$ coordinates. The prefix tokens contain $\mW_{\vgamma}, \vb$, which have been copied from the Forward module using residual connections. The update of $\vb$ is identical to the auxiliary's descent update through a linear layer. Hence, we apply a \simulator{} Linear descent module to the current embeddings, updating only the bias $\vb$ and switching off the update to $\mW_{\gamma}.$ 
+
+
+
+%, and  $\vz_t$ at each position $t$. Furthermore, residual connections have been used to copy the contents of the prefix tokens $\{ \vv_j \}$ from the Layer normalization Forward module, which contains $\mW_{\vgamma}, \vb$. 
+
+
+\subsection{Additional definitions}
+We describe \simulator{} group normalization layer below, which we use in different modules to simulate the auxiliary's layer normalization operations.
+
+
+\begin{definition}[\simulator{} $\aux{D}$-Group normalization]\label{def:group_norm}
+    Define a normalization function $f:\RR^d\to\RR^d$ that performs $f(\vx) = (\vx-\mu) / \sigma$, where $\mu$ and $\sigma$ are the mean and standard deviation of $\vx$, respectively. Then, $\aux{D}$-Group RMSnorm with parameters $\simuw{\vgamma}, \simuw{\vb} \in \RR^{\aux{D}}$ takes as input  $\vx \in \RR^{\simu{D}}$ and outputs $\vy = \attmerge( \{ \vy^h \in \RR^{\aux{D}} \}_{h \le \lfloor \simu{D}/\aux{D} \rfloor} )$, with
+    \begin{align*}
+        \vy^h = \simuw{\vgamma} \odot f(\vx^h) + \simuw{\vb},
+    \end{align*}
+    where $\vx^h = \attsplit_{\lfloor \simu{D}/\aux{D} \rfloor} ( \vx )_h.$
+\end{definition}
+
+
+
+
+\subsection{Proof of theorems and gradient definitions}
+We restate the theorems and definitions, before presenting their proofs for easy referencing.
+
+\layernormbackprop*
+
+\begin{proof}[Derivation of gradient in \cref{def:layernorm_backprop} ]
+With the normalization function $f$ and parameters $\vx, \vb \in \RR^{ \aux{D}}$, recall from \cref{def:layernorm} that given an input $\vx \in \RR^{ \aux{D} }$, a layer normalization layer returns $\vy = \gamma \odot \vz + \vb; \vz = f(\vx).$  Let $\mu$ and $\sigma$ denote the mean and standard deviation of $\vx$. They can be computed as 
+\begin{align*}
+    \mu = \frac{1}{ \aux{D} } \sum_{i=1}^{\aux{D}} x_i, \quad \sigma = \sqrt{ \frac{ 1 }{ \aux{D} } \sum_{i=1}^{\aux{D}} (x_i - \mu)^2  }.
+\end{align*}
+
+With the chain rule, we can compute $\losspartial{\vx}$ from $\losspartial{\vy}$ as follows.
+\begin{align}
+    \losspartial{\vx} = (\frac{\partial \vz}{ \partial \vx})^{\top} \losspartial{ \vz }; \quad \text{ with } 
+    \losspartial{\vz} = (\frac{\partial \vy}{ \partial \vz})^{\top}  \losspartial{ \vy }. \label{eq:chainrule_ln}
+\end{align}
+
+ 
+Since $\vy = \gamma \odot \vz + \vb$, we have $\frac{\partial \vy}{ \partial \vz} = \mW_{\vgamma}$, where $\mW_{\vgamma}$ represents a diagonal matrix with $\vgamma$ on the main diagonal. Thus, $\losspartial{\vz} = \mW_{\vgamma} \losspartial{\vy} = \vgamma \odot \losspartial{\vy}.$
+
+With $\vz = f(\vx) = \frac{\vx - \mu}{\sigma}$, we have
+\begin{align}
+    \frac{\partial \vz}{ \partial \vx} &= \frac{\partial }{ \partial \vx} \left( \frac{\vx - \mu}{\sigma} \right) = \frac{1}{\sigma} \frac{\partial \vx}{ \partial \vx } -  \frac{1}{\sigma} \frac{\partial \mu}{ \partial \vx } - \frac{(\vx - \mu)}{\sigma^2} \left(\frac{\partial \sigma}{ \partial \vx } \right)^{\top} \nonumber\\&
+    = \frac{1}{\sigma} \left( \mI - \frac{ 1 }{ \aux{D} } \mathbf{1} \mathbf{1}^{\top} - \vz \vz^{\top} \right). \label{eq:dz_dx_ln}
+\end{align}
+
+In the final step, we require $\frac{\partial \mu}{ \partial \vx }$ and $\frac{\partial \sigma}{ \partial \vx }$, which are computed as follows.
+\begin{itemize}
+    \item $\frac{\partial \mu}{ \partial \vx } \in \RR^{\aux{D}}$ with its $j$th element given by 
+    \begin{align*}
+        \left(\frac{\partial \mu}{ \partial \vx }\right)_j = \frac{\partial \mu}{ \partial x_j } = \frac{\partial   }{ \partial x_j } (\frac{1}{ \aux{D} } \sum_{i=1}^{\aux{D}} x_i) =  \frac{1}{ \aux{D} }.
+    \end{align*}
+
+    \item $\frac{\partial \sigma}{ \partial \vx } \in \RR^{\aux{D}}$ with its $j$th element given by 
+    \begin{align*}
+        \left(\frac{\partial \sigma}{ \partial \vx }\right)_j &= \frac{\partial \sigma}{ \partial x_j } = \frac{\partial   }{ \partial x_j } \left( \sqrt{ \frac{1}{ \aux{D} } \sum_{i=1}^{\aux{D}} (x_i - \mu)^2 }\right) \\&=  \frac{1}{ \sqrt{\sum_{i=1}^{\aux{D}} (x_i - \mu)^2 } } \sum_{i=1}^{\aux{D}} (x_i - \mu) \frac{\partial (x_i - \mu)}{\partial x_j} \\& = \frac{1}{ \sqrt{\sum_{i=1}^{\aux{D}} (x_i - \mu)^2 } } \left(  (x_j - \mu) - \frac{1}{ \aux{D} } \sum_{i=1}^{ \aux{D} } (x_i - \mu) \right) 
+        = \frac{ x_j - \mu }{ \sigma } := z_j,
+    \end{align*}
+    where we have re-utilized the $\frac{\partial \mu}{ \partial \vx }$ in the pre-final step.
+\end{itemize}
+
+
+Hence, from \cref{eq:chainrule_ln}, 
+\begin{align*}
+\losspartial{\vx} = (\frac{\partial \vz}{ \partial \vx})^{\top} \losspartial{ \vz } 
+    =   \frac{1}{\sigma} \left( \mI - \frac{ 1 }{ \aux{D} } \mathbf{1} \mathbf{1}^{\top} - \vz \vz^{\top} \right) \losspartial{ \vz } = \frac{1}{\sigma} \left( \losspartial{\vz} - \frac{ 1 }{ \aux{D} }  \langle \mathbf{1}, \losspartial{\vz}  \rangle  \mathbf{1} -  \langle \vz, \losspartial{\vz}  \rangle \vz \right).
+\end{align*}    
+
+\end{proof}
+
+We repeat \cref{thm:first_order_LN_backprop} for easier reference. 
+\firstorderLNbackprop*
+
+\begin{proof}[ Proof of \cref{thm:first_order_LN_backprop} ]
+With the normalization function $f$ and parameters $\vx, \vb \in \RR^{ \aux{D}}$, recall from \cref{def:layernorm} that given an input $\vx \in \RR^{ \aux{D} }$, a layer normalization layer returns $\vy = \gamma \odot \vz + \vb; \vz = f(\vx).$  Let $\mu$ and $\sigma$ denote the mean and standard deviation of $\vx$. They can be computed as 
+\begin{align*}
+    \mu = \frac{1}{ \aux{D} } \sum_{i=1}^{\aux{D}} x_i, \quad \sigma = \sqrt{ \frac{ 1 }{ \aux{D} } \sum_{i=1}^{\aux{D}} (x_i - \mu)^2  }.
+\end{align*}
+We will refer to $\frac{\partial \vz}{\partial \vx}$ from \cref{eq:dz_dx_ln} and the formulation of $\losspartial{\vx}$ from \cref{eq:chainrule_ln} for our current proof. To recall, they are
+\begin{align*}
+    \frac{\partial \vz}{ \partial \vx} =
+     \frac{1}{\sigma} \left( \mI - \frac{ 1 }{ \aux{D} } \mathbf{1} \mathbf{1}^{\top} - \vz \vz^{\top} \right), \qquad \losspartial{\vx} = (\frac{\partial \vz}{ \partial \vx})^{\top} \losspartial{ \vz }.
+\end{align*}
+
+
+
+
+Using a second-order Taylor expansion of the normalization function $f$ around $\vx$, we have
+\begin{align*}
+    f( \vx + \epsilon \losspartial{ \vz } ) &= f(\vx) + \epsilon  \frac{ \partial  f(\vx) }{ \partial \vx }\losspartial{ \vz }  +  \int_{0}^{\epsilon}   \losspartial{ \vz }^{\top} \frac{\partial }{ \partial \vx_{\theta} } \left( \frac{\partial  f(\vx_{\theta})}{ \partial \vx_{\theta} } \right) \losspartial{ \vz } \theta d\theta \\&
+    = f(\vx) + \epsilon  \frac{ \partial  f(\vx) }{ \partial \vx }\losspartial{ \vz }  -    \int_{0}^{\epsilon}   \frac{1}{\sigma^2_{\theta}} \left( \norm{ \losspartial{ \vz } }_2^2 - \frac{1}{\aux{D}} \sum_{i=1}^{ \aux{D} } (\langle \mathbf{1}, \losspartial{\vz}  \rangle)^2 - ( \langle \vz_{\theta}, \losspartial{\vz}  \rangle )^2 \vz_{\theta}    \right) \theta d\theta,
+\end{align*}
+where $\vx_{\theta}$ represents $\vx + \theta \losspartial{\vz}, \vz_{\theta} = f(\vx_{\theta})$. The second step follows similar steps for computing $  \frac{\partial \vz}{ \partial \vx} $ in \cref{eq:dz_dx_ln}. We avoid this computation since we only need to make sure that the second-order term is  bounded. Furthermore, if $\epsilon \le \mathcal{O}\left( \frac{\sigma}{ \sqrt{\aux{D}} \norm{ \losspartial{\vz} }_2 } \right), $ we can show the $\ell_2$-norm of the second-order term can be bounded by $\mathcal{O} ( \epsilon^2 \aux{D}^{3/2} \sigma^{-2} \norm{ \losspartial{\vz} }^2_2  ).$ We avoid this computation as well. \ap{Fill in the details for the final version}
+
+
+Thus, from the above formulation, we have
+\begin{align*}
+    \lim_{\epsilon \to 0} \frac{ f( \vx + \epsilon \losspartial{ \vz } ) - f(\vx) }{ \epsilon } = \frac{ \partial  f(\vx) }{ \partial \vx }\losspartial{ \vz } = \left( \frac{ \partial  f(\vx) }{ \partial \vx } \right)^{\top} \losspartial{ \vz } = \losspartial{\vx}.
+\end{align*}
+
+The pre-final step follows from \cref{eq:dz_dx_ln}, where $\frac{ \partial  f(\vx) }{ \partial \vx } = \frac{\partial \vz}{ \partial \vx} = \frac{1}{\sigma} \left( \mI - \frac{ 1 }{ \aux{D} } \mathbf{1} \mathbf{1}^{\top} - \vz \vz^{\top} \right)$ can be shown to be symmetric. The final step follows from the gradient formulation in \cref{eq:chainrule_ln}. Including the error term, we have the final bound as
+\begin{align*}
+    \norm{ \frac{ f( \vx + \epsilon \losspartial{ \vz } ) - f(\vx) }{ \epsilon } - \losspartial{\vx} }_2 \le \mathcal{O} ( \epsilon \aux{D}^{3/2} \sigma^{-2} \norm{ \losspartial{\vz} }^2_2 ).
+\end{align*}
+Using $\losspartial{\vz} = \gamma \odot \losspartial{\vy}$ and a Cauchy-Schwartz inequality gives the final bound.
+%If $\sigma$ represents the standard deviation of $\vx$, 
+\end{proof}
+
+
+%We simply use the parameter update module from the linear layer to update $W_{\vgamma}, \vb$ stored in the $\{ \vv_j \}$.

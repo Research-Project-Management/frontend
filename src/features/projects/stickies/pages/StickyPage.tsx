@@ -18,7 +18,8 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { Sortable } from '../components/card/Sortable';
-import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
+import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
 import TopBar from '../components/layout/TopBar';
 import EmptyState from '../components/layout/EmptyState';
 

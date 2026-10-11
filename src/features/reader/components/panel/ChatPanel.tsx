@@ -12,7 +12,7 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
-import { Form } from "@/shared/components/ui";
+import { Form } from '@/shared/components/ui/form';
 import { renderMarkdown } from '@/features/ai/utils/render-markdown';
 import { useCopilotChat } from '../../hooks/use-copilot';
 import { chatMessageFormSchema } from '../../schemas/reader.schema';

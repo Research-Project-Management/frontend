@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Users, ChevronRight, Folder, Search, Files } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import type { TreeNode, CollectionActionHandlers } from './sidebar.types';
 import type { Collection, LibraryScope, ProjectRole } from '../../types';
 import type { SavedSearch } from '../../types/saved-searches.types';

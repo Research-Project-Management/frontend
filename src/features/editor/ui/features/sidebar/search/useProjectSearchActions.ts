@@ -60,7 +60,7 @@ export function useProjectSearchActions({
       engine.setContent(replaced);
       engine.focus();
     }
-    toast.success('Replaced matches in active file');
+    toast.success('Replaced matches in active file', { id: 'search-replace-status' });
   }, [engine, effectiveQuery, useRegex, wholeWord, caseSensitive, replaceText]);
 
   const handleReplaceAllEverywhere = useCallback(async () => {
@@ -79,6 +79,7 @@ export function useProjectSearchActions({
       );
       toast.success(
         `Replaced ${res.totalOccurrencesReplaced} occurrence(s) across ${res.totalFilesAffected} file(s)`,
+        { id: 'search-replace-status' },
       );
       await queryClient.invalidateQueries({
         queryKey: ['project-document-search'],
@@ -89,8 +90,8 @@ export function useProjectSearchActions({
       if (res.affectedFileIds.includes(activeFileId || '')) {
         handleReplaceAllCurrentFile();
       }
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to replace across project');
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to replace across project', { id: 'search-replace-status' });
     } finally {
       setIsReplacingAll(false);
     }
@@ -110,7 +111,7 @@ export function useProjectSearchActions({
   const handleReplaceSingleMatch = useCallback(
     (fileId: string, line: number, matchStart: number, matchEnd: number) => {
       if (!engine || fileId !== activeFileId) {
-        toast.info('Please open this file to replace this match');
+        toast.info('Please open this file to replace this match', { id: 'search-replace-status' });
         return;
       }
       const content = engine.getContent();
@@ -124,7 +125,6 @@ export function useProjectSearchActions({
       engine.setContent(newContent);
       engine.jumpToLine(line);
       engine.focus();
-      toast.success('Replaced occurrence in current file');
     },
     [engine, activeFileId, replaceText]
   );

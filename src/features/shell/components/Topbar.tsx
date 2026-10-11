@@ -9,7 +9,7 @@ import AccountDropdown from './AccountDropdown';
 export default function Topbar() {
   const pathname = usePathname();
   const isAiRoute = pathname?.startsWith('/ai');
-  const { toggleOpen } = useAiCompanionStore();
+  const toggleOpen = useAiCompanionStore((s) => s.toggleOpen);
 
   // Global keyboard shortcut: Cmd+J or Ctrl+J to toggle AI Companion
   useEffect(() => {

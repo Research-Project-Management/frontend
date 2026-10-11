@@ -49,6 +49,7 @@ export interface CommandEntry {
 }
 
 export type SectionLevel =
+  | 'book'
   | 'part'
   | 'chapter'
   | 'section'
@@ -77,6 +78,7 @@ export interface OutlineNode extends OutlineItem {
 }
 
 export const SECTION_LEVEL_WEIGHT: Record<SectionLevel, number> = {
+  book: 0,
   part: 0,
   chapter: 1,
   section: 2,
@@ -497,8 +499,8 @@ export class LatexSymbolsIndexCore {
         });
       }
 
-      // 3. Match LaTeX Document Structure: \part, \chapter, \section, \subsection, etc.
-      const sectionRegex = /\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)(\*?)\{([^}]+)\}/;
+      // 3. Match LaTeX Document Structure: \book, \part, \chapter, \section, \subsection, etc.
+      const sectionRegex = /\\(book|part|chapter|section|subsection|subsubsection|paragraph|subparagraph)(\*?)\{([^}]+)\}/;
       const sectionMatch = sectionRegex.exec(activeLine);
       if (sectionMatch) {
         const type = sectionMatch[1] as SectionLevel;

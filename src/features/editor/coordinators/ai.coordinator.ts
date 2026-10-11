@@ -80,10 +80,8 @@ export class AiCoordinatorRegistry {
     editorCommandBus.subscribe('ai:diff-resolved', (cmd: any) => {
       const action = cmd.action || cmd.payload?.action;
       if (action === 'accept') {
-        toast.success('Applied AI suggestion to document!');
+        toast.success('Applied AI suggestion to document!', { id: 'ai-diff-status' });
         editorCommandBus.dispatch({ type: 'compiler:trigger', draft: true });
-      } else if (action === 'reject') {
-        toast.info('Rejected AI diff proposal');
       }
     });
   }
@@ -150,7 +148,7 @@ export class AiCoordinatorRegistry {
     const firstIssue = diags.find((d) => d.severity === 'error') || diags[0];
 
     if (!firstIssue) {
-      toast.info('No syntax or compile errors found in this file.');
+      toast.info('No syntax or compile errors found in this file.', { id: 'ai-autofix' });
       return false;
     }
 
@@ -193,6 +191,7 @@ export class AiCoordinatorRegistry {
       });
       if (success) {
         toast.success(`Quick-Fix ready for line ${diagnostic.line} — Press Tab to Accept, Esc to Reject`, {
+          id: 'ai-diff-proposal',
           duration: 6000,
         });
         return true;
@@ -200,7 +199,7 @@ export class AiCoordinatorRegistry {
     }
 
     const toastId = typeof toast.loading === 'function'
-      ? toast.loading(`Analyzing fix for line ${diagnostic.line}...`)
+      ? toast.loading(`Analyzing fix for line ${diagnostic.line}...`, { id: 'ai-diff-analyzing' })
       : null;
 
     try {
@@ -235,6 +234,7 @@ export class AiCoordinatorRegistry {
         });
         if (success) {
           toast.success(`AI Diff ready for line ${diagnostic.line} — Press Tab to Accept, Esc to Reject`, {
+            id: 'ai-diff-proposal',
             duration: 6000,
           });
         }
@@ -273,13 +273,14 @@ export class AiCoordinatorRegistry {
       });
       if (success) {
         toast.success(`Quick-Fix ready for line ${diagnostic.line} — Press Tab to Accept, Esc to Reject`, {
+          id: 'ai-diff-proposal',
           duration: 6000,
         });
         return true;
       }
     }
 
-    toast.error('Could not generate an automated fix. Opening AI Assistant...');
+    toast.error('Could not generate an automated fix. Opening AI Assistant...', { id: 'ai-diff-proposal' });
     this.openAiForError(diagnostic);
     return false;
   }
@@ -332,7 +333,7 @@ export class AiCoordinatorRegistry {
         };
 
         engine.proposeDiff(proposal);
-        toast.info(`Review AI diff for line ${startLine} (Tab to Accept, Esc to Reject)`);
+        toast.info(`Review AI diff for line ${startLine} (Tab to Accept, Esc to Reject)`, { id: 'ai-diff-proposal' });
         return true;
       }
     }
@@ -352,7 +353,7 @@ export class AiCoordinatorRegistry {
       };
 
       engine.proposeDiff(proposal);
-      toast.info('Review AI diff in editor (Tab to Accept, Esc to Reject)');
+      toast.info('Review AI diff in editor (Tab to Accept, Esc to Reject)', { id: 'ai-diff-proposal' });
       return true;
     }
 
@@ -369,7 +370,7 @@ export class AiCoordinatorRegistry {
       };
 
       engine.proposeDiff(proposal);
-      toast.info('Review AI insertion in editor (Tab to Accept, Esc to Reject)');
+      toast.info('Review AI insertion in editor (Tab to Accept, Esc to Reject)', { id: 'ai-diff-proposal' });
       return true;
     }
 
@@ -395,7 +396,7 @@ export class AiCoordinatorRegistry {
     // If active document is open in CodeMirror, apply via engine
     if (engine) {
       engine.insertText(replacement);
-      toast.success('Applied AI suggestion to editor');
+      toast.success('Applied AI suggestion to editor', { id: 'ai-diff-status' });
       return true;
     }
 
@@ -403,7 +404,7 @@ export class AiCoordinatorRegistry {
     const model = lruDocumentCache.getModel(fileId);
     if (model) {
       sessionCoordinator.notifyContentChange(fileId, replacement);
-      toast.success('Updated document with AI suggestion');
+      toast.success('Updated document with AI suggestion', { id: 'ai-diff-status' });
       return true;
     }
 

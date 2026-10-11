@@ -16,15 +16,9 @@ import {
   CornerDownRight,
   FolderInput,
 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { cn } from "@/shared/lib/utils";
 import type { StorageItem } from '@/features/storage/types/storage.types';
 import { getAllFiles as getWorkspaceFiles, createFolder as createWorkspaceFolder } from '@/features/storage/services/file.service';
@@ -50,7 +44,7 @@ interface BreadcrumbStep {
 export default function MoveModal({ projectId: propProjectId }: MoveModalProps) {
   const params = useParams() as { projectId?: string; id?: string };
   const queryClient = useQueryClient();
-  const { clearSelection } = useStorageSelectionStore();
+  const clearSelection = useStorageSelectionStore((s) => s.clearSelection);
 
   const [open, setOpen] = useState(false);
   const [itemsToMove, setItemsToMove] = useState<StorageItem[]>([]);

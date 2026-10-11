@@ -1,14 +1,8 @@
 'use client';
 
 import React from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
 import { ExternalLink, Download, Globe, X } from 'lucide-react';
 
 interface SnapshotViewerModalProps {

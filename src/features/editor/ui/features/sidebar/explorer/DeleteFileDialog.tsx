@@ -2,15 +2,8 @@
 
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/shared/components/ui/dialog';
 import { displayName } from './TexFileRow';
 
 export interface DeleteFileDialogProps {

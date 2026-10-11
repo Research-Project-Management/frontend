@@ -4,19 +4,8 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Copy, Check, ChevronDown, Download, ShieldAlert, ExternalLink, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from "@/shared/lib/utils";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@/shared/components/ui";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider,
-} from "@/shared/components/ui";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/shared/components/ui/tooltip';
 import { useCslCitation, useCitationStyles } from '../../data';
 import type { Item, CslStyle } from '../../types/library.types';
 import { getPaperCitationKey, getCleanStyleLabel } from '../../domain/citations';

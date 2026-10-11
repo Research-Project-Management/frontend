@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { PanelLeft, ChevronRight, Database, PanelRightOpen } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { useShallow } from 'zustand/react/shallow';
 import { useAiUIStore } from '../../store/ai-ui.store';
 import { getChatSession } from '../../services/chat.service';
 import { DocumentLibraryModal } from '../modals/document-library-modal';
@@ -17,7 +18,14 @@ export interface AiTopbarProps {
 export function AiTopbar({ title: propTitle, className }: AiTopbarProps) {
   const router = useRouter();
   const { chatId } = useParams<{ chatId?: string }>();
-  const { isSidebarOpen, toggleSidebar, isSourcesOpen, toggleSources } = useAiUIStore();
+  const { isSidebarOpen, toggleSidebar, isSourcesOpen, toggleSources } = useAiUIStore(
+    useShallow((s) => ({
+      isSidebarOpen: s.isSidebarOpen,
+      toggleSidebar: s.toggleSidebar,
+      isSourcesOpen: s.isSourcesOpen,
+      toggleSources: s.toggleSources,
+    }))
+  );
   const [chatTitle, setChatTitle] = useState(propTitle || '');
   const [documentLibraryOpen, setDocumentLibraryOpen] = useState(false);
 

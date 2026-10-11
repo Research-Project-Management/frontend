@@ -10,11 +10,7 @@ import {
   CornerDownRight,
   User,
 } from 'lucide-react';
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/shared/components/ui";
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import {
   StatusIcon,
   UrgentPriorityBoxIcon,

@@ -17,13 +17,8 @@ import {
   BookOpen,
   Link2,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/shared/components/ui";
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/shared/components/ui/dropdown-menu';
 import {
   type Column,
   Item,

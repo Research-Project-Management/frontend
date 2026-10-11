@@ -26,7 +26,8 @@ interface ChatAiProps {
 }
 
 export default function ChatAi({ onSend }: ChatAiProps) {
-  const { setPendingPrompt, setOpen } = useAiCompanionStore();
+  const setPendingPrompt = useAiCompanionStore((s) => s.setPendingPrompt);
+  const setOpen = useAiCompanionStore((s) => s.setOpen);
 
   const handleSend = (text: string, options?: SendMessageOptions) => {
     // Synchronize directly with Topbar AI Assistant Companion

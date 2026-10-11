@@ -17,6 +17,7 @@ import { useLayoutStore } from '../store/layout.store';
 import { useDocumentCollaborationStore } from '../store/collaboration.store';
 import { useSettingsStore } from '../store/settings.store';
 import { gotoLine } from '@codemirror/search';
+import type { EditorView } from '@codemirror/view';
 
 export type KeybindingScope = 'any' | 'editorTextFocus' | 'viewerFocus';
 
@@ -66,15 +67,17 @@ export class KeybindingCoordinatorRegistry {
       },
     });
 
-    // 2. Force Save (Mod-s)
+    // 2. Save & Recompile (Mod-s, Overleaf parity)
     this.register({
       id: 'workbench.save',
       key: 'Mod-s',
-      description: 'Save all dirty files',
+      description: 'Save all dirty files and trigger recompile',
       scope: 'any',
       handler: (e) => {
         e.preventDefault();
-        void sessionCoordinator.flushAllPending();
+        void sessionCoordinator.flushAllPending().then(() => {
+          editorCommandBus.dispatch({ type: 'compiler:trigger', reason: 'shortcut' });
+        });
       },
     });
 
@@ -296,7 +299,7 @@ export class KeybindingCoordinatorRegistry {
           if (engine && typeof engine.focus === 'function') {
             engine.focus();
           }
-          const view = engine?.getView?.();
+          const view = engine?.getView?.() as EditorView | undefined;
           if (view) {
             gotoLine(view);
           }

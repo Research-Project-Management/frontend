@@ -20,7 +20,7 @@ import {
   Loader2,
   Replace,
 } from "lucide-react";
-import { Input } from "@/shared/components/ui";
+import { Input } from '@/shared/components/ui/input';
 import { cn } from "@/shared/lib/utils";
 import { usePageStore } from "@/features/editor/store/editor.store";
 import { useTabsStore } from "@/features/editor/store/tabs.store";
@@ -31,7 +31,8 @@ import { documentSearchService } from "@/features/editor/sdk/manuscript.service"
 import { useEditorInstance } from "@/features/editor/ui/hooks/use-editor-instance";
 import { editorCommandBus } from "@/features/editor/coordinators/command-bus";
 import { extractProjectId } from "@/features/editor/domain/types/core.types";
-import { PlaneEmptyState, PlaneErrorState } from "@/shared/components/ui";
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { SidebarPanelHeader } from "../SidebarPanelHeader";
 
 interface MatchEntry {
@@ -79,6 +80,10 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
     setWholeWord,
     useRegex,
     setUseRegex,
+    withinSelection,
+    toggleWithinSelection,
+    searchScope,
+    setSearchScope,
     collapsedFiles,
     toggleFileCollapsed,
   } = useSearchStore();
@@ -199,7 +204,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   const fileResults = useMemo<FileSearchResult[]>(() => {
     if (!effectiveQuery.trim()) return [];
 
-    if (backendSearchData && Array.isArray(backendSearchData.results)) {
+    if (!withinSelection && searchScope === 'project' && backendSearchData && Array.isArray(backendSearchData.results)) {
       return backendSearchData.results.map((file) => ({
         fileId: file.fileId,
         fileName: file.fileName,
@@ -225,21 +230,49 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
       return [];
     }
 
+    const selRange = withinSelection ? engine?.getSelection?.() : null;
+    const hasSelection = Boolean(
+      selRange && (selRange.startLine !== selRange.endLine || selRange.startColumn !== selRange.endColumn)
+    );
+
     const results: FileSearchResult[] = [];
 
     for (const file of searchableFiles) {
+      if ((searchScope === 'file' || withinSelection) && !file.isCurrent) {
+        continue;
+      }
+
       const lines = file.content.split("\n");
       const fileMatches: MatchEntry[] = [];
 
       lines.forEach((lineText: string, idx: number) => {
+        const lineNum = idx + 1;
+        if (withinSelection && hasSelection && selRange) {
+          if (lineNum < selRange.startLine || lineNum > selRange.endLine) return;
+        }
+
         re.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = re.exec(lineText)) !== null) {
+          const matchStart = m.index;
+          const matchEnd = m.index + m[0].length;
+
+          if (withinSelection && hasSelection && selRange) {
+            if (lineNum === selRange.startLine && matchStart < selRange.startColumn) {
+              if (m[0].length === 0) re.lastIndex++;
+              continue;
+            }
+            if (lineNum === selRange.endLine && matchEnd > selRange.endColumn) {
+              if (m[0].length === 0) re.lastIndex++;
+              continue;
+            }
+          }
+
           fileMatches.push({
-            line: idx + 1,
+            line: lineNum,
             text: lineText,
-            matchStart: m.index,
-            matchEnd: m.index + m[0].length,
+            matchStart,
+            matchEnd,
           });
           if (m[0].length === 0) {
             re.lastIndex++;
@@ -258,7 +291,18 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
     }
 
     return results;
-  }, [effectiveQuery, backendSearchData, activeFileId, useRegex, wholeWord, caseSensitive, searchableFiles]);
+  }, [
+    effectiveQuery,
+    backendSearchData,
+    activeFileId,
+    useRegex,
+    wholeWord,
+    caseSensitive,
+    searchableFiles,
+    withinSelection,
+    searchScope,
+    engine,
+  ]);
 
   const totalMatches = useMemo(
     () => fileResults.reduce((acc, f) => acc + f.matches.length, 0),
@@ -323,7 +367,13 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                 handleSearch();
               }
             }}
-            placeholder="Search all project files..."
+            placeholder={
+              withinSelection
+                ? "Search within selection..."
+                : searchScope === "file"
+                  ? "Search current file..."
+                  : "Search all project files..."
+            }
             className="h-8 pl-8 pr-8 text-xs bg-background border-border/80 focus-visible:ring-1 focus-visible:ring-primary rounded-md w-full placeholder:text-muted-foreground"
           />
           {isFetching ? (
@@ -344,7 +394,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
           ) : null}
         </div>
 
-        {/* Row 2: Search Options (Aa, [.*], W) and Replace Toggle */}
+        {/* Row 2: Search Options (Aa, [.*], W, In Selection) and Replace Toggle */}
         <div className="flex items-center justify-between pt-0.5">
           <div className="flex items-center gap-1.5">
             <button
@@ -394,6 +444,22 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             >
               W
             </button>
+
+            <button
+              type="button"
+              onClick={() => toggleWithinSelection()}
+              title="Find in selection"
+              aria-label="Find in selection"
+              aria-pressed={withinSelection}
+              className={cn(
+                "size-7 rounded-md text-xs font-semibold transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                withinSelection
+                  ? "bg-primary/15 text-primary font-semibold border border-primary/30"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
+              )}
+            >
+              <span className="text-[10px] font-mono border border-current px-0.5 rounded-[2px] leading-tight">⇥⇤</span>
+            </button>
           </div>
 
           <button
@@ -412,6 +478,38 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             <Replace className="size-3.5 shrink-0" />
             <span>Replace</span>
           </button>
+        </div>
+
+        {/* Row 2.5: Search Scope Bar (Overleaf Parity: Search All Project Files vs Current File) */}
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5 px-0.5 select-none">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSearchScope('project')}
+              className={cn(
+                "transition-colors cursor-pointer outline-none focus-visible:underline",
+                searchScope === 'project' && !withinSelection ? "text-foreground font-semibold underline underline-offset-2" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              All project files
+            </button>
+            <span className="opacity-40">•</span>
+            <button
+              type="button"
+              onClick={() => setSearchScope('file')}
+              className={cn(
+                "transition-colors cursor-pointer outline-none focus-visible:underline",
+                searchScope === 'file' && !withinSelection ? "text-foreground font-semibold underline underline-offset-2" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Current file
+            </button>
+          </div>
+          {withinSelection && (
+            <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
+              In selection
+            </span>
+          )}
         </div>
 
         {/* Replace Input */}

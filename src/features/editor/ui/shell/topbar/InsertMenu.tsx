@@ -9,16 +9,7 @@
 
 import React from 'react';
 import { AlignLeft, Tag, Heading } from 'lucide-react';
-import {
-  MenubarMenu,
-  MenubarTrigger,
-  MenubarContent,
-  MenubarItem,
-  MenubarSub,
-  MenubarSubTrigger,
-  MenubarSubContent,
-  MenubarSeparator,
-} from "@/shared/components/ui";
+import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSub, MenubarSubTrigger, MenubarSubContent, MenubarSeparator } from '@/shared/components/ui/menubar';
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { useDocumentCollaborationStore } from '@/features/editor/store/collaboration.store';
 import { useLayoutStore } from '@/features/editor/store/layout.store';

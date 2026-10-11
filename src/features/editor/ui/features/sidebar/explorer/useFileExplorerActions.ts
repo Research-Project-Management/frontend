@@ -19,6 +19,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { manuscriptService, pageService } from '@/features/editor/sdk';
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import type { Page, PageFile } from '@/features/editor/domain/types';
+import type { EditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 import { displayName } from '@/features/editor/domain/document/document-naming';
 import { prepareAssetInsertion } from '@/features/editor/domain/latex/smart-paste';
 
@@ -26,7 +27,7 @@ export interface UseFileExplorerActionsOptions {
   projectId?: string;
   parentPageId?: string | null;
   currentPage?: Page | PageFile | null;
-  engine?: any;
+  engine?: EditorEngine | null;
 }
 
 export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) {
@@ -65,9 +66,9 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        toast.success(`Downloaded ${displayName(file.title)}`);
+        toast.success(`Downloaded ${displayName(file.title)}`, { id: `download-${file.id}` });
       } catch {
-        toast.error('Failed to download file');
+        toast.error('Failed to download file', { id: `download-${file.id}` });
       }
     },
     [currentPage],
@@ -80,7 +81,7 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
     const snippet = ext === 'bib' ? `\\bibliography{${base}}` : `\\input{${base}}`;
 
     navigator.clipboard.writeText(snippet);
-    toast.success(`Copied ${snippet} to clipboard`);
+    toast.success(`Copied ${snippet} to clipboard`, { id: 'copy-tex-snippet' });
   }, []);
 
   const refreshLinkedFile = useCallback(
@@ -97,8 +98,8 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
           window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
         }
         toast.success(`Successfully refreshed ${fileName}`, { id: toastId });
-      } catch (err: any) {
-        toast.error(`Failed to refresh ${fileName}: ${err?.message || 'Network error'}`, { id: toastId });
+      } catch (err: unknown) {
+        toast.error(`Failed to refresh ${fileName}: ${(err as Error)?.message || 'Network error'}`, { id: toastId });
       }
     },
     [projectId, parentPageId, queryClient],
@@ -135,7 +136,7 @@ export function useStorageItemActions() {
       snippet = `\\input{${filename.replace(/\.[a-z0-9]+$/i, '')}}`;
     }
     navigator.clipboard.writeText(snippet);
-    toast.success(`Copied ${snippet} to clipboard`);
+    toast.success(`Copied ${snippet} to clipboard`, { id: 'copy-tex-snippet' });
   }, []);
 
   const downloadStorageItem = useCallback((url?: string, filename?: string) => {
@@ -149,7 +150,7 @@ export function useStorageItemActions() {
       a.click();
       document.body.removeChild(a);
     } else {
-      toast.info('Downloading file...');
+      toast.info('Downloading file...', { id: 'download-file' });
     }
   }, []);
 

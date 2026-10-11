@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useRegister } from '../hooks/use-register';
-import { Button } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 
 const GithubIcon = ({ className }: { className?: string }) => (
   <svg

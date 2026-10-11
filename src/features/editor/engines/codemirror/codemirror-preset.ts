@@ -68,17 +68,27 @@ export const editorBaseTheme = EditorView.theme({
     overflow: 'auto',
   },
   '.cm-content': {
-    padding: '0 0 32px 0',
+    padding: '6px 0 32px 0',
   },
   '.cm-line': {
-    padding: '3px 0',
+    padding: '5px 8px',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
-    padding: '3px 0',
+    padding: '5px 8px',
   },
   '.cm-gutters': {
     borderRight: '1px solid var(--border)',
     backgroundColor: 'transparent',
+    color: '#57606a',
+    padding: '6px 0 0 0',
+  },
+  '.cm-gutterElement': {
+    padding: '0 8px 0 12px',
+    color: '#57606a',
+  },
+  '.cm-activeLineGutter': {
+    color: 'var(--primary, #0969DA)',
+    fontWeight: '600',
   },
 });
 
@@ -87,9 +97,26 @@ export function createTypographyExtension(
   fontFamily?: string,
   lineHeight?: number
 ): Extension {
+  let customFont = fontFamily;
+  if (fontFamily === 'opendyslexic') {
+    customFont = 'OpenDyslexic, OpenDyslexicMono';
+  } else if (fontFamily === 'fira') {
+    customFont = 'Fira Code';
+  } else if (fontFamily === 'jetbrains') {
+    customFont = 'JetBrains Mono';
+  } else if (fontFamily === 'source-code') {
+    customFont = 'Source Code Pro';
+  } else if (fontFamily === 'consolas') {
+    customFont = 'Consolas';
+  } else if (fontFamily === 'courier') {
+    customFont = 'Courier New';
+  } else if (fontFamily === 'inconsolata') {
+    customFont = 'Inconsolata';
+  }
+
   const fontStack =
-    fontFamily && fontFamily.trim().length > 0
-      ? `"${fontFamily}", var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`
+    customFont && customFont.trim().length > 0 && customFont !== 'default'
+      ? `${customFont.includes(',') ? customFont : `"${customFont}"`}, var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`
       : 'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
 
   return EditorView.theme({

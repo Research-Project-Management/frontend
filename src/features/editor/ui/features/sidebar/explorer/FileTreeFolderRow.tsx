@@ -85,7 +85,7 @@ export const FileTreeFolderRow = React.memo(function FileTreeFolderRow({
           <Folder className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
         )}
 
-        <span className="flex-1 min-w-0 truncate font-mono text-12 font-medium tracking-tight text-foreground">
+        <span className="flex-1 min-w-0 truncate text-12 font-medium tracking-tight text-foreground">
           {node.name}
         </span>
 

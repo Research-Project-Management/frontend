@@ -144,14 +144,14 @@ export class NavigationCoordinatorRegistry {
       if (projectId && typeof window !== 'undefined') {
         const previewUrl = `/projects/${projectId}/preview`;
         window.open(previewUrl, `flux_pdf_preview_${projectId}`, 'width=900,height=1000,menubar=no,toolbar=no');
-        toast.info('PDF preview đã được mở ở cửa sổ riêng biệt.');
+        toast.info('PDF preview opened in a separate window', { id: 'pdf-preview-detach' });
       }
     });
 
     editorCommandBus.subscribe('preview:attach', () => {
       useLayoutStore.getState().setPdfDetached(false);
       this.broadcastChannel?.postMessage({ type: 'preview:attached' });
-      toast.info('PDF preview đã được gắn trở lại giao diện chính.');
+      toast.info('PDF preview reattached to main window', { id: 'pdf-preview-detach' });
     });
   }
 
@@ -366,7 +366,7 @@ export class NavigationCoordinatorRegistry {
           return;
         }
       }
-      toast.info('Không có lỗi biên dịch nào trong dự án');
+      toast.info('No compilation errors in project', { id: 'compiler-diagnostic-step' });
       return;
     }
 
@@ -413,9 +413,10 @@ export class NavigationCoordinatorRegistry {
       });
 
       toast.info(
-        `Lỗi ${targetIndex + 1}/${list.length}: ${target.message}${
-          target.file ? ` (${target.file}:${target.line})` : ` (dòng ${target.line})`
-        }`
+        `Error ${targetIndex + 1}/${list.length}: ${target.message}${
+          target.file ? ` (${target.file}:${target.line})` : ` (line ${target.line})`
+        }`,
+        { id: 'compiler-diagnostic-step' }
       );
 
       editorCommandBus.dispatch({
@@ -442,7 +443,7 @@ export class NavigationCoordinatorRegistry {
           return;
         }
       }
-      toast.info('Không có lỗi biên dịch nào trong dự án');
+      toast.info('No compilation errors in project', { id: 'compiler-diagnostic-step' });
       return;
     }
 
@@ -494,9 +495,10 @@ export class NavigationCoordinatorRegistry {
       });
 
       toast.info(
-        `Lỗi ${targetIndex + 1}/${list.length}: ${target.message}${
-          target.file ? ` (${target.file}:${target.line})` : ` (dòng ${target.line})`
-        }`
+        `Error ${targetIndex + 1}/${list.length}: ${target.message}${
+          target.file ? ` (${target.file}:${target.line})` : ` (line ${target.line})`
+        }`,
+        { id: 'compiler-diagnostic-step' }
       );
 
       editorCommandBus.dispatch({

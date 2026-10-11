@@ -1,3 +1,5 @@
+import type { QueryClient } from '@tanstack/react-query';
+
 /**
  * Centralized TanStack Query Keys for features/library
  * Following Supabase Studio pattern for strict key isolation and single source of truth.
@@ -99,3 +101,10 @@ export const annotationKeys = {
   byAttachment: (scopeId?: string, attachmentId?: string) =>
     libraryKeys.annotations(scopeId, attachmentId),
 };
+
+export function invalidateCollections(qc: QueryClient, scopeId?: string): void {
+  qc.invalidateQueries({ queryKey: libraryKeys.collections(scopeId) });
+  qc.invalidateQueries({ queryKey: libraryKeys.collectionsList(scopeId) });
+  qc.invalidateQueries({ queryKey: itemKeys.counts(scopeId) });
+}
+

@@ -32,7 +32,15 @@ describe('Split-View Synchronized Dual Scrolling (Overleaf Parity)', () => {
       vi.useRealTimers();
     });
     const mockSyncMap: SyncTeXMap = {
-      unit: 1,
+      lineToPage: new Map([
+        [10, 1],
+        [45, 2],
+      ]),
+      pageToLines: new Map([
+        [1, [10]],
+        [2, [45]],
+      ]),
+      sortedLines: [10, 45],
       tagToPath: new Map([[1, 'main.tex']]),
       pathToTag: new Map([['main.tex', 1]]),
       tagLineToPage: new Map([
@@ -345,7 +353,7 @@ describe('Split-View Synchronized Dual Scrolling (Overleaf Parity)', () => {
       setActiveEditorEngine({
         getLineCount: () => 200,
         getContent: () => '',
-      });
+      } as unknown as Parameters<typeof setActiveEditorEngine>[0]);
 
       const { result } = renderHook(() =>
         useSynchronizedScroll({

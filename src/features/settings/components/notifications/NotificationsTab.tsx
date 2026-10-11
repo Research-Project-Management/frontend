@@ -7,14 +7,8 @@ import { notificationsSchema } from '../../types/notifications.schema';
 import * as z from 'zod';
 import { toast } from 'sonner';
 
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "@/shared/components/ui";
-import { Switch } from "@/shared/components/ui";
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/shared/components/ui/form';
+import { Switch } from '@/shared/components/ui/switch';
 import { cn } from "@/shared/lib/utils";
 import {
   useNotificationSettings,

@@ -16,11 +16,11 @@ import {
   useDeleteLibraryItemsMutation,
   useBatchPurgeItemsMutation,
   useSavedSearches,
-  libraryServices,
   itemKeys,
   libraryKeys,
   invalidateCollections,
 } from '../../data';
+import { IngestionService, QualityService } from '../../data/ingestion/ingestion.service';
 import type { CollectionFormValues, UnifiedIngestionPayload } from '../../types';
 
 const CreateCollectionModal = dynamic(() => import('./CreateCollectionModal'), { ssr: false });
@@ -165,7 +165,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
     };
 
     try {
-      const ingestRes = await libraryServices.ingestion.ingestion.ingest(effectiveScope, ingestionPayload);
+      const ingestRes = await IngestionService.ingest(effectiveScope, ingestionPayload);
       const ingestData = ingestRes?.data;
       const runId = ingestData?.runId;
       const initialStatus = (ingestData?.status || '').toUpperCase();
@@ -224,7 +224,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
         }
 
         try {
-          const runStatus = await libraryServices.ingestion.ingestion.getRunStatus(effectiveScope, runId);
+          const runStatus = await IngestionService.getRunStatus(effectiveScope, runId);
           const statusPayload = runStatus as {
             data?: {
               status?: string;
@@ -330,7 +330,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
     mergedFields: any,
     duplicateIdsToDelete: string[],
   ) => {
-    await libraryServices.curation.mergePapers(
+    await QualityService.mergePapers(
       effectiveScope,
       masterPaper.id,
       duplicateIdsToDelete,

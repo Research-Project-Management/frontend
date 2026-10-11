@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Skeleton } from "@/shared/components/ui";
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import ListView, { type StorageViewProps } from '../views/ListView';
 import GridView from '../views/GridView';
 import { useViewStore } from '../../store/use-view-store';
@@ -26,7 +26,7 @@ export function StorageViewContainer({
   searchQuery = '',
   onClearSearch,
 }: StorageViewContainerProps) {
-  const { view } = useViewStore();
+  const view = useViewStore((s) => s.view);
 
   return (
     <div className="flex-1 overflow-auto p-2.5 sm:p-4 md:p-6 bg-background">

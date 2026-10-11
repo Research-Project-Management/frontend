@@ -10,13 +10,14 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
-import { Button, Checkbox } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Checkbox } from '@/shared/components/ui/checkbox';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/components/ui/popover";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { FilterFunnelIcon } from "@/shared/components/icons";
 import { SingleDatePopover } from "@/features/projects/project-id/work-items/components/modals/Popovers";
 import { useQueryClient } from '@tanstack/react-query';

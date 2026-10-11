@@ -28,22 +28,12 @@ import {
   Check,
   CheckSquare,
 } from 'lucide-react';
-import {
-  Button,
-  Input,
-  Checkbox,
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { cn } from "@/shared/lib/utils";
 import { useCopyItemText } from '../../hooks/use-work-item';
 import {

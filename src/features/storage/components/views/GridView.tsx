@@ -5,7 +5,7 @@ import { Star, Folder, CheckSquare, Square, Loader2, Upload, FolderPlus } from '
 import { motion, AnimatePresence } from 'framer-motion';
 import { resolveFileUrl } from "@/shared/lib/file-client";
 import { useInfiniteSentinel } from '../../hooks/use-infinite-sentinel';
-import { Button } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
 import type { StorageItem } from '@/features/storage/types/storage.types';
 import { getFileType, getFileIcon, getFileColor, formatFileSize } from '../../utils/storage.util';
 import { ItemActions, type StorageViewProps } from './ListView';
@@ -152,7 +152,7 @@ export const GridView = React.memo(function GridView({
                         </button>
                       )}
 
-                      <div className="size-8 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                      <div className="size-8 rounded-md bg-warning/15 text-warning flex items-center justify-center shrink-0">
                         <Folder className="size-4.5 fill-current shrink-0" />
                       </div>
 
@@ -162,7 +162,7 @@ export const GridView = React.memo(function GridView({
                             {folder.filename}
                           </span>
                           {folder.starred && (
-                            <Star className="size-3 fill-amber-400 text-amber-400 shrink-0" />
+                            <Star className="size-3 fill-warning text-warning shrink-0" />
                           )}
                         </div>
                       </div>
@@ -297,7 +297,7 @@ export const GridView = React.memo(function GridView({
                           {file.filename}
                         </h4>
                         {file.starred && (
-                          <Star className="size-3.5 fill-amber-400 text-amber-400 shrink-0 mt-0.5" />
+                          <Star className="size-3.5 fill-warning text-warning shrink-0 mt-0.5" />
                         )}
                       </div>
 

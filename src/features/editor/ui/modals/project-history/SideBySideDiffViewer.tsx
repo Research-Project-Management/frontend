@@ -103,7 +103,7 @@ export const SideBySideDiffViewer = React.memo(function SideBySideDiffViewer({
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(text);
     }
-    toast.success('Hunk diff copied to clipboard');
+    toast.success('Hunk diff copied to clipboard', { id: 'diff-copy-hunk' });
   };
 
   const handleCopyBaseHunk = (hunk: DiffHunk) => {
@@ -114,7 +114,7 @@ export const SideBySideDiffViewer = React.memo(function SideBySideDiffViewer({
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(text);
     }
-    toast.success(`Base v${baseVersion} snippet copied to clipboard`);
+    toast.success(`Base v${baseVersion} snippet copied to clipboard`, { id: 'diff-copy-hunk' });
   };
 
   const handleCopyTargetHunk = (hunk: DiffHunk) => {
@@ -125,7 +125,7 @@ export const SideBySideDiffViewer = React.memo(function SideBySideDiffViewer({
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(text);
     }
-    toast.success(`Target v${targetVersion} snippet copied to clipboard`);
+    toast.success(`Target v${targetVersion} snippet copied to clipboard`, { id: 'diff-copy-hunk' });
   };
 
   return (

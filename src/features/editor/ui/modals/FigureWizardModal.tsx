@@ -131,13 +131,12 @@ export function FigureWizardModal({
 
   const insertFigure = useCallback(() => {
     onInsert(generatedLatex);
-    toast.success('Figure inserted into document');
     onOpenChange(false);
   }, [onInsert, generatedLatex, onOpenChange]);
 
   const copyFigureCode = useCallback(() => {
     navigator.clipboard.writeText(generatedLatex);
-    toast.info('LaTeX code copied to clipboard');
+    toast.info('LaTeX code copied to clipboard', { id: 'copy-figure-latex' });
   }, [generatedLatex]);
 
   // Auto-select first image if none selected
@@ -149,36 +148,85 @@ export function FigureWizardModal({
 
   // Upload handler
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isDragging, setIsDragging] = React.useState(false);
+
+  const processIncomingFiles = useCallback(
+    async (fileList: File[]) => {
+      const validImages = fileList.filter((f) => {
+        const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+        return IMAGE_EXTENSIONS.has(ext) || f.type.startsWith('image/');
+      });
+      if (validImages.length === 0) {
+        toast.error('Only image and vector graphic files (.png, .jpg, .pdf, .svg, .eps) are supported');
+        return;
+      }
+      if (!parentPageId) return;
+
+      try {
+        for (const file of validImages) {
+          await uploadFile.mutateAsync({ file, pageId: parentPageId, parentId: null });
+        }
+        handleSelectImage(validImages[0].name);
+        toast.success(`Uploaded and selected ${validImages[0].name}`, { id: 'figure-wizard-upload' });
+      } catch {
+        // Handled by uploadFile
+      }
+    },
+    [parentPageId, uploadFile, handleSelectImage],
+  );
 
   const handleFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const pickedFiles = e.target.files;
     if (!pickedFiles || pickedFiles.length === 0) return;
-
     try {
-      const fileList = Array.from(pickedFiles);
-      if (fileList.length > 0 && parentPageId) {
-        for (const file of fileList) {
-          await uploadFile.mutateAsync({ file, pageId: parentPageId, parentId: null });
-        }
-        const uploadedName = fileList[0].name;
-        handleSelectImage(uploadedName);
-      }
-    } catch {
-      // Error already handled by uploadFile mutation hook
+      await processIncomingFiles(Array.from(pickedFiles));
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      const dropped = Array.from(e.dataTransfer.files || []);
+      if (dropped.length > 0) {
+        await processIncomingFiles(dropped);
+      }
+    },
+    [processIncomingFiles],
+  );
+
+  const handlePaste = useCallback(
+    async (e: React.ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const pastedFiles: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].kind === 'file') {
+          const file = items[i].getAsFile();
+          if (file) pastedFiles.push(file);
+        }
+      }
+      if (pastedFiles.length > 0) {
+        await processIncomingFiles(pastedFiles);
+      }
+    },
+    [processIncomingFiles],
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-6 gap-4 text-xs bg-background border border-border shadow-raised-200 rounded-md">
+      <DialogContent
+        onPaste={handlePaste}
+        className="max-w-2xl max-h-[90vh] flex flex-col p-6 gap-4 text-xs bg-background border border-border shadow-raised-200 rounded-md"
+      >
         <DialogHeader>
           <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
             Insert LaTeX Figure
           </DialogTitle>
           <DialogDescription className="text-12 text-muted-foreground mt-0.5">
-            Select an image from your project files or upload a new figure.
+            Select an image from your project files, drag & drop, paste from clipboard, or upload a new graphic.
           </DialogDescription>
         </DialogHeader>
 
@@ -192,7 +240,18 @@ export function FigureWizardModal({
         />
 
         {/* Section 1: Image Selector Gallery */}
-        <div className="space-y-2">
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          className={cn(
+            'space-y-2 rounded-md transition-all',
+            isDragging && 'ring-2 ring-primary ring-offset-2 bg-primary/5 p-1'
+          )}
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-foreground">
               Select Project Image ({imageFiles.length} available)
@@ -219,12 +278,20 @@ export function FigureWizardModal({
               <Loader2 className="size-5 animate-spin text-primary motion-reduce:animate-none" />
             </div>
           ) : imageFiles.length === 0 ? (
-            <div className="h-32 rounded-md border-2 border-dashed border-border bg-muted/20 flex flex-col items-center justify-center gap-2 text-center p-4">
-              <FileImage className="size-8 text-muted-foreground/40" />
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className={cn(
+                'h-32 rounded-md border-2 border-dashed bg-muted/20 flex flex-col items-center justify-center gap-2 text-center p-4 transition-colors cursor-pointer',
+                isDragging ? 'border-primary bg-primary/10' : 'border-border'
+              )}
+            >
+              <FileImage className={cn('size-8', isDragging ? 'text-primary' : 'text-muted-foreground/40')} />
               <div className="space-y-0.5">
-                <p className="text-xs font-medium text-foreground">No images in project yet</p>
+                <p className="text-xs font-medium text-foreground">
+                  {isDragging ? 'Drop figure image here' : 'No images in project yet'}
+                </p>
                 <p className="text-11 text-muted-foreground">
-                  Click the Upload Image button above to add a PNG, JPG, or PDF graphic.
+                  Drag & drop here, paste image from clipboard, or click to upload.
                 </p>
               </div>
             </div>
@@ -277,6 +344,19 @@ export function FigureWizardModal({
               })}
             </div>
           )}
+
+          {/* Custom path or URL input (Overleaf Parity) */}
+          <div className="pt-2">
+            <label className="text-11 font-medium text-muted-foreground mb-1 block">
+              Image filename, relative path, or URL
+            </label>
+            <Input
+              value={values.selectedFilename}
+              onChange={(e) => handleSelectImage(e.target.value)}
+              placeholder="e.g. plot.png, figures/chart.pdf, or https://..."
+              className="h-8 text-xs font-mono rounded-md border-border bg-background"
+            />
+          </div>
         </div>
 
         {/* Section 2: Figure Settings */}

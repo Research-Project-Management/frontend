@@ -7,7 +7,8 @@ import {
   Loader2,
   Upload,
 } from 'lucide-react';
-import { PlaneEmptyState, PlaneErrorState } from '@/shared/components/ui';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { InlineInput } from './FileTreePrimitives';
 import type { FileTreeNode } from '@/features/editor/domain/document/document-tree';
 
@@ -84,7 +85,7 @@ export function FileTreeContainer({
 }: FileTreeContainerProps) {
   return (
     <div
-      className="relative min-h-0 flex-1 overflow-y-auto px-2 pt-2.5 pb-3 thin-scrollbar space-y-0.5 border-b border-border"
+      className="relative min-h-0 flex-1 overflow-y-auto px-2 pt-2.5 pb-3 thin-scrollbar space-y-0.5 border-b border-border bg-surface"
       onDragEnter={(e) => {
         if (!e.dataTransfer.types.includes('application/flux-file-id')) {
           handleDragEnter(e);

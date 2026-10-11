@@ -2,15 +2,8 @@
 
 import React from 'react';
 import { Trash2, Loader2 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
 import { cn } from "@/shared/lib/utils";
 
 export interface DeleteModalConfig {

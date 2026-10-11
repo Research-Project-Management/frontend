@@ -3,9 +3,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { Bot, Check } from 'lucide-react';
-import { Button, Textarea, Switch, Skeleton } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Textarea } from '@/shared/components/ui/textarea';
+import { Switch } from '@/shared/components/ui/switch';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { toast } from 'sonner';
-import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
+import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
 import { useProjectDetails, useUpdateProject, type UpdateProjectVariables } from '@/features/projects/shell/hooks/use-project';
 
 const DEFAULT_SYSTEM_PROMPT =

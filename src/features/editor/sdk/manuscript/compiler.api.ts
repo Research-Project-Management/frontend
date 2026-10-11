@@ -32,12 +32,12 @@ export const compiler = {
         signal: effectiveSignal,
         timeout: 120000,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       return {
         success: false,
         pdf: '',
-        logs: err?.message || 'Compilation service is initializing. Ready for CLSI module.',
-        error: err?.message || 'Failed to reach compiler service',
+        logs: (err as Error)?.message || 'Compilation service is initializing. Ready for CLSI module.',
+        error: (err as Error)?.message || 'Failed to reach compiler service',
       };
     }
   },
@@ -92,13 +92,13 @@ export const compiler = {
         log: res.logs || '',
         error: res.error,
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       return {
         success: false,
         pdf: '',
         pdfUrl: '',
-        log: err?.message || String(err),
-        error: err?.message || 'Preview compile failed',
+        log: (err as Error)?.message || String(err),
+        error: (err as Error)?.message || 'Preview compile failed',
       };
     }
   },
@@ -155,17 +155,17 @@ export const compiler = {
     }
   },
 
-  getStatus: async (): Promise<any> => {
+  getStatus: async (): Promise<{ status: string; engines: string[] }> => {
     try {
-      return await apiGet<any>(`${MANUSCRIPTS_API_BASE}/clsi/status`);
+      return await apiGet<{ status: string; engines: string[] }>(`${MANUSCRIPTS_API_BASE}/clsi/status`);
     } catch {
       return { status: 'ok', engines: ['pdflatex', 'xelatex', 'lualatex'] };
     }
   },
 
-  getMetricsSummary: async (): Promise<any> => {
+  getMetricsSummary: async (): Promise<Record<string, unknown>> => {
     try {
-      return await apiGet<any>(`${MANUSCRIPTS_API_BASE}/clsi/metrics/summary`);
+      return await apiGet<Record<string, unknown>>(`${MANUSCRIPTS_API_BASE}/clsi/metrics/summary`);
     } catch {
       return {};
     }

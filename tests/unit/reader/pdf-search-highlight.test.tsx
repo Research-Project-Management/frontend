@@ -430,7 +430,9 @@ describe('Phase 11: In-Document PDF Text Search & Selection Layer Sync (Overleaf
       const mockEngine = {
         getSelectedText: vi.fn().mockReturnValue('Hamiltonian'),
       };
-      setActiveEditorEngine(mockEngine);
+      setActiveEditorEngine(
+        mockEngine as unknown as Parameters<typeof setActiveEditorEngine>[0],
+      );
 
       const mockPdf = {
         current: {

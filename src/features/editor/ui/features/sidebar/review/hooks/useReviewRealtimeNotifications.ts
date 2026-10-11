@@ -43,6 +43,7 @@ export function useReviewRealtimeNotifications({
         const digest = payload?.digest;
         if (digest && userId === payload?.recipientId) {
           toast.info('Review digest received', {
+            id: `digest-${digest.id || 'latest'}`,
             description: digest.summary,
           });
         }
@@ -51,6 +52,7 @@ export function useReviewRealtimeNotifications({
         const mentionedIds = payload?.mentionedUserIds || [];
         if (userId && mentionedIds.includes(userId)) {
           toast.info('You were mentioned in a review discussion!', {
+            id: `mention-${payload?.commentId || 'latest'}`,
             description: payload?.content
               ? payload.content.slice(0, 120)
               : 'A collaborator tagged you in a comment.',

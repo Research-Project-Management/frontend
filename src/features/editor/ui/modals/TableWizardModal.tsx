@@ -190,16 +190,16 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
 
       const success = importRawText(clean);
       if (success) {
-        toast.success('Table generated with AI and loaded into visual editor!');
+        toast.success('Table generated with AI and loaded into visual editor!', { id: 'ai-table-gen' });
         setAiPrompt('');
       } else {
         setPastedText(clean);
         importPastedData();
-        toast.success('Table generated with AI and imported!');
+        toast.success('Table generated with AI and imported!', { id: 'ai-table-gen' });
         setAiPrompt('');
       }
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to generate table with AI');
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to generate table with AI', { id: 'ai-table-gen' });
     } finally {
       setIsAiGenerating(false);
     }
@@ -644,28 +644,40 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
               <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   type="button"
-                  onClick={() => applyMatrixPreset('identity')}
+                  onClick={() => {
+                    applyMatrixPreset('identity');
+                    toast.success('Applied identity matrix preset');
+                  }}
                   className="px-2 py-0.5 text-11 bg-background hover:bg-muted border border-border rounded-md cursor-pointer font-medium"
                 >
                   Identity (I)
                 </button>
                 <button
                   type="button"
-                  onClick={() => applyMatrixPreset('zero')}
+                  onClick={() => {
+                    applyMatrixPreset('zero');
+                    toast.success('Applied zero matrix preset');
+                  }}
                   className="px-2 py-0.5 text-11 bg-background hover:bg-muted border border-border rounded-md cursor-pointer font-medium"
                 >
                   Zero (0)
                 </button>
                 <button
                   type="button"
-                  onClick={() => applyMatrixPreset('symbolic')}
+                  onClick={() => {
+                    applyMatrixPreset('symbolic');
+                    toast.success('Applied symbolic matrix preset');
+                  }}
                   className="px-2 py-0.5 text-11 bg-background hover:bg-muted border border-border rounded-md cursor-pointer font-medium"
                 >
                   Symbolic (a_ij)
                 </button>
                 <button
                   type="button"
-                  onClick={() => applyMatrixPreset('diagonal')}
+                  onClick={() => {
+                    applyMatrixPreset('diagonal');
+                    toast.success('Applied diagonal matrix preset');
+                  }}
                   className="px-2 py-0.5 text-11 bg-background hover:bg-muted border border-border rounded-md cursor-pointer font-medium"
                 >
                   Diagonal

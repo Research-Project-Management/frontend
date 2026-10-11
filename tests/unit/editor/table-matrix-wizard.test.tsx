@@ -345,7 +345,7 @@ describe('Visual Table & Matrix Wizard (Overleaf Parity)', () => {
       fireEvent.click(copyBtn);
 
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('\\begin{table}'));
-      expect(toast.info).toHaveBeenCalledWith('LaTeX code copied to clipboard');
+      expect(toast.info).toHaveBeenCalledWith('LaTeX code copied to clipboard', expect.anything());
     });
 
     it('auto-parses initial LaTeX snippet into visual editor when pre-populated', () => {

@@ -6,7 +6,7 @@ import {
   versionService,
   StorageService,
 } from '@/features/editor/sdk';
-import { pageKeys } from '@/features/editor/ui/queries';
+import { pageKeys } from '@/features/editor/ui/hooks/document.queries';
 
 // Mock browser globals for JSZip file download
 const mockClick = vi.fn();

@@ -10,15 +10,8 @@ import {
   Paperclip,
   X,
 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  Button,
-} from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
 import { cn } from "@/shared/lib/utils";
 
 export const TEX_EXTS = new Set([

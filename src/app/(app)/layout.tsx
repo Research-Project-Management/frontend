@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
 import React, { Suspense, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 
@@ -64,14 +64,7 @@ export default function AppLayout({
     return null;
   }
 
-  // Show loading indicator while session is being verified
-  if (isLoading) {
-    return (
-      <div className='flex h-dvh w-full items-center justify-center bg-background' suppressHydrationWarning>
-        <Loader2 className='h-8 w-8 animate-spin text-primary shrink-0' />
-      </div>
-    );
-  }
+
 
   if (isPaperReader) {
     return (

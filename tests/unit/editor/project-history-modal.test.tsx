@@ -17,6 +17,7 @@ describe('ProjectHistoryModal Component (Overleaf Parity)', () => {
       projectId: 'proj-123',
       version: 3,
       summary: 'Added bibliography references',
+      author: { id: 'user-1', name: 'Alice Researcher' },
       isAutomatic: false,
       fileCount: 2,
       labels: [{ id: 'lbl-1', version: 3, label: 'Release-Candidate', createdAt: new Date().toISOString() }],
@@ -149,11 +150,14 @@ describe('ProjectHistoryModal Component (Overleaf Parity)', () => {
     renderModal();
 
     expect(screen.getByText('Project History')).toBeDefined();
+    expect(screen.getByText('Back to editor')).toBeDefined();
 
     await waitFor(() => {
       expect(screen.getByText('Added bibliography references')).toBeDefined();
       expect(screen.getByText('Drafted Section 2 Methodology')).toBeDefined();
       expect(screen.getByText('Initial project setup')).toBeDefined();
+      expect(screen.getByText('Current state')).toBeDefined();
+      expect(screen.getByText('Alice Researcher')).toBeDefined();
     });
 
     // Check version pills
@@ -162,19 +166,35 @@ describe('ProjectHistoryModal Component (Overleaf Parity)', () => {
     expect(screen.getByText('v1')).toBeDefined();
   });
 
-  it('filters versions when typing in search input', async () => {
+  it('closes modal when clicking "Back to editor" button', async () => {
+    const onOpenChange = vi.fn();
+    renderModal({ onOpenChange });
+
+    const backBtn = screen.getByText('Back to editor');
+    fireEvent.click(backBtn);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('filters versions when typing in search input by summary or author', async () => {
     renderModal();
 
     await waitFor(() => {
       expect(screen.getByText('Added bibliography references')).toBeDefined();
     });
 
-    const searchInput = screen.getByPlaceholderText('Filter versions or labels...');
+    const searchInput = screen.getByPlaceholderText(/Filter versions/);
     fireEvent.change(searchInput, { target: { value: 'Methodology' } });
 
     await waitFor(() => {
       expect(screen.queryByText('Added bibliography references')).toBeNull();
       expect(screen.getByText('Drafted Section 2 Methodology')).toBeDefined();
+    });
+
+    // Filter by author name
+    fireEvent.change(searchInput, { target: { value: 'Alice' } });
+    await waitFor(() => {
+      expect(screen.getByText('Added bibliography references')).toBeDefined();
+      expect(screen.queryByText('Drafted Section 2 Methodology')).toBeNull();
     });
   });
 
@@ -332,6 +352,84 @@ describe('ProjectHistoryModal Component (Overleaf Parity)', () => {
       expect(manuscriptService.history.restoreProjectVersion).toHaveBeenCalledWith('proj-123', 3);
       expect(dispatchSpy).toHaveBeenCalledWith({ type: 'filetree:updated' });
       expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  it('detects deleted files, renders deleted indicators and restores deleted file by re-creating it', async () => {
+    const deletedDiff: ProjectDiffResponse = {
+      baseVersion: 1,
+      targetVersion: 2,
+      totalAdditions: 0,
+      totalDeletions: 15,
+      filesChanged: 1,
+      files: [
+        {
+          path: 'chapter1.tex',
+          status: 'deleted',
+          type: 'doc',
+          additions: 0,
+          deletions: 15,
+          hunks: [
+            {
+              oldStartLine: 1,
+              oldLineCount: 2,
+              newStartLine: 1,
+              newLineCount: 0,
+              lines: [
+                { type: 'deleted', text: '\\chapter{Intro}', oldLineNumber: 1 },
+                { type: 'deleted', text: 'This was chapter 1.', oldLineNumber: 2 },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    vi.spyOn(manuscriptService.history, 'compareProjectVersions').mockResolvedValue(deletedDiff);
+    vi.spyOn(manuscriptService.history, 'getProjectSnapshot').mockResolvedValue({
+      id: 'snap-1',
+      projectId: 'proj-123',
+      version: 1,
+      summary: 'Initial project setup',
+      isAutomatic: false,
+      fileCount: 2,
+      labels: [],
+      createdAt: '2026-10-08T08:00:00Z',
+      files: {
+        'chapter1.tex': {
+          path: 'chapter1.tex',
+          content: '\\chapter{Intro}\nThis was chapter 1.',
+          type: 'doc',
+        },
+      },
+    });
+    vi.spyOn(manuscriptService.docs, 'create').mockResolvedValue({ id: 'new-doc-1' } as any);
+
+    renderModal({ initialVersion: 2 });
+
+    await waitFor(() => {
+      expect(screen.getByText('(deleted)')).toBeDefined();
+      expect(screen.getByText(/was deleted in Version 2/)).toBeDefined();
+    });
+
+    const restoreDeletedBtn = screen.getByText('Restore this deleted file');
+    fireEvent.click(restoreDeletedBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Confirm restore chapter1\.tex to v1/)).toBeDefined();
+    });
+
+    const confirmBtn = screen.getByText(/Confirm restore chapter1\.tex to v1/);
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(manuscriptService.docs.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: 'proj-123',
+          title: 'chapter1.tex',
+          content: '\\chapter{Intro}\nThis was chapter 1.',
+        })
+      );
     });
   });
 });

@@ -66,7 +66,8 @@ export function proxy(request: NextRequest) {
 
   if (isProtected && !isAuthenticated) {
     const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
+    const fullOriginalUrl = `${pathname}${request.nextUrl.search}`;
+    loginUrl.searchParams.set('redirect', fullOriginalUrl);
     const response = NextResponse.redirect(loginUrl);
     if (hasRawToken) {
       response.cookies.delete('accessToken');

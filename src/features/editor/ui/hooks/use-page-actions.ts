@@ -35,9 +35,9 @@ export function usePageActions() {
     onSuccess: (updated, variables) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.detail(variables.pageId) });
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, vars) => {
       const msg = err instanceof Error ? err.message : 'Failed to save document content';
-      toast.error(msg);
+      toast.error(msg, { id: `save-content-${vars.pageId}` });
     },
   });
 
@@ -67,11 +67,11 @@ export function usePageActions() {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
       }
-      toast.success(`Renamed to "${variables.title}"`);
+      toast.success(`Renamed to "${variables.title}"`, { id: `rename-file-${variables.pageId}` });
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, variables) => {
       const msg = err instanceof Error ? err.message : 'Failed to rename file';
-      toast.error(msg);
+      toast.error(msg, { id: `rename-file-${variables.pageId}` });
     },
   });
 
@@ -80,17 +80,17 @@ export function usePageActions() {
       if (isLocked) throw new Error('Document is locked');
       return await manuscriptService.docs.delete(pageId);
     },
-    onSuccess: () => {
+    onSuccess: (_data, pageId) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
       }
-      toast.success('File deleted');
+      toast.success('File deleted', { id: `delete-file-${pageId}` });
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, pageId) => {
       const msg = err instanceof Error ? err.message : 'Failed to delete file';
-      toast.error(msg);
+      toast.error(msg, { id: `delete-file-${pageId}` });
     },
   });
 
@@ -104,9 +104,9 @@ export function usePageActions() {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       queryClient.invalidateQueries({ queryKey: pageKeys.deletedFiles(pageId) });
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, pageId) => {
       const msg = err instanceof Error ? err.message : 'Failed to restore file';
-      toast.error(msg);
+      toast.error(msg, { id: `restore-file-${pageId}` });
     },
   });
 
@@ -115,13 +115,13 @@ export function usePageActions() {
       if (isLocked) throw new Error('Document is locked');
       return await manuscriptService.docs.duplicate(pageId);
     },
-    onSuccess: () => {
+    onSuccess: (_data, pageId) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      toast.success('File duplicated');
+      toast.success('File duplicated', { id: `duplicate-file-${pageId}` });
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, pageId) => {
       const msg = err instanceof Error ? err.message : 'Failed to duplicate file';
-      toast.error(msg);
+      toast.error(msg, { id: `duplicate-file-${pageId}` });
     },
   });
 

@@ -81,7 +81,8 @@ const sanitizeTitle = (raw: string) => {
 // ── Main FilesTab ───────────────────────────────────────────────────────────
 
 const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => void }) {
-  const { pageId } = useParams<{ pageId: string }>();
+  const { pageId, projectId: routeProjectId } = useParams<{ pageId?: string; projectId?: string }>();
+  const parentPageId: string | null = pageId ?? null;
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -107,6 +108,28 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   const setMainFile = useSettingsStore((s) => s.setMainFile);
   const configuredMainFile = useSettingsStore((s) => s.mainFile);
   const openTab = useTabsStore((s) => s.openTab);
+
+  const { data: parentPage } = useQuery({
+    ...pageQuery(parentPageId ?? ''),
+    enabled: !!parentPageId,
+  });
+
+  const { data: deletedFilesList = [] } = useQuery({
+    ...deletedFilesQuery(pageId || ''),
+    enabled: Boolean(pageId),
+  });
+
+  const projectId =
+    routeProjectId ||
+    extractProjectId(parentPage) ||
+    extractProjectId(currentPage) ||
+    '';
+
+  const activeTabId = useTabsStore((s) =>
+    (parentPageId ? s.activeByProject[parentPageId] : null) ||
+    (projectId ? s.activeByProject[projectId] : null) ||
+    null
+  );
   const { engine } = useEditorInstance();
 
   const [isFileTreeOpen, setIsFileTreeOpen] = useState(true);
@@ -124,23 +147,6 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
   const newFileInputRef = useRef<HTMLInputElement>(null);
   const newFolderInputRef = useRef<HTMLInputElement>(null);
-
-  const parentPageId: string | null = pageId ?? null;
-
-  const { data: parentPage } = useQuery({
-    ...pageQuery(parentPageId ?? ''),
-    enabled: !!parentPageId,
-  });
-
-  const { data: deletedFilesList = [] } = useQuery({
-    ...deletedFilesQuery(pageId),
-    enabled: Boolean(pageId),
-  });
-
-  const projectId =
-    extractProjectId(parentPage) ||
-    extractProjectId(currentPage) ||
-    '';
 
   const mainFileId =
     parentPage?.mainFile && typeof parentPage.mainFile === 'object'
@@ -440,8 +446,8 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   const handleCreateFolder = useCallback(() => {
     const name = newFolderName.trim();
     const parsed = createFolderSchema.safeParse({ name });
-    const effectiveProjectId = projectId || parentPageId;
     if (!parentPageId || !parsed.success) return;
+    const effectiveProjectId = projectId || parentPageId;
     createFolder.mutate(
       { name: parsed.data.name, projectId: effectiveProjectId, pageId: parentPageId },
       {
@@ -466,7 +472,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         setRenamingId(null);
         return;
       }
-      const oldTitle = files?.find((f: any) => f.id === fileId)?.title ?? '';
+      const oldTitle = files?.find((f) => f.id === fileId)?.title ?? '';
       updateTitleMutation.mutate(
         { pageId: fileId, title: parsed.data.name, oldTitle },
         { onSuccess: () => setRenamingId(null) },
@@ -480,7 +486,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   const handleDelete = useCallback(
     (fileId: string) => {
       const target =
-        files?.find((f: any) => f.id === fileId) ||
+        files?.find((f) => f.id === fileId) ||
         (fileId === parentPageId || fileId === mainFileId ? { id: fileId, title: 'main.tex' } : null);
       setFileToDelete(target || { id: fileId, title: 'document.tex' });
     },
@@ -509,7 +515,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     (fileId: string) => {
       if (!parentPageId) return;
       const targetFile =
-        files?.find((f: any) => f.id === fileId) ||
+        files?.find((f) => f.id === fileId) ||
         (fileId === parentPageId ? parentPage : null);
       if (targetFile) {
         const rawTitle = targetFile.title || 'main.tex';
@@ -569,7 +575,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       }
 
       // TeX file node
-      const activeId = activeFilePage?.id ?? (searchParams.get('file') || pageId);
+      const activeId = activeTabId || activeFilePage?.id || searchParams.get('file') || pageId;
       const isMain = Boolean(
         mainFileId
           ? node.id === mainFileId
@@ -646,7 +652,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
   return (
     <>
-      <div className="w-full h-full flex flex-col select-none text-sm bg-transparent">
+      <div className="w-full h-full flex flex-col select-none text-sm bg-surface">
         {/* Hidden upload inputs */}
         <input
           id="editor-combined-file-upload"

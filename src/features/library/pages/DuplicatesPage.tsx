@@ -29,8 +29,8 @@ import {
   libraryIllustrationStyles,
 } from '../components/content/LibraryIllustrations';
 import {
-  useDuplicateGroupsQuery,
-  useMergeDuplicatesMutation,
+  useDuplicateGroups,
+  useMergeDuplicates,
 } from '../data';
 import { useLibrarySidebarStore, useLibraryViewStore } from '../store/library-ui.store';
 import { inspectItemDifferences } from '../domain/diff';
@@ -146,8 +146,8 @@ export function DuplicatesPage() {
   const setIsInspectorOpen = useLibraryViewStore((s) => s.setIsInspectorOpen);
 
   // Curation Queries & Mutations
-  const { data, isLoading, isError, error, refetch } = useDuplicateGroupsQuery(effectiveScopeId);
-  const mergeMutation = useMergeDuplicatesMutation(effectiveScopeId);
+  const { data, isLoading, isError, error, refetch } = useDuplicateGroups(effectiveScopeId);
+  const mergeMutation = useMergeDuplicates(effectiveScopeId);
 
   // Local state
   const [dismissedGroupKeys, setDismissedGroupKeys] = useState<Set<string>>(new Set());

@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useState, useRef, useMemo } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui";
-import { Textarea } from "@/shared/components/ui";
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { Button } from '@/shared/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Textarea } from '@/shared/components/ui/textarea';
 import { SmilePlus, MessageSquare, History, ListFilter, Activity as ActivityIcon } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 

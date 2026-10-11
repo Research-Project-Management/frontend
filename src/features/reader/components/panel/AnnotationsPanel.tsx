@@ -18,14 +18,9 @@ import {
   Download,
   StickyNote,
 } from 'lucide-react';
-import {
-  Button,
-  Form,
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Form } from '@/shared/components/ui/form';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/shared/components/ui/dropdown-menu';
 import { cn } from "@/shared/lib/utils";
 import { useAnnotations } from '../../hooks/use-annotations';
 import { annotationFormSchema } from '../../schemas/reader.schema';

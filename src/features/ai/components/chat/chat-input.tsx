@@ -1,22 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import {
-  Textarea,
-  Switch,
-  Input,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@/shared/components/ui";
+import { Textarea } from '@/shared/components/ui/textarea';
+import { Switch } from '@/shared/components/ui/switch';
+import { Input } from '@/shared/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
 import {
   ArrowUp,
   Square,
@@ -177,7 +167,8 @@ export function ChatInput({
     clearSources,
     setFluxDataEnabled,
   } = useChatMode();
-  const { isSourcesOpen, toggleSources } = useAiUIStore();
+  const isSourcesOpen = useAiUIStore((s) => s.isSourcesOpen);
+  const toggleSources = useAiUIStore((s) => s.toggleSources);
 
   const [message, setMessage] = useState(initialMessage || '');
   const [webSearch, setWebSearch] = useState(Boolean(initialWebSearch));

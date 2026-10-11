@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
-import { Button } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
 import { computeDraftDiffSummary } from '@/features/editor/domain/document/draft-diff';
 
 export interface DraftRecoveryDialogProps {

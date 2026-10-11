@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import { useForgotPassword } from '../hooks/use-forgot-password';
-import { Button } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 
 const ForgotPasswordPage = () => {
   const {

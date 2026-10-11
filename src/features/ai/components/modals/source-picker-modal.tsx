@@ -17,11 +17,11 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from "@/shared/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
-import { Checkbox } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
-import { Skeleton } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Input } from '@/shared/components/ui/input';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useChatMode } from '../../hooks/use-chat-mode';
 import { useCollections, useItems as usePapers } from '@/features/library/data/catalog/catalog.queries';
 import type { Collection, Item as Paper } from '@/features/library/types';

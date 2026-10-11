@@ -387,7 +387,7 @@ export default function VersionHistoryModal({
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setConfirmRevertVersion(isConfirmingRevert ? null : ver.versionNumber)}
-                                className="h-7 px-2.5 text-xs text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 cursor-pointer gap-1"
+                                className="h-7 px-2.5 text-xs text-warning hover:bg-warning/10 cursor-pointer gap-1"
                                 title="Revert to this version"
                               >
                                 <RotateCcw className="size-3.5" />
@@ -427,9 +427,9 @@ export default function VersionHistoryModal({
 
                         {/* Inline Revert Confirmation Warning */}
                         {isConfirmingRevert && (
-                          <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/25 text-xs space-y-2 animate-in fade-in duration-150">
-                            <div className="flex items-start gap-2 text-amber-700 dark:text-amber-300">
-                              <AlertCircle className="size-4 shrink-0 mt-0.5 text-amber-500" />
+                          <div className="mt-3 p-3 rounded-lg bg-warning/10 border border-warning/25 text-xs space-y-2 animate-in fade-in duration-150">
+                            <div className="flex items-start gap-2 text-warning">
+                              <AlertCircle className="size-4 shrink-0 mt-0.5 text-warning" />
                               <span>
                                 Reverting to <strong>Version {ver.versionNumber}</strong> will create a new <strong>Version {nextVersionNumber}</strong> containing this exact snapshot.
                               </span>
@@ -447,7 +447,7 @@ export default function VersionHistoryModal({
                                 size="sm"
                                 disabled={isReverting}
                                 onClick={() => handleRevertConfirm(ver.versionNumber)}
-                                className="h-7 text-xs font-medium bg-amber-600 hover:bg-amber-700 text-white gap-1"
+                                className="h-7 text-xs font-medium bg-warning hover:bg-warning/90 text-primary-foreground gap-1"
                               >
                                 {isReverting ? (
                                   <Loader2 className="size-3 animate-spin" />

@@ -1,0 +1,43 @@
+The following theorems show that under mild assumptions on the activation function and the input, gradient pair, the first-order gradient is a good approximation to the true gradient.
+
+
+\begin{restatable}{theorem}{firstorderactbckprop}\label{thm:first_order_act_backprop}    
+%\end{restatable}
+%\begin
+For any $\epsilon > 0$, $B_y, B_{act} > 0$, consider a second-order differentiable activation function $\act: \RR \to \RR$, with $\partial^2 \act (x) / \partial (x^2) $ bounded by $B_{act}$ for each $x \in \RR$. Then, for any  input $\vx \in \RR^{\aux{D}}$ and gradient $\losspartial{\vy} \in \RR^{\aux{D}}$ with $\norm{\losspartial{\vy}}_{2} \le B_y$, the following holds true:
+\begin{align*}
+    \norm{ \losspartial{ \vx } - \Hat{ \losspartial{ \vx } } }_{2} \le \mathcal{O}( B_{act} B_y^2 \epsilon  ),
+\end{align*}
+where $\losspartial{ \vx }, \Hat{ \losspartial{ \vx } }$ have been defined using $\vx, \losspartial{\vy}$, and $\epsilon$ in \cref{def:act_backprop,def:approx_act_backprop}.
+%\end{theorem}
+\end{restatable}
+
+
+For $\mathrm{ReLU}$ activation, which is not second-order differentiable at $0$, we instead bound the difference between $\losspartial{ \vx }, \Hat{ \losspartial{ \vx } }$ by defining some form of alignment between input and  gradient pair $\vx, \losspartial{\vy}$.
+
+\begin{definition}[$(\epsilon, \rho)$-alignment]\label{def:eps-rho_aligned}
+Input and gradient $\vx, \losspartial{\vy} \in \RR^{\aux{D}}$ are said to be $(\epsilon, \rho)$-aligned, if there exist a set $C \subseteq [\aux{D}]$, with  $\abs{C} \ge (1 - \rho) \aux{D}$, such that for each $i$ in $C$, $\abs{x_i} > \epsilon \abs{ (\losspartial{\vy} )_i }.$
+\end{definition}
+
+$\epsilon$ controls the fraction of coordinates where $\abs{x_i} \leq \epsilon \abs{ (\losspartial{\vy} )_i }$. As $\epsilon \to 0$, $\rho \to 0$  as well for bounded gradients. 
+
+%\begin{example}
+\begin{restatable}{example}{examplealignment}
+    For any $B_{min}, B_{max} > 0$, all inputs $\vx$ that satisfy $\min_i \abs{x_i} > B_{min}$ , and gradients $\losspartial{\vy}$ that satisfy $\max_j \abs{(\losspartial{\vy})_j} \le B_{max}$, are $( B_{min} / B_{max}, 0)$-aligned.
+\end{restatable}
+    
+%\end{example}
+
+
+%\begin{theorem}\label{thm:first_order_act_backprop_relu}
+\begin{restatable}{theorem}{firstorderactbckproprelu}\label{thm:first_order_act_backprop_relu}
+For any $\epsilon, \rho > 0$ and $B_y > 0$, for any input $\vx \in \RR^{\aux{D}}$ and gradient $\losspartial{\vy} \in \RR^{\aux{D}}$, with $\norm{\losspartial{\vy}}_{\infty} \le B_y$,  that are $(\epsilon, \rho)$-aligned by \cref{def:eps-rho_aligned}, 
+\begin{align*}
+    \norm{ \losspartial{ \vx } - \Hat{ \losspartial{ \vx } } }_{2} \le \mathcal{O}( B_y \sqrt{\rho \aux{D}} ).
+\end{align*}
+where $\losspartial{ \vx }, \Hat{ \losspartial{ \vx } }$ have been defined using $\vx, \losspartial{\vy}$, $\epsilon$ and $\act = \mathrm{ReLU}$ in \cref{def:act_backprop,def:approx_act_backprop}.
+%\end{theorem}
+\end{restatable}
+
+
+%For example, for all inputs $\vx$ that additionally satisfy $\min_i \abs{x_i} \ge B_{x}$ for some $B_x > 0$, we can set $\epsilon \leq \frac{B_y}{B_x}$

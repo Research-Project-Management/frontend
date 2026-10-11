@@ -10,16 +10,7 @@
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import {
-  MenubarMenu,
-  MenubarTrigger,
-  MenubarContent,
-  MenubarItem,
-  MenubarSub,
-  MenubarSubTrigger,
-  MenubarSubContent,
-  MenubarSeparator,
-} from "@/shared/components/ui";
+import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSub, MenubarSubTrigger, MenubarSubContent, MenubarSeparator } from '@/shared/components/ui/menubar';
 import { usePageStore } from '@/features/editor/store/editor.store';
 import { useCompileStore } from '@/features/editor/store/compiler.store';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
@@ -213,7 +204,7 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
               <FileArchive className="size-3.5 text-foreground/80 shrink-0" />
               <div className="flex flex-col">
                 <span className="font-medium whitespace-nowrap">Download Source (.zip)</span>
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap">Tải toàn bộ mã nguồn LaTeX & thư viện</span>
+                <span className="text-11 text-muted-foreground whitespace-nowrap">Tải toàn bộ mã nguồn LaTeX & thư viện</span>
               </div>
             </MenubarItem>
             <MenubarItem
@@ -224,7 +215,7 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
               <Archive className="size-3.5 text-foreground/80 shrink-0" />
               <div className="flex flex-col">
                 <span className="font-medium whitespace-nowrap">Download arXiv submission (.zip)</span>
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap">Gói chuẩn hóa cho arXiv / tạp chí</span>
+                <span className="text-11 text-muted-foreground whitespace-nowrap">Gói chuẩn hóa cho arXiv / tạp chí</span>
               </div>
             </MenubarItem>
             <MenubarItem
@@ -235,7 +226,7 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
               <FileText className="size-3.5 text-foreground/80 shrink-0" />
               <div className="flex flex-col">
                 <span className="font-medium whitespace-nowrap">Download PDF</span>
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                <span className="text-11 text-muted-foreground whitespace-nowrap">
                   {pdfUrl ? 'Tệp PDF đã biên dịch mới nhất' : 'Cần biên dịch tài liệu trước'}
                 </span>
               </div>

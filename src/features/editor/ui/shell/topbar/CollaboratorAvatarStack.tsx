@@ -151,7 +151,7 @@ export function CollaboratorAvatarStack({
                 ) : (
                   <span
                     style={{ backgroundColor: color }}
-                    className="size-full rounded-full flex items-center justify-center font-semibold text-[10px] text-white tracking-wider"
+                    className="size-full rounded-full flex items-center justify-center font-semibold text-11 text-white tracking-wider"
                   >
                     {initials}
                   </span>
@@ -183,7 +183,7 @@ export function CollaboratorAvatarStack({
                 </span>
                 <span
                   className={cn(
-                    "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0",
+                    "text-11 px-1.5 py-0.5 rounded-full font-medium shrink-0",
                     c.isOnline
                       ? "bg-success/15 text-success"
                       : "bg-muted text-muted-foreground"
@@ -205,14 +205,14 @@ export function CollaboratorAvatarStack({
                 <FileCode className="size-3 shrink-0 text-foreground/70" />
                 <span className="truncate">{c.activeFile || 'Current Document'}</span>
                 {c.cursor && (
-                  <span className="font-mono text-[10px] text-primary font-semibold shrink-0 ml-auto">
+                  <span className="font-mono text-11 text-primary font-semibold shrink-0 ml-auto">
                     L{c.cursor.line}:C{c.cursor.column}
                   </span>
                 )}
               </div>
 
               {/* Action Hint */}
-              <div className="text-[10px] text-muted-foreground/80 italic pt-1 border-t border-border/40 flex items-center gap-1">
+              <div className="text-11 text-muted-foreground/80 italic pt-1 border-t border-border/40 flex items-center gap-1">
                 <LocateFixed className="size-2.5 shrink-0 text-primary" />
                 <span>Click avatar to jump to cursor</span>
               </div>
@@ -228,7 +228,7 @@ export function CollaboratorAvatarStack({
             <button
               type="button"
               aria-label={`+${remainingCount} more collaborators`}
-              className="relative size-7 rounded-full border-2 border-background bg-muted hover:bg-muted/80 text-foreground font-semibold text-[10px] flex items-center justify-center shrink-0 cursor-pointer outline-none transition-colors hover:z-30 focus-visible:ring-1 focus-visible:ring-primary select-none"
+              className="relative size-7 rounded-full border-2 border-background bg-muted hover:bg-muted/80 text-foreground font-semibold text-11 flex items-center justify-center shrink-0 cursor-pointer outline-none transition-colors hover:z-30 focus-visible:ring-1 focus-visible:ring-primary select-none"
             >
               +{remainingCount}
             </button>
@@ -288,7 +288,7 @@ export function CollaboratorAvatarStack({
                         <div className="font-medium text-foreground truncate">
                           {c.name}
                         </div>
-                        <div className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
+                        <div className="text-11 text-muted-foreground truncate flex items-center gap-1">
                           <span className="truncate">{c.activeFile || 'Document'}</span>
                           {c.cursor && (
                             <span className="font-mono text-primary shrink-0">

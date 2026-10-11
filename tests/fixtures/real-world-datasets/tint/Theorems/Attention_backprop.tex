@@ -1,0 +1,24 @@
+In the upcoming theorem, we formally show that if on a given sequence $\{\vx_t\}_{t \le \aux{T}}$, for all token positions all the attention heads in a self-attention layer primarily attend to a single token, then the approximate gradient $\Hat{\losspartial{\vx_t}}$ is  close to the true gradient $\losspartial{\vx_t}$ at each position $t$. 
+
+\begin{definition}[$\varepsilon$-hard attention head]\label{def:hard_attn}
+For the Self-Attention layer of $\aux{H}$ heads in \cref{def:self-attn}, on a given input sequence $\{\vx_t\}_{t=1}^{\aux{T}}$, an attention head $h \le \aux{H}$ is defined to be $\varepsilon$-hard on the input sequence, if for all positions $t \le \aux{T}$, there exists a position $t_0 \le \aux{T}$ such that $a_{t, t_0}^h \ge 1 - \varepsilon$.
+\end{definition}
+
+
+%\begin{definition}
+%g
+%\end{definition}
+
+
+%\begin{theorem}\label{thm:attn_backprop}
+\begin{restatable}{theorem}{boundsofthardattnt}\label{thm:attn_backprop}
+With the notations in \cref{def:self-attn,def:self-attn-backprop,def:self-attn-appr-backprop}, if on a given input sequence $\{\vx_t\}_{t=1}^{\aux{T}}$, with its query, key, and value vectors $\{\vq_t, \vk_t, \vv_t\}_{t=1}^{\aux{T}}$, all the $\aux{H}$ attention heads are $\varepsilon$-hard for some $\varepsilon > 0$, then for a given sequence of gradients $\{\losspartial{\vy_t}\}_{t=1}^{\aux{T}}$, 
+\begin{align*}
+    \norm{\losspartial{\vq_t}}_2, \norm{\losspartial{\vk_t}}_2 \le \mathcal{O}( \varepsilon B_x^2 B^2_w B_y ), \quad \text{ for all } t \le \aux{T},
+\end{align*}
+where $B_x = \max_{t \le \aux{T}} \norm{\vx_t}_2$, $B_y = \max_{t \le \aux{T}} \norm{ \losspartial{\vy_t} }_2$, and $B_w = \max\{ \norm{\mW_K}_2, \norm{\mW_Q}_2, \norm{\mW_V}_2, \norm{\vb_V}_2, \norm{\vb_K}_2, \norm{\vb_V}_2 \} $.
+
+This implies, for each position $t$, $\norm{ \Hat{\losspartial{\vx_t}} - \losspartial{\vx_t} }_2 \le \mathcal{O}(\varepsilon B_x^2 B_w^3 B_y).$
+%$\max\{ \norm{\mW_K}_2, \norm{\mW_V}_2, \norm{\vb_K}_2, \norm{\vb_V}_2 \}$,  
+\end{restatable}
+%\end{theorem}

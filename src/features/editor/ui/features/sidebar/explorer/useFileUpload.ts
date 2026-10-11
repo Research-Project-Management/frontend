@@ -12,13 +12,23 @@ import { extractProjectId } from '@/features/editor/domain/types';
 export interface UseFileUploadOptions {
   parentPageId: string | null;
   projectId: string;
-  parentPage: any;
-  files: any[] | undefined;
+  parentPage: Parameters<typeof extractProjectId>[0];
+  files: Array<{ id: string; title: string }> | undefined;
   projectFiles: StorageItem[] | undefined;
-  createFileMutation: any;
-  uploadFile: any;
-  createFolder: any;
-  updateContentMutation: any;
+  createFileMutation: {
+    mutate: (vars: { parentPageId: string; title: string; content?: string }, opts?: { onSettled?: () => void }) => void;
+    mutateAsync: (vars: { parentPageId: string; title: string; content?: string }) => Promise<{ id: string }>;
+  };
+  uploadFile: {
+    mutate: (vars: { file: File; projectId: string; pageId: string; parentId?: string }, opts?: { onSettled?: () => void }) => void;
+    mutateAsync: (vars: { file: File; projectId: string; pageId: string; parentId?: string }) => Promise<unknown>;
+  };
+  createFolder: {
+    mutateAsync: (vars: { name: string; projectId: string; parentId?: string; pageId: string }) => Promise<unknown>;
+  };
+  updateContentMutation: {
+    mutateAsync: (vars: { pageId: string; content: string }) => Promise<unknown>;
+  };
   setSearchParams: (params: Record<string, string>) => void;
 }
 
@@ -48,8 +58,8 @@ export function useFileUpload({
   // Build a set of existing file names for duplicate detection (case-insensitive)
   const existingNames = useMemo(() => {
     const names = new Set<string>();
-    files?.forEach((f: any) => names.add(f.title.toLowerCase()));
-    projectFiles?.forEach((f: any) => {
+    files?.forEach((f) => names.add(f.title.toLowerCase()));
+    projectFiles?.forEach((f) => {
       if (!f.isFolder) names.add(f.filename.toLowerCase());
     });
     return names;
@@ -106,7 +116,7 @@ export function useFileUpload({
     const picked = Array.from(e.target.files ?? []);
     e.target.value = '';
     if (!picked.length) return;
-    setPendingUploads(markDuplicates(picked.map((f: any) => ({ file: f, name: f.name }))));
+    setPendingUploads(markDuplicates(picked.map((f) => ({ file: f, name: f.name }))));
     setUploadDialogOpen(true);
   };
 
@@ -186,7 +196,7 @@ export function useFileUpload({
         plainFiles.push(...Array.from(e.dataTransfer.files));
       }
 
-      plainFiles.forEach((f: any) => allItems.push({ file: f, name: f.name }));
+      plainFiles.forEach((f) => allItems.push({ file: f, name: f.name }));
 
       for (const dir of folderEntries) {
         const folderFiles = await readEntriesRecursively(dir, dir.name);
@@ -288,9 +298,9 @@ export function useFileUpload({
             toast.success(`Unpacked ${parsed.totalFiles} files from ${zipItem.file.name}`, {
               id: `zip-${zipItem.name}`,
             });
-          } catch (err: any) {
+          } catch (err: unknown) {
             console.error('Failed to unpack zip:', err);
-            toast.error(`Failed to unpack ${zipItem.file.name}: ${err?.message || 'Unknown error'}`, {
+            toast.error(`Failed to unpack ${zipItem.file.name}: ${(err as Error)?.message || 'Unknown error'}`, {
               id: `zip-${zipItem.name}`,
             });
           }
@@ -346,7 +356,7 @@ export function useFileUpload({
 
           if (conflict === 'duplicate' && resolution === 'overwrite') {
             const existingPage = files?.find(
-              (f: any) => f.title.toLowerCase() === file.name.toLowerCase(),
+              (f) => f.title.toLowerCase() === file.name.toLowerCase(),
             );
             if (existingPage) {
               await updateContentMutation.mutateAsync({
@@ -452,7 +462,7 @@ export function useFileUpload({
 
                 if (conflict === 'duplicate' && resolution === 'overwrite') {
                   const existingPage = files?.find(
-                    (f: any) => f.title.toLowerCase() === fullTitle.toLowerCase(),
+                    (f) => f.title.toLowerCase() === fullTitle.toLowerCase(),
                   );
                   if (existingPage) {
                     await updateContentMutation.mutateAsync({

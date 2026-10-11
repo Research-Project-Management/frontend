@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { useResetPassword } from '../hooks/use-reset-password';
-import { Button } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 
 const ResetPasswordPage = () => {
   const {

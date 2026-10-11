@@ -75,18 +75,18 @@ const TabItem = React.memo(function TabItem({ tab, isActive, rootPageId, canClos
       onAuxClick={handleAuxClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        'group/tab relative flex items-center gap-1.5 h-6.5 px-2 rounded-xs cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
-        'min-w-0 max-w-[180px] shrink-0 transition-colors motion-reduce:transition-none text-12 border border-transparent',
+        'group/tab relative flex items-center gap-1.5 h-full px-3 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
+        'min-w-0 max-w-[200px] shrink-0 transition-colors motion-reduce:transition-none text-12 border-r border-border/60',
         isActive
-          ? 'bg-canvas text-foreground font-medium shadow-2xs border-border/70 relative z-10'
-          : 'bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+          ? 'bg-canvas text-foreground font-medium z-10 before:absolute before:top-0 before:inset-x-0 before:h-[2px] before:bg-primary before:z-20 after:absolute after:bottom-[-1px] after:inset-x-0 after:h-[1px] after:bg-canvas after:z-20'
+          : 'bg-surface/50 text-muted-foreground hover:bg-muted/40 hover:text-foreground',
       )}
     >
       {/* File Document Icon - Clean project style */}
-      <FileText className="size-3.5 shrink-0 text-foreground" />
+      <FileText className={cn("size-3.5 shrink-0", isActive ? "text-primary" : "text-muted-foreground/80 group-hover/tab:text-foreground")} />
 
       {/* Title */}
-      <span className="text-12 font-mono truncate leading-normal min-w-0">{tab.title}</span>
+      <span className="text-[12px] font-sans font-medium tracking-tight truncate leading-none min-w-0">{tab.title}</span>
 
       {/* Close button (only shown when canClose is true) */}
       {canClose && (
@@ -100,8 +100,10 @@ const TabItem = React.memo(function TabItem({ tab, isActive, rootPageId, canClos
           onAuxClick={(e) => e.preventDefault()}
           className={cn(
             "ml-auto shrink-0 relative flex items-center justify-center rounded-xs transition-opacity motion-reduce:transition-none outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer hover:bg-muted text-foreground",
-            "size-3.5 after:absolute after:-inset-1.5 after:content-['']",
-            "opacity-0 group-hover/tab:opacity-70 group-hover/tab:hover:opacity-100 group-focus-within/tab:opacity-70 focus-visible:opacity-100",
+            "size-4 p-0.5",
+            isActive
+              ? "opacity-60 hover:opacity-100"
+              : "opacity-0 group-hover/tab:opacity-60 group-hover/tab:hover:opacity-100 group-focus-within/tab:opacity-60 focus-visible:opacity-100",
           )}
         >
           <X className="size-3 shrink-0" />
@@ -253,7 +255,12 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
   if (tabs.length === 0) return null;
 
   return (
-    <div className="flex items-center h-9 bg-surface select-none border-b border-border w-full px-2">
+    <div className="flex items-center h-9 bg-surface select-none border-b border-border w-full px-0 relative">
+      {/* ── Mode Switcher (Overleaf Parity: Top-left of editing pane) ── */}
+      <div className="h-full flex items-center px-2.5 border-r border-border/60 shrink-0 bg-surface/40">
+        <SourceVisualSwitcher />
+      </div>
+
       {/* ── File tabs ── */}
       <LayoutGroup id={`tab-bar-${rootPageId}`}>
         <div
@@ -262,7 +269,7 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
           aria-label="Open document tabs"
           onKeyDown={handleTabListKeyDown}
           onWheel={handleWheel}
-          className="flex h-full overflow-x-auto shrink min-w-0 scrollbar-none items-center gap-1"
+          className="flex h-full overflow-x-auto shrink min-w-0 scrollbar-none items-stretch"
         >
           {tabs.map((tab) => (
             <TabItem
@@ -278,11 +285,12 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
         </div>
       </LayoutGroup>
 
-      {/* ── Right side: Source / Visual Switcher + Actions (Overleaf Parity) ── */}
-      <div className="ml-auto flex items-center shrink-0 pl-2 gap-1">
-        <SourceVisualSwitcher />
-        {rightSlot}
-      </div>
+      {/* ── Right side: Pane Actions (Split, etc.) ── */}
+      {rightSlot && (
+        <div className="ml-auto flex items-center h-full shrink-0 px-1.5 gap-1 border-l border-border/40">
+          {rightSlot}
+        </div>
+      )}
     </div>
   );
 }

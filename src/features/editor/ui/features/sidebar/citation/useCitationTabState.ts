@@ -301,7 +301,7 @@ export function useCitationTabState() {
 
   const handleCopyKey = useCallback((key: string) => {
     navigator.clipboard.writeText(`\\cite{${key}}`);
-    toast.success(`Copied \\cite{${key}} to clipboard`);
+    toast.success(`Copied \\cite{${key}} to clipboard`, { id: 'copy-citation-key' });
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 1500);
   }, []);
@@ -323,7 +323,6 @@ export function useCitationTabState() {
     if (engine) {
       engine.insertText(`\\cite{${key}}`);
       engine.focus();
-      toast.success(`Inserted \\cite{${key}}`);
       if (refreshContent) refreshContent();
       editorCommandBus.dispatch({
         type: 'editor:insert-citation',
@@ -340,7 +339,6 @@ export function useCitationTabState() {
       textInserted: false,
       entry: entryPayload,
     });
-    toast.success(`Inserted \\cite{${key}}`);
   }, [allAvailableEntries, engine, refreshContent]);
 
   const openPickerModal = useCallback((initialQuery?: unknown, initialKey?: unknown) => {

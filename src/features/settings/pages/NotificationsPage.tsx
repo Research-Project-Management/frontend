@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { Bell } from 'lucide-react';
-import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
+import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
 import NotificationsTab from '../components/notifications/NotificationsTab';
 
 export default function NotificationsPage() {

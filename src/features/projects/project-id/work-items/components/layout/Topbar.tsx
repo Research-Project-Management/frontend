@@ -24,8 +24,8 @@ import type {
   Filters,
   ProjectMember,
 } from '../../types/work-item.types';
-import { Button } from "@/shared/components/ui";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from "@/shared/lib/utils";
 import type { AssigneeFilterOption, ViewMode } from '../../hooks/use-topbar';
 import type { SavedViewRecord } from '../../services/view.service';

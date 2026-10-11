@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * use-suggestion.ts
@@ -40,11 +40,11 @@ export const useCreateSuggestion = () => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
       queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
       if (!variables?.silent) {
-        toast.success('Suggestion submitted');
+        toast.success('Suggestion submitted', { id: 'submit-suggestion' });
       }
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to submit suggestion');
+    onError: (err: unknown) => {
+      toast.error((err as Error)?.message || 'Failed to submit suggestion', { id: 'submit-suggestion' });
     },
   });
 };
@@ -66,21 +66,21 @@ export const useAcceptSuggestion = () => {
 
       return { previousData, pageId };
     },
-    onError: (_err, _vars, context) => {
+    onError: (_err, vars, context) => {
       if (context?.previousData) {
         context.previousData.forEach(([key, val]) => {
           queryClient.setQueryData(key, val);
         });
       }
-      toast.error('Failed to accept suggestion');
+      toast.error('Failed to accept suggestion', { id: `sug-${vars.suggestionId}` });
     },
     onSettled: (_data, _err, vars) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', vars.pageId] });
       queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
       queryClient.invalidateQueries({ queryKey: ['pages', 'detail', vars.pageId] });
     },
-    onSuccess: () => {
-      toast.success('Suggestion accepted');
+    onSuccess: (_data, vars) => {
+      toast.success('Suggestion accepted', { id: `sug-${vars.suggestionId}` });
     },
   });
 };
@@ -102,20 +102,20 @@ export const useRejectSuggestion = () => {
 
       return { previousData, pageId };
     },
-    onError: (_err, _vars, context) => {
+    onError: (_err, vars, context) => {
       if (context?.previousData) {
         context.previousData.forEach(([key, val]) => {
           queryClient.setQueryData(key, val);
         });
       }
-      toast.error('Failed to reject suggestion');
+      toast.error('Failed to reject suggestion', { id: `sug-${vars.suggestionId}` });
     },
     onSettled: (_data, _err, vars) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', vars.pageId] });
       queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
     },
-    onSuccess: () => {
-      toast.info('Suggestion rejected');
+    onSuccess: (_data, vars) => {
+      toast.info('Suggestion rejected', { id: `sug-${vars.suggestionId}` });
     },
   });
 };
@@ -130,10 +130,10 @@ export const useAcceptAllSuggestions = () => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
       queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
       queryClient.invalidateQueries({ queryKey: ['pages', 'detail', variables.pageId] });
-      toast.success('All suggestions accepted');
+      toast.success('All suggestions accepted', { id: 'sug-bulk' });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to accept all suggestions');
+    onError: (err: unknown) => {
+      toast.error((err as Error)?.message || 'Failed to accept all suggestions', { id: 'sug-bulk' });
     },
   });
 };
@@ -147,10 +147,10 @@ export const useRejectAllSuggestions = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
       queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
-      toast.info('All suggestions rejected');
+      toast.info('All suggestions rejected', { id: 'sug-bulk' });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to reject all suggestions');
+    onError: (err: unknown) => {
+      toast.error((err as Error)?.message || 'Failed to reject all suggestions', { id: 'sug-bulk' });
     },
   });
 };

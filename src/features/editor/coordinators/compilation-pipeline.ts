@@ -286,8 +286,8 @@ export const LatexCompilerEngine = {
         flushedFileIds,
         flushErrors,
       };
-    } catch (err: any) {
-      if (err?.name === 'AbortError' || currentSignal.aborted) {
+    } catch (err: unknown) {
+      if ((err as { name?: string })?.name === 'AbortError' || currentSignal.aborted) {
         logger.debug('[LatexCompilerEngine] Previous compile request aborted in favor of newer request.');
         return {
           success: false,

@@ -1,0 +1,119 @@
+%With the notations in \cref{def:self-attn_construct}, in the following theorem, we consider  a linear self-attention layer with $\simu{H}$ attention heads that takes a sequence $\{\Hat{\ve}_t\in\RR^\simu{D}\}_{t \le \simu{T}}$ as input and outputs $\{ \Tilde{\ve}^{linear}_t \in \RR^\simu{D} \}_{t \le \simu{T}}$.
+
+\paragraph{Bounded parameters and input sequence: } We define a linear self-attention layer to be $B_w$-bounded, if the $\ell_2$ norms of all the parameters are bounded by $B_w$. Going by \cref{def:self-attn_construct}, this implies $$\max \{ \norm{ \simuw{\mW}_Q } _2,  \norm{ \simuw{\mW}_K }_2, \norm{ \simuw{\mW}_V }_2 \} \le B_w , \quad \max \{\norm{ \simuw{\vb}_Q } _2,  \norm{ \simuw{\vb}_K }_2, \norm{ \simuw{\vb}_V }_2 \} \le B_w$$  $$\max \{ \norm{ \mW_Q^p } _2,  \norm{ \mW_K^p }_2, \norm{ \mW_V^p}_2 \} \le B_w, \quad \max \{ \norm{ \lambda^Q } _2,  \norm{ \lambda^K }_2, \norm{ \lambda^V }_2  \}  \le B_w.$$ Furthermore, we define an input sequence $\{ \Hat{\ve}_t \}_{t \le \simu{T}}$ to $B_x$-bounded, if $\norm{\Hat{\ve}_t}_2 \le B_x$ for all $t$.
+
+Recall from the main paper (\cref{sec:exposition_linear_forward}), we used Linear \simulator{} Self-Attention layer to represent the linear operations of the auxiliary model.
+In the following theorem, we show that a linear attention layer can be represented as a softmax attention layer that uses an additional attention head and an extra token $\vu$, followed by a linear layer. 
+Therefore, replacing softmax attention with linear attention does not deviate too far from the canonical transformer.
+We use the Linear \simulator{} Self-Attention layers in several places throughout the model.
+%\snote{add something about $\tilde\ve$ here}
+
+\begin{theorem}\label{thm:linear_softmax}
+ For any $B_w > 0$, consider a $B_w$-bounded linear self-attention layer that returns $\{ \Tilde{\ve}^{linear}_t \in \RR^\simu{D} \}_{t \le \simu{T}}$ on any input $\{\Hat{\ve}_t\in\RR^\simu{D}\}_{t \le \simu{T}}$.
+ Consider a softmax self-attention layer with $2\simu{H}$ attention heads and an additional token $\vu \in\RR^{2\simu{D}}$ such that for any $B_x$-bounded input $\{ \Hat{\ve}_t \}_{t \le \simu{T}}$, it takes a modified input sequence $\{ \Bar{\ve}_1, \cdots, \Bar{\ve}_{\simu{T}}, \vu\}$, and returns $\{ \Tilde{\ve}^{softmax}_t \in \RR^{ 2\simu{D} } \}_{t \le \simu{T}}$.
+ Each modified input token $\Bar{\ve}_t \in \RR^{2\simu{D}}$ is obtained by concatenating additional $0$s to $\Hat{\ve}_t$.
+ Then, for any $B_x > 0$, and $\epsilon \le \mathcal{O}(\simu{T}^{-2} B_w^{-5} B_x^{-5})$, there exists $\mW_O \in \RR^{\simu{D} \times 2\simu{D}}$ and such a softmax self-attention layer such that 
+\begin{align*}
+    \norm{ \mW_O \Tilde{\ve}^{softmax}_t - \Tilde{\ve}^{linear}_t }_2 \le \mathcal{O}( \sqrt{\epsilon} ),
+\end{align*}
+for all $t \le \simu{T}$. 
+%For any $\epsilon > 0$ and any linear self-attention layer there exists a softmax self-attention layer that can represent the linear self-attention layer with error $\mathcal{O}(\epsilon)$, using an additional attention head and an additional token in the input sequence. 
+\end{theorem}
+
+
+\begin{proof}
+   
+
+    Consider an input sequence $\{\vx_t\}_{t \le \simu{T}}$.
+    Let the attention scores of any linear head $h \le \simu{H}$ in the linear attention layer be given by $\{a^{h}_{t, j}\}_{j \le \simu{T}},$ at any given position $t$. Additionally, let the value vectors for the linear attention be given by $\vv_t$. To repeat our self-attention definition, the output of the attention layer at any position $t$ is given by $\attmerge (\{ \Tilde{\ve}^{linear, h}_t \}_{h \le \simu{H}} )$, where
+    \begin{align*}
+        \Tilde{\ve}^{linear, h}_t = \sum_{ j \le \simu{T}} a^h_{t, j} \vv^h_j.
+    \end{align*}
+
+    
+    Under our assumption, $B_w$ denotes the maximum $\ell_2$ norm of all the parameters in the linear self-attention layer and $B_x$ the maximum $\ell_2$ norm in the input sequence, i.e. $\max_{t \le \simu{T}} \norm{\vx_t}_2 \le B_x$. With a simple application of Cauchy-Schwartz inequality, we can show that $\max_{j \le \simu{T}} |a^{h}_{t, j}| \le \mathcal{O}(B_w^2 B_x^2), $ and $\max_{t \le \simu{T}} \norm{\vv^h_t}_2 \le \mathcal{O}(B_w B_x).$
+
+    
+    For  $\epsilon \le \mathcal{O} (\simu{T}^{-10/9} B_w^{-40/9} B_x^{-40/9} ) $, we can then use \cref{lem:softmax_appr} to represent for each $t, j \le \simu{T}$,
+    \begin{align*}
+         a^{h}_{t, j} &=  \frac{ \epsilon^{-3} e^{ 
+\epsilon a_{t, j} } }{ \sum_{ t' \le \simu{T} } e^{ \epsilon a^{h}_{t, t'}  } + e^{ -2 \log \epsilon } } - \epsilon^{-1} + \mathcal{O}\left( \epsilon(  \simu{T} + a^{h}_{t, j} ) \right) \\&
+:= \epsilon^{-3} \mathrm{softmax}\left( \{  \epsilon a^{h}_{t, 1}, \epsilon a^{h}_{t, 2}, \cdots, \epsilon a^{h}_{t, \simu{T}}, -2 \log \epsilon \} \right)_j - \epsilon^{-1} +  \mathcal{O}\left( \epsilon^{0.9} \right).
+    \end{align*}
+
+    %Thus, we can define $\vu$ to be a one-hot vector, containing $1$ in the additiona and extend $\Bar{e}_t$ from $\Hat{e}_t$ to contain $0$s in the additional dimensions.
+
+    \paragraph{Softmax attention construction:} We define $\vu$, and the query and key parameters of the softmax attention layer such that for the first $\simu{H}$ attention heads,  the query-key dot products for all the attention heads between any pairs $\{(\Bar{\ve}_t, \Bar{\ve}_j)\}_{t, j \le \simu{T}}$ is given by $\{ \epsilon a^{h}_{t, j} \}_{h \le \simu{H}}$, while being $-2\log \epsilon$ between $\vu$ and any token $\Bar{\ve}_t$, with $t \le \simu{T}$. For the rest  of $\simu{H}$ attention heads, the attention scores are uniformly distributed across all pairs of tokens (attention score between any pair of tokens is given by $\frac{1}{\simu{T} + 1}$). 
+
+
+    We set the value parameters of the softmax attention layer such that at any position $t \le \simu{T}$, the value vector is given by $\attmerge( \{ \epsilon^{-3} \vv_t,  \vv_t\}).$ The value vector returned for $\vu$ contains all $0$s.
+    %$\Bar{\ve}_t$, while it returns a vector of $0$s for the token $\vu$. %\ap{finish! Should be over by 11.59 pm today}
+
+
+    \paragraph{Softmax attention computation:}  Consider an attention head $h \le \simu{H}$ in the softmax attention layer now. The output of the attention head at any position $t \le \simu{T}$ is given by
+    \begin{align*}
+        \Tilde{\ve}^{softmax, h}_t &= \sum_{j \le \simu{T}} \mathrm{softmax}\left( \{  \epsilon a^{h}_{t, 1}, \epsilon a^{h}_{t, 2}, \cdots, \epsilon a^{h}_{t, \simu{T}}, -2 \log \epsilon \} \right)_j \epsilon^{-3} \vv_j^h \\& =  \sum_{j \le \simu{T}} \left( a_{t, j}^h + \epsilon^{-1} + \mathcal{O}(\epsilon^{0.9}) \right) \vv^h_j.
+    \end{align*}
+    This has an additional $ \sum_{j \le \simu{T}} \left( \epsilon^{-1} + \mathcal{O}(\epsilon^{0.9}) \right) \vv^h_j$, compared to $\Tilde{\ve}^{linear, h}_t$. However, consider the output of the attention head $\simu{H} + h$ at the same position:
+    \begin{align*}
+        \Tilde{\ve}^{softmax, \simu{H} +  h}_t = \frac{ 1 }{ \simu{T} + 1 } \sum_{  j \le \simu{T} }   \vv^h_j.
+    \end{align*}
+
+    Hence, we can use the output matrix $\mW_O$ to get $\Tilde{\ve}^{softmax, h}_t - \frac{\simu{T}+1}{\epsilon} \Tilde{\ve}^{softmax, \simu{H} +  h}_t = \sum_{j \le \simu{T}} \left( a_{t, j}^h + \mathcal{O}(\epsilon^{0.9}) \right) \vv^h_j.$ 
+    The additional term $\mathcal{O}(\epsilon^{0.9})\sum_{  j \le \simu{T} }   \vv^h_j$ can be further shown to be $\mathcal{O}(\epsilon^{0.5})$ small with the assumed bound of $\epsilon$, since each $ \vv^h_j $ is atmost $\mathcal{O}(B_w B_x)$ in $\ell_2$ norm with a Cauchy Schwartz inequality. 
+    %This requires $\epsilon \le \mathcal{O}( B^{-9/5}_w B^{-9/5}_x \simu{T}^{-9/5}  ).$ 
+    %which is $\mathcal{O}(\epsilon)$ close to $\Tilde{\ve}^{linear, h}_t $.
+\end{proof}
+
+
+
+ \begin{lemma}\label{lem:softmax_appr}
+     For $\epsilon > 0$, $B > 0$, and a sequence $\{a_1, a_2, \cdots, a_T\}$ with each $a_i \in \RR$ and $\abs{a_i} \le B$, the following holds true for all $i \le T$,
+     \begin{align*}
+           \frac{ \epsilon^{-3} e^{ 
+\epsilon a_{i} } }{ \sum_{ t' \le T } e^{ \epsilon a_{t'}  } + e^{ -2 \log \epsilon } } = a_{i}  + \frac{1}{\epsilon} + \mathcal{O}\left( \epsilon^{0.9} \right) ,
+     \end{align*}
+     provided $\epsilon \le \mathcal{O}( T^{-10/9} B^{-20/9} ).$
+ \end{lemma}
+
+ \begin{proof}
+      We will use the following first-order Taylor expansions:
+    \begin{align}
+        &e^x = 1 + x + \mathcal{O}(x^2) \label{eq:taylor_e}. \\
+        & \frac{1}{1+x} = 1 - \mathcal{O}(x). \label{eq:taylor_inv}
+    \end{align}
+    Hence, for any $x \ll 1$, $x \approx e^x - 1.$ 
+
+    Simplifying the L.H.S. of the desired bound, we have
+    \begin{align}
+         \frac{ \epsilon^{-3} e^{ 
+\epsilon a_{i} } }{ \sum_{ t' \le T } e^{ \epsilon a_{t'}  } + e^{ -2 \log \epsilon } }  &= \frac{ \epsilon^{-3}  (1 + \epsilon a_i + \mathcal{O}(\epsilon^2 a_i^2) ) }{ \sum_{ t' \le T } (1 + \epsilon a_{t'} + \mathcal{O} (\epsilon^2 a_{t'}^2)  ) + e^{ -2 \log \epsilon } } \label{eq:softmax_step1} \\&
+= \frac{ \epsilon^{-1} +  a_i + \mathcal{O}(\epsilon a_i^2)  }{ \sum_{ t' \le T } (\epsilon^{2} + \epsilon^3 a_{t'} + \mathcal{O} (\epsilon^4 a_{t'}^2)  ) + 1 } \label{eq:softmax_step2} \\&
+= \left(  \epsilon^{-1} +  a_i + \mathcal{O}(\epsilon a_i^2) \right) \left( 1 + \mathcal{O}( \epsilon^2 T)  \right) \label{eq:softmax_step3} \\&
+= \epsilon^{-1} + a_i + \mathcal{O}( \epsilon T + a_i^2 T \epsilon^2 + a_i^2 T \epsilon^3 + \epsilon a_i^2 ) = \epsilon^{-1} + a_i +  \mathcal{O}( \epsilon^{0.9} ). \nonumber
+    \end{align}
+    We used taylor expansion of exponential function( \cref{eq:taylor_e} ) in \cref{eq:softmax_step1} to get \cref{eq:softmax_step2}, and taylor expansion of inverse function(\cref{eq:taylor_inv}) to get \cref{eq:softmax_step3} from \cref{eq:softmax_step2}. Furthermore, with the lower bound assumption on $\epsilon$, $\sum_{ t' \le T } (\epsilon^{2} + \epsilon^3 a_{t'} + \mathcal{O} (\epsilon^4 a_{t'}^2)  )$ can be shown to be atmost $3\epsilon^2T$, which amounts to $\mathcal{O}(\epsilon^2 T)$ error in \cref{eq:softmax_step3}. The final error bound has again been simplified using the lower bound assumption on $\epsilon$.
+ \end{proof}
+
+
+
+
+
+\subsection{Simulating Multiplication from \cite{akyurek2022learning}}
+
+We refer to the multiplication strategy of \cite{akyurek2022learning} at various places. 
+
+
+\begin{lemma}\label{thm:gelu_multiplication}[Lemma 4 in \cite{akyurek2022learning}]
+The $GeLU$ \cite{zzhendrycks2016gaussian} nonlinearity can be used to perform multiplication: specifically,
+\begin{align*}
+    \sqrt{\pi/2} ( GeLU(x+y) - GeLU(y) ) = xy + \mathcal{O}(x^3y^3).
+\end{align*}
+\end{lemma}
+
+Thus, to represent an element-wise product or a dot product between two sub-vectors in a token embedding, we can use a MLP with a $GeLU$ activation.
+
+%\paragraph{Non-causal attention:} Like prefix language models \citep{liu2018generating,raffel2020exploring}, the self-attention layers in TinT need to be non-causal on a prefix sub-portion of the input, specifically in modules representing descent operations, backpropagation in the language model head, and the self-attention layers of the simuiliary model. For descent operations, the gradients from the token embeddings are used to update the simuiliary model parameters stored in the prefix tokens. The backpropagation module for the language model head relies on computing the gradient at position $t$ with respect to the loss by utilizing the token embedding at position $t+1$. Finally, for the self-attention layer, the gradients propagating through position $t$ are influenced by the gradients at positions greater than or equal to $t$ (more details in \cref{sec:self-attnt-backprop}). Consequently, the attention mechanism must account for future positions during the backpropagation process.
+
+
+%To fulfill these requirements, explicit masks are employed, which serve to enable bidirectional attention solely within the portion of the input sequence used for updating the simuiliary model parameters. These masks effectively control the attention patterns, ensuring the desired non-causal behavior for the designated modules within $\textsc{TinT}$.

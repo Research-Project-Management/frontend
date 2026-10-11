@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useTransition } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
   LayoutGrid,
@@ -17,15 +18,31 @@ import {
   Copy,
   Trash2,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
-import { Button, Skeleton } from "@/shared/components/ui";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/components/ui";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
-import { PlaneErrorState, PlaneEmptyState } from "@/shared/components/ui";
-import { CreateProjectModal } from '../components/project/CreateProjectModal';
-import { UploadProjectZipModal } from '../components/project/UploadProjectZipModal';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
+const CreateProjectModal = dynamic(
+  () => import('../components/project/CreateProjectModal').then((m) => m.CreateProjectModal),
+  { ssr: false }
+);
+const UploadProjectZipModal = dynamic(
+  () => import('../components/project/UploadProjectZipModal').then((m) => m.UploadProjectZipModal),
+  { ssr: false }
+);
 import { ProjectTagsBar } from '../components/project/ProjectTagsBar';
-import { ManageProjectTagsModal } from '../components/project/ManageProjectTagsModal';
+const ManageProjectTagsModal = dynamic(
+  () => import('../components/project/ManageProjectTagsModal').then((m) => m.ManageProjectTagsModal),
+  { ssr: false }
+);
+
+// Preload modal chunks on user hover/focus intent (Vercel Performance Rule 2.2)
+const preloadCreateModal = () => import('../components/project/CreateProjectModal');
+const preloadUploadZipModal = () => import('../components/project/UploadProjectZipModal');
+const preloadTagModal = () => import('../components/project/ManageProjectTagsModal');
 import { ProjectAvatar } from "@/shared/components/icons";
 import { Topbar } from '../components/project/Topbar';
 import { Card } from '../components/project/Card';
@@ -81,6 +98,15 @@ export function ProjectsPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isUploadZipOpen, setIsUploadZipOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deferredSearchQuery, setDeferredSearchQuery] = useState('');
+  const [, startSearchTransition] = useTransition();
+
+  const handleSearchChange = React.useCallback((query: string) => {
+    setSearchQuery(query);
+    startSearchTransition(() => {
+      setDeferredSearchQuery(query);
+    });
+  }, []);
   const [activeFilter, setActiveFilter] = useState<ProjectVisibilityFilter>('all');
   const [popoverFilter, setPopoverFilter] = useState<ProjectFilterCriteria>({
     myProjects: false,
@@ -149,9 +175,9 @@ export function ProjectsPage() {
         p.projectLabelsList?.some((l) => l.id === selectedTagId)
       );
     }
-    const searched = searchProjects(filtered, searchQuery);
+    const searched = searchProjects(filtered, deferredSearchQuery);
     return sortProjects(searched, sortBy);
-  }, [activeProjects, activeFilter, popoverFilter, selectedTagId, searchQuery, sortBy, user]);
+  }, [activeProjects, activeFilter, popoverFilter, selectedTagId, deferredSearchQuery, sortBy, user]);
 
   const handleArchiveProject = React.useCallback((projectId: string) => {
     archiveProjectMutation.mutate({ projectId });
@@ -184,9 +210,11 @@ export function ProjectsPage() {
       {/* Topbar */}
       <Topbar
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={handleSearchChange}
         onAddProjectClick={() => setIsCreateOpen(true)}
         onUploadProjectZipClick={() => setIsUploadZipOpen(true)}
+        onPreloadCreate={preloadCreateModal}
+        onPreloadUploadZip={preloadUploadZipModal}
         totalProjectsCount={activeProjects.length}
         archivedCount={archivedCount}
         projects={activeProjects}
@@ -516,6 +544,7 @@ export function ProjectsPage() {
                           <span>Copy link</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
+                          onMouseEnter={preloadTagModal}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();

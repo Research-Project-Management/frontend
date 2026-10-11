@@ -15,7 +15,7 @@ import {
   ArrowDown,
   Loader2,
 } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { cn } from "@/shared/lib/utils";
 import type { ChatMessage, SourceItem, AgentId, AgentAction, MessageAttachment } from '../types/chat.types';
 import { renderMarkdown } from '../utils/render-markdown';

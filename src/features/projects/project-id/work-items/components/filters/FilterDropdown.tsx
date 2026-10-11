@@ -21,18 +21,10 @@ import {
   Link2,
   Layers,
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-} from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/shared/components/ui";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/shared/components/ui/dropdown-menu';
+import { Button } from '@/shared/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
 import { cn } from "@/shared/lib/utils";
 import type {
   Column,

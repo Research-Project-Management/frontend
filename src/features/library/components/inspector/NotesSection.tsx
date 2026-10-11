@@ -2,7 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { MinusCircle, Plus, StickyNote } from 'lucide-react';
-import { Textarea, Button } from "@/shared/components/ui";
+import { Textarea } from "@/shared/components/ui/textarea";
+import { Button } from "@/shared/components/ui/button";
 import { normalizeNotes, type NormalizedNote } from '../../domain/metadata';
 import { useNotes } from '../../data';
 import { cn } from "@/shared/lib/utils";
@@ -39,9 +40,14 @@ export function NoteIcon({ className = 'size-3.5' }: { className?: string }) {
   );
 }
 
-export default function NotesSection({
-  item: propItem,
-  paper: propPaper,
+export default function NotesSection(props: NotesSectionProps) {
+  const paper = props.item || props.paper;
+  if (!paper) return null;
+  return <NotesSectionContent {...props} paper={paper} />;
+}
+
+function NotesSectionContent({
+  paper,
   scopeId,
   projectId,
   onAddNote,
@@ -55,9 +61,7 @@ export default function NotesSection({
   pendingText,
   onClearPendingText,
   onNavigateToAnnotation,
-}: NotesSectionProps) {
-  const paper = propItem || propPaper;
-  if (!paper) return null;
+}: NotesSectionProps & { paper: Item }) {
   const paperId = paper.id;
   const activeScopeId = scopeId || projectId || paper?.projectId || 'user';
   const [isAdding, setIsAdding] = useState(false);

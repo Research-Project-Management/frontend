@@ -28,11 +28,11 @@ export function useFileActions() {
     },
     onSuccess: (newFile, variables) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.files(variables.parentPageId) });
-      toast.success(`Created file "${newFile.title}"`);
+      toast.success(`Created file "${newFile.title}"`, { id: `create-file-${newFile.id || variables.title}` });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to create file';
-      toast.error(msg);
+      toast.error(msg, { id: 'create-file-error' });
     },
   });
 
@@ -51,7 +51,7 @@ export function useFileActions() {
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to set main document';
-      toast.error(msg);
+      toast.error(msg, { id: 'set-main-file' });
     },
   });
 

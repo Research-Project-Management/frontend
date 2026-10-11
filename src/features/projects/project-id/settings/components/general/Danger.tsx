@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
 import { DeleteModal } from '@/features/settings/components/modal/DeleteModal';
 
 interface GeneralDangerProps {

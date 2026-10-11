@@ -1,0 +1,15 @@
+\section{Related Work}
+\vspace{-0.2em}
+\textbf{Gradient-based learning and in-context learning:} Several works relate in-context learning to gradient-based learning algorithms. \citet{bai2023transformers} explicitly constructed transformers to simulate simple gradient-based learning algorithms. \citet{mahankali2023one,ahn2023transformers} suggested one attention layer mimics gradient descent on a linear layer, and \citet{zhang2023trained} showed polynomial convergence. 
+\citet{cheng2023transformers,han2023context} extended these ideas to non-linear attentions. Experiments in \citet{dai2022gpt} suggest that LLM activations during in-context learning mirror fine-tuned models. 
+These works focus on using a standard transformer for the simulator and hence cannot accommodate more complex auxiliary models; on the other hand, our work uses structural modifications and approximations to construct an efficient simulator for complex auxiliary models.
+Our work in contrast attempts to build even stronger transformers by introducing few structural modifications that can run gradient descent on auxiliary transformers.
+
+
+\textbf{Transformer Expressivity:}
+\citet{perez2021attention,pérez2018on} show that Transformers with hard attention are Turing complete, and 
+\citet{wei2022statistically} construct transformers to study statistical learnability, but the proposed constructions are extremely large.
+%In \cref{sec:design}, we point out that this scheme often results in gigantic constructions.
+Other works have investigated encoding specific algorithms in smaller simulators, e.g. bounded-depth Dyck languages \citep{yao2021self}, modular prefix sums \citep{anil2022exploring}, adders \citep{nanda2023progress}, regular languages \citep{bhattamishra2020ability}, and sparse logical predicates \citep{edelman2022inductive}. \citet{liu2023transformers} aim to understand automata-like mechanisms within transformers.
+\citet{ba2016using} connect self-attention and fast weight programmers (FWPs), which compute input-dependent weight updates during inference. Follow-up works~\citep{schlag2021linear,irie2021going} use self-attention layers to update linear and recurrent networks during inference. 
+\citet{clark2022meta} add and efficiently tune Fast Weights Layers (FWL) on a frozen pre-trained model.

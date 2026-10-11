@@ -4,18 +4,11 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  Form,
-} from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
-import { Label } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/shared/components/ui/dialog';
+import { Form } from '@/shared/components/ui/form';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
 import {
   addLinkSchema,
   type AddLinkFormValues,

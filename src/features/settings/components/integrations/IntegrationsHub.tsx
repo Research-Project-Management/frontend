@@ -6,7 +6,8 @@ import { Blocks } from 'lucide-react';
 import { useIntegrations } from '../../hooks/use-integrations';
 import { IntegrationCard } from './IntegrationCard';
 import { IntegrationDetailView } from './IntegrationDetailView';
-import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
+import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 
 export function IntegrationsHub() {

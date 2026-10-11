@@ -6,6 +6,7 @@ import { cn } from '@/shared/lib/utils';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { parseDocumentOutline, OUTLINE_INDENT } from '@/features/editor/domain/pdf/pdf-outline';
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
+import { useLayoutStore } from '@/features/editor/store/layout.store';
 
 export interface FileOutlineSectionProps {
   isFileTreeOpen: boolean;
@@ -19,7 +20,8 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
   activeFileName,
 }: FileOutlineSectionProps) {
   const { engine } = useEditorInstance();
-  const [isOutlineOpen, setIsOutlineOpen] = useState(true);
+  const isOutlineOpen = useLayoutStore((s) => s.fileOutlineOpen);
+  const toggleFileOutline = useLayoutStore((s) => s.toggleFileOutline);
   const [outlineHeight, setOutlineHeight] = useState(200);
   const [activeLine, setActiveLine] = useState<number>(1);
   const [content, setContent] = useState<string>(docContent);
@@ -132,7 +134,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
   return (
     <div
       className={cn(
-        'flex flex-col select-none relative bg-transparent',
+        'flex flex-col select-none relative bg-surface',
         !isFileTreeOpen && isOutlineOpen ? 'flex-1 min-h-0' : 'shrink-0',
       )}
     >
@@ -144,13 +146,13 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
         />
       )}
 
-      {/* Accordion header: matching Library & Sticky styling with default border-b */}
+      {/* Accordion header: matching File Tree styling */}
       <button
         type="button"
-        onClick={() => setIsOutlineOpen((value) => !value)}
+        onClick={toggleFileOutline}
         aria-expanded={isOutlineOpen}
-        aria-label={isOutlineOpen ? 'Collapse File Outlines' : 'Expand File Outlines'}
-        className="flex h-9 w-full items-center justify-between px-3 text-left text-13 font-semibold tracking-tight text-foreground border-b border-border transition-colors hover:bg-muted/50 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-inset"
+        aria-label={isOutlineOpen ? 'Collapse File Outline' : 'Expand File Outline'}
+        className="flex h-9 w-full items-center justify-between px-3 text-left text-13 font-semibold tracking-tight text-foreground border-b border-border transition-colors hover:bg-muted/40 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-inset"
       >
         <div className="flex items-center gap-1.5 min-w-0">
           <ChevronRight
@@ -160,7 +162,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
             )}
             strokeWidth={1.75}
           />
-          <span className="truncate">File Outlines</span>
+          <span className="truncate">File Outline</span>
         </div>
         {outline.length > 0 && (
           <span className="rounded-full bg-muted px-1.5 py-0.5 text-11 font-mono font-medium text-foreground">

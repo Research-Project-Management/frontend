@@ -49,11 +49,6 @@ const AiTab = dynamic(() => import('./ai/AiTab'), {
   loading: PanelLoadingFallback,
 });
 
-const OutlineTab = dynamic(() => import('./outline/OutlineTab'), {
-  ssr: false,
-  loading: PanelLoadingFallback,
-});
-
 export function PrimarySidebar() {
   const {
     activeSidebarTab,
@@ -68,8 +63,6 @@ export function PrimarySidebar() {
     switch (activeSidebarTab) {
       case 'files':
         return <FilesTab onClose={handleClose} />;
-      case 'outline':
-        return <OutlineTab onClose={handleClose} />;
       case 'search':
         return <SearchTab onClose={handleClose} />;
       case 'citations':

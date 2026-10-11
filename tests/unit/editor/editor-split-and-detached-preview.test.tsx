@@ -40,7 +40,7 @@ vi.mock('@/features/editor/ui/hooks/use-active-document', () => {
       fileId: 'doc-main',
       selectedAsset: null,
       selectFile: vi.fn((id: string) => {
-        usePageStore.setState({ activeFileId: id });
+        usePageStore.setState({ activePageId: id });
       }),
       parentPage: null,
       childFiles: [defaultPage, secondaryPage],

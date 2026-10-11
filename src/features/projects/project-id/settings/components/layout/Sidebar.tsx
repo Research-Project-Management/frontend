@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useProjectDetails, useProjects } from '@/features/projects/shell/hooks/use-project';
 import { cn } from "@/shared/lib/utils";
-import { ScrollArea } from "@/shared/components/ui";
+import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import Switcher from './Switcher';
 
 // ── Types ──────────────────────────────────────────────────────────────────────

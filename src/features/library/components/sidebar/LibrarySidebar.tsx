@@ -8,7 +8,7 @@ import { Library, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 import { cn } from "@/shared/lib/utils";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import {
   useCollections,
   useItems,

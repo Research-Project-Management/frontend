@@ -13,15 +13,7 @@ import {
   FileCode,
   FileJson,
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-} from '@/shared/components/ui';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/shared/components/ui/dropdown-menu';
 import type { TreeNode } from './sidebar.types';
 import type { Collection } from '../../types/library.types';
 import { useLibrarySidebarStore } from '../../store/library-ui.store';

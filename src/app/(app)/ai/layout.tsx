@@ -19,7 +19,8 @@ export default function ChatAiLayout({ children }: { children?: React.ReactNode 
 }
 
 function ChatAiContent({ children }: { children?: React.ReactNode }) {
-  const { isSourcesOpen, setSourcesOpen } = useAiUIStore();
+  const isSourcesOpen = useAiUIStore((s) => s.isSourcesOpen);
+  const setSourcesOpen = useAiUIStore((s) => s.setSourcesOpen);
 
   return (
     <div className="flex-1 bg-background size-full flex overflow-hidden">

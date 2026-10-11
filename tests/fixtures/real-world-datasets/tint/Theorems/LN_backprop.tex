@@ -1,0 +1,13 @@
+%\begin{theorem}\label{thm:first_order_LN_backprop}
+The following theorem shows that the first-order gradient is a good approximation of the true gradient, and in the limit of $\epsilon$ tending to $0$, the approximation error tends to $0$ as well.
+
+
+\begin{restatable}{theorem}{firstorderLNbackprop}\label{thm:first_order_LN_backprop}
+%\ap{make it more formal} Under the assumption that $\vx$, $\losspartial{\vy}$, $\vgamma, \vb$ are bounded, $\norm{ \losspartial{ \vx } - \Hat{ \losspartial{ \vx } } }_{\infty} \le \mathcal{O}(\epsilon)$.
+For any $\epsilon > 0$, and a layer normalization layer with parameters $\vgamma, \vb\in \RR^{ \aux{D} }$, for an input $\vx \in \RR^{ \aux{D} }$ and gradient $\losspartial{\vy} \in \RR^{ \aux{D} }$, 
+\begin{align*}
+    \norm{ \Hat{\losspartial{\vx}} - \losspartial{\vx} }_2 \le \mathcal{O} ( \epsilon \aux{D}^{3/2} \sigma^{-2} \norm{\vgamma}_2^2 \norm{  \losspartial{\vy} }^2_2 ),
+\end{align*}
+where $\sigma$ denotes the standard deviation of $\vx$. $\losspartial{\vx}, \Hat{\losspartial{ \vx }}$ have been computed from $\vx$, $\losspartial{\vy}$ and $\epsilon$ using  \cref{def:layernorm_backprop,def:layernorm_appr_backprop}.
+\end{restatable}
+%\end{theorem}

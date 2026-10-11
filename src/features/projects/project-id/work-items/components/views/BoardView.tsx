@@ -32,14 +32,9 @@ import {
   Link2,
   CheckSquare,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui";
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { Button } from '@/shared/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { cn } from "@/shared/lib/utils";
 import { useKanban, useCard, type ItemCardLabel } from '../../hooks/use-view';
 import {

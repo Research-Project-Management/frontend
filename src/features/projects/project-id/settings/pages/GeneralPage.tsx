@@ -3,8 +3,9 @@
 import React from 'react';
 import { useParams } from 'next/navigation';
 import { Settings } from 'lucide-react';
-import { Skeleton } from "@/shared/components/ui";
-import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
 import { GeneralBanner } from '../components/general/Banner';
 import { GeneralDetails } from '../components/general/Details';
 import { GeneralDanger } from '../components/general/Danger';

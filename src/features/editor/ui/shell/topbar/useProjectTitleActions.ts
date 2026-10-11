@@ -119,10 +119,10 @@ export function useProjectTitleActions({
           });
         }
 
-        toast.success(`Project renamed to "${trimmed}"`);
+        toast.success(`Project renamed to "${trimmed}"`, { id: 'rename-project' });
         return true;
-      } catch (err: any) {
-        toast.error(err?.message || 'Failed to rename project');
+      } catch (err: unknown) {
+        toast.error((err as Error)?.message || 'Failed to rename project', { id: 'rename-project' });
         return false;
       } finally {
         setIsSubmittingAction(false);
@@ -145,18 +145,18 @@ export function useProjectTitleActions({
 
           const newProjId = res?.project?.id || res?.data?.project?.id || res?.id;
           if (newProjId) {
-            toast.success(`Created copy: "${trimmed}"`);
+            toast.success(`Created copy: "${trimmed}"`, { id: 'copy-project' });
             router.push(`/projects/${newProjId}/pages`);
             return true;
           }
         } else if (currentPage?.id) {
           await duplicatePageMutation.mutateAsync(currentPage.id);
-          toast.success(`Created copy: "${trimmed}"`);
+          toast.success(`Created copy: "${trimmed}"`, { id: 'copy-project' });
           return true;
         }
         return false;
-      } catch (err: any) {
-        toast.error(err?.message || 'Failed to create copy');
+      } catch (err: unknown) {
+        toast.error((err as Error)?.message || 'Failed to create copy', { id: 'copy-project' });
         return false;
       } finally {
         setIsSubmittingAction(false);

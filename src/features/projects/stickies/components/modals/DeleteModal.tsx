@@ -1,15 +1,8 @@
 'use client';
 
 import * as React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
 import { AlertTriangle, Loader2 } from "lucide-react";
 
 export interface DeleteModalProps {

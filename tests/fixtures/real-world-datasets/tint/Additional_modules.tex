@@ -1,0 +1,195 @@
+\section{Additional modules}\label{sec:additional_modules}
+We describe the forward, backward, and decent update operations of additional modules, used in different model families, like LLaMA \cite{touvron2023llama} and BLOOM \cite{scao2022bloom}. We discuss the simulation of these modules, using similar \simulator{} modules.
+
+
+\subsection{Root mean square normalization (RMSnorm)} 
+The operation of RMSnorm \cite{zhang2019root} is very similar to layer normalization.
+\begin{definition}[RMSnorm]\label{def:rmsnorm}
+    For an arbitrary dimension $d$, define a normalization function $f:\RR^d\to\RR^d$ that performs $f(\vx) = \vx / RMS(\vx)$, where $RMS(\vx) = (\sum_{i=1}^{d} x_i^2)^{1/2}.$ Then, RMSnorm with parameters $\vgamma, \vb \in \RR^{\aux{D}}$ takes as input  $\vx \in \RR^{\aux{D}}$ and outputs $\vy\in\RR^{\aux{D}}$, which is computed as $\vz = f(\vx), \vy = \vgamma \odot \vz + \vb.$
+\end{definition}
+
+The extreme similarity between RMSnorm and layer normalization (\cref{def:layernorm}) helps us create similar \simulator{} modules as described in \cref{sec:LNappendix}, where instead of Group normalization layers, we use Group RMSnorm layers described below.  
+
+
+\begin{definition}[\simulator{} $\aux{D}$-Group RMSnorm]\label{def:group_rmsnorm}
+    For an arbitrary dimension $d$, define a normalization function $f:\RR^d\to\RR^d$ that performs $f(\vx) = \vx / RMS(\vx)$, where $RMS(\vx) = (\sum_{i=1}^{d} x_i^2)^{1/2}.$ Then, $\aux{D}$-Group RMSnorm with parameters $\simuw{\vgamma}, \simuw{\vb} \in \RR^{\aux{D}}$ takes as input  $\vx \in \RR^{\simu{D}}$ and outputs $\vy = \attmerge( \{ \vy^h \in \RR^{\aux{D}} \}_{h \le \lfloor \simu{D}/\aux{D} \rfloor} )$, with
+    \begin{align*}
+        \vy^h = \simuw{\vgamma} \odot f(\vx^h) + \simuw{\vb},
+    \end{align*}
+    where $\vx^h = \attsplit_{\lfloor \simu{D}/\aux{D} \rfloor} ( \vx )_h.$
+\end{definition}
+
+
+\subsection{Attention variants}
+In order to incorporate additional attention variants, e.g. Attention with Linear Biases (ALiBi) \cite{press2021train}, and rotary position embeddings \cite{su2021roformer}, we can change the definition of softmax attention layer in \cref{def:self-attn_construct} likewise. 
+
+We showcase the changes for ALiBi.
+\begin{definition}[Auxiliary ALiBi self-attention with $\aux{H}$ heads]\label{def:self-attn_alibi}
+    For query, key, and value weights $\mW_Q, \mW_K, \mW_V \in\RR^{\aux{D}\times \aux{D}}$, bias $\vb_{Q}, \vb_{K}, \vb_{V} \in\RR^{\aux{D}}$ and $\vm \in \RR^{\aux{H}}$, ALiBi self-attention layer with $\aux{H}$ attention heads and a function $\attnfn: \RR^{\aux{T}} \to \RR^{\aux{T}}$ takes a sequence $\{\vx_t\in\RR^{\aux{D}}\}_{t \le \aux{T}}$ as input and outputs $\{ \vy_t \}_{t \le \aux{T}}$, with 
+    \begin{align}
+        \vy_t = \attmerge ( \{ \sum_{j \le \aux{T}} a^h_{t, j}  \vv^{h}_j  \}_{h \le \aux{H}} ).  \label{eq:attnt_forward_alibi}
+    \end{align}
+    $a^{h}_{t, j}$ is defined as the attention score of head $h$ between tokens at positions $t$ and $j$, and is given by
+    \begin{align} \label{eq:attn_alibi}
+        a^h_{t, j} =  \mathrm{softmax} ( \mK^{h} \vq^{h}_t + m_h \vr_t )_j.
+    \end{align}
+    Here $\vr_t \in \RR^{\aux{T}}$ denotes a relative position vector at each position $t$ that contains $(j - t)$ at each coordinate $j \le \aux{T}$.
+     Here, $\vq_t$, $\vk_t$, $\vv_t$ denote the query, key, and value vectors at each position $t$, computed as $\mW_Q \vx_t + \vb_Q$, $\mW_K \vx_t + \vb_K$, and $\mW_V \vx_t + \vb_V$ respectively. In addition, $\vq^{h}_t, \vk^{h}_t, \vv^{h}_t$ denote $\attsplit_{\aux{H}} (\vq_t)_h$, $\attsplit_{\aux{H}} (\vk_t)_h$, and $\attsplit_{\aux{H}} (\vv_t)_h$ respectively for all $t \le \aux{T}$, and $h \le \aux{H}$. 
+     $\mK^h \in \RR^{\aux{T} \times \aux{D} }$ is defined with its rows as $\{\vk^h_t\}_{t \le \aux{T}}$ for all $h \le \aux{H}$.
+\end{definition}
+
+To include operations involving ALiBi, we modify the self-attention module of \simulator{} to change the definition of the attention scores like \cref{eq:attn_alibi}.
+\begin{definition}[Modified \simulator{} self-attention for ALiBi with $\simu{H}$ heads]\label{def:self-attn_alibi_tint}
+    For parameters $\{ \simuw{\mW}_Q, \simuw{\mW}_K, \simuw{\mW}_V \in \RR^{ \simu{D} \times \simu{D} } \}$, $\{ \simuw{\vb}_Q, \simuw{\vb}_K, \simuw{\vb}_V \in \RR^{\simu{D}} \}$, $\{ \mW^p_Q, \mW^p_K, \mW^p_V \in \RR^{ \simu{T} \times \simu{D}/\simu{H} } \}$, $\{ \lambda^{Q},  \lambda^{K}, \lambda^{V} \in \RR^{ \simu{H} } \}$ and $\simuw{\vm} \in \RR^{\simu{T}}$, \simulator{} self-attention with $\simu{H}$ attention heads and a function $\attnfn: \RR^{ \simu{T} } \to \RR^{ \simu{T} }$ takes a sequence $\{ \Hat{\ve}_t\in\RR^ { \simu{D} }  \}_{t \le \simu{T}}$ as input and outputs $\{ \Tilde{\ve}_t \in \RR^{ \simu{D} } \}_{t \le \simu{T} }$, with 
+    \begin{align*}
+        &\Tilde{\ve}_t = \attmerge ( \{ \sum_{j \le \simu{T} } a^h_{t, j}  \Tilde{\vv}^{h}_j )_h \}_{h \le \simu{H} } ), \text{ with   } a^h_{t, j} =
+        \attnfn ( \Tilde{\mK}^{h} \Tilde{\vq}_t^h + \simuw{m}_h \vr_t )_j  \\
+        &\Tilde{\vq}^{h}_t = \attsplit_H (\vq_t)_h + \lambda^Q_h \mW^p_Q \simuw{\vp}_t; \quad \Tilde{\vk}^{h}_t = \attsplit_H (\vk_t)_h + \lambda^K_h \mW^p_K \simuw{\vp}_t + ; \\& \Tilde{\vv}^{h}_t = \attsplit_H (\vv_t)_h + \lambda^V_h \mW^p_v \simuw{\vp}_t .
+    \end{align*}    
+     Here $\vr_t \in \RR^{\simu{T}}$ denotes a relative position vector at each position $t$ that contains $(j - t)$ at each coordinate $j \le \simu{T}$. Here, $\vq_t$, $\vk_t$, $\vv_t$ denote the query, key, and value vectors at each position $t$, computed as $\simuw{\mW}_Q \Hat{\ve}_t + \simuw{\vb}_Q$, $\simuw{\mW}_K \Hat{\ve}_t + \simuw{\vb}_K$, and $\simuw{\mW}_V \Hat{\ve}_t + \simuw{\vb}_V$ respectively.
+     $\Tilde{\mK}^h \in \RR^{ \simu{T} \times \simu{D}/\simu{H} }$ is defined with its rows as $\{\Tilde{\vk}^h_t\}_{t \le \simu{T}}$ for all $h \le \simu{H}$.
+\end{definition}
+
+
+After referring to \cref{sec:self-attnt-backprop_appendix}, we make the following modifications to the Forward, Backward, and Descent modules. In the Forward module, we incorporate the modified self-attention module to compute the attention scores using ALiBi attention. In the Backward module, since we do not propagate gradients through the attention scores of the auxiliary model, the backpropagation formulation remains unchanged from \cref{def:self-attn-appr-backprop} when we have access to the attention scores. Similarly, in the Descent module, we update the value matrix while keeping the query and key parameters fixed. The formulation of the gradient update remains unchanged from \cref{def:self-attn-value-update} when we have access to the attention scores. Consequently, we simply modify all the self-attention modules in the simulator to include ALiBi attention, as defined by \cref{def:self-attn_alibi_tint}.
+
+
+
+
+
+
+\subsection{Gated linear units (GLUs)}
+We describe the operations of GLUs \cite{shazeer2020glu} using similar GLU units available to the \simulator.
+
+\begin{definition}\label{def:GLU_forward}
+    For parameters $\mW, \mV, \mW^o \in \RR^{ \aux{D} \times \aux{D} }$, and biases $\vb_W, \vb_V, \vb_{W^o} \in \RR^{ \aux{D} }$, a GLU layer with activation $\act: \RR \to \RR$, takes input $\vx \in \RR^{\aux{D}}$ and outputs $\Hat{\vy} \in \RR^{\aux{D}}$, with
+    \begin{align*}
+        \vy = (\mW \vx + \vb_W) \odot \act ( \mV \vx + \vb_V ); \quad
+        \Hat{\vy} = \mW^o \vy + \vb_{W^o}.
+    \end{align*}
+\end{definition}
+
+Typical GLUs have $8/3 \times \aux{D}$ as a hidden dimension (i.e. the dimension of $\vy$). We can use similar parameter-sharing techniques discussed for feed-forward layers (\cref{sec:parameter_sharing_app}) with the \simulator{} modules presented here. Furthermore, since $\Hat{y}$ can be expressed as a combination of the gated operation and a linear operation, we focus on the computation of $\vy$ here.
+
+
+For the discussion below, we consider a GLU (without the output linear layer) in the auxiliary model,   with parameters $\mW, \mV,  \vb_W, \vb_V$, that takes in input sequence $\vx_1, \cdots, \vx_T$ and outputs $\vy_1, \cdots, \vy_T$, with $\vy_t = (\mW \vx_t + \vb_W) \odot \act ( \mV \vx_t + \vb_V )$ for each $t \le \simu{T}$. Since this involves a token-wise operation, we will present our constructed modules with a general token position $t$ and the prefix tokens $\{\vv_j\}.$ 
+
+
+
+\paragraph{\simulator{} GLU Forward module} 
+The embedding $\ve_t$ contains $\vx_t$ in its first $\aux{D}$ coordinates. The output $\vy_t$ can be computed using three sub-operations: (a) linear operation for $\mW \vx_t + \vb_W$, (b) linear operation for $\mV \vx_t + \vb_V$, and (c)  
+gate operation to get $(\mW \vx_t + \vb_W) \odot \act( \mV \vx_t + \vb_V )$.
+
+We use three \simulator{} modules, representing each sub-operation.
+\begin{enumerate}[label=(\alph*)]
+    \item $\mW \vx_t + \vb_W$ is a linear operation, hence we can use a \simulator{} Linear Forward module (\cref{sec:Linearappendix}) with the current embedding $\ve_t$ and  $\{\vv_j\}$ containing $\mW, \vb_W$ to get embedding $\Tilde{\ve}_t$ containing $\mW \vx_t + \vb_W$ in its first $\aux{D}$ coordinates.
+
+    \item  $\mV \vx_t + \vb_V$ is a linear operation, hence we can similarly use a \simulator{} Linear Forward module (\cref{sec:Linearappendix}) with the embedding $\ve_t$ and  $\{\vv_j\}$ containing $\mW_V, \vb_V$ to get embedding $\Hat{\ve}_t$ containing $\mV \vx_t + \vb_V$ in its first $\aux{D}$ coordinates. 
+    
+    $\Hat{\ve}_t$ and $\Tilde{\ve}_t$ are now combined to get an embedding $\ve_t$ that contains $\mW \vx_t + \vb_W, \mV \vx_t + \vb_V$
+    in its first $2 \aux{D}$ coordinates.
+
+    \item Finally, we can use a \simulator{} GLU layer that can carry out the elementwise multiplication of $\mW \vx_t + \vb_W, \act(\mV \vx_t + \vb_V)$ to get $\vy_t$ in the first $\aux{D}$ coordinates.
+\end{enumerate}
+
+\textit{Parameter Sharing:} Since (a) and (b) involve a Linear Forward
+module, we can additionally leverage parameter sharing to apply a single Linear Forward module for each of the two computations, changing only the prefix embeddings to correspond to $\mW, \vb_W$, or $\mW_V, \vb_V$.
+
+
+\paragraph{Auxiliary GLU backpropagation}
+For the GLU layer defined in \cref{def:GLU_forward}, the backpropagation layer takes in the loss gradient w.r.t. output ($\losspartial{\vy}$) and computes the loss gradient  w.r.t. input ($\losspartial{\vx}$).
+
+\begin{definition}[Auxiliary GLU backpropagation]\label{def:glu_backprop}
+    For the weights $\mW, \mV \in\RR^{ \aux{D}  \times \aux{D} }$ , the backpropagation layer takes $\losspartial{ \vy } \in\RR^{ \aux{D} }$ as input and outputs $\losspartial{\vx} \in\RR^{ \aux{D} }$, with $\losspartial{\vx} = \mW^{\top} \Hat{\losspartial{\vx}} + \mV^{\top} \Tilde{\losspartial{\vx}}$, where
+    \begin{align*}
+        \Hat{\losspartial{\vx}} =  \losspartial{\vy} \odot \act( \mV \vx + \vb_V ); \qquad
+        \Tilde{\losspartial{\vx}} =   \act'( \mV \vx + \vb_V  ) \odot \losspartial{\vy} \odot (\mW \vx + \vb_W)  .
+    \end{align*}
+\end{definition}
+
+
+A direct computation of $\Tilde{\losspartial{\vx}}$ involves changing the activation function to $\act'$.
+Following a similar strategy for backpropagation through an activation layer (\cref{sec:act_appendix}), we instead use a first-order Taylor expansion to approximate $\Tilde{\losspartial{\vx}}$.
+
+
+\begin{definition}[Auxiliary GLU approximate backpropagation]\label{def:glu_backprop_appr}
+    For a hyper-parameter $\epsilon > 0$, for the weights $\mW, \mV \in\RR^{ \aux{D}  \times \aux{D} }$ , the approximate backpropagation layer takes $\losspartial{ \vy } \in\RR^{ \aux{D} }$ as input and outputs $\overline{\losspartial{\vx}} \in\RR^{ \aux{D} }$,  with $\overline{\losspartial{\vx}} = \mW^{\top} \Hat{\losspartial{\vx}} + \mV^{\top} \Hat{\Tilde{\losspartial{\vx}}}$, where
+    \begin{align*}
+        \Hat{\losspartial{\vx}} &=  \losspartial{\vy} \odot \act( \mV \vx + \vb_V )  \\ 
+        \Hat{\Tilde{\losspartial{\vx}}} &=   \act( \mV \vx + \vb_V + \epsilon  \losspartial{\vy}  ) \odot \frac{1}{\epsilon} (\mW \vx + \vb_W)  - \act( \mV \vx + \vb_V  ) \odot \frac{1}{\epsilon} (\mW \vx + \vb_W) .
+    \end{align*}
+\end{definition}
+
+
+
+\paragraph{\simulator{} GLU backpropagation module} 
+The current embedding contains $\losspartial{\vy_t}$ in its first $\aux{D}$ coordinates. Furthermore, since we need $\mW \vx_t + \vb_W$ and $\mV \vx_t + \vb_V$ in the gradient computations, we copy them from the Forward module using residual connections. We discuss the computation of $\mW^{\top} \Hat{\losspartial{\vx_t}}$ and $\mV^{\top} \Hat{\Tilde{\losspartial{\vx_t} }}$ as separate sub-modules acting on the same embedding $\ve_t$ in parallel.
+
+
+\begin{enumerate}
+    \item The computation of $\mW^{\top} \Hat{\vx_t}$ involves two sub-operations: (a)  gate operation to get $\Hat{\vx_t} := \losspartial{\vy_t} \odot \act( \mV \vx_t + \vb_V )$, and (b) linear backward operation to get $\mW^{\top} \Hat{\vx_t}$. Since for this operation, we require $\mW$, we copy the contents of the prefix embeddings containing $\mW, \vb_W$ from the Forward module.
+    
+    \begin{enumerate}
+        \item Since the current embedding $\ve_t$ contains both $\losspartial{\vy_t}$ and $\mW \vx_t + \vb_W$, we can use a \simulator{} GLU layer to get an embedding $\Hat{\ve}^{(1)}_t$ that contains $\Hat{\losspartial{\vx_t}}$.
+        \item The final linear backward operation can be performed by using a \simulator{} Linear backpropagation module (\cref{sec:Linearappendix}) with the embeddings $\Hat{\ve}^{(1)}_t$ and the prefix embeddings. The final embedding $\Hat{\ve}_t$ contains $\mW^{\top} \Hat{\vx_t}$ in the first $\aux{D}$ coordinates.
+    \end{enumerate}
+    
+    \item The computation of $\mV^{\top} \Hat{\Tilde{\vx_t}}$ involves four sub-operations: (a)  gate operation to get $\frac{1}{\epsilon} (\mW \vx_t + \vb_W) \odot \act( \mV \vx_t + \vb_V + \epsilon \losspartial{\vy_t} )$, (b)  gate operation to get $\frac{1}{\epsilon}(\mW \vx_t + \vb_W) \odot \act( \mV \vx_t + \vb_V )$, (c) a linear layer to compute $\Hat{\Tilde{\vx_t}}$, 
+    (c) linear backward operation to get $\mV^{\top} \Hat{\Tilde{\vx_t}}$. Since for this operation, we require $\mV$, we copy the contents of the prefix embeddings containing $\mV, \vb_V$ from the Forward module.
+    
+    \begin{enumerate}
+        \item Since the current embedding $\ve_t$ contains  $\losspartial{\vy_t}$, $\mV \vx_t + \vb_W$ and $\mW \vx_t + \vb_W$, we can use two \simulator{} GLU layers to get an embedding $\Tilde{\ve}^{(1)}_t$ that contains both $\frac{1}{\epsilon} (\mW \vx_t + \vb_W) \odot \act( \mV \vx_t + \vb_V + \epsilon \losspartial{\vy_t} )$ and $\frac{1}{\epsilon} (\mW \vx_t + \vb_W) \odot \act( \mV \vx_t + \vb_V)$.
+        \item A linear later on  $\Tilde{\ve}^{(1)}_t$ can then return an embedding $\Tilde{\ve}^{(2)}_t$ containing $\Hat{\Tilde{\vx_t}}$ in the first $\aux{D}$ coordinates.
+        \item The final operation can be performed by using a \simulator{} Linear backpropagation module (\cref{sec:Linearappendix}) with the embeddings $\Hat{\ve}^2_t$ and the prefix embeddings containing $\mV, \vb_V$. The final embedding $\Tilde{\ve}_t$ contains $\mV^{\top} \Hat{\Tilde{\vx_t}}$ in the first $\aux{D}$ coordinates.
+    \end{enumerate}
+
+\end{enumerate}
+
+After the two parallel computations, we can sum up $\Hat{\ve}_t$ and $\Tilde{\ve}_t$ to get an embedding $\ve_t$ containing $\overline{\losspartial{\vx_t}}$ (\cref{def:glu_backprop_appr}) in the first $\aux{D}$ coordinates.
+
+
+
+
+\paragraph{Auxiliary GLU descent} Finally, the auxiliary's descent  updates the weight and the bias parameters using a batch of inputs $\{\vx_t\}_{t \le T}$ and the loss gradient w.r.t. the corresponding outputs $\{ \losspartial{\vy_t} \}_{t \le T}$.
+
+\begin{definition}[Auxiliary GLU descent ]\label{def:glu_descent}
+    For weights $\mW, \mV \in\RR^{\aux{D} \times \aux{D}}$ and bias $\vb_W, \vb_V \in \RR^{ \aux{D} }$, the linear descent layer takes in a batch of inputs $\{ \vx_t \in \RR^{\aux{D}} \}_{t \le \aux{T}}$ and gradients $\{ \losspartial{ \vy_t } \in \RR^{\aux{D}} \}_{t \le \aux{T}}$ and updates the parameters as follows:
+    \begin{align*}
+        &\mW \gets \mW - \eta \sum_{t \le \aux{T}} \Hat{\losspartial{\vx_t}} \vx_t^{\top}; \quad \quad
+        \vb_W \gets \vb_W - \eta \sum_{t \le \aux{T}} \Hat{\losspartial{\vx_t}} ,\\ &
+        \mV \gets \mV - \eta \sum_{t \le \aux{T}}  \Tilde{ \losspartial{\vx_t} } \vx_t^{\top}; \quad \quad
+        \vb_V \gets \vb_V - \eta \sum_{t \le \aux{T}} \Tilde{ \losspartial{\vx_t} },
+    \end{align*}
+    where $\Hat{\losspartial{\vx_t}}$ and $\Tilde{ \losspartial{\vx_t} }$ have been computed as \cref{def:glu_backprop}.
+\end{definition}
+Due to similar concerns as gradient backpropagation, we instead use $\Hat{\Tilde{ \losspartial{\vx_t} }}$ (\cref{def:glu_backprop_appr}) in place of $\Tilde{ \losspartial{\vx_t} }$ for each $t \le \aux{T}$ to update $\mV, \vb_V.$
+
+
+ 
+\paragraph{\simulator{} GLU descent module} 
+We discuss the two descent operations separately.
+
+\begin{enumerate}
+    \item Update of $\mW, \vb_W$: We start with the embeddings $\Hat{\ve}^{(1)}_t$ from the  backpropagation module, that contain $\Hat{\losspartial{\vx_t}}$ in the first $\aux{D}$ coordinates. 
+
+    For the update, we additionally require the input to the auxiliary GLU layer under consideration, and hence we copy $\vx_t$ from the Forward module using residual connections. Furthermore, we copy the contents of the prefix embeddings that contain $\mW, \vb_W$ from the Forward module.
+
+    With both $\Hat{\losspartial{\vx_t}}$ and $\vx_t$ in the embeddings, the necessary operation turns out to be the descent update of a linear layer with parameters $\mW, \vb_W$. That implies, we can call a \simulator{} Linear descent module (\cref{sec:Linearappendix}) on the current embeddings and prefix embeddings to get the desired update.
+    
+
+    \item We start with the embeddings $\Tilde{\ve}^{(2)}_t$ from the  backpropagation module, that contain $\Tilde{\Hat{\losspartial{\vx_t}}}$ in the first $\aux{D}$ coordinates. 
+
+    For the update, we additionally require the input to the auxiliary GLU layer under consideration, and hence we copy $\vx_t$ from the forward module using residual connections. Furthermore, we copy the contents of the prefix embeddings  that contain $\mV, \vb_V$ from the Forward module.
+
+    With both $\Tilde{\Hat{\losspartial{\vx_t}}}$ and $\vx_t$ in the embeddings, the necessary operation turns out to be the descent update of a linear layer with parameters $\mV, \vb_V$. That implies we can call a \simulator{} Linear descent module on the current embeddings and prefix embeddings to get the desired update.
+\end{enumerate}
+\textit{Parameter sharing}: Since both the descent updates involve a Linear descent
+module, we can additionally leverage parameter sharing to apply a single \simulator{} Linear descent module for each of the two computations, changing the input to correspond to $\{\Hat{\ve}^{(1)}_t\}$ and prefix to correspond to $\mW, \vb_W$, or the input to correspond to $\{\Tilde{\ve}^{(2)}_t\}$ and prefix to correspond to $\mV, \vb_V$ respectively.
+
+
+
+
+
+
+
+

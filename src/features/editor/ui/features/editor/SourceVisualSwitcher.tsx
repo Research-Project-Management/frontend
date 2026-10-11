@@ -21,7 +21,7 @@ export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
     <div
       role="radiogroup"
       aria-label="Editor view mode"
-      className="inline-flex items-center p-1 gap-0.5 bg-muted/80 dark:bg-muted/40 border border-border/60 rounded-md select-none shrink-0"
+      className="inline-flex items-center p-0.5 gap-0.5 bg-muted/70 dark:bg-muted/30 border border-border/70 rounded-md select-none shrink-0 shadow-2xs"
     >
       <button
         type="button"
@@ -31,10 +31,10 @@ export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
         title="Source mode (LaTeX code) (Ctrl+Shift+V)"
         aria-label="Source mode"
         className={cn(
-          'h-5 px-2.5 flex items-center justify-center text-xs font-medium rounded-sm transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+          'h-5.5 px-2.5 flex items-center justify-center text-[11.5px] font-medium rounded-[4px] transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
           editorMode === 'code'
-            ? 'bg-background text-foreground shadow-2xs font-semibold'
-            : 'text-muted-foreground hover:text-foreground'
+            ? 'bg-canvas text-foreground shadow-2xs font-semibold'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
         )}
       >
         Source
@@ -47,13 +47,13 @@ export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
         title="Visual mode (Ctrl+Shift+V)"
         aria-label="Visual mode"
         className={cn(
-          'h-5 px-2.5 flex items-center justify-center text-xs font-medium rounded-sm transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+          'h-5.5 px-2.5 flex items-center justify-center text-[11.5px] font-medium rounded-[4px] transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
           editorMode === 'visual'
-            ? 'bg-background text-foreground shadow-2xs font-semibold'
-            : 'text-muted-foreground hover:text-foreground'
+            ? 'bg-canvas text-foreground shadow-2xs font-semibold'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
         )}
       >
-        Visual
+        Visual Editor
       </button>
     </div>
   );

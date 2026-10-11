@@ -17,6 +17,7 @@ import {
   DialogClose,
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
+import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import {
   Tooltip,
@@ -132,8 +133,17 @@ export function WordCountModal({
     }
   }, [scope, selectedText, aggregatedProjectContent, content]);
 
+  const [includeBib, setIncludeBib] = useState<boolean>(() => /%TC:incbib\b/i.test(activeContent));
+
+  // Sync if %TC:incbib appears in document
+  useEffect(() => {
+    if (/%TC:incbib\b/i.test(activeContent)) {
+      setIncludeBib(true);
+    }
+  }, [activeContent]);
+
   // Fast local calculation (instant feedback)
-  const localStats = useMemo(() => countLatexWords(activeContent), [activeContent]);
+  const localStats = useMemo(() => countLatexWords(activeContent, { includeBib }), [activeContent, includeBib]);
 
   // Backend CLSI analysis state
   const [serverStats, setServerStats] = useState<WordCountResponse['stats'] | null>(null);
@@ -218,7 +228,7 @@ export function WordCountModal({
 
   const totalWordsCount =
     stats.totalWords ??
-    stats.wordsInText + stats.wordsInHeaders + stats.wordsInCaptions;
+    stats.wordsInText + stats.wordsInHeaders + stats.wordsInCaptions + (stats.wordsInBibliography ?? 0);
 
   // Unified single source of truth metrics
   const metricRows = useMemo(
@@ -238,6 +248,15 @@ export function WordCountModal({
         description: 'Figure and table captions, subcaptions, and footnotes',
         value: stats.wordsInCaptions,
       },
+      ...(stats.wordsInBibliography !== undefined && (stats.wordsInBibliography > 0 || includeBib)
+        ? [
+            {
+              label: 'Words in bibliography',
+              description: 'References and citations (%TC:incbib)',
+              value: stats.wordsInBibliography,
+            },
+          ]
+        : []),
       {
         label: 'Characters without spaces',
         description: 'Total characters excluding spaces',
@@ -441,8 +460,21 @@ export function WordCountModal({
           )}
         </div>
 
-        {/* ── Dialog Footer (Only Close button, seamless background, no border) ── */}
-        <DialogFooter className="px-6 pb-5 pt-3 bg-background flex items-center justify-end shrink-0 m-0 border-0">
+        {/* ── Dialog Footer with %TC:incbib option and Close button ── */}
+        <DialogFooter className="px-6 pb-5 pt-3 bg-background flex items-center justify-between sm:justify-between shrink-0 m-0 border-0">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="include-bib-count"
+              checked={includeBib}
+              onCheckedChange={(c) => setIncludeBib(Boolean(c))}
+            />
+            <label
+              htmlFor="include-bib-count"
+              className="text-11 font-medium text-muted-foreground cursor-pointer select-none"
+            >
+              Include bibliography (%TC:incbib)
+            </label>
+          </div>
           <Button
             type="button"
             variant="outline"

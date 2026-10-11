@@ -2,8 +2,8 @@
 
 import { useRef, useState } from 'react';
 import { Search, Plus, X, FolderPlus, SlidersHorizontal, PanelLeft } from 'lucide-react';
-import { Input } from "@/shared/components/ui";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
+import { Input } from '@/shared/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 
 interface SidebarHeaderProps {
   searchQuery: string;

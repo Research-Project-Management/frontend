@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * use-comment.ts
@@ -76,20 +76,20 @@ export const useCreateComment = () => {
 
       return { previousData, pageId };
     },
-    onError: (err: any, _vars, context) => {
+    onError: (err: Error | unknown, _vars, context) => {
       if (context?.previousData) {
         context.previousData.forEach(([key, val]) => {
           queryClient.setQueryData(key, val);
         });
       }
-      toast.error(err?.message || 'Failed to add comment');
+      toast.error((err as Error)?.message || 'Failed to add comment', { id: 'create-comment' });
     },
     onSettled: (_data, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
       queryClient.invalidateQueries({ queryKey: ['page-comments'] });
     },
     onSuccess: () => {
-      toast.success('Comment added');
+      toast.success('Comment added', { id: 'create-comment' });
     },
   });
 };
@@ -136,20 +136,20 @@ export const useUpdateComment = () => {
 
       return { previousData, pageId };
     },
-    onError: (err: any, _vars, context) => {
+    onError: (err: Error | unknown, vars, context) => {
       if (context?.previousData) {
         context.previousData.forEach(([key, val]) => {
           queryClient.setQueryData(key, val);
         });
       }
-      toast.error(err?.message || 'Failed to update comment');
+      toast.error((err as Error)?.message || 'Failed to update comment', { id: `comment-${vars.commentId}` });
     },
     onSettled: (_data, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
       queryClient.invalidateQueries({ queryKey: ['page-comments'] });
     },
-    onSuccess: () => {
-      toast.success('Comment updated');
+    onSuccess: (_data, vars) => {
+      toast.success('Comment updated', { id: `comment-${vars.commentId}` });
     },
   });
 };
@@ -179,20 +179,20 @@ export const useDeleteComment = () => {
 
       return { previousData, pageId };
     },
-    onError: (_err, _vars, context) => {
+    onError: (_err, vars, context) => {
       if (context?.previousData) {
         context.previousData.forEach(([key, val]) => {
           queryClient.setQueryData(key, val);
         });
       }
-      toast.error('Failed to delete comment');
+      toast.error('Failed to delete comment', { id: `comment-${vars.commentId}` });
     },
     onSettled: (_data, _err, vars) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', vars.pageId] });
       queryClient.invalidateQueries({ queryKey: ['page-comments'] });
     },
-    onSuccess: () => {
-      toast.success('Comment deleted');
+    onSuccess: (_data, vars) => {
+      toast.success('Comment deleted', { id: `comment-${vars.commentId}` });
     },
   });
 };
@@ -215,10 +215,10 @@ export const useAddReply = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
       queryClient.invalidateQueries({ queryKey: ['page-comments'] });
-      toast.success('Reply added');
+      toast.success('Reply added', { id: `reply-${variables.commentId}` });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to add reply');
+    onError: (err: Error | unknown, variables) => {
+      toast.error((err as Error)?.message || 'Failed to add reply', { id: `reply-${variables.commentId}` });
     },
   });
 };
@@ -255,20 +255,20 @@ export const useResolveComment = () => {
 
       return { previousData, pageId };
     },
-    onError: (_err, _vars, context) => {
+    onError: (_err, vars, context) => {
       if (context?.previousData) {
         context.previousData.forEach(([key, val]) => {
           queryClient.setQueryData(key, val);
         });
       }
-      toast.error('Failed to update status');
+      toast.error('Failed to update status', { id: `resolve-${vars.commentId}` });
     },
     onSettled: (_data, _err, vars) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', vars.pageId] });
       queryClient.invalidateQueries({ queryKey: ['page-comments'] });
     },
     onSuccess: (_, variables) => {
-      toast.success(variables.resolved ? 'Comment resolved' : 'Comment reopened');
+      toast.success(variables.resolved ? 'Comment resolved' : 'Comment reopened', { id: `resolve-${variables.commentId}` });
     },
   });
 };
@@ -291,10 +291,10 @@ export const useDeleteReply = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
       queryClient.invalidateQueries({ queryKey: ['page-comments'] });
-      toast.success('Reply deleted');
+      toast.success('Reply deleted', { id: `reply-${variables.replyId}` });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to delete reply');
+    onError: (err: Error | unknown, variables) => {
+      toast.error((err as Error)?.message || 'Failed to delete reply', { id: `reply-${variables.replyId}` });
     },
   });
 };

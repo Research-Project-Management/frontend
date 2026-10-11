@@ -1,0 +1,28 @@
+
+
+\section*{Brief overview of the appendix}
+In \cref{sec:additional_related_works}, we report few additional related works. In \cref{sec:deferred}, we present some of the deferred definitions from the main paper. In \cref{sec:additional_notations}, we present all the important notations used to present the design of \simulator{}. In \cref{sec:Linearappendix,sec:self-attnt-backprop_appendix,sec:LNappendix,sec:act_appendix}, we present the simulation details of all operations on linear, self-attention, layer normalization, and activation layers respectively for an auxiliary model. In \cref{sec:lm_head}, we present the details for simulating loss computation with the language model head of the auxiliary model. In \cref{sec:additional_modules}, we discuss simulation of additional modules necessary to simulate transformer variants like LLaMA \cite{touvron2023llama} and BLOOM \cite{scao2022bloom}. Finally, in \cref{app:experiment}, we discuss the deferred experimental details from the main paper. 
+
+
+\input{Attention_LN_backprop_mainpaper}
+
+\input{Notations}
+
+\input{Linear_simulation_appendix}
+
+\input{Attention_simulation_appendix}
+
+\input{Layernorm_simulation}
+
+\input{Activation_simulation}
+
+\input{language_model_head}
+
+\input{Parameter_sharing_app}
+
+
+\input{Additional_modules}
+\input{experiment_app}
+
+
+

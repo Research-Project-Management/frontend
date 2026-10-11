@@ -53,7 +53,8 @@ import { usePreviewStore } from '../../store/use-preview-store';
 export default function Preview() {
   const params = useParams();
   const projectId = (params?.projectId as string) || (params?.id as string) || '';
-  const { selectedItem: item, setSelectedItem } = usePreviewStore();
+  const item = usePreviewStore((s) => s.selectedItem);
+  const setSelectedItem = usePreviewStore((s) => s.setSelectedItem);
   const [imageError, setImageError] = useState(false);
   const [scientificViewerOpen, setScientificViewerOpen] = useState(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
@@ -163,7 +164,7 @@ export default function Preview() {
                 {formatMimeType(item)}
               </span>
               {item.starred && (
-                <Star className="size-3 fill-amber-400 text-amber-400 shrink-0" />
+                <Star className="size-3 fill-warning text-warning shrink-0" />
               )}
             </div>
           </div>
@@ -344,7 +345,7 @@ export default function Preview() {
               Description
             </p>
             {!isSaved && (
-              <span className="text-11 text-amber-500 font-medium">
+              <span className="text-11 text-warning font-medium">
                 Unsaved
               </span>
             )}

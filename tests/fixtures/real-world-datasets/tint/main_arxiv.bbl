@@ -1,0 +1,391 @@
+\begin{thebibliography}{75}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Ahn et~al.(2023)Ahn, Cheng, Daneshmand, and Sra]{ahn2023transformers}
+Ahn, K., Cheng, X., Daneshmand, H., and Sra, S.
+\newblock Transformers learn to implement preconditioned gradient descent for in-context learning.
+\newblock \emph{arXiv preprint arXiv:2306.00297}, 2023.
+
+\bibitem[Akyurek et~al.(2022)Akyurek, Schuurmans, Andreas, Ma, and Zhou]{akyurek2022learning}
+Akyurek, E., Schuurmans, D., Andreas, J., Ma, T., and Zhou, D.
+\newblock What learning algorithm is in-context learning? investigations with linear models.
+\newblock \emph{arXiv preprint arXiv:2211.15661}, 2022.
+
+\bibitem[Amodei et~al.(2016)Amodei, Olah, Steinhardt, Christiano, Schulman, and Man{\'e}]{amodei2016concrete}
+Amodei, D., Olah, C., Steinhardt, J., Christiano, P., Schulman, J., and Man{\'e}, D.
+\newblock Concrete problems in ai safety.
+\newblock \emph{arXiv preprint arXiv:1606.06565}, 2016.
+
+\bibitem[Anil et~al.(2022)Anil, Wu, Andreassen, Lewkowycz, Misra, Ramasesh, Slone, Gur-Ari, Dyer, and Neyshabur]{anil2022exploring}
+Anil, C., Wu, Y., Andreassen, A., Lewkowycz, A., Misra, V., Ramasesh, V., Slone, A., Gur-Ari, G., Dyer, E., and Neyshabur, B.
+\newblock Exploring length generalization in large language models.
+\newblock \emph{arXiv preprint arXiv:2207.04901}, 2022.
+
+\bibitem[Askell et~al.(2021)Askell, Bai, Chen, Drain, Ganguli, Henighan, Jones, Joseph, Mann, DasSarma, et~al.]{askell2021general}
+Askell, A., Bai, Y., Chen, A., Drain, D., Ganguli, D., Henighan, T., Jones, A., Joseph, N., Mann, B., DasSarma, N., et~al.
+\newblock A general language assistant as a laboratory for alignment.
+\newblock \emph{arXiv preprint arXiv:2112.00861}, 2021.
+
+\bibitem[Ba et~al.(2016)Ba, Hinton, Mnih, Leibo, and Ionescu]{ba2016using}
+Ba, J., Hinton, G., Mnih, V., Leibo, J.~Z., and Ionescu, C.
+\newblock Using fast weights to attend to the recent past, 2016.
+
+\bibitem[Bai et~al.(2023)Bai, Chen, Wang, Xiong, and Mei]{bai2023transformers}
+Bai, Y., Chen, F., Wang, H., Xiong, C., and Mei, S.
+\newblock Transformers as statisticians: Provable in-context learning with in-context algorithm selection.
+\newblock \emph{arXiv preprint arXiv:2306.04637}, 2023.
+
+\bibitem[Bhattamishra et~al.(2020)Bhattamishra, Ahuja, and Goyal]{bhattamishra2020ability}
+Bhattamishra, S., Ahuja, K., and Goyal, N.
+\newblock On the ability and limitations of transformers to recognize formal languages.
+\newblock \emph{arXiv preprint arXiv:2009.11264}, 2020.
+
+\bibitem[Borgeaud et~al.(2022)Borgeaud, Mensch, Hoffmann, Cai, Rutherford, Millican, Van Den~Driessche, Lespiau, Damoc, Clark, et~al.]{borgeaud2022improving}
+Borgeaud, S., Mensch, A., Hoffmann, J., Cai, T., Rutherford, E., Millican, K., Van Den~Driessche, G.~B., Lespiau, J.-B., Damoc, B., Clark, A., et~al.
+\newblock Improving language models by retrieving from trillions of tokens.
+\newblock In \emph{International conference on machine learning}, pp.\  2206--2240. PMLR, 2022.
+
+\bibitem[Brown et~al.(2020)Brown, Mann, Ryder, Subbiah, Kaplan, Dhariwal, Neelakantan, Shyam, Sastry, Askell, et~al.]{brown2020language}
+Brown, T., Mann, B., Ryder, N., Subbiah, M., Kaplan, J.~D., Dhariwal, P., Neelakantan, A., Shyam, P., Sastry, G., Askell, A., et~al.
+\newblock Language models are few-shot learners.
+\newblock \emph{Advances in neural information processing systems}, 33:\penalty0 1877--1901, 2020.
+
+\bibitem[Chan et~al.(2022)Chan, Santoro, Lampinen, Wang, Singh, Richemond, McClelland, and Hill]{chan2022data}
+Chan, S., Santoro, A., Lampinen, A., Wang, J., Singh, A., Richemond, P., McClelland, J., and Hill, F.
+\newblock Data distributional properties drive emergent in-context learning in transformers.
+\newblock \emph{Advances in Neural Information Processing Systems}, 35:\penalty0 18878--18891, 2022.
+
+\bibitem[Cheng et~al.(2023)Cheng, Chen, and Sra]{cheng2023transformers}
+Cheng, X., Chen, Y., and Sra, S.
+\newblock Transformers implement functional gradient descent to learn non-linear functions in context.
+\newblock \emph{arXiv preprint arXiv:2312.06528}, 2023.
+
+\bibitem[Chowdhery et~al.(2022)Chowdhery, Narang, Devlin, Bosma, Mishra, Roberts, Barham, Chung, Sutton, Gehrmann, et~al.]{chowdhery2022palm}
+Chowdhery, A., Narang, S., Devlin, J., Bosma, M., Mishra, G., Roberts, A., Barham, P., Chung, H.~W., Sutton, C., Gehrmann, S., et~al.
+\newblock Palm: Scaling language modeling with pathways.
+\newblock \emph{arXiv preprint arXiv:2204.02311}, 2022.
+
+\bibitem[Chughtai et~al.(2023)Chughtai, Chan, and Nanda]{chughtai2023toy}
+Chughtai, B., Chan, L., and Nanda, N.
+\newblock A toy model of universality: Reverse engineering how networks learn group operations.
+\newblock \emph{arXiv preprint arXiv:2302.03025}, 2023.
+
+\bibitem[Clark et~al.(2022)Clark, Guu, Chang, Pasupat, Hinton, and Norouzi]{clark2022meta}
+Clark, K., Guu, K., Chang, M.-W., Pasupat, P., Hinton, G., and Norouzi, M.
+\newblock Meta-learning fast weight language models.
+\newblock In \emph{Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing}, pp.\  9751--9757, Abu Dhabi, United Arab Emirates, December 2022. Association for Computational Linguistics.
+\newblock URL \url{https://aclanthology.org/2022.emnlp-main.661}.
+
+\bibitem[Conmy et~al.(2023)Conmy, Mavor-Parker, Lynch, Heimersheim, and Garriga-Alonso]{conmy2023towards}
+Conmy, A., Mavor-Parker, A.~N., Lynch, A., Heimersheim, S., and Garriga-Alonso, A.
+\newblock Towards automated circuit discovery for mechanistic interpretability.
+\newblock \emph{arXiv preprint arXiv:2304.14997}, 2023.
+
+\bibitem[Dai et~al.(2022)Dai, Sun, Dong, Hao, Sui, and Wei]{dai2022gpt}
+Dai, D., Sun, Y., Dong, L., Hao, Y., Sui, Z., and Wei, F.
+\newblock Why can gpt learn in-context? language models secretly perform gradient descent as meta-optimizers, 2022.
+
+\bibitem[Edelman et~al.(2022)Edelman, Goel, Kakade, and Zhang]{edelman2022inductive}
+Edelman, B.~L., Goel, S., Kakade, S., and Zhang, C.
+\newblock Inductive biases and variable creation in self-attention mechanisms.
+\newblock In \emph{International Conference on Machine Learning}, pp.\  5793--5831. PMLR, 2022.
+
+\bibitem[Elhage et~al.(2021)Elhage, Nanda, Olsson, Henighan, Joseph, Mann, Askell, Bai, Chen, Conerly, et~al.]{elhage2021mathematical}
+Elhage, N., Nanda, N., Olsson, C., Henighan, T., Joseph, N., Mann, B., Askell, A., Bai, Y., Chen, A., Conerly, T., et~al.
+\newblock A mathematical framework for transformer circuits.
+\newblock \emph{Transformer Circuits Thread}, 2021.
+
+\bibitem[Garg et~al.(2022)Garg, Tsipras, Liang, and Valiant]{garg2022can}
+Garg, S., Tsipras, D., Liang, P.~S., and Valiant, G.
+\newblock What can transformers learn in-context? a case study of simple function classes.
+\newblock \emph{Advances in Neural Information Processing Systems}, 35:\penalty0 30583--30598, 2022.
+
+\bibitem[Giannou et~al.(2023)Giannou, Rajput, yong Sohn, Lee, Lee, and Papailiopoulos]{giannou2023looped}
+Giannou, A., Rajput, S., yong Sohn, J., Lee, K., Lee, J.~D., and Papailiopoulos, D.
+\newblock Looped transformers as programmable computers, 2023.
+
+\bibitem[Gong et~al.(2019)Gong, He, Li, Qin, Wang, and Liu]{gong2019efficient}
+Gong, L., He, D., Li, Z., Qin, T., Wang, L., and Liu, T.
+\newblock Efficient training of bert by progressively stacking.
+\newblock In \emph{International conference on machine learning}, pp.\  2337--2346. PMLR, 2019.
+
+\bibitem[Hahn \& Goyal(2023)Hahn and Goyal]{hahn2023theory}
+Hahn, M. and Goyal, N.
+\newblock A theory of emergent in-context learning as implicit structure induction.
+\newblock \emph{arXiv preprint arXiv:2303.07971}, 2023.
+
+\bibitem[Han et~al.(2023)Han, Wang, Zhao, and Ji]{han2023context}
+Han, C., Wang, Z., Zhao, H., and Ji, H.
+\newblock In-context learning of large language models explained as kernel regression.
+\newblock \emph{arXiv preprint arXiv:2305.12766}, 2023.
+
+\bibitem[Hendrycks \& Gimpel(2016)Hendrycks and Gimpel]{zzhendrycks2016gaussian}
+Hendrycks, D. and Gimpel, K.
+\newblock Gaussian error linear units (gelus).
+\newblock \emph{arXiv preprint arXiv:1606.08415}, 2016.
+
+\bibitem[Hinton(2022)]{hinton2022forwardforward}
+Hinton, G.
+\newblock The forward-forward algorithm: Some preliminary investigations, 2022.
+
+\bibitem[Holtzman et~al.(2021)Holtzman, West, Shwartz, Choi, and Zettlemoyer]{holtzman2021surface}
+Holtzman, A., West, P., Shwartz, V., Choi, Y., and Zettlemoyer, L.
+\newblock Surface form competition: Why the highest probability answer isn't always right.
+\newblock \emph{arXiv preprint arXiv:2104.08315}, 2021.
+
+\bibitem[Hu et~al.(2021)Hu, Shen, Wallis, Allen-Zhu, Li, Wang, Wang, and Chen]{hu2021lora}
+Hu, E.~J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., Wang, L., and Chen, W.
+\newblock Lora: Low-rank adaptation of large language models.
+\newblock \emph{arXiv preprint arXiv:2106.09685}, 2021.
+
+\bibitem[Hu \& Liu(2004)Hu and Liu]{hu2004mining}
+Hu, M. and Liu, B.
+\newblock Mining and summarizing customer reviews.
+\newblock In \emph{Proceedings of the tenth ACM SIGKDD international conference on Knowledge discovery and data mining}, pp.\  168--177, 2004.
+
+\bibitem[Irie et~al.(2021)Irie, Schlag, Csord{\'a}s, and Schmidhuber]{irie2021going}
+Irie, K., Schlag, I., Csord{\'a}s, R., and Schmidhuber, J.
+\newblock Going beyond linear transformers with recurrent fast weight programmers.
+\newblock In Beygelzimer, A., Dauphin, Y., Liang, P., and Vaughan, J.~W. (eds.), \emph{Advances in Neural Information Processing Systems}, 2021.
+\newblock URL \url{https://openreview.net/forum?id=ot2ORiBqTa1}.
+
+\bibitem[Izacard \& Grave(2020)Izacard and Grave]{izacard2020leveraging}
+Izacard, G. and Grave, E.
+\newblock Leveraging passage retrieval with generative models for open domain question answering.
+\newblock \emph{arXiv preprint arXiv:2007.01282}, 2020.
+
+\bibitem[Izacard et~al.(2023)Izacard, Lewis, Lomeli, Hosseini, Petroni, Schick, Dwivedi-Yu, Joulin, Riedel, and Grave]{izacard2023atlas}
+Izacard, G., Lewis, P., Lomeli, M., Hosseini, L., Petroni, F., Schick, T., Dwivedi-Yu, J., Joulin, A., Riedel, S., and Grave, E.
+\newblock Atlas: Few-shot learning with retrieval augmented language models.
+\newblock \emph{Journal of Machine Learning Research}, 24\penalty0 (251):\penalty0 1--43, 2023.
+\newblock URL \url{http://jmlr.org/papers/v24/23-0037.html}.
+
+\bibitem[Jiang(2023)]{jiang2023latent}
+Jiang, H.
+\newblock A latent space theory for emergent abilities in large language models.
+\newblock \emph{arXiv preprint arXiv:2304.09960}, 2023.
+
+\bibitem[Kumar et~al.(2022)Kumar, Shen, Bubeck, and Gunasekar]{kumar2022finetune}
+Kumar, A., Shen, R., Bubeck, S., and Gunasekar, S.
+\newblock How to fine-tune vision models with sgd, 2022.
+
+\bibitem[Leike et~al.(2018)Leike, Krueger, Everitt, Martic, Maini, and Legg]{leike2018scalable}
+Leike, J., Krueger, D., Everitt, T., Martic, M., Maini, V., and Legg, S.
+\newblock Scalable agent alignment via reward modeling: a research direction.
+\newblock \emph{arXiv preprint arXiv:1811.07871}, 2018.
+
+\bibitem[Lindner et~al.(2023)Lindner, Kram{\'a}r, Rahtz, McGrath, and Mikulik]{lindner2023tracr}
+Lindner, D., Kram{\'a}r, J., Rahtz, M., McGrath, T., and Mikulik, V.
+\newblock Tracr: Compiled transformers as a laboratory for interpretability.
+\newblock \emph{arXiv preprint arXiv:2301.05062}, 2023.
+
+\bibitem[Liu et~al.(2023)Liu, Ash, Goel, Krishnamurthy, and Zhang]{liu2023transformers}
+Liu, B., Ash, J.~T., Goel, S., Krishnamurthy, A., and Zhang, C.
+\newblock Transformers learn shortcuts to automata.
+\newblock In \emph{The Eleventh International Conference on Learning Representations}, 2023.
+\newblock URL \url{https://openreview.net/forum?id=De4FYqjFueZ}.
+
+\bibitem[Liu et~al.(2022)Liu, Tam, Muqeeth, Mohta, Huang, Bansal, and Raffel]{liu2022few}
+Liu, H., Tam, D., Muqeeth, M., Mohta, J., Huang, T., Bansal, M., and Raffel, C.~A.
+\newblock Few-shot parameter-efficient fine-tuning is better and cheaper than in-context learning.
+\newblock \emph{Advances in Neural Information Processing Systems}, 35:\penalty0 1950--1965, 2022.
+
+\bibitem[Mahankali et~al.(2023)Mahankali, Hashimoto, and Ma]{mahankali2023one}
+Mahankali, A., Hashimoto, T.~B., and Ma, T.
+\newblock One step of gradient descent is provably the optimal in-context learner with one layer of linear self-attention.
+\newblock \emph{arXiv preprint arXiv:2307.03576}, 2023.
+
+\bibitem[Malladi et~al.(2023)Malladi, Gao, Nichani, Damian, Lee, Chen, and Arora]{malladi2023finetuning}
+Malladi, S., Gao, T., Nichani, E., Damian, A., Lee, J.~D., Chen, D., and Arora, S.
+\newblock Fine-tuning language models with just forward passes.
+\newblock In \emph{Thirty-seventh Conference on Neural Information Processing Systems}, 2023.
+\newblock URL \url{https://openreview.net/forum?id=Vota6rFhBQ}.
+
+\bibitem[Merity et~al.(2016)Merity, Xiong, Bradbury, and Socher]{merity2016pointer}
+Merity, S., Xiong, C., Bradbury, J., and Socher, R.
+\newblock Pointer sentinel mixture models.
+\newblock \emph{arXiv preprint arXiv:1609.07843}, 2016.
+
+\bibitem[Nanda et~al.(2023)Nanda, Chan, Lieberum, Smith, and Steinhardt]{nanda2023progress}
+Nanda, N., Chan, L., Lieberum, T., Smith, J., and Steinhardt, J.
+\newblock Progress measures for grokking via mechanistic interpretability.
+\newblock \emph{arXiv preprint arXiv:2301.05217}, 2023.
+
+\bibitem[Olsson et~al.(2022)Olsson, Elhage, Nanda, Joseph, DasSarma, Henighan, Mann, Askell, Bai, Chen, et~al.]{olsson2022context}
+Olsson, C., Elhage, N., Nanda, N., Joseph, N., DasSarma, N., Henighan, T., Mann, B., Askell, A., Bai, Y., Chen, A., et~al.
+\newblock In-context learning and induction heads.
+\newblock \emph{arXiv preprint arXiv:2209.11895}, 2022.
+
+\bibitem[Pang \& Lee(2004)Pang and Lee]{pang2004sentimental}
+Pang, B. and Lee, L.
+\newblock A sentimental education: Sentiment analysis using subjectivity summarization based on minimum cuts.
+\newblock In \emph{Proceedings of the 42nd Annual Meeting of the Association for Computational Linguistics (ACL-04)}, pp.\  271--278, 2004.
+
+\bibitem[Pang \& Lee(2005)Pang and Lee]{pang2005seeing}
+Pang, B. and Lee, L.
+\newblock Seeing stars: Exploiting class relationships for sentiment categorization with respect to rating scales.
+\newblock In \emph{Proceedings of the 43rd Annual Meeting of the Association for Computational Linguistics (ACL’05)}, pp.\  115--124, 2005.
+
+\bibitem[Perez et~al.(2021)Perez, Barcelo, and Marinkovic]{perez2021attention}
+Perez, J., Barcelo, P., and Marinkovic, J.
+\newblock Attention is turing-complete.
+\newblock \emph{Journal of Machine Learning Research}, 22\penalty0 (75):\penalty0 1--35, 2021.
+\newblock URL \url{http://jmlr.org/papers/v22/20-302.html}.
+
+\bibitem[Press et~al.(2021)Press, Smith, and Lewis]{press2021train}
+Press, O., Smith, N.~A., and Lewis, M.
+\newblock Train short, test long: Attention with linear biases enables input length extrapolation.
+\newblock \emph{arXiv preprint arXiv:2108.12409}, 2021.
+
+\bibitem[Pérez et~al.(2019)Pérez, Marinković, and Barceló]{pérez2018on}
+Pérez, J., Marinković, J., and Barceló, P.
+\newblock On the turing completeness of modern neural network architectures.
+\newblock In \emph{International Conference on Learning Representations}, 2019.
+\newblock URL \url{https://openreview.net/forum?id=HyGBdo0qFm}.
+
+\bibitem[Raffel et~al.(2020)Raffel, Shazeer, Roberts, Lee, Narang, Matena, Zhou, Li, and Liu]{raffel2020exploring}
+Raffel, C., Shazeer, N., Roberts, A., Lee, K., Narang, S., Matena, M., Zhou, Y., Li, W., and Liu, P.~J.
+\newblock Exploring the limits of transfer learning with a unified text-to-text transformer.
+\newblock \emph{The Journal of Machine Learning Research}, 21\penalty0 (1):\penalty0 5485--5551, 2020.
+
+\bibitem[Reddi et~al.(2023)Reddi, Miryoosefi, Karp, Krishnan, Kale, Kim, and Kumar]{reddi2023efficient}
+Reddi, S.~J., Miryoosefi, S., Karp, S., Krishnan, S., Kale, S., Kim, S., and Kumar, S.
+\newblock Efficient training of language models using few-shot learning.
+\newblock 2023.
+
+\bibitem[Saunshi et~al.(2020)Saunshi, Malladi, and Arora]{saunshi2020mathematical}
+Saunshi, N., Malladi, S., and Arora, S.
+\newblock A mathematical exploration of why language models help solve downstream tasks.
+\newblock \emph{arXiv preprint arXiv:2010.03648}, 2020.
+
+\bibitem[Scao et~al.(2022)Scao, Fan, Akiki, Pavlick, Ili{\'c}, Hesslow, Castagn{\'e}, Luccioni, Yvon, Gall{\'e}, et~al.]{scao2022bloom}
+Scao, T.~L., Fan, A., Akiki, C., Pavlick, E., Ili{\'c}, S., Hesslow, D., Castagn{\'e}, R., Luccioni, A.~S., Yvon, F., Gall{\'e}, M., et~al.
+\newblock Bloom: A 176b-parameter open-access multilingual language model.
+\newblock \emph{arXiv preprint arXiv:2211.05100}, 2022.
+
+\bibitem[Scellier \& Bengio(2017)Scellier and Bengio]{scellier2017equilibrium}
+Scellier, B. and Bengio, Y.
+\newblock Equilibrium propagation: Bridging the gap between energy-based models and backpropagation.
+\newblock \emph{Frontiers in computational neuroscience}, 11:\penalty0 24, 2017.
+
+\bibitem[Schlag et~al.(2021)Schlag, Irie, and Schmidhuber]{schlag2021linear}
+Schlag, I., Irie, K., and Schmidhuber, J.
+\newblock Linear transformers are secretly fast weight memory systems.
+\newblock \emph{CoRR}, abs/2102.11174, 2021.
+\newblock URL \url{https://arxiv.org/abs/2102.11174}.
+
+\bibitem[Shazeer(2020)]{shazeer2020glu}
+Shazeer, N.
+\newblock Glu variants improve transformer.
+\newblock \emph{arXiv preprint arXiv:2002.05202}, 2020.
+
+\bibitem[Socher et~al.(2013)Socher, Perelygin, Wu, Chuang, Manning, Ng, and Potts]{socher2013recursive}
+Socher, R., Perelygin, A., Wu, J., Chuang, J., Manning, C.~D., Ng, A.~Y., and Potts, C.
+\newblock Recursive deep models for semantic compositionality over a sentiment treebank.
+\newblock In \emph{Proceedings of the 2013 conference on empirical methods in natural language processing}, pp.\  1631--1642, 2013.
+
+\bibitem[Su et~al.(2021)Su, Lu, Pan, Murtadha, Wen, and Liu]{su2021roformer}
+Su, J., Lu, Y., Pan, S., Murtadha, A., Wen, B., and Liu, Y.
+\newblock Roformer: Enhanced transformer with rotary position embedding.
+\newblock \emph{arXiv preprint arXiv:2104.09864}, 2021.
+
+\bibitem[Tay et~al.(2022)Tay, Dehghani, Tran, Garcia, Wei, Wang, Chung, Bahri, Schuster, Zheng, et~al.]{tay2022ul2}
+Tay, Y., Dehghani, M., Tran, V.~Q., Garcia, X., Wei, J., Wang, X., Chung, H.~W., Bahri, D., Schuster, T., Zheng, S., et~al.
+\newblock Ul2: Unifying language learning paradigms.
+\newblock In \emph{The Eleventh International Conference on Learning Representations}, 2022.
+
+\bibitem[Touvron et~al.(2023)Touvron, Lavril, Izacard, Martinet, Lachaux, Lacroix, Rozi{\`e}re, Goyal, Hambro, Azhar, et~al.]{touvron2023llama}
+Touvron, H., Lavril, T., Izacard, G., Martinet, X., Lachaux, M.-A., Lacroix, T., Rozi{\`e}re, B., Goyal, N., Hambro, E., Azhar, F., et~al.
+\newblock Llama: Open and efficient foundation language models.
+\newblock \emph{arXiv preprint arXiv:2302.13971}, 2023.
+
+\bibitem[Vaswani et~al.(2017)Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez, Kaiser, and Polosukhin]{vaswani2017attention}
+Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A.~N., Kaiser, {\L}., and Polosukhin, I.
+\newblock Attention is all you need.
+\newblock \emph{Advances in neural information processing systems}, 30, 2017.
+
+\bibitem[von Oswald et~al.(2023)von Oswald, Niklasson, Schlegel, Kobayashi, Zucchet, Scherrer, Miller, Sandler, Vladymyrov, Pascanu, et~al.]{von2023uncovering}
+von Oswald, J., Niklasson, E., Schlegel, M., Kobayashi, S., Zucchet, N., Scherrer, N., Miller, N., Sandler, M., Vladymyrov, M., Pascanu, R., et~al.
+\newblock Uncovering mesa-optimization algorithms in transformers.
+\newblock \emph{arXiv preprint arXiv:2309.05858}, 2023.
+
+\bibitem[Wang et~al.(2023{\natexlab{a}})Wang, Ping, Xu, McAfee, Liu, Shoeybi, Dong, Kuchaiev, Li, Xiao, Anandkumar, and Catanzaro]{wang2023shall}
+Wang, B., Ping, W., Xu, P., McAfee, L., Liu, Z., Shoeybi, M., Dong, Y., Kuchaiev, O., Li, B., Xiao, C., Anandkumar, A., and Catanzaro, B.
+\newblock Shall we pretrain autoregressive language models with retrieval? a comprehensive study.
+\newblock In Bouamor, H., Pino, J., and Bali, K. (eds.), \emph{Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing}, pp.\  7763--7786, Singapore, December 2023{\natexlab{a}}. Association for Computational Linguistics.
+\newblock \doi{10.18653/v1/2023.emnlp-main.482}.
+\newblock URL \url{https://aclanthology.org/2023.emnlp-main.482}.
+
+\bibitem[Wang et~al.(2022)Wang, Variengien, Conmy, Shlegeris, and Steinhardt]{wang2022interpretability}
+Wang, K.~R., Variengien, A., Conmy, A., Shlegeris, B., and Steinhardt, J.
+\newblock Interpretability in the wild: a circuit for indirect object identification in {GPT}-2 small.
+\newblock In \emph{NeurIPS ML Safety Workshop}, 2022.
+\newblock URL \url{https://openreview.net/forum?id=rvi3Wa768B-}.
+
+\bibitem[Wang et~al.(2023{\natexlab{b}})Wang, Zhu, and Wang]{wang2023large}
+Wang, X., Zhu, W., and Wang, W.~Y.
+\newblock Large language models are implicitly topic models: Explaining and finding good demonstrations for in-context learning.
+\newblock \emph{arXiv preprint arXiv:2301.11916}, 2023{\natexlab{b}}.
+
+\bibitem[Wei et~al.(2021)Wei, Chen, and Ma]{wei2022statistically}
+Wei, C., Chen, Y., and Ma, T.
+\newblock Statistically meaningful approximation: a case study on approximating turing machines with transformers.
+\newblock \emph{CoRR}, abs/2107.13163, 2021.
+\newblock URL \url{https://arxiv.org/abs/2107.13163}.
+
+\bibitem[Weiss et~al.(2021)Weiss, Goldberg, and Yahav]{weiss2021thinking}
+Weiss, G., Goldberg, Y., and Yahav, E.
+\newblock Thinking like transformers.
+\newblock In \emph{International Conference on Machine Learning}, pp.\  11080--11090. PMLR, 2021.
+
+\bibitem[Wiebe et~al.(2005)Wiebe, Wilson, and Cardie]{wiebe2005annotating}
+Wiebe, J., Wilson, T., and Cardie, C.
+\newblock Annotating expressions of opinions and emotions in language.
+\newblock \emph{Language resources and evaluation}, 39:\penalty0 165--210, 2005.
+
+\bibitem[Wies et~al.(2023)Wies, Levine, and Shashua]{wies2023learnability}
+Wies, N., Levine, Y., and Shashua, A.
+\newblock The learnability of in-context learning.
+\newblock \emph{arXiv preprint arXiv:2303.07895}, 2023.
+
+\bibitem[Xie et~al.(2022)Xie, Raghunathan, Liang, and Ma]{xie2022an}
+Xie, S.~M., Raghunathan, A., Liang, P., and Ma, T.
+\newblock An explanation of in-context learning as implicit bayesian inference.
+\newblock In \emph{International Conference on Learning Representations}, 2022.
+\newblock URL \url{https://openreview.net/forum?id=RdJVFCHjUMI}.
+
+\bibitem[Yao et~al.(2021)Yao, Peng, Papadimitriou, and Narasimhan]{yao2021self}
+Yao, S., Peng, B., Papadimitriou, C., and Narasimhan, K.
+\newblock Self-attention networks can process bounded hierarchical languages.
+\newblock \emph{arXiv preprint arXiv:2105.11115}, 2021.
+
+\bibitem[Zhang \& Sennrich(2019)Zhang and Sennrich]{zhang2019root}
+Zhang, B. and Sennrich, R.
+\newblock Root mean square layer normalization.
+\newblock \emph{Advances in Neural Information Processing Systems}, 32, 2019.
+
+\bibitem[Zhang et~al.(2023{\natexlab{a}})Zhang, Frei, and Bartlett]{zhang2023trained}
+Zhang, R., Frei, S., and Bartlett, P.~L.
+\newblock Trained transformers learn linear models in-context.
+\newblock \emph{arXiv preprint arXiv:2306.09927}, 2023{\natexlab{a}}.
+
+\bibitem[Zhang et~al.(2015)Zhang, Zhao, and LeCun]{zhang2015character}
+Zhang, X., Zhao, J., and LeCun, Y.
+\newblock Character-level convolutional networks for text classification.
+\newblock \emph{Advances in neural information processing systems}, 28, 2015.
+
+\bibitem[Zhang et~al.(2023{\natexlab{b}})Zhang, Zhang, Yang, and Wang]{zhang2023and}
+Zhang, Y., Zhang, F., Yang, Z., and Wang, Z.
+\newblock What and how does in-context learning learn? bayesian model averaging, parameterization, and generalization.
+\newblock \emph{arXiv preprint arXiv:2305.19420}, 2023{\natexlab{b}}.
+
+\bibitem[Zhou et~al.(2023)Zhou, Bradley, Littwin, Razin, Saremi, Susskind, Bengio, and Nakkiran]{zhou2023algorithms}
+Zhou, H., Bradley, A., Littwin, E., Razin, N., Saremi, O., Susskind, J., Bengio, S., and Nakkiran, P.
+\newblock What algorithms can transformers learn? a study in length generalization.
+\newblock \emph{arXiv preprint arXiv:2310.16028}, 2023.
+
+\end{thebibliography}

@@ -15,19 +15,10 @@ import {
   ArrowUpDown,
   ChevronDown,
 } from 'lucide-react';
-import { Button } from "@/shared/components/ui";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/shared/components/ui";
-import { Checkbox } from "@/shared/components/ui";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Popover, PopoverTrigger, PopoverContent } from '@/shared/components/ui/popover';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from "@/shared/lib/utils";
 import {
   useStorageFilterStore,

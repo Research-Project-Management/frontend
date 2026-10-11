@@ -3,8 +3,8 @@
 import { useState, useRef } from "react";
 import { Search, X } from "lucide-react";
 import { StickiesIcon } from "@/shared/components/icons";
-import { Button } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { cn } from "@/shared/lib/utils";
 
 interface TopBarProps {

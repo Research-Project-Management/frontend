@@ -2,11 +2,11 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { Button } from '@/shared/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { Input } from '@/shared/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import {
   MoreHorizontal,
   X,

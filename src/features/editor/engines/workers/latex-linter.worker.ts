@@ -29,7 +29,7 @@ self.onmessage = (event: MessageEvent<LinterWorkerMessageIn>) => {
     const diagnostics = runLatexLinter(text, options);
     const response: LinterWorkerMessageOut = { id, diagnostics };
     self.postMessage(response);
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Graceful error recovery: never crash worker
     console.error('[latex-linter.worker] Parsing error:', err);
     self.postMessage({ id, diagnostics: [] });

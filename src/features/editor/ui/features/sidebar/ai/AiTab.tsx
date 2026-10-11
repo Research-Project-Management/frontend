@@ -130,9 +130,9 @@ export default function AiTab({ onClose }: AiTabProps) {
           { id: doc.id, name: doc.name || file.name, size: doc.size || file.size },
         ]);
         notifyFileAttached(file.name);
-      } catch (err: any) {
+      } catch (err: unknown) {
         setUploadingFiles((prev) => prev.filter((item) => item.id !== tempId));
-        notifyFileError(file.name, err.message);
+        notifyFileError(file.name, (err as Error)?.message || 'Upload failed');
       }
     }
   };
@@ -270,14 +270,15 @@ export default function AiTab({ onClose }: AiTabProps) {
       setMessages((prev) => [...prev, { role: 'assistant', content: accumulated }]);
       setStreamingMessage('');
       setSelectionContext(null);
-    } catch (err: any) {
-      if (err.name !== 'AbortError') {
-        notifyChatError(err.message);
+    } catch (err: unknown) {
+      const error = err as Error;
+      if (error?.name !== 'AbortError') {
+        notifyChatError(error?.message || 'Chat error');
         setMessages((prev) => [
           ...prev,
           {
             role: 'assistant',
-            content: `**Error:** ${err.message || 'Could not connect to the AI server.'}`,
+            content: `**Error:** ${error?.message || 'Could not connect to the AI server.'}`,
           },
         ]);
       }
@@ -460,8 +461,8 @@ export default function AiTab({ onClose }: AiTabProps) {
             setAttachedFiles((prev) => {
               const existingIds = new Set(prev.map((f) => f.id));
               const newOnes = items
-                .filter((it: any) => !existingIds.has(it.id))
-                .map((it: any) => ({ id: it.id, name: it.name, size: it.size }));
+                .filter((it: { id: string }) => !existingIds.has(it.id))
+                .map((it: { id: string; name: string; size?: number }) => ({ id: it.id, name: it.name, size: it.size }));
               return [...prev, ...newOnes];
             });
             notifyDocumentsAttached(items.length);

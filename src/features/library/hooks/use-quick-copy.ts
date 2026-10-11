@@ -3,7 +3,7 @@
 import { useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
-import { libraryService } from '../data';
+import { CitationService } from '../data/citation/citation.service';
 import type { Item, CslStyle } from '../types/library.types';
 
 export interface UseQuickCopyOptions {
@@ -51,10 +51,10 @@ export function useQuickCopyShortcuts({
       try {
         let text = '';
         if (itemIds.length === 1) {
-          const res = await libraryService.citations.formatCitation(scopeId, itemIds[0], style);
+          const res = await CitationService.formatCitation(scopeId, itemIds[0], style);
           text = res.bibliography || res.inText || '';
         } else {
-          const res = await libraryService.citations.batchFormat(scopeId, itemIds, style);
+          const res = await CitationService.batchFormat(scopeId, itemIds, style);
           text =
             res.bibliographyText ||
             res.citations
@@ -100,10 +100,10 @@ export function useQuickCopyShortcuts({
       try {
         let text = '';
         if (itemIds.length === 1) {
-          const res = await libraryService.citations.formatCitation(scopeId, itemIds[0], style);
+          const res = await CitationService.formatCitation(scopeId, itemIds[0], style);
           text = res.inText || (res as { citation?: string }).citation || '';
         } else {
-          const res = await libraryService.citations.batchFormat(scopeId, itemIds, style);
+          const res = await CitationService.batchFormat(scopeId, itemIds, style);
           text =
             res.combinedInText ||
             res.citations

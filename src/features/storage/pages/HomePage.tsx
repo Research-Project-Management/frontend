@@ -51,7 +51,7 @@ export default function HomePage({
   const setHighlightedItemId = useStorageUIStore((s) => s.setHighlightedItemId);
   const navigateToFolder = useStorageUIStore((s) => s.navigateToFolder);
 
-  const { clearSelection } = useStorageSelectionStore();
+  const clearSelection = useStorageSelectionStore((s) => s.clearSelection);
 
   const {
     projectId,

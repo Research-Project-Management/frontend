@@ -11,6 +11,7 @@ export interface BibEntry {
   type: string; // article, book, inproceedings, etc.
   title?: string;
   authors?: string[];
+  author?: string;
   year?: string;
   journal?: string;
   booktitle?: string;
@@ -22,7 +23,9 @@ export interface BibEntry {
   publisher?: string;
   url?: string;
   source?: 'bib' | 'library' | 'server';
+  sourceFile?: string;
   raw?: string;
+  rawText?: string;
   collectionId?: string | null;
   collectionIds?: string[];
 }

@@ -27,6 +27,7 @@ import {
   Loader2,
   Bookmark,
   Download,
+  ArrowLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -43,6 +44,7 @@ import { cn } from '@/shared/lib/utils';
 
 import { manuscriptService, historyService, historyKeys, exportVersionAsZip } from '@/features/editor/sdk';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
+import type { NodeTreeItem } from '../../domain/types/node.types';
 import { editorCommandBus } from '../../coordinators/command-bus';
 import { usePageStore } from '@/features/editor/store/editor.store';
 import type {
@@ -176,6 +178,15 @@ export default function ProjectHistoryModal({
     enabled: canCompare && open,
   });
 
+  const { data: targetSnapshot } = useQuery<ProjectSnapshotDetail | null>({
+    queryKey: ['project-snapshot', effectiveProjectId, selectedTargetVersion],
+    queryFn: () =>
+      selectedTargetVersion
+        ? historyService.getProjectSnapshot(effectiveProjectId, selectedTargetVersion)
+        : null,
+    enabled: !!selectedTargetVersion && open,
+  });
+
   // Automatically select first file when diff loads
   useEffect(() => {
     if (diffData?.files && diffData.files.length > 0) {
@@ -190,23 +201,23 @@ export default function ProjectHistoryModal({
     mutationFn: ({ version, label }: { version: number; label: string }) =>
       historyService.labelProjectVersion(effectiveProjectId, version, label),
     onSuccess: (_, vars) => {
-      toast.success(`Attached label "${vars.label}" to v${vars.version}`);
+      toast.success(`Attached label "${vars.label}" to v${vars.version}`, { id: `history-label-${vars.version}` });
       refetchVersions();
     },
-    onError: (err: any) => {
-      toast.error(`Failed to add label: ${err?.message || 'Unknown error'}`);
+    onError: (err: unknown, vars) => {
+      toast.error(`Failed to add label: ${(err as Error)?.message || 'Unknown error'}`, { id: `history-label-${vars.version}` });
     },
   });
 
   const deleteLabelMutation = useMutation({
     mutationFn: (labelId: string) =>
       historyService.deleteProjectLabel(effectiveProjectId, labelId),
-    onSuccess: () => {
-      toast.success('Label removed');
+    onSuccess: (_data, labelId) => {
+      toast.success('Label removed', { id: `history-label-${labelId}` });
       refetchVersions();
     },
-    onError: (err: any) => {
-      toast.error(`Failed to remove label: ${err?.message || 'Unknown error'}`);
+    onError: (err: unknown, labelId) => {
+      toast.error(`Failed to remove label: ${(err as Error)?.message || 'Unknown error'}`, { id: `history-label-${labelId}` });
     },
   });
 
@@ -214,14 +225,14 @@ export default function ProjectHistoryModal({
     mutationFn: (summary: string) =>
       historyService.createProjectSnapshot(effectiveProjectId, summary),
     onSuccess: (newVersion) => {
-      toast.success(`Created milestone snapshot v${newVersion.version}`);
+      toast.success(`Created milestone snapshot v${newVersion.version}`, { id: 'history-snapshot' });
       setIsCreatingSnapshot(false);
       setSnapshotSummary('');
       refetchVersions();
       setSelectedTargetVersion(newVersion.version);
     },
-    onError: (err: any) => {
-      toast.error(`Failed to create snapshot: ${err?.message || 'Unknown error'}`);
+    onError: (err: unknown) => {
+      toast.error(`Failed to create snapshot: ${(err as Error)?.message || 'Unknown error'}`, { id: 'history-snapshot' });
     },
   });
 
@@ -229,7 +240,7 @@ export default function ProjectHistoryModal({
     mutationFn: (version: number) =>
       historyService.restoreProjectVersion(effectiveProjectId, version),
     onSuccess: (_, restoredVersion) => {
-      toast.success(`Project successfully restored to v${restoredVersion}`);
+      toast.success(`Project successfully restored to v${restoredVersion}`, { id: 'history-restore' });
       setConfirmingRestore(false);
       onOpenChange(false);
       queryClient.invalidateQueries({ queryKey: historyKeys.versions(effectiveProjectId) });
@@ -237,8 +248,8 @@ export default function ProjectHistoryModal({
       queryClient.invalidateQueries({ queryKey: ['project-snapshot'] });
       editorCommandBus.dispatch({ type: 'filetree:updated' });
     },
-    onError: (err: any) => {
-      toast.error(`Failed to restore project: ${err?.message || 'Unknown error'}`);
+    onError: (err: unknown) => {
+      toast.error(`Failed to restore project: ${(err as Error)?.message || 'Unknown error'}`, { id: 'history-restore' });
     },
   });
 
@@ -286,7 +297,7 @@ export default function ProjectHistoryModal({
       if (!docId) {
         const hierarchy = usePageStore.getState().fileHierarchy;
         if (hierarchy && Array.isArray(hierarchy)) {
-          const findNode = (nodes: any[]): any => {
+          const findNode = (nodes: NodeTreeItem[]): NodeTreeItem | null => {
             for (const node of nodes) {
               if (
                 node.title === activeFilePath ||
@@ -309,9 +320,15 @@ export default function ProjectHistoryModal({
         }
       }
 
-      // 3. Update document content if docId found
+      // 3. Update document content if docId found, or create new file if it was deleted
       if (docId) {
         await manuscriptService.docs.updateContent(docId, baseContent);
+      } else {
+        await manuscriptService.docs.create({
+          projectId: effectiveProjectId,
+          title: activeFilePath.replace(/^\//, ''),
+          content: baseContent,
+        });
       }
 
       // 4. Capture automated non-destructive checkpoint
@@ -320,18 +337,23 @@ export default function ProjectHistoryModal({
         isAutomatic: false,
       });
 
-      return { filePath: activeFilePath, baseVersion: selectedBaseVersion };
+      return { filePath: activeFilePath, baseVersion: selectedBaseVersion, baseContent };
     },
-    onSuccess: ({ filePath, baseVersion }) => {
-      toast.success(`File "${filePath}" restored from Version ${baseVersion}`);
+    onSuccess: ({ filePath, baseVersion, baseContent }) => {
+      toast.success(`File "${filePath}" restored from Version ${baseVersion}`, { id: `history-restore-${filePath}` });
       setConfirmingFileRestore(false);
       queryClient.invalidateQueries({ queryKey: historyKeys.versions(effectiveProjectId) });
       queryClient.invalidateQueries({ queryKey: ['project-history-diff'] });
       queryClient.invalidateQueries({ queryKey: ['project-snapshot'] });
       editorCommandBus.dispatch({ type: 'filetree:updated' });
+      editorCommandBus.dispatch({
+        type: 'document:content-updated',
+        docId: filePath,
+        content: baseContent,
+      });
     },
-    onError: (err: any) => {
-      toast.error(`Failed to restore file: ${err?.message || 'Unknown error'}`);
+    onError: (err: unknown) => {
+      toast.error(`Failed to restore file: ${(err as Error)?.message || 'Unknown error'}`, { id: 'history-restore-file' });
     },
   });
 
@@ -357,9 +379,9 @@ export default function ProjectHistoryModal({
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(content);
       }
-      toast.success(`Copied v${selectedBaseVersion} of ${activeFilePath} to clipboard`);
-    } catch (err: any) {
-      toast.error(`Failed to copy file: ${err?.message || 'Unknown error'}`);
+      toast.success(`Copied v${selectedBaseVersion} of ${activeFilePath} to clipboard`, { id: 'history-copy-file' });
+    } catch (err: unknown) {
+      toast.error(`Failed to copy file: ${(err as Error)?.message || 'Unknown error'}`, { id: 'history-copy-file' });
     }
   };
 
@@ -375,9 +397,9 @@ export default function ProjectHistoryModal({
         version: selectedTargetVersion,
         projectTitle,
       });
-      toast.success(`Tải về thành công file ZIP cho phiên bản v${selectedTargetVersion}`);
-    } catch (err: any) {
-      toast.error(`Không thể tải ZIP phiên bản: ${err?.message || 'Lỗi không xác định'}`);
+      toast.success(`Successfully downloaded ZIP for Version ${selectedTargetVersion}`, { id: 'history-download-zip' });
+    } catch (err: unknown) {
+      toast.error(`Failed to download Version ZIP: ${(err as Error)?.message || 'Unknown error'}`, { id: 'history-download-zip' });
     } finally {
       setIsDownloadingZip(false);
     }
@@ -404,22 +426,35 @@ export default function ProjectHistoryModal({
           View, compare, label and restore historical snapshots of this manuscript project.
         </DialogDescription>
 
-        {/* ── Top Header Bar ── */}
+        {/* ── Top Header Bar (Overleaf Parity) ── */}
         <header className="flex items-center justify-between px-5 py-3 border-b border-border bg-background shrink-0 select-none">
-          <div className="flex items-center gap-2.5">
-            <History className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-14 font-semibold text-foreground tracking-tight">Project History</h2>
-                {selectedTargetVersion && selectedBaseVersion && (
-                  <Badge variant="outline" className="text-[11px] font-mono py-0 h-5">
-                    v{selectedBaseVersion} → v{selectedTargetVersion}
-                  </Badge>
-                )}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer -ml-1 h-8"
+              title="Return to the manuscript editor"
+            >
+              <ArrowLeft className="size-4" />
+              <span>Back to editor</span>
+            </Button>
+            <div className="h-4 w-px bg-border/60" />
+            <div className="flex items-center gap-2.5">
+              <History className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-14 font-semibold text-foreground tracking-tight">Project History</h2>
+                  {selectedTargetVersion && selectedBaseVersion && (
+                    <Badge variant="outline" className="text-[11px] font-mono py-0 h-5">
+                      v{selectedBaseVersion} → v{selectedTargetVersion}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-12 text-muted-foreground mt-0.5">
+                  {versions.length} total {versions.length === 1 ? 'version' : 'versions'} recorded
+                </p>
               </div>
-              <p className="text-12 text-muted-foreground mt-0.5">
-                {versions.length} total {versions.length === 1 ? 'version' : 'versions'} recorded
-              </p>
             </div>
           </div>
 
@@ -611,6 +646,7 @@ export default function ProjectHistoryModal({
             selectedTargetVersion={selectedTargetVersion}
             selectedBaseVersion={selectedBaseVersion}
             onSelectVersion={handleSelectVersion}
+            onSelectBaseVersion={(v) => setSelectedBaseVersion(v)}
             onAddLabel={(version, label) => addLabelMutation.mutate({ version, label })}
             onDeleteLabel={(labelId) => deleteLabelMutation.mutate(labelId)}
             isAddingLabelLoading={addLabelMutation.isPending}

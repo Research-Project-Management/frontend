@@ -21,19 +21,11 @@ import {
   Trash,
 } from 'lucide-react';
 import { StorageIcon } from '@/shared/components/icons';
-import { Button } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@/shared/components/ui";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Popover, PopoverTrigger, PopoverContent } from '@/shared/components/ui/popover';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { useTopbar } from '../../hooks/use-topbar';
 import CreateFolderModal from '../modal/CreateFolderModal';
 import RenameModal from '../modal/RenameModal';
@@ -101,7 +93,8 @@ export default function Topbar({
     duplicatePrompt,
   } = useTopbar({ searchQuery, onSearchChange, projectId, parentId });
 
-  const { view, setView } = useViewStore();
+  const view = useViewStore((s) => s.view);
+  const setView = useViewStore((s) => s.setView);
 
   const isSubfolder = Boolean(breadcrumbs && breadcrumbs.length > 1);
   const currentFolderName = isSubfolder ? breadcrumbs![breadcrumbs!.length - 1]?.name : title || 'All Files';

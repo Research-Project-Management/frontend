@@ -3,8 +3,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, FileText } from 'lucide-react';
-import { Button } from "@/shared/components/ui";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 
 const ZOTERO_COLORS = [
   { id: 'yellow', label: 'Yellow', hex: '#ffd400' },

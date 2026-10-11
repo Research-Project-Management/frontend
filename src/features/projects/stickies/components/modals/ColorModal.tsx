@@ -4,7 +4,7 @@ import {
   type StickyColor,
   STICKY_COLOR_MAP,
 } from '@/features/projects/stickies/types/sticky.types';
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { Palette } from "lucide-react";
 import { ToolbarBtn } from "../ui/ToolbarBtn";
 import { motion, AnimatePresence } from "framer-motion";

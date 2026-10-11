@@ -91,6 +91,7 @@ export interface OutlineEntry {
   title: string;
   line: number;
   type?:
+    | 'book'
     | 'part'
     | 'chapter'
     | 'section'
@@ -109,6 +110,7 @@ export interface OutlineEntry {
 export const OUTLINE_INDENT = [0, 8, 18, 28, 38, 48, 58];
 
 const SECTION_COMMANDS = [
+  { cmd: 'book', level: 0, levelName: 'Book' },
   { cmd: 'part', level: 0, levelName: 'Part' },
   { cmd: 'chapter', level: 0, levelName: 'Chapter' },
   { cmd: 'section', level: 1, levelName: 'Section' },

@@ -180,16 +180,35 @@ export function detectCitationTrigger(lineBeforeCursor: string): CitationTrigger
  */
 export function formatCitationSnippet(
   citationKey: string,
-  style: 'latex-cite' | 'latex-citep' | 'latex-citet' | 'markdown-bracket' | 'markdown-inline' = 'latex-cite',
+  style:
+    | 'latex-cite'
+    | 'latex-citep'
+    | 'latex-citet'
+    | 'latex-autocite'
+    | 'markdown-bracket'
+    | 'markdown-inline'
+    | 'cite'
+    | 'citep'
+    | 'citet'
+    | 'autocite'
+    | 'markdown'
+    | string = 'latex-cite',
 ): string {
   switch (style) {
     case 'latex-cite':
+    case 'cite':
       return `\\cite{${citationKey}}`;
     case 'latex-citep':
+    case 'citep':
       return `\\citep{${citationKey}}`;
     case 'latex-citet':
+    case 'citet':
       return `\\citet{${citationKey}}`;
+    case 'latex-autocite':
+    case 'autocite':
+      return `\\autocite{${citationKey}}`;
     case 'markdown-bracket':
+    case 'markdown':
       return `[@${citationKey}]`;
     case 'markdown-inline':
       return `@${citationKey}`;
@@ -433,4 +452,18 @@ export function formatBibEntryToBibtex(entry: BibEntry): string {
   }
 
   return `@${type}{${entry.key},\n${fields.join(',\n')}\n}`;
+}
+
+/**
+ * Cleans raw abstract text:
+ * - Strips leading 'Abstract:', 'Abstract — ', 'BACKGROUND:' or redundant labels
+ * - Cleans excessive whitespace and trims
+ */
+export function cleanAbstractText(rawAbstract?: string): string {
+  if (!rawAbstract || typeof rawAbstract !== 'string') return '';
+  return rawAbstract
+    .replace(/^(?:abstract\s*[:\-\u2013\u2014]\s*)+/i, '')
+    .replace(/^(?:background\s*[:\-\u2013\u2014]\s*)+/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

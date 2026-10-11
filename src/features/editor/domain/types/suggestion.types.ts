@@ -37,7 +37,7 @@ export type SuggestionStatus = 'pending' | 'accepted' | 'rejected';
 export interface SuggestionAuthor {
   id: string;
   name: string;
-  email: string;
+  email?: string;
   avatar?: string | null;
 }
 
@@ -46,15 +46,15 @@ export interface PageSuggestion {
   pageId: string;
   projectId?: string | null;
   projectPageId?: string | null;
-  authorId: string;
+  authorId?: string | null;
   author: SuggestionAuthor;
   type: SuggestionType;
   originalText: string;
   suggestedText: string;
-  fromLine: number;
-  fromColumn: number;
-  toLine: number;
-  toColumn: number;
+  fromLine?: number;
+  fromColumn?: number;
+  toLine?: number;
+  toColumn?: number;
   description?: string | null;
   status: SuggestionStatus;
   resolvedById?: string | null;

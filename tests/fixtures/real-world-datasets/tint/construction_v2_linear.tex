@@ -1,0 +1,40 @@
+\section{Efficient Forward Propagation}\label{sec:exposition_linear_forward}
+We now discuss how \simulator{} performs a highly efficient forward pass through the auxiliary model.
+Here, we focus on the linear layer  because it is repeated many times in various transformer modules (e.g., in self-attention), so improving the efficiency dramatically reduces \simulator{}'s size.
+\begin{definition}[Linear layer]\label{def:linear_mainpaper}
+    For a weight $\mW\in\RR^{\aux{D} \times \aux{D}}$, a linear layer takes $\vx\in\RR^{\aux{D}}$ as input and outputs $\vy = \mW\vx$.\footnote{Linear layers are applied token-wise, so we can consider a single position $t$ without loss of generality.}
+\end{definition}
+We compute $\vy$ coordinate-wise, i.e., $\langle \vw_i, \vx_t\rangle$ for all $i \in [\aux{D}]$, where $\vw_i$ is the $i$th row of $\mW$. 
+The simulator represents $\langle \vw_i, \vx_t\rangle$ as an attention score between the row $\vw_i$ and the input $\vx_t$. 
+So, the input embeddings $\ve_t$ contain $\vx_t$ in the first $\aux{D}$ coordinates, and the rows $\{\vw_i\}$ of the weight matrix $\mW$ are in prefix embeddings $\{\vv_j\}$ (def. \ref{def:prefix_embs}).
+
+We strategically distribute the weights (\textsection\ref{sec:stack}) and aggregate the parallelized computation results (\textsection\ref{sec:aggregate}).
+As we briefly mentioned in the previous section, a straightforward construction of the linear layer would use the context and attention heads inefficiently.
+Our construction instead parallelizes the computation across attention heads in such a way that aggregating the output of the linear operation can also be conducted efficiently.
+
+
+
+\subsection{Stacking and Sharding}\label{sec:stack}
+We partition the inner product computation across attention heads by carefully rearranging the weights and activations via stacking and sharding (\Cref{fig:linear_forward}).
+
+Instead of representing each weight $\vw_i$ as its own prefix token $\vv_i$, we \emph{stack} $S$ weights on top of each other to form each prefix embedding $\vv_i$. $S$ drives a trade-off between the embedding dimension of the \simulator, $\simu{D}= \aux{D}S$, and the context length to the \simulator, $\simu{T} = K+\aux{T}$. 
+We set $S=4$.
+
+
+A simple strategy now would be to use different attention heads to operate on different rows; however, this would still use only $S$ attention heads whereas we could parallelize across many more heads.
+We instead parallelize across more attention heads, where each head is responsible for computing the inner product on a subset of the coordinates. % while ensure the resulting output can easily be compiled:
+We \emph{shard} each individual weight and the activation into $S'$ parts and compute the inner product on each of the $S'$ parts in parallel 
+We set $S$ and $S'$ such that $\simu{H} = S\times S'$, thereby using all of \simulator{} heads to efficiently compute the dot products. 
+
+\subsection{Efficient Aggregation}\label{sec:aggregate}
+The attention module outputs a sparse matrix with shape $(\simu{D} / \simu{H})\times \simu{H}$ containing the inner products on various subsets of the coordinates in its entries.
+To complete the linear forward pass, we need to sum the appropriate terms to form a $\simu{D}$-length vector with $\mW\vx$ in the first $\aux{D}$ coordinates.
+Straightforwardly summing along an axis aggregates incorrect terms, since the model was sharded.
+On the other hand, rearranging the matrix would require an additional $\simu{D}\times\simu{D}$ linear layer.
+Instead, \simulator{} saves a factor of $\simu{H}\times$ parameters %\mz{anything missing here?} 
+by leveraging the local structure of the attention output.
+We illustrate this visually in \cref{sec:H-split_operation_app}.
+This procedure requires $\simu{D}^2/\simu{H} + \simu{D}\simu{H}$ parameters. 
+This efficient aggregation also compresses the constructions for the \simulator's backpropagation modules for layer normalization and activations (\cref{sec:LNappendix,sec:act_appendix}).
+
+

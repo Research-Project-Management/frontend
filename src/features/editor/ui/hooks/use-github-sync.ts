@@ -53,13 +53,13 @@ export function useGithubSync({
       });
     },
     onSuccess: (data) => {
-      toast.success(`Successfully linked project to ${data.repoFullName}`);
+      toast.success(`Successfully linked project to ${data.repoFullName}`, { id: 'github-link' });
       linkQuery.refetch();
       queryClient.invalidateQueries({ queryKey: githubSyncKeys.link(projectId) });
       onLinkSuccess?.();
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to link GitHub repository');
+    onError: (err: unknown) => {
+      toast.error((err as Error)?.message || 'Failed to link GitHub repository', { id: 'github-link' });
     },
   });
 
@@ -86,13 +86,13 @@ export function useGithubSync({
       });
     },
     onSuccess: (data) => {
-      toast.success(`Created & linked repository ${data.repoFullName}!`);
+      toast.success(`Created & linked repository ${data.repoFullName}!`, { id: 'github-create-link' });
       linkQuery.refetch();
       queryClient.invalidateQueries({ queryKey: githubSyncKeys.link(projectId) });
       onCreateSuccess?.();
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to create GitHub repository');
+    onError: (err: unknown) => {
+      toast.error((err as Error)?.message || 'Failed to create GitHub repository', { id: 'github-create-link' });
     },
   });
 
@@ -112,11 +112,11 @@ export function useGithubSync({
       });
     },
     onSuccess: (data) => {
-      toast.success(`Pushed ${data.fileCount} files to GitHub (${data.commitSha.slice(0, 7)})!`);
+      toast.success(`Pushed ${data.fileCount} files to GitHub (${data.commitSha.slice(0, 7)})!`, { id: 'github-push' });
       linkQuery.refetch();
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to push to GitHub');
+    onError: (err: unknown) => {
+      toast.error((err as Error)?.message || 'Failed to push to GitHub', { id: 'github-push' });
     },
   });
 
@@ -129,13 +129,13 @@ export function useGithubSync({
       });
     },
     onSuccess: (data) => {
-      toast.success(`Pulled ${data.filesImported} files from GitHub!`);
+      toast.success(`Pulled ${data.filesImported} files from GitHub!`, { id: 'github-pull' });
       linkQuery.refetch();
       queryClient.invalidateQueries({ queryKey: ['files', projectId] });
       queryClient.invalidateQueries({ queryKey: ['manuscript-nodes', projectId] });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to pull from GitHub');
+    onError: (err: unknown) => {
+      toast.error((err as Error)?.message || 'Failed to pull from GitHub', { id: 'github-pull' });
     },
   });
 

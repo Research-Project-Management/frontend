@@ -123,11 +123,11 @@ export function useEditorStorageMutations(
     },
     onSuccess: (newItem) => {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      toast.success(`Uploaded "${newItem.filename}"`);
+      toast.success(`Uploaded "${newItem.filename}"`, { id: `upload-${newItem.filename}` });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to upload file';
-      toast.error(msg);
+      toast.error(msg, { id: 'upload-error' });
     },
   });
 
@@ -152,11 +152,11 @@ export function useEditorStorageMutations(
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      toast.success('Folder created');
+      toast.success('Folder created', { id: 'create-folder' });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to create folder';
-      toast.error(msg);
+      toast.error(msg, { id: 'create-folder' });
     },
   });
 
@@ -185,9 +185,9 @@ export function useEditorStorageMutations(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, args) => {
       const msg = err instanceof Error ? err.message : 'Failed to rename item';
-      toast.error(msg);
+      toast.error(msg, { id: `rename-${args.itemId || args.fileId}` });
     },
   });
 
@@ -202,9 +202,9 @@ export function useEditorStorageMutations(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, itemId) => {
       const msg = err instanceof Error ? err.message : 'Failed to delete file';
-      toast.error(msg);
+      toast.error(msg, { id: `delete-${itemId}` });
     },
   });
 
@@ -227,7 +227,7 @@ export function useEditorStorageMutations(
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to move item';
-      toast.error(msg);
+      toast.error(msg, { id: 'move-item' });
     },
   });
 
@@ -238,11 +238,10 @@ export function useEditorStorageMutations(
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      toast.success('Reordered successfully');
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to reorder item';
-      toast.error(msg);
+      toast.error(msg, { id: 'reorder-item' });
     },
   });
 
@@ -254,11 +253,11 @@ export function useEditorStorageMutations(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       queryClient.invalidateQueries({ queryKey: ['editor-root-doc'] });
-      toast.success('Main document set successfully');
+      toast.success('Main document set successfully', { id: 'set-main-doc' });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to set main document';
-      toast.error(msg);
+      toast.error(msg, { id: 'set-main-doc' });
     },
   });
 

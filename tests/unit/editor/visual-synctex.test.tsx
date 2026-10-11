@@ -97,7 +97,7 @@ describe('Visual Mode Bidirectional Precision SyncTeX (Overleaf Parity)', () => 
       expect(heading).toBeTruthy();
       expect(heading.getAttribute('data-line')).toBe('1');
 
-      engine.jumpToLine(1, 'synctex');
+      engine?.jumpToLine(1, 'synctex');
 
       expect(heading.scrollIntoView).toHaveBeenCalled();
       expect(heading.classList.contains('synctex-highlight-pulse')).toBe(true);
@@ -199,8 +199,8 @@ describe('Visual Mode Bidirectional Precision SyncTeX (Overleaf Parity)', () => 
 
       const engine = getActiveEditorEngine();
       expect(engine).toBeTruthy();
-      const pos = engine.getCursorPosition();
-      expect(pos.line).toBe(6);
+      const pos = engine?.getCursorPosition();
+      expect(pos?.line).toBe(6);
     });
 
     it('dispatches synctex:forward when clicking View in PDF button in floating bubble menu', async () => {

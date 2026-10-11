@@ -307,7 +307,7 @@ export const StorageFolderNode = React.memo(function StorageFolderNode({
               <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none text-foreground shrink-0" />
             </div>
           )}
-          {children?.map((child: any) =>
+          {children?.map((child: StorageItem) =>
             child.isFolder ? (
               <StorageFolderNode
                 key={child.id}

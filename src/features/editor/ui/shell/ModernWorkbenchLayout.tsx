@@ -54,12 +54,20 @@ const FigureWizardModal = dynamic(() => import('../modals/FigureWizardModal'), {
 const SymbolPaletteModal = dynamic(() => import('../modals/SymbolPaletteModal'), { ssr: false });
 
 /** Safely extracts LaTeX string content from active engine or document entity */
-function getDocContent(doc: any, fallbackEngineContent?: string): string {
+function getDocContent(doc: unknown, fallbackEngineContent?: string): string {
   if (fallbackEngineContent) return fallbackEngineContent;
-  if (!doc) return '';
-  if (typeof doc.content === 'string') return doc.content;
-  if (doc.content && typeof doc.content.source === 'string') return doc.content.source;
-  if (typeof doc.docContent === 'string') return doc.docContent;
+  if (!doc || typeof doc !== 'object') return '';
+  const d = doc as { content?: unknown; docContent?: unknown };
+  if (typeof d.content === 'string') return d.content;
+  if (
+    d.content &&
+    typeof d.content === 'object' &&
+    'source' in d.content &&
+    typeof (d.content as { source?: unknown }).source === 'string'
+  ) {
+    return (d.content as { source: string }).source;
+  }
+  if (typeof d.docContent === 'string') return d.docContent;
   return '';
 }
 
@@ -202,7 +210,11 @@ export function ModernWorkbenchLayout() {
 
     const normalizeTab = (panel: string): ActivityBarTab => {
       const lower = (panel || '').toLowerCase();
-      if (lower === 'explorer' || lower === 'outline') return 'files';
+      if (lower === 'explorer') return 'files';
+      if (lower === 'outline') {
+        useLayoutStore.getState().setFileOutlineOpen(true);
+        return 'files';
+      }
       if (lower === 'files' || lower === 'search' || lower === 'citations' || lower === 'review' || lower === 'ai') {
         return lower as ActivityBarTab;
       }

@@ -13,16 +13,7 @@ import {
   Scan,
   Check,
 } from 'lucide-react';
-import {
-  MenubarMenu,
-  MenubarTrigger,
-  MenubarContent,
-  MenubarItem,
-  MenubarSub,
-  MenubarSubTrigger,
-  MenubarSubContent,
-  MenubarSeparator,
-} from "@/shared/components/ui";
+import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSub, MenubarSubTrigger, MenubarSubContent, MenubarSeparator } from '@/shared/components/ui/menubar';
 import { cn } from "@/shared/lib/utils";
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { useSettingsStore } from '@/features/editor/store/settings.store';

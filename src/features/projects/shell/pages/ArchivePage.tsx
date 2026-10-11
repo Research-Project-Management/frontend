@@ -18,15 +18,11 @@ import {
   AlertCircle,
   Search,
 } from 'lucide-react';
-import { Button } from "@/shared/components/ui";
-import { Skeleton } from "@/shared/components/ui";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui";
-import { PlaneEmptyState, PlaneErrorState } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { ProjectAvatar } from "@/shared/components/icons";
 import { toast } from 'sonner';
 import { useAuth } from '@/features/auth/hooks/use-auth';

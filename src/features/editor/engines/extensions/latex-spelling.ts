@@ -275,7 +275,6 @@ export function createSpellingHoverTooltip(projectId?: string): Extension {
                 changes: { from, to, insert: sug },
                 userEvent: 'input.complete.spelling',
               });
-              toast.success(`Replaced "${word}" with "${sug}"`);
             };
             list.appendChild(btn);
           });
@@ -306,12 +305,10 @@ export function createSpellingHoverTooltip(projectId?: string): Extension {
           if (projectId) {
             try {
               await spellingService.learnProjectWord(projectId, word);
-              toast.success(`Added "${word}" to project dictionary`);
+              toast.success(`Added "${word}" to project dictionary`, { id: `spell-dict-${word}` });
             } catch {
-              toast.success(`Ignored "${word}"`);
+              // Gracefully learned in session via effect
             }
-          } else {
-            toast.success(`Ignored "${word}"`);
           }
         };
         actions.appendChild(addBtn);
@@ -328,7 +325,6 @@ export function createSpellingHoverTooltip(projectId?: string): Extension {
           view.dispatch({
             effects: addIgnoredWordEffect.of(word),
           });
-          toast.success(`Ignored "${word}" in session`);
         };
         actions.appendChild(ignoreBtn);
 
@@ -591,7 +587,6 @@ export function createSpellingContextMenu(projectId?: string): Extension {
               changes: { from, to, insert: sug },
               userEvent: 'input.complete.spelling',
             });
-            toast.success(`Replaced "${word}" with "${sug}"`);
             removeMenu();
             view.focus();
           };
@@ -624,12 +619,12 @@ export function createSpellingContextMenu(projectId?: string): Extension {
         if (projectId) {
           try {
             await spellingService.learnProjectWord(projectId, word);
-            toast.success(`Added "${word}" to project dictionary`);
+            toast.success(`Added "${word}" to project dictionary`, { id: `spell-dict-${word}` });
           } catch {
-            toast.success(`Learned "${word}" in project`);
+            toast.success(`Learned "${word}" in project`, { id: `spell-dict-${word}` });
           }
         } else {
-          toast.success(`Learned "${word}" in session`);
+          toast.success(`Learned "${word}" in session`, { id: `spell-dict-${word}` });
         }
       };
       actions.appendChild(addBtn);
@@ -646,7 +641,6 @@ export function createSpellingContextMenu(projectId?: string): Extension {
         view.dispatch({
           effects: addIgnoredWordEffect.of(word),
         });
-        toast.success(`Ignored "${word}" in session`);
         removeMenu();
         view.focus();
       };

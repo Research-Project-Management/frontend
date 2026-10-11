@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { ChevronDown, Crown, MoreHorizontal, Trash2 } from 'lucide-react';
-import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/shared/components/ui";
+import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/shared/components/ui/dropdown-menu';
 import { cn } from "@/shared/lib/utils";
 import type { ProjectMemberItem } from '../../types/member.types';
 

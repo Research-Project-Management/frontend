@@ -157,8 +157,17 @@ export const TexFileRow = React.memo(function TexFileRow({
     );
   }
 
+  const rowRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (isActive && rowRef.current) {
+      rowRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [isActive]);
+
   const rowContent = (
     <div
+      ref={rowRef}
       role="button"
       tabIndex={0}
       aria-label={`File ${label}${isMain ? ', main document' : ''}`}
@@ -188,7 +197,7 @@ export const TexFileRow = React.memo(function TexFileRow({
 
       <Tooltip delayDuration={400}>
         <TooltipTrigger asChild>
-          <span className="flex-1 min-w-0 truncate tracking-tight text-foreground font-mono text-12 font-medium">
+          <span className="flex-1 min-w-0 truncate tracking-tight text-foreground text-12 font-medium">
             {label}
           </span>
         </TooltipTrigger>

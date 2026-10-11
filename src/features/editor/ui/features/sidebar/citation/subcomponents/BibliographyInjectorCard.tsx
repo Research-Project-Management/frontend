@@ -12,12 +12,13 @@ import {
   buildBibliographySection,
   injectBibliographyIntoDocument,
 } from '@/features/editor/domain/citation/bibliography-generator';
+import type { EditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 
 export interface BibliographyInjectorCardProps {
   citedCount: number;
   citedItems: Item[];
   projectId?: string;
-  engine?: any;
+  engine?: EditorEngine | null;
   getContent?: () => string;
   refreshContent?: () => void;
   activeFilePath?: string;
@@ -94,9 +95,9 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
         `Đã ${actionText.toLowerCase()} danh mục ${citedItems.length} tài liệu vào đề cương!`,
         { id: toastId },
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error('Không thể tạo danh mục tài liệu', {
-        description: err?.message || 'Lỗi khi gọi engine trích dẫn',
+        description: (err as Error)?.message || 'Lỗi khi gọi engine trích dẫn',
         id: toastId,
       });
     } finally {
@@ -133,9 +134,9 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
       } else {
         toast.error('Không thể sao chép vào clipboard', { id: toastId });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error('Sao chép thất bại', {
-        description: err?.message || 'Lỗi khi định dạng trích dẫn',
+        description: (err as Error)?.message || 'Lỗi khi định dạng trích dẫn',
         id: toastId,
       });
     }

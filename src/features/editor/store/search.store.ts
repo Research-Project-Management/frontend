@@ -18,6 +18,8 @@ export interface DocumentSearchState {
   caseSensitive: boolean;
   wholeWord: boolean;
   useRegex: boolean;
+  withinSelection: boolean;
+  searchScope: 'project' | 'file';
 
   // ── UI View State ───────────────────────────────────────────────────────
   collapsedFiles: Set<string>;
@@ -36,6 +38,9 @@ export interface DocumentSearchState {
   toggleWholeWord: () => void;
   setUseRegex: (val: boolean) => void;
   toggleUseRegex: () => void;
+  setWithinSelection: (val: boolean) => void;
+  toggleWithinSelection: () => void;
+  setSearchScope: (scope: 'project' | 'file') => void;
 
   toggleFileCollapsed: (fileId: string) => void;
   collapseAllFiles: (fileIds: string[]) => void;
@@ -54,6 +59,8 @@ export const useDocumentSearchStore = create<DocumentSearchState>((set) => ({
   caseSensitive: false,
   wholeWord: false,
   useRegex: false,
+  withinSelection: false,
+  searchScope: 'project',
 
   collapsedFiles: new Set<string>(),
   isSearching: false,
@@ -70,6 +77,9 @@ export const useDocumentSearchStore = create<DocumentSearchState>((set) => ({
   toggleWholeWord: () => set((s) => ({ wholeWord: !s.wholeWord })),
   setUseRegex: (useRegex) => set({ useRegex }),
   toggleUseRegex: () => set((s) => ({ useRegex: !s.useRegex })),
+  setWithinSelection: (withinSelection) => set({ withinSelection }),
+  toggleWithinSelection: () => set((s) => ({ withinSelection: !s.withinSelection })),
+  setSearchScope: (searchScope) => set({ searchScope }),
 
   toggleFileCollapsed: (fileId) =>
     set((s) => {

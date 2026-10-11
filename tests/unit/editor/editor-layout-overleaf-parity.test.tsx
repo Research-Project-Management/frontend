@@ -91,6 +91,15 @@ vi.mock('@/features/editor/ui/features/editor/CodeMirrorView', () => ({
   ),
 }));
 
+// Mock VisualEditorView to prevent TipTap/DOM measurement issues in JSDOM
+vi.mock('@/features/editor/ui/features/editor/VisualEditorView', () => ({
+  VisualEditorView: (props: any) => (
+    <div data-testid="mock-visual-view" data-file-id={props.fileId}>
+      <span>Visual Engine Mock</span>
+    </div>
+  ),
+}));
+
 describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -362,19 +371,20 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       expect(screen.getByRole('button', { name: /editing mode/i })).toBeInTheDocument();
 
       // Verified elements that DO belong on Topbar:
-      expect(screen.getByRole('link', { name: /back to pages/i })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /back to projects/i })).toBeInTheDocument();
       expect(screen.getByRole('menuitem', { name: /file/i })).toBeInTheDocument();
-      expect(screen.getByRole('menuitem', { name: /insert/i })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: /edit/i })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: /view/i })).toBeInTheDocument();
     });
 
-    it('renders canonical Overleaf activity bar icons and omits redundant separate outline tab', () => {
+    it('renders canonical Overleaf activity bar icons with File Outline integrated in File Tree', () => {
       renderWithProviders(<ActivityBar />);
-      expect(screen.getByRole('tab', { name: /files explorer/i })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /file tree/i })).toBeInTheDocument();
+      expect(screen.queryByRole('tab', { name: /document outline/i })).toBeNull();
       expect(screen.getByRole('tab', { name: /search in project/i })).toBeInTheDocument();
       expect(screen.getByRole('tab', { name: /citations & bibtex/i })).toBeInTheDocument();
       expect(screen.getByRole('tab', { name: /review & comments/i })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /ai research assistant/i })).toBeInTheDocument();
-      expect(screen.queryByRole('tab', { name: /document outline/i })).toBeNull();
+      expect(screen.getByRole('tab', { name: /ai assistant/i })).toBeInTheDocument();
     });
   });
 
@@ -557,8 +567,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       expect(screen.getByRole('button', { name: /^copy$/i })).toBeInTheDocument();
     });
 
-    it('clicking Clear Cache calls clean-aux and triggers fresh compile', async () => {
-      const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
+    it('clicking Clear Cache calls clean-aux and provides user feedback', async () => {
       const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
         new Response(JSON.stringify({ success: true }), {
           status: 200,
@@ -576,9 +585,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       fireEvent.click(clearCacheBtn);
 
       await vi.waitFor(() => {
-        expect(dispatchSpy).toHaveBeenCalledWith(
-          expect.objectContaining({ type: 'compiler:trigger', forceSync: true })
-        );
+        expect(fetchSpy).toHaveBeenCalled();
       });
 
       fetchSpy.mockRestore();

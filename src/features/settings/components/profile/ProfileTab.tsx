@@ -5,22 +5,15 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useUpload } from "@/shared/hooks/use-upload";
 import { useUpdateProfile } from '../../hooks/use-profile';
 import { toast } from 'sonner';
-import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
+import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { getErrorMessage } from "@/shared/lib/utils";
 import { useForm, useWatch, type Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { updateProfileSchema } from '../../types/profile.schema';
 import type { UpdateProfileFormValues } from '../../types/profile.types';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/shared/components/ui";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/shared/components/ui/form';
 import { Loader2, AlertTriangle, Lock, Image as ImageIcon } from 'lucide-react';
 import { useUserCover } from '../../hooks/use-user-cover';
 import { CoverModal } from './CoverModal';

@@ -43,6 +43,7 @@ export interface OutlineTabProps {
 }
 
 const LEVEL_BADGES: Record<string, { label: string; className: string }> = {
+  book: { label: 'Book', className: 'bg-primary/25 text-primary border-primary/50 font-semibold' },
   part: { label: 'Part', className: 'bg-primary/20 text-primary border-primary/40' },
   chapter: { label: 'Ch', className: 'bg-primary/15 text-primary border-primary/30' },
   section: { label: 'Sec', className: 'bg-success/15 text-success border-success/30' },

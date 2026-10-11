@@ -2,7 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { MinusCircle, Plus, StickyNote } from 'lucide-react';
-import { Textarea, Button } from "@/shared/components/ui";
+import { Textarea } from '@/shared/components/ui/textarea';
+import { Button } from '@/shared/components/ui/button';
 import { cn } from "@/shared/lib/utils";
 import { useNotes } from '../../data/reader.queries';
 import type { Item as Paper } from '../../types/reader.types';

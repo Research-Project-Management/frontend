@@ -9,6 +9,7 @@ import {
   Search,
   Clock,
   Loader2,
+  User,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -41,6 +42,7 @@ export interface VersionTimelineSidebarProps {
   selectedTargetVersion: number | null;
   selectedBaseVersion: number | null;
   onSelectVersion: (version: number) => void;
+  onSelectBaseVersion?: (version: number) => void;
   onAddLabel: (version: number, label: string) => void;
   onDeleteLabel: (labelId: string) => void;
   isAddingLabelLoading?: boolean;
@@ -56,12 +58,18 @@ export function VersionTimelineSidebar({
   selectedTargetVersion,
   selectedBaseVersion,
   onSelectVersion,
+  onSelectBaseVersion,
   onAddLabel,
   onDeleteLabel,
   isAddingLabelLoading = false,
 }: VersionTimelineSidebarProps) {
   const [labelingVersion, setLabelingVersion] = useState<number | null>(null);
   const [newLabelText, setNewLabelText] = useState('');
+
+  const latestVersion = React.useMemo(() => {
+    if (versions.length === 0) return 0;
+    return Math.max(...versions.map((v) => v.version));
+  }, [versions]);
 
   const filteredVersions = React.useMemo(() => {
     return versions.filter((v) => {
@@ -73,7 +81,8 @@ export function VersionTimelineSidebar({
       const matchSummary = v.summary?.toLowerCase().includes(q);
       const matchLabel = v.labels?.some((l) => l.label.toLowerCase().includes(q));
       const matchVer = `v${v.version}`.includes(q) || `${v.version}` === q;
-      return matchSummary || matchLabel || matchVer;
+      const matchAuthor = v.author?.name?.toLowerCase().includes(q);
+      return matchSummary || matchLabel || matchVer || matchAuthor;
     });
   }, [versions, filter, searchQuery]);
 
@@ -113,7 +122,7 @@ export function VersionTimelineSidebar({
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Filter versions or labels..."
+            placeholder="Filter versions, labels, or authors..."
             className="h-7 pl-8 text-xs bg-background"
           />
         </div>
@@ -155,9 +164,9 @@ export function VersionTimelineSidebar({
                       : 'bg-card hover:bg-muted/40 border-border/70'
                 )}
               >
-                {/* Top Row: Version Badge, Save Type, Time */}
+                {/* Top Row: Version Badge, Current State / Save Type, Time */}
                 <div className="flex items-center justify-between text-xs mb-1">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <span
                       className={cn(
                         'px-1.5 py-0.5 rounded-sm text-[11px] font-mono font-semibold',
@@ -168,14 +177,28 @@ export function VersionTimelineSidebar({
                     >
                       v{v.version}
                     </span>
-                    <span className="text-[11px] text-muted-foreground">
-                      {v.isAutomatic ? 'Auto-save' : 'Snapshot'}
-                    </span>
+                    {v.version === latestVersion ? (
+                      <span className="px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-success/15 text-success border border-success/30">
+                        Current state
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">
+                        {v.isAutomatic ? 'Auto-save' : 'Snapshot'}
+                      </span>
+                    )}
                   </div>
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-[11px] text-muted-foreground shrink-0">
                     {formatVersionTime(v.createdAt)}
                   </span>
                 </div>
+
+                {/* Author Attribution (Overleaf Parity) */}
+                {(v.author?.name || v.createdById) && (
+                  <div className="flex items-center gap-1 mb-1 text-[11px] text-muted-foreground">
+                    <User className="size-3 shrink-0 opacity-70" />
+                    <span className="truncate">{v.author?.name || `Author ${v.createdById?.slice(0, 6)}`}</span>
+                  </div>
+                )}
 
                 {/* Summary / Commit Message */}
                 <p className="text-xs font-medium text-foreground line-clamp-2 leading-relaxed">
@@ -251,7 +274,28 @@ export function VersionTimelineSidebar({
                   </div>
                 ) : (
                   <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-border/40 text-[10px] text-muted-foreground">
-                    <span>{v.fileCount || 1} files</span>
+                    <div className="flex items-center gap-1.5">
+                      <span>{v.fileCount || 1} files</span>
+                      {onSelectBaseVersion && (
+                        <>
+                          <span className="text-border/70">•</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSelectBaseVersion(v.version);
+                            }}
+                            className={cn(
+                              'hover:text-primary transition-colors cursor-pointer',
+                              isBase ? 'text-primary font-semibold' : 'hover:underline'
+                            )}
+                            title={`Set Version ${v.version} as the comparison base`}
+                          >
+                            {isBase ? '● Base' : 'Set as base'}
+                          </button>
+                        </>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={(e) => {

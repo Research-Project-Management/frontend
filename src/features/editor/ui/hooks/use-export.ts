@@ -31,7 +31,7 @@ export function useProjectExport() {
 
   const downloadPdf = useCallback(async (pdfUrl: string | null | undefined, projectTitle?: string) => {
     if (!pdfUrl) {
-      toast.error('Vui lòng biên dịch tài liệu sang PDF trước (Please compile the PDF first).');
+      toast.error('Please compile the document to PDF first.', { id: 'download-pdf' });
       return;
     }
     const filename = getExportFilename(projectTitle || 'document', 'pdf');
@@ -55,7 +55,7 @@ export function useProjectExport() {
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
       }
-      toast.success(`Đã tải xuống ${filename}`);
+      toast.success(`Downloaded ${filename}`, { id: 'download-pdf' });
     } catch {
       const a = document.createElement('a');
       a.href = pdfUrl;
@@ -73,7 +73,7 @@ export function useProjectExport() {
     const filename = `${title}_copy.tex`;
     const blob = new Blob([src], { type: 'text/plain;charset=utf-8' });
     triggerFileDownload(blob, filename);
-    toast.success(`Created copy: ${filename}`);
+    toast.success(`Created copy: ${filename}`, { id: 'download-copy' });
   }, []);
 
   const exportZip = useCallback(async (options: ExportZipOptions): Promise<string | null> => {
@@ -83,8 +83,8 @@ export function useProjectExport() {
       const filename = await exportProjectAsZip(options);
       toast.success(`Exported ${filename} successfully!`, { id: toastId });
       return filename;
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to create project ZIP archive.', { id: toastId });
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to create project ZIP archive.', { id: toastId });
       return null;
     } finally {
       setIsExporting(false);
@@ -98,8 +98,8 @@ export function useProjectExport() {
       const filename = await exportArxivSubmissionZip(options);
       toast.success(`Exported ${filename} successfully for arXiv!`, { id: toastId });
       return filename;
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to create arXiv submission ZIP.', { id: toastId });
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to create arXiv submission ZIP.', { id: toastId });
       return null;
     } finally {
       setIsExporting(false);
@@ -108,7 +108,7 @@ export function useProjectExport() {
 
   const exportWord = useCallback(async (options: ExportSingleDocOptions): Promise<string | null> => {
     if (!options.pageId) {
-      toast.error('Unable to find project or document ID');
+      toast.error('Unable to find project or document ID', { id: 'export-word' });
       return null;
     }
     const toastId = toast.loading('Exporting document to Microsoft Word (.docx)...');
@@ -117,8 +117,8 @@ export function useProjectExport() {
       const filename = await exportDocumentAsWord(options);
       toast.success(`Exported ${filename} successfully!`, { id: toastId });
       return filename;
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to export document to Microsoft Word (.docx).', { id: toastId });
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to export document to Microsoft Word (.docx).', { id: toastId });
       return null;
     } finally {
       setIsExporting(false);
@@ -127,7 +127,7 @@ export function useProjectExport() {
 
   const exportMarkdown = useCallback(async (options: ExportSingleDocOptions): Promise<string | null> => {
     if (!options.pageId && !options.fallbackContent) {
-      toast.error('Unable to find document content');
+      toast.error('Unable to find document content', { id: 'export-markdown' });
       return null;
     }
     const toastId = toast.loading('Exporting document to Markdown (.md)...');
@@ -136,8 +136,8 @@ export function useProjectExport() {
       const filename = await exportDocumentAsMarkdown(options);
       toast.success(`Exported ${filename} successfully!`, { id: toastId });
       return filename;
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to export document to Markdown (.md).', { id: toastId });
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to export document to Markdown (.md).', { id: toastId });
       return null;
     } finally {
       setIsExporting(false);
@@ -147,10 +147,10 @@ export function useProjectExport() {
   const exportHtml = useCallback((options: { content: string; projectTitle?: string }): string | null => {
     try {
       const filename = exportDocumentAsHtml(options);
-      toast.success(`Exported ${filename} successfully!`);
+      toast.success(`Exported ${filename} successfully!`, { id: 'export-html' });
       return filename;
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to export HTML document.');
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to export HTML document.', { id: 'export-html' });
       return null;
     }
   }, []);
@@ -162,8 +162,8 @@ export function useProjectExport() {
       const filename = await exportVersionAsZip(options);
       toast.success(`Exported ${filename} successfully!`, { id: toastId });
       return filename;
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to create version ZIP archive.', { id: toastId });
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to create version ZIP archive.', { id: toastId });
       return null;
     } finally {
       setIsExporting(false);

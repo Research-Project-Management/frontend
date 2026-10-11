@@ -46,11 +46,13 @@ import {
   CheckSquare,
   Play,
   FileText,
+  FileEdit,
 } from 'lucide-react';
 import { getActiveEditorEngine, editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { useLayoutStore } from '@/features/editor/store/layout.store';
 import { useDocumentCollaborationStore } from '@/features/editor/store/collaboration.store';
 import { toggleComment } from '@codemirror/commands';
+import type { EditorView } from '@codemirror/view';
 
 export interface EditorContextMenuProps {
   children: React.ReactNode;
@@ -59,6 +61,20 @@ export interface EditorContextMenuProps {
 
 export function EditorContextMenu({ children, disabled = false }: EditorContextMenuProps) {
   const [shiftBypass, setShiftBypass] = useState(false);
+  const [hasSelection, setHasSelection] = useState(false);
+
+  const handleOpenChange = useCallback((open: boolean) => {
+    if (open) {
+      const engine = getActiveEditorEngine();
+      const selected = engine?.getSelectedText?.() || '';
+      setHasSelection(selected.trim().length > 0);
+    }
+  }, []);
+
+  const handleBackToEditing = useCallback(() => {
+    const engine = getActiveEditorEngine();
+    engine?.focus?.();
+  }, []);
 
   const handleContextMenuCapture = useCallback((e: React.MouseEvent) => {
     // Overleaf specification: Holding Shift while right-clicking triggers native browser context menu
@@ -76,14 +92,14 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
     if (selected) {
       try {
         await navigator.clipboard.writeText(selected);
-        const view = engine.getView?.();
+        const view = engine.getView?.() as EditorView | undefined;
         if (view) {
           view.dispatch(view.state.replaceSelection(''));
           view.focus();
         }
       } catch {
         // Fallback
-        const view = engine.getView?.();
+        const view = engine.getView?.() as EditorView | undefined;
         if (view) {
           document.execCommand('cut');
           view.focus();
@@ -108,7 +124,7 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
   const handlePaste = useCallback(async () => {
     const engine = getActiveEditorEngine();
     if (!engine) return;
-    const view = engine.getView?.();
+    const view = engine.getView?.() as EditorView | undefined;
     if (!view) return;
 
     try {
@@ -125,7 +141,7 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
 
   const handleDelete = useCallback(() => {
     const engine = getActiveEditorEngine();
-    const view = engine?.getView?.();
+    const view = engine?.getView?.() as EditorView | undefined;
     if (view) {
       view.dispatch(view.state.replaceSelection(''));
       view.focus();
@@ -134,7 +150,7 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
 
   const handleToggleLineComment = useCallback(() => {
     const engine = getActiveEditorEngine();
-    const view = engine?.getView?.();
+    const view = engine?.getView?.() as EditorView | undefined;
     if (view) {
       toggleComment(view);
       view.focus();
@@ -143,7 +159,7 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
 
   const handleAddReviewComment = useCallback(() => {
     const engine = getActiveEditorEngine();
-    const view = engine?.getView?.();
+    const view = engine?.getView?.() as EditorView | undefined;
     if (!view) return;
 
     const { from, to } = view.state.selection.main;
@@ -164,7 +180,7 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
 
   const handleJumpToPdf = useCallback(() => {
     const engine = getActiveEditorEngine();
-    const view = engine?.getView?.();
+    const view = engine?.getView?.() as EditorView | undefined;
     if (!view) return;
 
     const pos = view.state.selection.main.from;
@@ -179,13 +195,13 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
   const handleFormat = useCallback((type: 'bold' | 'italic' | 'underline' | 'code' | 'inlineMath') => {
     const engine = getActiveEditorEngine();
     engine?.format?.(type);
-    engine?.getView?.()?.focus();
+    (engine?.getView?.() as EditorView | undefined)?.focus();
   }, []);
 
   const handleSelectAll = useCallback(() => {
     const engine = getActiveEditorEngine();
     engine?.selectAll?.();
-    engine?.getView?.()?.focus();
+    (engine?.getView?.() as EditorView | undefined)?.focus();
   }, []);
 
   const handleRecompile = useCallback(() => {
@@ -201,7 +217,7 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
       onContextMenuCapture={handleContextMenuCapture}
       className="h-full w-full overflow-hidden"
     >
-      <ContextMenu>
+      <ContextMenu onOpenChange={handleOpenChange}>
         <ContextMenuTrigger
           disabled={disabled || shiftBypass}
           className="h-full w-full block overflow-hidden select-text"
@@ -209,14 +225,22 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
           {children}
         </ContextMenuTrigger>
         <ContextMenuContent className="w-56 text-xs">
+          {/* Back to Editing (Overleaf standard) */}
+          <ContextMenuItem onClick={handleBackToEditing} className="gap-2 font-medium">
+            <FileEdit className="size-3.5 text-primary" />
+            <span>Back to Editing</span>
+          </ContextMenuItem>
+
+          <ContextMenuSeparator />
+
           {/* Clipboard Group */}
-          <ContextMenuItem onClick={handleCut} className="gap-2">
+          <ContextMenuItem onClick={handleCut} disabled={!hasSelection} className="gap-2">
             <Scissors className="size-3.5 text-muted-foreground" />
             <span>Cut</span>
             <ContextMenuShortcut>Ctrl+X</ContextMenuShortcut>
           </ContextMenuItem>
 
-          <ContextMenuItem onClick={handleCopy} className="gap-2">
+          <ContextMenuItem onClick={handleCopy} disabled={!hasSelection} className="gap-2">
             <Copy className="size-3.5 text-muted-foreground" />
             <span>Copy</span>
             <ContextMenuShortcut>Ctrl+C</ContextMenuShortcut>
@@ -228,7 +252,7 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
             <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
           </ContextMenuItem>
 
-          <ContextMenuItem onClick={handleDelete} className="gap-2 text-destructive focus:text-destructive">
+          <ContextMenuItem onClick={handleDelete} disabled={!hasSelection} className="gap-2 text-destructive focus:text-destructive">
             <Trash2 className="size-3.5" />
             <span>Delete</span>
             <ContextMenuShortcut>Del</ContextMenuShortcut>

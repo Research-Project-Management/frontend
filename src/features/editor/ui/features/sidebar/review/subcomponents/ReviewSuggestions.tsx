@@ -51,7 +51,7 @@ export const SuggestionCard = React.memo(function SuggestionCard({
         : 'bg-warning/10 text-warning border-warning/20';
 
   const authorDisplay = useMemo(
-    () => resolveAuthorDisplay(suggestion.author, membersMap, suggestion.authorId),
+    () => resolveAuthorDisplay(suggestion.author, membersMap, suggestion.authorId ?? undefined),
     [suggestion, membersMap],
   );
 
@@ -92,10 +92,10 @@ export const SuggestionCard = React.memo(function SuggestionCard({
           <span className={cn('px-2 py-0.5 rounded-sm text-11 font-medium capitalize', typeColor)}>
             {suggestion.type}
           </span>
-          {suggestion.fromLine && (
+          {suggestion.fromLine != null && (
             <button
               type="button"
-              onClick={() => onNavigate?.(suggestion.fromLine)}
+              onClick={() => onNavigate?.(suggestion.fromLine!)}
               aria-label={`Jump to line ${suggestion.fromLine}`}
               className="px-2 py-0.5 rounded-sm bg-muted hover:bg-muted/80 text-11 font-mono text-muted-foreground hover:text-foreground border border-border transition-colors cursor-pointer"
               title={`Jump to line ${suggestion.fromLine}`}

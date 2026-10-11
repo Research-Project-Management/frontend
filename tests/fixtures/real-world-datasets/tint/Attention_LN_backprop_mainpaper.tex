@@ -1,0 +1,35 @@
+
+
+\section{Additional related works} \label{sec:additional_related_works}
+\looseness-1\textbf{Interpretability:} Mechanistic interpretability works reverse-engineer the algorithms simulated by these models~\citep{elhage2021mathematical, olsson2022context, wang2022interpretability, nanda2023progress, chughtai2023toy, conmy2023towards}. These works study local patterns, e.g. activations and attention heads, to derive interpretable insights. 
+Other works~\citep{weiss2021thinking,lindner2023tracr} use declarative programs to algorithmically describe transformer models. \citet{zhou2023algorithms} use these to explain task-specific length generalization of transformer models.
+
+
+\textbf{Alternative Explanations for ICL:} Some works study ICL using a Bayesian framework. \citet{xie2022an} model pretraining data as a mixture of HMMs and cast ICL identifying one such component. \citet{hahn2023theory} later modeled language as a compositional grammar, and propose ICL as a composition of operations. \cite{zhang2023and,jiang2023latent,wang2023large,wies2023learnability} further strengthen this hypothesis by generalizing the underlying latent space. 
+On the other hand, careful experiments in \citet{chan2022data} show that data distributional properties (e.g. Zipf's law) drive in-context learning in transformers.  
+
+\input{Tables/table_construction}
+
+
+
+\textbf{Transfer learning:} Our construction uses a pre-trained model to initialize a larger transformer, which is similar to several other more empirically oriented works~\citep{gong2019efficient,reddi2023efficient}. 
+
+
+\section{Deferred defintions from main paper}\label{sec:deferred}
+
+For simplicity of exposition, we showcase the definition on a single head self-attention layer (multi-head attention is in \cref{def:self-attn}).
+%The self-attention in the auxiliary model is the same as in \simulator{} (\Cref{def:self-attn_construct_single}) without a position vector.
+\begin{definition}[Auxiliary model softmax self-attention]
+\label{def:self-attn_auxiliary_single}
+    A self-attention layer with parameters $\{\mW_Q, \mW_K, \mW_V\}$ takes a sequence $\{ \vx_t \}_{t \le \aux{T}}$ and outputs a sequence $\{ \vy_t \}_{t \le \aux{T}}$, such that
+    $$
+    \vy_t = \sum_{j} a_{t, j} \vv_j, \qquad \text{with } a_{t, j} =\mathrm{softmax}(\mK \vq_t)_j, \quad 
+    \vq_t = \mW_Q \vx_t, \quad \vk_t = \mW_K \vx_t, \quad \vv_t = \mW_V \vx_t,
+    $$
+    for all $t \le \aux{T}$, and $\mK \in \RR^{ \aux{T} \times  \aux{D} }$ defined with rows $\{ \vk_t \}_{t=1}^{\aux{T}}.$
+
+\end{definition}
+
+
+
+

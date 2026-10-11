@@ -1,0 +1,76 @@
+\input{figures/General_structure_ICL.tex}
+
+
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=\textwidth]{figures/linearforward_v3.pdf}
+    \caption{\simulator{} simulates the forward pass of a linear layer with a $\simu{H}$-head attention layer ($\simu{H}=6$ here). We stack $S$ weights per prefix embedding to reduce the number of prefix embeddings required ($S=2$ here). We furthermore shard each weight and token embedding $\vx_t$ into $S'$ shards and compute inner products of each shared in parallel using $S \times S'$  attention heads ($S'=3$ here). Please see~\Cref{sec:stack}.}
+    \label{fig:linear_forward}
+\end{figure*}
+
+
+\section{Design Considerations}\label{sec:design}
+Our goal is to construct a simulator that can train an auxiliary model over the course of an inference pass. 
+This procedure requires four steps:
+\begin{enumerate}[leftmargin=*]
+	\item \textbf{Forward Pass}: A forward pass to compute the auxiliary model output $f(\xi;\aux{\vtheta})$ on training input $\xi$ and a loss $\Loss$.
+	\item \textbf{Backward Pass}: Backpropagation to compute the gradient of the auxiliary model $\nabla_{\aux{\vtheta}} \Loss(f(\xi;\aux{\vtheta}))$.
+	\item \textbf{Parameter Update}: Update the auxiliary model using gradient descent, setting $\aux{\vtheta}' = \aux{\vtheta} -\eta\nabla_{\aux{\vtheta}} \Loss(f(\xi;\aux{\vtheta}))$.
+	\item \textbf{Output}: Output next-token predictions $f(\xi';\aux{\vtheta}')$ on a test input $\xi'$ using the updated auxiliary model. %Output these predictions as the simulator output.
+\end{enumerate}
+Note that steps 1-3 can be looped to train the auxiliary model for a few steps\footnote{Looping steps 1-3 scales the depth of the simulator model.}, either on the same training data or on different training data for each step, before evaluating it on the test input~\citep{giannou2023looped}. 
+The above method highlight two crucial features of the simulator: (1) it has access to some amount of training data, and (2) it can use (i.e., read) and update (i.e., write) the auxiliary model.
+Below, we discuss how to design a modest-sized simulator around these two considerations.
+
+\subsection{Input structure}\label{sec:input_structure}
+For simplicity, we describe only one update step on a single batch of training data $\xi$ but note that our formal construction and our experiments handle multiple training steps (see~\Cref{def:finetune}).
+Steps 1 and 4 show that the simulator must access some training data $\xi$ to train the auxiliary model and some testing data $\xi'$ on which it evaluates the updated auxiliary model. 
+For the sake of illustration we consider the following simple setting: given a sequence of input tokens $\ve_1,...,\ve_T$, we split it into training data $\xi=\ve_1,...,\ve_r$ and testing data $\xi'=\ve_{r+1},...,\ve_T$.
+
+Suppose $\xi$ contains an in-context input-output exemplar and $\xi'$ contains a test input.
+Then, the simulator performs a very natural operation of training the auxiliary model on a task-specific example and outputs results for the test example. 
+
+On the other hand, if the input is not specially formatted, $\xi$ and $\xi'$ may simply contain some natural language tokens.
+In this case, the simulator is using the first part of the context tokens to do a quick fine-tune of the auxiliary for some task before outputting the subsequent tokens with the auxiliary model. In a worst-case scenario, users might provide harmful contents, leading the model to implicitly fine-tune on them and potentially output even more harmful content. 
+
+
+Our experiments consider many options for splitting a sequence into $\xi$ and $\xi'$, and we defer a more detailed discussion of possible setups to~\Cref{sec:experiments}.
+
+\looseness-1\paragraph{Accessing Training Labels.} 
+The simulator must be able to see the labels of the training tokens 
+in order to compute the loss $\cL$ (usually, the autoregressive cross-entropy loss) in step 1. 
+For example, in \cref{fig:general_structure_simulator}, when we compute the loss for the token $\ve_2$ in the second position, we need to use its label $\ve_3$ in the third position.
+However, this is not possible if the simulator uses strictly autoregressive attention (\cref{sec:lm_head} contains a more general discussion).
+We thus use a bidirectional attention mask on the training tokens and autoregressive attention on the evaluation portion.
+We note that encoding relevant (e.g., retrieved) context with bidirectional attention is a popular way to improve autoregressive capabilities in language modeling and natural language tasks~\citep{raffel2020exploring,borgeaud2022improving,izacard2020leveraging,izacard2023atlas,wang2023shall,tay2022ul2}.
+This empirical approach is similar in motivation to how \simulator{} uses a few context tokens to adapt the auxiliary model to a given input.
+Having established the training and testing data, we can now move to discussing how the simulator can access (i.e., read) and update (i.e., write to) the auxiliary model at inference time.  
+
+\subsection{Read and write access to auxiliary model}
+As discussed in the start of this section, the simulator must have read and write access to the parameters of the auxiliary model.
+Crucially, the simulator must do at least two forward passes through the auxiliary model, one with the current parameters $\aux{\vtheta}$ and one with the updated parameters $\aux{\vtheta}'$.
+
+The straightforward  way to simulate the forward pass of the auxiliary model would be to store its weights in the simulator's weights and run a forward pass as usual.
+One can analogously simulate the backward pass according to the loss $\Loss$ to compute the gradients.
+However, \textbf{the simulator cannot update its own weights at inference time}, so this strategy would not permit the model to write the updated parameters $\aux{\vtheta}'$ and later read them when simulating the second forward pass.
+Therefore, the auxiliary model $\aux{\vtheta}$ must be available in the activations of the simulator. 
+
+To this end, \citet{wei2022statistically,perez2021attention} model the simulator after a Turing machine, where the activation $\ve_t^{(\ell)} \in\RR^{\simu{D}}$ in each layer acts as a workspace for operations, and computation results are copied to and from memory using attention operations.
+In this paradigm, if $\aux{D} = 768$, computing a dot product $\langle \vw, \vx_t^{(\ell)}\rangle$ with weight $\vw\in\RR^{768}$ requires at least $6.4$ million parameters in the simulator\footnote{
+Using a feedforward module to mimic the dot product (as in \citet{akyurek2022learning}, see thm. \ref{thm:gelu_multiplication}), where the simulator embedding comprises $[\vw, \vx_t] \in \RR^{1536}$, necessitates a minimum of $4.7$ million parameters. Using an attention module to copy the weight from memory adds another $1.7$ million parameters.}.
+Given the pervasiveness of dot products in neural network modules, this strategy would yield a simulator with trillions of parameters. 
+
+
+Alternatively, one can store parameters in the first few context tokens and allow the attention modules to attend to those tokens~\citep{giannou2023looped}. 
+This removes the need for copying and token-wise operations. 
+Then, the same dot product requires only a self-attention module with $1.7$ million parameters.
+We thus adopt this strategy to provide relevant auxiliary model weights as \emph{prefix embeddings}.
+\begin{definition}[Prefix Embeddings]
+    $\{ \vv_j^{(\ell)} \}_{j=1}^K$ denotes the $K$ prefix embeddings at the $\ell$th layer  in \simulator . These contain \emph{relevant} auxiliary model weights or simulated activations.
+    \label{def:prefix_embs}
+\end{definition}
+We now consider how to efficiently simulate the building block of neural networks: matrix-vector multiplication.
+In the next section, we demonstrate that a careful construction of the prefix embeddings enables efficient parallelizaton of matrix-vector products across attention heads.
+
+
+\input{construction_v2_linear}

@@ -156,6 +156,9 @@ export function VisualEditorView({
     handleAlignColumn,
     handleUpdateMetadata: handleUpdateTableMetadata,
     handleDeleteTable,
+    handleMergeCells,
+    handleToggleBorder,
+    handleToggleColumnWidth,
   } = useVisualTableMatrix({ syncHtmlToLatex });
 
   // ── Figure Operations Hook ────────────────────────────────────────────────
@@ -286,6 +289,20 @@ export function VisualEditorView({
           document.execCommand('formatBlock', false, tag);
           break;
         }
+        case 'paragraph':
+          document.execCommand('formatBlock', false, 'p');
+          break;
+        case 'undo':
+          document.execCommand('undo', false);
+          break;
+        case 'redo':
+          document.execCommand('redo', false);
+          break;
+        case 'createLink':
+          if (cmd.contentHtml) {
+            document.execCommand('createLink', false, cmd.contentHtml);
+          }
+          break;
         case 'bulletList':
           document.execCommand('insertUnorderedList', false);
           break;
@@ -323,6 +340,20 @@ export function VisualEditorView({
       executeVisualCommand(cmd);
     });
 
+    const unsubUndo = editorCommandBus.subscribe('editor:undo', () => {
+      if (readOnly) return;
+      contentRef.current?.focus();
+      document.execCommand('undo', false);
+      handleInput();
+    });
+
+    const unsubRedo = editorCommandBus.subscribe('editor:redo', () => {
+      if (readOnly) return;
+      contentRef.current?.focus();
+      document.execCommand('redo', false);
+      handleInput();
+    });
+
     const unsubEvent = EditorEventBus.on('flux:visual-command', (cmd: any) => {
       executeVisualCommand(cmd);
     });
@@ -337,10 +368,12 @@ export function VisualEditorView({
 
     return () => {
       unsubCmd();
+      unsubUndo();
+      unsubRedo();
       unsubEvent();
       unsubCite();
     };
-  }, [executeVisualCommand, handleInput]);
+  }, [executeVisualCommand, handleInput, readOnly]);
 
   // Click delegation for interactive elements (Math, Protected blocks, Citations, Table, Figure)
   const handleClick = useCallback(
@@ -639,6 +672,9 @@ export function VisualEditorView({
           onAlignColumn={handleAlignColumn}
           onUpdateMetadata={handleUpdateTableMetadata}
           onDeleteTable={handleDeleteTable}
+          onMergeCells={handleMergeCells}
+          onToggleBorder={handleToggleBorder}
+          onToggleColumnWidth={handleToggleColumnWidth}
           onClose={() => setActiveTable(null)}
         />
       )}

@@ -6,19 +6,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FolderInput, FolderMinus, Copy, Trash2, X, Folder, Library, Quote, Download, RotateCcw, GitMerge, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { copyToClipboard } from "@/shared/lib/utils";
-import { Button } from "@/shared/components/ui";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/shared/components/ui/dropdown-menu';
 
 import { libraryServices } from '../../data/library-services';
 import { generateCitationKey } from '../../domain/citations';
 import { useLibrarySidebarStore } from '../../store/library-ui.store';
 import { useParams } from 'next/navigation';
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/shared/components/ui";
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
 import type { Collection, Item, CslStyle } from '../../types/library.types';
 import { isItemRetracted } from '../../utils/retraction';
 import type { useLibraryBatchCoordinator } from '../../hooks/useLibraryBatchCoordinator';

@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Loader2, Check, UserPlus } from 'lucide-react';
-import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui";
+import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
+import { Button } from '@/shared/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Input } from '@/shared/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { cn } from "@/shared/lib/utils";
 import { apiGet } from "@/shared/lib/api";
 import type { ProjectRole } from '../../types/member.types';

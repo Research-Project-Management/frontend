@@ -45,8 +45,12 @@ export function DiffContentPane({
   setConfirmingFileRestore,
 }: DiffContentPaneProps) {
   const activeFileDiff = useMemo(() => {
-    if (!diffData?.files || !activeFilePath) return null;
-    return diffData.files.find((f) => f.path === activeFilePath) || diffData.files[0] || null;
+    if (!diffData?.files || diffData.files.length === 0) return null;
+    if (activeFilePath) {
+      const match = diffData.files.find((f) => f.path === activeFilePath);
+      if (match) return match;
+    }
+    return diffData.files[0] || null;
   }, [diffData, activeFilePath]);
 
   if (isLoadingDiff) {
@@ -84,6 +88,7 @@ export function DiffContentPane({
           </span>
           {diffData.files.map((file) => {
             const isActive = file.path === activeFilePath;
+            const isDeleted = file.status === 'deleted';
             return (
               <button
                 key={file.path}
@@ -93,17 +98,28 @@ export function DiffContentPane({
                   'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono transition-colors shrink-0 cursor-pointer',
                   isActive
                     ? 'bg-background text-foreground border border-border font-semibold'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  isDeleted && !isActive && 'text-destructive/80'
                 )}
               >
-                <FileText className="size-3 shrink-0" />
-                <span>{file.path}</span>
-                <span className="text-[10px] text-success font-sans">
-                  +{file.additions}
+                <FileText className={cn("size-3 shrink-0", isDeleted && "text-destructive")} />
+                <span className={cn(isDeleted && 'line-through decoration-destructive/60')}>
+                  {file.path}
                 </span>
-                <span className="text-[10px] text-destructive font-sans">
-                  -{file.deletions}
-                </span>
+                {isDeleted ? (
+                  <span className="text-[10px] text-destructive font-sans font-medium">
+                    (deleted)
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-[10px] text-success font-sans">
+                      +{file.additions}
+                    </span>
+                    <span className="text-[10px] text-destructive font-sans">
+                      -{file.deletions}
+                    </span>
+                  </>
+                )}
               </button>
             );
           })}
@@ -113,12 +129,27 @@ export function DiffContentPane({
         {activeFileDiff && (
           <div className="flex items-center justify-between px-3 py-1.5 bg-muted/40 border-b text-xs shrink-0 select-none">
             <div className="flex items-center gap-2">
-              <FileText className="size-3.5 text-muted-foreground" />
-              <span className="font-mono font-semibold text-foreground text-xs">{activeFileDiff.path}</span>
+              <FileText className={cn("size-3.5", activeFileDiff.status === 'deleted' ? "text-destructive" : "text-muted-foreground")} />
+              <span className={cn(
+                "font-mono font-semibold text-xs",
+                activeFileDiff.status === 'deleted' ? "text-destructive line-through" : "text-foreground"
+              )}>
+                {activeFileDiff.path}
+              </span>
               <Badge variant="outline" className="text-[10px] font-mono h-4 px-1.5 gap-1">
                 <span className="text-success">+{activeFileDiff.additions}</span>
                 <span className="text-destructive">-{activeFileDiff.deletions}</span>
               </Badge>
+              {activeFileDiff.status === 'deleted' && (
+                <Badge variant="destructive" className="text-[10px] uppercase font-mono px-1.5 h-4">
+                  Deleted
+                </Badge>
+              )}
+              {activeFileDiff.status === 'added' && (
+                <Badge variant="default" className="text-[10px] uppercase font-mono px-1.5 h-4 bg-success/20 text-success border-success/30">
+                  New File
+                </Badge>
+              )}
             </div>
 
             <div className="flex items-center gap-1.5">
@@ -140,7 +171,7 @@ export function DiffContentPane({
               {selectedBaseVersion && (
                 <div className="flex items-center gap-1">
                   <Button
-                    variant={confirmingFileRestore ? 'destructive' : 'secondary'}
+                    variant={confirmingFileRestore || activeFileDiff.status === 'deleted' ? 'destructive' : 'secondary'}
                     size="sm"
                     className="h-7 px-2.5 text-xs gap-1.5 cursor-pointer font-medium"
                     disabled={isRestoringSingleFile}
@@ -160,6 +191,8 @@ export function DiffContentPane({
                     <span>
                       {confirmingFileRestore
                         ? `Confirm restore ${activeFileDiff.path.split('/').pop() || 'file'} to v${selectedBaseVersion}`
+                        : activeFileDiff.status === 'deleted'
+                        ? 'Restore this deleted file'
                         : 'Restore this file'}
                     </span>
                   </Button>
@@ -177,6 +210,44 @@ export function DiffContentPane({
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Deleted File Recovery Banner */}
+        {activeFileDiff && activeFileDiff.status === 'deleted' && selectedBaseVersion && (
+          <div className="flex items-center justify-between px-4 py-2 bg-destructive/10 border-b border-destructive/20 text-xs shrink-0">
+            <div className="flex items-center gap-2 text-foreground">
+              <span className="font-semibold text-destructive uppercase text-[10px] tracking-wide px-1.5 py-0.5 rounded bg-destructive/20">
+                Deleted File
+              </span>
+              <span>
+                <strong className="font-mono">{activeFileDiff.path}</strong> was deleted in Version {selectedTargetVersion}. Restore it to recover it back into your project.
+              </span>
+            </div>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="h-6 px-2.5 text-[11px] gap-1 font-medium cursor-pointer"
+              disabled={isRestoringSingleFile}
+              onClick={() => {
+                if (confirmingFileRestore) {
+                  onRestoreSingleFile();
+                } else {
+                  setConfirmingFileRestore(true);
+                }
+              }}
+            >
+              {isRestoringSingleFile ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <RotateCcw className="size-3" />
+              )}
+              <span>
+                {confirmingFileRestore
+                  ? `Confirm Restore v${selectedBaseVersion}`
+                  : 'Restore File'}
+              </span>
+            </Button>
           </div>
         )}
 

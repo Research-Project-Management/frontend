@@ -146,6 +146,10 @@ export function ProjectSettingsModal() {
   const setSpellCheck = useSettingsStore((s) => s.setSpellCheck);
   const spellCheckLanguage = useSettingsStore((s) => s.spellCheckLanguage || 'en-US');
   const setSpellCheckLanguage = useSettingsStore((s) => s.setSpellCheckLanguage);
+  const mainBibFile = useSettingsStore((s) => s.mainBibFile);
+  const setMainBibFile = useSettingsStore((s) => s.setMainBibFile);
+  const referenceSearchStyle = useSettingsStore((s) => s.referenceSearchStyle);
+  const setReferenceSearchStyle = useSettingsStore((s) => s.setReferenceSearchStyle);
 
   // Sub-view navigation
   const [currentView, setCurrentView] = useState<MenuView>('menu');
@@ -204,7 +208,7 @@ export function ProjectSettingsModal() {
       list.push(rootTitle);
     }
     if (projectFiles && Array.isArray(projectFiles)) {
-      projectFiles.forEach((f: any) => {
+      (projectFiles as Array<{ title?: string; name?: string; filename?: string }>).forEach((f) => {
         const name = f.title || f.name || f.filename;
         if (typeof name === 'string' && name.toLowerCase().endsWith('.tex') && !list.includes(name)) {
           list.push(name);
@@ -218,7 +222,7 @@ export function ProjectSettingsModal() {
   const bibFiles = useMemo(() => {
     const list: string[] = [];
     if (projectFiles && Array.isArray(projectFiles)) {
-      projectFiles.forEach((f: any) => {
+      (projectFiles as Array<{ title?: string; name?: string; filename?: string }>).forEach((f) => {
         const name = f.title || f.name || f.filename;
         if (typeof name === 'string' && name.toLowerCase().endsWith('.bib') && !list.includes(name)) {
           list.push(name);
@@ -234,16 +238,26 @@ export function ProjectSettingsModal() {
   const [gitToken, setGitToken] = useState<string | null>(null);
   const [isCreatingToken, setIsCreatingToken] = useState(false);
   const [copiedGitToken, setCopiedGitToken] = useState(false);
+  const [gitRepoInfo, setGitRepoInfo] = useState<{ cloneUrl?: string; branch?: string } | null>(null);
 
-  const gitCloneUrl = typeof window !== 'undefined'
+  useEffect(() => {
+    if (!effectiveProjectId) return;
+    manuscriptService.git.getRepoInfo(effectiveProjectId)
+      .then((info) => {
+        if (info) setGitRepoInfo(info);
+      })
+      .catch(() => {});
+  }, [effectiveProjectId]);
+
+  const gitCloneUrl = gitRepoInfo?.cloneUrl || (typeof window !== 'undefined'
     ? `${window.location.origin}/git/${effectiveProjectId || 'project'}.git`
-    : `https://git.flux.app/p/${effectiveProjectId || 'project'}.git`;
+    : `https://git.flux.app/git/${effectiveProjectId || 'project'}.git`);
 
   const handleCopyGitUrl = () => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(`git clone ${gitCloneUrl}`);
       setCopiedGitUrl(true);
-      toast.success('Git clone command copied to clipboard!');
+      toast.success('Git clone command copied to clipboard!', { id: 'copy-git-url' });
       setTimeout(() => setCopiedGitUrl(false), 2000);
     }
   };
@@ -253,9 +267,9 @@ export function ProjectSettingsModal() {
     try {
       const res = await manuscriptService.git.createToken(`Token ${new Date().toLocaleDateString()}`);
       setGitToken(res.token);
-      toast.success('Đã tạo Git Access Token thành công!');
-    } catch (err: any) {
-      toast.error(err?.message || 'Không thể tạo Git Token');
+      toast.success('Git Access Token generated successfully!', { id: 'git-token-action' });
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to generate Git Token', { id: 'git-token-action' });
     } finally {
       setIsCreatingToken(false);
     }
@@ -265,7 +279,7 @@ export function ProjectSettingsModal() {
     if (gitToken && typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(gitToken);
       setCopiedGitToken(true);
-      toast.success('Đã sao chép Git Token vào clipboard!');
+      toast.success('Git Token copied to clipboard!', { id: 'copy-git-token' });
       setTimeout(() => setCopiedGitToken(false), 2000);
     }
   };
@@ -275,7 +289,7 @@ export function ProjectSettingsModal() {
   const [isCopyingProject, setIsCopyingProject] = useState(false);
   const handleMakeCopy = async () => {
     if (!effectiveProjectId) {
-      toast.info('No active project found to duplicate.');
+      toast.info('No active project found to duplicate.', { id: 'duplicate-project' });
       return;
     }
     const toastId = toast.loading('Duplicating project...');
@@ -300,28 +314,20 @@ export function ProjectSettingsModal() {
   const [isClearingCache, setIsClearingCache] = useState(false);
   const handleClearCache = async () => {
     if (!effectiveProjectId) {
-      toast.info('No active project found to clear cache.');
+      toast.info('No active project found to clear cache.', { id: 'clear-cache' });
       return;
     }
 
     setIsClearingCache(true);
     try {
       await apiPost(`/api/v1/manuscripts/projects/${effectiveProjectId}/clean-aux`);
-      toast.success('Cached files cleared. Next compilation will start fresh from scratch.');
-      editorCommandBus.dispatch({ type: 'compiler:trigger', forceSync: true });
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flux:trigger-compile', { detail: { forceSync: true } }));
-      }
+      toast.success('Cached files cleared. You can recompile whenever ready.', { id: 'clear-cache' });
     } catch {
       try {
         await apiDelete(`/api/v1/manuscripts/projects/${effectiveProjectId}/artifacts`);
-        toast.success('Cached files cleared.');
-        editorCommandBus.dispatch({ type: 'compiler:trigger', forceSync: true });
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('flux:trigger-compile', { detail: { forceSync: true } }));
-        }
-      } catch (err: any) {
-        toast.error(err?.message || 'Failed to clear cached files');
+        toast.success('Cached files cleared. You can recompile whenever ready.', { id: 'clear-cache' });
+      } catch (err: unknown) {
+        toast.error((err as Error)?.message || 'Failed to clear cached files', { id: 'clear-cache' });
       }
     } finally {
       setIsClearingCache(false);
@@ -332,7 +338,7 @@ export function ProjectSettingsModal() {
   const handleDownloadZip = () => {
     const rootId = pageId || effectiveProjectId || currentPage?.id;
     if (!rootId) {
-      toast.info('No active project found to export.');
+      toast.info('No active project found to export.', { id: 'export-zip' });
       return;
     }
     exportZip({
@@ -554,6 +560,11 @@ export function ProjectSettingsModal() {
                 <div className="flex items-center gap-2">
                   <GitBranch className="size-3.5 text-muted-foreground shrink-0" />
                   <span className="text-xs font-medium text-foreground">Git Clone URL</span>
+                  {gitRepoInfo?.branch && (
+                    <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                      {gitRepoInfo.branch}
+                    </span>
+                  )}
                   <span className="text-[10px] font-medium text-success bg-success/10 border border-success/20 px-1.5 py-0.5 rounded-sm ml-auto">
                     Smart-HTTP
                   </span>
@@ -764,6 +775,63 @@ export function ProjectSettingsModal() {
                 </Select>
               </SettingRow>
 
+              {/* Main Bibliography File (Overleaf Parity) */}
+              <SettingRow
+                title="Main bibliography file"
+                description="The primary .bib file used for citation autocomplete & reference search"
+              >
+                <Select
+                  value={mainBibFile || 'auto'}
+                  onValueChange={setMainBibFile}
+                >
+                  <SelectTrigger
+                    aria-label="Main bibliography file"
+                    className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background"
+                  >
+                    <SelectValue placeholder="Select bib file" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto" className="cursor-pointer text-xs">
+                      Auto-detect
+                    </SelectItem>
+                    {bibFiles.map((fn) => (
+                      <SelectItem key={fn} value={fn} className="cursor-pointer text-xs">
+                        {fn}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </SettingRow>
+
+              {/* Reference Search Style (Overleaf Parity) */}
+              <SettingRow
+                title="Reference search style"
+                description="Citation format for searching and referencing entries"
+              >
+                <Select
+                  value={referenceSearchStyle || 'author-year'}
+                  onValueChange={(val) => setReferenceSearchStyle(val as 'author-year' | 'numeric' | 'alphanumeric')}
+                >
+                  <SelectTrigger
+                    aria-label="Reference search style"
+                    className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background"
+                  >
+                    <SelectValue placeholder="Select style" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="author-year" className="cursor-pointer text-xs">
+                      Author-Year
+                    </SelectItem>
+                    <SelectItem value="numeric" className="cursor-pointer text-xs">
+                      Numeric ([1])
+                    </SelectItem>
+                    <SelectItem value="alphanumeric" className="cursor-pointer text-xs">
+                      Alphanumeric ([Knu84])
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </SettingRow>
+
               {/* Spell Check */}
               <SettingRow
                 title="Spell check"
@@ -873,7 +941,7 @@ export function ProjectSettingsModal() {
                     <SelectValue placeholder="Size" />
                   </SelectTrigger>
                   <SelectContent>
-                    {[12, 13, 14, 16, 18].map((s) => (
+                    {EDITOR_FONT_SIZES.map((s) => (
                       <SelectItem key={s} value={String(s)} className="cursor-pointer text-xs">
                         {s}px
                       </SelectItem>

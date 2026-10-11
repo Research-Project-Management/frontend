@@ -1,0 +1,101 @@
+%\vspace{10em}
+\section{Introduction}
+%\snote{Rewrite}
+\label{sec:construction}
+
+\input{thm_box}
+Large transformers~\citep{vaswani2017attention} have brought about a revolution in language modeling, with scaling yielding significant advancements in capabilities~\citep{brown2020language, chowdhery2022palm}. 
+These capabilities include performing in-context learning or following natural language instructions at inference time.
+%(e.g., using in-context instructions) or exemplars to learn to solve a previously unseen tasks\cite{???}.
+
+Researchers have tried to understand how these models can learn new tasks without parameter updates~\citep{garg2022can,von2023uncovering,xie2022an,nanda2023progress}. 
+%\mz{feels that we need citations here, i can find some later if you don't have anything in mind}
+A popular hypothesis is that in-context learning corresponds to the transformer (referred to as the {\em simulator} from now on)  simulating gradient-based learning of a smaller model (called \emph{auxiliary} model) that is embedded within it. 
+%(i.e., in-context learning).
+%In the case of the former, models can follow instructions to perform previously unseen tasks.
+%This capability is incredibly helpful (\snote{examples}) but can also lead the model to follow and execute harmful commands (\snote{examples}).
+%In the case of in-context learning, the model can efficiently learn new input-output mappings from the input sequence and make predictions on a test query, even though the input sequence uses a format that is unlikely to have been seen during pre-training.
+%how well LLMs, pre-trained and fine-tuned, can perform 
+%\emph{inference-time adaptation} to learn new semantics (e.g., new functions) and syntax (e.g., instruction format) without any parameter updates.
+
+From perspective of AI safety and alignment~\citep{amodei2016concrete, leike2018scalable, askell2021general}, the ability of a larger model to use input data (which could be arbitrary in a deployed setting) to implicitly train an auxiliary model  feels worrisome. 
+This concern felt minor
+%\mz{mitigate seems to be a very active word, I think we should say this worry was objectively minor due to efficiency limitations for the current simulations}
+due to efficiency considerations: previous analyses and experiments required the auxiliary model to be quite tiny compared to the simulator. 
+For instance, simulating and training an auxiliary model that is a linear layer  requires tens of millions of parameters in the simulator~\citep{akyurek2022learning}. 
+This scaling is even more dramatic if the auxiliary model is a multi-layer fully-connected net~\cite{giannou2023looped}. 
+
+%Building a reasonable model of how transformers perform this adaptation is crucial to promoting the helpful instances of adaptation while mitigating the harmful ones.
+
+Our primary contribution is an explicit and nontrivial construction of a simulator called \simulator{} that explicitly adapts to the context without parameter updates.
+In particular, we show that a forward pass through a modestly sized \simulator{} can involve gradient-based training of an auxiliary model that is itself a  large transformer.
+%of the larger (simulator) model can involve gradient-based training on an auxiliary model that is itself another  large transformer. \mz{This sentence is very very hard to read.}
+For example, we show that \simulator{} with 2B parameters can faithfully simulate fine-tuning a 125M parameter auxiliary transformer in a single forward pass.
+%a 125M parameter auxiliary transformer can fit in  a transformer-style simulator  with 2B parameters. \mz{I would say: For example, a transformer-style simulator could faithfully simulate fine-tuning a 125M parameter auxiliary transformer with one single forward pass.}
+(Prior constructions would have required trillions of parameters in the simulator for a far simpler auxiliary model.) %that we . 
+%trillions of parameters that would have been required in the more straightforward constructions similar to ones in earlier papers would have required trillions of parameters 
+%This efficiency should be contrasted with prior (weaker) results,  where  allowing an auxiliary model that is a linear classifier (and hence whose number of parameters is at most the context-length) requires tens of millions of parameters~\citep{akyurek2022learning} in the simulator. There were no efficient constructions of complicated auxiliary models. 
+%existing constructions cannot express simulating a more complex auxiliary model.
+%This drastic scaling inhibits us from applying this hypothesis to meaningfully study LLM test-time adaption, because (1) the simulator is restricted to very simple adaptations, and (2) the massive scale and complexity of these constructions suggests that this mechanism is unlikely to occur in the models available to us today.
+
+\iffalse 
+A \simulator{} model with fewer than two billion parameters can accommodate gradient descent on an auxiliary transformer with 125 million parameters.
+This construction drastically improves the parameter efficiency of prior works and expresses a significantly more complex auxiliary model than previously considered.\fi 
+
+%\mz{It's weird to make such retraction statement here first when people are excited to hear about how you constructed the TINT. I think we should start talking about the main result, and say  we highlight the key design choices that reduce the size of \simulator{} and finally say we defer details xxx.}
+
+Our main result is described in \Cref{thm:main}, which details how the size of \simulator{} depends on the auxiliary model. Our construction is generally applicable to diverse variants of pre-trained language models.
+The rest of the paper is structured to highlight the key design choices and considerations in \simulator{}. 
+\begin{enumerate}[leftmargin=*]
+    \item \Cref{sec:design} discusses the overall design decisions required to make \simulator{}, including how the simulator can read from and write to the auxiliary model and how the data must be formatted.
+    \item \Cref{sec:exposition_linear_forward} uses the linear layer as an example to describe how highly parallelized computation and careful rearrangement of activations enable \simulator{} to efficiently simulate the forward pass of the auxiliary model.
+    \item \Cref{sec:modification} describes how \simulator{} uses first-order approximations and stop gradients to compute the \emph{simulated gradient} of the auxiliary model. 
+    \item \Cref{sec:experiments} performs experiments comparing \simulator{} to suitable baselines in language modeling and in-context learning settings. Our findings validate that the simulated gradient can effectively update large pre-trained auxiliary models. Notably, we instantiate \simulator{} in a highly extensible codebase, making \simulator{} the first such construction to undergo end-to-end evaluation.
+\end{enumerate}
+
+Due to the complexity of the construction, we defer the formal details of \simulator{} to the appendix.
+
+% \snote{Rework this after we finish the rest of the paper}
+% Our work improves over prior explorations in three  ways.
+% \begin{enumerate}
+% 	\item \textbf{Expressiveness}: Past work focused on auxiliary models that are either linear or MLP. Allowing a complex, general-purpose transformer as auxiliary model requires significant technical innovation. 
+% 	\item \textbf{Efficiency}:  \simulator{} allows simulators orders of magnitude smaller compared to past works.
+%  %reducing the construction size from trillions of parameters to a few billion, despite simulating much complex auxiliary models. 
+%  For instance, our experiments demonstrate feasible constructions involving moderate- to large-size auxiliary   transformers from popular families including OPT~\citep{zhang2022opt}, LLaMA~\citep{touvron2023llama}, BLOOM~\citep{scao2022bloom}, and Pythia~\citep{biderman2023pythia}.  This efficiency is achieved via a number of approximations in gradient descent on the auxiliary model (see~\Cref{sec:modification}).
+% 	\item \textbf{Empirical Validation}:  Despite use of approximations in the gradient descent on the auxiliary model,  we use  experiments to show that \simulator{} 
+%  %These show demonstrate that it can adapt a small pre-trained model on-the-fly using a subset of tokens of a given context. Although our construction 
+%  can match the performance of full fine-tuning of the auxiliary model, thereby validating the approximations used in the construction. % We implement and thoroughly test our construction by assessing performance on downstream tasks in an end-to-end manner. Our construction fully matches the performance of finetuning an auxiliary model explicitly with backpropagation, regardless of the approximations in the construction. 
+%  We also release an extensible codebase that will enable further training and evaluation of our proposed architecture (\Cref{sec:experiments}).
+% \end{enumerate}
+
+
+
+\iffalse
+\snote{Old intro below}
+
+ 
+One such capability~\citep{wei2022emergent} is in-context learning (ICL), where language models ``learn'' from given training exemplars in the context and subsequently predict the label of a test example within a single inference pass. 
+Although ICL allows efficient adaptation to new tasks, test-time adaptation of LLM behavior can result in unsafe and harmful behaviors \snote{cite}.
+ 
+Several works~\citep{akyurek2022learning,dai2022gpt,vonoswald2022transformers} propose that ICL occurs when the large (``simulator'') model mimics and trains a smaller and simpler auxiliary model ---such as a linear or 2-layer MLP model--- on the in-context data. 
+A crucial limitation of previous works is the large number of parameters needed for a simulator to perform such a complex subroutine during its forward pass, which restricts the simulator to performing very few training steps on fairly simple models. 
+For example, simulating training of a linear layer can require tens of millions of parameters~\citep{akyurek2022learning}, and extending the simulator to train a larger model would require a simulator with trillions of parameters.
+
+The current work shows that minor modifications to the standard transformer architecture allow it to efficiently simulate and approximately train an internal \emph{auxiliary} transformer during a single inference pass (\Cref{sec:construction}).
+We call our architecture {\em Transformer in Transformer}, or \textsc{TinT} in short.
+We show how \textsc{TinT} can internally simulate and train several popular and capable Transformer models such as GPT~\citep{radford2019language}, OPT~\citep{zhang2022opt}, and other variants~\citep{touvron2023llama, scao2022bloom}. 
+%In particular, \textsc{TinT} incorporates novel designs and approximations such as encoding auxiliary weights as prefix embeddings and efficient utilization of attention modules for computational parallelism. 
+\simulator{} requires fewer than two billion parameters to internally simulate and update an auxiliary transformer with 125 million parameters (e.g., \textsc{GPT-2} or \textsc{OPT-125m}). 
+The scale of our construction is crucial to its significance, as it suggests that even transformers of moderate scale can explicitly learn from context during inference. \simulator{} can also be understood as a meta-learning architecture \citep{finn2017model,kirsch2022general}. As our experiments show, \simulator{} can adapt a small pre-trained model on-the-fly using just the first few tokens of a given context.
+
+We validate our approach with end-to-end experiments on many language modeling and downstream tasks. Results demonstrate that a \textsc{TinT} model constructed to simulate and tune an \textsc{OPT-125m} model leads to a perplexity reduction of $0.3$ to $0.7$ points in language modeling. Additionally, \textsc{TinT} learns from in-context exemplars in the few-shot setting, resulting in an absolute gain of $12\%$ to $16\%$ over the auxiliary model.
+\textsc{TinT} can also learn from the context tokens of the evaluation inputs in the zero-shot setting, leading to an absolute performance improvement of up to $4\%$ when no explicit exemplars are provided~(\cref{sec:expt_results}).  To the best of our knowledge, \textsc{TinT} is the first simulator to undergo such a comprehensive end-to-end evaluation on standard language tasks. In contrast, previous studies primarily conducted probing tests on transformers pre-trained using synthetic datasets or lacked empirical validation~\citep{akyurek2022learning, vonoswald2022transformers, giannou2023looped}, likely due to the immense scale required by their constructions.
+
+To summarize, our work improves over prior works in three crucial ways.
+\begin{enumerate}
+	\item \textbf{Expressiveness}: We allow the auxiliary model to be a complex, general-purpose transformer, which requires significant technical innovation beyond past work using linear and MLP auxiliary models. \simulator{} can internally simulate and train popular moderate- and large-scale transformers, including OPT~\citep{zhang2022opt}, LLaMA~\citep{touvron2023llama}, BLOOM~\citep{scao2022bloom}, and Pythia~\citep{biderman2023pythia}. 
+	\item \textbf{Efficiency}: We focus on making \simulator{} orders of magnitude smaller, reducing the construction size from trillions of parameters to a few billion, despite simulating much complex auxiliary models. This efficiency is driven by a number of approximations (see~\Cref{sec:modification}).
+	\item \textbf{Empirical Validation}:  \simulator{} can match the performance of fine-tuning the auxiliary model explicitly, thereby validating the approximations used in the construction. % We implement and thoroughly test our construction by assessing performance on downstream tasks in an end-to-end manner. Our construction fully matches the performance of finetuning an auxiliary model explicitly with backpropagation, regardless of the approximations in the construction. 
+ In addition, we provide an extensible codebase for further training and evaluation of our proposed architecture (\Cref{sec:experiemnts}).
+\end{enumerate}
+\fi

@@ -17,7 +17,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
-import { PlaneEmptyState } from '@/shared/components/ui';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { SidebarPanelHeader } from '../../SidebarPanelHeader';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { OverleafResolvedCommentsIcon } from './ReviewBadges';

@@ -1,0 +1,28 @@
+\begin{table*}[t]
+  \centering
+  \caption{Number of parameters of \simulator{}  for the forward, backward, and gradient update operations on various modules. For simplicity, we have ignored biases in the following computation. We set $S=4$, i.e. stack $4$ weights in each prefix embedding. We set $\simu{H}=12$ for \textsc{OPT-125M} and $\simu{H}=16$ for the other models, $\simu{D} = 4 \aux{D}$ for all the models, and $\simu{T} = \aux{T} + K$, with $\aux{T}=2048$ for \textsc{opt} models, and $K=\aux{D}/4$. $Q=4 Q_{ split} + 3 \simu{T} \simu{D} / \simu{H} $, where $Q_{ split } = \frac{1}{ \simu{H} }(  \simu{D} )^2 +  \simu{H} \simu{D}$,  denotes the number of parameters in a \simulator{} Linear Forward module (\cref{sec:exposition_linear_forward}). % $\aux{N}$ denotes the total number of parameters in the auxiliary model and needs to be included in the final \simulator{} size since they are stored in the Embedding matrix.
+  }
+  \label{tab:construction}
+   %\mz{maybe add vanilla construction vs. construction after approximation? and make it clear how the size and flops increases with $h_d$.}
+  \begin{tabular}{lcccc}
+    \toprule
+    & \multicolumn{4}{c}{Module Size} \\ \cmidrule(lr){2-5} 
+    Module Name & Forward & Backward & Descent  & Total \\
+    \midrule
+    Linear layer  & $Q$ & $Q$ & $Q$  & $3Q$\\
+    Layer norms & $Q$ & $Q + 2 \simu{D} \simu{H}$ & $Q$ & $3Q + 2 \simu{D} \simu{H}$\\
+    Self-Attention  & $2Q$ & $2Q$ & $2Q$  & $6Q$\\
+    Activation & $Q_{ split }$ & $2 \simu{D} \simu{H} $ & $0$ & $Q_{ split } + 2 \simu{D} \simu{H}$\\ \midrule
+    Self-Attention block & $4Q$ &  $ 4Q+ 2\simu{D} \simu{H} $  & $ 4 Q $ & $ 12Q + 2\simu{D} \simu{H} $ \\
+    Feed-forward block & $3Q+Q_{ split }$ & $ 3Q + 4\simu{D} \simu{H} $ & $ 3 Q $  & $ 9Q + 4\simu{D} \simu{H} $\\
+    Transformer block & $7Q+Q_{ split }$ & $7Q + 6\simu{D} \simu{H}$ & $7Q$ & $ 21Q + 6\simu{D} \simu{H}+Q_{ split } $\\
+    Transformer & $7QL + LQ_{ split }$ & $(7Q + 6 \simu{D} \simu{H})L$ & $7QL$ &  $ (21Q + 6\simu{D} \simu{H}+Q_{ split })L $ \\ % + $\aux{N}$\\ 
+    \midrule
+    \textsc{OPT-125m} & \textsc{0.4b} & \textsc{0.4b} & \textsc{0.4b} & \textsc{1.2b}       \\
+    \textsc{OPT-350m} & \textsc{1.2b} & \textsc{1.1b} &  \textsc{1.1b} & \textsc{3.4b}       \\
+    \textsc{OPT-1.3b} &  \textsc{3.7b}   &  \textsc{3.6b}   &    \textsc{3.5b} & \textsc{10.8b}  \\
+    \textsc{OPT-2.7b} & \textsc{7.4b}   &  \textsc{7.2b}   &    \textsc{7.2b} & \textsc{21.8b}\\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+

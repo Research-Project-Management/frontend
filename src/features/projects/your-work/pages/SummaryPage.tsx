@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Skeleton } from "@/shared/components/ui";
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useSummaryWork } from '../hooks/use-summary-work';
 import { useWorkItemModal } from '../hooks/use-work-item-modal';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';

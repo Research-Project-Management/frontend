@@ -9,10 +9,10 @@ import {
   ListFilter,
   Check,
 } from 'lucide-react';
-import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
+import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
+import { Button } from '@/shared/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from "@/shared/lib/utils";
 import type { Project } from '../../types/project.types';
 import {

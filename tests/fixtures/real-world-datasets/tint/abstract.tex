@@ -1,0 +1,9 @@
+\begin{abstract}
+ Recent works attribute the capability of in-context learning (ICL) in large pre-trained language models to implicitly simulating and fine-tuning an internal model (e.g., linear or 2-layer MLP) during inference. 
+ However, such constructions require large memory overhead, which makes simulation of more sophisticated internal models intractable.
+In this work, we propose a new efficient construction, {\em Transformer in Transformer} (in short, \textsc{TinT}), that allows a transformer to simulate and fine-tune more complex models during inference (e.g., pre-trained language models). 
+ In particular, we introduce  innovative approximation techniques that allow a \textsc{TinT} model with less than 2 billion parameters to simulate and fine-tune a 125 million parameter transformer model within a single forward pass.
+ \textsc{TinT} accommodates many common transformer variants and its design ideas also improve the efficiency of past instantiations of simple models inside transformers.  
+We conduct end-to-end experiments to validate the internal fine-tuning procedure of \textsc{TinT} on various language modeling and downstream tasks. For example, even with a limited one-step budget, we observe \textsc{TinT} for a \textsc{OPT-125M} model improves performance by $4-16\%$ absolute on average compared to \textsc{OPT-125M}. These findings suggest that large pre-trained language models are capable of performing intricate subroutines. To facilitate further work, a modular and extensible \ifthenelse{\boolean{arxiv}}{ \href{https://github.com/abhishekpanigrahi1996/transformer_in_transformer}{codebase \footnote{\url{https://github.com/abhishekpanigrahi1996/transformer_in_transformer}}}}{codebase}  for \textsc{TinT} is included. 
+\end{abstract}
+

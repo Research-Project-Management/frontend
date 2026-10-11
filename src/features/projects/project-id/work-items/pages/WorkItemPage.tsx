@@ -65,17 +65,10 @@ import type {
   Column,
   Priority,
 } from "../types/work-item.types";
-import {
-  Button,
-  Skeleton,
-  Input,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Input } from '@/shared/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import {
   Plus,

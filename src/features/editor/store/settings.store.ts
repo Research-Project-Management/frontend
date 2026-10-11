@@ -75,7 +75,11 @@ export interface DocumentSettingsState {
   pdfSpreadView: boolean;
   isLocked: boolean;
   syncScroll: boolean;
+  mainBibFile: string;
+  referenceSearchStyle: 'author-year' | 'numeric' | 'alphanumeric';
 
+  setMainBibFile: (bibFile: string) => void;
+  setReferenceSearchStyle: (style: 'author-year' | 'numeric' | 'alphanumeric') => void;
   setSyncScroll: (syncScroll: boolean) => void;
   toggleSyncScroll: () => void;
   setShowBreadcrumbs: (showBreadcrumbs: boolean) => void;
@@ -172,7 +176,11 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       showBreadcrumbs: true,
       showEquationPreview: true,
       stopOnFirstError: false,
+      mainBibFile: 'auto',
+      referenceSearchStyle: 'author-year',
 
+      setMainBibFile: (mainBibFile) => set({ mainBibFile }),
+      setReferenceSearchStyle: (referenceSearchStyle) => set({ referenceSearchStyle }),
       setEngine: (engine) => set({ engine }),
       setCompileMode: (compileMode) => set({ compileMode }),
       setAutoCompile: (autoCompile) => set({ autoCompile }),

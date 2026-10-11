@@ -30,7 +30,8 @@ import type { SyncTeXMap } from '@/features/editor/domain/pdf/synctex-index';
 import { compilerCoordinator } from '@/features/editor/coordinators/compiler.coordinator';
 import { useIntersectionObserver } from "@/shared/hooks/use-intersection-observer";
 import { logger, cn } from "@/shared/lib/utils";
-import { PlaneErrorState, PlaneEmptyState } from '@/shared/components/ui';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { useViewerStore } from '@/features/editor/store/viewer.store';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';

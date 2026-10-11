@@ -89,7 +89,7 @@ const latexLightStyle = EditorView.theme({
   },
   '.cm-gutters': {
     backgroundColor: '#f7f7f7',
-    color: '#999999',
+    color: '#57606a',
     borderRight: '1px solid #e1e4e8',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
@@ -251,7 +251,7 @@ const solarizedLightStyle = EditorView.theme({
   },
   '.cm-gutters': {
     backgroundColor: '#eee8d5',
-    color: '#93a1a1',
+    color: '#586e75',
     borderRight: '1px solid #d3368222',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
@@ -408,7 +408,7 @@ const eclipseStyle = EditorView.theme({
   },
   '.cm-gutters': {
     backgroundColor: '#f0f0f0',
-    color: '#787878',
+    color: '#57606a',
     borderRight: '1px solid #cccccc',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {

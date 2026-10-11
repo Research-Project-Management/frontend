@@ -19,9 +19,14 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { Button } from "@/shared/components/ui";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/components/ui";
-import { DeleteModal } from '../modal/DeleteModal';
+import { Button } from '@/shared/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import dynamic from 'next/dynamic';
+
+const DeleteModal = dynamic(
+  () => import('../modal/DeleteModal').then((m) => m.DeleteModal),
+  { ssr: false }
+);
 import { resolveFileUrl } from "@/shared/lib/file-client";
 import { cn } from "@/shared/lib/utils";
 import { useInfiniteSentinel } from '../../hooks/use-infinite-sentinel';
@@ -63,7 +68,7 @@ const FileIconItem = React.memo(function FileIconItem({ item }: { item: StorageI
       style={{ color: getFileColor(fileType) }}
     >
       {item.isFolder ? (
-        <Folder className="size-5 fill-amber-500/20 text-amber-500 shrink-0" />
+        <Folder className="size-5 fill-warning/20 text-warning shrink-0" />
       ) : (
         getFileIcon(fileType, 5)
       )}
@@ -309,6 +314,7 @@ export const ItemActions = React.memo(function ItemActions({
             <DropdownMenuSeparator className="my-1" />
 
             <DropdownMenuItem
+              onMouseEnter={() => import('../modal/DeleteModal')}
               onClick={() => setIsDeleteModalOpen(true)}
               className="gap-2 text-destructive focus:text-destructive cursor-pointer"
             >
@@ -319,20 +325,22 @@ export const ItemActions = React.memo(function ItemActions({
         </DropdownMenu>
       )}
 
-      <DeleteModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleConfirmDelete}
-        title={isTrash ? "Delete Permanently?" : "Move to Trash?"}
-        description={
-          isTrash
-            ? `Are you sure you want to delete "${item.filename}" permanently? This action cannot be undone.`
-            : `Are you sure you want to move "${item.filename}" to trash?`
-        }
-        confirmText={isDeleteDone ? "Deleted" : isTrash ? "Delete Permanently" : "Delete"}
-        cancelText="Cancel"
-        loading={isDeleting}
-      />
+      {isDeleteModalOpen && (
+        <DeleteModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={handleConfirmDelete}
+          title={isTrash ? "Delete Permanently?" : "Move to Trash?"}
+          description={
+            isTrash
+              ? `Are you sure you want to delete "${item.filename}" permanently? This action cannot be undone.`
+              : `Are you sure you want to move "${item.filename}" to trash?`
+          }
+          confirmText={isDeleteDone ? "Deleted" : isTrash ? "Delete Permanently" : "Delete"}
+          cancelText="Cancel"
+          loading={isDeleting}
+        />
+      )}
     </div>
   );
 });
@@ -490,7 +498,7 @@ export const ListView = React.memo(function ListView({
                         {item.filename}
                       </span>
                       {item.starred && (
-                        <Star className="size-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                        <Star className="size-3.5 fill-warning text-warning shrink-0" />
                       )}
                     </div>
 
@@ -576,7 +584,7 @@ export const ListView = React.memo(function ListView({
                             {item.filename}
                           </span>
                           {item.starred && (
-                            <Star className="size-3 fill-amber-400 text-amber-400 shrink-0" />
+                            <Star className="size-3 fill-warning text-warning shrink-0" />
                           )}
                         </div>
                         <div className="flex items-center gap-1.5 text-11 text-muted-foreground mt-0.5">

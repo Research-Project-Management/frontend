@@ -1,0 +1,43 @@
+
+
+\section{Notations}\label{sec:additional_notations}
+%We use $D$, $N$, $T$, and $K$ to denote the embedding size of \textsc{TinT}, the auxiliary model, the length of the input sequence for the auxiliary model, and the number of prefix tokens respectively. We denote the contextual embedding of a token at position $t$ at the input of any layer $\ell$ as $\ve_t^{(\ell)},$ and $\vx_t^{(\ell)}$ for \textsc{TinT} and the auxiliary model respectively. We denote the embeddings of the prefix tokens at any layer as $\{\vv_j^{(\ell)}\}_{j=1}^K$. For typographical simplicity, when not needed explicitly, we will ignore the superscript that represents the layer index and the subscript that represents the position index. 
+Let $D$ denote the embedding dimension for a token and $T$ denote the length of an input sequence. 
+$H$ denotes the number of attention heads. 
+With the exception of contextual embeddings, we use subscripts to indicate if the quantity is from \simulator{} or from the auxiliary model. For example, $\aux{D}$ refers to the embedding dimension and $\simu{D}$ refers to the \simulator{} embedding dimension.
+For contextual embeddings, we use $\ve_t^{(\ell)}\in\RR^{\simu{D}}$ to denote activations in \simulator{} and $\vx_t^{(\ell)}\in\RR^{\aux{D}}$ to denote activations in the auxiliary model, where $\ell$ is the layer and $t$ is the sequence position. When convenient, we drop the superscript that represents the layer index and the subscript that represents the position index. For a matrix $\mA$, $\va_j$ refers to its $j$th row, and for any vector $\vb$, $b_j$ refers to its $j$th element. \simulator{} uses one-hot positional embeddings $\{ \simuw{\vp}_i \in \RR^{\simu{T}} \}_{i \le \simu{T} }$.
+
+We differentiate the parameters of the auxiliary model and \textsc{TinT} by using an explicit superscript $\textsc{TinT}$ for \textsc{TinT} parameters, for example, the weights of a linear layer in \textsc{TinT} will be represented by $\simuw{\mW}$. We use two operations throughout: $\attsplit_h$ and $\attmerge$. Function $\attsplit_h: \RR^{d} \to \RR^{h \times  \lfloor d/h \rfloor  }$ takes an input $\vx \in \RR^d$ and outputs $H$ equal splits of $\vx$, for any arbitrary dimension $d$.  Function $\attmerge:  \RR^{h \times d} \to \RR^{dh}$ concatenates the elements of a sequence $\{\vx_i \in \RR^{d}\}_{i \le h}$ into one single vector, for any arbitrary $d$ and $h$. Recall that for a matrix $\mA$, $\va_j$ refers to its $j$th row, and for any vector $\vb$, $b_j$ refers to its $j$th element. However, at a few places in the appendix, for typographical reasons, for a matrix $\mA$, we have also used $(\mA)_j$  to refer to its $j$th row, and for any vector $\vb$, $(\vb)_j$ to refer to its $j$th element.
+
+
+
+%\paragraph{Prefix Tokens} For typographical simplicity, when not needed explicitly, we will ignore the superscript that represents the layer index. 
+%\cite{giannou2023looped} proposed the concept of explicit memory in the input embeddings, from which a transformer can read relevant information and update when necessary. Motivated by this concept, in addition to the input tokens, we have additional prefix tokens that contain the model parameters. However, in order to maintain $125m$ parameters, we would require to feed in a million prefix tokens at the input. To circumvent this, we store the model parameters in the Embedding space and copy them to the prefix tokens only when necessary.
+%That is, for every operation under consideration, we fix the embeddings of the first $K$ tokens of the sequence to contain the relevant weights of the simulated model, and we denote these tokens $\{\vv_j\}_{j=1}^K$. These $K$ tokens are analogous to a task prompt since the model's predictions on the prompt are generally ignored. 
+
+
+%\paragraph{Embedding structure of constructed model} For each operation, the embedding will contain the necessary information from the previous layer at the top. However, the backward and the descent computations also require the result of forward computations. For example, for a linear layer, the descent computation requires the input to the forward computation of the linear layer. Hence, we maintain a portion of the embeddings for the backward and descent computations of each operation, to which we can copy relevant information from the forward computations using residual connections. \ap{this needs work!}
+
+%In addition to this, we also have a memory sub-component in the embedding, where we store the relevant information for future computation. 
+%\paragraph{Position embeddings} In addition to the auxiliary model's position embeddings for the input tokens, we also maintain one-hot position embeddings involving the input tokens and the prefix tokens, i.e. for $K$ prefix tokens and $T$ input tokens, we have one-hot position embeddings $\{ \simuw{\vp}_i \in \RR^{K+T} \}_{i \le K + T} $, where $\simuw{\vp}_i$ represents $i$th token's position in the $K+T$ length sequence.
+
+
+\paragraph{ \simulator Attention Module} We modify the usual attention module to  include the position embeddings $\{ \simuw{\vp}_i \in \RR^{ \simu{T} } \}_{i \le \simu{T}  }$. 
+In usual self-attention modules, the query, key, and value vectors at each position are computed by token-wise linear transformations of the input embeddings. In \textsc{TinT}'s Attention Module, we perform additional linear transformations on the position embeddings, using parameters $\mW^p_Q, \mW^p_K, \mW^p_V$, and decision vectors $\lambda^Q, \lambda^K, \lambda^V \in \RR^{\simu{H}}$ decide whether to add these transformed position vectors to the query, key, and value vectors of different attention heads.  For the following definition, we use $\Hat{e}$ to represent input sequence and $\Tilde{e}$ to represent the output sequence: we introduce these general notations below to avoid confusion with the notations for token and prefix embeddings for \simulator illustrated in \cref{fig:general_structure_simulator}.
+
+\begin{definition}[\textsc{TinT}'s self-attention with $\simu{H}$ heads]\label{def:self-attn_construct}
+    For parameters $\{ \simuw{\mW}_Q, \simuw{\mW}_K, \simuw{\mW}_V \in \RR^{ \simu{D} \times \simu{D} } \}$, $\{ \simuw{\vb}_Q, \simuw{\vb}_K, \simuw{\vb}_V \in \RR^{\simu{D}} \}$, $\{ \mW^p_Q, \mW^p_K, \mW^p_V \in \RR^{ \simu{T} \times \simu{D}/\simu{H} } \}$ and $\{ \lambda^{Q},  \lambda^{K}, \lambda^{V} \in \RR^{ \simu{H} } \}$, \simulator{} self-attention with $\simu{H}$ attention heads and a function $\attnfn: \RR^{ \simu{T} } \to \RR^{ \simu{T} }$ takes a sequence $\{ \Hat{\ve}_t\in\RR^ { \simu{D} }  \}_{t \le \simu{T}}$ as input and outputs $\{ \Tilde{\ve}_t \in \RR^{ \simu{D} } \}_{t \le \simu{T} }$, with 
+    \begin{align*}
+        &\Tilde{\ve}_t = \attmerge ( \{ \sum_{j \le \simu{T} } a^h_{t, j}  \Tilde{\vv}^{h}_j )_h \}_{h \le \simu{H} } ), \text{ with   } a^h_{t, j} =
+        \attnfn ( \Tilde{\mK}^{h} \Tilde{\vq}_t^h  )_j  \\
+        &\Tilde{\vq}^{h}_t = \attsplit_H (\vq_t)_h + \lambda^Q_h \mW^p_Q \simuw{\vp}_t; \quad \Tilde{\vk}^{h}_t = \attsplit_H (\vk_t)_h + \lambda^K_h \mW^p_K \simuw{\vp}_t; \\& \Tilde{\vv}^{h}_t = \attsplit_H (\vv_t)_h + \lambda^V_h \mW^p_v \simuw{\vp}_t.
+    \end{align*}    
+     Here, $\vq_t$, $\vk_t$, $\vv_t$ denote the query, key, and value vectors at each position $t$, computed as $\simuw{\mW}_Q \Hat{\ve}_t + \simuw{\vb}_Q$, $\simuw{\mW}_K \Hat{\ve}_t + \simuw{\vb}_K$, and $\simuw{\mW}_V \Hat{\ve}_t + \simuw{\vb}_V$ respectively.
+     $\Tilde{\mK}^h \in \RR^{ \simu{T} \times \simu{D}/\simu{H} }$ is defined with its rows as $\{\Tilde{\vk}^h_t\}_{t \le \simu{T}}$ for all $h \le \simu{H}$.
+\end{definition}
+
+$\attnfn$ can be either linear or softmax function. 
+%This roughly justifies why we 
+%use Linear \textsc{TinT} Self-Attention layers, whenever necessary.
+
+\input{Theorems/softmax_linear}

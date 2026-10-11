@@ -90,8 +90,8 @@ export function StorageQuotaWidget({
             </div>
             {isProjectScope && ownerName && (
               <p className="text-11 text-muted-foreground flex items-center gap-1">
-                <Crown className="size-3 text-amber-500 shrink-0" />
-                <span>Owner: <strong>{ownerName}</strong></span>
+                <Crown className="size-3 text-warning shrink-0" />
+                <span>Owner: <strong className="font-medium text-foreground">{ownerName}</strong></span>
               </p>
             )}
             <Progress value={percentage} className={cn('h-1.5', progressColorClass)} />
@@ -146,7 +146,7 @@ export function StorageQuotaWidget({
       {/* Project Owner Attribution */}
       {isProjectScope && (
         <div className="flex items-center gap-1 text-11 text-muted-foreground bg-muted/50 rounded px-1.5 py-0.5">
-          <Crown className="size-3 text-amber-500 shrink-0" />
+          <Crown className="size-3 text-warning shrink-0" />
           <span className="truncate">
             Owner: <strong className="text-foreground font-medium">{ownerName || 'Project Lead'}</strong>
           </span>

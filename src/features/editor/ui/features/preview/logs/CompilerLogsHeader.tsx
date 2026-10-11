@@ -24,8 +24,8 @@ export function CompilerLogsHeader({
   onNextError,
 }: CompilerLogsHeaderProps) {
   return (
-    <header className="h-10 px-3 border-b border-border/60 flex items-center justify-between gap-2 shrink-0 font-sans">
-      <div className="flex items-center gap-2">
+    <header className="h-9 px-2 border-b border-border bg-surface flex items-center justify-between gap-1.5 shrink-0 font-sans select-none">
+      <div className="flex items-center gap-1.5">
         {onCompile && (
           <CompileButton
             onCompile={onCompile}
@@ -35,11 +35,11 @@ export function CompilerLogsHeader({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Back to PDF"
-          className="h-7.5 px-2.5 flex items-center gap-1.5 rounded-md border border-border/80 bg-canvas hover:bg-muted text-foreground text-xs font-medium transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          aria-label="View PDF"
+          className="h-7 px-2.5 flex items-center gap-1.5 rounded-md border border-border bg-canvas hover:bg-muted text-foreground text-xs font-medium transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
         >
           <ChevronLeft className="size-3.5 shrink-0 text-muted-foreground" />
-          <span>Back to PDF</span>
+          <span>View PDF</span>
         </button>
       </div>
 
@@ -47,14 +47,14 @@ export function CompilerLogsHeader({
       {totalErrors > 0 && (
         <div className="flex items-center gap-1.5 font-sans">
           <span className="text-xs text-muted-foreground font-mono">
-            {currentErrorIdx + 1}/{totalErrors} lỗi
+            Error {currentErrorIdx + 1} of {totalErrors}
           </span>
           <div className="flex items-center rounded-md bg-muted/50 p-0.5">
             <button
               type="button"
               onClick={onPrevError}
-              aria-label="Lỗi trước (Shift+F8)"
-              title="Lỗi trước (Shift+F8)"
+              aria-label="Previous error (Shift+F8)"
+              title="Previous error (Shift+F8)"
               className="size-6 flex items-center justify-center hover:bg-background rounded-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >
               <ChevronUp className="size-3.5" />
@@ -62,8 +62,8 @@ export function CompilerLogsHeader({
             <button
               type="button"
               onClick={onNextError}
-              aria-label="Lỗi tiếp theo (F8)"
-              title="Lỗi tiếp theo (F8)"
+              aria-label="Next error (F8)"
+              title="Next error (F8)"
               className="size-6 flex items-center justify-center hover:bg-background rounded-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >
               <ChevronDown className="size-3.5" />

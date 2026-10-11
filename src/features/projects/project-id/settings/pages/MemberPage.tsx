@@ -3,18 +3,15 @@
 import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { ArrowDownAZ, ArrowUpZA, ChevronDown, Search, Users } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
-import { Skeleton } from "@/shared/components/ui";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { DeleteModal } from '@/features/settings/components/modal/DeleteModal';
 import { toast } from 'sonner';
-import { PageLayout, PageHeader, PageContent, PageToolbar } from '@/shared/components/layout';
+import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
+import { PageToolbar } from '@/shared/components/layout/PageToolbar';
 import { Assignee } from '../components/member/Assignee';
 import { Item } from '../components/member/Item';
 import { Filter } from '../components/member/Filter';

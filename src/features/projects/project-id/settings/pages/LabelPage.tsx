@@ -26,7 +26,10 @@ const DeleteModal = dynamic(
     ),
   { ssr: false }
 );
-import { PageLayout, PageHeader, PageContent, PageToolbar, EmptyState } from '@/shared/components/layout';
+import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
+import { PageToolbar } from '@/shared/components/layout/PageToolbar';
+import { EmptyState } from '@/shared/components/layout/EmptyState';
 import {
   Tag,
   Search,

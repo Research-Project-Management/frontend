@@ -6,13 +6,8 @@ import {
   Plus,
   Upload,
 } from 'lucide-react';
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { ProjectFilterPopover } from './ProjectFilterPopover';
 import { CollapsibleSearchInput } from './CollapsibleSearchInput';
 import type { Project } from '../../types/project.types';
@@ -23,6 +18,8 @@ export type TopbarProps = {
   onSearchChange?: (query: string) => void;
   onAddProjectClick: () => void;
   onUploadProjectZipClick?: () => void;
+  onPreloadCreate?: () => void;
+  onPreloadUploadZip?: () => void;
   totalProjectsCount?: number;
   archivedCount?: number;
   projects?: Project[];
@@ -37,6 +34,8 @@ export function Topbar({
   onSearchChange,
   onAddProjectClick,
   onUploadProjectZipClick,
+  onPreloadCreate,
+  onPreloadUploadZip,
   totalProjectsCount,
   archivedCount = 0,
   projects = [],
@@ -91,6 +90,8 @@ export function Topbar({
           <DropdownMenuTrigger asChild>
             <Button
               size="sm"
+              onMouseEnter={onPreloadCreate}
+              onFocus={onPreloadCreate}
               className="h-8 px-3 text-12 font-medium shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               New project
@@ -102,7 +103,11 @@ export function Topbar({
               <span>Blank Project</span>
             </DropdownMenuItem>
             {onUploadProjectZipClick && (
-              <DropdownMenuItem onClick={onUploadProjectZipClick} className="gap-2 cursor-pointer">
+              <DropdownMenuItem
+                onClick={onUploadProjectZipClick}
+                onMouseEnter={onPreloadUploadZip}
+                className="gap-2 cursor-pointer"
+              >
                 <Upload className="size-3.5 text-muted-foreground" />
                 <span>Upload Project (.zip)</span>
               </DropdownMenuItem>

@@ -1,0 +1,24 @@
+%\vspace{-0.5em}
+\section{Discussion}
+%\vspace{-0.5em}
+
+%{\sc try to say something novel, not repeat the abstract. Example:  perhaps our architectural changes could help usual transformer in vanilla pre-training, which we hope to explore.}
+
+We present a parameter-efficient construction \simulator{} capable of simulating gradient descent on an internal transformer model during inference. 
+Using fewer than 2 billion parameters, it can simulate fine-tuning a 125 million transformer (e.g., GPT-2) internally, dramatically reducing the scale required by previous works. Language modeling and in-context learning experiments demonstrate that the efficient approximations still allow the \simulator{} to fine-tune the model. Our work emphasizes that the inference behavior of complex models may rely on the training dynamics of smaller models.
+As such, the existence of \simulator{} has strong implications for interpretability and AI alignment research. 
+
+%The approximations and architectural modifications in \simulator{} have potential value for future architectural development and applications such as pre-training and instruction tuning. Additionally, o
+
+While our work represents a significant improvement over previous simulations in terms of auxiliary model complexity, similar to prior research in this area, our insights into existing pre-trained models are limited. Furthermore, we have not yet examined potential biases that may arise in the auxiliary models due to one-step gradient descent. We plan to investigate these aspects in future work.
+
+\iffalse
+\paragraph{A Cognitive Science View of \simulator}
+ \simulator{} provides interesting insight into whether or not backpropagation is a biologically plausible learning algorithm. 
+For example, prior works have suggested that backpropagation is difficult to execute in real neurons because it requires access to a backward computation graph that mirrors the forward propagation.
+Hinton further argued that it is unlikely that the brain learns sequences through backpropagation at time, because ``the perceptual system needs to perform inference and learning in real time without stopping to perform backpropagation.''
+The efficient construction of \simulator{} enables it to indeed perform simulation and training in a single inference pass, suggesting that the brain implementing backpropagation is perhaps more plausible than previously believed.  \apnote{I don't think this is true, since we do forward and backprop on train split, before inferring on the remaining input. I think Hinton is trying to say that the brain is unlikely to stop at a point to backprop} 
+\fi 
+%non-standard use of attention mechanisms to enable arithmetic parallelism
+
+%Despite the model being in inference mode, the construction can actively learn from the provided context. The existence of such a model at a moderate scale may have implications for interpretability and alignment research.

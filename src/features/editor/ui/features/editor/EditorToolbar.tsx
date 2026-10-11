@@ -1,32 +1,47 @@
 /**
  * EditorToolbar.tsx
  *
- * Scoped Format Toolbar for CodeMirror 6 Editor (Block 6: UI Features Layer).
+ * Scoped Format Toolbar for LaTeX Editor (Block 4: UI Features Layer).
  * Location: `features/editor/ui/features/editor/EditorToolbar.tsx`
  *
- * Follows Rule 1: Scoped strictly to the Editor Slot.
- * Dispatches LaTeX snippet insertions via `editorCommandBus`.
+ * Modeled 1:1 after Overleaf Visual/Code Editor Toolbar:
+ * - History group: Undo (Ctrl+Z), Redo (Ctrl+Y)
+ * - Paragraph style dropdown: Normal, Title, Section, Subsection, Subsubsection, Paragraph
+ * - Inline format group: Bold (Ctrl+B), Italic (Ctrl+I), Underline (Ctrl+U)
+ * - Insert group: Math ($...$), Symbol (Ω), Table Wizard, Figure Wizard, Hyperlink, Citation
+ * - Environment group: Bulleted list, Numbered list, Quote, Code/Verbatim
+ * - Collaboration group: Add Comment (Ctrl+Alt+M)
+ * - Group separators for clean visual hierarchy
  */
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
+  RotateCcw,
+  RotateCw,
+  ChevronDown,
   Bold,
   Italic,
   Underline,
-  Heading1,
-  Heading2,
-  Quote,
-  Code,
-  List,
-  ListOrdered,
-  BookOpen,
   Sigma,
   Table as TableIcon,
+  Image as ImageIcon,
+  Link2,
+  BookOpen,
+  List,
+  ListOrdered,
+  Quote,
+  Code,
   MessageSquarePlus,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/shared/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { editorCommandBus, getActiveEditorEngine } from '../../../coordinators/command-bus';
 import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
@@ -40,78 +55,187 @@ export interface EditorToolbarProps {
   readOnly?: boolean;
 }
 
-interface ToolbarAction {
+interface StyleOption {
   id: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  snippet: { prefix: string; suffix: string };
-  shortcut?: string;
+  latexPrefix: string;
+  latexSuffix: string;
+  visualCommand: string;
+  visualLevel?: 1 | 2 | 3;
 }
 
-const TOOLBAR_ACTIONS: ToolbarAction[] = [
-  { id: 'bold', label: 'Bold (\\textbf)', icon: Bold, snippet: { prefix: '\\textbf{', suffix: '}' }, shortcut: 'Mod-b' },
-  { id: 'italic', label: 'Italic (\\textit)', icon: Italic, snippet: { prefix: '\\textit{', suffix: '}' }, shortcut: 'Mod-i' },
-  { id: 'underline', label: 'Underline (\\underline)', icon: Underline, snippet: { prefix: '\\underline{', suffix: '}' }, shortcut: 'Mod-u' },
-  { id: 'section', label: 'Section (\\section)', icon: Heading1, snippet: { prefix: '\\section{', suffix: '}' } },
-  { id: 'subsection', label: 'Subsection (\\subsection)', icon: Heading2, snippet: { prefix: '\\subsection{', suffix: '}' } },
-  { id: 'math', label: 'Inline Math ($...$)', icon: Sigma, snippet: { prefix: '$', suffix: '$' } },
-  { id: 'table', label: 'Table / Matrix Wizard', icon: TableIcon, snippet: { prefix: '', suffix: '' }, shortcut: 'Mod-Shift-t' },
-  { id: 'cite', label: 'Cite Reference (\\cite)', icon: BookOpen, snippet: { prefix: '\\cite{', suffix: '}' }, shortcut: 'Mod-Shift-k' },
-  { id: 'quote', label: 'Quote Environment', icon: Quote, snippet: { prefix: '\\begin{quote}\n', suffix: '\n\\end{quote}' } },
-  { id: 'code', label: 'Listing / Verbatim', icon: Code, snippet: { prefix: '\\begin{verbatim}\n', suffix: '\n\\end{verbatim}' } },
-  { id: 'itemize', label: 'Bulleted List', icon: List, snippet: { prefix: '\\begin{itemize}\n  \\item ', suffix: '\n\\end{itemize}' } },
-  { id: 'enumerate', label: 'Numbered List', icon: ListOrdered, snippet: { prefix: '\\begin{enumerate}\n  \\item ', suffix: '\n\\end{enumerate}' } },
+const STYLE_OPTIONS: StyleOption[] = [
+  { id: 'normal', label: 'Normal', latexPrefix: '', latexSuffix: '', visualCommand: 'paragraph' },
+  { id: 'title', label: 'Title', latexPrefix: '\\title{', latexSuffix: '}', visualCommand: 'heading', visualLevel: 1 },
+  { id: 'section', label: 'Section', latexPrefix: '\\section{', latexSuffix: '}', visualCommand: 'heading', visualLevel: 1 },
+  { id: 'subsection', label: 'Subsection', latexPrefix: '\\subsection{', latexSuffix: '}', visualCommand: 'heading', visualLevel: 2 },
+  { id: 'subsubsection', label: 'Subsubsection', latexPrefix: '\\subsubsection{', latexSuffix: '}', visualCommand: 'heading', visualLevel: 3 },
+  { id: 'paragraph', label: 'Paragraph', latexPrefix: '\\paragraph{', latexSuffix: '}', visualCommand: 'paragraph' },
 ];
+
+function OmegaIcon({ className }: { className?: string }) {
+  return (
+    <span className={cn('font-serif font-semibold text-xs leading-none select-none text-center', className)}>
+      Ω
+    </span>
+  );
+}
+
+function ToolbarSeparator() {
+  return <div className="h-4 w-px bg-border/60 mx-1 shrink-0 select-none" aria-hidden="true" />;
+}
 
 export function EditorToolbar({ className, readOnly = false }: EditorToolbarProps) {
   const editorMode = useSettingsStore((s) => s.editorMode);
+  const [currentStyle, setCurrentStyle] = useState<string>('Normal');
 
-  const handleInsert = (action: ToolbarAction) => {
+  // ── History Handlers (Undo / Redo) ──
+  const handleUndo = () => {
     if (readOnly) return;
+    editorCommandBus.dispatch({ type: 'editor:undo' });
+  };
 
-    if (action.id === 'cite') {
-      editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'citation-picker' });
-      return;
-    }
+  const handleRedo = () => {
+    if (readOnly) return;
+    editorCommandBus.dispatch({ type: 'editor:redo' });
+  };
 
-    if (action.id === 'table') {
-      editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'table-wizard' });
-      return;
-    }
+  // ── Paragraph Style Handler ──
+  const handleSelectStyle = (option: StyleOption) => {
+    if (readOnly) return;
+    setCurrentStyle(option.label);
 
     if (editorMode === 'visual') {
-      const visualMap: Record<string, { cmd: string; level?: 1 | 2 | 3 }> = {
-        bold: { cmd: 'bold' },
-        italic: { cmd: 'italic' },
-        underline: { cmd: 'underline' },
-        section: { cmd: 'heading', level: 1 },
-        subsection: { cmd: 'heading', level: 2 },
-        math: { cmd: 'insertMath' },
-        quote: { cmd: 'quote' },
-        code: { cmd: 'code' },
-        itemize: { cmd: 'bulletList' },
-        enumerate: { cmd: 'orderedList' },
-      };
+      EditorEventBus.emit('flux:visual-command', {
+        command: option.visualCommand,
+        level: option.visualLevel,
+      });
+      editorCommandBus.dispatch({
+        type: 'editor:visual-command',
+        command: option.visualCommand,
+        level: option.visualLevel,
+      });
+      return;
+    }
 
-      const match = visualMap[action.id];
-      if (match) {
-        EditorEventBus.emit('flux:visual-command', { command: match.cmd, level: match.level });
-        editorCommandBus.dispatch({
-          type: 'editor:visual-command',
-          command: match.cmd,
-          level: match.level,
-        });
+    if (option.latexPrefix) {
+      editorCommandBus.dispatch({
+        type: 'editor:wrap-selection',
+        prefix: option.latexPrefix,
+        suffix: option.latexSuffix,
+      });
+    }
+  };
+
+  // ── Inline Format Handlers ──
+  const handleInlineFormat = (format: 'bold' | 'italic' | 'underline') => {
+    if (readOnly) return;
+
+    if (editorMode === 'visual') {
+      EditorEventBus.emit('flux:visual-command', { command: format });
+      editorCommandBus.dispatch({ type: 'editor:visual-command', command: format });
+      return;
+    }
+
+    const snippetMap = {
+      bold: { prefix: '\\textbf{', suffix: '}' },
+      italic: { prefix: '\\textit{', suffix: '}' },
+      underline: { prefix: '\\underline{', suffix: '}' },
+    };
+    const s = snippetMap[format];
+    editorCommandBus.dispatch({
+      type: 'editor:wrap-selection',
+      prefix: s.prefix,
+      suffix: s.suffix,
+    });
+  };
+
+  // ── Insert Handlers ──
+  const handleInsertMath = () => {
+    if (readOnly) return;
+    if (editorMode === 'visual') {
+      EditorEventBus.emit('flux:visual-command', { command: 'insertMath' });
+      editorCommandBus.dispatch({ type: 'editor:visual-command', command: 'insertMath' });
+      return;
+    }
+    editorCommandBus.dispatch({
+      type: 'editor:wrap-selection',
+      prefix: '$',
+      suffix: '$',
+    });
+  };
+
+  const handleInsertSymbol = () => {
+    if (readOnly) return;
+    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'symbol-palette' });
+  };
+
+  const handleInsertTable = () => {
+    if (readOnly) return;
+    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'table-wizard' });
+  };
+
+  const handleInsertFigure = () => {
+    if (readOnly) return;
+    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'figure-wizard' });
+  };
+
+  const handleInsertLink = () => {
+    if (readOnly) return;
+    if (editorMode === 'visual') {
+      const url = window.prompt('Nhập URL liên kết:');
+      if (url) {
+        EditorEventBus.emit('flux:visual-command', { command: 'createLink', contentHtml: url });
+        editorCommandBus.dispatch({ type: 'editor:visual-command', command: 'createLink', contentHtml: url });
+      }
+      return;
+    }
+    editorCommandBus.dispatch({
+      type: 'editor:wrap-selection',
+      prefix: '\\href{https://}{',
+      suffix: '}',
+    });
+  };
+
+  const handleInsertCitation = () => {
+    if (readOnly) return;
+    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'citation-picker' });
+  };
+
+  // ── Environment Handlers (Lists, Quote, Code) ──
+  const handleInsertEnvironment = (env: 'itemize' | 'enumerate' | 'quote' | 'code') => {
+    if (readOnly) return;
+
+    if (editorMode === 'visual') {
+      const visualMap: Record<string, string> = {
+        itemize: 'bulletList',
+        enumerate: 'orderedList',
+        quote: 'quote',
+        code: 'code',
+      };
+      const cmd = visualMap[env];
+      if (cmd) {
+        EditorEventBus.emit('flux:visual-command', { command: cmd });
+        editorCommandBus.dispatch({ type: 'editor:visual-command', command: cmd });
         return;
       }
     }
 
+    const snippetMap = {
+      itemize: { prefix: '\\begin{itemize}\n  \\item ', suffix: '\n\\end{itemize}' },
+      enumerate: { prefix: '\\begin{enumerate}\n  \\item ', suffix: '\n\\end{enumerate}' },
+      quote: { prefix: '\\begin{quote}\n', suffix: '\n\\end{quote}' },
+      code: { prefix: '\\begin{verbatim}\n', suffix: '\n\\end{verbatim}' },
+    };
+    const s = snippetMap[env];
     editorCommandBus.dispatch({
       type: 'editor:wrap-selection',
-      prefix: action.snippet.prefix,
-      suffix: action.snippet.suffix,
+      prefix: s.prefix,
+      suffix: s.suffix,
     });
   };
 
+  // ── Comment Handler ──
   const handleAddComment = React.useCallback(() => {
     if (readOnly) return;
     const engine = getActiveEditorEngine();
@@ -136,7 +260,6 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
       const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
       const modKey = isMac ? e.metaKey : e.ctrlKey;
 
-      // Ctrl+Alt+M or Cmd+Alt+M -> Add Comment / Open Review
       if (modKey && e.altKey && e.key.toLowerCase() === 'm') {
         e.preventDefault();
         handleAddComment();
@@ -154,30 +277,332 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
         className
       )}
     >
-      {TOOLBAR_ACTIONS.map((action) => {
-        const Icon = action.icon;
-        return (
-          <Tooltip key={action.id} delayDuration={300}>
-            <TooltipTrigger asChild>
+      {/* ── 1. History Group (Undo / Redo) ── */}
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={handleUndo}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Undo"
+          >
+            <RotateCcw className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Undo</span>
+          <span className="ml-1.5 opacity-60">(Mod-z)</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={handleRedo}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Redo"
+          >
+            <RotateCw className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Redo</span>
+          <span className="ml-1.5 opacity-60">(Mod-y)</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <ToolbarSeparator />
+
+      {/* ── 2. Paragraph Style Dropdown ── */}
+      <DropdownMenu>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
                 disabled={readOnly}
-                onClick={() => handleInsert(action)}
-                className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                aria-label={action.label}
+                className="h-7 px-2 gap-1 text-xs font-normal text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
-                <Icon className="size-3.5" />
+                <span className="truncate max-w-[85px] text-[12px]">{currentStyle}</span>
+                <ChevronDown className="size-3 opacity-60 shrink-0" />
               </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              <span>{action.label}</span>
-              {action.shortcut && <span className="ml-1.5 opacity-60">({action.shortcut})</span>}
-            </TooltipContent>
-          </Tooltip>
-        );
-      })}
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            <span>Paragraph style</span>
+          </TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent align="start" className="w-36">
+          {STYLE_OPTIONS.map((opt) => (
+            <DropdownMenuItem
+              key={opt.id}
+              onClick={() => handleSelectStyle(opt)}
+              className="text-xs cursor-pointer"
+            >
+              {opt.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
+      <ToolbarSeparator />
+
+      {/* ── 3. Text Formatting (Bold, Italic, Underline) ── */}
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={() => handleInlineFormat('bold')}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Bold (\textbf)"
+          >
+            <Bold className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Bold (\textbf)</span>
+          <span className="ml-1.5 opacity-60">(Mod-b)</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={() => handleInlineFormat('italic')}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Italic (\textit)"
+          >
+            <Italic className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Italic (\textit)</span>
+          <span className="ml-1.5 opacity-60">(Mod-i)</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={() => handleInlineFormat('underline')}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Underline (\underline)"
+          >
+            <Underline className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Underline (\underline)</span>
+          <span className="ml-1.5 opacity-60">(Mod-u)</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <ToolbarSeparator />
+
+      {/* ── 4. Insert Elements (Math, Symbol, Table, Figure, Link, Citation) ── */}
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={handleInsertMath}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Math formula"
+          >
+            <Sigma className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Math formula ($...$)</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={handleInsertSymbol}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Insert symbol (Ω)"
+          >
+            <OmegaIcon />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Insert symbol (Ω)</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={handleInsertTable}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Insert table"
+          >
+            <TableIcon className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Insert table</span>
+          <span className="ml-1.5 opacity-60">(Mod-Shift-t)</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={handleInsertFigure}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Insert figure"
+          >
+            <ImageIcon className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Insert figure</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={handleInsertLink}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Insert link"
+          >
+            <Link2 className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Insert link (\href)</span>
+          <span className="ml-1.5 opacity-60">(Mod-k)</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={handleInsertCitation}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Cite reference (\cite)"
+          >
+            <BookOpen className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Cite reference (\cite)</span>
+          <span className="ml-1.5 opacity-60">(Mod-Shift-k)</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <ToolbarSeparator />
+
+      {/* ── 5. Lists & Environments ── */}
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={() => handleInsertEnvironment('itemize')}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Bulleted list"
+          >
+            <List className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Bulleted list</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={() => handleInsertEnvironment('enumerate')}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Numbered list"
+          >
+            <ListOrdered className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Numbered list</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={() => handleInsertEnvironment('quote')}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Quote environment"
+          >
+            <Quote className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Quote environment</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={() => handleInsertEnvironment('code')}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Code / Verbatim"
+          >
+            <Code className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Code / Verbatim</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <ToolbarSeparator />
+
+      {/* ── 6. Collaboration (Add Comment) ── */}
       <Tooltip delayDuration={300}>
         <TooltipTrigger asChild>
           <Button
@@ -186,7 +611,7 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
             disabled={readOnly}
             onClick={handleAddComment}
             className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-            aria-label="Add Comment (Ctrl+Alt+M)"
+            aria-label="Add Comment"
           >
             <MessageSquarePlus className="size-3.5" />
           </Button>

@@ -15,11 +15,11 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import {
-  FileText,
+  Files,
   Search,
   BookMarked,
   MessageSquareText,
-  Bot,
+  Sparkles,
   Settings,
 } from 'lucide-react';
 import {
@@ -46,11 +46,11 @@ interface ActivityItem {
 }
 
 const PRIMARY_ACTIVITIES: ActivityItem[] = [
-  { id: 'files', label: 'Files Explorer', icon: FileText, shortcut: 'Ctrl+Shift+E' },
+  { id: 'files', label: 'File Tree', icon: Files, shortcut: 'Ctrl+Shift+E' },
   { id: 'search', label: 'Search in Project', icon: Search, shortcut: 'Ctrl+Shift+F' },
   { id: 'citations', label: 'Citations & BibTeX', icon: BookMarked },
   { id: 'review', label: 'Review & Comments', icon: MessageSquareText },
-  { id: 'ai', label: 'AI Research Assistant', icon: Bot },
+  { id: 'ai', label: 'AI Assistant', icon: Sparkles, shortcut: 'Ctrl+I' },
 ];
 
 export function ActivityBar() {
@@ -115,7 +115,7 @@ export function ActivityBar() {
 
                     {/* Unread / Pending badge */}
                     {showBadge && (
-                      <span className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full text-[10px] font-mono font-semibold bg-primary text-primary-foreground leading-none">
+                      <span className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full text-11 font-mono font-semibold bg-primary text-primary-foreground leading-none">
                         {badgeCount > 99 ? '99+' : badgeCount}
                       </span>
                     )}
@@ -124,7 +124,7 @@ export function ActivityBar() {
                 <TooltipContent side="right" className="flex items-center gap-2">
                   <span>{item.label}</span>
                   {item.shortcut && (
-                    <span className="text-[10px] text-muted-foreground font-mono">
+                    <span className="text-11 text-muted-foreground font-mono">
                       {item.shortcut}
                     </span>
                   )}

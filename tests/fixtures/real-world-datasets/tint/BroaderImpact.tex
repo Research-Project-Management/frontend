@@ -1,0 +1,17 @@
+%\clearpage
+\section*{Impact Statements}
+We note that the construction of \simulator{} does not appear to increase the probability of harmful behavior, because the construction's primary objective is to implicitly tune an internal model (\textsection{\ref{sec:design}}).
+Such tuning has been possible for a long time and is not made more expressive by \simulator{}.
+
+Our findings suggest that existing transformer-based language models can plausibly possess the ability to learn and adapt to context by internally fine-tuning a complex model \emph{even during inference}. 
+Consequently, although users are unable to directly modify deployed models, these models may still undergo dynamic updates while processing a context left-to-right, resulting in previously unseen behavior by the time the model reaches the end of the context.
+This has significant implications for the field of model alignment.
+It is challenging to impose restrictions on a model that can perform such dynamics updates internally, so malicious content can influence the output of deployed models.
+
+
+Alternatively, we recognize the potential benefits of pre-training constructed models that integrate explicit fine-tuning mechanisms. By embedding the functionalities typically achieved through explicit fine-tuning, such as detecting malicious content and intent within the models themselves, the need for external modules can be mitigated. Pre-training the constructed model may offer a self-contained solution for ensuring safe and responsible language processing without relying on external dependencies.
+
+
+\section*{Acknowledgements}
+The authors acknowledge funding from NSF, ONR, Simons Foundation, and DARPA.
+We thank Danqi Chen, Jason Lee, Zhiyuan Li, Kaifeng Lyu, Simran Kaur, Tianyu Gao, and Colin Wang for their suggestions and helpful discussions at different stages of our work.

@@ -16,9 +16,9 @@ import {
   Copy,
   Trash2,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { ProjectAvatar } from "@/shared/components/icons";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { cn } from "@/shared/lib/utils";
 import { useFavorites } from '../../hooks/use-favorites';
 import { useArchiveProject, useDuplicateProject, useDeleteProject } from '../../hooks/use-project';
@@ -88,7 +88,7 @@ export const Card = React.memo(function Card({ project, onArchive, onManageTags 
   };
 
   return (
-    <div className="group relative flex flex-col rounded-lg border border-border bg-card overflow-hidden transition-all duration-200 hover:border-border min-w-0">
+    <div className="group relative flex flex-col rounded-lg border border-border bg-card overflow-hidden transition-all duration-200 hover:border-border min-w-0 content-auto-card">
       {/* Banner / Cover Header */}
       <div className={cn('relative h-24 w-full bg-gradient-to-tr overflow-hidden', bannerClass)}>
         <div className="absolute inset-0 bg-background/20 backdrop-blur-[0.5px]" />

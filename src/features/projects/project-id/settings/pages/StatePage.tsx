@@ -2,23 +2,13 @@
 
 import React, { useState, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import {
-  Button,
-  Skeleton,
-  Input,
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/shared/components/ui";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/components/ui";
-import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
+import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Input } from '@/shared/components/ui/input';
+import { Popover, PopoverTrigger, PopoverContent } from '@/shared/components/ui/popover';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
 import {
   Plus,
   Pencil,

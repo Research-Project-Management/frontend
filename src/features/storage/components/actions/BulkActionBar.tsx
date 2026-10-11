@@ -14,8 +14,14 @@ import {
   Square,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from "@/shared/components/ui";
-import { DeleteModal } from '../modal/DeleteModal';
+import { Button } from '@/shared/components/ui/button';
+import dynamic from 'next/dynamic';
+
+const DeleteModal = dynamic(
+  () => import('../modal/DeleteModal').then((m) => m.DeleteModal),
+  { ssr: false }
+);
+import { useShallow } from 'zustand/react/shallow';
 import { useStorageSelectionStore } from '../../store/use-selection-store';
 import {
   useBatchDeleteItems,
@@ -33,7 +39,14 @@ export interface BulkActionBarProps {
 }
 
 export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
-  const { selectedIds, clearSelection, selectAll, isAllSelected } = useStorageSelectionStore();
+  const { selectedIds, clearSelection, selectAll, isAllSelected } = useStorageSelectionStore(
+    useShallow((s) => ({
+      selectedIds: s.selectedIds,
+      clearSelection: s.clearSelection,
+      selectAll: s.selectAll,
+      isAllSelected: s.isAllSelected,
+    }))
+  );
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -231,6 +244,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
                 variant="ghost"
                 size="sm"
                 className="h-8 px-2 sm:px-2.5 text-xs gap-1 sm:gap-1.5 text-destructive hover:bg-muted cursor-pointer shrink-0 rounded-md"
+                onMouseEnter={() => import('../modal/DeleteModal')}
                 onClick={() => setIsDeleteModalOpen(true)}
                 disabled={isPermanentDeleting}
                 title="Delete selected items permanently"
@@ -245,6 +259,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
               variant="ghost"
               size="sm"
               className="h-8 px-2 sm:px-2.5 text-xs gap-1 sm:gap-1.5 text-destructive hover:bg-muted cursor-pointer shrink-0 rounded-md"
+              onMouseEnter={() => import('../modal/DeleteModal')}
               onClick={() => setIsDeleteModalOpen(true)}
               disabled={isDeleting}
               title="Move selected items to trash"
@@ -268,20 +283,22 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
       </AnimatePresence>
 
       {/* Bulk Delete Modal */}
-      <DeleteModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleConfirmDelete}
-        title={isTrash ? `Delete ${selectedCount} items permanently?` : `Move ${selectedCount} items to trash?`}
-        description={
-          isTrash
-            ? `These ${selectedCount} items will be deleted permanently and cannot be recovered.`
-            : `These ${selectedCount} items will be moved to trash and can be restored later.`
-        }
-        confirmText={isTrash ? 'Delete permanently' : 'Move to trash'}
-        cancelText="Cancel"
-        loading={isDeleting || isPermanentDeleting}
-      />
+      {isDeleteModalOpen && (
+        <DeleteModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={handleConfirmDelete}
+          title={isTrash ? `Delete ${selectedCount} items permanently?` : `Move ${selectedCount} items to trash?`}
+          description={
+            isTrash
+              ? `These ${selectedCount} items will be deleted permanently and cannot be recovered.`
+              : `These ${selectedCount} items will be moved to trash and can be restored later.`
+          }
+          confirmText={isTrash ? 'Delete permanently' : 'Move to trash'}
+          cancelText="Cancel"
+          loading={isDeleting || isPermanentDeleting}
+        />
+      )}
     </>
   );
 }

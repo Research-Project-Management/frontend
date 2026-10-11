@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Folder, ChevronRight } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import type { TreeNode, CollectionActionHandlers } from './sidebar.types';
 import type { Collection } from '../../types/library.types';
 import { getValidMoveTargets } from './tree-helpers';

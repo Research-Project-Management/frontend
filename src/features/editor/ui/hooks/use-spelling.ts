@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * use-spelling.ts
@@ -50,10 +50,10 @@ export function useSpellingDictionary(projectId?: string, enabled = true) {
       } else {
         queryClient.invalidateQueries({ queryKey: spellingKeys.user() });
       }
-      toast.success(`Added "${word}" to dictionary`);
+      toast.success(`Added "${word}" to dictionary`, { id: `spelling-${word}` });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to add word to dictionary');
+    onError: (err: Error | unknown, variables) => {
+      toast.error((err as Error)?.message || 'Failed to add word to dictionary', { id: `spelling-${variables.word}` });
     },
   });
 
@@ -72,10 +72,10 @@ export function useSpellingDictionary(projectId?: string, enabled = true) {
       } else {
         queryClient.invalidateQueries({ queryKey: spellingKeys.user() });
       }
-      toast.success(`Removed "${word}" from dictionary`);
+      toast.success(`Removed "${word}" from dictionary`, { id: `spelling-${word}` });
     },
-    onError: (_err: any, variables) => {
-      toast.error(`Failed to remove "${variables.word}"`);
+    onError: (_err: unknown, variables) => {
+      toast.error(`Failed to remove "${variables.word}"`, { id: `spelling-${variables.word}` });
     },
   });
 

@@ -142,7 +142,7 @@ export function VisualFigureToolbar({
         {/* Width Scaling Presets */}
         <div className="flex items-center gap-0.5" title="Figure Width Scaling">
           {WIDTH_PRESETS.map((preset) => {
-            const isActive = width.includes(preset.spec.replace('\\', '')) || width === preset.spec;
+            const isActive = Boolean(width && (width.includes(preset.spec.replace('\\', '')) || width === preset.spec));
             return (
               <Button
                 key={preset.spec}

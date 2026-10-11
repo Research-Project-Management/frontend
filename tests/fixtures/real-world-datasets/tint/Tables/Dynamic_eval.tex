@@ -1,0 +1,39 @@
+\iffalse
+\begin{table}
+    \centering
+    \begin{tabular}{|c|c|c|c|c|}
+        Resource Constraint & (chunk, gradients, layers)  & Model & Dynamic evaluation & Construction \\
+    \midrule
+        \multicolumn{5}{|c|}{ \centering{ Train Fraction = 0.3 } }  \\
+    \midrule
+        15  & (1, 1, 12) & 24.15 & 23.33 & 23.6\\
+        30  & (1, 5, 6) & 24.15 & 23.24 & 23.39\\     
+        45  & (1, 3, 12) & 24.15 & 23.10 &\\     
+        150 & & 24.15 &  & \\     
+    \midrule
+        \multicolumn{5}{|c|}{ \centering{ Train Fraction = 0.5 } }  \\
+    \midrule
+        15  & (1, 1, 12) & 24.82 & 24.13 & 24.42\\
+        30  & (1, 5, 6) & 24.82 & 23.97 & 24.23\\     
+        45  & (1, 3, 12) & 24.82 & 24.04 & \\   
+        150 & & & &  \\     
+    \midrule
+        \multicolumn{5}{|c|}{ \centering{ Train Fraction = 0.7 } }  \\
+    \midrule
+        15  & (1, 1, 12) & 23.63 & 22.78 & 22.96 \\
+        30  & (1, 5, 6) & 23.63 & 22.71 & 22.75\\     
+        45  & (1, 3, 12) & 23.63 & 22.51 &  \\     
+        150 & & & \\     
+    \midrule
+        \multicolumn{5}{|c|}{ \centering{ Train Fraction = 0.9 } }  \\
+    \midrule
+        15  & (1, 1, 12) & 23.46 & 22.59 & 22.72 \\
+        30  & (1, 5, 6) & 23.46 & 22.53 & 22.50\\     
+        45  & (1, 3, 12) & 23.46 & 22.26 & \\     
+        150 & & & & \\         
+    \bottomrule
+    \end{tabular}
+    \caption{Dynamic evaluation perplexities on GPT-2 (under different resource constraints). Reported perplexities consider the test subsequence for each sequence. Dataset: wikitext-103 test set. Resource constraint is defined by the number of dynamic chunks in train subsequence $\times$ number of gradient steps $\times$ number of layers to gradient update.}
+    \label{tab:dynamic_eval}
+\end{table}
+\fi 

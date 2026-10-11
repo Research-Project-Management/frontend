@@ -3,9 +3,16 @@
 import React, { useState, useMemo } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Form, Input, Skeleton, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Form } from '@/shared/components/ui/form';
+import { Input } from '@/shared/components/ui/input';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/shared/components/ui/dialog';
 import { DeleteModal } from '../components/labels/DeleteModal';
-import { PageLayout, PageContent, PageHeader, PageToolbar, EmptyState } from '@/shared/components/layout';
+import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
+import { PageToolbar } from '@/shared/components/layout/PageToolbar';
+import { EmptyState } from '@/shared/components/layout/EmptyState';
 import {
   Tag,
   Search,

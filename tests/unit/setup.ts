@@ -55,6 +55,19 @@ if (typeof window !== 'undefined') {
       disconnect() {}
     };
   }
+
+  if (!window.HTMLElement.prototype.scrollIntoView) {
+    window.HTMLElement.prototype.scrollIntoView = function () {};
+  }
+  if (!window.HTMLElement.prototype.hasPointerCapture) {
+    window.HTMLElement.prototype.hasPointerCapture = function () { return false; };
+  }
+  if (!window.HTMLElement.prototype.setPointerCapture) {
+    window.HTMLElement.prototype.setPointerCapture = function () {};
+  }
+  if (!window.HTMLElement.prototype.releasePointerCapture) {
+    window.HTMLElement.prototype.releasePointerCapture = function () {};
+  }
 }
 
 // Global fetch fallback to guarantee network isolation across unit test suites

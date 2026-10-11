@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * use-notification-bundler.ts
@@ -66,13 +66,13 @@ export function useFlushBundle() {
         queryKey: notificationBundlerKeys.digests(),
       });
       if (digest) {
-        toast.success(`Notifications flushed: ${digest.summary}`);
+        toast.success(`Notifications flushed: ${digest.summary}`, { id: 'flush-bundle' });
       } else {
-        toast.info('No pending notifications to flush');
+        toast.info('No pending notifications to flush', { id: 'flush-bundle' });
       }
     },
     onError: () => {
-      toast.error('Failed to flush notification bundle');
+      toast.error('Failed to flush notification bundle', { id: 'flush-bundle' });
     },
   });
 }
@@ -87,10 +87,10 @@ export function useUpdateNotificationSettings() {
       queryClient.invalidateQueries({
         queryKey: notificationBundlerKeys.settings(),
       });
-      toast.success('Notification bundling settings updated');
+      toast.success('Notification bundling settings updated', { id: 'update-notification-settings' });
     },
     onError: () => {
-      toast.error('Failed to update notification bundling settings');
+      toast.error('Failed to update notification bundling settings', { id: 'update-notification-settings' });
     },
   });
 }

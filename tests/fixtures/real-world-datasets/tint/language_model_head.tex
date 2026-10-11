@@ -1,0 +1,40 @@
+\section{Language model head} \label{sec:lm_head}
+Additionally, we provide a description of the gradient computation for the loss function that involves the language model head. This computation entails performing a $\mathrm{softmax}$ operation over the entire vocabulary. If $\cV$ denotes the vocabulary set of the auxiliary model, and $\mE \in \RR^{\abs{\cV} \times \aux{D}}$ denotes the embedding matrix of the auxiliary model, we directly utilize the  embedding matrix for the auto-regressive loss in the \simulator. Additionally, we do not update the embedding matrix of the auxiliary model; instead, we solely backpropagate the gradients through the language model head. Recent work in~\citep{kumar2022finetune} has shown that keeping the embedding matrix fixed while updating the model can stabilize SGD. 
+We demonstrate that the backpropagated gradients can be expressed as the combination of the language model head and a self-attention layer.
+
+
+
+\begin{definition}[KL-loss gradient through auxiliary's language model head] \label{def:auxiliary_lm_back}
+Given an embedding matrix $\mE \in \RR^{\abs{V} \times \aux{D}}$, the language model head takes in input $\vx \in \RR^{\aux{D}}$ and a target distribution $\vq \in \RR^{\abs{V}}$ and returns gradient $\losspartial{\vx} \in \RR^{\aux{D}}$, with $\losspartial{\vx} = \mE^{\top} \left( \mathrm{softmax} ( \mE \vx ) - \vq \right).$ 
+\end{definition}
+
+
+In the autoregressive loss on a sequence of tokens, the target output distribution at any position is the next occurring token. If  $\{\vx^{un}_t\}_{t=1}^{\aux{T}}$ denote the uncontextualized embeddings of a sequence of tokens after encoding them via the embedding matrix, and 
+$\{\vx_t\}_{t=1}^{\aux{T}}$ denote their contextualized embeddings after passing through the auxiliary model, then the gradient $\losspartial{\vx_t}$ at any position $t$ can be simplified as $\mE^{\top}  \mathrm{softmax} ( \mE \vx_t ) - \vx^{un}_{t+1}.$ We illustrate the involved \simulator{} module w.r.t. an arbitrary position $t$.
+
+
+\paragraph{\simulator{} autoregressive loss gradient module} 
+The current embedding $\ve_t$ contains the contextualized embedding $\vx_t$ in its first $\aux{D}$ coordinates. Furthermore, $\ve_t$ includes the uncontextualized embedding $\vx^{un}_t$, copied from the input layer using residual connections. The prefix tokens ${ \vv_j }$ are assigned a value of $0$ and do not participate in the subsequent computations.
+
+The loss computation can be decomposed into two sub-operations: (a) computing $\vy_t := \mE^{\top} \mathrm{softmax} ( \mE \vx_t )$, and (b) calculating $\losspartial{\vx_t} = \vy_t - \vx^{un}_{t+1}$.
+
+For the first sub-operation, we use a feed-forward layer with $\mathrm{softmax}$ activation, with hidden and output weights $\mE$ and $\mE^{\top}$ respectively, that takes in the first $\aux{D}$ of $\ve_t$ and returns $\vy_t$ in the first $\aux{D}$ coordinates. We retain $\vx_t^{un}$ using a residual connection.
+
+The final sub-operation can be interpreted as a \simulator{} self-attention layer. With $\ve_t$ containing both $\vy_t$ and $\vx_t^{un}$, we use a linear self-attention layer (\cref{def:self-attn_construct}) with two attention heads. The first attention head assigns an attention score of $1$ to pairs $\{(t, t+1)\}_{t \le \aux{T} - 1}$, while assigning an attention score of $0$ to the remaining pairs. At any position $t$, $-\vx^{un}_{t}$ is considered the value vector. The second attention head assigns an attention score of $1$ to pairs $\{(t, t)\}_{t \le \aux{T}}$, while assigning an attention score of $0$ to the remaining pairs. At any position $t$, $\vy_{t}$ is considered the value vector. The outputs of both attention heads are subsequently combined using a linear layer.
+
+
+\begin{remark}
+We conducted experiments using mean-squared loss and Quad loss \cite{saunshi2020mathematical}, which do not necessitate softmax computations for gradient computation. As an example, in the case of mean-squared loss, if our objective is to minimize $\frac{1}{2} \sum_{t=1}^{T} \norm{ \vx_t - \vx^{un}_{t+1} }^2$, the gradient can be computed as $\losspartial{\vx_t} = \vx_t - \vx^{un}_{t+1}$. Similarly, in the case of Quad loss, the gradient is $\losspartial{\vx_t} = \frac{1}{\abs{V}} \sum_{i} \ve_i - \vx^{un}_{t+1}$. However, in all of our language model experiments (\cref{sec:experiments}), both gradients resulted in minimal improvement in perplexity compared to the auxiliary model. Therefore, we continue utilizing the standard KL loss for optimization.
+\end{remark}
+
+\begin{remark}
+For ease of implementation in the codebase, we utilize a dedicated loss module that takes in $\vy_t, \vx^{un}_{t+1}$ as input and directly computes $\losspartial{\vx_t} = \vy_t - \vx^{un}_{t+1}$.
+\end{remark}
+
+
+
+
+
+
+
+

@@ -375,8 +375,8 @@
   --foreground: #212121;
   --text-primary: #212121;
   --text-secondary: #595959;
-  --text-muted: #6E6E6E;
-  --muted-foreground: #6E6E6E;
+  --text-muted: #5A5A5A;
+  --muted-foreground: #5A5A5A;
   --text-placeholder: #BDBDBD;
 
   /* System Blue (The Dual-Engine Separation Rule) */

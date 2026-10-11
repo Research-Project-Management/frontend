@@ -1,0 +1,103 @@
+\section{Simulated Gradient} \label{sec:modification}
+\simulator{} adapts backpropagation to compute gradients 
+~(\Cref{fig:general_structure_simulator}).
+We aim to train a capable (i.e., pre-trained) auxiliary model for just a few steps, so high precision gradients may be unnecessary. Instead, \simulator{} performs an approximate backpropagation.  
+\simulator{} then uses this \emph{simulated gradient} to update the auxiliary model.
+Prior works computed similar approximate gradients in hopes of more faithfully modeling neurobiology~\citep{scellier2017equilibrium,hinton2022forwardforward} or improving the efficiency of training models~\citep{hu2021lora,malladi2023finetuning}.
+\iffalse In this section, we describe how \simulator{} performs an approximate backpropagation to compute a \emph{simulated gradient} of the auxiliary model. Due to the complexity of transformer modules, computing {\em exact} gradients of a transformer auxiliary model can require a huge simulator model. Our experiments show that the simulated gradient is a reasonable approximation. \fi 
+\iffalse that makes \simulator{} much more expressive than prior constructions despite being orders of magnitude smaller and defer the complete formal construction to the appendix.\fi 
+We note that the approximations in the simulated gradients can be made stronger at the cost of enlarging \simulator{}.
+Indeed, one could construct a simulator to \emph{exactly} perform the procedure outlined in \textsection{\ref{sec:design}}, though it would be orders of magnitude larger than \simulator{}.
+For brevity's sake, we focus on the key approximations and design choices and defer formal details to the appendix.
+
+\subsection{First-order approximations} \label{sec:first_order_approx}
+We use first-order approximations of gradients to backpropagate through 
+%training dynamics to update the parameters of 
+the layer normalization layer.\footnote{We discuss a layer normalization layer $\layernorm$ without scale and bias parameters, but \cref{sec:LNappendix} contains a general construction.} 
+It normalizes the input using its mean and standard deviation across the input dimensions. Since the operation is token-wise, we can consider a single position $t$ without loss of generality.
+
+\begin{definition}[Layer normalization]
+     A layer normalization layer $\layernorm$  takes input $\vx\in\RR^{\aux{D}}$ and outputs $\vy = (\vx - \mu) / \sigma$, where $\mu$ and $\sigma$ denote its mean and standard deviation.
+\end{definition}
+\textbf{High precision gradients:} 
+Formally, for input-output pair $(\vx, \vy)$, we can compute the  gradients $\partial_{\vy}$, $\partial_{\vx}$ with  chain rule:
+\begin{gather}
+    \partial_{\vx} = \left(\frac{\partial \layernorm (\vx)}{\partial \vx} \right)^{\top} \losspartial{\vy}  \nonumber \\= \frac{1}{\sigma} \left(  \langle \losspartial{\vy}, \vy \rangle \vy + \losspartial{\vy} - \frac{1}{\aux{D}} \sum_{i=1}^{\aux{D}} \losspartial{y_i} \right). \label{eq:ln_informal}
+\end{gather}
+\textbf{Inefficiency of exact computation:} 
+A \simulator{} layer simulating backpropagation through an auxiliary's layer normalization layer receives  $\losspartial{{\vy}_t}$ and $\vx_t$ in its input embeddings. We go through the exact gradient and why it is inefficient.
+
+For exact computation one could first compute $\vy_t$ using a normalization layer and store in the embeddings. However, inefficiency arises from computing the term  $\langle \losspartial{{{\vy}_t}}, \vy_t \rangle \vy_t$.
+To calculate $\langle \losspartial{{{\vy}_t}}, \vy_t \rangle \vy_t$ at each token position $t$, we could either: (1) use a two-layer MLP that focuses on each token separately, or (2) a single self-attention module to treat the operation as a sequence-to-sequence task. 
+
+For (1) we could initially compute $\langle \losspartial{{\vy}_t}, \vy_t \rangle$ via an MLP, followed by computation of $\langle \losspartial{{\vy}_t}, \vy_t \rangle \vy_t$ using another MLP. The element-wise multiplication in embeddings would be facilitated with a nonlinear activation function like \gelu{}~\citep{akyurek2022learning} (refer to thm. \ref{thm:gelu_multiplication} for details). However, this approach would need  substantial number of simulator parameters to represent the MLPs.
+
+\looseness-1Alternatively, we could  use a single self-attention module. Constructing such a module would require careful engineering to make sure the input tokens only attend to themselves while keeping an attention score of $0$ to others. If we used a linear attention, we would need to space out the gradient $\losspartial{{\vy}_t}$ and $\vx_t$ in each position $t$, such that the attention score is $0$ between different tokens. This would require an embedding dimension proportional to the context length. 
+On the other hand, if we used a softmax attention module, we would need an additional superfluous token in the sequence. Then, a token at position $t$ would attend to itself with attention $\langle \partial{\vy}_t, \vy_t\rangle$ and to the extra token with an attention score of $1-\langle \partial{\vy}_t, \vy_t\rangle$. The extra token would return a value vector $0$. \sm{Rephrase the prior sentence...I can't understand how this would work} To avoid such inefficiency, we opt for a first-order approximation instead.
+
+
+\textbf{Efficient approximation:} 
+Instead of explicitly computing each term in the chain rule of $\left(\frac{\partial \layernorm (\vx)}{\partial \vx} \right)^{\top} \losspartial{\vy}$ in Eq. \ref{eq:ln_informal}, we instead use a first order Taylor expansion of $\layernorm$.
+\begin{align*}
+    \layernorm(\vx + \epsilon \losspartial{\vy}) = \layernorm(\vx) + \epsilon \left(\frac{\partial \layernorm (\vx)}{\partial \vx} \right) \losspartial{\vy} + \mathcal{O}(\epsilon^2).
+\end{align*}
+Rearranging allows us to write
+\begin{align*}
+    \left(\frac{\partial \layernorm (\vx)}{\partial \vx} \right) \losspartial{\vy} =  \frac{1}{\epsilon} \left( \layernorm (\vx + \epsilon \partial_{\vy}) - \layernorm (\vx) \right) + \mathcal{O}(\epsilon).
+\end{align*}
+Similar to the computation of Eq. \ref{eq:ln_informal}, we can show  
+\begin{align*}
+    \frac{\partial \layernorm (\vx)}{\partial \vx} = \frac{1}{\sigma} \left( (1-{\aux{D}}^{-1})\mI - \layernorm(\vx) \layernorm(\vx)^{\top} \right).
+\end{align*}
+Because  $\partial \layernorm (\vx) / \partial \vx$ is symmetric\footnote{For a linear function $f$ with matrix $\mW$, $\frac{\partial f (\vx)}{\partial \vx} = \mW$. Since $\mW$ may not be a symmetric matrix, this method can't be generally applied to approximately backpropagate linear layers or causal self-attention layers.}, we can write
+\begin{align*}
+    \left(\frac{\partial \layernorm (\vx)}{\partial \vx} \right)^{\top} \losspartial{\vy} & =  \left(\frac{\partial \layernorm (\vx)}{\partial \vx} \right) \losspartial{\vy} \\& =  \frac{1}{\epsilon} \left( \layernorm (\vx + \epsilon \partial_{\vy}) - \layernorm (\vx) \right) + \mathcal{O}(\epsilon).
+\end{align*}
+
+
+
+Then, ignoring the small error term, we can use just two linear layers, separated by a normalization layer, to simulate the approximation. 
+
+
+\subsection{Fuzzy backpropagation via stop gradients} \label{sec:stop_gradients}
+Self-attention is inherently quadratic, because it uses the keys and queries to compute attention scores between every possible pair of tokens in the sequence.
+These scores then linearly combine the value vectors (see def. \ref{def:self-attn_auxiliary_single}). 
+Computing the gradient exactly is thus a very complex operation.
+Instead, we stop the gradient computation through attention scores in the self-attention layer. 
+For similar reasons, we only update the value parameter in the self-attention module.
+
+\textbf{Gradient backpropagation:}
+For an input, output sequence pair $\{\vy_t\}, \{\vy_t\}$, if $\{\vq_t, \vk_t, \vv_t\}$ denote the intermediate query, key, value vectors, on gradients $\{ \partial_{\vy_t} \}$, $\{ \partial_{\vx_t} \}$ is given via the chain rule:
+\begin{align}
+    \losspartial{\vx_t} &= \mQ^{\top} \losspartial{\vq_t} + \mK^{\top} \losspartial{\vk_t} + \mV^{\top} \losspartial{\vv_t}.
+    \label{eq:attn_backprop_informal}
+\end{align}
+Here, $\mV, \mK, \mQ$ denote the query, key, and value matrices. 
+
+\textbf{Inefficiency in exact computation:} 
+Here, we demonstrate that simulating computation of the three terms in Eq. \ref{eq:attn_backprop_informal} is inefficient, because
+$\losspartial{\vq_t}, \losspartial{\vk_t}$ depend on the derivatives w.r.t. the attention scores. 
+As an example, we focus on $\losspartial{\vk_t}$:
+\begin{align*}
+    \losspartial{\vk_t} = \sum_j a_{t, j} ( (\losspartial{\vy_t})^{\top} \vv_j ) (\vk_j - \sum_{j'} a_{t, j'} \vk_{j'}).
+\end{align*}
+
+Computing this term would require us at least 2 self-attention layers and an MLP layer. The first attention layer would compute $(\losspartial{\vy_t})^{\top} \vv_j$ for different token pairs, similar to the forward simulation of a linear layer with linear attention (\textsection{\ref{sec:exposition_linear_forward}}). These would be then multiplied to the pair-wise attention scores $a_{t, j}$  with an MLP to compute $a_{t, j} ( (\losspartial{\vy_t})^{\top} \vv_j )$, with elementwise product would be facilitated by GeLU non-linearity (thm. \ref{thm:gelu_multiplication}). 
+These would be finally used by an attention layer to combine the different key vectors. A similar simulation would be necessary to compute $\losspartial{\vq_t}$.
+
+
+
+
+\textbf{Stop gradients through query and key vectors:}
+In order to reduce the necessary resources, we ignore the query and key gradients in Eq. \ref{eq:attn_backprop_informal}. When we ignore these gradient components,  $\{ \partial_{\vx_t} \}$ can be simplified as
+\begin{align}
+    \losspartial{\vx_t} \approx \mV^{\top} \losspartial{\vv_t} = \mV^{\top} \sum_{j} a_{j, t} \losspartial{\vy_t}.
+    \label{eq:approx_attn_gradient}
+\end{align}
+A single self-attention layer can compute this by using the attention scores to combine the token-wise gradients.
+
+\textbf{Why won't it hurt performance?} Estimating $\partial_{\vx_t}$ as described is motivated by recent work \citep{malladi2023finetuning} showing that fuzzy gradient estimates don't adversely affect fine-tuning of pre-trained models. Furthermore, we theoretically show that when the attention head for each position pays a lot of attention to a single token (i.e., behaves like hard attention \citep{perez2021attention}), the approximate gradient in Eq. \ref{eq:approx_attn_gradient} is entry-wise close to the true gradients (thm. \ref{thm:attn_backprop}).
+
+The other approximation is to update only the value parameters $\mV$ of the auxiliary model (\textsection{\ref{sec:self-attnt-backprop_appendix}}). 
+This is motivated by parameter efficient fine-tuning methods like \lora{} \cite{hu2021lora} and \ia{} \cite{liu2022few}, which restrict the expressivity of the gradient updates without degrading the quality of the resulting model.
+We similarly show in the next section that the simulated gradients in \simulator{} can effectively tune large pre-trained transformers.

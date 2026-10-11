@@ -10,7 +10,7 @@
  * - NewCommentForm: full comment form with quote preview and @mention textarea
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -35,6 +35,7 @@ import {
   useDeleteReply,
   useAddReply,
   useCreateComment,
+  useUpdateComment,
 } from '@/features/editor/ui/hooks/use-comment';
 import type {
   PageComment,
@@ -223,6 +224,10 @@ export const CommentCard = React.memo(function CommentCard({
   const resolveMutation = useResolveComment();
   const deleteMutation = useDeleteComment();
   const deleteReplyMutation = useDeleteReply();
+  const updateMutation = useUpdateComment();
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(comment.content);
 
   const isAuthor = Boolean(
     currentUserId && (
@@ -329,12 +334,23 @@ export const CommentCard = React.memo(function CommentCard({
                 </DropdownMenuItem>
               )}
               {isAuthor && (
-                <DropdownMenuItem
-                  onClick={handleDelete}
-                  className="text-xs text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer"
-                >
-                  Delete comment
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setEditContent(comment.content);
+                      setIsEditing(true);
+                    }}
+                    className="text-xs hover:bg-muted cursor-pointer"
+                  >
+                    Edit comment
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleDelete}
+                    className="text-xs text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                  >
+                    Delete comment
+                  </DropdownMenuItem>
+                </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -346,10 +362,48 @@ export const CommentCard = React.memo(function CommentCard({
         {formatOverleafDate(comment.createdAt)}
       </div>
 
-      {/* Row 3: Comment Body */}
-      <div className="text-13 text-foreground mt-1.5 font-normal leading-relaxed whitespace-pre-wrap break-words">
-        <MentionRenderer content={comment.content} />
-      </div>
+      {/* Row 3: Comment Body (or Edit Form) */}
+      {isEditing ? (
+        <div className="mt-2 space-y-1.5">
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            rows={2}
+            className="w-full text-xs p-2 rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-y"
+            autoFocus
+          />
+          <div className="flex items-center justify-end gap-1.5">
+            <button
+              type="button"
+              onClick={() => setIsEditing(false)}
+              className="px-2 py-0.5 text-11 rounded-sm border border-border text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={updateMutation.isPending || !editContent.trim()}
+              onClick={() => {
+                const trimmed = editContent.trim();
+                if (!trimmed) return;
+                updateMutation.mutate(
+                  { pageId, commentId: comment.id, content: trimmed },
+                  {
+                    onSuccess: () => setIsEditing(false),
+                  }
+                );
+              }}
+              className="px-2.5 py-0.5 text-11 rounded-sm bg-primary text-primary-foreground font-medium hover:bg-primary/90 cursor-pointer disabled:opacity-50"
+            >
+              {updateMutation.isPending ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="text-13 text-foreground mt-1.5 font-normal leading-relaxed whitespace-pre-wrap break-words">
+          <MentionRenderer content={comment.content} />
+        </div>
+      )}
 
       {/* Row 4: Replies */}
       {hasReplies && (

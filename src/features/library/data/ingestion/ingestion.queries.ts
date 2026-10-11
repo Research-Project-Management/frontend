@@ -344,7 +344,7 @@ export function useDuplicateGroups(scopeId?: string) {
   });
 }
 
-export function useMergePapers(scopeId?: string) {
+export function useMergeDuplicates(scopeId?: string) {
   const queryClient = useQueryClient();
   const effectiveScope = scopeId || 'user';
 
@@ -393,11 +393,11 @@ export function useLibraryIntegrity(scopeId?: string) {
   });
 }
 
-export const useDuplicates = useDuplicateGroups;
-export const useDuplicateGroupsQuery = useDuplicateGroups;
-export const useMergeItems = useMergePapers;
-export const useMergeDuplicates = useMergePapers;
+export const useMergePapers = useMergeDuplicates;
+export const useMergeItems = useMergeDuplicates;
 export const useMergeDuplicatesMutation = useMergeDuplicates;
+export const useDuplicateGroupsQuery = useDuplicateGroups;
+export const useDuplicates = useDuplicateGroups;
 export const useIntegrity = useLibraryIntegrity;
 
 // ── Retraction Queries ────────────────────────────────────────────────────────

@@ -17,7 +17,6 @@ import {
   Info,
   X,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +33,12 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/shared/components/ui/tabs';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 
 export interface SymbolPaletteModalProps {
@@ -61,7 +66,6 @@ export function SymbolPaletteModal({
     (sym: MathSymbol) => {
       onInsert(`${sym.command} `);
       setLastInserted(sym.command);
-      toast.success(`Inserted ${sym.command}`, { duration: 1200 });
 
       if (!keepOpen) {
         onOpenChange(false);
@@ -144,32 +148,48 @@ export function SymbolPaletteModal({
                 <span>No symbols found matching &quot;{searchQuery}&quot;</span>
               </div>
             ) : (
-              <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-1.5 select-none">
-                {filteredSymbols.map((sym) => {
-                  const isRecent = lastInserted === sym.command;
-                  return (
-                    <button
-                      key={sym.command}
-                      type="button"
-                      onClick={() => insertSymbol(sym)}
-                      title={`${sym.command} (${sym.name})`}
-                      className={cn(
-                        'group flex flex-col items-center justify-center h-12 rounded-sm border transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset',
-                        isRecent
-                          ? 'bg-primary/15 border-primary text-primary font-semibold'
-                          : 'bg-background border-border hover:border-primary/50 hover:bg-primary/5 text-foreground'
-                      )}
-                    >
-                      <span className="text-base leading-none font-serif">
-                        {sym.display}
-                      </span>
-                      <span className="text-9 font-mono text-muted-foreground truncate max-w-[50px] mt-1 group-hover:text-foreground">
-                        {sym.command}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              <TooltipProvider delayDuration={200}>
+                <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-1.5 select-none">
+                  {filteredSymbols.map((sym) => {
+                    const isRecent = lastInserted === sym.command;
+                    return (
+                      <Tooltip key={sym.command}>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => insertSymbol(sym)}
+                            aria-label={`${sym.command} (${sym.name})`}
+                            className={cn(
+                              'group flex flex-col items-center justify-center h-12 rounded-sm border transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset',
+                              isRecent
+                                ? 'bg-primary/15 border-primary text-primary font-semibold'
+                                : 'bg-background border-border hover:border-primary/50 hover:bg-primary/5 text-foreground'
+                            )}
+                          >
+                            <span className="text-base leading-none font-serif">
+                              {sym.display}
+                            </span>
+                            <span className="text-9 font-mono text-muted-foreground truncate max-w-[50px] mt-1 group-hover:text-foreground">
+                              {sym.command}
+                            </span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="flex flex-col gap-0.5 text-11">
+                          <div className="flex items-center gap-1 font-mono font-medium">
+                            <span>{sym.command}</span>
+                            <span className="text-muted-foreground font-sans">({sym.name})</span>
+                          </div>
+                          {sym.requiredPackage && (
+                            <div className="text-9 text-warning font-mono">
+                              Requires \usepackage&#123;{sym.requiredPackage}&#125;
+                            </div>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </TooltipProvider>
             )}
           </div>
         </Tabs>

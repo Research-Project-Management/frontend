@@ -3,19 +3,28 @@
 /**
  * Topbar.tsx
  *
- * Canonical VS Code / Overleaf Topbar & Menubar (Block 7: UI Shell Layer).
+ * Topbar & Menubar (Block 7: UI Shell Layer).
  * Location: `features/editor/ui/shell/Topbar.tsx`
  *
- * Slots & Anatomy:
- * - Left: Flux Logo (Home navigation), Menubar (File, Edit, Insert, View, Format).
- * - Center: Project Title & Quick Rename Modal Trigger.
- * - Right: Save Status, History, Layout Switcher, and Global Modals.
+ * Layout:
+ * - Left: Back to Projects / Logo, Menubar (File, Edit, Insert, View, Format).
+ * - Center: Project Title (click to rename / dropdown).
+ * - Right: Saving status, History button, Layout switcher, Collaborator avatars.
+ *
+ * (Note: Settings is hosted in the left ActivityBar icon; Mode switcher is located at top-left of Editor Pane).
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Home, PanelLeft, History, Loader2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  History,
+  Loader2,
+  PanelLeft,
+  Home,
+  Cloud,
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -31,8 +40,6 @@ import { cn } from '@/shared/lib/utils';
 import FileMenu from './topbar/FileMenu';
 import EditMenu from './topbar/EditMenu';
 import ViewMenu from './topbar/ViewMenu';
-import InsertMenu from './topbar/InsertMenu';
-import FormatMenu from './topbar/FormatMenu';
 import LayoutSwitcher from './topbar/LayoutSwitcher';
 import ProjectTitleDropdown from './topbar/ProjectTitleDropdown';
 import CollaboratorAvatarStack from './topbar/CollaboratorAvatarStack';
@@ -60,7 +67,7 @@ const QuickOpenModal = dynamic(
 );
 
 export function Topbar() {
-  const params = useParams<{ projectId?: string }>();
+  const params = useParams<{ projectId?: string; pageId?: string }>();
   const storeProjectId = usePageStore(
     (s) => s.projectId || extractProjectId(s.currentPage) || '',
   );
@@ -83,13 +90,12 @@ export function Topbar() {
 
   const hasDirtyFiles = useCompileStore((s) => s.dirtyContentMap.size > 0);
   const { updateTitle: updateTitleMutation } = usePageActions();
-
   const isSaving = hasDirtyFiles || updateTitleMutation.isPending;
 
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isQuickOpenOpen, setIsQuickOpenOpen] = useState(false);
 
-  const handleToggleHistory = React.useCallback(async () => {
+  const handleToggleHistory = useCallback(async () => {
     if (!isHistoryOpen) {
       await sessionCoordinator.flushAllPending();
     }
@@ -108,7 +114,7 @@ export function Topbar() {
         return;
       }
 
-      // Ctrl+/ or Cmd+/ or F1 -> Keyboard shortcuts cheat sheet (only when editor is NOT focused)
+      // Ctrl+/ or Cmd+/ or F1 -> Keyboard shortcuts cheat sheet
       if ((modKey && e.key === '/') || (e.key === 'F1' && !e.shiftKey && !e.altKey)) {
         const activeEl = typeof document !== 'undefined' ? document.activeElement : null;
         const isEditorFocused =
@@ -116,7 +122,6 @@ export function Topbar() {
           Boolean(activeEl?.closest('.cm-editor') || activeEl?.closest('.ProseMirror'));
 
         if (modKey && e.key === '/' && isEditorFocused) {
-          // Allow CodeMirror / Visual Editor to execute toggleComment
           return;
         }
 
@@ -125,10 +130,10 @@ export function Topbar() {
         return;
       }
 
-      // Ctrl+Shift+K or Cmd+Shift+K -> Open Citation Picker
-      if (modKey && e.shiftKey && e.key.toLowerCase() === 'k') {
+      // Ctrl+Shift+V -> Toggle Source vs Visual mode
+      if (modKey && e.shiftKey && (e.key === 'V' || e.key === 'v')) {
         e.preventDefault();
-        editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'citation-picker' });
+        useSettingsStore.getState().toggleEditorMode();
         return;
       }
     };
@@ -162,10 +167,10 @@ export function Topbar() {
     <TooltipProvider delayDuration={150}>
       <nav
         aria-label="Editor toolbar"
-        className="relative flex h-10 items-center justify-between gap-2 px-2.5 py-0.5 bg-sidebar border-b border-border shrink-0 z-10 select-none"
+        className="relative flex h-10 items-center justify-between gap-2 px-2.5 py-0.5 bg-sidebar shrink-0 z-30 select-none"
       >
-        {/* ── Left: Logo (Back to project / Home), Main Menubar ── */}
-        <div className="flex items-center min-w-0 shrink-0 gap-1">
+        {/* ── Left: Back / Logo, Full Menubar ── */}
+        <div className="flex items-center min-w-0 shrink-0 gap-1.5">
           {/* Mobile sidebar drawer trigger */}
           <button
             type="button"
@@ -177,12 +182,12 @@ export function Topbar() {
             <PanelLeft className="size-4 shrink-0" />
           </button>
 
-          {/* Single Logo button: click to go back to project, hover transforms to Home icon */}
+          {/* Logo / Back to Projects */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Link
                 href={homeHref}
-                aria-label="Back to Pages"
+                aria-label="Back to Projects"
                 className="group relative flex size-7 items-center justify-center rounded-md hover:bg-sidebar-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 cursor-pointer"
               >
                 <img
@@ -197,17 +202,15 @@ export function Topbar() {
               </Link>
             </TooltipTrigger>
             <TooltipContent side="bottom" sideOffset={6}>
-              Back to Pages
+              Back to Projects
             </TooltipContent>
           </Tooltip>
 
+          {/* Desktop Menubar (Overleaf Parity: File, Edit, View) */}
           <Menubar className="h-7 border-none bg-transparent p-0 gap-0.5 shadow-none hidden sm:flex text-12">
-            {/* Sub-menu Tabs */}
             <FileMenu />
             <EditMenu />
-            <InsertMenu />
             <ViewMenu />
-            <FormatMenu />
           </Menubar>
         </div>
 
@@ -216,22 +219,45 @@ export function Topbar() {
           <ProjectTitleDropdown />
         </div>
 
-        {/* ── Right: Save Status, Collaborators, History, Layout Switcher ── */}
+        {/* ── Right: Save Status, History, Layout, Collaborators ── */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Save Status Indicator: only show when actively saving */}
-          {isSaving && (
-            <div className="flex items-center shrink-0 mr-1" title="Saving..." aria-label="Saving changes">
-              <Loader2 className="size-3.5 text-muted-foreground animate-spin shrink-0 motion-reduce:animate-none" />
-            </div>
+          {/* Save Status Indicator (Overleaf Parity) */}
+          {isSaving ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className="flex items-center gap-1 px-1.5 py-1 text-xs text-muted-foreground mr-0.5 select-none"
+                  aria-label="Saving changes"
+                >
+                  <Loader2 className="size-3.5 text-muted-foreground animate-spin shrink-0 motion-reduce:animate-none" />
+                  <span className="hidden xl:inline text-11 font-medium">Saving…</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={6}>
+                Saving changes...
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className="flex items-center gap-1 px-1.5 py-1 text-xs text-muted-foreground/60 mr-0.5 select-none cursor-default"
+                  aria-label="All changes saved"
+                >
+                  <Cloud className="size-3.5 shrink-0 text-muted-foreground/60" />
+                  <span className="hidden xl:inline text-11 font-normal text-muted-foreground/60">Saved</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={6}>
+                All changes saved to cloud
+              </TooltipContent>
+            </Tooltip>
           )}
 
-          {/* Collaborator Presence Avatar Stack (Real-time Overleaf Parity) */}
-          <CollaboratorAvatarStack />
-
-          {/* Editing Mode Dropdown (Overleaf Parity: Editing vs Reviewing) */}
+          {/* Editing Mode Dropdown (Overleaf Parity: Editing vs Reviewing vs Viewing) */}
           <EditingModeDropdown />
 
-          {/* History Button */}
+          {/* History Button (Overleaf Parity: Top Right) */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -254,8 +280,13 @@ export function Topbar() {
             </TooltipContent>
           </Tooltip>
 
+          {/* Layout Switcher (Overleaf Parity: Top Right) */}
           <LayoutSwitcher />
 
+          {/* Collaborator Presence Avatar Stack */}
+          <CollaboratorAvatarStack />
+
+          {/* Global Modals */}
           {isTemplateModalOpen && <TemplateGalleryModal />}
           {isShortcutsOpen && (
             <KeyboardShortcutsModal

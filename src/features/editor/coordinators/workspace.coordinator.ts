@@ -141,11 +141,11 @@ export class WorkspaceCoordinatorRegistry {
         });
       }
 
-      toast.success(`Created "${name}"`);
+      toast.success(`Created "${name}"`, { id: `create-file-${name}` });
       return newFile;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[WorkspaceCoordinator] Create file error:', err);
-      toast.error(err?.message || `Failed to create "${name}"`);
+      toast.error((err as Error)?.message || `Failed to create "${name}"`, { id: `create-file-${name}` });
       return null;
     }
   }
@@ -165,7 +165,7 @@ export class WorkspaceCoordinatorRegistry {
       // 1. Cascade rename to Tabs Store
       const tabsStore = useTabsStore.getState();
       const allTabs = Object.values(tabsStore.tabsByProject).flat();
-      const existingTab = allTabs.find((t: any) => t.id === itemId);
+      const existingTab = allTabs.find((t) => t.id === itemId);
       if (existingTab) {
         tabsStore.updateTabTitle(effectiveProjectId, itemId, newName);
       }
@@ -192,11 +192,11 @@ export class WorkspaceCoordinatorRegistry {
         payload: { action: 'rename', itemId, oldName, newName },
       });
 
-      toast.success(`Renamed to "${newName}"`);
+      toast.success(`Renamed to "${newName}"`, { id: `rename-file-${itemId}` });
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[WorkspaceCoordinator] Rename error:', err);
-      toast.error(err?.message || `Failed to rename "${oldName}"`);
+      toast.error((err as Error)?.message || `Failed to rename "${oldName}"`, { id: `rename-file-${itemId}` });
       return false;
     }
   }
@@ -225,11 +225,11 @@ export class WorkspaceCoordinatorRegistry {
         payload: { action: 'delete', fileId },
       });
 
-      toast.success('File moved to trash');
+      toast.success('File moved to trash', { id: `delete-file-${fileId}` });
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[WorkspaceCoordinator] Delete error:', err);
-      toast.error(err?.message || 'Failed to delete file');
+      toast.error((err as Error)?.message || 'Failed to delete file', { id: `delete-file-${fileId}` });
       return false;
     }
   }
@@ -252,11 +252,11 @@ export class WorkspaceCoordinatorRegistry {
         payload: { action: 'move', itemId, targetFolderId },
       });
 
-      toast.success('Moved successfully');
+      toast.success('Moved successfully', { id: `move-file-${itemId}` });
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[WorkspaceCoordinator] Move error:', err);
-      toast.error(err?.message || 'Failed to move item');
+      toast.error((err as Error)?.message || 'Failed to move item', { id: `move-file-${itemId}` });
       return false;
     }
   }
@@ -264,25 +264,34 @@ export class WorkspaceCoordinatorRegistry {
   /**
    * Restores a deleted file from trash, warms cache, re-indexes symbols and DAG
    */
-  public async restoreFile(fileId: string, optProjectId?: string): Promise<any> {
+  public async restoreFile(fileId: string, optProjectId?: string): Promise<unknown> {
     const effectiveProjectId = optProjectId || usePageStore.getState().projectId;
     try {
-      const res: any = await manuscriptService.docs.restore(fileId);
+      const res = (await manuscriptService.docs.restore(fileId)) as {
+        page?: { id: string; title?: string; name?: string; content?: unknown; projectId?: string };
+        data?: { id: string; title?: string; name?: string; content?: unknown; projectId?: string };
+        id?: string;
+        title?: string;
+        name?: string;
+        content?: unknown;
+        projectId?: string;
+      } | null;
       const page = res?.page || res?.data || res;
 
       if (page) {
+        const docId = page.id || fileId;
         // 1. Warm LRU cache
-        lruDocumentCache.warm(page.id, {
+        lruDocumentCache.warm(docId, {
           filePath: page.title || page.name || 'restored.tex',
-          content: page.content || '',
+          content: typeof page.content === 'string' ? page.content : '',
           projectId: page.projectId || effectiveProjectId,
         });
 
         // 2. Re-index in DAG & Symbols
         const docTitle = page.title || page.name || 'restored.tex';
         if (typeof page.content === 'string') {
-          latexDagEngine.parseAndRegister(docTitle, page.content, page.id);
-          latexSymbolsIndex.indexFile(page.id, docTitle, page.content);
+          latexDagEngine.parseAndRegister(docTitle, page.content, docId);
+          latexSymbolsIndex.indexFile(docId, docTitle, page.content);
         }
       }
 
@@ -296,11 +305,11 @@ export class WorkspaceCoordinatorRegistry {
         window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
       }
 
-      toast.success('File restored');
+      toast.success('File restored', { id: `restore-file-${fileId}` });
       return res;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[WorkspaceCoordinator] Restore error:', err);
-      toast.error(err?.message || 'Failed to restore file');
+      toast.error((err as Error)?.message || 'Failed to restore file', { id: `restore-file-${fileId}` });
       throw err;
     }
   }
@@ -325,11 +334,11 @@ export class WorkspaceCoordinatorRegistry {
         window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
       }
 
-      toast.success('Set as main document');
+      toast.success('Set as main document', { id: 'set-main-file' });
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[WorkspaceCoordinator] Set main document error:', err);
-      toast.error(err?.message || 'Failed to set main document');
+      toast.error((err as Error)?.message || 'Failed to set main document', { id: 'set-main-file' });
       throw err;
     }
   }
@@ -337,7 +346,7 @@ export class WorkspaceCoordinatorRegistry {
   /**
    * High-speed initial bulk indexing of all project files for cross-referencing and DAG
    */
-  public initProjectSymbols(files: Array<{ id: string; title?: string; name?: string; path?: string; content?: any }>): void {
+  public initProjectSymbols(files: Array<{ id: string; title?: string; name?: string; path?: string; content?: unknown }>): void {
     this.projectFiles = [...files];
     latexSymbolsIndex.clear();
     for (const file of files) {
@@ -365,13 +374,13 @@ export class WorkspaceCoordinatorRegistry {
   ): Promise<{ success: boolean; modifiedCount: number; replacedCount: number }> {
     const validation = validateCitationKey(newKey, oldKey);
     if (!validation.isValid) {
-      toast.error(validation.error || 'Khóa trích dẫn không hợp lệ');
+      toast.error(validation.error || 'Invalid citation key', { id: 'refactor-citekey' });
       return { success: false, modifiedCount: 0, replacedCount: 0 };
     }
 
     const effectiveProjectId = optProjectId || usePageStore.getState().projectId;
     if (!effectiveProjectId) {
-      toast.error('Không tìm thấy dự án đang mở');
+      toast.error('No active project found', { id: 'refactor-citekey' });
       return { success: false, modifiedCount: 0, replacedCount: 0 };
     }
 
@@ -398,7 +407,7 @@ export class WorkspaceCoordinatorRegistry {
     const { modifiedFiles, totalCount } = refactorCitationKeyAcrossFiles(projectFiles, oldKey, newKey);
 
     if (modifiedFiles.length === 0) {
-      toast.info(`Không tìm thấy trích dẫn nào tham chiếu tới @${oldKey}`);
+      toast.info(`No citations found referencing @${oldKey}`, { id: 'refactor-citekey' });
       return { success: true, modifiedCount: 0, replacedCount: 0 };
     }
 
@@ -431,7 +440,7 @@ export class WorkspaceCoordinatorRegistry {
       payload: { action: 'refactor-citekey', oldKey, newKey, totalCount },
     });
 
-    toast.success(`Đã đổi tên @${oldKey} thành @${newKey} thành công (${totalCount} vị trí trong ${modifiedFiles.length} tệp)!`);
+    toast.success(`Renamed @${oldKey} to @${newKey} (${totalCount} occurrences in ${modifiedFiles.length} files)!`, { id: 'refactor-citekey' });
     return { success: true, modifiedCount: modifiedFiles.length, replacedCount: totalCount };
   }
 }

@@ -18,7 +18,7 @@ import { GridView } from './components/views/GridView';
 import { ListView } from './components/views/ListView';
 import type { Page, PagesViewMode, PageStatus } from './types/page.types';
 import { useProjectLabels } from '../settings/hooks/use-label';
-import { PageLayout, PageContent } from '@/shared/components/layout';
+import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 
 export function ProjectPagesView({ projectId: propProjectId }: { projectId?: string } = {}) {

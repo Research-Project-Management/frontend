@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Button } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import {
   Link2,
   Plus,

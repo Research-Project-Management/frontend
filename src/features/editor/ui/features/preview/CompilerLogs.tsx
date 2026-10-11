@@ -25,7 +25,8 @@ import { toast } from 'sonner';
 import { useLogViewerActions } from './hooks/use-log-viewer-actions';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/button';
-import { PlaneErrorState, PlaneEmptyState } from '@/shared/components/ui';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { usePageStore } from '@/features/editor/store/editor.store';
 import { useCompileStore } from '@/features/editor/store/compiler.store';
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
@@ -174,7 +175,7 @@ export function CompilerLogs({
 
   const handleDownloadRawLog = useCallback(() => {
     if (!log || !log.trim()) {
-      toast.info('Chưa có dữ liệu log biên dịch để tải về');
+      toast.info('No compilation logs available to download', { id: 'download-raw-log' });
       return;
     }
     const blob = new Blob([log], { type: 'text/plain;charset=utf-8' });
@@ -186,8 +187,16 @@ export function CompilerLogs({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success('Đã tải xuống tệp output.log');
+    toast.success('Downloaded output.log', { id: 'download-raw-log' });
   }, [log]);
+
+  const handleDownloadOutputFile = useCallback((fileName: string) => {
+    if (fileName === 'output.log' && log && log.trim()) {
+      handleDownloadRawLog();
+    } else {
+      downloadFile(fileName);
+    }
+  }, [downloadFile, handleDownloadRawLog, log]);
 
   // AI Error Assist state
   const [fixState, setFixState] = useState<
@@ -280,7 +289,6 @@ export function CompilerLogs({
           highlight: 'error',
         });
       }
-      toast.info(`Đã chuyển đến dòng ${entry.line}${entry.file ? ` (${entry.file})` : ''}`);
     }
   }, [onJumpToError]);
 
@@ -389,54 +397,40 @@ export function CompilerLogs({
                 className="h-8 px-3 rounded-md text-xs font-medium gap-1.5 cursor-pointer shadow-none"
               >
                 <ChevronLeft className="size-3.5 shrink-0" />
-                <span>Back to PDF preview</span>
+                <span>View PDF</span>
               </Button>
             }
           />
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto bg-background divide-y divide-border/60 font-mono">
-          {/* Compilation Error Banner (when errors exist) */}
-          {parsed.errors.length > 0 && (activeTab === 'all' || activeTab === 'errors') && (
-            <div className="flex items-center justify-between p-3 bg-destructive/5 text-destructive text-xs animate-in fade-in-50 duration-150">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="size-4 shrink-0 text-destructive" />
-                <span className="font-medium text-foreground">
-                  <strong className="text-destructive font-semibold">
-                    {parsed.errors.length} compilation {parsed.errors.length === 1 ? 'error' : 'errors'}
-                  </strong>{' '}
-                  detected in this build
-                </span>
-              </div>
-              {parsed.errors.some((e) => e.line) && (
+          {/* Collapsible: > Raw logs accordion (Overleaf 1:1 Match) */}
+          <div id="raw-latex-logs" className="bg-background">
+            <div className="flex items-center justify-between px-3 py-2 hover:bg-muted/60 transition-colors">
+              <button
+                type="button"
+                aria-expanded={isRawLogsOpen}
+                aria-controls="raw-latex-logs-content"
+                onClick={() => setIsRawLogsOpen((prev) => !prev)}
+                className="flex items-center gap-2 text-left font-medium text-xs text-foreground cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              >
+                <ChevronRight
+                  className={cn('size-3.5 text-muted-foreground transition-transform duration-150', isRawLogsOpen && 'rotate-90')}
+                />
+                <span>Raw logs</span>
+              </button>
+              {log && (
                 <button
                   type="button"
-                  onClick={() => {
-                    const first = parsed.errors.find((e) => e.line);
-                    if (first) handleEntryClick(first);
-                  }}
-                  className="px-2.5 py-1 rounded-md bg-destructive/10 hover:bg-destructive/20 text-destructive text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+                  onClick={handleDownloadRawLog}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 rounded hover:bg-muted transition-colors cursor-pointer"
+                  title="Download output.log"
                 >
-                  Jump to first error
+                  <Download className="size-3" />
+                  <span>Download raw log</span>
                 </button>
               )}
             </div>
-          )}
-
-          {/* Collapsible: > Raw logs accordion (Overleaf 1:1 Match) */}
-          <div id="raw-latex-logs" className="bg-background">
-            <button
-              type="button"
-              aria-expanded={isRawLogsOpen}
-              aria-controls="raw-latex-logs-content"
-              onClick={() => setIsRawLogsOpen((prev) => !prev)}
-              className="w-full flex items-center gap-2 px-3 py-2 text-left font-medium text-xs text-foreground hover:bg-muted/60 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
-            >
-              <ChevronRight
-                className={cn('size-3.5 text-muted-foreground transition-transform duration-150', isRawLogsOpen && 'rotate-90')}
-              />
-              <span>Raw logs</span>
-            </button>
             {isRawLogsOpen && (
               <pre id="raw-latex-logs-content" className="p-3 border-t border-border/60 bg-muted/20 font-mono text-12 text-foreground/90 whitespace-pre-wrap break-words leading-relaxed max-h-96 overflow-y-auto select-text">
                 {log || 'No compilation logs recorded yet.'}
@@ -548,7 +542,7 @@ export function CompilerLogs({
       <CompilerLogsFooter
         onClearCacheAndCompile={handleClearCacheAndCompile}
         outputFiles={outputFiles}
-        onDownloadFile={downloadFile}
+        onDownloadFile={handleDownloadOutputFile}
         onDownloadAll={downloadAllArtifacts}
         onDownloadRawLog={handleDownloadRawLog}
       />

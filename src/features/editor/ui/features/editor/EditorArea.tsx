@@ -18,7 +18,8 @@
 import React from 'react';
 import { FileCode2, WifiOff } from 'lucide-react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
-import { PlaneEmptyState, Button } from '@/shared/components/ui';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
+import { Button } from '@/shared/components/ui/button';
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -27,7 +28,12 @@ import {
 import { toast } from 'sonner';
 
 import { EditorPane } from './EditorPane';
-import { DraftRecoveryDialog } from './DraftRecoveryDialog';
+import dynamic from 'next/dynamic';
+
+const DraftRecoveryDialog = dynamic(
+  () => import('./DraftRecoveryDialog').then((m) => m.DraftRecoveryDialog),
+  { ssr: false }
+);
 
 import { useActiveDocument } from '../../hooks/use-active-document';
 import { useEditorCollaboration } from '../../hooks/use-collaboration';
@@ -174,16 +180,16 @@ export function EditorArea() {
   // Surface remote-vs-local conflicts instead of silently dropping remote edits.
   React.useEffect(() => {
     return sessionCoordinator.onConflict((conflict) => {
-      toast.warning('Tài liệu đã được cập nhật từ nơi khác trong khi bạn có thay đổi chưa lưu.', {
+      toast.warning('Document was updated remotely while you have unsaved changes.', {
         id: `doc-conflict-${conflict.fileId}`,
         duration: Infinity,
-        description: 'Thay đổi của bạn vẫn được giữ và sao lưu cục bộ. Chọn phiên bản muốn dùng.',
+        description: 'Your local changes are preserved. Choose which version to keep.',
         action: {
-          label: 'Dùng bản từ xa',
+          label: 'Use remote version',
           onClick: () => sessionCoordinator.resolveConflict(conflict.fileId, 'take-remote'),
         },
         cancel: {
-          label: 'Giữ bản của tôi',
+          label: 'Keep my changes',
           onClick: () => sessionCoordinator.resolveConflict(conflict.fileId, 'keep-local'),
         },
       });
@@ -250,20 +256,24 @@ export function EditorArea() {
     sessionCoordinator.restoreDraft(displayPage.id, restoredContent);
     editorCommandBus.dispatch({ type: 'editor:set-content', content: restoredContent });
     setRecoverableDraft(null);
-    toast.success('Đã khôi phục bản nháp thành công!');
+    toast.success('Draft restored successfully!', { id: 'draft-recovery-status' });
   }, [recoverableDraft, displayPage?.id]);
 
   const handleDismissDraft = React.useCallback(() => {
     if (!displayPage?.id) return;
     sessionCoordinator.discardDraft(displayPage.id);
     setRecoverableDraft(null);
-    toast.info('Đã giữ phiên bản trên máy chủ');
+    toast.info('Kept server version', { id: 'draft-recovery-status' });
   }, [displayPage?.id]);
 
   // Global shortcut (Ctrl+Alt+M / Cmd+Alt+M) -> Add Comment / Open Review in both modes
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+      const isMac =
+        typeof navigator !== 'undefined' &&
+        (/Mac|iPod|iPhone|iPad/.test(navigator.userAgent) ||
+          (typeof (navigator as { userAgentData?: { platform?: string } }).userAgentData?.platform === 'string' &&
+            /mac/i.test((navigator as { userAgentData?: { platform?: string } }).userAgentData!.platform!)));
       const modKey = isMac ? e.metaKey : e.ctrlKey;
 
       if (modKey && e.shiftKey && (e.key === 'V' || e.key === 'v')) {
@@ -413,7 +423,7 @@ export function EditorArea() {
             availableFiles={childFiles}
             onFocusPane={() => setActiveEditorPane('primary')}
             onSplitRight={() => {
-              const otherFile = childFiles.find((f: any) => f.id !== displayPage?.id);
+              const otherFile = childFiles.find((f) => f.id !== displayPage?.id);
               const targetId = otherFile?.id || displayPage?.id;
               if (targetId) {
                 setSecondaryFileId(targetId);

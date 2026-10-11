@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from "@/shared/components/ui/button";
 import { useReader } from '../hooks/use-reader';
+import { useShallow } from 'zustand/react/shallow';
 import { useReaderStore } from '../store/reader.store';
 import { useReaderUIStore } from '../store/reader-ui.store';
 import { readerService } from '../data/reader.service';
@@ -134,10 +135,29 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     setActiveColor,
     activeTool,
     setActiveTool,
-  } = useReaderStore();
+  } = useReaderStore(
+    useShallow((s) => ({
+      tabs: s.tabs,
+      activeTabId: s.activeTabId,
+      openReader: s.openReader,
+      closeTab: s.closeTab,
+      setActiveTab: s.setActiveTab,
+      activeColor: s.activeColor,
+      setActiveColor: s.setActiveColor,
+      activeTool: s.activeTool,
+      setActiveTool: s.setActiveTool,
+    }))
+  );
 
   // Reader Inspector UI Store
-  const { isInspectorOpen, setIsInspectorOpen, setActiveInspectorTab, activeScope } = useReaderUIStore();
+  const { isInspectorOpen, setIsInspectorOpen, setActiveInspectorTab, activeScope } = useReaderUIStore(
+    useShallow((s) => ({
+      isInspectorOpen: s.isInspectorOpen,
+      setIsInspectorOpen: s.setIsInspectorOpen,
+      setActiveInspectorTab: s.setActiveInspectorTab,
+      activeScope: s.activeScope,
+    }))
+  );
 
   const handleAskAiWithInspector = useCallback(
     (text: string) => {

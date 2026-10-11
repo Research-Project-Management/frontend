@@ -19,23 +19,13 @@ import {
   Search,
   Paperclip,
 } from 'lucide-react';
-import {
-  Button,
-  Input,
-  Checkbox,
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/shared/components/ui";
-import { Calendar } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/shared/components/ui/select';
+import { Calendar } from '@/shared/components/ui/calendar';
 import type { DateRange } from "react-day-picker";
 import { cn } from "@/shared/lib/utils";
 import { ItemHelpers, resolveColumnId } from '../../utils/work-item.utils';

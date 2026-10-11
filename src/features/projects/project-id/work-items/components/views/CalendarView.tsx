@@ -26,25 +26,12 @@ import {
   subMonths,
   subDays,
 } from 'date-fns';
-import {
-  Button,
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  Checkbox,
-} from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog';
+import { Checkbox } from '@/shared/components/ui/checkbox';
 import type { Column, Item } from '../../types/work-item.types';
 import { PRIORITY_CONFIG } from '../../types/work-item.types';
 import { resolveStateId, resolveStateColor } from '../../utils/work-item.utils';

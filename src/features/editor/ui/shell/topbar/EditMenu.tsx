@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from "@/shared/components/ui";
+import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from '@/shared/components/ui/menubar';
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { ShieldCheck } from 'lucide-react';

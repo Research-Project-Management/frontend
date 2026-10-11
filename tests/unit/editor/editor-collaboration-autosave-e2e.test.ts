@@ -244,7 +244,7 @@ describe('Editor Real-Time Collaboration & Auto-Save Subsystem', () => {
     const fileId = 'test-flush-doc.tex';
 
     beforeEach(() => {
-      useConnectivityStore.setState({ isOnline: true, syncStatus: 'saved', pendingCount: 0 });
+      useConnectivityStore.setState({ isOnline: true, syncStatus: 'synced', pendingSaveCount: 0 });
       try {
         Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
       } catch {}

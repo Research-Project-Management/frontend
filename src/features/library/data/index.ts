@@ -23,3 +23,5 @@ export * from './search/search.service';
 export * from './search/search.queries';
 export * from './sync/sync.service';
 export * from './sync/sync.queries';
+export * from './batch-upload.service';
+

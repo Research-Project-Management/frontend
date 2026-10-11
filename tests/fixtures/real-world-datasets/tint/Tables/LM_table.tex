@@ -1,0 +1,21 @@
+\iffalse
+\begin{table*}[t]
+\centering
+\caption{\looseness-1Language modeling results on \textsc{WikiText-103}. We use $30\%, 50\%, 70\%$ and $90\%$ of sequences for training in dynamic eval and \textsc{TinT} and the rest of the sequence for evaluation. $\textsc{TinT}$
+improves upon the auxiliary model perplexities by $0.3-0.7$ absolute on average.
+The small perplexity difference between the \simulator and dynamic evaluation suggests that the approximations introduced in the descent algorithm (\cref{sec:modification}) can still effectively fine-tune the auxiliary model. \sm{Update caption to clearly reference the one-off definition. Change table rows to auxiliray model, one-off dynamic eval, and tint. How many gradient steps is TinT encoding here? Standardize the fonts (small caps vs normal). Check if captions go above or below the table} }
+\label{tab:language_modeling}
+\begin{tabular}{@{}lcccccccc@{}} \toprule
+                 & \multicolumn{4}{c}{\textsc{GPT2}}      & \multicolumn{4}{c}{\textsc{OPT-125m}}  \\ 
+              \cmidrule(lr){2-5} \cmidrule(lr){6-9}
+Training proportion & $30\%$   & $50\%$   & $70\%$   & $90\%$   & $30\%$   & $50\%$   & $70\%$   & $90\%$   \\ 
+\cmidrule(r){1-1} \cmidrule(lr){2-5}\cmidrule(lr){6-9}
+\textsc{Vanilla Model}    & 25.6 & 24.9  & 24.5 & 23.3 & 29.6 & 28.8 & 28.0 & 28.0 \\
+\textsc{Dyna. FT}     & 24.9 & 24.0    & 23.5 & 22.2 & 29.0 & 28.2 & 27.4 & 27.4 \\
+\textsc{TinT}             & 25.1 & 24.3 & 23.8 & 22.6 & 29.3 & 28.4  & 27.5 & 27.4 \\ \bottomrule
+\end{tabular}
+\end{table*}
+\fi
+
+
+

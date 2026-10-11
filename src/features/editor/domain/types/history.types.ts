@@ -111,6 +111,7 @@ export interface ProjectVersionListItem {
   version: number;
   summary?: string | null;
   createdById?: string | null;
+  author?: VersionAuthor | null;
   isAutomatic: boolean;
   fileCount: number;
   labels: VersionLabelItem[];

@@ -129,7 +129,9 @@ export function useActiveDocument() {
   // Proactively index all project files for 0ms cross-file \cite, \ref, and DAG symbols
   useEffect(() => {
     if (!serverFiles && !parentPage) return;
-    const allFiles: any[] = [...(serverFiles || [])];
+    const allFiles: Array<{ id: string; title?: string; name?: string; path?: string; content?: unknown }> = [
+      ...(serverFiles || []),
+    ];
     if (parentPage && !allFiles.some((f) => f.id === parentPage.id)) {
       allFiles.unshift(parentPage);
     }

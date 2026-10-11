@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Loader2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, Button, Input } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { cn } from "@/shared/lib/utils";
 
 interface CoverModalProps {

@@ -403,6 +403,61 @@ export function useVisualTableMatrix({ syncHtmlToLatex }: UseVisualTableMatrixOp
     syncHtmlToLatex();
   }, [activeTable, syncHtmlToLatex]);
 
+  const handleMergeCells = useCallback(() => {
+    if (!activeTable) return;
+    const { cell } = activeTable;
+    const nextCell = cell.nextElementSibling as HTMLTableCellElement | null;
+    if (nextCell) {
+      const currentColspan = cell.colSpan || 1;
+      const nextColspan = nextCell.colSpan || 1;
+      cell.colSpan = currentColspan + nextColspan;
+      if (nextCell.textContent && nextCell.textContent.trim()) {
+        cell.innerHTML = `${cell.innerHTML} ${nextCell.innerHTML}`;
+      }
+      nextCell.remove();
+      syncHtmlToLatex();
+    } else if (cell.colSpan > 1) {
+      cell.colSpan = 1;
+      const newCell = document.createElement('td');
+      newCell.className = cell.className;
+      newCell.innerHTML = '<p><br></p>';
+      cell.parentElement?.insertBefore(newCell, cell.nextSibling);
+      syncHtmlToLatex();
+    }
+  }, [activeTable, syncHtmlToLatex]);
+
+  const handleToggleBorder = useCallback(() => {
+    if (!activeTable) return;
+    const { table } = activeTable;
+    const currentStyle = table.getAttribute('data-style') || 'booktabs';
+    const nextStyle = currentStyle === 'booktabs' ? 'bordered' : currentStyle === 'bordered' ? 'minimal' : 'booktabs';
+    table.setAttribute('data-style', nextStyle);
+    if (nextStyle === 'bordered') {
+      table.classList.add('border-collapse', 'border', 'border-border');
+    } else if (nextStyle === 'booktabs') {
+      table.classList.remove('border');
+      table.classList.add('border-t-2', 'border-b-2', 'border-foreground');
+    } else {
+      table.classList.remove('border', 'border-t-2', 'border-b-2', 'border-foreground');
+    }
+    syncHtmlToLatex();
+  }, [activeTable, syncHtmlToLatex]);
+
+  const handleToggleColumnWidth = useCallback((mode: 'auto' | 'fixed' | 'stretch') => {
+    if (!activeTable) return;
+    const { table, colIndex } = activeTable;
+    updateTableAlignmentSpec(table, (tokens) => {
+      if (mode === 'fixed') {
+        tokens[colIndex] = 'p{3cm}';
+      } else if (mode === 'stretch') {
+        tokens[colIndex] = 'X';
+      } else {
+        tokens[colIndex] = 'c';
+      }
+    });
+    syncHtmlToLatex();
+  }, [activeTable, syncHtmlToLatex, updateTableAlignmentSpec]);
+
   useEffect(() => {
     const handleGlobalClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -434,5 +489,8 @@ export function useVisualTableMatrix({ syncHtmlToLatex }: UseVisualTableMatrixOp
     handleAlignColumn,
     handleUpdateMetadata,
     handleDeleteTable,
+    handleMergeCells,
+    handleToggleBorder,
+    handleToggleColumnWidth,
   };
 }

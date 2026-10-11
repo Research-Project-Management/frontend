@@ -2,11 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   draftStorageService,
   type OfflineMutation,
-} from '@/features/editor/domain/document/draft-storage';
-import {
-  lruDocumentCache,
   type ProjectFileSnapshot,
-} from '@/features/editor/domain/document/lru-document-cache';
+} from '@/features/editor/domain/document/draft-storage';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { documentStore } from '@/features/editor/domain/document/document-store';
 import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
 import { manuscriptService } from '@/features/editor/sdk';

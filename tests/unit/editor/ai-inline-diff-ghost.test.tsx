@@ -262,7 +262,7 @@ describe('AI Inline Ghost Diff & 1-Click Error Assist (Cursor / Overleaf Parity)
         line: 3,
         file: 'main.tex',
         severity: 'error',
-        source: 'compiler',
+        source: 'LaTeX Compiler',
       });
 
       expect(success).toBe(true);

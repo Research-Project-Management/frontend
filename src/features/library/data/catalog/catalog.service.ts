@@ -24,7 +24,6 @@ import type {
 import type { ItemAttachment } from '../../types/attachments.types';
 import { getItemFileUrl, getPaperFileUrl, isProjectScope } from '../../domain/item-url';
 import { AttachmentsService } from '../extraction/extraction.service';
-import { ExportService, ExportsService } from '../citation/citation.service';
 
 export { isProjectScope, getItemFileUrl, getPaperFileUrl };
 export type {

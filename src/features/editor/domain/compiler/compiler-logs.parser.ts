@@ -17,10 +17,10 @@ export const DEFAULT_OUTPUT_FILES = [
   'output.aux',
   'output.chktex',
   'output.log',
-  'output.pdfxref',
+  'output.out',
   'output.stderr',
   'output.stdout',
-  'output.synctex.gz',
+  'output.toc',
 ];
 
 const PARSED_LOG_CACHE_MAX = 5;

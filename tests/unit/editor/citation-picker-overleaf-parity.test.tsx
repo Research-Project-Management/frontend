@@ -18,13 +18,31 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>();
   return {
     ...actual,
+    useQueryClient: vi.fn().mockReturnValue({
+      invalidateQueries: vi.fn(),
+      getQueryData: vi.fn(),
+      setQueryData: vi.fn(),
+    }),
     useQuery: vi.fn().mockReturnValue({
       data: [
         { id: 'bib-1', title: 'references.bib', name: 'references.bib', content: '@article{existingKey,\n  title={Existing}\n}' },
       ],
     }),
+    useMutation: vi.fn().mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync: vi.fn(),
+      isPending: false,
+    }),
   };
 });
+
+vi.mock('@/features/library/data/catalog/catalog.queries', () => ({
+  useCollections: vi.fn().mockReturnValue({
+    collections: [],
+    isLoading: false,
+    createCollection: vi.fn(),
+  }),
+}));
 
 vi.mock('@/features/editor/ui/hooks/use-citation', () => ({
   useEditorCitations: vi.fn().mockReturnValue({
@@ -81,9 +99,9 @@ describe('Overleaf Parity: Citation Picker & Reference Workflow', () => {
     const onOpenChange = vi.fn();
     render(<CitationPickerModal open={true} onOpenChange={onOpenChange} />);
 
-    expect(screen.getByPlaceholderText(/Tìm theo tên tác giả/i)).toBeDefined();
+    expect(screen.getByPlaceholderText(/Search title, author|Tìm theo tên/i)).toBeDefined();
     expect(screen.getByText('@nguyen2024ai')).toBeDefined();
-    expect(screen.getByText('Trí tuệ nhân tạo trong tiếng Việt')).toBeDefined();
+    expect(screen.getAllByText('Trí tuệ nhân tạo trong tiếng Việt').length).toBeGreaterThan(0);
   });
 
   it('inserts citation into editor and auto-syncs BibTeX into references.bib (Overleaf Parity)', async () => {
@@ -92,9 +110,9 @@ describe('Overleaf Parity: Citation Picker & Reference Workflow', () => {
 
     render(<CitationPickerModal open={true} onOpenChange={onOpenChange} />);
 
-    // Click on the citation item
-    const itemRow = screen.getByText('@nguyen2024ai').closest('[data-slot="command-item"]') || screen.getByText('@nguyen2024ai');
-    fireEvent.click(itemRow);
+    // Double-click on the citation card to insert
+    const card = screen.getByRole('option', { name: /Trí tuệ nhân tạo trong tiếng Việt/i });
+    fireEvent.doubleClick(card);
 
     // Verify citation macro inserted into editor
     expect(mockEngine.insertText).toHaveBeenCalledWith('\\cite{nguyen2024ai}');
@@ -113,14 +131,10 @@ describe('Overleaf Parity: Citation Picker & Reference Workflow', () => {
 
   it('switches citation styles (\\citep, \\citet, [@key]) prior to insertion', async () => {
     const onOpenChange = vi.fn();
-    render(<CitationPickerModal open={true} onOpenChange={onOpenChange} />);
+    render(<CitationPickerModal open={true} onOpenChange={onOpenChange} defaultStyle="latex-citep" />);
 
-    // Select \citep
-    const citepBtn = screen.getByRole('button', { name: '\\citep' });
-    fireEvent.click(citepBtn);
-
-    const itemRow = screen.getByText('@nguyen2024ai');
-    fireEvent.click(itemRow);
+    const card = screen.getByRole('option', { name: /Trí tuệ nhân tạo trong tiếng Việt/i });
+    fireEvent.doubleClick(card);
 
     expect(mockEngine.insertText).toHaveBeenCalledWith('\\citep{nguyen2024ai}');
   });

@@ -76,7 +76,7 @@ export function usePdfCompiler({
 
   const handleStopCompilation = useCallback(() => {
     compilerLifecycleCoordinator.stop();
-    toast.info('Compilation stopped');
+    toast.info('Compilation stopped', { id: 'compiler-status' });
   }, []);
 
   const handleClearCacheAndCompile = useCallback(() => {

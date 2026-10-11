@@ -159,15 +159,15 @@ export default function TemplateGalleryModal() {
     try {
       if (engine) {
         engine.setContent(selectedTemplate.mainTex);
-        toast.success(`Applied "${selectedTemplate.name}" to ${activeFilePage?.title || 'current document'}`);
+        toast.success(`Applied "${selectedTemplate.name}" to ${activeFilePage?.title || 'current document'}`, { id: 'apply-template' });
         setIsTemplateModalOpen(false);
       } else {
         navigator.clipboard.writeText(selectedTemplate.mainTex);
-        toast.success(`Copied "${selectedTemplate.name}" template code to clipboard`);
+        toast.success(`Copied "${selectedTemplate.name}" template code to clipboard`, { id: 'copy-template' });
         setIsTemplateModalOpen(false);
       }
     } catch {
-      toast.error('Could not apply template');
+      toast.error('Could not apply template', { id: 'apply-template' });
     }
   }, [selectedTemplate, engine, activeFilePage?.title, setIsTemplateModalOpen]);
 
@@ -180,7 +180,7 @@ export default function TemplateGalleryModal() {
     setIsScaffolding(true);
     try {
       await manuscriptService.templates.scaffold(projectId, selectedTemplate.id);
-      toast.success(`Project scaffolded successfully with "${selectedTemplate.name}"!`);
+      toast.success(`Project scaffolded successfully with "${selectedTemplate.name}"!`, { id: 'scaffold-template' });
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
       }
@@ -200,7 +200,7 @@ export default function TemplateGalleryModal() {
         ? selectedTemplate.bibTex
         : selectedTemplate.mainTex;
     navigator.clipboard.writeText(code);
-    toast.success('Template code copied to clipboard');
+    toast.success('Template code copied to clipboard', { id: 'copy-template' });
   }, [previewTab, selectedTemplate]);
 
   return (

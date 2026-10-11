@@ -1,0 +1,26 @@
+
+\begin{table*}[t]
+  \centering
+  \caption{Zero-shot and few-shot in-context learning results across $7$ downstream tasks. All the few-shot results are averaged over three training seeds. \textsc{TinT} consistently surpasses its auxiliary model and achieves comparable performance to one-off dynamic evaluation. \textsc{TinT} outperforms auxiliary models by $3-4\%$ and $12-16\%$ absolute points on average in $0$-shot and  $32$-shot experiments respectively. \textsc{TinT} performs competitively with a similar-sized pre-trained model (\textsc{opt-1.3b}) in both $0$-shot and $32$-shot settings. We show the standard deviation for few-shot settings in parentheses.
+  }
+  \label{tab:main_result}
+  \resizebox{\textwidth}{!}{
+  \begin{tabular}{lc|cccccccc}
+    \toprule
+    \textbf{Model} & \textbf{Shots} & \textbf{Subj} & \textbf{AGNews} & \textbf{SST2} & \textbf{CR} & \textbf{MR} & \textbf{MPQA} & \textbf{Amazon} & \textbf{Avg.} \\
+    \midrule
+%\multicolumn{2}{c}{} & \multicolumn{8}{c}{\textbf{\textit{Without Calibration}}} \\ %\midrule
+\textsc{OPT-125m} & $0$ & $64.0$ & $66.0$ & $70.5$ & $64.5$ & $71.0$ & $68.0$ & $76.5$ & $68.6$ \\
+\textsc{OPT-1.3b} & $0$ & $59.0$ & $55.5$ & $54.0$ & $50.5$ & $52.5$ & $74.0$ & $57.0$ & $57.5$ \\
+\textsc{OPT-125m} Fine-tuning  & $0$ & $71.0$ & $67.0$ & $79.5$ & $71.5$ & $70.0$ & $68.0$ & $85.5$ & $73.2$ \\
+\rowcolor{gray!10}\textsc{OPT-125m TinT} & $0$ & $67.5$ & $66.0$ & $76.5$ & $69.0$ & $76.0$ & $70.5$ & $78.5$ & $72.0$ \\
+ \midrule
+\textsc{OPT-125m} & $32$ & $58.7_{(4.9)}$ & $33.7_{(8.4)}$ & $50.8_{(1.2)}$ & $51.3_{(1.9)}$ & $50.0_{(0.0)}$ & $54.3_{(2.5)}$ & $55.0_{(6.7)}$ & $50.5_{(1.9)}$ \\
+\textsc{OPT-1.3b} & $32$ & $74.2_{(6.1)}$ & $71.3_{(5.3)}$ & $89.8_{(3.6)}$ & $71.5_{(4.5)}$ & $68.3_{(6.1)}$ & $81.7_{(3.3)}$ & $70.3_{(9.9)}$ & $75.3_{(0.4)}$  \\ 
+\textsc{OPT-125m} Fine-tuning & $32$ & $78.0_{(1.4)}$ & $66.7_{(1.6)}$ & $71.5_{(1.4)}$ & $73.7_{(3.3)}$ & $72.0_{(0.0)}$ & $80.7_{(0.6)}$ & $79.8_{(0.2)}$ & $74.6_{(2.7)}$ \\
+\rowcolor{gray!10}\textsc{OPT-125m TinT} & $32$ & 
+$82.3_{(2.7)}$ & $69.3_{(0.9)}$ & $73.7_{(0.8)}$ & $75.7_{(1.9)}$ & $72.3_{(1.2)}$ & $83.2_{(1.0)}$ & $78.2_{(0.2)}$ & $76.4_{(0.7)}$ \\ 
+\bottomrule
+  \end{tabular}}
+\end{table*}
+

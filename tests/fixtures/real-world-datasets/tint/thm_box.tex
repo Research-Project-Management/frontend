@@ -1,0 +1,19 @@
+\begin{figure*}[t] % t stands for top of the page, adjust as needed
+    \centering
+    \fbox{ % Use \fbox to draw a box around content
+        \begin{minipage}{\textwidth} % Use minipage to limit the width of the box
+            \centering
+            \vspace{2pt}
+            \textbf{\simulator{} can efficiently perform simulated gradient descent of an auxiliary model.} \\ % Adjust the title size and weight
+            \vspace{4pt} % Add some vertical space between title and text
+            \begin{theorem}
+    Consider an auxiliary transformer with  $L$ layers, $\aux{D}$ embedding dimension, $\aux{H}$ attention heads, and a maximum sequence length of $\aux{T}$. 
+    Given a hyperparameter $S$ (see~\Cref{sec:stack}), \simulator{} can perform an efficient forward pass~(\Cref{sec:exposition_linear_forward}), compute the simulated gradient~(\Cref{sec:modification}), and evaluate the updated auxiliary model with a total of $$\left(\frac{(c_1 S^2 + c_3) \aux{D}^2}{\min(\aux{H}, S^2)} \cdot \aux{D}^2 + c_2 S \aux{D} \min(S^2, \aux{H}) + c_3 \frac{\aux{T} \aux{D} S}{ \min(\aux{H}, S^2) } \right) L$$ parameters, with constants $c_1, c_2, c_3 < 150$.
+    The \simulator{} model has $\simu{D} = S\aux{D}$ embedding dimension and $\simu{H}=\min(S^2, \aux{H})$  attention heads. 
+    See~\Cref{tab:construction} for a detailed breakdown of the parameters.
+    \label{thm:main}
+\end{theorem} 
+\vspace{2pt}
+        \end{minipage}
+    }
+\end{figure*}

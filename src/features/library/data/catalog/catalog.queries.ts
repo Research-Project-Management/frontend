@@ -4,25 +4,18 @@ import { useState, useCallback, useMemo, type MouseEvent } from 'react';
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
-  ItemService,
   ItemsService,
   CollectionsService,
-  CollectionService,
   getCollections,
   createCollection,
   updateCollection,
   deleteCollection,
   TagsService,
-  TagService,
   NotesService,
-  NoteService,
   StateService,
-  ItemStateService,
   ItemTypesService,
   SavedSearchesService,
-  SavedSearchService,
   RelationsService,
-  RelationService,
   type ItemStateData,
   type ItemTypesResponse,
   type CreateNoteDTO,
@@ -46,21 +39,15 @@ import type {
 } from '../../types/library.types';
 import { updateLibrarySchemaRegistry } from '../../types';
 import { getPublicationVenue } from '../../domain/metadata';
-import { itemKeys, libraryKeys } from '../query-keys';
+import { itemKeys, libraryKeys, invalidateCollections } from '../query-keys';
 
-export { itemKeys };
+export { itemKeys, invalidateCollections };
 
 // ── COLLECTIONS QUERY KEYS & HOOKS ───────────────────────────────────────────
 
 export const collectionKeys = {
   all: (scopeId?: string) => libraryKeys.collections(scopeId),
   byId: (scopeId?: string, collectionId?: string) => libraryKeys.collection(scopeId, collectionId),
-};
-
-export const invalidateCollections = (qc: QueryClient, scopeId?: string) => {
-  qc.invalidateQueries({ queryKey: libraryKeys.collections(scopeId) });
-  qc.invalidateQueries({ queryKey: libraryKeys.collectionsList(scopeId) });
-  qc.invalidateQueries({ queryKey: itemKeys.counts(scopeId) });
 };
 
 export function useLibraryCountsQuery(scopeId?: string) {
@@ -343,7 +330,7 @@ export function useViewItems(
   return useQuery({
     queryKey: itemKeys.byView(targetScope, view, search),
     queryFn: ({ signal }) =>
-      ItemService.getAll(
+      ItemsService.getAll(
         targetScope,
         {
           view,
@@ -382,7 +369,7 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
 
   const allItemsQuery = useQuery({
     queryKey: itemKeys.all(targetScope),
-    queryFn: ({ signal }) => ItemService.getAll(targetScope, undefined, { signal }),
+    queryFn: ({ signal }) => ItemsService.getAll(targetScope, undefined, { signal }),
     enabled: options.enabled ?? true,
     select: (data) => {
       if (!data) return { items: [] as Item[], meta: null };
@@ -394,20 +381,20 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
 
   const itemByIdQuery = useQuery({
     queryKey: itemKeys.byId(targetScope, activeItemId),
-    queryFn: () => ItemService.getById(targetScope, activeItemId),
+    queryFn: () => ItemsService.getById(targetScope, activeItemId),
     enabled: Boolean(activeItemId),
     select: (data) => (data?.item ? (data.item as Item) : (data as Item)),
   });
 
   const collectionItemsQuery = useQuery({
     queryKey: itemKeys.byCollection(targetScope, collectionId || ''),
-    queryFn: () => ItemService.getByCollection(targetScope, collectionId || ''),
+    queryFn: () => ItemsService.getByCollection(targetScope, collectionId || ''),
     enabled: Boolean(collectionId),
     select: (data) => (data?.items || data?.papers || []) as Item[],
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateItemDTO & { silent?: boolean }) => ItemService.create(targetScope, collectionId || '', data),
+    mutationFn: (data: CreateItemDTO & { silent?: boolean }) => ItemsService.create(targetScope, collectionId || '', data),
     onSuccess: (newItem, variables) => {
       const targetCollection = newItem?.collectionId || collectionId;
       if (targetCollection) {
@@ -437,7 +424,7 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data, expectedVersion, silent }: { id: string; data: UpdateItemDTO; expectedVersion?: number; silent?: boolean }) => {
-      const res = await ItemService.update(targetScope, id, data, expectedVersion);
+      const res = await ItemsService.update(targetScope, id, data, expectedVersion);
       return { res, silent, id };
     },
     onSuccess: ({ res: updatedItem, silent, id }) => {
@@ -466,7 +453,7 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
 
   const deleteMutation = useMutation({
     mutationFn: async ({ id, silent, itemCollectionId }: { id: string; silent?: boolean; itemCollectionId?: string }) => {
-      const res = await ItemService.delete(targetScope, id);
+      const res = await ItemsService.delete(targetScope, id);
       return { res, silent, itemCollectionId };
     },
     onSuccess: ({ silent, itemCollectionId }) => {
@@ -555,7 +542,7 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
         if (ids.length === 1) {
           await deleteMutation.mutateAsync({ id: ids[0], silent: true });
         } else {
-          await ItemService.bulkTrash(targetScope, ids);
+          await ItemsService.bulkTrash(targetScope, ids);
           queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
           queryClient.invalidateQueries({ queryKey: itemKeys.trash(targetScope) });
           invalidateCollections(queryClient, targetScope);
@@ -624,7 +611,7 @@ export function useItemTypes(scopeIdOrOptions?: string | { scopeId?: string; pro
   const { data, isLoading } = useQuery({
     queryKey: itemKeys.types(sid),
     queryFn: async () => {
-      const res = await ItemService.getItemTypes(sid);
+      const res = await ItemsService.getItemTypes(sid);
       if (res) {
         updateLibrarySchemaRegistry(res as unknown as Parameters<typeof updateLibrarySchemaRegistry>[0]);
       }
@@ -707,7 +694,7 @@ export function useItemState(scopeId?: string, itemId?: string | null) {
     queryKey: itemKeys.state(effectiveScope, effectiveItemId),
     queryFn: async () => {
       if (!effectiveItemId) return null;
-      return ItemStateService.getState(effectiveScope, effectiveItemId);
+      return StateService.getState(effectiveScope, effectiveItemId);
     },
     enabled: Boolean(effectiveItemId),
     staleTime: 30_000,
@@ -716,7 +703,7 @@ export function useItemState(scopeId?: string, itemId?: string | null) {
   const updateMutation = useMutation({
     mutationFn: async (data: { readStatus?: 'unread' | 'reading' | 'completed'; rating?: number }) => {
       if (!effectiveItemId) throw new Error('Item ID required');
-      return ItemStateService.updateState(effectiveScope, effectiveItemId, data);
+      return StateService.updateState(effectiveScope, effectiveItemId, data);
     },
     onSuccess: (newData) => {
       if (effectiveItemId) {
@@ -745,7 +732,7 @@ export function useItemState(scopeId?: string, itemId?: string | null) {
   const markAsReadMutation = useMutation({
     mutationFn: async () => {
       if (!effectiveItemId) throw new Error('Item ID required');
-      return ItemStateService.markAsRead(effectiveScope, effectiveItemId);
+      return StateService.markAsRead(effectiveScope, effectiveItemId);
     },
     onSuccess: (newData) => {
       if (effectiveItemId) {
@@ -797,7 +784,7 @@ export function useTrash(scopeId?: string) {
 
   const trashQuery = useQuery({
     queryKey: itemKeys.trash(effectiveScope),
-    queryFn: ({ signal }) => ItemService.getAll(effectiveScope, { view: 'trash' }, { signal }),
+    queryFn: ({ signal }) => ItemsService.getAll(effectiveScope, { view: 'trash' }, { signal }),
     enabled: true,
     select: (data): Item[] => {
       if (Array.isArray(data?.items)) return data.items;
@@ -809,7 +796,7 @@ export function useTrash(scopeId?: string) {
   const trashItems: Item[] = trashQuery.data ?? [];
 
   const restoreMutation = useMutation({
-    mutationFn: (itemId: string) => ItemService.restore(effectiveScope, itemId),
+    mutationFn: (itemId: string) => ItemsService.restore(effectiveScope, itemId),
     onSuccess: () => {
       toast.success('Item restored', {
         description: 'Item has been returned to your library.',
@@ -826,7 +813,7 @@ export function useTrash(scopeId?: string) {
   });
 
   const purgeMutation = useMutation({
-    mutationFn: (itemId: string) => ItemService.purge(effectiveScope, itemId),
+    mutationFn: (itemId: string) => ItemsService.purge(effectiveScope, itemId),
     onSuccess: () => {
       toast.success('Permanently deleted', {
         description: 'The item and its attachments were permanently removed.',
@@ -847,7 +834,7 @@ export function useTrash(scopeId?: string) {
       if (items.length === 0) return 0;
       const ids = items.map((item) => item.id).filter(Boolean);
       if (ids.length === 0) return 0;
-      const res = await ItemService.bulkPurge(effectiveScope, ids);
+      const res = await ItemsService.bulkPurge(effectiveScope, ids);
       return res?.count ?? ids.length;
     },
     onSuccess: (count) => {
@@ -1081,7 +1068,7 @@ export function useItem(id?: string, scopeId?: string) {
   const targetScope = scopeId || 'user';
   return useQuery({
     queryKey: itemKeys.byId(targetScope, id || ''),
-    queryFn: () => ItemService.getById(targetScope, id || ''),
+    queryFn: () => ItemsService.getById(targetScope, id || ''),
     enabled: Boolean(id),
     select: (data) => (data?.item ? (data.item as Item) : (data as Item)),
   });
@@ -1106,7 +1093,7 @@ export function useLibraryItemsQuery(
     queryKey: libraryKeys.items(targetScope, params),
     enabled: options?.enabled ?? true,
     queryFn: async ({ signal }): Promise<LibraryItemsQueryResult> => {
-      const res = await ItemService.getAll(targetScope, params, { signal });
+      const res = await ItemsService.getAll(targetScope, params, { signal });
       const items: Item[] = res?.items || [];
       const pagination = (res?.pagination || res?.meta || null) as CursorPaginationMeta | null;
       const total =
@@ -1139,7 +1126,7 @@ export function useInfiniteLibraryItemsQuery(
     queryKey: [...libraryKeys.items(targetScope, params), 'infinite'],
     enabled: options?.enabled ?? true,
     queryFn: async ({ pageParam, signal }): Promise<LibraryItemsQueryResult> => {
-      const res = await ItemService.getAll(
+      const res = await ItemsService.getAll(
         targetScope,
         {
           ...params,
@@ -1218,7 +1205,7 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
         expectedVersion ??
         updateData.version ??
         (typeof cachedVersion === 'number' ? cachedVersion : undefined);
-      return ItemService.update(effectiveScope, targetId, updateData, resolvedVersion);
+      return ItemsService.update(effectiveScope, targetId, updateData, resolvedVersion);
     },
     onSuccess: (updatedResult, variables) => {
       const targetId = variables.id || variables.itemId || '';
@@ -1277,7 +1264,7 @@ export function useToggleStarItemMutation(scopeId?: string) {
 
   return useMutation({
     mutationFn: async ({ id, isStarred }: { id: string; isStarred: boolean }) => {
-      return ItemStateService.updateState(effectiveScope, id, { isStarred });
+      return StateService.updateState(effectiveScope, id, { isStarred });
     },
     onMutate: async ({ id, isStarred }) => {
       // Cancel queries in flight to prevent overwriting optimistic state
@@ -1359,9 +1346,9 @@ export function useDeleteLibraryItemsMutation(scopeId?: string) {
     mutationFn: async (itemIds: string[] | string) => {
       const ids = Array.isArray(itemIds) ? itemIds : [itemIds];
       if (ids.length === 1) {
-        await ItemService.delete(effectiveScope, ids[0]);
+        await ItemsService.delete(effectiveScope, ids[0]);
       } else if (ids.length > 1) {
-        await ItemService.bulkTrash(effectiveScope, ids);
+        await ItemsService.bulkTrash(effectiveScope, ids);
       }
       return ids;
     },
@@ -1388,9 +1375,9 @@ export function useBatchRestoreItemsMutation(scopeId?: string) {
     mutationFn: async (itemIds: string[] | string) => {
       const ids = Array.isArray(itemIds) ? itemIds : [itemIds];
       if (ids.length === 1) {
-        await ItemService.restore(effectiveScope, ids[0]);
+        await ItemsService.restore(effectiveScope, ids[0]);
       } else if (ids.length > 1) {
-        await ItemService.bulkRestore(effectiveScope, ids);
+        await ItemsService.bulkRestore(effectiveScope, ids);
       }
       return ids;
     },
@@ -1416,7 +1403,7 @@ export function useBatchPurgeItemsMutation(scopeId?: string) {
   return useMutation({
     mutationFn: async (itemIds: string[] | string) => {
       const ids = Array.isArray(itemIds) ? itemIds : [itemIds];
-      await ItemService.bulkPurge(effectiveScope, ids);
+      await ItemsService.bulkPurge(effectiveScope, ids);
       return ids;
     },
     onSuccess: (ids) => {
@@ -1464,14 +1451,14 @@ export function useTags(scopeId?: string) {
 
   const tagsQuery = useQuery({
     queryKey: tagKeys.list(effectiveScope),
-    queryFn: () => TagService.list(effectiveScope),
+    queryFn: () => TagsService.list(effectiveScope),
     enabled: true,
     staleTime: 30_000,
   });
 
   const createMutation = useMutation({
     mutationFn: ({ name, color, type }: { name: string; color?: string; type?: string }) =>
-      TagService.create(effectiveScope, name, color, type),
+      TagsService.create(effectiveScope, name, color, type),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: libraryKeys.all });
@@ -1486,7 +1473,7 @@ export function useTags(scopeId?: string) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (tagId: string) => TagService.delete(effectiveScope, tagId),
+    mutationFn: (tagId: string) => TagsService.delete(effectiveScope, tagId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: libraryKeys.all });
@@ -1501,7 +1488,7 @@ export function useTags(scopeId?: string) {
   });
 
   const deleteAutomaticMutation = useMutation({
-    mutationFn: () => TagService.deleteAutomatic(effectiveScope),
+    mutationFn: () => TagsService.deleteAutomatic(effectiveScope),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: libraryKeys.all });
@@ -1550,14 +1537,14 @@ export function useNotes(scopeId?: string, itemId?: string) {
     queryKey: noteKeys.list(scopeId, itemId),
     queryFn: () => {
       if (!itemId) return [];
-      return NoteService.list(scopeId, itemId);
+      return NotesService.list(scopeId, itemId);
     },
     enabled: !!itemId,
   });
 
   const createMutation = useMutation({
     mutationFn: (dto: CreateNoteDTO) =>
-      NoteService.create(scopeId, { ...dto, itemId: dto.itemId !== undefined ? dto.itemId : itemId }),
+      NotesService.create(scopeId, { ...dto, itemId: dto.itemId !== undefined ? dto.itemId : itemId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, itemId) });
       queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
@@ -1580,7 +1567,7 @@ export function useNotes(scopeId?: string, itemId?: string) {
       id: string;
       version: number;
       dto: UpdateNoteDTO;
-    }) => NoteService.update(scopeId, id, version, dto),
+    }) => NotesService.update(scopeId, id, version, dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, itemId) });
       queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
@@ -1596,7 +1583,7 @@ export function useNotes(scopeId?: string, itemId?: string) {
 
   const deleteMutation = useMutation({
     mutationFn: ({ id, version }: { id: string; version?: number }) =>
-      NoteService.delete(scopeId, id, version),
+      NotesService.delete(scopeId, id, version),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, itemId) });
       queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
@@ -1699,13 +1686,13 @@ export function useSavedSearches(scopeId?: string) {
 
   const savedSearchesQuery = useQuery({
     queryKey: savedSearchKeys.all(effectiveScope),
-    queryFn: () => SavedSearchService.getAll(effectiveScope),
+    queryFn: () => SavedSearchesService.getAll(effectiveScope),
     enabled: true,
   });
 
   const createMutation = useMutation({
     mutationFn: (data: CreateSavedSearchInput) =>
-      SavedSearchService.create(effectiveScope, data),
+      SavedSearchesService.create(effectiveScope, data),
     onSuccess: () => {
       invalidateSavedSearches(queryClient, effectiveScope);
       toast.success('Smart collection created', { id: 'saved-search-mutation' });
@@ -1720,7 +1707,7 @@ export function useSavedSearches(scopeId?: string) {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateSavedSearchInput }) =>
-      SavedSearchService.update(effectiveScope, id, data),
+      SavedSearchesService.update(effectiveScope, id, data),
     onSuccess: (_, variables) => {
       invalidateSavedSearches(queryClient, effectiveScope);
       queryClient.invalidateQueries({
@@ -1737,7 +1724,7 @@ export function useSavedSearches(scopeId?: string) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => SavedSearchService.delete(effectiveScope, id),
+    mutationFn: (id: string) => SavedSearchesService.delete(effectiveScope, id),
     onSuccess: () => {
       invalidateSavedSearches(queryClient, effectiveScope);
       toast.success('Smart collection deleted', { id: 'saved-search-mutation' });
@@ -1752,7 +1739,7 @@ export function useSavedSearches(scopeId?: string) {
 
   const previewMutation = useMutation({
     mutationFn: (conditions: SavedSearchConditionGroup) =>
-      SavedSearchService.preview(effectiveScope, conditions),
+      SavedSearchesService.preview(effectiveScope, conditions),
   });
 
   return {
@@ -1789,7 +1776,7 @@ export function useSavedSearchResults(
     queryKey: savedSearchKeys.results(effectiveScope ?? undefined, id || '', params),
     queryFn: () => {
       if (!id) return null;
-      return SavedSearchService.getResults(effectiveScope || 'user', id, params);
+      return SavedSearchesService.getResults(effectiveScope || 'user', id, params);
     },
     enabled: !!id && !!effectiveScope,
   });
@@ -1815,7 +1802,7 @@ export function useRelations(
 
   const relationsQuery = useQuery({
     queryKey: relationKeys.all(scopeId, effectiveItemId),
-    queryFn: () => RelationService.getRelated(scopeId || '', effectiveItemId),
+    queryFn: () => RelationsService.getRelated(scopeId || '', effectiveItemId),
     enabled: Boolean(effectiveItemId && effectiveItemId !== 'user'),
     select: (data) => ({
       items: data.relatedItems || [],
@@ -1836,7 +1823,7 @@ export function useRelations(
       const targets = targetItemIds && targetItemIds.length > 0
         ? targetItemIds
         : (targetItemId ? [targetItemId] : []);
-      return RelationService.link(scopeId || '', effectiveItemId, targets.length === 1 ? targets[0] : targets, relationType);
+      return RelationsService.link(scopeId || '', effectiveItemId, targets.length === 1 ? targets[0] : targets, relationType);
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
@@ -1864,7 +1851,7 @@ export function useRelations(
 
   const unlinkMutation = useMutation({
     mutationFn: (variables: { targetItemId: string; relationType?: string }) =>
-      RelationService.unlink(scopeId || '', effectiveItemId, variables.targetItemId, variables.relationType),
+      RelationsService.unlink(scopeId || '', effectiveItemId, variables.targetItemId, variables.relationType),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
         queryKey: relationKeys.all(scopeId, effectiveItemId),
@@ -1946,7 +1933,7 @@ export function useItemTypeConversion(scopeId?: string) {
       targetType: string;
       retainUnmappedInExtra?: boolean;
     }) =>
-      ItemService.previewConvertType(
+      ItemsService.previewConvertType(
         effectiveScopeId,
         itemId,
         targetType,
@@ -1974,7 +1961,7 @@ export function useItemTypeConversion(scopeId?: string) {
       retainUnmappedInExtra?: boolean;
       silent?: boolean;
     }) =>
-      ItemService.convertType(
+      ItemsService.convertType(
         effectiveScopeId,
         itemId,
         targetType,

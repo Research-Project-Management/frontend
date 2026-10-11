@@ -37,7 +37,8 @@ const ALL_NAV_ITEMS = [...NAV_ITEMS_LEFT, ...NAV_ITEMS_RIGHT] as const;
 export default function Sidebar() {
   const id = useId();
   const pathname = usePathname();
-  const { isOpen, toggleOpen } = useAiCompanionStore();
+  const isOpen = useAiCompanionStore((s) => s.isOpen);
+  const toggleOpen = useAiCompanionStore((s) => s.toggleOpen);
 
   const renderNavLink = (item: typeof ALL_NAV_ITEMS[number]) => {
     const Icon = item.icon;

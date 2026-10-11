@@ -19,9 +19,10 @@ export const EDITOR_FONT_FAMILIES = [
   { id: 'source-code', label: 'Source Code Pro' },
   { id: 'courier', label: 'Courier New' },
   { id: 'inconsolata', label: 'Inconsolata' },
+  { id: 'opendyslexic', label: 'OpenDyslexic (Accessibility)' },
 ];
 
-export const EDITOR_FONT_SIZES = [11, 12, 13, 14, 15, 16, 17, 18, 20, 22, 24];
+export const EDITOR_FONT_SIZES = [10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 22, 24];
 
 export type SettingsTab =
   | 'editor'

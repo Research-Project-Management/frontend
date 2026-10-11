@@ -17,3 +17,4 @@ export * from './saved-searches.types';
 export * from './search.types';
 export * from './state.types';
 export * from './tags.types';
+export * from './batch-upload.types';

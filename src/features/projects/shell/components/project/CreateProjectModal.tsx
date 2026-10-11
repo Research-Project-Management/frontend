@@ -4,7 +4,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Form } from "@/shared/components/ui";
+import { Form } from '@/shared/components/ui/form';
 import { toast } from 'sonner';
 import {
   X,
@@ -14,24 +14,14 @@ import {
   Loader2,
 } from 'lucide-react';
 
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
-import { Textarea } from "@/shared/components/ui";
-import { Switch } from "@/shared/components/ui";
-import { Calendar } from "@/shared/components/ui";
-import { Popover, PopoverTrigger, PopoverContent } from "@/shared/components/ui";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider,
-} from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Textarea } from '@/shared/components/ui/textarea';
+import { Switch } from '@/shared/components/ui/switch';
+import { Calendar } from '@/shared/components/ui/calendar';
+import { Popover, PopoverTrigger, PopoverContent } from '@/shared/components/ui/popover';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/shared/components/ui/tooltip';
 import {
   NonePriorityBoxIcon,
   LowPriorityBoxIcon,

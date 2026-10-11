@@ -13,8 +13,8 @@ import {
   ChevronDown,
   Layers,
 } from 'lucide-react';
-import { Button } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { cn } from "@/shared/lib/utils";
 import type {
   DocumentFulltext,

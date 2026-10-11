@@ -6,20 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { preferencesSchema } from '../../types/preferences.schema';
 import * as z from 'zod';
 
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "@/shared/components/ui";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/components/ui";
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/shared/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Switch } from "@/shared/components/ui/switch";
 import { useTheme, BRAND_COLOR_PRESETS, type BrandPresetKey } from "@/shared/providers/theme-provider";
 import { cn } from "@/shared/lib/utils";

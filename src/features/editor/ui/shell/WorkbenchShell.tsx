@@ -23,6 +23,7 @@
 import React, { useRef, useCallback } from 'react';
 import { useLayoutStore } from '../../store/layout.store';
 import { ResizeHandle } from './ResizeHandle';
+import { OfflineBanner } from './OfflineBanner';
 import { cn } from '@/shared/lib/utils';
 
 export interface WorkbenchShellProps {
@@ -50,6 +51,7 @@ export function WorkbenchShell({
     sidebarLeftOpen,
     sidebarLeftWidth,
     setSidebarLeftWidth,
+    toggleSidebarLeft,
     splitRatio,
     setSplitRatio,
     bottomPanelOpen,
@@ -57,6 +59,11 @@ export function WorkbenchShell({
     setBottomPanelHeight,
     statusBarOpen,
   } = useLayoutStore();
+
+  const [isPreviewCollapsed, setIsPreviewCollapsed] = React.useState(false);
+  const togglePreviewCollapse = useCallback(() => {
+    setIsPreviewCollapsed((prev) => !prev);
+  }, []);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -147,6 +154,9 @@ export function WorkbenchShell({
       {/* ── Slot 1: Global Topbar ─────────────────────────────────────────── */}
       {topBar && <header className="shrink-0 z-30">{topBar}</header>}
 
+      {/* ── Offline Connectivity Banner ─────────────────────────────────── */}
+      <OfflineBanner />
+
       {/* ── Core Workspace (Horizontal Shell Area) ────────────────────────── */}
       <main className="flex-1 flex relative min-h-0 overflow-hidden">
         {/* ── Slot 2: Far-Left Activity Bar (Icon Strip) ──────────────────── */}
@@ -156,19 +166,26 @@ export function WorkbenchShell({
           </div>
         )}
 
-        {/* ── Slot 3: Left Primary Sidebar ────────────────────────────────── */}
-        {sidebarLeftOpen && leftSidebar && (
+        {/* ── Slot 3: Left Primary Sidebar & Overleaf Splitter ─────────────── */}
+        {leftSidebar && (
           <>
-            <aside
-              style={{ width: `${sidebarLeftWidth}px` }}
-              className="h-full shrink-0 flex flex-col border-r border-border bg-surface overflow-hidden z-20"
-            >
-              {leftSidebar}
-            </aside>
+            {sidebarLeftOpen && (
+              <aside
+                style={{ width: `${sidebarLeftWidth}px` }}
+                className="h-full shrink-0 flex flex-col bg-surface overflow-hidden z-20"
+              >
+                {leftSidebar}
+              </aside>
+            )}
             <ResizeHandle
-              onMouseDown={handleLeftSidebarResize}
+              onMouseDown={sidebarLeftOpen ? handleLeftSidebarResize : () => {}}
               onTouchStart={() => {}}
-              label="Resize left sidebar"
+              label={sidebarLeftOpen ? 'Resize or collapse left sidebar' : 'Expand left sidebar'}
+              showCollapseButton
+              isCollapsed={!sidebarLeftOpen}
+              onToggleCollapse={toggleSidebarLeft}
+              collapseDirection="left"
+              showGripDots={sidebarLeftOpen}
             />
           </>
         )}
@@ -178,7 +195,7 @@ export function WorkbenchShell({
           <div className="flex-1 flex min-h-0 min-w-0">
             {/* ── Slot 4: Center Editor Area ────────────────────────────────── */}
             <section
-              style={{ flex: `${splitRatio} 1 0%` }}
+              style={{ flex: isPreviewCollapsed ? '1 1 0%' : `${splitRatio} 1 0%` }}
               className="h-full flex flex-col min-w-[200px] min-h-0 bg-canvas relative"
             >
               {editor}
@@ -187,18 +204,26 @@ export function WorkbenchShell({
             {/* ── Slot 6: Center Splitter Handle between Editor and Preview ─── */}
             {preview && (
               <ResizeHandle
-                onMouseDown={handleCenterSplitResize}
+                onMouseDown={isPreviewCollapsed ? () => {} : handleCenterSplitResize}
                 onTouchStart={() => {}}
-                onDoubleClick={() => setSplitRatio(0.5)}
-                label="Resize editor and preview panes"
+                onDoubleClick={() => {
+                  setIsPreviewCollapsed(false);
+                  setSplitRatio(0.5);
+                }}
+                label={isPreviewCollapsed ? 'Expand PDF preview' : 'Resize or collapse PDF preview'}
+                showCollapseButton
+                isCollapsed={isPreviewCollapsed}
+                onToggleCollapse={togglePreviewCollapse}
+                collapseDirection="right"
+                showGripDots={!isPreviewCollapsed}
               />
             )}
 
             {/* ── Slot 5: Right Document Preview Area ───────────────────────── */}
-            {preview && (
+            {preview && !isPreviewCollapsed && (
               <section
                 style={{ flex: `${1 - splitRatio} 1 0%` }}
-                className="h-full flex flex-col min-w-[200px] min-h-0 border-l border-border bg-canvas relative"
+                className="h-full flex flex-col min-w-[200px] min-h-0 bg-canvas relative"
               >
                 {preview}
               </section>

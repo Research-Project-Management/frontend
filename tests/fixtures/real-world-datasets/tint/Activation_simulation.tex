@@ -1,0 +1,47 @@
+\section{Activation layer}\label{sec:act_appendix}
+
+
+\begin{definition}[Auxiliary activation]\label{def:act}
+    For a continuous function $\act: \RR \to \RR$,  an activation layer takes $\vx\in\RR^{\aux{D}}$ as input and outputs $\vy = \act(\vx)$ with $ y_i = \act (x_i) $ for all $i \le \aux{D}$.
+\end{definition}
+
+  In the discussions below, we consider an activation layer in the auxiliary model with activation function $\act$ that takes in input sequence $\vx_1, \cdots, \vx_{\aux{T}}$ and outputs $\vy_1, \cdots, \vy_{\aux{T}}$, with $\vy_t =\act(\vx_t)$ for each $t \le {\aux{T}}$. Since this involves a token-wise operation, we will present our constructed modules with a general token position $t$. Since no parameters of the auxiliary model are involved in this operation, the prefix tokens $\{ \vv_j \}$ contain $0$ in the following modules.
+
+\paragraph{\simulator{} Activation Forward module} The embedding $\ve_t$ contains $\vx_t$ in its first $\aux{D}$ indices. We simply pass the embeddings into activation $\act$, which returns $\act(\vx_t)$ in its first $\aux{D}$ indices.
+
+
+
+\paragraph{Auxiliary's backpropagation through activation} With the definition in \cref{def:act}, the auxiliary's backpropagation takes in the loss gradient w.r.t. output ($\losspartial{\vy}$) and computes the loss gradient  w.r.t. input ($\losspartial{\vx}$). We further assume that the derivative of $\act$ is well-defined everywhere. This assumption includes non-differentiable activation functions with well-defined derivatives like $ReLU$.
+
+\begin{definition}[Auxiliary activation backpropagation]\label{def:act_backprop}
+   For a continuous function $\act: \RR \to \RR$, with a well-defined derivative $\act'(x) = \partial \act(x) / \partial x$ for each $x \in \RR$,  the backpropagation takes $\losspartial{ \vy }, \vx \in\RR^{\aux{D}}$ as input and outputs
+    \begin{align*}
+        \losspartial{ \vx } = \act'(\vx) \odot \losspartial{\vy},
+    \end{align*}
+    where $\act'(\vx) \in \RR^{\aux{D}}$ with $\act'(\vx)_i = \act'(x_i)$ at each $i \le \aux{D}.$  
+\end{definition}
+
+\paragraph{Complexity of true backpropagation} The above operation is computation heavy since 
+ it involves $\act'(\vx) \odot \losspartial{\vy}$. As mentioned for the layer normalization module, the element-wise multiplication between $\act'(\vx)$ and $\losspartial{\vy}$ will require an MLP module following \cref{thm:gelu_multiplication}. Furthermore, it involves changing the activation function in \simulator{} in specific modules to $\act'$. To circumvent this, we instead turn to a first-order Taylor approximation.
+
+
+\begin{definition}[Approximate Activation backpropagation]\label{def:approx_act_backprop}
+   For a continuous function $\act: \RR \to \RR$ and a hyperparameter $\epsilon$, the layer takes $\losspartial{ \vy }, \vx \in\RR^{\aux{D}}$ as input and outputs
+    \begin{align*}
+        \Hat{ \losspartial{ \vx } } = \frac{1}{\epsilon} \left( \act(\vx + \epsilon \losspartial{\vy}) - \act(\vx) \right).
+    \end{align*}
+\end{definition}
+
+
+
+\input{Theorems/Activation_backprop}
+
+\paragraph{\simulator{} Activation backpropagation module}
+The input embeddings contain $\losspartial{\vy_t}$ in the first $\aux{D}$ embeddings. 
+With the requirement of the activation layer input for gradient, we copy $\vx_t$ from the Forward module at each position $t$. We set $\epsilon$ as a hyper-parameter and return $\Hat{ \losspartial{ \vx_t } }$ as the output of this module.
+
+
+$\Hat{ \losspartial{ \vx_t } }$ will be computed using a single-layer MLP with activation $\act$ as follows. The first linear layer of the MLP will be used to compute $\vx_t + \epsilon \losspartial{\vy_t}$ and $\vx_t$. After the activation $\act$, the embedding $\ve_t$ contains $\act(\vx_t + \epsilon \losspartial{\vy_t})$ and $\act(\vx_t)$. The final linear layer of the MLP will be used to compute $\frac{1}{\epsilon} \left( \act(\vx_t + \epsilon \losspartial{\vy_t}) - \act(\vx_t) \right)$.
+
+
+\input{Proofs/Proof_activation_backprop}

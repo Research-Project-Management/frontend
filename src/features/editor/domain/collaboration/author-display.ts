@@ -98,9 +98,9 @@ export function getHashColor(str: string): string {
 export function resolveAuthorDisplay(
   rawAuthor?: { id?: string; name?: string; email?: string; avatar?: string | null; color?: string } | null,
   membersMap?: Map<string, MentionMember>,
-  fallbackId?: string,
+  fallbackId?: string | null,
 ): AuthorDisplayInfo {
-  const authorId = rawAuthor?.id || fallbackId;
+  const authorId = rawAuthor?.id || fallbackId || undefined;
   const matched = authorId ? membersMap?.get(authorId) : undefined;
 
   const name =

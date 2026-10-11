@@ -9,13 +9,14 @@ import {
   UserMinus,
   UserPlus,
   MoreHorizontal,
-  LayoutGrid,
   ChevronRight,
   ChevronDown,
   Check,
   CornerDownRight,
   Link2,
   Paperclip,
+  LayoutGrid,
+  GripVertical,
 } from 'lucide-react';
 import {
   Button,
@@ -202,15 +203,26 @@ export const ItemRow = memo(function ItemRow({
   const showSubIssues = Boolean(propsConfig?.childWorkItemCount ?? propsConfig?.subItemCount);
   const showLinks = Boolean(propsConfig?.link);
 
+  const rawItem = item as Item & {
+    linkCount?: number;
+    links?: unknown[];
+    attach?: {
+      links?: unknown[];
+      pages?: Array<{ id: string; title?: string }>;
+      papers?: Array<{ id: string; title?: string }>;
+      files?: Array<{ id: string; name?: string; title?: string }>;
+    };
+  };
+
   const linksCount = useMemo(() => {
-    if (typeof (item as any).linkCount === 'number') return (item as any).linkCount;
-    if (Array.isArray((item as any).links)) return (item as any).links.length;
-    const attachObj = item.attachments || (item as any).attach;
-    if (attachObj && typeof attachObj === 'object' && Array.isArray((attachObj as any).links)) {
-      return (attachObj as any).links.length;
+    if (typeof rawItem.linkCount === 'number') return rawItem.linkCount;
+    if (Array.isArray(rawItem.links)) return rawItem.links.length;
+    const attachObj = item.attachments || rawItem.attach;
+    if (attachObj && typeof attachObj === 'object' && 'links' in attachObj && Array.isArray(attachObj.links)) {
+      return attachObj.links.length;
     }
     return 0;
-  }, [(item as any).links, item.attachments, (item as any).attach, (item as any).linkCount]);
+  }, [rawItem.links, item.attachments, rawItem.attach, rawItem.linkCount]);
 
   const priorityKey = (item.priority || 'none').toLowerCase() as Priority;
 
@@ -247,30 +259,31 @@ export const ItemRow = memo(function ItemRow({
     );
   }, [item.dueDate, item.completed]);
 
-  // Attachments / modules count
+  // Attachments count
   const attachItems = useMemo(() => {
-    const attachObj = (item as any).attach;
+    const attachObj = rawItem.attach;
     if (!attachObj) return [];
-    const items: Array<{ id: string; title: string }> = [];
+    const itemsList: Array<{ id: string; title: string }> = [];
     if (Array.isArray(attachObj.pages)) {
-      attachObj.pages.forEach((p: any) => items.push({ id: p.id, title: p.title || 'Page' }));
+      attachObj.pages.forEach((p) => itemsList.push({ id: p.id, title: p.title || 'Page' }));
     }
     if (Array.isArray(attachObj.papers)) {
-      attachObj.papers.forEach((p: any) => items.push({ id: p.id, title: p.title || 'Paper' }));
+      attachObj.papers.forEach((p) => itemsList.push({ id: p.id, title: p.title || 'Paper' }));
     }
     if (Array.isArray(attachObj.files)) {
-      attachObj.files.forEach((f: any) => items.push({ id: f.id, title: f.title || f.name || 'File' }));
+      attachObj.files.forEach((f) => itemsList.push({ id: f.id, title: f.name || f.title || 'File' }));
     }
     if (Array.isArray(attachObj.links)) {
-      attachObj.links.forEach((l: any) => items.push({ id: l.id, title: l.title || 'Link' }));
+      const linksArr = attachObj.links as Array<{ id?: string; title?: string }>;
+      linksArr.forEach((l) => itemsList.push({ id: l.id || '', title: l.title || 'Link' }));
     }
-    return items;
-  }, [item]);
+    return itemsList;
+  }, [rawItem.attach]);
 
   const attachLabel = useMemo(() => {
     if (attachItems.length === 0) return null;
     if (attachItems.length === 1) return attachItems[0].title;
-    return `${attachItems.length} modules`;
+    return `${attachItems.length} attachments`;
   }, [attachItems]);
 
   // Labels resolving
@@ -304,38 +317,48 @@ export const ItemRow = memo(function ItemRow({
     resolvedState?.color ||
     resolvedState?.accentColor ||
     '#6B7280';
-  const stateGroup = resolvedState?.group || (item as any).stateGroup || (item as any).state?.group || colTitle;
+  const stateGroup = resolvedState?.group || item.stateGroup || item.state?.group || colTitle;
   const isCancelled = stateGroup === 'cancelled' || item.columnId === 'cancelled' || item.columnId === 'cancel';
 
   return (
     <div
       className={cn(
-        'group/row relative h-8 pl-7 sm:pl-8 pr-3 sm:pr-4 flex items-center justify-between border-b border-border/60 bg-background hover:bg-muted/40 select-none text-13 transition-colors duration-0',
+        'group/row relative h-9 pl-9 pr-3 sm:pr-4 flex items-center justify-between border-b border-border/60 bg-background hover:bg-muted/40 select-none text-13 transition-colors duration-0',
         isDragging && 'opacity-50 bg-muted',
         isSelected && 'bg-muted ring-1 ring-inset ring-border font-medium',
         item.completed && 'opacity-75',
       )}
     >
-      {/* Checkbox: Positioned absolutely at left-2 (fades in on hover or when checked) */}
+      {/* Gutter: Drag Grip handle + Selection Checkbox */}
       <div
-        className="absolute left-2 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center z-10 cursor-pointer before:absolute before:-inset-2.5 md:before:hidden"
+        className="absolute left-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 z-10"
         onClick={(e) => e.stopPropagation()}
       >
-        <Checkbox
-          checked={isSelected}
-          onCheckedChange={() => onToggleSelect?.(item.id)}
-          aria-label={`Select item ${item.identifier || item.title || 'untitled'}`}
-          className={cn(
-            'size-3.5 rounded-sm transition-opacity duration-150',
-            isSelected
-              ? 'opacity-100 pointer-events-auto'
-              : 'max-sm:opacity-100 max-sm:pointer-events-auto sm:opacity-0 sm:pointer-events-none sm:group-hover/row:opacity-100 sm:group-hover/row:pointer-events-auto group-focus-within/row:opacity-100 group-focus-within/row:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto',
-          )}
-        />
+        {!isReadOnly && (
+          <div
+            className="size-3.5 flex items-center justify-center cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-foreground opacity-0 group-hover/row:opacity-100 transition-opacity"
+            title="Drag to reorder"
+          >
+            <GripVertical className="size-3 shrink-0" />
+          </div>
+        )}
+        <div className="size-4 flex items-center justify-center cursor-pointer before:absolute before:-inset-2.5 md:before:hidden">
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={() => onToggleSelect?.(item.id)}
+            aria-label={`Select item ${item.identifier || item.title || 'untitled'}`}
+            className={cn(
+              'size-3.5 rounded-sm transition-opacity duration-150',
+              isSelected
+                ? 'opacity-100 pointer-events-auto'
+                : 'max-sm:opacity-100 max-sm:pointer-events-auto sm:opacity-0 sm:pointer-events-none sm:group-hover/row:opacity-100 sm:group-hover/row:pointer-events-auto group-focus-within/row:opacity-100 group-focus-within/row:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto',
+            )}
+          />
+        </div>
       </div>
 
       {/* Left: Identifier & Title */}
-      <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-3 sm:mr-4">
+      <div className="flex items-center gap-2 min-w-0 flex-1 mr-3 sm:mr-4">
         {/* Child Items Expand/Collapse Toggle */}
         {(() => {
           const childList = (item.childWorkItems && item.childWorkItems.length > 0)
@@ -384,7 +407,7 @@ export const ItemRow = memo(function ItemRow({
 
         {/* Work Item Identifier (e.g. TIEPT-3) */}
         {showId && item.identifier && (
-          <span className="font-mono text-12 font-medium text-muted-foreground shrink-0 select-none tracking-tight tabular-nums mr-0.5">
+          <span className="font-mono text-12 font-medium text-muted-foreground shrink-0 select-none tracking-tight tabular-nums mr-1.5">
             {item.identifier}
           </span>
         )}
@@ -417,22 +440,23 @@ export const ItemRow = memo(function ItemRow({
         className="flex items-center gap-2 shrink-0"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 1. State Pill (Always visible) */}
+        {/* 1. State Pill (Icon button without redundant column name label) */}
         {showState && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild disabled={isReadOnly}>
               <button
                 type="button"
-                className="relative h-6 px-2.5 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
+                className="relative size-6 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
+                title={`State: ${colTitle}`}
+                aria-label={`State: ${colTitle}`}
               >
                 <StatusIcon
                   id={item.columnId}
                   title={colTitle}
                   group={stateGroup}
                   color={currentColor}
-                  className="size-3 shrink-0"
+                  className="size-3.5 shrink-0"
                 />
-                <span className="truncate max-w-[70px] sm:max-w-[95px]">{colTitle}</span>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44 p-1 text-xs z-100 shadow-overlay">
@@ -488,50 +512,7 @@ export const ItemRow = memo(function ItemRow({
           </div>
         )}
 
-        {/* 3. Start Date Pill */}
-        {showStartDate && (
-          <div className="shrink-0 hidden md:flex">
-            <SingleDatePopover
-              open={startDateOpen}
-              onOpenChange={setStartDateOpen}
-              label={formattedStart || 'Start date'}
-              date={item.startDate || ''}
-              onSelectDate={(d) => onUpdateItem?.(item.id, { startDate: d || null })}
-              actionBtnClass={cn(
-                item.startDate
-                  ? 'h-6 px-2.5 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground'
-                  : 'size-6 p-0 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 [&>span]:hidden',
-              )}
-            />
-          </div>
-        )}
-
-        {/* 4. Due Date Pill (Overdue / Today / Future Semantic States) */}
-        {showDueDate && (
-          <div className="shrink-0 hidden sm:flex">
-            <SingleDatePopover
-              open={dateOpen}
-              onOpenChange={setDateOpen}
-              label={formattedDue || 'Due date'}
-              date={item.dueDate || ''}
-              onSelectDate={(d) => onUpdateItem?.(item.id, { dueDate: d || null })}
-              actionBtnClass={cn(
-                item.dueDate
-                  ? cn(
-                      'h-6 px-2.5 text-11 font-normal rounded-md border transition-colors shadow-none',
-                      isOverdue
-                        ? 'border-border bg-muted/60 text-foreground hover:bg-muted font-medium'
-                        : isDueToday
-                          ? 'border-border bg-muted/40 text-foreground hover:bg-muted font-medium'
-                          : 'border-border bg-background hover:bg-muted text-foreground',
-                    )
-                  : 'size-6 p-0 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 [&>span]:hidden',
-              )}
-            />
-          </div>
-        )}
-
-        {/* 5. Assignee Pill (Interactive Member Popover) */}
+        {/* 3. Assignee Pill (Interactive Member Popover) */}
         {showAssignee && (
           <div className="relative shrink-0">
             {resolvedAssignees.length > 1 ? (
@@ -606,34 +587,50 @@ export const ItemRow = memo(function ItemRow({
           </div>
         )}
 
-        {/* 6. Attachments / Modules Pill (Hidden on smaller screens to prevent title squashing) */}
-        {showAttach && attachLabel && (
-          <button
-            type="button"
-            onClick={() => onEditCard(item)}
-            className="h-6 px-2.5 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground hidden xl:flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-            title="Attached modules/pages/files"
-          >
-            <LayoutGrid className="size-3 shrink-0" />
-            <span className="truncate max-w-[100px]">{attachLabel}</span>
-          </button>
+        {/* 4. Start Date Pill */}
+        {showStartDate && (
+          <div className="shrink-0 hidden md:flex">
+            <SingleDatePopover
+              open={startDateOpen}
+              onOpenChange={setStartDateOpen}
+              label={formattedStart || 'Start date'}
+              date={item.startDate || ''}
+              onSelectDate={(d) => onUpdateItem?.(item.id, { startDate: d || null })}
+              actionBtnClass={cn(
+                item.startDate
+                  ? 'h-6 px-2.5 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground'
+                  : 'size-6 p-0 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 [&>span]:hidden',
+              )}
+            />
+          </div>
         )}
 
-        {/* 6b. Links Pill */}
-        {showLinks && linksCount > 0 && (
-          <button
-            type="button"
-            onClick={() => onEditCard(item)}
-            className="h-6 px-2 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground hidden xl:flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
-            title={`${linksCount} links`}
-          >
-            <Link2 className="size-3 shrink-0" />
-            <span className="tabular-nums font-mono">{linksCount}</span>
-          </button>
+        {/* 5. Due Date Pill (Overdue / Today / Future Semantic States) */}
+        {showDueDate && (
+          <div className="shrink-0 hidden sm:flex">
+            <SingleDatePopover
+              open={dateOpen}
+              onOpenChange={setDateOpen}
+              label={formattedDue || 'Due date'}
+              date={item.dueDate || ''}
+              onSelectDate={(d) => onUpdateItem?.(item.id, { dueDate: d || null })}
+              actionBtnClass={cn(
+                item.dueDate
+                  ? cn(
+                      'h-6 px-2.5 text-11 font-normal rounded-md border transition-colors shadow-none',
+                      isOverdue
+                        ? 'border-border bg-muted/60 text-foreground hover:bg-muted font-medium'
+                        : isDueToday
+                          ? 'border-border bg-muted/40 text-foreground hover:bg-muted font-medium'
+                          : 'border-border bg-background hover:bg-muted text-foreground',
+                    )
+                  : 'size-6 p-0 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 [&>span]:hidden',
+              )}
+            />
+          </div>
         )}
 
-
-        {/* 8. Labels Pill (Visible on medium+ viewports) */}
+        {/* 6. Labels Pill (Visible on medium+ viewports) */}
         {showLabels && (
           <div className="hidden md:flex items-center gap-1 shrink-0">
             {labelsList.slice(0, 2).map((l: any, i: number) => {
@@ -668,6 +665,32 @@ export const ItemRow = memo(function ItemRow({
               actionBtnClass="size-6 p-0 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 [&>span]:hidden shadow-none"
             />
           </div>
+        )}
+
+        {/* 7. Attachments Pill (Hidden on smaller screens to prevent title squashing) */}
+        {showAttach && attachLabel && (
+          <button
+            type="button"
+            onClick={() => onEditCard(item)}
+            className="h-6 px-2.5 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground hidden xl:flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+            title="Attachments"
+          >
+            <Paperclip className="size-3 shrink-0" />
+            <span className="truncate max-w-[100px]">{attachLabel}</span>
+          </button>
+        )}
+
+        {/* 8. Links Pill */}
+        {showLinks && linksCount > 0 && (
+          <button
+            type="button"
+            onClick={() => onEditCard(item)}
+            className="h-6 px-2 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground hidden xl:flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+            title={`${linksCount} links`}
+          >
+            <Link2 className="size-3 shrink-0" />
+            <span className="tabular-nums font-mono">{linksCount}</span>
+          </button>
         )}
 
         {/* 9. More Actions Dropdown (Touch & Hover Friendly) */}
@@ -746,6 +769,7 @@ interface ChildItemRowProps {
   index: number;
   columns: Column[];
   projectStates?: Column[];
+  members?: any[];
   isReadOnly?: boolean;
   onEditCard: (item: Item) => void;
   onUpdateChildItem?: (parentItem: Item, childItem: SubItem, subIndex: number, data: Partial<SubItem>) => void;
@@ -758,13 +782,15 @@ const ChildItemRow = ({
   index,
   columns,
   projectStates,
+  members = [],
   isReadOnly = false,
   onEditCard,
   onUpdateChildItem,
   onDeleteChildItem,
 }: ChildItemRowProps) => {
-  const isDone = Boolean(childItem.completed || (childItem as any).stateGroup === 'completed' || (childItem as any).state?.group === 'completed' || childItem.columnId === 'done' || childItem.columnId === 'completed');
-  const isCancelled = Boolean((childItem as any).stateGroup === 'cancelled' || (childItem as any).state?.group === 'cancelled' || childItem.columnId === 'cancelled');
+  const child = childItem as typeof childItem & { stateGroup?: string; state?: { group?: string } };
+  const isDone = Boolean(child.completed || child.stateGroup === 'completed' || child.state?.group === 'completed' || child.columnId === 'done' || child.columnId === 'completed');
+  const isCancelled = Boolean(child.stateGroup === 'cancelled' || child.state?.group === 'cancelled' || child.columnId === 'cancelled');
   const stateList = projectStates && projectStates.length > 0 ? projectStates : columns;
   const currentCol = stateList.find((c) => resolveColumnId(c) === childItem.columnId);
   const colTitle = currentCol?.title || currentCol?.name || childItem.columnId || 'Todo';
@@ -787,6 +813,21 @@ const ChildItemRow = ({
       stateList[stateList.length - 1];
     return col ? resolveColumnId(col) : 'done';
   }, [stateList]);
+
+  const subAssignee = useMemo(() => {
+    if (childItem.assignee) return childItem.assignee;
+    if (childItem.assigneeId && Array.isArray(members)) {
+      const found = members.find((m: any) => (m.userId || m.user?.id || m.id) === childItem.assigneeId);
+      if (found) {
+        return {
+          id: childItem.assigneeId,
+          name: found.name || found.user?.name || 'Assignee',
+          avatar: found.avatar || found.user?.avatar || undefined,
+        };
+      }
+    }
+    return null;
+  }, [childItem.assignee, childItem.assigneeId, members]);
 
   return (
     <div className="group/sub relative h-7.5 pl-12 sm:pl-14 pr-3 sm:pr-4 flex items-center justify-between hover:bg-muted/50 select-none text-12 transition-colors duration-0 border-b border-border/40">
@@ -902,6 +943,20 @@ const ChildItemRow = ({
             })}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {subAssignee && (
+          <div
+            className="size-4.5 rounded-full overflow-hidden border border-border flex items-center justify-center shrink-0"
+            title={subAssignee.name || 'Assignee'}
+          >
+            <Avatar className="size-full">
+              <AvatarImage src={subAssignee.avatar || undefined} alt={subAssignee.name || 'Assignee'} />
+              <AvatarFallback className="text-9 font-medium bg-muted text-foreground">
+                {(subAssignee.name || 'U').slice(0, 1).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        )}
 
         {!isReadOnly && onDeleteChildItem && (
           <button
@@ -1038,6 +1093,7 @@ export const SortableItemRow = memo(function SortableItemRow({
               index={idx}
               columns={props.columns}
               projectStates={props.projectStates}
+              members={props.members}
               isReadOnly={props.isReadOnly}
               onEditCard={props.onEditCard}
               onUpdateChildItem={onUpdateChildItem}
@@ -1190,13 +1246,13 @@ const ListViewGroup = ({
             onToggleExpand(group.key);
           }
         }}
-        className="group/header relative h-8 pl-7 sm:pl-8 pr-3 sm:pr-4 flex items-center justify-between border-b border-border bg-muted/30 hover:bg-muted/60 dark:bg-muted/15 dark:hover:bg-muted/30 select-none cursor-pointer transition-colors duration-0 focus-visible:outline-none"
+        className="group/header relative h-9 pl-9 pr-3 sm:pr-4 flex items-center justify-between border-b border-border bg-muted/30 hover:bg-muted/60 dark:bg-muted/15 dark:hover:bg-muted/30 select-none cursor-pointer transition-colors duration-0 focus-visible:outline-none"
       >
-        {/* Group Multi-select Checkbox (Absolute at left-2, zero layout shift) */}
+        {/* Group Multi-select Checkbox (Aligned with item checkboxes at left-[22px]) */}
         <div
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
-          className="absolute left-2 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center z-10"
+          className="absolute left-[22px] top-1/2 -translate-y-1/2 size-4 flex items-center justify-center z-10"
         >
           <GroupCheckbox
             checked={isAllGroupSelected}
@@ -1208,6 +1264,12 @@ const ListViewGroup = ({
         </div>
 
         <div className="flex items-center gap-2 min-w-0">
+          <ChevronDown
+            className={cn(
+              'size-3.5 text-muted-foreground shrink-0 transition-transform duration-150',
+              !isExpanded && '-rotate-90'
+            )}
+          />
           {/* State Status Icon */}
           <StatusIcon
             title={group.label}
@@ -1217,12 +1279,12 @@ const ListViewGroup = ({
           />
 
           {/* Group Name */}
-          <span className="text-12 font-medium text-foreground tracking-tight truncate">
+          <span className="text-13 font-medium text-foreground tracking-tight truncate">
             {group.label}
           </span>
 
-          {/* Item Count (Tabular Numbers, mono) */}
-          <span className="font-mono text-11 text-muted-foreground font-medium tabular-nums ml-1.5 shrink-0">
+          {/* Item Count (Tabular Numbers, mono pill badge) */}
+          <span className="font-mono text-11 text-muted-foreground/80 font-medium tabular-nums ml-1.5 px-1.5 py-0.5 rounded-full bg-muted/60 shrink-0">
             {group.items.length}
           </span>
         </div>
@@ -1240,7 +1302,7 @@ const ListViewGroup = ({
                 if (!isExpanded) onToggleExpand(group.key);
                 setQuickAddKey(group.key);
               }}
-              className="size-5 rounded-md flex items-center justify-center text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-2.5 md:before:hidden"
+              className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
               aria-label={`Add work item to ${group.label}`}
             >
               <Plus className="size-3.5 shrink-0" />
@@ -1289,8 +1351,8 @@ const ListViewGroup = ({
           {!isReadOnly && (
             <div>
               {isAdding ? (
-                <div className="border-b border-border bg-background pl-7 sm:pl-8 pr-3 sm:pr-4 py-2">
-                  <div className="h-8 flex items-center gap-2">
+                <div className="border-b border-border bg-background pl-9 pr-3 sm:pr-4 py-2">
+                  <div className="h-9 flex items-center gap-2.5">
                     <Plus className="size-3.5 shrink-0 text-muted-foreground" />
                     {projectPrefix && (
                       <span className="font-mono text-12 font-medium text-muted-foreground shrink-0 select-none tracking-tight tabular-nums">
@@ -1322,7 +1384,7 @@ const ListViewGroup = ({
                       className="w-full bg-transparent text-13 text-foreground placeholder:text-muted-foreground outline-none font-normal"
                     />
                   </div>
-                  <div className="pl-5.5 text-11 text-muted-foreground select-none">
+                  <div className="pl-6 text-11 text-muted-foreground select-none">
                     Press <kbd className="font-mono px-1 py-0.5 rounded-md bg-muted text-foreground text-10">Enter</kbd> to add another, <kbd className="font-mono px-1 py-0.5 rounded-md bg-muted text-foreground text-10">Esc</kbd> to cancel
                   </div>
                 </div>
@@ -1330,9 +1392,9 @@ const ListViewGroup = ({
                 <button
                   type="button"
                   onClick={() => setQuickAddKey(group.key)}
-                  className="h-8 pl-7 sm:pl-8 pr-3 sm:pr-4 w-full flex items-center gap-2 text-13 text-foreground hover:bg-muted/40 cursor-pointer border-b border-border/60 text-left font-normal transition-colors duration-0 focus-visible:outline-none"
+                  className="h-9 pl-9 pr-3 sm:pr-4 w-full flex items-center gap-2.5 text-13 text-muted-foreground hover:text-foreground hover:bg-muted/40 cursor-pointer border-b border-border/60 text-left font-normal transition-colors duration-0 focus-visible:outline-none"
                 >
-                  <Plus className="size-3.5 shrink-0 text-foreground" />
+                  <Plus className="size-3.5 shrink-0" />
                   <span>New work item</span>
                 </button>
               )}
@@ -1352,6 +1414,7 @@ export interface ListViewProps extends BaseWorkItemViewProps, WorkItemCardHandle
   itemsByColumnId?: Map<string, Item[]> | Record<string, Item[]>;
   onAddCard: (columnId: string, title?: string) => void;
   onUpdateItem?: (id: string, data: any) => void;
+  onReorderCard?: (itemId: string, newColumnId: string, rank: number) => void;
   isAddingCard?: boolean;
   projectId: string;
   selectedIds?: string[];
@@ -1373,6 +1436,7 @@ export function ListView({
   onJoinCard,
   onLeaveCard,
   onMoveCard,
+  onReorderCard,
   onUpdateItem,
   isReadOnly = false,
   selectedIds = [],
@@ -1382,7 +1446,10 @@ export function ListView({
   members = [],
 }: ListViewProps) {
   // Groups with items are expanded by default (matching Plane.so behavior)
-  const itemsByColumnId = propItemsByColumnId || new Map();
+  const itemsByColumnId = useMemo(
+    () => propItemsByColumnId || new Map(),
+    [propItemsByColumnId]
+  );
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => {
     const initial = new Set<string>();
     columns.forEach((col) => {
@@ -1512,6 +1579,30 @@ export function ListView({
     return '';
   }, [groups]);
 
+  const effectiveGroupBy = displayOptions?.groupBy ?? 'state';
+  const isFlat = effectiveGroupBy === 'none' || (columns.length === 1 && resolveColumnId(columns[0]) === '__all__');
+  const flatItems = useMemo(() => groups.flatMap((g) => g.items), [groups]);
+  const flatItemIds = useMemo(() => flatItems.map((t) => t.id), [flatItems]);
+
+  const [flatQuickTitle, setFlatQuickTitle] = useState('');
+  const flatInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (quickAddKey === '__flat__') {
+      flatInputRef.current?.focus();
+    }
+  }, [quickAddKey]);
+
+  const handleFlatQuickAdd = () => {
+    const trimmed = flatQuickTitle.trim();
+    if (!trimmed) {
+      setQuickAddKey(null);
+      return;
+    }
+    setFlatQuickTitle('');
+    onAddCard(defaultUnstartedColumnId, trimmed);
+  };
+
   const handleUpdateChildItem = useCallback(
     async (parentItem: Item, childItem: SubItem, subIndex: number, data: Partial<SubItem>) => {
       const childList: SubItem[] = (parentItem.subItems && parentItem.subItems.length > 0)
@@ -1620,30 +1711,70 @@ export function ListView({
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveItem(null);
-    if (!over) return;
+    if (!over || active.id === over.id) return;
 
     const activeId = String(active.id);
     const overId = String(over.id);
 
-    // If dropped directly onto a column droppable
-    const isOverGroup = columns.some((c) => resolveColumnId(c) === overId);
-    if (isOverGroup) {
-      const item = active.data.current?.item as Item | undefined;
-      if (item && item.columnId !== overId) {
-        onMoveCard(activeId, overId);
-      }
+    if (isFlat) {
+      const sourceIndex = flatItems.findIndex((t) => t.id === activeId);
+      const targetIndex = flatItems.findIndex((t) => t.id === overId);
+      if (sourceIndex === -1 || targetIndex === -1 || sourceIndex === targetIndex) return;
+
+      const draggedItem = flatItems[sourceIndex];
+      const targetColId = draggedItem?.columnId || defaultUnstartedColumnId;
+      onReorderCard?.(activeId, targetColId, targetIndex);
       return;
     }
 
-    // If dropped onto another item, find target item's column
-    for (const group of groups) {
-      if (group.items.some((t: Item) => t.id === overId)) {
-        const item = active.data.current?.item as Item | undefined;
-        if (item && item.columnId !== group.key) {
-          onMoveCard(activeId, group.key);
-        }
+    // Grouped mode:
+    let sourceGroupKey = '';
+    for (const g of groups) {
+      if (g.items.some((item: any) => item.id === activeId)) {
+        sourceGroupKey = g.key;
         break;
       }
+    }
+    if (!sourceGroupKey) return;
+
+    // Find target group and index
+    let targetGroupKey = '';
+    let targetIndex = 0;
+
+    const isOverGroup = groups.some((g) => g.key === overId);
+    if (isOverGroup) {
+      targetGroupKey = overId;
+      const targetGroup = groups.find((g) => g.key === overId);
+      targetIndex = targetGroup ? targetGroup.items.length : 0;
+    } else {
+      for (const g of groups) {
+        const idx = g.items.findIndex((item: any) => item.id === overId);
+        if (idx !== -1) {
+          targetGroupKey = g.key;
+          targetIndex = idx;
+          break;
+        }
+      }
+    }
+
+    if (!targetGroupKey) return;
+
+    // Same group reordering:
+    if (sourceGroupKey === targetGroupKey) {
+      const group = groups.find((g) => g.key === sourceGroupKey);
+      if (!group) return;
+      const sourceIndex = group.items.findIndex((item: any) => item.id === activeId);
+      if (sourceIndex === -1 || sourceIndex === targetIndex) return;
+
+      onReorderCard?.(activeId, targetGroupKey, targetIndex);
+      return;
+    }
+
+    // Cross group move:
+    if (onReorderCard) {
+      onReorderCard(activeId, targetGroupKey, targetIndex);
+    } else {
+      onMoveCard(activeId, targetGroupKey);
     }
   };
 
@@ -1664,6 +1795,90 @@ export function ListView({
             <p className="text-13 text-muted-foreground max-w-xs">
               This project does not have any status columns set up yet.
             </p>
+          </div>
+        ) : isFlat ? (
+          <div className="w-full">
+            <SortableContext items={flatItemIds} strategy={verticalListSortingStrategy}>
+              {flatItems.map((item) => (
+                <SortableItemRow
+                  key={item.id}
+                  item={item}
+                  columns={columns}
+                  projectStates={projectStates}
+                  isSelected={selectedIds.includes(item.id)}
+                  onToggleSelect={onToggleSelect}
+                  onEditCard={onEditCard}
+                  onDuplicateCard={onDuplicateCard}
+                  onJoinCard={onJoinCard}
+                  onLeaveCard={onLeaveCard}
+                  onMoveCard={onMoveCard}
+                  onDeleteCard={onDeleteCard}
+                  onUpdateItem={onUpdateItem}
+                  displayOptions={displayOptions}
+                  members={members}
+                  currentUserId={currentUserId}
+                  currentUserAvatar={currentUserAvatar}
+                  isReadOnly={isReadOnly}
+                  isChildrenExpanded={expandedChildParentIds?.has(item.id)}
+                  onToggleExpandChildren={handleToggleExpandChildren}
+                  onUpdateChildItem={handleUpdateChildItem}
+                  onDeleteChildItem={handleDeleteChildItem}
+                  onAddChildItem={handleAddChildItem}
+                />
+              ))}
+            </SortableContext>
+
+            {/* Quick Add at the bottom of the flat list */}
+            {!isReadOnly && (
+              <div>
+                {quickAddKey === '__flat__' ? (
+                  <div className="border-b border-border bg-background pl-9 pr-3 sm:pr-4 py-2">
+                    <div className="h-9 flex items-center gap-2.5">
+                      <Plus className="size-3.5 shrink-0 text-muted-foreground" />
+                      {projectPrefix && (
+                        <span className="font-mono text-12 font-medium text-muted-foreground shrink-0 select-none tracking-tight tabular-nums">
+                          {projectPrefix}
+                        </span>
+                      )}
+                      <input
+                        ref={flatInputRef}
+                        type="text"
+                        value={flatQuickTitle}
+                        onChange={(e) => setFlatQuickTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleFlatQuickAdd();
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            setQuickAddKey(null);
+                            setFlatQuickTitle('');
+                          }
+                        }}
+                        onBlur={() => {
+                          if (!flatQuickTitle.trim()) setQuickAddKey(null);
+                        }}
+                        placeholder="New work item"
+                        aria-label="New work item title"
+                        className="w-full bg-transparent text-13 text-foreground placeholder:text-muted-foreground outline-none font-normal"
+                      />
+                    </div>
+                    <div className="pl-6 text-11 text-muted-foreground select-none">
+                      Press <kbd className="font-mono px-1 py-0.5 rounded-md bg-muted text-foreground text-10">Enter</kbd> to add another, <kbd className="font-mono px-1 py-0.5 rounded-md bg-muted text-foreground text-10">Esc</kbd> to cancel
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setQuickAddKey('__flat__')}
+                    className="h-9 pl-9 pr-3 sm:pr-4 w-full flex items-center gap-2.5 text-13 text-muted-foreground hover:text-foreground hover:bg-muted/40 cursor-pointer border-b border-border/60 text-left font-normal transition-colors duration-0 focus-visible:outline-none"
+                  >
+                    <Plus className="size-3.5 shrink-0" />
+                    <span>New work item</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           groups.map((group) => (

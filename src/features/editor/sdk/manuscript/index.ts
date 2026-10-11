@@ -46,6 +46,7 @@ import { spelling, spellingService } from './spelling.api';
 import { storage, StorageService, EditorStorageService } from './storage.api';
 import { notifications, notificationBundlerService } from './notifications.api';
 import { ai, AcademicAiService, suggestLatexFix } from './ai.api';
+import { gitApi } from './git.api';
 
 export * from './base';
 export * from './types';
@@ -70,6 +71,7 @@ export * from './spelling.api';
 export * from './storage.api';
 export * from './notifications.api';
 export * from './ai.api';
+export * from './git.api';
 
 export const manuscriptService = {
   docs,
@@ -100,6 +102,7 @@ export const manuscriptService = {
   ai,
   AcademicAiService,
   suggestLatexFix,
+  git: gitApi,
 };
 
 export default manuscriptService;

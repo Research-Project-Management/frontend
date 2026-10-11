@@ -3,8 +3,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { usePageStore, useDocumentCollaborationStore, useSettingsStore } from '@/features/editor/store';
-import { useActiveDocument, filesQuery } from '@/features/editor/ui/hooks/use-core';
+import { usePageStore } from '@/features/editor/store/editor.store';
+import { useDocumentCollaborationStore } from '@/features/editor/store/collaboration.store';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { useActiveDocument } from '@/features/editor/ui/hooks/use-active-document';
+import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { usePageComments } from '@/features/editor/ui/hooks/use-comment';
 import {
@@ -18,13 +21,27 @@ import { ProjectService } from '@/features/projects/shell/services/project.servi
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { reviewCoordinator } from '@/features/editor/coordinators/review.coordinator';
 import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
-import { extractProjectId } from '@/features/editor/domain/types';
-import { useReviewRealtimeNotifications } from '../useReviewRealtimeNotifications';
-import { jumpToEditorLine, scrollToReviewItem } from '../utils/review.util';
+import { extractProjectId } from '@/features/editor/domain/types/core.types';
+import { useReviewRealtimeNotifications } from './useReviewRealtimeNotifications';
+import { jumpToEditorLine } from '@/features/editor/coordinators/navigation.coordinator';
 
 export type { ReviewPendingCountResult } from './useReviewPendingCount';
 export { useReviewPendingCount } from './useReviewPendingCount';
 export type ReviewScope = 'current' | 'overview';
+
+function scrollToReviewItem(targetId: string, prefix: 'comment' | 'suggestion' = 'comment'): void {
+  requestAnimationFrame(() => {
+    const el = document.getElementById(`${prefix}-${targetId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      setTimeout(() => {
+        const retryEl = document.getElementById(`${prefix}-${targetId}`);
+        retryEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 80);
+    }
+  });
+}
 
 interface ProjectMemberItem {
   id?: string;
@@ -184,7 +201,7 @@ export function useReviewState() {
   // Project files query for Overview tab
   const { data: projectFiles = [] } = useQuery(filesQuery(rootPageId || pageId || ''));
   const allProjectFiles = useMemo<Array<{ id: string; title: string }>>(() => {
-    const list: Array<{ id: string; title: string }> = (projectFiles || []).map((f) => ({
+    const list: Array<{ id: string; title: string }> = (projectFiles || []).map((f: any) => ({
       id: f.id,
       title: f.title,
     }));

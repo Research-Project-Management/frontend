@@ -13,6 +13,7 @@ export { useOAuthCallback } from './hooks/use-oauth-callback';
 
 // Services
 export * as authService from './services/auth.service';
+export { getCachedUser } from './services/auth.service';
 
 // Types
 export type * from './types/auth.types';

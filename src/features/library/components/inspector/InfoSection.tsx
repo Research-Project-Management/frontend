@@ -2,7 +2,8 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import type { Item } from '@/features/library/types/library.types';
-import { cleanDoi, extractArxivId, generateCitationKey } from '../../domain';
+import { cleanDoi, extractArxivId } from '../../domain/identifiers';
+import { generateCitationKey } from '../../domain/citations';
 import {
   LIBRARY_ITEM_TYPES,
   getItemTypeDefinition,
@@ -15,16 +16,16 @@ import { copyToClipboard as copyText } from '@/shared/lib/utils';
 import { useItemTypes, useConversion } from '../../data';
 import {
   CreatorFields,
-  GeneralFields,
-  DynamicInspectorField,
-  ExtraAuditFields,
-  InlineField,
-  InlineTextarea,
   type CreatorEntry,
   parseCreators,
   areCreatorsEqual,
   toItemCreators,
-} from './fields';
+} from './fields/CreatorFields';
+import { GeneralFields } from './fields/GeneralFields';
+import { DynamicInspectorField } from './fields/DynamicInspectorField';
+import { ExtraAuditFields } from './fields/ExtraAuditFields';
+import { InlineField } from './fields/InlineField';
+import { InlineTextarea } from './fields/InlineTextarea';
 
 export type { CreatorEntry };
 export { InlineField, InlineTextarea, parseCreators, areCreatorsEqual, toItemCreators };

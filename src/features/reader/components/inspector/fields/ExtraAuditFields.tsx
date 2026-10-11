@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import type { Item } from '../../../types/reader.types';
 import { formatAndSanitizeExtraMetadata } from '../../../utils/reader.util';
-import { useItemMetadataSourcesQuery } from '../../../data';
+import { useItemMetadataSourcesQuery } from '../../../data/reader.queries';
 import { InlineTextarea } from './InlineTextarea';
 
 export interface ExtraAuditFieldsProps {

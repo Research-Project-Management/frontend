@@ -1,25 +1,15 @@
 /**
  * Features / Library - Public API
  *
- * This is the canonical entry point that external features (reader, projects, etc.)
- * and app routes import from.
+ * Scoped, lean entry point exporting only public contracts and pure types.
+ * Concrete sub-domains, UI components, and stores must be imported directly
+ * from their respective subpaths (e.g. @/features/library/data, @/features/library/pages).
  */
 
-// Pages (for Next.js App Router)
-export {
-  ModernLibraryPage as LibraryPage,
-  ModernLibraryPage,
-  TrashPage,
-  DuplicatesPage,
-  RecentlyReadPage,
-  UnfiledPage,
-} from './pages';
+// ── Pure Type Definitions (Zero runtime bundle overhead) ──────────────────────
+export * from './types';
 
-// Aliased Layout Components
-export { LibrarySidebar as Sidebar, LibrarySidebar } from './components';
-export { LibraryTopbar as Topbar, LibraryTopbar } from './components';
-
-// Unified Library Services SDK (Microservice Facade)
+// ── Public SDK Facade ─────────────────────────────────────────────────────────
 export {
   libraryServices,
   libraryService,
@@ -27,13 +17,4 @@ export {
   LIBRARY_SERVICES_API_BASE,
   LIBRARY_DOMAINS,
   getDomainEndpoint,
-} from './data';
-
-// Architecture Layers: Types, Store, Data, Domain, Components, Utils, Hooks
-export * from './types';
-export * from './store';
-export * from './data';
-export * from './domain';
-export * from './components';
-export * from './utils';
-export * from './hooks';
+} from './data/library-services';

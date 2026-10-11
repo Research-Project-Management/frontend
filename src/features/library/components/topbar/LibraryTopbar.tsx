@@ -67,8 +67,8 @@ import {
   useLibraryViewStore,
   useLibraryModalStore,
   useLibraryUIStore,
-  useLibraryPermissions,
-} from '../../store';
+} from '../../store/library-ui.store';
+import { useLibraryPermissions } from '../../store/selectors';
 import type { Item } from '../../types/library.types';
 
 export interface BreadcrumbItem {

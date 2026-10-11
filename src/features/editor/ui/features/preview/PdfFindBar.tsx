@@ -106,7 +106,7 @@ export const PdfFindBar = React.memo(function PdfFindBar({
     <div
       role="search"
       aria-label="Find in PDF"
-      className="absolute top-2 right-4 z-40 flex items-center gap-1.5 px-2.5 py-1.5 bg-popover/95 backdrop-blur-sm text-popover-foreground border border-border shadow-md rounded-lg text-xs animate-in fade-in slide-in-from-top-2 duration-150 select-none"
+      className="absolute top-2 right-4 z-40 flex items-center gap-1.5 px-2.5 py-1.5 bg-popover/95 backdrop-blur-sm text-popover-foreground border border-border shadow-overlay rounded-md text-xs animate-in fade-in slide-in-from-top-2 duration-150 select-none"
     >
       <Search className="size-3.5 text-muted-foreground shrink-0" />
 

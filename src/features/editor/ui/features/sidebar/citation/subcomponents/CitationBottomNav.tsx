@@ -3,7 +3,7 @@
 import React, { memo } from 'react';
 import { FileText, Library } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import type { CitationFilterTab } from '../hooks/useCitationTabState';
+import type { CitationFilterTab } from '../useCitationTabState';
 
 interface CitationBottomNavProps {
   filterTab: CitationFilterTab;

@@ -22,7 +22,7 @@ import type {
   ItemFieldDefinition,
 } from '../../types/library.types';
 import type { ItemAttachment } from '../../types/attachments.types';
-import { getItemFileUrl, getPaperFileUrl, isProjectScope } from '../../domain';
+import { getItemFileUrl, getPaperFileUrl, isProjectScope } from '../../domain/item-url';
 import { AttachmentsService } from '../extraction/extraction.service';
 import { ExportService, ExportsService } from '../citation/citation.service';
 

@@ -11,8 +11,8 @@ import type { SavedSearch } from '../../types/saved-searches.types';
 import { CollectionTree } from './CollectionTree';
 import { SidebarNavItem } from './SidebarNavItem';
 import { SavedSearchContextMenu } from './SavedSearchContextMenu';
-import { parseEmojiPrefix } from '../../utils';
-import { getLibraryPermissions } from '../../domain';
+import { parseEmojiPrefix } from '../../utils/academic-text';
+import { getLibraryPermissions } from '../../domain/library-permissions.policy';
 
 interface ProjectLibrariesSectionProps extends CollectionActionHandlers {
   projects: any[];

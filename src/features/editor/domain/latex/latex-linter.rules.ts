@@ -55,7 +55,7 @@ export const TYPO_ENTRIES = Object.entries(COMMAND_TYPOS);
 export const EMPTY_REF_REGEX = /\\(cite|ref|label|pageref|eqref)\{\s*\}/g;
 export const ENV_MATCH_REGEX = /\\(begin|end)\{([a-zA-Z0-9*_-]+)\}/g;
 export const UNESCAPED_PERCENT_REGEX = /([a-zA-Z0-9)\]])(\s*)%/g;
-export const MASKED_COMMANDS_REGEX = /\\(cite|citep|citet|parencite|textcite|nocite|ref|autoref|cref|Cref|pageref|eqref|label|url|href|path|lstinline|includegraphics|input|include)(?:\[[^\]]*\])?\{[^}]*\}/g;
+export const MASKED_COMMANDS_REGEX = /\\(cite|citep|citet|parencite|textcite|autocite|nocite|ref|autoref|cref|Cref|nameref|pageref|eqref|label|url|href|path|lstinline|includegraphics|input|include)\*?(?:\[[^\]]*\])*\{[^}]*\}/g;
 export const LATEX_CITE_REGEX = /\\(cite|citep|citet|parencite|textcite|nocite)(?:\[[^\]]*\])*\{([^}]+)\}/g;
 
 /**
@@ -69,12 +69,35 @@ export function toLines(input: string | readonly string[]): readonly string[] {
 
 // Alignment environments where unescaped & is valid (modern tables and math alignments)
 export const ALIGNMENT_ENVIRONMENTS = new Set([
-  'tabular', 'tabular*', 'tabularx', 'tabulary', 'longtable', 'supertabular',
-  'tblr', 'NiceTabular', 'nicematrix', 'array', 'align', 'align*', 'aligned',
+  'tabular', 'tabular*', 'tabularx', 'tabulary', 'longtable', 'longtable*', 'supertabular',
+  'xltabular', 'tblr', 'longtblr', 'NiceTabular', 'NiceTabular*', 'NiceArray', 'nicematrix', 'array', 'align', 'align*', 'aligned',
   'gather', 'gather*', 'gathered', 'matrix', 'pmatrix', 'bmatrix',
   'Bmatrix', 'vmatrix', 'Vmatrix', 'cases', 'dcases', 'rcases',
   'alignat', 'alignat*', 'flalign', 'flalign*', 'split', 'multline', 'multline*',
 ]);
+
+/**
+ * Updates display-math state (\[ ... \]) for a line. A `[`/`]` counts as a delimiter only
+ * when preceded by an odd run of backslashes, so `\\[6pt]` (line break + spacing) is ignored.
+ */
+export function scanDisplayMath(line: string, inDisplayMath: boolean): boolean {
+  let state = inDisplayMath;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '%') {
+      let bs = 0;
+      for (let j = i - 1; j >= 0 && line[j] === '\\'; j--) bs++;
+      if (bs % 2 === 0) break;
+    }
+    if (ch !== '[' && ch !== ']') continue;
+    let bs = 0;
+    for (let j = i - 1; j >= 0 && line[j] === '\\'; j--) bs++;
+    if (bs % 2 !== 1) continue;
+    if (ch === '[') state = true;
+    else state = false;
+  }
+  return state;
+}
 
 // Math environments where unescaped _ and ^ are valid
 export const MATH_ENVIRONMENTS = new Set([
@@ -245,15 +268,21 @@ export function lintSpecialCharacters(input: string | readonly string[]): LatexL
   // Track active environments
   const activeEnvs: string[] = [];
   let inDisplayMath = false;
+  // Inline-math state carried across lines within a paragraph (reset on blank line)
+  let paraInlineMath = false;
 
   lines.forEach((lineText, lineIdx) => {
     const lineNum = lineIdx + 1;
 
-    // Check display math delimiters \[ ... \] (excluding table newline spacing \\[...pt])
-    const isDisplayMathOpen = /(?<!\\)\\\[(?![0-9.\-]+(?:pt|mm|cm|in|ex|em))/.test(lineText);
-    const isDisplayMathClose = /(?<!\\)\\\]/.test(lineText);
-    if (isDisplayMathOpen && !isDisplayMathClose) inDisplayMath = true;
-    if (isDisplayMathClose) inDisplayMath = false;
+    if (lineText.trim() === '') {
+      paraInlineMath = false;
+    }
+
+    // Check display math delimiters \[ ... \] (ignoring \\[6pt] line-break spacing)
+    const displayMathAtStart = inDisplayMath;
+    inDisplayMath = scanDisplayMath(lineText, inDisplayMath);
+    // A line touches display math if it starts/ends inside it or contains a closing \] (e.g. single-line \[ x_1 \])
+    const lineTouchesDisplayMath = displayMathAtStart || inDisplayMath || !scanDisplayMath(lineText, true);
 
     // Track \begin and \end on this line to update activeEnvs
     ENV_MATCH_REGEX.lastIndex = 0;
@@ -267,7 +296,7 @@ export function lintSpecialCharacters(input: string | readonly string[]): LatexL
     }
 
     const currentEnv = activeEnvs[activeEnvs.length - 1] || '';
-    const isInsideMathEnv = inDisplayMath || MATH_ENVIRONMENTS.has(currentEnv);
+    const isInsideMathEnv = lineTouchesDisplayMath || MATH_ENVIRONMENTS.has(currentEnv);
     const isInsideAlignEnv = ALIGNMENT_ENVIRONMENTS.has(currentEnv);
 
     // ── Check A: Unescaped % after alphanumeric characters ──────────────────
@@ -304,7 +333,7 @@ export function lintSpecialCharacters(input: string | readonly string[]): LatexL
       const maskedLineForAmp = cleanLine.replace(MASKED_COMMANDS_REGEX, (m) => ' '.repeat(m.length));
 
       let inEscape = false;
-      let inInlineMath = false;
+      let inInlineMath = paraInlineMath;
 
       for (let colIdx = 0; colIdx < maskedLineForAmp.length; colIdx++) {
         const ch = maskedLineForAmp[colIdx];
@@ -338,7 +367,7 @@ export function lintSpecialCharacters(input: string | readonly string[]): LatexL
       const maskedLine = cleanLine.replace(MASKED_COMMANDS_REGEX, (m) => ' '.repeat(m.length));
 
       let inEscape = false;
-      let inInlineMath = false;
+      let inInlineMath = paraInlineMath;
 
       for (let colIdx = 0; colIdx < maskedLine.length; colIdx++) {
         const ch = maskedLine[colIdx];
@@ -365,24 +394,70 @@ export function lintSpecialCharacters(input: string | readonly string[]): LatexL
         inEscape = false;
       }
     }
+
+    // Carry inline-math state to the next line of the same paragraph
+    if (countInlineDollars(cleanLine.replace(MASKED_COMMANDS_REGEX, (m) => ' '.repeat(m.length))) % 2 === 1) {
+      paraInlineMath = !paraInlineMath;
+    }
   });
 
   return diagnostics;
 }
 
 /**
- * 4. Lint Inline Math Mode ($ count per line / block)
+ * Counts single unescaped `$` delimiters (each `$$` pair is skipped) in a comment-stripped line.
+ */
+export function countInlineDollars(cleanLine: string): number {
+  let count = 0;
+  let inEscape = false;
+  for (let i = 0; i < cleanLine.length; i++) {
+    const ch = cleanLine[i];
+    if (ch === '\\') {
+      inEscape = !inEscape;
+      continue;
+    }
+    if (ch === '$' && !inEscape) {
+      if (cleanLine[i + 1] === '$') i++;
+      else count++;
+    }
+    inEscape = false;
+  }
+  return count;
+}
+
+/**
+ * 4. Lint Inline Math Mode ($ balance per paragraph). TeX allows inline math to span
+ * line breaks within a paragraph, but a blank line (\par) inside $...$ is an error.
  */
 export function lintInlineMath(input: string | readonly string[]): LatexLintDiagnostic[] {
   const diagnostics: LatexLintDiagnostic[] = [];
   const lines = toLines(input);
 
+  let openDollar: { line: number; col: number } | null = null;
+
+  const flushUnclosed = () => {
+    if (openDollar) {
+      diagnostics.push({
+        startLineNumber: openDollar.line,
+        startColumn: openDollar.col,
+        endLineNumber: openDollar.line,
+        endColumn: openDollar.col + 1,
+        message: "Unclosed inline math mode '$'. Missing closing '$' before the end of the paragraph.",
+        severity: 'error',
+        code: 'UNCLOSED_INLINE_MATH',
+        suggestions: ['$'],
+      });
+      openDollar = null;
+    }
+  };
+
   lines.forEach((lineText, lineIdx) => {
     const lineNum = lineIdx + 1;
+    if (lineText.trim() === '') {
+      flushUnclosed();
+      return;
+    }
     const cleanLine = stripLineComment(lineText);
-
-    let dollarCount = 0;
-    let lastDollarCol = -1;
     let inEscape = false;
 
     for (let i = 0; i < cleanLine.length; i++) {
@@ -394,30 +469,19 @@ export function lintInlineMath(input: string | readonly string[]): LatexLintDiag
 
       if (ch === '$' && !inEscape) {
         if (i + 1 < cleanLine.length && cleanLine[i + 1] === '$') {
-          i++; // skip next $
+          i++; // skip display-math $$
+        } else if (openDollar) {
+          openDollar = null;
         } else {
-          dollarCount++;
-          lastDollarCol = i + 1;
+          openDollar = { line: lineNum, col: i + 1 };
         }
       }
 
       inEscape = false;
     }
-
-    if (dollarCount % 2 !== 0 && lastDollarCol !== -1) {
-      diagnostics.push({
-        startLineNumber: lineNum,
-        startColumn: lastDollarCol,
-        endLineNumber: lineNum,
-        endColumn: lastDollarCol + 1,
-        message: "Unclosed inline math mode '$'. Missing closing '$' on this line.",
-        severity: 'error',
-        code: 'UNCLOSED_INLINE_MATH',
-        suggestions: ['$'],
-      });
-    }
   });
 
+  flushUnclosed();
   return diagnostics;
 }
 
@@ -480,9 +544,14 @@ export function lintLabelsAndReferences(
     }
   });
 
-  // Check undefined references (if document or project defines any labels at all)
-  const hasKnownLabels = definedLabels.size > 0 || externalLabels.size > 0;
-  if (hasKnownLabels) {
+  // Undefined references: labels may live in sibling files of a multi-file project. Only
+  // report when the full project label set is supplied, or the file is a standalone
+  // document (has \documentclass, i.e. single-file / root compile unit).
+  const hasDocumentClass = lines.some((l) => /\\documentclass\b/.test(stripLineComment(l)));
+  const includesOtherFiles = lines.some((l) => /\\(input|include|subfile|import|subimport|externaldocument)\b/.test(stripLineComment(l)));
+  const isSingleFile = hasDocumentClass && !includesOtherFiles;
+  const canCheckUndefined = externalLabels.size > 0 || isSingleFile;
+  if (canCheckUndefined) {
     for (const ref of references) {
       if (!definedLabels.has(ref.key) && !externalLabels.has(ref.key)) {
         diagnostics.push({
@@ -611,7 +680,7 @@ export function lintRetractedCitations(
             startColumn: startCol,
             endLineNumber: lineNum,
             endColumn: endCol,
-            message: `⚠️ Retracted Paper Warning: Citation '${trimmedKey}' (${info?.title ? `"${info.title}"` : 'Untitled'}) has been officially retracted${info?.reason ? `: ${info.reason}` : '.'}`,
+            message: `Retracted Paper Warning: Citation '${trimmedKey}' (${info?.title ? `"${info.title}"` : 'Untitled'}) has been officially retracted${info?.reason ? `: ${info.reason}` : '.'}`,
             severity: 'warning',
             code: 'RETRACTED_CITATION',
             suggestions: [`% Retracted: ${trimmedKey}`],

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Plus, Minus, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import type { Item, CreatorCredit, SchemaItemTypeDefinition } from '../../../types/reader.types';
+import type { Item, CreatorCredit, DocumentCreator, SchemaItemTypeDefinition } from '../../../types/reader.types';
 import {
   normalizeAuthors,
   splitAuthorString,
@@ -88,21 +88,23 @@ function cleanValue(val?: any): string {
 
 /** Parse & sanitize creators array into structured list */
 export function parseCreators(paper: Item): CreatorEntry[] {
-  const rawCreators = paper.creators && paper.creators.length > 0
-    ? paper.creators
-    : paper.contributors;
-  if (Array.isArray(rawCreators) && rawCreators.length > 0) {
+  const rawCreators: Array<DocumentCreator | Record<string, unknown>> =
+    paper.creators && paper.creators.length > 0
+      ? paper.creators
+      : (Array.isArray(paper.contributors) ? (paper.contributors as Array<Record<string, unknown>>) : []);
+  if (rawCreators.length > 0) {
     const parsedCreators: CreatorEntry[] = [];
-    for (const rawCreatorItem of (rawCreators as any[])) {
-      const creatorType = rawCreatorItem.creatorType || 'author';
-      const fieldMode = (rawCreatorItem as any).fieldMode ?? 0;
-      const shortName = cleanValue((rawCreatorItem as any).shortName);
+    for (const rawCreatorItem of rawCreators) {
+      const creatorType = (typeof rawCreatorItem.creatorType === 'string' ? rawCreatorItem.creatorType : undefined) || 'author';
+      const fieldMode = typeof rawCreatorItem.fieldMode === 'number' ? rawCreatorItem.fieldMode : 0;
+      const shortName = cleanValue(rawCreatorItem.shortName);
       let creatorName = cleanValue(rawCreatorItem.name || rawCreatorItem.fullName);
+      const rec = rawCreatorItem as Record<string, unknown>;
       const firstName = cleanValue(
-        rawCreatorItem.firstName || (rawCreatorItem as Record<string, unknown>).given,
+        rawCreatorItem.firstName || (typeof rec.given === 'string' ? rec.given : undefined),
       );
       const lastName = cleanValue(
-        rawCreatorItem.lastName || (rawCreatorItem as Record<string, unknown>).family,
+        rawCreatorItem.lastName || (typeof rec.family === 'string' ? rec.family : undefined),
       );
       if (!creatorName && (firstName || lastName)) {
         creatorName = [lastName, firstName].filter(Boolean).join(', ');
@@ -330,8 +332,7 @@ export function CreatorFields({
           {
             authors: finalAuthors.length ? finalAuthors : undefined,
             creators: updatedCreators.length ? toItemCreators(updatedCreators) : undefined,
-            silent: true,
-          } as any,
+          },
           { silent: true },
         );
       }
@@ -628,8 +629,7 @@ export function CreatorFields({
                             name: trimmedValue,
                           },
                         ],
-                        silent: true,
-                      } as any,
+                      },
                       { silent: true },
                     );
                   }
@@ -663,8 +663,7 @@ export function CreatorFields({
                               name: trimmedValue,
                             },
                           ],
-                          silent: true,
-                        } as any,
+                        },
                         { silent: true },
                       );
                     }

@@ -12,19 +12,25 @@
  * - Provides window beforeunload protection against accidental data loss.
  */
 
+import { documentStore } from '../domain/document/document-store';
 import {
-  documentStore,
   lruDocumentCache,
-  draftStorageService,
   type DocumentModelState,
+} from '../domain/document/lru-document-cache';
+import {
+  draftStorageService,
   type DraftSnapshot,
   type ProjectFileSnapshot,
   type OfflineMutation,
-} from '../domain/document';
+} from '../domain/document/draft-storage';
 import { latexSymbolsIndex } from '../domain/latex/latex-symbols-index';
 import { latexDagEngine } from '../domain/latex/latex-dag-engine';
-import { manuscriptService } from '@/features/editor/sdk';
-import { useCompileStore, usePageStore, useSettingsStore, useConnectivityStore } from '../store';
+import { manuscriptService } from '../sdk/manuscript.service';
+import { markHttpSavedWhileDisconnected } from '../sdk/realtime/yjs-socket-provider';
+import { useCompileStore } from '../store/compiler.store';
+import { usePageStore } from '../store/editor.store';
+import { useSettingsStore } from '../store/settings.store';
+import { useConnectivityStore } from '../store/connectivity.store';
 import { editorCommandBus } from './command-bus';
 import { visibilityCoordinator } from './visibility.coordinator';
 
@@ -41,6 +47,26 @@ export interface FlushAllResult {
   succeeded: number;
   failed: number;
   results: FlushResult[];
+}
+
+export interface DocumentConflict {
+  fileId: string;
+  localContent: string;
+  remoteContent: string;
+  detectedAt: number;
+}
+
+export type ConflictListener = (conflict: DocumentConflict) => void;
+
+/**
+ * Pure policy: HTTP autosave is required unless a realtime CRDT channel is actually connected.
+ */
+export function shouldUseRealtimePersistence(input: {
+  hasYText: boolean;
+  isOnline: boolean;
+  isProviderConnected: boolean;
+}): boolean {
+  return input.hasYText && input.isOnline && input.isProviderConnected;
 }
 
 export interface DocumentSessionOptions {
@@ -60,6 +86,13 @@ export class SessionCoordinatorRegistry {
   private isFlushingAll = false;
   private isReplayingMutations = false;
   private beforeUnloadInitialized = false;
+  /** Per-file realtime (Yjs socket) connection status reported by the editor UI. */
+  private readonly realtimeConnected = new Map<string, boolean>();
+  /** Files whose local draft is awaiting a user restore/discard decision. */
+  private readonly draftDecisionPending = new Set<string>();
+  /** Unresolved remote-vs-local conflicts, keyed by fileId. */
+  private readonly conflicts = new Map<string, DocumentConflict>();
+  private readonly conflictListeners = new Set<ConflictListener>();
 
   constructor() {
     this.initVisibilityFlushHandler();
@@ -69,6 +102,157 @@ export class SessionCoordinatorRegistry {
 
   private resolveEffectiveProjectId(modelProjectId?: string): string {
     return modelProjectId || usePageStore.getState().projectId || 'workspace-local';
+  }
+
+  // ── Realtime connection status ─────────────────────────────────────────────
+
+  /**
+   * Reports the actual realtime (Yjs socket) connection status for a file.
+   * On a connected -> disconnected transition, dirty content is immediately
+   * protected via draft snapshot + HTTP autosave since the CRDT channel is gone.
+   */
+  public setRealtimeConnected(fileId: string, connected: boolean): void {
+    const previous = this.realtimeConnected.get(fileId);
+    this.realtimeConnected.set(fileId, connected);
+    if (previous === true && !connected) {
+      const model = lruDocumentCache.getModel(fileId);
+      if (model?.isDirty) {
+        this.saveDraftSnapshot(fileId, model.content, model.projectId);
+        this.scheduleAutoSave(fileId, DEFAULT_AUTOSAVE_DELAY);
+      }
+    }
+  }
+
+  public clearRealtimeStatus(fileId: string): void {
+    this.realtimeConnected.delete(fileId);
+  }
+
+  public isRealtimeConnected(fileId: string): boolean {
+    return this.realtimeConnected.get(fileId) === true;
+  }
+
+  // ── Draft recovery decision gate ───────────────────────────────────────────
+
+  /**
+   * While a draft recovery decision is pending, local draft snapshots for the file are
+   * suppressed so stale server content can never overwrite the recoverable draft.
+   */
+  public beginDraftDecision(fileId: string): void {
+    this.draftDecisionPending.add(fileId);
+    // Drop any queued (not yet persisted) snapshot so it cannot overwrite the stored draft.
+    const timer = this.draftTimers.get(fileId);
+    if (timer) {
+      clearTimeout(timer);
+      this.draftTimers.delete(fileId);
+    }
+    this.pendingDrafts.delete(fileId);
+  }
+
+  public endDraftDecision(fileId: string): void {
+    this.draftDecisionPending.delete(fileId);
+  }
+
+  public isDraftDecisionPending(fileId: string): boolean {
+    return this.draftDecisionPending.has(fileId);
+  }
+
+  /**
+   * Restores a recovered draft as the live local content (marked dirty and persisted).
+   */
+  public restoreDraft(fileId: string, content: string): void {
+    this.endDraftDecision(fileId);
+    lruDocumentCache.updateContent(fileId, content, true);
+    this.notifyContentChange(fileId, content, {
+      isRealtimeActive: this.isRealtimeConnected(fileId),
+    });
+  }
+
+  /**
+   * Discards the recovered draft and keeps the server version.
+   */
+  public discardDraft(fileId: string): void {
+    this.endDraftDecision(fileId);
+    this.clearDraftSnapshot(fileId);
+  }
+
+  // ── Conflict surfacing ─────────────────────────────────────────────────────
+
+  public onConflict(listener: ConflictListener): () => void {
+    this.conflictListeners.add(listener);
+    return () => {
+      this.conflictListeners.delete(listener);
+    };
+  }
+
+  public getConflict(fileId: string): DocumentConflict | undefined {
+    return this.conflicts.get(fileId);
+  }
+
+  /**
+   * Resolves a surfaced conflict.
+   * - 'keep-local': local edits stay dirty and will be saved, overwriting the remote version.
+   * - 'take-remote': local content is replaced by the remote version (local copy kept as draft).
+   */
+  public resolveConflict(fileId: string, resolution: 'keep-local' | 'take-remote'): void {
+    const conflict = this.conflicts.get(fileId);
+    if (!conflict) return;
+    this.conflicts.delete(fileId);
+    if (resolution === 'take-remote') {
+      // Preserve the local version as a recoverable draft before replacing it.
+      this.flushDraftNow(fileId, conflict.localContent, lruDocumentCache.getModel(fileId)?.projectId);
+      lruDocumentCache.updateContent(fileId, conflict.remoteContent, false);
+      useCompileStore.getState().clearDirty(fileId);
+      this.reindex(fileId, conflict.remoteContent);
+      editorCommandBus.dispatch({ type: 'editor:set-content', content: conflict.remoteContent });
+    } else {
+      this.scheduleAutoSave(fileId, DEFAULT_AUTOSAVE_DELAY);
+    }
+  }
+
+  private reindex(fileId: string, content: string): void {
+    const model = lruDocumentCache.getModel(fileId);
+    const filePath = model?.filePath || fileId;
+    latexSymbolsIndex.indexFile(fileId, filePath, content);
+    if (/\\(?:documentclass|input|include|subfile|import|bibliography|addbibresource)/.test(content)) {
+      latexDagEngine.parseAndRegister(filePath, content, fileId);
+    }
+  }
+
+  /**
+   * Common post-save bookkeeping. Only marks the model clean / clears drafts if the
+   * content sent to the server is still the current local content; otherwise the newer
+   * edits remain dirty and another save is scheduled.
+   * Returns true when the file is fully clean.
+   */
+  private async finalizeSuccessfulSave(
+    fileId: string,
+    sentContent: string,
+    sentVersion?: number
+  ): Promise<boolean> {
+    // The backend splices REST content into the live server Y.Doc. If our realtime socket is down,
+    // the provider must rebuild from the server on reconnect instead of replaying offline items.
+    markHttpSavedWhileDisconnected(fileId);
+    const model = lruDocumentCache.getModel(fileId);
+    if (!model) {
+      // No live model: clear the stored draft only if it is exactly what we saved.
+      const draft = await draftStorageService.getDraft(fileId).catch(() => null);
+      if (!draft || draft.content === sentContent) {
+        useCompileStore.getState().clearDirty(fileId);
+        this.clearDraftSnapshot(fileId);
+        return true;
+      }
+      return false;
+    }
+    if (lruDocumentCache.markCleanIfUnchanged(fileId, sentContent, sentVersion)) {
+      useCompileStore.getState().clearDirty(fileId);
+      this.clearDraftSnapshot(fileId);
+      return true;
+    }
+    // Content changed while the request was in flight: keep dirty & re-save.
+    if (!this.isRealtimeConnected(fileId)) {
+      this.scheduleAutoSave(fileId, DEFAULT_AUTOSAVE_DELAY);
+    }
+    return false;
   }
 
   public async handleOnline(): Promise<void> {
@@ -110,9 +294,7 @@ export class SessionCoordinatorRegistry {
           const contentToSave = mutation.payload?.content ?? '';
           useConnectivityStore.getState().incrementPending();
           await manuscriptService.docs.updateContent(mutation.fileId, contentToSave);
-          lruDocumentCache.markClean(mutation.fileId);
-          useCompileStore.getState().clearDirty(mutation.fileId);
-          await draftStorageService.clearDraft(mutation.fileId);
+          await this.finalizeSuccessfulSave(mutation.fileId, contentToSave);
           useConnectivityStore.getState().decrementPending();
         }
 
@@ -153,17 +335,61 @@ export class SessionCoordinatorRegistry {
 
   private initCommandSubscriptions(): void {
     editorCommandBus.subscribe('document:content-updated', (cmd) => {
-      // Remote collaborator updated a document over WebSocket
-      const model = lruDocumentCache.getModel(cmd.docId);
-      if (!model?.isDirty) {
-        lruDocumentCache.updateContent(cmd.docId, cmd.content, false);
-        const filePath = model?.filePath || cmd.docId;
-        latexSymbolsIndex.indexFile(cmd.docId, filePath, cmd.content);
-        if (/\\(?:documentclass|input|include|subfile|import|bibliography|addbibresource)/.test(cmd.content)) {
-          latexDagEngine.parseAndRegister(filePath, cmd.content, cmd.docId);
-        }
-      }
+      this.handleRemoteContentUpdated(cmd.docId, cmd.content);
     });
+  }
+
+  /**
+   * Handles a remote full-content update (server broadcast). Never silently drops data:
+   * - local clean  -> apply remote content.
+   * - local dirty & identical -> nothing to do.
+   * - local dirty & realtime CRDT connected -> Yjs merges both sides; nothing is lost.
+   * - local dirty & no realtime -> surface a conflict to listeners for user resolution.
+   */
+  public handleRemoteContentUpdated(fileId: string, remoteContent: string): void {
+    const model = lruDocumentCache.getModel(fileId);
+    if (!model?.isDirty) {
+      lruDocumentCache.updateContent(fileId, remoteContent, false);
+      this.reindex(fileId, remoteContent);
+      return;
+    }
+    if (model.content === remoteContent) {
+      this.conflicts.delete(fileId);
+      return;
+    }
+    if (this.isRealtimeConnected(fileId)) {
+      return;
+    }
+    const conflict: DocumentConflict = {
+      fileId,
+      localContent: model.content,
+      remoteContent,
+      detectedAt: Date.now(),
+    };
+    this.conflicts.set(fileId, conflict);
+    // Make sure the local version is durably backed up while the user decides.
+    this.flushDraftNow(fileId, model.content, model.projectId);
+    if (this.conflictListeners.size === 0) {
+      console.warn(`[SessionCoordinator] Unresolved remote conflict on ${fileId}; local edits kept.`);
+    }
+    for (const listener of this.conflictListeners) {
+      try {
+        listener(conflict);
+      } catch (err) {
+        console.error('[SessionCoordinator] conflict listener error:', err);
+      }
+    }
+  }
+
+  private flushDraftNow(fileId: string, content: string, projectId?: string): void {
+    const timer = this.draftTimers.get(fileId);
+    if (timer) {
+      clearTimeout(timer);
+      this.draftTimers.delete(fileId);
+    }
+    this.pendingDrafts.delete(fileId);
+    draftStorageService.saveMemoryDraft(fileId, content, projectId);
+    documentStore.saveDraft(fileId, content, this.resolveEffectiveProjectId(projectId)).catch(() => {});
   }
 
   private initVisibilityFlushHandler(): void {
@@ -210,8 +436,13 @@ export class SessionCoordinatorRegistry {
     const isRealtime = options?.isRealtimeActive ?? false;
     const isRemote = options?.origin === 'remote';
 
-    // 1. In-memory hot RAM update (0ms latency). If remote, keep local dirty flag clean
-    lruDocumentCache.updateContent(fileId, content, !isRemote);
+    // 1. In-memory hot RAM update (0ms latency). Remote changes never set — nor clear — the
+    //    local dirty flag (clearing it would drop unsaved local edits from persistence).
+    if (isRemote) {
+      lruDocumentCache.applyRemoteContent(fileId, content);
+    } else {
+      lruDocumentCache.updateContent(fileId, content, true);
+    }
 
     // 1b. Incrementally update Cross-file LaTeX symbols (Offloaded to Web Worker)
     const currentModel = lruDocumentCache.getModel(fileId);
@@ -227,7 +458,11 @@ export class SessionCoordinatorRegistry {
 
     if (isRemote) {
       // Remote changes are already persisted and broadcasted by remote peer;
-      // Do not mark local dirty or schedule redundant local draft / autosave.
+      // Do not mark local dirty or schedule redundant autosave. If unsaved local edits
+      // exist, refresh the draft backup so it reflects the merged document.
+      if (currentModel?.isDirty) {
+        this.saveDraftSnapshot(fileId, content, currentModel.projectId);
+      }
       return;
     }
 
@@ -284,15 +519,16 @@ export class SessionCoordinatorRegistry {
       return false;
     }
 
+    // Snapshot what is being sent: the live model may change while the request is in flight.
+    const sentContent = model.content;
+    const sentVersion = lruDocumentCache.getContentVersion(fileId);
     try {
       useConnectivityStore.getState().incrementPending();
-      await manuscriptService.docs.updateContent(fileId, model.content);
-      lruDocumentCache.markClean(fileId);
-      useCompileStore.getState().clearDirty(fileId);
-      this.clearDraftSnapshot(fileId);
+      await manuscriptService.docs.updateContent(fileId, sentContent);
+      const clean = await this.finalizeSuccessfulSave(fileId, sentContent, sentVersion);
       useConnectivityStore.getState().decrementPending();
       useConnectivityStore.getState().setLastSavedAt(new Date());
-      return true;
+      return clean;
     } catch (err) {
       useConnectivityStore.getState().decrementPending();
       const isNetworkError =
@@ -368,12 +604,12 @@ export class SessionCoordinatorRegistry {
     let failed = 0;
 
     const flushPromises = dirtyModels.map(async (model) => {
+      const sentContent = model.content;
+      const sentVersion = lruDocumentCache.getContentVersion(model.fileId);
       try {
         useConnectivityStore.getState().incrementPending();
-        await manuscriptService.docs.updateContent(model.fileId, model.content);
-        lruDocumentCache.markClean(model.fileId);
-        useCompileStore.getState().clearDirty(model.fileId);
-        this.clearDraftSnapshot(model.fileId);
+        await manuscriptService.docs.updateContent(model.fileId, sentContent);
+        await this.finalizeSuccessfulSave(model.fileId, sentContent, sentVersion);
         useConnectivityStore.getState().decrementPending();
         useConnectivityStore.getState().setLastSavedAt(new Date());
         succeeded++;
@@ -432,6 +668,10 @@ export class SessionCoordinatorRegistry {
   }
 
   public saveDraftSnapshot(fileId: string, content: string, projectId?: string): void {
+    // Never overwrite a recoverable draft (with e.g. stale server content) before the user
+    // has chosen to restore or discard it.
+    if (this.draftDecisionPending.has(fileId)) return;
+
     // 1. Immediately update in-memory cache for synchronous 0ms lookup
     draftStorageService.saveMemoryDraft(fileId, content, projectId);
 
@@ -459,6 +699,8 @@ export class SessionCoordinatorRegistry {
   }
 
   public clearDraftSnapshot(fileId: string): void {
+    // The recoverable draft must survive until the user decides (discardDraft ends the gate first).
+    if (this.draftDecisionPending.has(fileId)) return;
     const timer = this.draftTimers.get(fileId);
     if (timer) {
       clearTimeout(timer);

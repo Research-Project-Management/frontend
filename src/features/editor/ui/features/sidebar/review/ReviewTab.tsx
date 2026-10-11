@@ -4,17 +4,25 @@ import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { PlaneErrorState } from '@/shared/components/ui';
 import { useReviewState } from './hooks/useReviewState';
-import { ReviewHeader } from './subcomponents/ReviewHeader';
-import { ReviewBottomNav } from './subcomponents/ReviewBottomNav';
-import { EmptyReviewState } from './subcomponents/EmptyReviewState';
-import { CommentCard } from './subcomponents/CommentCard';
-import { SuggestionCard } from './subcomponents/SuggestionCard';
-import { SuggestionBulkActions } from './subcomponents/SuggestionBulkActions';
-import { NewCommentForm } from './subcomponents/NewCommentForm';
-import { OverviewView } from './subcomponents/OverviewView';
-import { NotificationDigestBadge } from './subcomponents/NotificationDigestBadge';
-import { TrackChangesControlBar } from './subcomponents/TrackChangesControlBar';
-import { useSettingsStore } from '@/features/editor/store';
+import {
+  ReviewHeader,
+  ReviewBottomNav,
+  EmptyReviewState,
+} from './subcomponents/ReviewNav';
+import {
+  NotificationDigestBadge,
+} from './subcomponents/ReviewBadges';
+import {
+  CommentCard,
+  NewCommentForm,
+} from './subcomponents/ReviewComments';
+import {
+  SuggestionCard,
+  SuggestionBulkActions,
+  TrackChangesControlBar,
+} from './subcomponents/ReviewSuggestions';
+import { OverviewView } from './subcomponents/ReviewOverview';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
 
 export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => void }) {
   const {

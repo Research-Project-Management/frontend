@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { memo } from 'react';
 import { AlertCircle, AlertTriangle } from 'lucide-react';
@@ -39,7 +39,7 @@ export const CitationValidationBanner = memo(function CitationValidationBanner({
                 key={k}
                 type="button"
                 onClick={() => onSelectKey?.(k)}
-                className="px-1.5 py-0.5 font-mono text-10 font-medium rounded bg-warning/15 text-foreground hover:bg-warning/25 transition-colors cursor-pointer border border-warning/20 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                className="px-1.5 py-0.5 font-mono text-10 font-medium rounded-sm bg-warning/15 text-foreground hover:bg-warning/25 transition-colors cursor-pointer border border-warning/20 outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 title={`Click to filter by ${k}`}
               >
                 {k}

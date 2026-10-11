@@ -134,7 +134,7 @@ function generateIdentifier(name: string): string {
 export interface CreateProjectModalProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  onSuccess?: (project?: any) => void;
+  onSuccess?: (project?: Project) => void;
 }
 
 export function CreateProjectModal({
@@ -156,7 +156,7 @@ export function CreateProjectModal({
 
   // Step 1 Form Setup using React Hook Form & Zod
   const form = useForm<CreateProjectFormValues>({
-    resolver: zodResolver(createProjectFormSchema) as any,
+    resolver: zodResolver(createProjectFormSchema),
     defaultValues: {
       name: '',
       identifier: '',
@@ -258,6 +258,14 @@ export function CreateProjectModal({
     }
   }, [isModalOpen]);
 
+  useEffect(() => {
+    return () => {
+      if (cover && cover.startsWith('blob:')) {
+        URL.revokeObjectURL(cover);
+      }
+    };
+  }, [cover]);
+
   const handleClose = () => {
     handleOpenChange(false);
     setTimeout(() => {
@@ -334,7 +342,7 @@ export function CreateProjectModal({
   const handleOpenProject = () => {
     const targetProjId = createdProject?.id;
     handleClose();
-    onSuccess?.(createdProject);
+    onSuccess?.(createdProject || undefined);
     if (targetProjId) {
       router.push(`/projects/${targetProjId}`);
     }

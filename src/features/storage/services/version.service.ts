@@ -69,8 +69,8 @@ export const uploadNewFileVersion = (
         }
       } else {
         try {
-          const err = JSON.parse(xhr.responseText) as any;
-          reject(new Error(err.message || 'Failed to upload new version'));
+          const err = JSON.parse(xhr.responseText) as { message?: string };
+          reject(new Error(err?.message || 'Failed to upload new version'));
         } catch {
           reject(new Error(`Upload failed: HTTP ${xhr.status}`));
         }

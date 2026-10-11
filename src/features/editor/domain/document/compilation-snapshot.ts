@@ -62,6 +62,27 @@ export interface AssembleSnapshotParams {
   activeContent?: string | null;
   rootFileId?: string;
   resolvedMainFile?: string;
+  /** Optional explicit fileId -> path/title map (e.g. from the page store). */
+  filePathsById?: Record<string, string>;
+}
+
+/**
+ * Builds a fileId -> human path map from every available source (explicit map, project files
+ * from the page store, current page, active doc). Used to avoid keying content by UUID.
+ */
+export function buildFilePathIndex(params: AssembleSnapshotParams): Map<string, string> {
+  const index = new Map<string, string>();
+  const add = (id: string | undefined, path: string | undefined) => {
+    if (!id || !path || path === id) return;
+    if (!index.has(id)) index.set(id, path);
+  };
+  if (params.filePathsById) {
+    for (const [id, path] of Object.entries(params.filePathsById)) add(id, path);
+  }
+  for (const file of params.baseFiles ?? []) add(file.id, file.path || file.title || file.name);
+  add(params.currentPage?.id, params.currentPage?.path || params.currentPage?.title || params.currentPage?.name);
+  add(params.activeDoc?.id, params.activeDoc?.path || params.activeDoc?.title || params.activeDoc?.name);
+  return index;
 }
 
 /**
@@ -72,6 +93,12 @@ export function assembleCompilationSnapshot(params: AssembleSnapshotParams = {})
   const resolvedMainFile = normalizeLatexPath(params.resolvedMainFile || 'main.tex');
   const files: Record<string, string> = {};
   const dirtyFileIds: string[] = [];
+  const pathIndex = buildFilePathIndex(params);
+  /** Resolves a real path for a file; returns undefined when only the UUID is known. */
+  const resolvePath = (fileId: string, filePath?: string): string | undefined => {
+    if (filePath && filePath !== fileId) return filePath;
+    return pathIndex.get(fileId);
+  };
 
   // 0. Base layer: Ingest all project files (guarantees unopened files like chapters/*.tex or .bib are included)
   if (params.baseFiles) {
@@ -92,21 +119,26 @@ export function assembleCompilationSnapshot(params: AssembleSnapshotParams = {})
   // 1. Ingest in-memory models from LRU Cache (both dirty and warm clean models)
   if (params.lruModels) {
     for (const model of params.lruModels) {
-      const cleanPath = normalizeLatexPath(model.filePath || model.fileId);
-      files[cleanPath] = model.content;
-      if (!files[model.fileId]) {
-        files[model.fileId] = model.content;
+      const realPath = resolvePath(model.fileId, model.filePath);
+      if (realPath) {
+        files[normalizeLatexPath(realPath)] = model.content;
       }
+      // Always key by id as well; the in-memory model is fresher than the base layer.
+      files[model.fileId] = model.content;
       if (model.isDirty && !dirtyFileIds.includes(model.fileId)) {
         dirtyFileIds.push(model.fileId);
       }
     }
   }
 
-  // 2. Ingest dirty buffers
+  // 2. Ingest dirty buffers (also under their real path so stale base content is replaced)
   if (params.dirtyFiles) {
     for (const item of params.dirtyFiles) {
       files[item.fileId] = item.content;
+      const realPath = resolvePath(item.fileId);
+      if (realPath) {
+        files[normalizeLatexPath(realPath)] = item.content;
+      }
       if (!dirtyFileIds.includes(item.fileId)) {
         dirtyFileIds.push(item.fileId);
       }

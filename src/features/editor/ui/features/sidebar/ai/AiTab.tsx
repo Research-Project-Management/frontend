@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { AIIcon } from '@/shared/components/icons';
 import { useAiChatActions } from './useAiChatActions';
-import { usePageStore } from '@/features/editor/store';
+import { usePageStore } from '@/features/editor/store/editor.store';
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import {
@@ -42,7 +42,7 @@ import { cn } from '@/shared/lib/utils';
 import {
   type AttachedFile,
   type UploadingFileItem,
-} from './ai-tab.helpers';
+} from './ai-attachments';
 import { AiSuggestionsHero } from './AiSuggestionsHero';
 import { AiMessageItem } from './AiMessageItem';
 import { AiInputArea } from './AiInputArea';
@@ -277,7 +277,7 @@ export default function AiTab({ onClose }: AiTabProps) {
           ...prev,
           {
             role: 'assistant',
-            content: `⚠️ **An error occurred:** ${err.message || 'Could not connect to the AI server.'}`,
+            content: `**Error:** ${err.message || 'Could not connect to the AI server.'}`,
           },
         ]);
       }

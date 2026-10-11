@@ -18,7 +18,7 @@ import {
 } from "@/shared/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
 import { FilterFunnelIcon } from "@/shared/components/icons";
-import { SingleDatePopover } from "@/features/projects/project-id/work-items";
+import { SingleDatePopover } from "@/features/projects/project-id/work-items/components/modals/Popovers";
 import { useQueryClient } from '@tanstack/react-query';
 import { useTags, type TagWithCount, itemKeys, useItems, useItemTypes, libraryKeys } from '../../data';
 import type { Item } from '../../types/library.types';

@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import { useSearchCslStyles } from '../../data';
 import type { CslStyleMetadata } from '../../types/library.types';
-import { getCleanStyleLabel } from '../../domain';
+import { getCleanStyleLabel } from '../../domain/citations';
 
 export interface CslStyleSearchModalProps {
   open: boolean;

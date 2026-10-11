@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
 import { EditorArea } from '@/features/editor/ui/features/editor/EditorArea';
-import { useSettingsStore } from '@/features/editor/store';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 
 // Mock next/navigation
@@ -14,7 +14,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock useActiveDocument to supply test manuscript document
-vi.mock('@/features/editor/ui/hooks/use-core', () => ({
+vi.mock('@/features/editor/ui/hooks/use-active-document', () => ({
   useActiveDocument: () => ({
     isLoading: false,
     activePage: {

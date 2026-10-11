@@ -27,7 +27,7 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 
-import { usePageStore } from '@/features/editor/store';
+import { usePageStore } from '@/features/editor/store/editor.store';
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { useProject } from '@/features/projects/shell/hooks/use-project';
 
@@ -120,7 +120,7 @@ export function ProjectTitleDropdown() {
       <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
         <DialogContent
           showCloseButton={false}
-          className="sm:max-w-md w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-200 rounded-lg text-foreground flex flex-col select-none"
+          className="sm:max-w-md w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-200 rounded-md text-foreground flex flex-col select-none"
         >
           {/* Header (Only Title and Close Icon, no divider line) */}
           <div className="flex items-center justify-between px-5 pt-5 pb-2 bg-background shrink-0">

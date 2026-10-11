@@ -18,7 +18,7 @@ import { sessionCoordinator } from './session.coordinator';
 import { manuscriptService } from '@/features/editor/sdk';
 import { lruDocumentCache } from '../domain/document/lru-document-cache';
 import type { DiffProposal } from '../domain/types/ports/editor-engine.port';
-import { heuristicLatexErrorFix } from '../domain/latex/ai-error-assist';
+import { heuristicLatexErrorFix } from '../domain/ai/ai-error-assist';
 import { toast } from 'sonner';
 
 export interface AiContextPayload {

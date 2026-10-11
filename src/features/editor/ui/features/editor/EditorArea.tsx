@@ -16,20 +16,20 @@
 'use client';
 
 import React from 'react';
-import { FileCode2, AlertCircle, WifiOff } from 'lucide-react';
+import { FileCode2, WifiOff } from 'lucide-react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { PlaneEmptyState, Button } from '@/shared/components/ui';
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/shared/components/ui/resizable';
 import { toast } from 'sonner';
 
-import Tabs from './EditorTabs';
-import { ImagePanel } from './ImagePanel';
-import { CodeMirrorView } from './CodeMirrorView';
-import { EditorContextMenu } from './EditorContextMenu';
-import { VisualEditorView } from './VisualEditorView';
-import { EditorToolbar } from './EditorToolbar';
-import { SourceVisualSwitcher } from './SourceVisualSwitcher';
+import { EditorPane } from './EditorPane';
+import { DraftRecoveryDialog } from './DraftRecoveryDialog';
 
-import { useActiveDocument } from '../../hooks/use-core';
+import { useActiveDocument } from '../../hooks/use-active-document';
 import { useEditorCollaboration } from '../../hooks/use-collaboration';
 import { useSettingsStore } from '../../../store/settings.store';
 import { usePageStore } from '../../../store/editor.store';
@@ -119,6 +119,23 @@ export function EditorArea() {
   const showEditorTabs = useSettingsStore((s) => s.showEditorTabs);
   const editorMode = useSettingsStore((s) => s.editorMode);
 
+  const editorSplitMode = useLayoutStore((s) => s.editorSplitMode);
+  const editorSplitRatio = useLayoutStore((s) => s.editorSplitRatio);
+  const activeEditorPane = useLayoutStore((s) => s.activeEditorPane);
+  const secondaryFileId = useLayoutStore((s) => s.secondaryFileId);
+  const setEditorSplitRatio = useLayoutStore((s) => s.setEditorSplitRatio);
+  const setActiveEditorPane = useLayoutStore((s) => s.setActiveEditorPane);
+  const setSecondaryFileId = useLayoutStore((s) => s.setSecondaryFileId);
+  const setEditorSplitMode = useLayoutStore((s) => s.setEditorSplitMode);
+
+  const secondaryFile = React.useMemo(() => {
+    if (secondaryFileId) {
+      const found = childFiles.find((f) => f.id === secondaryFileId);
+      if (found) return found;
+    }
+    return childFiles.find((f) => f.id !== displayPage?.id) ?? displayPage ?? null;
+  }, [secondaryFileId, childFiles, displayPage]);
+
   const handleOpenDefault = React.useCallback(() => {
     if (pageId) {
       selectFile(pageId);
@@ -136,7 +153,7 @@ export function EditorArea() {
           : '';
 
   const effectiveProjectId = extractProjectId(activePage) ?? extractProjectId(parentPage) ?? pageId;
-  const { yText, awareness } = useEditorCollaboration({
+  const { yText, awareness, status: realtimeStatus } = useEditorCollaboration({
     projectId: effectiveProjectId,
     fileId: displayPage?.id,
     initialValue: rawContent,
@@ -145,27 +162,77 @@ export function EditorArea() {
 
   const isOnline = useConnectivityStore((s) => s.isOnline);
   const offlinePendingCompile = useConnectivityStore((s) => s.offlinePendingCompile);
+  const isRealtimeConnected = Boolean(yText) && realtimeStatus === 'connected';
+
+  // Report the *actual* realtime connection status so HTTP autosave resumes when disconnected.
+  React.useEffect(() => {
+    const id = displayPage?.id;
+    if (!id) return;
+    sessionCoordinator.setRealtimeConnected(id, isRealtimeConnected);
+  }, [displayPage?.id, isRealtimeConnected]);
+
+  // Surface remote-vs-local conflicts instead of silently dropping remote edits.
+  React.useEffect(() => {
+    return sessionCoordinator.onConflict((conflict) => {
+      toast.warning('Tài liệu đã được cập nhật từ nơi khác trong khi bạn có thay đổi chưa lưu.', {
+        id: `doc-conflict-${conflict.fileId}`,
+        duration: Infinity,
+        description: 'Thay đổi của bạn vẫn được giữ và sao lưu cục bộ. Chọn phiên bản muốn dùng.',
+        action: {
+          label: 'Dùng bản từ xa',
+          onClick: () => sessionCoordinator.resolveConflict(conflict.fileId, 'take-remote'),
+        },
+        cancel: {
+          label: 'Giữ bản của tôi',
+          onClick: () => sessionCoordinator.resolveConflict(conflict.fileId, 'keep-local'),
+        },
+      });
+    });
+  }, []);
+
+  // Server version of the document (never the local cache) used for draft comparison.
+  const serverContent =
+    typeof displayPage?.content === 'string'
+      ? displayPage.content
+      : typeof displayPage?.content === 'object' && displayPage.content !== null && 'source' in displayPage.content
+        ? String((displayPage.content as { source?: unknown }).source ?? '')
+        : '';
+  const serverContentRef = React.useRef(serverContent);
+  serverContentRef.current = serverContent;
 
   // Offline draft recovery state
-  const [recoverableDraft, setRecoverableDraft] = React.useState<DraftSnapshot | null>(null);
+  const [recoverableDraft, setRecoverableDraft] = React.useState<
+    (DraftSnapshot & { serverContent: string }) | null
+  >(null);
 
   React.useEffect(() => {
     let isCancelled = false;
-    if (!displayPage?.id) {
+    const id = displayPage?.id;
+    if (!id || isLoading) {
       setRecoverableDraft(null);
       return;
     }
 
+    // Gate draft writes for this file until the user decides (or no draft exists).
+    sessionCoordinator.beginDraftDecision(id);
+
     const checkDraft = async () => {
+      const server = serverContentRef.current;
       try {
-        const result = await sessionCoordinator.checkDraftRecoveryAsync(displayPage.id, rawContent);
-        if (!isCancelled && result.hasRecoverableDraft && result.draft) {
-          setRecoverableDraft(result.draft);
-        } else if (!isCancelled) {
-          setRecoverableDraft(null);
+        const result = await sessionCoordinator.checkDraftRecoveryAsync(id, server);
+        if (isCancelled) return;
+        const live = lruDocumentCache.getModel(id);
+        const alreadyLive = Boolean(live?.isDirty && result.draft && live.content === result.draft.content);
+        if (result.hasRecoverableDraft && result.draft && !alreadyLive) {
+          setRecoverableDraft({ ...result.draft, serverContent: server });
+          return;
         }
-      } catch {
-        if (!isCancelled) setRecoverableDraft(null);
+      } catch (err) {
+        console.warn('[EditorArea] Draft recovery check failed:', err);
+      }
+      if (!isCancelled) {
+        setRecoverableDraft(null);
+        sessionCoordinator.endDraftDecision(id);
       }
     };
 
@@ -173,26 +240,24 @@ export function EditorArea() {
 
     return () => {
       isCancelled = true;
+      sessionCoordinator.endDraftDecision(id);
     };
-  }, [displayPage?.id, rawContent]);
+  }, [displayPage?.id, isLoading]);
 
   const handleRestoreDraft = React.useCallback(() => {
     if (!recoverableDraft || !displayPage?.id) return;
     const restoredContent = recoverableDraft.content;
-    lruDocumentCache.updateContent(displayPage.id, restoredContent, true);
-    sessionCoordinator.notifyContentChange(displayPage.id, restoredContent, {
-      isRealtimeActive: false,
-    });
+    sessionCoordinator.restoreDraft(displayPage.id, restoredContent);
     editorCommandBus.dispatch({ type: 'editor:set-content', content: restoredContent });
     setRecoverableDraft(null);
-    toast.success('Đã khôi phục bản nháp ngoại tuyến thành công!');
+    toast.success('Đã khôi phục bản nháp thành công!');
   }, [recoverableDraft, displayPage?.id]);
 
   const handleDismissDraft = React.useCallback(() => {
     if (!displayPage?.id) return;
-    sessionCoordinator.clearDraftSnapshot(displayPage.id);
+    sessionCoordinator.discardDraft(displayPage.id);
     setRecoverableDraft(null);
-    toast.info('Đã bỏ qua bản nháp ngoại tuyến');
+    toast.info('Đã giữ phiên bản trên máy chủ');
   }, [displayPage?.id]);
 
   // Global shortcut (Ctrl+Alt+M / Cmd+Alt+M) -> Add Comment / Open Review in both modes
@@ -213,8 +278,8 @@ export function EditorArea() {
         const sel = engine?.getSelection?.();
         const cursor = engine?.getCursorPosition?.();
 
-        const startLine = sel?.fromLine ?? cursor?.line ?? 1;
-        const endLine = sel?.toLine ?? cursor?.line ?? 1;
+        const startLine = sel?.startLine ?? sel?.fromLine ?? cursor?.line ?? 1;
+        const endLine = sel?.endLine ?? sel?.toLine ?? cursor?.line ?? 1;
         const selectedText = engine?.getSelectedText?.() || '';
 
         useDocumentCollaborationStore.getState().setPendingComment({
@@ -243,19 +308,6 @@ export function EditorArea() {
 
   return (
     <div className="h-full w-full flex flex-col bg-canvas min-h-0">
-      {/* ── Multi-file Tabs Header (Overleaf Parity: holds file tabs + SourceVisualSwitcher) ── */}
-      {showEditorTabs && pageId ? (
-        <Tabs
-          rootPageId={pageId}
-          activeFileId={fileId ?? activePage.id ?? ''}
-          availableFiles={childFiles}
-        />
-      ) : (
-        <div className="flex items-center justify-end h-8 bg-muted/20 border-b border-border px-2 shrink-0">
-          <SourceVisualSwitcher />
-        </div>
-      )}
-
       {/* ── Offline Mode Notice ── */}
       {!isOnline && (
         <div className="flex items-center justify-between px-3 py-1 bg-warning/10 border-b border-warning/20 text-warning text-xs shrink-0 animate-in fade-in duration-200">
@@ -273,74 +325,102 @@ export function EditorArea() {
         </div>
       )}
 
-      {/* ── Offline Draft Recovery Banner ── */}
-      {recoverableDraft && (
-        <div className="flex items-center justify-between px-3 py-1.5 bg-warning/10 border-b border-warning/30 text-warning text-xs shrink-0 animate-in fade-in duration-200">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="size-3.5 shrink-0 text-warning" />
-            <span>
-              Phát hiện bản nháp ngoại tuyến chưa lưu ({new Date(recoverableDraft.savedAt).toLocaleTimeString()}). Bạn có muốn khôi phục không?
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Button
-              size="sm"
-              variant="default"
-              className="h-6 px-2.5 text-xs bg-warning hover:bg-warning/90 text-white font-medium"
-              onClick={handleRestoreDraft}
-            >
-              Khôi phục bản nháp
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-              onClick={handleDismissDraft}
-            >
-              Bỏ qua
-            </Button>
-          </div>
-        </div>
+      {/* ── Draft Recovery Dialog (explicit decision required) ── */}
+      {recoverableDraft && displayPage && (
+        <DraftRecoveryDialog
+          open
+          fileName={displayPage.title || 'main.tex'}
+          draftContent={recoverableDraft.content}
+          serverContent={recoverableDraft.serverContent}
+          savedAt={recoverableDraft.savedAt}
+          onRestore={handleRestoreDraft}
+          onKeepServer={handleDismissDraft}
+        />
       )}
 
-      {/* ── Core Editor Body ──────────────────────────────────────────────── */}
+      {/* ── Core Editor Body (Split-Aware: 1 or 2 Panes) ───────────────────── */}
       <div className="flex-1 min-h-0 min-w-0 w-full h-full flex flex-col">
-        {isAssetTab ? (
-          <ImagePanel asset={selectedAsset!} />
-        ) : displayPage ? (
-          <div className="flex-1 min-h-0 min-w-0 w-full h-full flex flex-col bg-canvas">
-            {editorMode === 'visual' && <EditorToolbar />}
-            <div className="flex-1 min-h-0 min-w-0 w-full h-full overflow-hidden">
-              {editorMode === 'visual' ? (
-                <VisualEditorView
-                  fileId={displayPage.id}
-                  filePath={displayPage.title || 'main.tex'}
-                  value={rawContent}
-                  onChange={(nextText) => {
-                    lruDocumentCache.updateContent(displayPage.id, nextText, true);
-                    sessionCoordinator.notifyContentChange(displayPage.id, nextText, {
-                      isRealtimeActive: false,
-                    });
-                  }}
-                />
-              ) : (
-                <EditorContextMenu>
-                  <CodeMirrorView
-                    fileId={displayPage.id}
-                    filePath={displayPage.title || 'main.tex'}
-                    value={rawContent}
-                    yText={yText}
-                    awareness={awareness}
-                    projectId={effectiveProjectId}
-                  />
-                </EditorContextMenu>
-              )}
-            </div>
-          </div>
-        ) : (
+        {!displayPage && !isAssetTab ? (
           <EmptyEditorState
             onOpenDefaultFile={handleOpenDefault}
             fileName="main.tex"
+          />
+        ) : editorSplitMode === 'vertical' ? (
+          <ResizablePanelGroup
+            orientation="horizontal"
+            className="h-full w-full min-h-0 min-w-0"
+            onLayout={(layout) => {
+              const primarySize = layout.primary ?? Object.values(layout)[0];
+              if (primarySize !== undefined) {
+                setEditorSplitRatio(primarySize / 100);
+              }
+            }}
+          >
+            <ResizablePanel
+              id="primary"
+              defaultSize={Math.round((editorSplitRatio || 0.5) * 100)}
+              minSize={20}
+              maxSize={80}
+              className="min-h-0 min-w-0"
+            >
+              <EditorPane
+                paneId="primary"
+                file={isAssetTab ? selectedAsset : displayPage}
+                projectId={effectiveProjectId}
+                rootPageId={pageId}
+                isActivePane={activeEditorPane === 'primary'}
+                isSplitActive={true}
+                availableFiles={childFiles}
+                onFocusPane={() => setActiveEditorPane('primary')}
+                onCloseSplit={() => editorCommandBus.dispatch({ type: 'editor:close-split' })}
+                onSwapPanes={() => editorCommandBus.dispatch({ type: 'editor:swap-panes' })}
+                onSelectFile={(selectedId) => selectFile(selectedId)}
+              />
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel
+              id="secondary"
+              defaultSize={Math.round((1 - (editorSplitRatio || 0.5)) * 100)}
+              minSize={20}
+              maxSize={80}
+              className="min-h-0 min-w-0"
+            >
+              <EditorPane
+                paneId="secondary"
+                file={secondaryFile}
+                projectId={effectiveProjectId}
+                rootPageId={pageId}
+                isActivePane={activeEditorPane === 'secondary'}
+                isSplitActive={true}
+                availableFiles={childFiles}
+                onFocusPane={() => setActiveEditorPane('secondary')}
+                onCloseSplit={() => editorCommandBus.dispatch({ type: 'editor:close-split' })}
+                onSwapPanes={() => editorCommandBus.dispatch({ type: 'editor:swap-panes' })}
+                onSelectFile={(selectedId) => {
+                  setSecondaryFileId(selectedId);
+                }}
+              />
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        ) : (
+          <EditorPane
+            paneId="primary"
+            file={isAssetTab ? selectedAsset : displayPage}
+            projectId={effectiveProjectId}
+            rootPageId={pageId}
+            isActivePane={true}
+            isSplitActive={false}
+            availableFiles={childFiles}
+            onFocusPane={() => setActiveEditorPane('primary')}
+            onSplitRight={() => {
+              const otherFile = childFiles.find((f: any) => f.id !== displayPage?.id);
+              const targetId = otherFile?.id || displayPage?.id;
+              if (targetId) {
+                setSecondaryFileId(targetId);
+              }
+              setEditorSplitMode('vertical');
+            }}
+            onSelectFile={(selectedId) => selectFile(selectedId)}
           />
         )}
       </div>

@@ -24,6 +24,7 @@ import {
   Trash2,
   ChevronDown,
   ChevronRight,
+  CornerDownRight,
   Check,
   CheckSquare,
 } from 'lucide-react';
@@ -131,30 +132,30 @@ export const TABLE_PROPERTIES: TablePropertyConfig[] = [
   { key: 'state', label: 'State', icon: StatusIcon, defaultVisible: true, minWidth: 130 },
   { key: 'priority', label: 'Priority', icon: MediumPriorityBoxIcon, defaultVisible: true, minWidth: 110 },
   { key: 'assignees', label: 'Assignees', icon: Users, defaultVisible: true, minWidth: 140 },
+  { key: 'startDate', label: 'Start date', icon: CalendarClock, defaultVisible: false, minWidth: 125 },
   { key: 'dueDate', label: 'Due date', icon: Calendar, defaultVisible: true, minWidth: 125 },
   { key: 'labels', label: 'Labels', icon: Tag, defaultVisible: true, minWidth: 140 },
-  { key: 'startDate', label: 'Start date', icon: CalendarClock, defaultVisible: false, minWidth: 125 },
+  { key: 'subItemCount', label: 'Sub-items', icon: Layers, defaultVisible: false, minWidth: 110 },
+  { key: 'attachment', label: 'Attachments', icon: Paperclip, defaultVisible: false, minWidth: 110 },
+  { key: 'link', label: 'Links', icon: Link2, defaultVisible: false, minWidth: 100 },
   { key: 'createdOn', label: 'Created on', icon: Calendar, defaultVisible: false, minWidth: 125 },
   { key: 'createdBy', label: 'Created by', icon: User, defaultVisible: false, minWidth: 130 },
   { key: 'updatedOn', label: 'Updated on', icon: Calendar, defaultVisible: false, minWidth: 125 },
-  { key: 'attachment', label: 'Attachments', icon: Paperclip, defaultVisible: false, minWidth: 120 },
-  { key: 'subItemCount', label: 'Sub-items', icon: Layers, defaultVisible: false, minWidth: 120 },
-  { key: 'link', label: 'Links', icon: Link2, defaultVisible: false, minWidth: 100 },
 ];
 
 export const DEFAULT_VISIBLE_PROPERTIES: Record<TablePropertyKey, boolean> = {
   state: true,
   priority: true,
   assignees: true,
+  startDate: false,
   dueDate: true,
   labels: true,
-  startDate: false,
+  subItemCount: false,
+  attachment: false,
+  link: false,
   createdOn: false,
   createdBy: false,
   updatedOn: false,
-  attachment: false,
-  subItemCount: false,
-  link: false,
 };
 
 export const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
@@ -162,15 +163,15 @@ export const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   state: 130,
   priority: 110,
   assignees: 140,
+  startDate: 125,
   dueDate: 125,
   labels: 140,
-  startDate: 125,
+  subItemCount: 110,
+  attachment: 110,
+  link: 100,
   createdOn: 125,
   createdBy: 130,
   updatedOn: 125,
-  attachment: 120,
-  subItemCount: 120,
-  link: 100,
 };
 
 // ── 3. Helper: Priority Icon ─────────────────────────────────────────────────
@@ -310,8 +311,8 @@ export function TableHeaderRow({
   visibleProperties: Record<TablePropertyKey, boolean>;
   columnWidths: Record<string, number>;
   onResizeColumn: (key: string, width: number) => void;
-  onToggleProperty: (key: TablePropertyKey) => void;
-  onResetProperties: () => void;
+  onToggleProperty?: (key: TablePropertyKey) => void;
+  onResetProperties?: () => void;
   isAllSelected: boolean;
   isSomeSelected: boolean;
   onToggleSelectAll: () => void;
@@ -363,11 +364,11 @@ export function TableHeaderRow({
       role="row"
       className="sticky top-0 z-20 flex items-center h-8 border-b border-border bg-muted/40 backdrop-blur-xs text-11 font-medium text-muted-foreground select-none w-full"
     >
-      {/* 1. First Column: Checkbox + Work items Title */}
+      {/* 1. First Column: Checkbox + Work items Title (Frozen / Sticky Left) */}
       <div
         role="columnheader"
-        style={{ width: `${titleWidth}px`, minWidth: `${titleWidth}px` }}
-        className="relative flex items-center px-3 h-full border-r border-border/40 shrink-0 group/header"
+        style={{ width: `${titleWidth}px`, minWidth: `${titleWidth}px`, left: 0 }}
+        className="sticky left-0 z-30 flex items-center px-3 h-full border-r border-border/50 shrink-0 group/header bg-muted/95 backdrop-blur-xs shadow-[1px_0_0_0_var(--border)]"
       >
         <div className="flex items-center gap-2.5 w-full">
           <Checkbox
@@ -449,14 +450,13 @@ export function TableHeaderRow({
         })}
       </div>
 
-      {/* 3. Right: Display Popover */}
-      <div className="ml-auto pr-3 flex items-center shrink-0">
-        <TableColumnPropertiesPopover
-          visibleProperties={visibleProperties}
-          onToggleProperty={onToggleProperty}
-          onResetProperties={onResetProperties}
-        />
-      </div>
+      {/* 3. Fixed Actions Column Header */}
+      <div
+        role="columnheader"
+        aria-label="Actions"
+        style={{ width: '48px', minWidth: '48px' }}
+        className="flex items-center justify-center h-full border-r border-border/40 shrink-0"
+      />
     </div>
   );
 }
@@ -486,17 +486,17 @@ export function TableGroupHeader({
     <div
       role="row"
       onClick={onToggle}
-      className="flex items-center justify-between h-8 px-3 border-b border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors duration-0 cursor-pointer select-none group/groupHeader"
+      className="sticky top-8 z-20 flex items-center h-7 px-3 border-b border-border/60 bg-muted/50 hover:bg-muted/70 backdrop-blur-xs transition-colors cursor-pointer select-none gap-2 text-xs font-medium text-foreground w-full"
     >
-      <div className="flex items-center gap-2 min-w-0">
+      <div className="sticky left-3 flex items-center gap-2 shrink-0">
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             onToggle();
           }}
-          className="size-4 flex items-center justify-center text-foreground hover:text-foreground transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
-          aria-label={isExpanded ? 'Collapse group' : 'Expand group'}
+          className="size-4 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer rounded-sm"
+          aria-label={isExpanded ? 'Collapse section' : 'Expand section'}
         >
           {isExpanded ? (
             <ChevronDown className="size-3.5 shrink-0" />
@@ -514,26 +514,12 @@ export function TableGroupHeader({
           />
         )}
 
-        <span className="text-12 font-medium text-foreground truncate">{title}</span>
+        <span className="font-semibold text-foreground truncate">{title}</span>
 
         <span className="rounded-md bg-muted px-1.5 py-0.2 text-10 font-mono font-medium text-muted-foreground tabular-nums">
           {count}
         </span>
       </div>
-
-      {!isReadOnly && onQuickAdd && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onQuickAdd();
-          }}
-          className="opacity-0 group-hover/groupHeader:opacity-100 p-1 rounded-md text-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
-          title={`Add item to ${title}`}
-        >
-          <Plus className="size-3.5 shrink-0" />
-        </button>
-      )}
     </div>
   );
 }
@@ -555,6 +541,10 @@ export const TableRowItem = React.memo(function TableRowItem({
   members = [],
   projectId = '',
   isReadOnly = false,
+  isSubItem = false,
+  hasChildren = false,
+  isChildrenExpanded = true,
+  onToggleExpandChildren,
 }: {
   item: Item;
   columns: ColumnType[];
@@ -570,6 +560,10 @@ export const TableRowItem = React.memo(function TableRowItem({
   members?: ProjectMember[];
   projectId?: string;
   isReadOnly?: boolean;
+  isSubItem?: boolean;
+  hasChildren?: boolean;
+  isChildrenExpanded?: boolean;
+  onToggleExpandChildren?: (id: string) => void;
 }) {
   const copyItemText = useCopyItemText();
   const stateList = projectStates && projectStates.length > 0 ? projectStates : columns;
@@ -653,17 +647,17 @@ export const TableRowItem = React.memo(function TableRowItem({
 
   // Sub-items count
   const childCount =
-    (item as any).childWorkItemCount ?? (item as any).childWorkItems?.length ?? 0;
+    item.childWorkItemCount ?? item.childWorkItems?.length ?? 0;
   const attachmentsCount = ItemHelpers.countAttachments(item.attachments);
 
   const isOverdue = isDateOverdue(item.dueDate, item.completed);
   const stateMatch = columns.find((c) => resolveColumnId(c) === item.columnId);
-  const stateGroup = stateMatch?.group || (item as any).stateGroup || (item as any).state?.group;
+  const stateGroup = stateMatch?.group || item.stateGroup || item.state?.group;
   const isCancelled = stateGroup === 'cancelled' || item.columnId === 'cancelled' || item.columnId === 'cancel';
   const formattedDue = formatTableDate(item.dueDate);
   const formattedStart = formatTableDate(item.startDate);
-  const formattedCreated = formatTableDate((item as any).createdAt);
-  const formattedUpdated = formatTableDate((item as any).updatedAt);
+  const formattedCreated = formatTableDate(item.createdAt);
+  const formattedUpdated = formatTableDate(item.updatedAt);
 
   // Copy identifier helper
   const handleCopyIdentifier = (e: React.MouseEvent) => {
@@ -698,15 +692,19 @@ export const TableRowItem = React.memo(function TableRowItem({
       }}
       aria-label={`Work item: ${item.title}`}
       className={cn(
-        'group/row flex items-center h-8 border-b border-border/60 hover:bg-muted/40 transition-colors duration-0 cursor-pointer text-xs select-none w-full relative outline-none focus-visible:ring-1 focus-visible:ring-ring',
+        'group/row flex items-center h-8 border-b border-border/50 hover:bg-muted/30 transition-colors duration-0 cursor-pointer text-xs select-none w-full relative outline-none focus-visible:ring-1 focus-visible:ring-ring',
         isSelected && 'bg-muted ring-1 ring-inset ring-border font-medium'
       )}
     >
-      {/* ── 1. Checkbox + Identifier + Title Column ────────────────────────── */}
+      {/* ── 1. Checkbox + Identifier + Title Column (Frozen / Sticky Left) ──── */}
       <div
         role="cell"
-        style={{ width: `${titleWidth}px`, minWidth: `${titleWidth}px` }}
-        className="relative flex items-center px-3 h-full shrink-0 border-r border-border/30"
+        style={{ width: `${titleWidth}px`, minWidth: `${titleWidth}px`, left: 0 }}
+        className={cn(
+          'sticky left-0 z-10 flex items-center px-3 h-full shrink-0 border-r border-border/40 transition-colors bg-background group-hover/row:bg-muted/30 shadow-[1px_0_0_0_var(--border)]',
+          isSelected && 'bg-muted group-hover/row:bg-muted',
+          isSubItem && 'pl-7'
+        )}
         onClick={(e) => {
           // If double click title cell, allow inline edit
           if (e.detail === 2 && !isReadOnly) {
@@ -715,10 +713,34 @@ export const TableRowItem = React.memo(function TableRowItem({
           }
         }}
       >
+        {/* Subitem connector indicator */}
+        {isSubItem && (
+          <CornerDownRight className="size-3 text-muted-foreground/60 shrink-0 mr-1.5" />
+        )}
+
+        {/* Parent item expand/collapse children toggle */}
+        {hasChildren && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleExpandChildren?.(item.id);
+            }}
+            className="p-0.5 -ml-1 mr-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer rounded-sm"
+            aria-label={isChildrenExpanded ? 'Collapse sub-items' : 'Expand sub-items'}
+          >
+            {isChildrenExpanded ? (
+              <ChevronDown className="size-3 shrink-0" />
+            ) : (
+              <ChevronRight className="size-3 shrink-0" />
+            )}
+          </button>
+        )}
+
         {/* Checkbox */}
         <div
           onClick={(e) => e.stopPropagation()}
-          className="flex items-center justify-center shrink-0 mr-2.5"
+          className="flex items-center justify-center shrink-0 mr-2"
         >
           <Checkbox
             checked={isSelected}
@@ -743,8 +765,8 @@ export const TableRowItem = React.memo(function TableRowItem({
           </button>
         )}
 
-        {/* Sub-item Indicator */}
-        {childCount > 0 && (
+        {/* Sub-item Count Badge (only shown when not expanded into inline tree rows) */}
+        {!hasChildren && childCount > 0 && (
           <div
             className="flex items-center gap-1 text-11 font-mono text-foreground mr-1.5 shrink-0 tabular-nums"
             title={`${childCount} sub-items`}
@@ -1069,7 +1091,7 @@ export const TableRowItem = React.memo(function TableRowItem({
               {/* CREATED BY CELL */}
               {p.key === 'createdBy' && (
                 <span className="text-xs text-foreground px-2 truncate">
-                  {(item as any).author?.name || (item as any).created_by_name || '-'}
+                  {item.author?.name || (item as { created_by_name?: string }).created_by_name || '-'}
                 </span>
               )}
 
@@ -1113,56 +1135,60 @@ export const TableRowItem = React.memo(function TableRowItem({
         })}
       </div>
 
-      {/* ── 3. Row Actions (Hover Toolbar on Far Right) ─────────────────────── */}
-      <div className="ml-auto pr-2 flex items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity shrink-0">
-        <button
-          type="button"
-          onClick={handleCopyLink}
-          className="p-1 rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
-          title="Copy link"
-        >
-          <Link2 className="size-3.5" />
-        </button>
-
-        {!isReadOnly && (
-          <>
+      {/* ── 3. Actions Column Cell ─────────────────────── */}
+      <div
+        role="cell"
+        style={{ width: '48px', minWidth: '48px' }}
+        className="flex items-center justify-center h-full border-r border-border/30 shrink-0"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditCard(item);
-              }}
-              className="p-1 rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
-              title="Edit work item"
+              className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 cursor-pointer focus-visible:ring-1 focus-visible:ring-ring outline-none"
+              title="More actions"
+              aria-label="More actions"
             >
-              <Pencil className="size-3.5" />
+              <MoreHorizontal className="size-3.5" />
             </button>
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDuplicateCard(item);
-              }}
-              className="p-1 rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
-              title="Duplicate"
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44 p-1 text-xs z-100 rounded-md shadow-overlay">
+            <DropdownMenuItem
+              onClick={() => onEditCard(item)}
+              className="flex items-center gap-2 cursor-pointer py-1.5 text-xs rounded-md"
             >
-              <Copy className="size-3.5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDeleteCard(item);
-              }}
-              className="p-1 rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
-              title="Delete"
+              <Pencil className="size-3.5 text-muted-foreground" />
+              <span>Edit work item</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={handleCopyLink}
+              className="flex items-center gap-2 cursor-pointer py-1.5 text-xs rounded-md"
             >
-              <Trash2 className="size-3.5" />
-            </button>
-          </>
-        )}
+              <Link2 className="size-3.5 text-muted-foreground" />
+              <span>Copy link</span>
+            </DropdownMenuItem>
+            {!isReadOnly && (
+              <>
+                <DropdownMenuItem
+                  onClick={() => onDuplicateCard(item)}
+                  className="flex items-center gap-2 cursor-pointer py-1.5 text-xs rounded-md"
+                >
+                  <Copy className="size-3.5 text-muted-foreground" />
+                  <span>Duplicate</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-1" />
+                <DropdownMenuItem
+                  onClick={() => onDeleteCard(item)}
+                  className="flex items-center gap-2 cursor-pointer py-1.5 text-xs rounded-md text-destructive focus:text-destructive focus:bg-destructive/10"
+                >
+                  <Trash2 className="size-3.5" />
+                  <span>Delete</span>
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
@@ -1172,12 +1198,12 @@ export const TableRowItem = React.memo(function TableRowItem({
 
 export function TableInlineAddRow({
   targetColumnId,
-  groupTitle,
+  titleWidth = 360,
   onAddCard,
   isReadOnly = false,
 }: {
   targetColumnId: string;
-  groupTitle?: string;
+  titleWidth?: number;
   onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
   isReadOnly?: boolean;
 }) {
@@ -1202,7 +1228,6 @@ export function TableInlineAddRow({
     }
     onAddCard(targetColumnId, trimmed);
     setTitle('');
-    // Keep focus so user can rapidly add multiple items in sequence
     setTimeout(() => {
       inputRef.current?.focus();
     }, 50);
@@ -1217,56 +1242,64 @@ export function TableInlineAddRow({
 
   if (!isAdding) {
     return (
-      <div className="border-b border-border/30">
-        <button
-          type="button"
-          onClick={() => setIsAdding(true)}
-          className="flex items-center gap-2 h-8 px-3 w-full text-xs text-foreground hover:bg-muted/30 transition-colors cursor-pointer text-left group/add focus-visible:ring-1 focus-visible:ring-ring outline-none"
-        >
-          <Plus className="size-3.5 text-foreground transition-colors" />
-          <span>{groupTitle ? `Add item to ${groupTitle}...` : 'New work item...'}</span>
-        </button>
+      <div role="row" className="flex items-center h-8 border-b border-border/40 hover:bg-muted/30 transition-colors w-full">
+        <div className="sticky left-0 flex items-center h-full">
+          <button
+            type="button"
+            onClick={() => setIsAdding(true)}
+            className="flex items-center gap-2 h-full px-3 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer text-left outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <Plus className="size-3.5 text-muted-foreground shrink-0" />
+            <span>New work item</span>
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <form
+      role="row"
       onSubmit={handleSubmit}
-      className="flex items-center h-8 px-3 border-b border-border bg-background transition-colors gap-2"
+      className="flex items-center h-8 border-b border-border bg-background transition-colors w-full"
     >
-      <Plus className="size-3.5 text-foreground shrink-0" />
-      <input
-        ref={inputRef}
-        type="text"
-        value={title}
-        aria-label="What needs to be done?"
-        onChange={(e) => setTitle(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="What needs to be done? (Enter to save, Esc to cancel)"
-        className="flex-1 bg-transparent text-13 text-foreground placeholder:text-muted-foreground outline-none px-1"
-      />
-      <div className="flex items-center gap-1.5 shrink-0">
-        <Button
-          type="submit"
-          size="sm"
-          disabled={!title.trim()}
-          className="h-7 px-3 text-xs font-medium rounded-md focus-visible:ring-1 focus-visible:ring-ring"
-        >
-          Add
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setIsAdding(false);
-            setTitle('');
-          }}
-          className="h-7 w-7 p-0 text-foreground hover:text-foreground rounded-md focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2 md:before:hidden"
-        >
-          <X className="size-3.5" />
-        </Button>
+      <div
+        className="sticky left-0 flex items-center gap-2 h-full px-3 bg-background z-10 shadow-[1px_0_0_0_var(--border)]"
+        style={{ width: `${titleWidth}px`, minWidth: `${titleWidth}px` }}
+      >
+        <Plus className="size-3.5 text-muted-foreground shrink-0" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={title}
+          aria-label="What needs to be done?"
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="What needs to be done? (Enter to save, Esc to cancel)"
+          className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none px-1"
+        />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Button
+            type="submit"
+            size="sm"
+            disabled={!title.trim()}
+            className="h-6 px-2.5 text-xs font-medium rounded-md focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            Add
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setIsAdding(false);
+              setTitle('');
+            }}
+            className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground rounded-md"
+          >
+            Cancel
+          </Button>
+        </div>
       </div>
     </form>
   );
@@ -1293,106 +1326,77 @@ export function TableView({
   onSelectAll: rawOnSelectAll,
   onToggleDisplayProperty,
 }: TableViewProps) {
-  // ── A. Column Visibility ───────────────────────────────────────────────────
-  const [localVisibleProperties, setLocalVisibleProperties] = useState<
-    Record<TablePropertyKey, boolean>
-  >(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(TABLE_STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed && typeof parsed === 'object') {
-            return { ...DEFAULT_VISIBLE_PROPERTIES, ...parsed };
-          }
-        }
-      } catch {
-        // Ignore localStorage error
-      }
-    }
-    return DEFAULT_VISIBLE_PROPERTIES;
-  });
-
-  // Merge with displayOptions.properties (supports camelCase & snake_case from DB)
+  // ── A. Column Visibility (Synchronized with displayOptions.properties) ─────
   const visibleProperties = useMemo<Record<TablePropertyKey, boolean>>(() => {
-    if (!displayOptions?.properties) return localVisibleProperties;
-    const p = displayOptions.properties as any;
+    const p = (displayOptions?.properties || {}) as Record<string, unknown>;
 
     return {
-      ...localVisibleProperties,
-      ...(p.state !== undefined ? { state: Boolean(p.state) } : {}),
-      ...(p.priority !== undefined ? { priority: Boolean(p.priority) } : {}),
-      ...((p.assignees ?? p.assignee) !== undefined
-        ? { assignees: Boolean(p.assignees ?? p.assignee) }
-        : {}),
-      ...((p.dueDate ?? p.due_date) !== undefined
-        ? { dueDate: Boolean(p.dueDate ?? p.due_date) }
-        : {}),
-      ...(p.labels !== undefined ? { labels: Boolean(p.labels) } : {}),
-      ...((p.startDate ?? p.start_date) !== undefined
-        ? { startDate: Boolean(p.startDate ?? p.start_date) }
-        : {}),
-      ...((p.createdOn ?? p.created_on) !== undefined
-        ? { createdOn: Boolean(p.createdOn ?? p.created_on) }
-        : {}),
-      ...((p.createdBy ?? p.created_by) !== undefined
-        ? { createdBy: Boolean(p.createdBy ?? p.created_by) }
-        : {}),
-      ...((p.updatedOn ?? p.updated_on) !== undefined
-        ? { updatedOn: Boolean(p.updatedOn ?? p.updated_on) }
-        : {}),
-      ...((p.attachment ?? p.attachment_count ?? p.attach) !== undefined
-        ? { attachment: Boolean(p.attachment ?? p.attachment_count ?? p.attach) }
-        : {}),
-      ...((p.subItemCount ?? p.sub_issue_count ?? p.childWorkItemCount) !== undefined
-        ? { subItemCount: Boolean(p.subItemCount ?? p.sub_issue_count ?? p.childWorkItemCount) }
-        : {}),
-      ...(p.link !== undefined ? { link: Boolean(p.link) } : {}),
+      state: p.state !== undefined ? Boolean(p.state) : DEFAULT_VISIBLE_PROPERTIES.state,
+      priority: p.priority !== undefined ? Boolean(p.priority) : DEFAULT_VISIBLE_PROPERTIES.priority,
+      assignees:
+        (p.assignees ?? p.assignee) !== undefined
+          ? Boolean(p.assignees ?? p.assignee)
+          : DEFAULT_VISIBLE_PROPERTIES.assignees,
+      startDate:
+        (p.startDate ?? p.start_date) !== undefined
+          ? Boolean(p.startDate ?? p.start_date)
+          : DEFAULT_VISIBLE_PROPERTIES.startDate,
+      dueDate:
+        (p.dueDate ?? p.due_date) !== undefined
+          ? Boolean(p.dueDate ?? p.due_date)
+          : DEFAULT_VISIBLE_PROPERTIES.dueDate,
+      labels: p.labels !== undefined ? Boolean(p.labels) : DEFAULT_VISIBLE_PROPERTIES.labels,
+      subItemCount:
+        (p.subItemCount ?? p.sub_issue_count ?? p.childWorkItemCount) !== undefined
+          ? Boolean(p.subItemCount ?? p.sub_issue_count ?? p.childWorkItemCount)
+          : DEFAULT_VISIBLE_PROPERTIES.subItemCount,
+      attachment:
+        (p.attachment ?? p.attachment_count ?? p.attachmentCount ?? p.attach) !== undefined
+          ? Boolean(p.attachment ?? p.attachment_count ?? p.attachmentCount ?? p.attach)
+          : DEFAULT_VISIBLE_PROPERTIES.attachment,
+      link: p.link !== undefined ? Boolean(p.link) : DEFAULT_VISIBLE_PROPERTIES.link,
+      createdOn:
+        (p.createdOn ?? p.created_on) !== undefined
+          ? Boolean(p.createdOn ?? p.created_on)
+          : DEFAULT_VISIBLE_PROPERTIES.createdOn,
+      createdBy:
+        (p.createdBy ?? p.created_by) !== undefined
+          ? Boolean(p.createdBy ?? p.created_by)
+          : DEFAULT_VISIBLE_PROPERTIES.createdBy,
+      updatedOn:
+        (p.updatedOn ?? p.updated_on) !== undefined
+          ? Boolean(p.updatedOn ?? p.updated_on)
+          : DEFAULT_VISIBLE_PROPERTIES.updatedOn,
     };
-  }, [localVisibleProperties, displayOptions?.properties]);
+  }, [displayOptions?.properties]);
 
-  const handleToggleProperty = (key: TablePropertyKey) => {
-    const nextVal = !visibleProperties[key];
-    setLocalVisibleProperties((prev) => {
-      const updated = { ...prev, [key]: nextVal };
-      try {
-        localStorage.setItem(TABLE_STORAGE_KEY, JSON.stringify(updated));
-      } catch {
-        // Ignore localStorage error
+  const handleToggleProperty = useCallback(
+    (key: TablePropertyKey) => {
+      const nextVal = !visibleProperties[key];
+      if (onToggleDisplayProperty) {
+        const keyMap: Partial<Record<TablePropertyKey, string>> = {
+          state: 'state',
+          priority: 'priority',
+          assignees: 'assignee',
+          startDate: 'startDate',
+          dueDate: 'dueDate',
+          labels: 'labels',
+          subItemCount: 'childWorkItemCount',
+          attachment: 'attachmentCount',
+          link: 'link',
+        };
+        const displayKey = keyMap[key];
+        if (displayKey) {
+          onToggleDisplayProperty(displayKey, nextVal);
+        }
       }
-      return updated;
-    });
+    },
+    [visibleProperties, onToggleDisplayProperty]
+  );
 
-    if (onToggleDisplayProperty) {
-      const keyMap: Partial<Record<TablePropertyKey, string>> = {
-        state: 'state',
-        priority: 'priority',
-        assignees: 'assignee',
-        dueDate: 'due_date',
-        labels: 'labels',
-        startDate: 'start_date',
-        createdOn: 'created_on',
-        createdBy: 'created_by',
-        updatedOn: 'updated_on',
-        attachment: 'attachment_count',
-        subItemCount: 'sub_issue_count',
-        link: 'link',
-      };
-      const displayKey = keyMap[key];
-      if (displayKey) {
-        onToggleDisplayProperty(displayKey, nextVal);
-      }
-    }
-  };
-
-  const handleResetProperties = () => {
-    setLocalVisibleProperties(DEFAULT_VISIBLE_PROPERTIES);
-    try {
-      localStorage.setItem(TABLE_STORAGE_KEY, JSON.stringify(DEFAULT_VISIBLE_PROPERTIES));
-    } catch {
-      // Ignore localStorage error
-    }
-  };
+  const handleResetProperties = useCallback(() => {
+    // Reset properties to default
+  }, []);
 
   // ── B. Column Widths ───────────────────────────────────────────────────────
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
@@ -1476,8 +1480,8 @@ export function TableView({
 
         switch (sortField) {
           case 'identifier': {
-            const numA = (itemA as any).sequenceNumber || 0;
-            const numB = (itemB as any).sequenceNumber || 0;
+            const numA = itemA.sequenceNumber || 0;
+            const numB = itemB.sequenceNumber || 0;
             comparison = numA - numB;
             break;
           }
@@ -1497,14 +1501,14 @@ export function TableView({
             break;
           }
           case 'createdOn': {
-            const timeA = (itemA as any).createdAt ? new Date((itemA as any).createdAt).getTime() : 0;
-            const timeB = (itemB as any).createdAt ? new Date((itemB as any).createdAt).getTime() : 0;
+            const timeA = itemA.createdAt ? new Date(itemA.createdAt).getTime() : 0;
+            const timeB = itemB.createdAt ? new Date(itemB.createdAt).getTime() : 0;
             comparison = timeA - timeB;
             break;
           }
           case 'updatedOn': {
-            const timeA = (itemA as any).updatedAt ? new Date((itemA as any).updatedAt).getTime() : 0;
-            const timeB = (itemB as any).updatedAt ? new Date((itemB as any).updatedAt).getTime() : 0;
+            const timeA = itemA.updatedAt ? new Date(itemA.updatedAt).getTime() : 0;
+            const timeB = itemB.updatedAt ? new Date(itemB.updatedAt).getTime() : 0;
             comparison = timeA - timeB;
             break;
           }
@@ -1533,12 +1537,13 @@ export function TableView({
   );
 
   // ── E. Grouping Logic ──────────────────────────────────────────────────────
-  const isGrouped = displayOptions?.groupBy && displayOptions.groupBy !== 'none';
+  const effectiveGroupBy = displayOptions?.groupBy;
+  const isGrouped = Boolean(effectiveGroupBy && effectiveGroupBy !== 'none');
 
   // Group expansion state
   const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<Set<string>>(new Set());
 
-  const toggleGroupCollapse = (groupKey: string) => {
+  const toggleGroupCollapse = useCallback((groupKey: string) => {
     setCollapsedGroupKeys((prev) => {
       const next = new Set(prev);
       if (next.has(groupKey)) {
@@ -1548,20 +1553,123 @@ export function TableView({
       }
       return next;
     });
-  };
+  }, []);
 
-  // Groups generation
+  const stateList = useMemo(
+    () => (projectStates && projectStates.length > 0 ? projectStates : columns),
+    [projectStates, columns]
+  );
+
+  // Dynamic Groups Generation based on effectiveGroupBy
   const groups = useMemo(() => {
     if (!isGrouped) return [];
 
-    return columns.map((col) => {
-      const colId = resolveColumnId(col);
-      const groupItems =
-        itemsByColumnId instanceof Map
-          ? itemsByColumnId.get(colId) ?? []
-          : (itemsByColumnId as Record<string, Item[]>)?.[colId] ??
-            items.filter((i) => i.columnId === colId);
+    if (effectiveGroupBy === 'priority') {
+      const priorityConfigs: Array<{ key: Priority; title: string }> = [
+        { key: 'urgent', title: 'Urgent' },
+        { key: 'high', title: 'High' },
+        { key: 'medium', title: 'Medium' },
+        { key: 'low', title: 'Low' },
+        { key: 'none', title: 'No priority' },
+      ];
 
+      return priorityConfigs.map((p) => {
+        const groupItems = items.filter((item) => (item.priority || 'none') === p.key);
+        return {
+          key: p.key,
+          title: p.title,
+          color: undefined,
+          icon: renderPriorityIcon(p.key),
+          items: sortItemsList(groupItems),
+        };
+      });
+    }
+
+    if (effectiveGroupBy === 'assignee') {
+      const memberGroups = (members || []).map((m) => {
+        const mem = m as typeof m & { user?: { id?: string; name?: string } };
+        const userId = mem.userId || mem.user?.id || mem.id || '';
+        const name = mem.name || mem.user?.name || 'Member';
+        const groupItems = items.filter(
+          (item) => ItemHelpers.resolveAssigneeId(item) === userId
+        );
+        return {
+          key: userId,
+          title: name,
+          color: undefined,
+          icon: (
+            <Avatar className="size-4 shrink-0">
+              <AvatarImage src={mem.avatar || mem.user?.avatar} />
+              <AvatarFallback className="text-9 font-medium bg-muted">
+                {name.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          ),
+          items: sortItemsList(groupItems),
+        };
+      });
+
+      const unassignedItems = items.filter((item) => !ItemHelpers.resolveAssigneeId(item));
+      memberGroups.push({
+        key: '__unassigned__',
+        title: 'Unassigned',
+        color: undefined,
+        icon: <User className="size-3.5 shrink-0 text-muted-foreground" />,
+        items: sortItemsList(unassignedItems),
+      });
+
+      return memberGroups;
+    }
+
+    if (effectiveGroupBy === 'labels') {
+      const labelMap = new Map<string, { id: string; name: string; color?: string }>();
+      items.forEach((item) => {
+        if (Array.isArray(item.labels)) {
+          item.labels.forEach((l: any) => {
+            const id = typeof l === 'string' ? l : l.id || l.name;
+            const name = typeof l === 'string' ? l : l.name || l.title || l.id;
+            const color = typeof l === 'object' ? l.color : undefined;
+            if (id && !labelMap.has(id)) {
+              labelMap.set(id, { id, name, color });
+            }
+          });
+        }
+      });
+
+      const labelGroups = Array.from(labelMap.values()).map((l) => {
+        const groupItems = items.filter((item) => {
+          if (!Array.isArray(item.labels)) return false;
+          return item.labels.some((il: any) => (typeof il === 'string' ? il : il.id || il.name) === l.id);
+        });
+        return {
+          key: l.id,
+          title: l.name,
+          color: l.color,
+          icon: l.color ? (
+            <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: l.color }} />
+          ) : (
+            <Tag className="size-3.5 shrink-0 text-muted-foreground" />
+          ),
+          items: sortItemsList(groupItems),
+        };
+      });
+
+      const noLabelItems = items.filter((item) => !Array.isArray(item.labels) || item.labels.length === 0);
+      labelGroups.push({
+        key: '__no_label__',
+        title: 'No label',
+        color: undefined,
+        icon: <Tag className="size-3.5 shrink-0 text-muted-foreground" />,
+        items: sortItemsList(noLabelItems),
+      });
+
+      return labelGroups;
+    }
+
+    // Default: Group by State
+    return stateList.map((col) => {
+      const colId = resolveColumnId(col);
+      const groupItems = items.filter((i) => i.columnId === colId);
       const colColor = col.color || col.accentColor || '#6B7280';
       const colTitle = col.title || col.name || 'Group';
 
@@ -1569,17 +1677,117 @@ export function TableView({
         key: colId,
         title: colTitle,
         color: colColor,
-        column: col,
+        icon: (
+          <StatusIcon
+            id={colId}
+            title={colTitle}
+            group={col.group || col.slug || colTitle}
+            color={colColor}
+            className="size-3.5 shrink-0"
+          />
+        ),
         items: sortItemsList(groupItems),
       };
     });
-  }, [isGrouped, columns, itemsByColumnId, items, sortItemsList]);
+  }, [isGrouped, effectiveGroupBy, items, stateList, members, sortItemsList]);
 
   // Flat sorted items when not grouped
   const flatSortedItems = useMemo(() => {
     if (isGrouped) return [];
     return sortItemsList(items);
   }, [isGrouped, items, sortItemsList]);
+
+  // ── F. Sub-items Tree & Hierarchy (Plane.so style) ──────────────────────────
+  const [collapsedParentIds, setCollapsedParentIds] = useState<Set<string>>(new Set());
+
+  const toggleExpandChildren = useCallback((parentId: string) => {
+    setCollapsedParentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(parentId)) {
+        next.delete(parentId);
+      } else {
+        next.add(parentId);
+      }
+      return next;
+    });
+  }, []);
+
+  const showChildWorkItems = displayOptions?.showChildWorkItems ?? true;
+
+  const buildTreeRows = useCallback(
+    (sortedList: Item[]): Array<{
+      item: Item;
+      isSubItem: boolean;
+      hasChildren: boolean;
+      isChildrenExpanded: boolean;
+    }> => {
+      if (!showChildWorkItems) {
+        return sortedList
+          .filter((item) => !item.parentId && !item.parentItemId && !item.parentWorkItemId)
+          .map((item) => ({
+            item,
+            isSubItem: false,
+            hasChildren: false,
+            isChildrenExpanded: true,
+          }));
+      }
+
+      const itemMap = new Map<string, Item>();
+      sortedList.forEach((it) => itemMap.set(it.id, it));
+
+      const childrenByParentId = new Map<string, Item[]>();
+      const rootItems: Item[] = [];
+
+      sortedList.forEach((it) => {
+        const pId = it.parentId || it.parentItemId || it.parentWorkItemId;
+        if (pId && itemMap.has(pId)) {
+          const arr = childrenByParentId.get(pId) || [];
+          arr.push(it);
+          childrenByParentId.set(pId, arr);
+        } else {
+          rootItems.push(it);
+        }
+      });
+
+      const result: Array<{
+        item: Item;
+        isSubItem: boolean;
+        hasChildren: boolean;
+        isChildrenExpanded: boolean;
+      }> = [];
+      const visited = new Set<string>();
+
+      const appendItemAndChildren = (it: Item, depth: number) => {
+        if (visited.has(it.id)) return;
+        visited.add(it.id);
+
+        const children = childrenByParentId.get(it.id) || [];
+        const hasChildren = children.length > 0;
+        const isChildrenExpanded = !collapsedParentIds.has(it.id);
+
+        result.push({
+          item: it,
+          isSubItem: depth > 0,
+          hasChildren,
+          isChildrenExpanded,
+        });
+
+        if (hasChildren && isChildrenExpanded) {
+          children.forEach((child) => appendItemAndChildren(child, depth + 1));
+        }
+      };
+
+      rootItems.forEach((root) => appendItemAndChildren(root, 0));
+
+      return result;
+    },
+    [showChildWorkItems, collapsedParentIds]
+  );
+
+  const flatTreeRows = useMemo(
+    () => buildTreeRows(flatSortedItems),
+    [buildTreeRows, flatSortedItems]
+  );
 
   const isAllSelected = items.length > 0 && selectedIds.length === items.length;
   const isSomeSelected = selectedIds.length > 0 && selectedIds.length < items.length;
@@ -1618,7 +1826,7 @@ export function TableView({
                 <FileText className="size-5 text-foreground" />
               </div>
               <h4 className="text-16 font-semibold text-foreground mb-1">No work items found</h4>
-              <p className="text-13 text-foreground/70 mb-4">
+              <p className="text-13 text-muted-foreground mb-4">
                 There are no items matching the current view filters.
               </p>
               {!isReadOnly && (
@@ -1626,7 +1834,7 @@ export function TableView({
                   size="sm"
                   variant="outline"
                   onClick={() => onAddCard(defaultColId)}
-                  className="gap-1.5 text-xs rounded-md focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1 md:before:hidden"
+                  className="gap-1.5 text-xs rounded-md focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <Plus className="size-3.5" />
                   <span>Create work item</span>
@@ -1639,98 +1847,96 @@ export function TableView({
           {isGrouped && items.length > 0 && (
             <div role="rowgroup" className="flex flex-col">
               {groups.map((group) => {
+                if (group.items.length === 0 && !displayOptions?.showEmptyGroups) {
+                  return null;
+                }
                 const isExpanded = !collapsedGroupKeys.has(group.key);
 
-                // Group icon
-                let groupIcon: React.ReactNode = null;
-                if (displayOptions?.groupBy === 'priority') {
-                  groupIcon = renderPriorityIcon(group.key as Priority);
-                } else {
-                  groupIcon = (
-                    <StatusIcon
-                      id={group.key}
-                      title={group.title}
-                      group={group.column.group || group.title}
-                      color={group.color}
-                      className="size-3.5 shrink-0"
-                    />
-                  );
-                }
-
                 return (
-                  <div key={group.key} className="flex flex-col border-b border-border/40">
+                  <div key={group.key} className="flex flex-col">
                     <TableGroupHeader
                       title={group.title}
                       color={group.color}
-                      icon={groupIcon}
+                      icon={group.icon}
                       count={group.items.length}
                       isExpanded={isExpanded}
                       onToggle={() => toggleGroupCollapse(group.key)}
-                      onQuickAdd={() => onAddCard(group.key)}
-                      isReadOnly={isReadOnly}
                     />
 
                     {isExpanded && (
                       <div className="flex flex-col">
-                        {group.items.map((item) => (
-                          <TableRowItem
-                            key={item.id}
-                            item={item}
-                            columns={columns}
-                            projectStates={projectStates || columns}
-                            visibleProperties={visibleProperties}
-                            columnWidths={columnWidths}
-                            isSelected={selectedIds.includes(item.id)}
-                            onToggleSelect={handleToggleSelect}
-                            onEditCard={onEditCard}
-                            onDeleteCard={onDeleteCard}
-                            onDuplicateCard={onDuplicateCard}
-                            onUpdateCard={onUpdateCard}
-                            members={members}
-                            projectId={projectId}
-                            isReadOnly={isReadOnly}
-                          />
-                        ))}
-
-                        <TableInlineAddRow
-                          targetColumnId={group.key}
-                          groupTitle={group.title}
-                          onAddCard={onAddCard}
-                          isReadOnly={isReadOnly}
-                        />
+                        {buildTreeRows(group.items).map(
+                          ({ item, isSubItem, hasChildren, isChildrenExpanded }) => (
+                            <TableRowItem
+                              key={item.id}
+                              item={item}
+                              columns={columns}
+                              projectStates={projectStates || columns}
+                              visibleProperties={visibleProperties}
+                              columnWidths={columnWidths}
+                              isSelected={selectedIds.includes(item.id)}
+                              onToggleSelect={handleToggleSelect}
+                              onEditCard={onEditCard}
+                              onDeleteCard={onDeleteCard}
+                              onDuplicateCard={onDuplicateCard}
+                              onUpdateCard={onUpdateCard}
+                              members={members}
+                              projectId={projectId}
+                              isReadOnly={isReadOnly}
+                              isSubItem={isSubItem}
+                              hasChildren={hasChildren}
+                              isChildrenExpanded={isChildrenExpanded}
+                              onToggleExpandChildren={toggleExpandChildren}
+                            />
+                          )
+                        )}
                       </div>
                     )}
                   </div>
                 );
               })}
+
+              <TableInlineAddRow
+                targetColumnId={defaultColId}
+                titleWidth={columnWidths.title || 360}
+                onAddCard={onAddCard}
+                isReadOnly={isReadOnly}
+              />
             </div>
           )}
 
           {/* Flat Mode */}
           {!isGrouped && items.length > 0 && (
             <div role="rowgroup" className="flex flex-col">
-              {flatSortedItems.map((item) => (
-                <TableRowItem
-                  key={item.id}
-                  item={item}
-                  columns={columns}
-                  projectStates={projectStates || columns}
-                  visibleProperties={visibleProperties}
-                  columnWidths={columnWidths}
-                  isSelected={selectedIds.includes(item.id)}
-                  onToggleSelect={handleToggleSelect}
-                  onEditCard={onEditCard}
-                  onDeleteCard={onDeleteCard}
-                  onDuplicateCard={onDuplicateCard}
-                  onUpdateCard={onUpdateCard}
-                  members={members}
-                  projectId={projectId}
-                  isReadOnly={isReadOnly}
-                />
-              ))}
+              {flatTreeRows.map(
+                ({ item, isSubItem, hasChildren, isChildrenExpanded }) => (
+                  <TableRowItem
+                    key={item.id}
+                    item={item}
+                    columns={columns}
+                    projectStates={projectStates || columns}
+                    visibleProperties={visibleProperties}
+                    columnWidths={columnWidths}
+                    isSelected={selectedIds.includes(item.id)}
+                    onToggleSelect={handleToggleSelect}
+                    onEditCard={onEditCard}
+                    onDeleteCard={onDeleteCard}
+                    onDuplicateCard={onDuplicateCard}
+                    onUpdateCard={onUpdateCard}
+                    members={members}
+                    projectId={projectId}
+                    isReadOnly={isReadOnly}
+                    isSubItem={isSubItem}
+                    hasChildren={hasChildren}
+                    isChildrenExpanded={isChildrenExpanded}
+                    onToggleExpandChildren={toggleExpandChildren}
+                  />
+                )
+              )}
 
               <TableInlineAddRow
                 targetColumnId={defaultColId}
+                titleWidth={columnWidths.title || 360}
                 onAddCard={onAddCard}
                 isReadOnly={isReadOnly}
               />

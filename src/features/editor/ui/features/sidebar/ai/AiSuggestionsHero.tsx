@@ -3,7 +3,7 @@
 import React from 'react';
 import { CornerDownRight } from 'lucide-react';
 import { CompanionHero } from '@/features/ai/components/companion/CompanionHero';
-import { QUICK_ACTIONS } from './ai-tab.helpers';
+import { QUICK_ACTIONS } from '@/features/editor/domain/ai/ai-prompts';
 
 export interface AiSuggestionsHeroProps {
   onSelectSuggestion: (prompt: string) => void;
@@ -28,7 +28,7 @@ export function AiSuggestionsHero({ onSelectSuggestion }: AiSuggestionsHeroProps
               key={act.id}
               type="button"
               onClick={() => onSelectSuggestion(act.prompt)}
-              className="w-full flex items-start gap-2.5 py-2 px-2.5 text-left text-13 text-foreground hover:bg-muted/60 rounded-lg transition-colors cursor-pointer group"
+              className="w-full flex items-start gap-2.5 py-2 px-2.5 text-left text-13 text-foreground hover:bg-muted/60 rounded-md transition-colors cursor-pointer group"
             >
               <CornerDownRight className="size-3.5 text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5 transition-colors" />
               <div className="flex flex-col min-w-0 flex-1">

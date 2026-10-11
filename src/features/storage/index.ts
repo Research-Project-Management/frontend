@@ -13,10 +13,12 @@ export { usePreviewStore } from './store/use-preview-store';
 // Types
 export type * from './types/storage.types';
 export type * from './types/storage-item.types';
+export type { UploadFileParams, CreateFileRecordParams } from './types/storage-item.types';
 
 // Services
 export * as storageFileService from './services/file.service';
 export * as storageDriveService from './services/drive.service';
+export * from './services/upload.service';
 
 // Hooks
 export * from './hooks/use-storage';

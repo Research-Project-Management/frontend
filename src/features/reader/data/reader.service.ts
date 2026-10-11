@@ -30,6 +30,7 @@ import type {
   CslStyleMetadata,
   SchemaItemTypeDefinition,
   ItemMetadataSourcesResponse,
+  TypeConversionPreview,
 } from '../types/reader.types';
 import { streamPaperChat, type StreamPaperOptions } from '../services/ai.service';
 
@@ -61,7 +62,38 @@ export function getScopeUrl(scopeId?: string, subpath = ''): string {
   return subpath ? `${base}/${subpath}` : base;
 }
 
-export function getPaperFileUrl(urlOrPathOrPaper?: any): string {
+function unwrapRecord<T>(res: unknown, key: string): T | undefined {
+  if (res && typeof res === 'object') {
+    const record = res as Record<string, unknown>;
+    if (record[key]) return record[key] as T;
+    if (record.data) return record.data as T;
+  }
+  return undefined;
+}
+
+function unwrapList<T>(res: unknown, key: string): T[] {
+  if (Array.isArray(res)) return res as T[];
+  if (res && typeof res === 'object') {
+    const record = res as Record<string, unknown>;
+    if (Array.isArray(record[key])) return record[key] as T[];
+    if (Array.isArray(record.data)) return record.data as T[];
+  }
+  return [];
+}
+
+export type PaperUrlSource =
+  | string
+  | {
+      url?: string | null;
+      primaryFile?: { url?: string | null } | null;
+      fileUrl?: string | null;
+      attachments?: Array<{ url?: string | null; fileUrl?: string | null }> | null;
+      [key: string]: unknown;
+    }
+  | null
+  | undefined;
+
+export function getPaperFileUrl(urlOrPathOrPaper?: PaperUrlSource): string {
   if (!urlOrPathOrPaper) return '';
   if (typeof urlOrPathOrPaper === 'object') {
     const candidate =
@@ -214,9 +246,7 @@ export const ReaderDocumentsService = {
         getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/fulltext`),
       );
       if (!res) return null;
-      return (res && typeof res === 'object' && 'data' in res && (res as any).data)
-        ? (res as any).data
-        : (res as DocumentFulltext);
+      return unwrapRecord<DocumentFulltext>(res, 'data') ?? (res as DocumentFulltext);
     } catch {
       return null;
     }
@@ -231,7 +261,7 @@ export const ReaderDocumentsService = {
   getAll: async (scopeId?: string, params?: Record<string, unknown>) => {
     return apiGet<{ items: ReaderDocument[]; total: number }>(
       getScopeItemsUrl(scopeId),
-      { params: params as any },
+      params ? { params: params as Record<string, string | number | boolean | undefined> } : undefined,
     );
   },
 
@@ -240,8 +270,8 @@ export const ReaderDocumentsService = {
     itemId: string,
     targetType: string,
     retainUnmappedInExtra = true,
-  ) => {
-    return apiPost(
+  ): Promise<TypeConversionPreview> => {
+    return apiPost<TypeConversionPreview>(
       getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/convert-type/preview`),
       { targetType, retainUnmappedInExtra },
     );
@@ -283,10 +313,7 @@ export const ReaderAnnotationsService = {
     if (!attachmentId) return [];
     const url = getAttachmentAnnotationsUrl(scopeId, attachmentId);
     const res = await apiGet<ReaderAnnotation[] | { data?: ReaderAnnotation[]; annotations?: ReaderAnnotation[] }>(url);
-    if (Array.isArray(res)) return res;
-    if (res && Array.isArray((res as any).data)) return (res as any).data;
-    if (res && Array.isArray((res as any).annotations)) return (res as any).annotations;
-    return [];
+    return unwrapList<ReaderAnnotation>(res, 'annotations');
   },
 
   create: async (
@@ -299,9 +326,7 @@ export const ReaderAnnotationsService = {
       url,
       dto,
     );
-    if (res && typeof res === 'object' && 'data' in res && (res as any).data) return (res as any).data;
-    if (res && typeof res === 'object' && 'annotation' in res && (res as any).annotation) return (res as any).annotation;
-    return res as ReaderAnnotation;
+    return unwrapRecord<ReaderAnnotation>(res, 'annotation') ?? (res as ReaderAnnotation);
   },
 
   update: async (
@@ -319,9 +344,7 @@ export const ReaderAnnotationsService = {
         expectedVersion,
       },
     );
-    if (res && typeof res === 'object' && 'data' in res && (res as any).data) return (res as any).data;
-    if (res && typeof res === 'object' && 'annotation' in res && (res as any).annotation) return (res as any).annotation;
-    return res as ReaderAnnotation;
+    return unwrapRecord<ReaderAnnotation>(res, 'annotation') ?? (res as ReaderAnnotation);
   },
 
   delete: async (
@@ -387,19 +410,14 @@ export const ReaderNotesService = {
       url,
       itemId ? { params: { itemId } } : undefined,
     );
-    if (Array.isArray(res)) return res;
-    if (res && Array.isArray((res as any).notes)) return (res as any).notes;
-    if (res && Array.isArray((res as any).data)) return (res as any).data;
-    return [];
+    return unwrapList<ReaderNote>(res, 'notes');
   },
 
   get: async (scopeId: string | undefined, id: string): Promise<ReaderNote> => {
     const res = await apiGet<ReaderNote | { note?: ReaderNote; data?: ReaderNote }>(
       getScopeUrl(scopeId, `notes/${encodeURIComponent(id)}`),
     );
-    if (res && typeof res === 'object' && 'note' in res && (res as any).note) return (res as any).note;
-    if (res && typeof res === 'object' && 'data' in res && (res as any).data) return (res as any).data;
-    return res as ReaderNote;
+    return unwrapRecord<ReaderNote>(res, 'note') ?? (res as ReaderNote);
   },
 
   create: async (scopeId: string | undefined, dto: CreateNoteDto): Promise<ReaderNote> => {
@@ -407,9 +425,7 @@ export const ReaderNotesService = {
       getScopeUrl(scopeId, 'notes'),
       dto,
     );
-    if (res && typeof res === 'object' && 'note' in res && (res as any).note) return (res as any).note;
-    if (res && typeof res === 'object' && 'data' in res && (res as any).data) return (res as any).data;
-    return res as ReaderNote;
+    return unwrapRecord<ReaderNote>(res, 'note') ?? (res as ReaderNote);
   },
 
   update: async (
@@ -423,9 +439,7 @@ export const ReaderNotesService = {
       getScopeUrl(scopeId, `notes/${encodeURIComponent(id)}`),
       payload,
     );
-    if (res && typeof res === 'object' && 'note' in res && (res as any).note) return (res as any).note;
-    if (res && typeof res === 'object' && 'data' in res && (res as any).data) return (res as any).data;
-    return res as ReaderNote;
+    return unwrapRecord<ReaderNote>(res, 'note') ?? (res as ReaderNote);
   },
 
   delete: async (
@@ -448,9 +462,7 @@ export const ReaderStateService = {
         getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/state`),
       );
       if (!res) return null;
-      if (typeof res === 'object' && 'state' in res && (res as any).state) return (res as any).state;
-      if (typeof res === 'object' && 'data' in res && (res as any).data) return (res as any).data;
-      return res as DocumentReadingState;
+      return unwrapRecord<DocumentReadingState>(res, 'state') ?? (res as DocumentReadingState);
     } catch {
       return null;
     }
@@ -470,9 +482,7 @@ export const ReaderStateService = {
       getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/state`),
       data,
     );
-    if (res && typeof res === 'object' && 'state' in res && (res as any).state) return (res as any).state;
-    if (res && typeof res === 'object' && 'data' in res && (res as any).data) return (res as any).data;
-    return res as DocumentReadingState;
+    return unwrapRecord<DocumentReadingState>(res, 'state') ?? (res as DocumentReadingState);
   },
 
   markAsRead: async (scopeId: string | undefined, itemId: string): Promise<DocumentReadingState> => {
@@ -490,10 +500,7 @@ export const ReaderAttachmentsService = {
     const res = await apiGet<DocumentAttachment[] | { attachments?: DocumentAttachment[]; data?: DocumentAttachment[] }>(
       getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/attachments`),
     );
-    if (Array.isArray(res)) return res;
-    if (res && Array.isArray((res as any).attachments)) return (res as any).attachments;
-    if (res && Array.isArray((res as any).data)) return (res as any).data;
-    return [];
+    return unwrapList<DocumentAttachment>(res, 'attachments');
   },
 
   create: async (
@@ -588,7 +595,7 @@ export const ReaderAttachmentsService = {
       body: formData,
     });
     if (!res.ok) throw new Error(`Upload failed (${res.status}): ${res.statusText}`);
-    const json = (await res.json()) as any;
+    const json = (await res.json()) as { data?: DocumentAttachment } & DocumentAttachment;
     return json.data || json;
   },
 };
@@ -599,10 +606,7 @@ export const ReaderCollectionsService = {
     const res = await apiGet<ReaderCollection[] | { collections?: ReaderCollection[]; data?: ReaderCollection[] }>(
       getScopeUrl(scopeId, 'collections'),
     );
-    if (Array.isArray(res)) return res;
-    if (res && Array.isArray((res as any).collections)) return (res as any).collections;
-    if (res && Array.isArray((res as any).data)) return (res as any).data;
-    return [];
+    return unwrapList<ReaderCollection>(res, 'collections');
   },
 
   getItemCollections: async (scopeId: string | undefined, itemId: string): Promise<ReaderCollection[]> => {
@@ -610,10 +614,7 @@ export const ReaderCollectionsService = {
     const res = await apiGet<ReaderCollection[] | { collections?: ReaderCollection[]; data?: ReaderCollection[] }>(
       getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/collections`),
     );
-    if (Array.isArray(res)) return res;
-    if (res && Array.isArray((res as any).collections)) return (res as any).collections;
-    if (res && Array.isArray((res as any).data)) return (res as any).data;
-    return [];
+    return unwrapList<ReaderCollection>(res, 'collections');
   },
 
   addToCollection: async (
@@ -648,17 +649,14 @@ export const ReaderTagsService = {
     const res = await apiGet<TagWithCount[] | { tags?: TagWithCount[]; data?: TagWithCount[] }>(
       getScopeUrl(scopeId, 'tags'),
     );
-    if (Array.isArray(res)) return res;
-    if (res && Array.isArray((res as any).tags)) return (res as any).tags;
-    if (res && Array.isArray((res as any).data)) return (res as any).data;
-    return [];
+    return unwrapList<TagWithCount>(res, 'tags');
   },
 
   getItemTags: async (scopeId: string | undefined, itemId: string): Promise<DocumentTag[]> => {
     if (!itemId) return [];
     try {
       const doc = await ReaderDocumentsService.get(scopeId, itemId);
-      return (doc as any)?.tags || (doc as any)?.itemTags || [];
+      return (doc?.tags || (doc as unknown as { itemTags?: DocumentTag[] })?.itemTags || []) as DocumentTag[];
     } catch {
       return [];
     }
@@ -709,10 +707,7 @@ export const ReaderRelationsService = {
     const res = await apiGet<RelatedItem[] | { relations?: RelatedItem[]; data?: RelatedItem[] }>(
       getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/relations`),
     );
-    if (Array.isArray(res)) return res;
-    if (res && Array.isArray((res as any).relations)) return (res as any).relations;
-    if (res && Array.isArray((res as any).data)) return (res as any).data;
-    return [];
+    return unwrapList<RelatedItem>(res, 'relations');
   },
 
   add: async (
@@ -754,7 +749,13 @@ export const ReaderCitationsService = {
     const url = isProjectScope(scopeId)
       ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/citation/items/${encodeURIComponent(itemId)}/citation`
       : `/api/v1/library/citation/items/${encodeURIComponent(itemId)}/citation`;
-    const res = await apiGet<any>(url, { params: { style } });
+    const res = await apiGet<{
+      bibliography?: string;
+      citation?: string;
+      inText?: string;
+      html?: string;
+      bibliographyHtml?: string;
+    }>(url, { params: { style } });
     return {
       citation: res?.bibliography || res?.citation || res?.inText || '',
       html: res?.html || res?.bibliographyHtml,
@@ -784,10 +785,7 @@ export const ReaderCitationsService = {
       endpoint,
       query ? { params: { q: query } } : undefined,
     );
-    if (Array.isArray(res)) return res;
-    if (res && Array.isArray((res as any).styles)) return (res as any).styles;
-    if (res && Array.isArray((res as any).data)) return (res as any).data;
-    return [];
+    return unwrapList<CslStyleMetadata>(res, 'styles');
   },
 
   exportLibrary: async (
@@ -820,7 +818,7 @@ export const ReaderCitationsService = {
     const res = await fetch(url, { headers });
     if (!res.ok) throw new Error(`Download failed: ${res.statusText}`);
 
-    const data = (await res.json()) as any;
+    const data = (await res.json()) as { base64?: string; mimeType?: string; filename?: string };
     if (data.base64) {
       const byteCharacters = atob(data.base64);
       const byteNumbers = new Array(byteCharacters.length);
@@ -848,11 +846,9 @@ export const ReaderItemTypesService = {
       const res = await apiGet<SchemaItemTypeDefinition[] | { itemTypes?: SchemaItemTypeDefinition[]; types?: SchemaItemTypeDefinition[]; data?: SchemaItemTypeDefinition[] }>(
         '/api/v1/library/item-types',
       );
-      if (Array.isArray(res)) return res;
-      if (res && Array.isArray((res as any).itemTypes)) return (res as any).itemTypes;
-      if (res && Array.isArray((res as any).types)) return (res as any).types;
-      if (res && Array.isArray((res as any).data)) return (res as any).data;
-      return [];
+      const itemTypes = unwrapList<SchemaItemTypeDefinition>(res, 'itemTypes');
+      if (itemTypes.length > 0) return itemTypes;
+      return unwrapList<SchemaItemTypeDefinition>(res, 'types');
     } catch {
       return [];
     }

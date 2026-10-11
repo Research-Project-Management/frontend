@@ -118,8 +118,8 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
     const sel = engine?.getSelection?.();
     const cursor = engine?.getCursorPosition?.();
 
-    const startLine = sel?.fromLine ?? cursor?.line ?? 1;
-    const endLine = sel?.toLine ?? cursor?.line ?? 1;
+    const startLine = sel?.startLine ?? sel?.fromLine ?? cursor?.line ?? 1;
+    const endLine = sel?.endLine ?? sel?.toLine ?? cursor?.line ?? 1;
     const selectedText = engine?.getSelectedText?.() || '';
 
     useDocumentCollaborationStore.getState().setPendingComment({

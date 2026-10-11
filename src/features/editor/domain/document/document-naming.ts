@@ -33,3 +33,18 @@ export function isBibtexFile(filename: string): boolean {
 export function isImageAsset(filename: string): boolean {
   return /\.(png|jpe?g|gif|svg|webp|pdf)$/i.test(filename);
 }
+
+/** Pure display name formatter for LaTeX and manuscript project files */
+export function displayName(title: string): string {
+  const lower = (title || '').trim().toLowerCase();
+  if (lower === 'flux' || lower === 'flux.tex') {
+    return 'main.tex';
+  }
+  return /\.[a-z0-9]+$/i.test(title) ? title : `${title}.tex`;
+}
+
+/** Strips file extension from display name to get clean basename */
+export function cleanBasename(title: string): string {
+  return displayName(title).replace(/\.[a-z0-9]+$/i, '');
+}
+

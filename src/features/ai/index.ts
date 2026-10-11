@@ -10,7 +10,8 @@ export * from './services/chat.service';
 export type * from './types/chat.types';
 
 // Store
-export * from './store';
+export * from './store/ai-ui.store';
+export * from './store/ai-companion.store';
 
 // Utils
 export { renderMarkdown } from './utils/render-markdown';
@@ -19,5 +20,6 @@ export { renderMarkdown } from './utils/render-markdown';
 export { default as AiChatPage } from './pages/chat-page';
 export * from './components/layout/Sidebar';
 export * from './components/layout/panel';
-export * from './components/topbar';
-export * from './components/modals';
+export * from './components/topbar/AiTopbar';
+export * from './components/modals/source-picker-modal';
+export * from './components/modals/document-library-modal';

@@ -36,25 +36,25 @@ import {
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
 import { useSettingsStore } from '../../../store/settings.store';
-import { VisualSlashCommandMenu } from './VisualSlashCommandMenu';
-import { VisualTableToolbar } from './VisualTableToolbar';
-import { VisualFigureToolbar } from './VisualFigureToolbar';
-import { VisualSelectionBubbleMenu } from './VisualSelectionBubbleMenu';
-import { VisualCollaboratorCursors } from './VisualCollaboratorCursors';
-import { VisualReferenceHoverCard } from './VisualReferenceHoverCard';
+import { VisualSlashCommandMenu } from './visual/toolbars/VisualSlashCommandMenu';
+import { VisualTableToolbar } from './visual/toolbars/VisualTableToolbar';
+import { VisualFigureToolbar } from './visual/toolbars/VisualFigureToolbar';
+import { VisualSelectionBubbleMenu } from './visual/toolbars/VisualSelectionBubbleMenu';
+import { VisualReferenceHoverCard } from './visual/toolbars/VisualReferenceHoverCard';
+import { VisualCollaboratorCursors } from './visual/components/VisualCollaboratorCursors';
 import {
   VisualMathEditorModal,
   type ActiveMathEditorState,
-} from './VisualMathEditorModal';
+} from './visual/modals/VisualMathEditorModal';
 import {
   VisualProtectedEditorModal,
   type ActiveProtectedBlockEditorState,
-} from './VisualProtectedEditorModal';
-import { useVisualTableMatrix } from './hooks/useVisualTableMatrix';
-import { useVisualFigureOperations } from './hooks/useVisualFigureOperations';
-import { useVisualSyncTexEngine } from './hooks/useVisualSyncTexEngine';
-import { useVisualSelectionBubble } from './hooks/useVisualSelectionBubble';
-import { useVisualSlashMenu } from './hooks/useVisualSlashMenu';
+} from './visual/modals/VisualProtectedEditorModal';
+import { useVisualTableMatrix } from './visual/hooks/useVisualTableMatrix';
+import { useVisualFigureOperations } from './visual/hooks/useVisualFigureOperations';
+import { useVisualSyncTexEngine } from './visual/hooks/useVisualSyncTexEngine';
+import { useVisualSelectionBubble } from './visual/hooks/useVisualSelectionBubble';
+import { useVisualSlashMenu } from './visual/hooks/useVisualSlashMenu';
 import type { CollaboratorPresenceInfo } from '../../../store/collaboration.store';
 
 export interface VisualEditorViewProps {
@@ -301,7 +301,7 @@ export function VisualEditorView({
         case 'insertMath': {
           const sampleMath = 'x^2 + y^2 = z^2';
           const rendered = renderMathHtml(sampleMath, false);
-          const mathHtml = `<span class="latex-math-inline inline-block px-1 py-0.5 bg-muted/20 rounded cursor-pointer" data-math="${encodeURIComponent(sampleMath)}">${rendered}</span>&nbsp;`;
+          const mathHtml = `<span class="latex-math-inline inline-block px-1 py-0.5 bg-muted/20 rounded-sm cursor-pointer" data-math="${encodeURIComponent(sampleMath)}">${rendered}</span>&nbsp;`;
           document.execCommand('insertHTML', false, mathHtml);
           break;
         }
@@ -329,7 +329,7 @@ export function VisualEditorView({
 
     const unsubCite = EditorEventBus.on('flux:insert-citation', (payload: any) => {
       if (payload?.bibKey) {
-        const chipHtml = `<span class="latex-citation-chip font-mono text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded inline-block cursor-pointer" data-cite="${payload.bibKey}">[@${payload.bibKey}]</span>&nbsp;`;
+        const chipHtml = `<span class="latex-citation-chip font-mono text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-sm inline-block cursor-pointer" data-cite="${payload.bibKey}">[@${payload.bibKey}]</span>&nbsp;`;
         document.execCommand('insertHTML', false, chipHtml);
         handleInput();
       }
@@ -582,7 +582,7 @@ export function VisualEditorView({
             '[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-3',
             '[&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-3',
             '[&_li]:my-1',
-            '[&_blockquote]:border-l-2 [&_blockquote]:border-primary/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:my-4',
+            '[&_blockquote]:border-l [&_blockquote]:border-primary/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:my-4',
             '[&_table]:w-full [&_table]:border-collapse [&_table]:my-4 [&_table]:border [&_table]:border-border',
             '[&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted/40 [&_th]:font-semibold [&_th]:text-left',
             '[&_td]:border [&_td]:border-border [&_td]:p-2',

@@ -8,7 +8,8 @@
  */
 
 import { useEffect, useMemo, useCallback } from 'react';
-import { useViewItems, type Item } from '@/features/library';
+import { useViewItems } from '@/features/library/data';
+import type { Item } from '@/features/library/types';
 import { latexSymbolsIndex } from '../../domain/latex/latex-symbols-index';
 import {
   extractCitationKeys,

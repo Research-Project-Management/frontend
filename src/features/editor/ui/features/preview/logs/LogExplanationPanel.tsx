@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Copy } from 'lucide-react';
-import { copySnippetToClipboard } from '../hooks/useLogViewerActions';
+import { copySnippetToClipboard } from '../hooks/use-log-viewer-actions';
 import type { ErrorExplanationDto } from '@/features/editor/domain/types';
 
 export interface LogExplanationPanelProps {

@@ -32,12 +32,12 @@ export interface DisplayPopoverProps {
 }
 
 const DISPLAY_PROPERTY_ITEMS: Array<{ key: DisplayPropertyKey; label: string }> = [
-  { key: 'state', label: 'State' },
   { key: 'id', label: 'ID' },
+  { key: 'state', label: 'State' },
   { key: 'priority', label: 'Priority' },
-  { key: 'dueDate', label: 'Due date' },
-  { key: 'startDate', label: 'Start date' },
   { key: 'assignee', label: 'Assignee' },
+  { key: 'startDate', label: 'Start date' },
+  { key: 'dueDate', label: 'Due date' },
   { key: 'labels', label: 'Labels' },
   { key: 'childWorkItemCount', label: 'Sub-work item count' },
   { key: 'attachmentCount', label: 'Attachment count' },
@@ -137,49 +137,7 @@ export function DisplayPopover({
         align="end"
         className="w-68 sm:w-72 max-h-[85vh] overflow-y-auto p-2 rounded-md text-12 border-border bg-popover shadow-overlay space-y-2"
       >
-        {/* 1. Display Properties */}
-        <div>
-          <button
-            type="button"
-            onClick={() => setPropertiesOpen(!propertiesOpen)}
-            className="flex w-full items-center justify-between px-1 py-1 text-12 font-medium text-foreground hover:bg-muted/50 transition-colors cursor-pointer select-none rounded"
-          >
-            <span>Display properties</span>
-            {propertiesOpen ? (
-              <ChevronUp className="size-3.5 text-foreground shrink-0" />
-            ) : (
-              <ChevronDown className="size-3.5 text-foreground shrink-0" />
-            )}
-          </button>
-
-          {propertiesOpen && (
-            <div className="flex flex-wrap items-center gap-1.5 pt-1.5 px-0.5">
-              {DISPLAY_PROPERTY_ITEMS.map((item) => {
-                const isSelected = Boolean(properties[item.key]);
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => onPropertyToggle(item.key, !isSelected)}
-                    className={cn(
-                      "px-2.5 py-1 text-12 font-medium rounded-md border transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1 md:before:hidden",
-                      isSelected
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border/70 bg-background text-foreground hover:bg-muted"
-                    )}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="border-t border-border/50" />
-
-        {/* 2. Group By */}
+        {/* 1. Group By */}
         <div>
           <button
             type="button"
@@ -232,7 +190,7 @@ export function DisplayPopover({
 
         <div className="border-t border-border/50" />
 
-        {/* 3. Order By */}
+        {/* 2. Order By */}
         <div>
           <div className="flex w-full items-center justify-between px-1 py-1 text-12 font-medium text-foreground select-none">
             <button
@@ -291,6 +249,48 @@ export function DisplayPopover({
                       {isSelected && <div className="size-2 rounded-full bg-primary" />}
                     </div>
                     <span>{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-border/50" />
+
+        {/* 3. Display Properties */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setPropertiesOpen(!propertiesOpen)}
+            className="flex w-full items-center justify-between px-1 py-1 text-12 font-medium text-foreground hover:bg-muted/50 transition-colors cursor-pointer select-none rounded"
+          >
+            <span>Display properties</span>
+            {propertiesOpen ? (
+              <ChevronUp className="size-3.5 text-foreground shrink-0" />
+            ) : (
+              <ChevronDown className="size-3.5 text-foreground shrink-0" />
+            )}
+          </button>
+
+          {propertiesOpen && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1.5 px-0.5">
+              {DISPLAY_PROPERTY_ITEMS.map((item) => {
+                const isSelected = Boolean(properties[item.key]);
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => onPropertyToggle(item.key, !isSelected)}
+                    className={cn(
+                      "px-2.5 py-1 text-12 font-medium rounded-md border transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1 md:before:hidden",
+                      isSelected
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border/70 bg-background text-foreground hover:bg-muted"
+                    )}
+                  >
+                    {item.label}
                   </button>
                 );
               })}

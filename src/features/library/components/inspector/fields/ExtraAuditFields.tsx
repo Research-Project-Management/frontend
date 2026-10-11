@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import type { Item } from '@/features/library/types/library.types';
-import { formatAndSanitizeExtraMetadata } from '../../../domain';
+import { formatAndSanitizeExtraMetadata } from '../../../domain/metadata';
 import { InlineTextarea } from './InlineTextarea';
 import { useItemMetadataSourcesQuery } from '../../../data';
 

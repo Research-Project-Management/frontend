@@ -149,6 +149,7 @@ export interface PageFile {
   createdAt?: string;
   updatedAt?: string;
   deletedAt?: string | null;
+  url?: string;
 }
 
 // ── Canonical Manuscript & LaTeX Domain Models (Overleaf Parity) ────────────

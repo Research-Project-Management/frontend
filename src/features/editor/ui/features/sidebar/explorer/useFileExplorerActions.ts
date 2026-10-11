@@ -17,9 +17,10 @@ import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { manuscriptService, pageService } from '@/features/editor/sdk';
-import { filesQuery } from '@/features/editor/ui/hooks/use-core';
+import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import type { Page, PageFile } from '@/features/editor/domain/types';
-import { displayName, prepareAssetInsertion } from './file-actions.util';
+import { displayName } from '@/features/editor/domain/document/document-naming';
+import { prepareAssetInsertion } from '@/features/editor/domain/latex/smart-paste';
 
 export interface UseFileExplorerActionsOptions {
   projectId?: string;

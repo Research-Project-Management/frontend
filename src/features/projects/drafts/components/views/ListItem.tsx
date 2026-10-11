@@ -19,15 +19,15 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import { Button } from '@/shared/components/ui/button';
-import { StatusIcon } from '@/shared/components/icons';
 import {
+  StatusIcon,
   UrgentPriorityBoxIcon,
   HighPriorityBoxIcon,
   MediumPriorityBoxIcon,
   LowPriorityBoxIcon,
   NonePriorityBoxIcon,
-  type WorkItemPriority,
-} from '@/features/projects/project-id/work-items';
+} from '@/shared/components/icons';
+import type { WorkItemPriority } from '@/features/projects/project-id/work-items/types/work-item.types';
 import type { WorkItemDraft } from '../../types/draft.types';
 
 export interface ListItemProps {

@@ -31,10 +31,12 @@ import {
   YjsSocketIOProvider,
   getOffsetFromRowCol,
   getRowColFromOffset,
-} from '@/features/editor/sdk';
-import { lruDocumentCache, draftStorageService } from '@/features/editor/domain/document';
+} from '@/features/editor/sdk/realtime/yjs-socket-provider';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
-import { useCompileStore, useConnectivityStore } from '@/features/editor/store';
+import { useCompileStore } from '@/features/editor/store/compiler.store';
+import { useConnectivityStore } from '@/features/editor/store/connectivity.store';
 import { manuscriptService } from '@/features/editor/sdk';
 
 describe('Editor Real-Time Collaboration & Auto-Save Subsystem', () => {

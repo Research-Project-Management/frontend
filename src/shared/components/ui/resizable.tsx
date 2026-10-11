@@ -7,8 +7,16 @@ import { cn } from "@/shared/lib/utils"
 
 function ResizablePanelGroup({
   className,
+  direction,
+  orientation = direction || "horizontal",
+  onLayout,
+  onLayoutChanged,
   ...props
-}: ResizablePrimitive.GroupProps) {
+}: Omit<ResizablePrimitive.GroupProps, "orientation"> & {
+  direction?: "horizontal" | "vertical"
+  orientation?: "horizontal" | "vertical"
+  onLayout?: (layout: ResizablePrimitive.Layout) => void
+}) {
   return (
     <ResizablePrimitive.Group
       data-slot="resizable-panel-group"
@@ -16,6 +24,8 @@ function ResizablePanelGroup({
         "flex h-full w-full aria-[orientation=vertical]:flex-col",
         className
       )}
+      orientation={orientation}
+      onLayoutChanged={onLayoutChanged || onLayout}
       {...props}
     />
   )

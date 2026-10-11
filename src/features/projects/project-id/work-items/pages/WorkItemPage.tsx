@@ -377,8 +377,9 @@ export function WorkItemPage({
     }
     if (groupBy === 'assignee') {
       const memberCols: Column[] = (members || []).map((m, idx) => {
-        const userId = m.userId || (m as any).user?.id || m.id || `member-${idx}`;
-        const name = m.name || (m as any).user?.name || 'Member';
+        const mem = m as typeof m & { user?: { id?: string; name?: string } };
+        const userId = mem.userId || mem.user?.id || mem.id || `member-${idx}`;
+        const name = mem.name || mem.user?.name || 'Member';
         return {
           id: userId,
           name,
@@ -694,6 +695,16 @@ export function WorkItemPage({
       return;
     }
     if (effectiveGroupBy === 'none') {
+      const targetItem = displayItems.find((i) => i.id === workItemId);
+      if (targetItem) {
+        projectActions.reorderWorkItem({
+          workItemId,
+          id: workItemId,
+          columnId: targetItem.columnId,
+          rank,
+          projectId,
+        });
+      }
       return;
     }
 
@@ -704,7 +715,7 @@ export function WorkItemPage({
       rank,
       projectId,
     });
-  }, [effectiveGroupBy, projectActions, projectId]);
+  }, [effectiveGroupBy, projectActions, projectId, displayItems]);
 
   const handleCreateItem = useCallback(async (formData: ItemMutationInput & { createMore?: boolean }) => {
     if (!formData.title?.trim()) {
@@ -849,7 +860,7 @@ export function WorkItemPage({
       <Topbar
         projectId={projectId}
         project={project}
-        projectModules={(project as any)?.modules}
+        projectModules={(project as { modules?: string[] } | undefined)?.modules}
         savedViews={savedViews}
         activeViewId={activeViewId}
         onSelectSavedView={selectSavedView}
@@ -1005,6 +1016,7 @@ export function WorkItemPage({
                 onJoinCard={handleJoinCard}
                 onLeaveCard={handleLeaveCard}
                 onMoveCard={handleMoveCard}
+                onReorderCard={handleReorderCard}
                 onUpdateItem={handleQuickUpdateItem}
                 isReadOnly={isReadOnly}
                 selectedIds={selectedIds}
@@ -1055,6 +1067,8 @@ export function WorkItemPage({
               <TimelineView
                 items={activeFilteredItems}
                 columns={columns}
+                projectStates={columns}
+                displayOptions={displayOptions}
                 currentUserId={currentUser?.id}
                 currentUserAvatar={currentUser?.avatar ?? undefined}
                 projectId={projectId}

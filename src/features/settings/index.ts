@@ -53,5 +53,22 @@ export * as profileService from './services/profile.service';
 export * as securityService from './services/security.service';
 export { integrationService } from './services/integration.service';
 
-// ── Types & Schemas (Flat in types/) ──────────────────────────────────
-export * from './types';
+// ── Types & Schemas ──────────────────────────────────────────────────
+export * from './types/profile.schema';
+export * from './types/preferences.schema';
+export * from './types/notifications.schema';
+export * from './types/security.schema';
+export * from './types/label.schema';
+export * from './types/profile.types';
+export * from './types/security.types';
+export * from './types/integration.types';
+export type {
+  Label,
+  CreateLabelInput,
+  UpdateLabelInput,
+  CreateProjectLabelInput,
+  UpdateProjectLabelInput,
+  ReorderLabelItem,
+  ImportLabelRow,
+  ImportLabelResult,
+} from './types/label.types';

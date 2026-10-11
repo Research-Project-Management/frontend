@@ -194,7 +194,7 @@ export function DetailModal({
   const card = propItem || propCard;
   const availableItems = propAvailableItems || [];
   const { projectId: routeProjectId } = useParams() as { projectId?: string };
-  const currentProjectId = routeProjectId || (project as any)?.id || card?.projectId;
+  const currentProjectId = routeProjectId || project?.id || card?.projectId;
   const { user: currentUser } = useAuth();
   const copyItemText = useCopyItemText();
   const convertSubItemToRoot = useConvertSubItemToRoot();
@@ -204,7 +204,8 @@ export function DetailModal({
 
   const projectLabels = useMemo(() => {
     if (Array.isArray(rawLabels)) return rawLabels;
-    if (Array.isArray((rawLabels as any)?.labels)) return (rawLabels as any).labels;
+    const labelsRecord = rawLabels as { labels?: any[] } | undefined;
+    if (Array.isArray(labelsRecord?.labels)) return labelsRecord.labels;
     return [];
   }, [rawLabels]);
 
@@ -230,7 +231,8 @@ export function DetailModal({
   const [assigneeId, setAssigneeId] = useState<string | null>(null);
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [parentId, setParentId] = useState<string | null>(card?.parentId || null);
-  const [moduleId, setModuleId] = useState<string | null>((card as any)?.moduleId || null);
+  const rawCardModule = card as (Item & { moduleId?: string | null }) | undefined;
+  const [moduleId, setModuleId] = useState<string | null>(rawCardModule?.moduleId || null);
   const [commentText, setCommentText] = useState("");
   const [showDetailActivity, setShowDetailActivity] = useState(false);
   const [showDescriptionActions, setShowDescriptionActions] = useState(false);
@@ -279,20 +281,28 @@ export function DetailModal({
   const subscribeMutation = useSubscribeItemMutation();
   const unsubscribeMutation = useUnsubscribeItemMutation();
 
-  const isArchived = Boolean((card as any)?.archivedAt);
+  const rawCard = card as (Item & {
+    archivedAt?: string | null;
+    creator?: { name?: string };
+    createdByName?: string;
+    subscribers?: string[];
+    completedAt?: string;
+  }) | null | undefined;
+
+  const isArchived = Boolean(rawCard?.archivedAt);
 
   const subscriberList = useMemo(() => {
-    const raw = (card as any)?.subscriberIds || (card as any)?.subscribers;
+    const raw = rawCard?.subscriberIds || rawCard?.subscribers;
     return Array.isArray(raw) ? raw : [];
-  }, [card]);
+  }, [rawCard]);
   const isSubscribed = Boolean(currentUserId && subscriberList.includes(currentUserId));
 
   // Author & timestamps for Plane metadata display
-  const authorName = (card as any)?.author?.name || (card as any)?.creator?.name || (card as any)?.createdByName || currentUser?.name || 'Plane';
-  const createdAtFormatted = formatMetaDate((card as any)?.createdAt) || formatMetaDate(new Date().toISOString());
-  const updatedAtFormatted = formatMetaDate((card as any)?.updatedAt);
-  const completedAtFormatted = (card as any)?.completedAt ? formatMetaDate((card as any).completedAt) : (completed ? 'Completed' : null);
-  const descriptionLastEdited = getTimeAgo((card as any)?.updatedAt || (card as any)?.createdAt);
+  const authorName = rawCard?.author?.name || rawCard?.creator?.name || rawCard?.createdByName || currentUser?.name || 'Plane';
+  const createdAtFormatted = formatMetaDate(rawCard?.createdAt) || formatMetaDate(new Date().toISOString());
+  const updatedAtFormatted = formatMetaDate(rawCard?.updatedAt);
+  const completedAtFormatted = rawCard?.completedAt ? formatMetaDate(rawCard.completedAt) : (completed ? 'Completed' : null);
+  const descriptionLastEdited = getTimeAgo(rawCard?.updatedAt || rawCard?.createdAt);
 
   const handleToggleSubscribe = async () => {
     if (!workItemId || !currentProjectId || !currentUserId) return;
@@ -381,29 +391,30 @@ export function DetailModal({
       setColumnId(card.columnId || firstColumnId);
       setRelations(card.relations || []);
       setPriority(card.priority || "none");
-      setLabels(ItemHelpers.uniqueLabels(card.labels as any));
+      setLabels(ItemHelpers.uniqueLabels(card.labels));
       setDueDate(card.dueDate || "");
       setStartDate(card.startDate || "");
       setParentId(card.parentId || null);
-      setModuleId((card as any)?.moduleId || null);
+      const cardObj = card as (Item & { moduleId?: string | null });
+      setModuleId(cardObj.moduleId || null);
       setSubItems(
-        Array.isArray((card as any)?.childWorkItems) && (card as any).childWorkItems.length > 0
-          ? (card as any).childWorkItems
-          : Array.isArray((card as any)?.subItems)
-          ? (card as any).subItems
+        Array.isArray(card.childWorkItems) && card.childWorkItems.length > 0
+          ? card.childWorkItems
+          : Array.isArray(card.subItems)
+          ? card.subItems
           : []
       );
       setCompleted(card.completed || false);
       setAttachments(normalizeAttachments(card.attachments));
 
-      const initialAssigneeIds = Array.isArray((card as any)?.assigneeIds) && (card as any).assigneeIds.length > 0
-        ? (card as any).assigneeIds
-        : (card as any)?.assignees && Array.isArray((card as any).assignees) && (card as any).assignees.length > 0
-        ? (card as any).assignees.map((a: any) => a.id).filter(Boolean)
-        : card?.assigneeId
+      const initialAssigneeIds = Array.isArray(card.assigneeIds) && card.assigneeIds.length > 0
+        ? card.assigneeIds
+        : Array.isArray(card.assignees) && card.assignees.length > 0
+        ? card.assignees.map((a) => a.id).filter(Boolean)
+        : card.assigneeId
         ? [card.assigneeId]
-        : (card as any)?.assignee?.id
-        ? [(card as any).assignee.id]
+        : card.assignee?.id
+        ? [card.assignee.id]
         : [];
       setAssigneeIds(initialAssigneeIds);
       setAssigneeId(initialAssigneeIds[0] ?? null);
@@ -430,14 +441,16 @@ export function DetailModal({
     setCommentCaretPosition(0);
     setShowDetailActivity(false);
     setShowDescriptionActions(false);
-    const initialAssigneeIds = Array.isArray((card as any)?.assigneeIds) && (card as any).assigneeIds.length > 0
-      ? (card as any).assigneeIds
-      : (card as any)?.assignees && Array.isArray((card as any).assignees) && (card as any).assignees.length > 0
-      ? (card as any).assignees.map((a: any) => a.id).filter(Boolean)
-      : card?.assigneeId
-      ? [card.assigneeId]
-      : (card as any)?.assignee?.id
-      ? [(card as any).assignee.id]
+    const initialAssigneeIds = card
+      ? (Array.isArray(card.assigneeIds) && card.assigneeIds.length > 0
+        ? card.assigneeIds
+        : Array.isArray(card.assignees) && card.assignees.length > 0
+        ? card.assignees.map((a) => a.id).filter(Boolean)
+        : card.assigneeId
+        ? [card.assigneeId]
+        : card.assignee?.id
+        ? [card.assignee.id]
+        : [])
       : [];
     initialSnapshotRef.current = ItemHelpers.createSnapshot({
       title: card?.title || "",
@@ -447,7 +460,9 @@ export function DetailModal({
       priority: card?.priority || "none",
       dueDate: card?.dueDate || "",
       startDate: card?.startDate || "",
-      labels: ItemHelpers.uniqueLabels(card?.labels as any),
+      labels: Array.isArray(card?.labels)
+        ? ItemHelpers.uniqueLabels(card.labels as (string | { id?: string; name?: string; color?: string; [key: string]: unknown })[])
+        : [],
       assigneeId: initialAssigneeIds[0] ?? null,
       assigneeIds: initialAssigneeIds,
       parentId: card?.parentId || null,
@@ -663,7 +678,7 @@ export function DetailModal({
       };
       setAttachments(updated);
       setOpenAttachmentPopover(false);
-      safeSave({ ...currentPayload, attachments: updated as any });
+      safeSave({ ...currentPayload, attachments: updated });
     } catch {}
   };
 
@@ -681,18 +696,18 @@ export function DetailModal({
       ],
     };
     setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated as any });
+    safeSave({ ...currentPayload, attachments: updated });
   };
 
   const handleDetachPage = (pageId: string) => {
     const updated: AttachCenterData = {
       ...attachments,
       pages: (attachments.pages || []).filter(
-        (p) => (p as any).pageId !== pageId && p.id !== pageId
+        (p: any) => (p.pageId || p.id) !== pageId
       ),
     };
     setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated as any });
+    safeSave({ ...currentPayload, attachments: updated });
   };
 
   const handleAttachPaper = (paper: {
@@ -716,18 +731,18 @@ export function DetailModal({
       ],
     };
     setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated as any });
+    safeSave({ ...currentPayload, attachments: updated });
   };
 
   const handleDetachPaper = (paperId: string) => {
     const updated: AttachCenterData = {
       ...attachments,
       papers: (attachments.papers || []).filter(
-        (p) => (p as any).paperId !== paperId && p.id !== paperId
+        (p: any) => (p.paperId || p.id) !== paperId
       ),
     };
     setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated as any });
+    safeSave({ ...currentPayload, attachments: updated });
   };
 
   const handleAttachFile = (file: {
@@ -751,16 +766,22 @@ export function DetailModal({
       files: [...(attachments.files || []), newFile],
     };
     setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated as any });
+    safeSave({ ...currentPayload, attachments: updated });
   };
 
   const handleDetachFile = (fileId: string) => {
+    const fileToRemove = (attachments.files || []).find((f) => f.id === fileId);
+    if (fileToRemove?.url?.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(fileToRemove.url);
+      } catch {}
+    }
     const updated: AttachCenterData = {
       ...attachments,
-      files: (attachments.files || []).filter((f) => (f as any).id !== fileId),
+      files: (attachments.files || []).filter((f) => f.id !== fileId),
     };
     setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated as any });
+    safeSave({ ...currentPayload, attachments: updated });
   };
 
   const handleAttachLink = (link: { title: string; url: string }) => {
@@ -776,7 +797,7 @@ export function DetailModal({
       ],
     };
     setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated as any });
+    safeSave({ ...currentPayload, attachments: updated });
   };
 
   const handleDetachLink = (linkIndex: number) => {
@@ -785,18 +806,18 @@ export function DetailModal({
       links: (attachments.links || []).filter((_, idx) => idx !== linkIndex),
     };
     setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated as any });
+    safeSave({ ...currentPayload, attachments: updated });
   };
 
   const handleRenameAttachment = (attachmentId: string, newName: string) => {
     const updated: AttachCenterData = {
       ...attachments,
       files: (attachments.files || []).map((a) =>
-        (a as any).id === attachmentId ? { ...a, name: newName } : a
+        a.id === attachmentId ? { ...a, name: newName } : a
       ),
     };
     setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated as any });
+    safeSave({ ...currentPayload, attachments: updated });
   };
 
   const handleRemoveAttachment = (attachmentId: string) => {
@@ -829,9 +850,9 @@ export function DetailModal({
   const selectedMembers = useMemo(() => {
     return assigneeIds
       .map((id) => {
-        const m = (members as any[]).find(
-          (mem: any) => (mem.user?.id || mem.userId || mem.id) === id
-        );
+        const m = (members || []).find(
+          (mem) => ((mem as { user?: { id?: string } }).user?.id || (mem as { userId?: string }).userId || (mem as { id?: string }).id) === id
+        ) as { user?: { name?: string; avatar?: string | null }; name?: string; avatar?: string | null } | undefined;
         return m
           ? {
               id,
@@ -846,7 +867,7 @@ export function DetailModal({
   const selectedLabelsList = useMemo(() => {
     const safeLabels = Array.isArray(projectLabels) ? projectLabels : [];
     const safeSelected = Array.isArray(labels) ? labels : [];
-    return safeLabels.filter((l: any) => safeSelected.includes(l.id));
+    return safeLabels.filter((l) => safeSelected.includes(l.id));
   }, [projectLabels, labels]);
 
   const progressRollup = useMemo(() => {
@@ -854,33 +875,44 @@ export function DetailModal({
   }, [subItems]);
 
   const visibleActivities = useMemo<ActivityEntry[]>(() => {
-    const commentsList = Array.isArray(itemComments)
-      ? itemComments
-      : (itemComments as any)?.comments || (itemComments as any)?.data || [];
-    const commentEntries: ActivityEntry[] = commentsList.map((c: any) => {
+    const commentsRecord = itemComments as { comments?: Array<Record<string, unknown>>; data?: Array<Record<string, unknown>> } | undefined;
+    const commentsList: Array<Record<string, unknown>> = Array.isArray(itemComments)
+      ? (itemComments as Array<Record<string, unknown>>)
+      : Array.isArray(commentsRecord?.comments)
+      ? commentsRecord.comments
+      : Array.isArray(commentsRecord?.data)
+      ? commentsRecord.data
+      : [];
+
+    const commentEntries: ActivityEntry[] = commentsList.map((c) => {
       let reactionEmoji: string | undefined = undefined;
-      if (c.reactions) {
-        if (typeof c.reactions === 'object' && !Array.isArray(c.reactions)) {
-          const activeEmojis = Object.entries(c.reactions)
+      const cReactions = c.reactions;
+      if (cReactions) {
+        if (typeof cReactions === 'object' && !Array.isArray(cReactions)) {
+          const activeEmojis = Object.entries(cReactions as Record<string, unknown>)
             .filter(([_, uids]) => Array.isArray(uids) && uids.length > 0)
             .map(([emoji]) => emoji);
           if (activeEmojis.length > 0) {
             reactionEmoji = activeEmojis.join(' ');
           }
-        } else if (Array.isArray(c.reactions) && c.reactions.length > 0) {
-          reactionEmoji = c.reactions[0]?.emoji || c.reactions[0];
+        } else if (Array.isArray(cReactions) && cReactions.length > 0) {
+          const first = cReactions[0] as { emoji?: string } | string | undefined;
+          reactionEmoji = typeof first === 'object' && first ? first.emoji : (first as string | undefined);
         }
       }
 
+      const authorObj = c.author as { name?: string; avatar?: string } | undefined;
+      const cCreatedAt = typeof c.createdAt === 'string' ? c.createdAt : undefined;
+
       return {
-        id: c.id,
+        id: (c.id as string) || `c_${Math.random()}`,
         kind: 'comment',
-        author: c.author?.name || 'User',
-        avatarUrl: c.author?.avatar,
-        authorInitials: ItemHelpers.getInitials(c.author?.name),
-        content: c.content || '',
-        timestamp: ItemHelpers.formatActivityTime(c.createdAt),
-        createdAt: c.createdAt ? new Date(c.createdAt).getTime() : Date.now(),
+        author: authorObj?.name || 'User',
+        avatarUrl: authorObj?.avatar,
+        authorInitials: ItemHelpers.getInitials(authorObj?.name),
+        content: (c.content as string) || '',
+        timestamp: ItemHelpers.formatActivityTime(cCreatedAt),
+        createdAt: cCreatedAt ? new Date(cCreatedAt).getTime() : Date.now(),
         reactionEmoji,
         permissions: {
           canEdit: true,
@@ -889,19 +921,38 @@ export function DetailModal({
       };
     });
 
-    const activityList = Array.isArray(itemActivity)
-      ? itemActivity
-      : (itemActivity as any)?.activity || (itemActivity as any)?.activities || (itemActivity as any)?.data || [];
-    const logEntries: ActivityEntry[] = activityList.map((a: any) => ({
-      id: a.id || `log_${Math.random()}`,
-      kind: 'activity',
-      author: a.user?.name || a.author?.name || 'System',
-      avatarUrl: a.user?.avatar || a.author?.avatar,
-      authorInitials: ItemHelpers.getInitials(a.user?.name || a.author?.name),
-      content: a.message || a.action || 'updated this item',
-      timestamp: ItemHelpers.formatActivityTime(a.createdAt),
-      createdAt: a.createdAt ? new Date(a.createdAt).getTime() : Date.now(),
-    }));
+    const activityRecord = itemActivity as {
+      activity?: Array<Record<string, unknown>>;
+      activities?: Array<Record<string, unknown>>;
+      data?: Array<Record<string, unknown>>;
+    } | undefined;
+    const activityList: Array<Record<string, unknown>> = Array.isArray(itemActivity)
+      ? (itemActivity as Array<Record<string, unknown>>)
+      : Array.isArray(activityRecord?.activity)
+      ? activityRecord.activity
+      : Array.isArray(activityRecord?.activities)
+      ? activityRecord.activities
+      : Array.isArray(activityRecord?.data)
+      ? activityRecord.data
+      : [];
+
+    const logEntries: ActivityEntry[] = activityList.map((a) => {
+      const userObj = a.user as { name?: string; avatar?: string } | undefined;
+      const authorObj = a.author as { name?: string; avatar?: string } | undefined;
+      const authorName = userObj?.name || authorObj?.name;
+      const aCreatedAt = typeof a.createdAt === 'string' ? a.createdAt : undefined;
+
+      return {
+        id: (a.id as string) || `log_${Math.random()}`,
+        kind: 'activity',
+        author: authorName || 'System',
+        avatarUrl: userObj?.avatar || authorObj?.avatar,
+        authorInitials: ItemHelpers.getInitials(authorName),
+        content: (a.message as string) || (a.action as string) || 'updated this item',
+        timestamp: ItemHelpers.formatActivityTime(aCreatedAt),
+        createdAt: aCreatedAt ? new Date(aCreatedAt).getTime() : Date.now(),
+      };
+    });
 
     return [...commentEntries, ...logEntries].sort(
       (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
@@ -1563,30 +1614,6 @@ export function DetailModal({
                             actionBtnClass={actionBtnClass}
                             isReadOnly={isReadOnly}
                           />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Project Structure Subsection */}
-                  <div className="space-y-3 pt-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowProjectStructure((prev) => !prev)}
-                      className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:underline transition-colors cursor-pointer"
-                    >
-                      {showProjectStructure ? <ChevronDown className="size-3.5 shrink-0" /> : <ChevronRight className="size-3.5 shrink-0" />}
-                      <span>Project structure</span>
-                    </button>
-
-                    {showProjectStructure && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-2">
-                        {/* Module Info */}
-                        <div className="flex items-center justify-between text-xs py-1">
-                          <span className="text-foreground">Modules</span>
-                          <span className="text-xs font-medium text-foreground truncate max-w-[140px]">
-                            {(card as any)?.module?.name || (card as any)?.moduleName || 'Core Workflow'}
-                          </span>
                         </div>
                       </div>
                     )}

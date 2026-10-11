@@ -92,7 +92,7 @@ export function DiffContentPane({
                 className={cn(
                   'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono transition-colors shrink-0 cursor-pointer',
                   isActive
-                    ? 'bg-background text-foreground border shadow-xs font-semibold'
+                    ? 'bg-background text-foreground border border-border font-semibold'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )}
               >

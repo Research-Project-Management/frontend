@@ -2,13 +2,13 @@
  * latex-error-lens.ts
  *
  * VS Code-style Inline Error Lens & 1-Click AI AutoFix Extension (Block 4: Engines Layer).
- * Location: `features/editor/engines/latex-error-lens.ts`
+ * Location: `features/editor/engines/extensions/latex-error-lens.ts`
  *
  * Capabilities:
  * - Projects compiler and linter diagnostics directly at the end of the erroneous code line.
  * - Color-coded indicators (Red for error, Amber for warning, Blue for info).
  * - Soft line highlight tinting to guide the user's focus without distraction.
- * - Interactive "✨ Fix with AI" button embedded in the Error Lens widget:
+ * - Interactive "Fix with AI" button embedded in the Error Lens widget:
  *   Calls `aiCoordinator.autoFixDiagnostic` to generate and mount an interactive Inline Diff
  *   at the exact line, allowing instant 1-click review and accept (Mod-Enter).
  * - "Ask AI" button to open the Primary Sidebar with full contextual diagnostic prompt.

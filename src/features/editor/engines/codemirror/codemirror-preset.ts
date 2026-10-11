@@ -11,7 +11,7 @@
  * - Overleaf-compatible keymap presets.
  */
 
-import { type Extension, Compartment, EditorState } from '@codemirror/state';
+import { type Extension, Compartment, EditorState, EditorSelection, Prec } from '@codemirror/state';
 import {
   EditorView,
   lineNumbers,
@@ -28,6 +28,9 @@ import {
   toggleComment,
   addCursorAbove,
   addCursorBelow,
+  indentWithTab,
+  deleteLine,
+  emacsStyleKeymap,
 } from '@codemirror/commands';
 import {
   foldGutter,
@@ -52,7 +55,9 @@ import { createLatexFoldExtension } from '../extensions/latex-folding';
 import { createLatexErrorLensExtension } from '../extensions/latex-error-lens';
 import { createLatexSpellingExtension } from '../extensions/latex-spelling';
 import { editorCommandBus } from '../../coordinators/command-bus';
-import { useDocumentCollaborationStore, useLayoutStore, useSettingsStore } from '../../store';
+import { useDocumentCollaborationStore } from '../../store/collaboration.store';
+import { useLayoutStore } from '../../store/layout.store';
+import { useSettingsStore } from '../../store/settings.store';
 import { getThemeExtension } from './editor-themes';
 
 export const editorBaseTheme = EditorView.theme({
@@ -111,6 +116,7 @@ export interface CodeMirrorPresetOptions {
   bracketMatching?: boolean;
   highlightActiveLine?: boolean;
   vimMode?: boolean;
+  keybinding?: 'standard' | 'vim' | 'emacs';
   enableMathPreview?: boolean;
   enableCitationHover?: boolean;
   enableAutocomplete?: boolean;
@@ -128,9 +134,15 @@ export interface CodeMirrorPresetOptions {
   lineHeight?: number;
 }
 
+declare global {
+  interface Window {
+    CodeMirrorVim?: { Vim: typeof Vim };
+  }
+}
+
 // Expose Vim for custom vimrc / user keybindings (Overleaf parity)
 if (typeof window !== 'undefined') {
-  (window as any).CodeMirrorVim = { Vim };
+  window.CodeMirrorVim = { Vim };
 }
 
 /**
@@ -141,6 +153,7 @@ export const editorCompartments = {
   readOnly: new Compartment(),
   lineNumbers: new Compartment(),
   lineWrapping: new Compartment(),
+  keybinding: new Compartment(),
   vimMode: new Compartment(),
   bracketMatching: new Compartment(),
   highlightActiveLine: new Compartment(),
@@ -162,13 +175,29 @@ import {
   handleAutoCloseEnvironment,
   handleAutoCloseMath,
   handleBackspaceBetweenMath,
-} from './latex-formatting.util';
+} from './latex-formatting.commands';
 export {
   wrapFormatting,
   handleAutoCloseEnvironment,
   handleAutoCloseMath,
   handleBackspaceBetweenMath,
 };
+
+function changeCase(view: EditorView, toUpper: boolean): boolean {
+  const { state } = view;
+  const tr = state.changeByRange((range) => {
+    if (range.empty) return { range };
+    const text = state.sliceDoc(range.from, range.to);
+    const newText = toUpper ? text.toUpperCase() : text.toLowerCase();
+    return {
+      changes: { from: range.from, to: range.to, insert: newText },
+      range: EditorSelection.range(range.from, range.from + newText.length),
+    };
+  });
+  if (tr.changes.empty) return false;
+  view.dispatch(tr);
+  return true;
+}
 
 /**
  * Generates an immutable Extension[] array for CodeMirror 6 EditorState creation.
@@ -181,6 +210,7 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
     bracketMatching: enableBracketMatching = true,
     highlightActiveLine: enableHighlightActive = true,
     vimMode = false,
+    keybinding = 'standard',
     enableMathPreview = true,
     enableCitationHover = true,
     enableAutocomplete = true,
@@ -232,9 +262,21 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
         key: 'Mod-i',
         run: (view) => wrapFormatting(view, '\\textit{', '}'),
       },
+      // Overleaf Parity: Mod-u converts selection to uppercase, or underlines if empty
       {
         key: 'Mod-u',
-        run: (view) => wrapFormatting(view, '\\underline{', '}'),
+        run: (view) => {
+          const hasSelection = view.state.selection.ranges.some((r) => !r.empty);
+          if (hasSelection) {
+            return changeCase(view, true);
+          }
+          return wrapFormatting(view, '\\underline{', '}');
+        },
+      },
+      // Overleaf Parity: Mod-Shift-u converts selection to lowercase
+      {
+        key: 'Mod-Shift-u',
+        run: (view) => changeCase(view, false),
       },
       {
         key: 'Enter',
@@ -402,9 +444,15 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
         },
       },
 
-      // Overleaf Multi-cursor Parity: Select Next Occurrence (Mod-d) and Add Cursor Above/Below
+      // Overleaf Parity: Mod-d is Delete Line
       {
         key: 'Mod-d',
+        run: deleteLine,
+        preventDefault: true,
+      },
+      // Alternative multi-cursor next occurrence: Alt-d
+      {
+        key: 'Alt-d',
         run: selectNextOccurrence,
         preventDefault: true,
       },
@@ -426,6 +474,7 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
       },
 
       // Priority 2: Standard Editor & Language Keymaps
+      indentWithTab,
       ...defaultKeymap,
       ...historyKeymap,
       ...foldKeymap,
@@ -435,7 +484,14 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
 
     // 4. Dynamic Compartments (Zero-cost reconfiguration)
     editorCompartments.readOnly.of(EditorState.readOnly.of(readOnly)),
-    editorCompartments.vimMode.of(vimMode ? vim() : []),
+    editorCompartments.keybinding.of(
+      keybinding === 'vim' || (vimMode && keybinding !== 'emacs')
+        ? vim()
+        : keybinding === 'emacs'
+        ? Prec.highest(keymap.of(emacsStyleKeymap))
+        : []
+    ),
+    editorCompartments.vimMode.of([]),
     editorCompartments.lineNumbers.of(
       showLineNumbers ? [lineNumbers(), highlightActiveLineGutter(), foldGutter()] : []
     ),
@@ -540,10 +596,23 @@ export function reconfigureLineWrapping(view: EditorView, wrap: boolean): void {
   });
 }
 
-export function reconfigureVimMode(view: EditorView, enabled: boolean): void {
+export function reconfigureKeybinding(
+  view: EditorView,
+  mode: 'standard' | 'vim' | 'emacs',
+): void {
+  const ext =
+    mode === 'vim'
+      ? vim()
+      : mode === 'emacs'
+      ? Prec.highest(keymap.of(emacsStyleKeymap))
+      : [];
   view.dispatch({
-    effects: editorCompartments.vimMode.reconfigure(enabled ? vim() : []),
+    effects: editorCompartments.keybinding.reconfigure(ext),
   });
+}
+
+export function reconfigureVimMode(view: EditorView, enabled: boolean): void {
+  reconfigureKeybinding(view, enabled ? 'vim' : 'standard');
 }
 
 export function reconfigureReadOnly(view: EditorView, readOnly: boolean): void {

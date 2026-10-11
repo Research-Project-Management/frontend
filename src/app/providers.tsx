@@ -7,7 +7,7 @@ import { getQueryClient } from "@/shared/lib/get-query-client";
 
 import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
 import { TooltipProvider } from "@/shared/components/ui/tooltip";
-import { ThemeProvider } from "@/shared/providers";
+import { ThemeProvider } from "@/shared/providers/theme-provider";
 
 
 export default function Providers({ children }: { children: React.ReactNode }) {

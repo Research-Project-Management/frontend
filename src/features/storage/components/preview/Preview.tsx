@@ -74,7 +74,7 @@ export default function Preview() {
 
   if (!item) return null;
 
-  const fileType = getFileType(item as any);
+  const fileType = getFileType(item);
   const isImage = fileType === 'image';
   const isPdf =
     item.filename.toLowerCase().endsWith('.pdf') ||
@@ -107,7 +107,7 @@ export default function Preview() {
     {
       icon: <Tag className="size-3.5 text-muted-foreground/70 shrink-0" />,
       label: 'Type',
-      value: formatMimeType(item as any),
+      value: formatMimeType(item),
     },
     {
       icon: <HardDrive className="size-3.5 text-muted-foreground/70 shrink-0" />,
@@ -160,7 +160,7 @@ export default function Preview() {
             </p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="text-xs text-muted-foreground/70 truncate">
-                {formatMimeType(item as any)}
+                {formatMimeType(item)}
               </span>
               {item.starred && (
                 <Star className="size-3 fill-amber-400 text-amber-400 shrink-0" />
@@ -382,7 +382,7 @@ export default function Preview() {
         <ScientificViewerModal
           open={true}
           onOpenChange={setScientificViewerOpen}
-          file={item as any}
+          file={item}
         />
       )}
 
@@ -391,7 +391,7 @@ export default function Preview() {
         <VersionHistoryModal
           open={true}
           onOpenChange={setVersionHistoryOpen}
-          file={item as any}
+          file={item}
         />
       )}
       </div>

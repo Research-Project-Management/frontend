@@ -10,20 +10,20 @@ import {
   getItemTypeDefinition,
   mapRegistryItemTypes,
 } from '../../utils/reader.util';
-import { useItemTypes, useConversion } from '../../data';
+import { useItemTypes, useConversion } from '../../data/reader.queries';
 import { useReaderClipboard } from '../../hooks/use-reader-feedback';
 import {
   CreatorFields,
-  GeneralFields,
-  DynamicInspectorField,
-  ExtraAuditFields,
-  InlineField,
-  InlineTextarea,
   type CreatorEntry,
   parseCreators,
   areCreatorsEqual,
   toItemCreators,
-} from './fields';
+} from './fields/CreatorFields';
+import { GeneralFields } from './fields/GeneralFields';
+import { DynamicInspectorField } from './fields/DynamicInspectorField';
+import { ExtraAuditFields } from './fields/ExtraAuditFields';
+import { InlineField } from './fields/InlineField';
+import { InlineTextarea } from './fields/InlineTextarea';
 
 export type { CreatorEntry };
 export { InlineField, InlineTextarea, parseCreators, areCreatorsEqual, toItemCreators };
@@ -54,7 +54,7 @@ export const DIRECT_METADATA_FIELDS = new Set([
 ]);
 
 /** Filter out empty, null, undefined, or junk placeholder string values */
-export function isValidValue(val?: any): boolean {
+export function isValidValue(val?: unknown): boolean {
   if (val === null || val === undefined) return false;
   if (typeof val === 'number') return !isNaN(val) && Number.isFinite(val);
   if (typeof val === 'boolean') return true;
@@ -80,7 +80,7 @@ export function isValidValue(val?: any): boolean {
 }
 
 /** Clean string value or return empty string */
-export function cleanValue(val?: any): string {
+export function cleanValue(val?: unknown): string {
   if (!isValidValue(val)) return '';
   return String(val).trim();
 }
@@ -109,7 +109,7 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
   const { copy: copyToClipboard, copiedKey } = useReaderClipboard(1500);
 
   const currentItemType = paper.itemType || 'journalArticle';
-  const scopeId = (paper as any).projectId || '';
+  const scopeId = paper.projectId || '';
 
   const { previewAsync, convertAsync } = useConversion(scopeId);
   const { data: registryItemTypes = [] } = useItemTypes();
@@ -145,9 +145,9 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
     [currentItemType, itemTypeDefinitions],
   );
 
-  const displayDoi = cleanDoi(paper.doi || (paper as any).DOI);
+  const displayDoi = cleanDoi(paper.doi || paper.DOI || undefined);
 
-  const handleFieldChange = (field: keyof Item | string, value: any) => {
+  const handleFieldChange = (field: keyof Item | string, value: unknown) => {
     if (onUpdatePaper) {
       onUpdatePaper({ [field]: value });
     }
@@ -156,9 +156,10 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
   /** Helper to retrieve value for a field definition key from paper */
   const getFieldValue = useCallback(
     (fieldKey: string): string => {
-      const p = paper as any;
+      const p = paper;
+      const paperRecord = paper as unknown as Record<string, unknown>;
       const keyLower = fieldKey.toLowerCase();
-      const ef = (p.extraFields as Record<string, any>) || {};
+      const ef = (p.extraFields as Record<string, unknown>) || {};
 
       if (keyLower === 'date' || keyLower === 'publicationdate') {
         return cleanValue(
@@ -297,13 +298,13 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
         keyLower === 'network' ||
         keyLower === 'label'
       ) {
-        return cleanValue(p[fieldKey] || ef[fieldKey]);
+        return cleanValue(paperRecord[fieldKey] || ef[fieldKey]);
       }
       if (keyLower === 'issuingauthority' || keyLower === 'authority') {
         return cleanValue(p.issuingAuthority || ef.issuingAuthority || p.authority);
       }
       if (keyLower === 'patentnumber') {
-        return cleanValue(p.patentNumber || ef.patentNumber || (p as any).number);
+        return cleanValue(p.patentNumber || ef.patentNumber || p.number);
       }
       if (keyLower === 'assignee') {
         return cleanValue(p.assignee || ef.assignee);
@@ -318,7 +319,7 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
         keyLower === 'programtitle'
       ) {
         return cleanValue(
-          p[fieldKey] ||
+          paperRecord[fieldKey] ||
             ef[fieldKey] ||
             (['websitetitle', 'blogtitle'].includes(keyLower) ? p.publicationTitle : ''),
         );
@@ -329,10 +330,10 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
         keyLower === 'reporttype' ||
         keyLower === 'posttype'
       ) {
-        return cleanValue(p[fieldKey] || ef[fieldKey] || p.type || p.genre);
+        return cleanValue(paperRecord[fieldKey] || ef[fieldKey] || p.type || p.genre);
       }
       if (keyLower === 'reportnumber') {
-        return cleanValue(p.reportNumber || (p as any).number || ef.reportNumber);
+        return cleanValue(p.reportNumber || p.number || ef.reportNumber);
       }
       if (keyLower === 'country') {
         return cleanValue(p.country || ef.country);
@@ -352,7 +353,7 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
         return cleanValue(currentReferenceCount);
       }
 
-      return cleanValue(p[fieldKey] ?? ef[fieldKey] ?? p.customFields?.[fieldKey]);
+      return cleanValue(paperRecord[fieldKey] ?? ef[fieldKey] ?? (paperRecord.customFields as Record<string, unknown> | undefined)?.[fieldKey]);
     },
     [paper, displayDoi],
   );
@@ -641,7 +642,7 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
           Abstract
         </span>
         <InlineTextarea
-          value={cleanValue(paper.abstract || (paper as any).abstractNote)}
+          value={cleanValue(paper.abstract || paper.abstractNote)}
           ariaLabel="Abstract"
           placeholder={canEdit ? "Add abstract..." : ""}
           onSave={(newVal) => {

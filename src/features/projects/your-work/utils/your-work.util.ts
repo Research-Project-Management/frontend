@@ -61,11 +61,12 @@ export function getWorkItemProject(workItem: any, projectMap: ProjectMap = {}): 
   }
 
   // 2. Embedded projectId object with name
-  if (workItem.projectId && typeof workItem.projectId === 'object' && workItem.projectId.name) {
+  if (workItem.projectId && typeof workItem.projectId === 'object' && 'name' in workItem.projectId && workItem.projectId.name) {
+    const projObj = workItem.projectId as Record<string, unknown>;
     return {
-      id: workItem.projectId.id || '',
-      name: workItem.projectId.name,
-      avatar: (workItem.projectId as any).avatar || null,
+      id: typeof projObj.id === 'string' ? projObj.id : '',
+      name: String(projObj.name),
+      avatar: typeof projObj.avatar === 'string' ? projObj.avatar : null,
     };
   }
 

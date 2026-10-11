@@ -66,7 +66,7 @@ export function Switcher({
     if (!currentProjectId) return null;
     return (
       projects.find(
-        (p) => p.id === currentProjectId || (p as any).identifier === currentProjectId
+        (p) => p.id === currentProjectId || (p as { identifier?: string }).identifier === currentProjectId
       ) || null
     );
   }, [projects, currentProjectId]);
@@ -137,7 +137,7 @@ export function Switcher({
     if (!currentProjectId) return projects;
     const exists = projects.some((p) => p.id === currentProjectId);
     if (!exists && currentProject?.id) {
-      return [currentProject as any, ...projects];
+      return [currentProject as unknown as (typeof projects)[number], ...projects];
     }
     return projects;
   }, [projects, currentProjectId, currentProject]);

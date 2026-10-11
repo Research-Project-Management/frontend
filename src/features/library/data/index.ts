@@ -11,9 +11,15 @@ export * from './query-keys';
 export * from './library-services';
 
 // ── 6 Bounded Context Sub-Domains ─────────────────────────────────────────────
-export * from './catalog';
-export * from './extraction';
-export * from './ingestion';
-export * from './citation';
-export * from './search';
-export * from './sync';
+export * from './catalog/catalog.service';
+export * from './catalog/catalog.queries';
+export * from './extraction/extraction.service';
+export * from './extraction/extraction.queries';
+export * from './ingestion/ingestion.service';
+export * from './ingestion/ingestion.queries';
+export * from './citation/citation.service';
+export * from './citation/citation.queries';
+export * from './search/search.service';
+export * from './search/search.queries';
+export * from './sync/sync.service';
+export * from './sync/sync.queries';

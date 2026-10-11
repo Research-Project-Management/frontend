@@ -11,6 +11,7 @@ import type {
   CommandHandler,
   IEditorCommandBus,
 } from '../domain/types/ports/command-bus.port';
+import type { IEditorEngine } from '../domain/types/ports/editor-engine.port';
 
 class EditorCommandBusImpl implements IEditorCommandBus {
   private handlers = new Map<string, Set<CommandHandler<any>>>();
@@ -104,40 +105,43 @@ class EditorCommandBusImpl implements IEditorCommandBus {
 }
 
 const GLOBAL_BUS_KEY = Symbol.for('__FLUX_EDITOR_COMMAND_BUS__');
-const globalAny = globalThis as any;
-if (!globalAny[GLOBAL_BUS_KEY]) {
-  globalAny[GLOBAL_BUS_KEY] = new EditorCommandBusImpl();
+type GlobalWithBus = typeof globalThis & {
+  [GLOBAL_BUS_KEY]?: EditorCommandBusImpl;
+};
+const globalWithBus = globalThis as GlobalWithBus;
+if (!globalWithBus[GLOBAL_BUS_KEY]) {
+  globalWithBus[GLOBAL_BUS_KEY] = new EditorCommandBusImpl();
 }
 
-export const editorCommandBus: EditorCommandBusImpl = globalAny[GLOBAL_BUS_KEY];
+export const editorCommandBus: EditorCommandBusImpl = globalWithBus[GLOBAL_BUS_KEY]!;
 export const commandBus = editorCommandBus;
 export type { EditorCommand, CommandHandler, IEditorCommandBus };
 
 // ── Active Engine & Viewer Registry (Context-Free Architecture) ──────────────
 
-let activeEngineInstance: any = null;
-let activeViewerInstance: any = null;
+let activeEngineInstance: IEditorEngine | null = null;
+let activeViewerInstance: unknown = null;
 
-export function setActiveEditorEngine(engine: any): void {
+export function setActiveEditorEngine(engine: IEditorEngine | null): void {
   activeEngineInstance = engine;
 }
 
-export function getActiveEditorEngine(): any {
+export function getActiveEditorEngine(): IEditorEngine | null {
   return activeEngineInstance;
 }
 
 export function getActiveEditorContent(): string {
-  if (typeof activeEngineInstance?.getContent === 'function') {
+  if (activeEngineInstance && typeof activeEngineInstance.getContent === 'function') {
     return activeEngineInstance.getContent();
   }
   return '';
 }
 
-export function setActivePdfViewer(viewer: any): void {
+export function setActivePdfViewer(viewer: unknown): void {
   activeViewerInstance = viewer;
 }
 
-export function getActivePdfViewer(): any {
+export function getActivePdfViewer(): unknown {
   return activeViewerInstance;
 }
 

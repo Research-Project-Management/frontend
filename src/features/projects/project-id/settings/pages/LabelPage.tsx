@@ -243,8 +243,7 @@ function LabelInlineForm({
 
 export default function LabelPage() {
   const { projectId } = useParams() as { projectId: string };
-  const { data: projectData, isLoading: isLoadingProject, isError } = useProjectDetails(projectId);
-  const project = (projectData as any)?.project || projectData;
+  const { project, isLoading: isLoadingProject, isError } = useProjectDetails(projectId);
 
   const { data: rawLabels = [], isLoading: isLoadingLabels } = useProjectLabels(projectId);
   const createMutation = useCreateProjectLabel(projectId);

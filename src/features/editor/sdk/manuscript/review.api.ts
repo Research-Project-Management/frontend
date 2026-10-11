@@ -20,10 +20,66 @@ export interface TextRangeDto {
   endCol: number;
 }
 
+/** Converts a 0-based absolute character offset into a 0-based line/column pair. */
+export function offsetToLineCol(content: string, offset: number): { line: number; col: number } {
+  const clamped = Math.max(0, Math.min(offset, content.length));
+  let line = 0;
+  let lineStart = 0;
+  for (let i = 0; i < clamped; i++) {
+    if (content.charCodeAt(i) === 10) {
+      line++;
+      lineStart = i + 1;
+    }
+  }
+  return { line, col: clamped - lineStart };
+}
+
+/** Converts absolute offsets [from, to) into the backend TextRange contract. */
+export function offsetsToRange(content: string, fromIndex: number, toIndex: number): TextRangeDto {
+  const a = Math.min(fromIndex, toIndex);
+  const b = Math.max(fromIndex, toIndex);
+  const s = offsetToLineCol(content, a);
+  const e = offsetToLineCol(content, b);
+  return { startLine: s.line, startCol: s.col, endLine: e.line, endCol: e.col };
+}
+
+interface RangeSource {
+  range?: TextRangeDto;
+  /** Full document text; required to convert fromIndex/toIndex on multi-line docs. */
+  content?: string;
+  fromIndex?: number;
+  toIndex?: number;
+  startLine?: number;
+  startCol?: number;
+  endLine?: number;
+  endCol?: number;
+}
+
+export function resolveRange(src: RangeSource): TextRangeDto {
+  if (src.range) return src.range;
+  if (src.startLine !== undefined) {
+    return {
+      startLine: src.startLine,
+      startCol: src.startCol ?? 0,
+      endLine: src.endLine ?? src.startLine,
+      endCol: src.endCol ?? src.startCol ?? 0,
+    };
+  }
+  if (src.fromIndex !== undefined) {
+    const to = src.toIndex ?? src.fromIndex;
+    if (typeof src.content === 'string') {
+      return offsetsToRange(src.content, src.fromIndex, to);
+    }
+    throw new Error('review: fromIndex/toIndex require `content` to compute a line/column range');
+  }
+  throw new Error('review: a range (range, startLine/startCol, or fromIndex+content) is required');
+}
+
 export interface RecordChangeInput {
   type: 'insert' | 'delete';
   text: string;
   range?: TextRangeDto;
+  content?: string;
   fromIndex?: number;
   toIndex?: number;
   startLine?: number;
@@ -37,6 +93,8 @@ export interface CreateCommentThreadInput {
   quote?: string;
   selectedText?: string;
   range?: TextRangeDto;
+  /** Full document text used to convert fromIndex/toIndex into line/column. */
+  docContent?: string;
   fromIndex?: number;
   toIndex?: number;
   startLine?: number;
@@ -65,12 +123,7 @@ export const review = {
     docId: string,
     dto: RecordChangeInput,
   ): Promise<TrackChangeDto> => {
-    const range: TextRangeDto = dto.range || {
-      startLine: dto.startLine ?? 0,
-      startCol: dto.startCol ?? dto.fromIndex ?? 0,
-      endLine: dto.endLine ?? dto.startLine ?? 0,
-      endCol: dto.endCol ?? dto.toIndex ?? 0,
-    };
+    const range: TextRangeDto = resolveRange(dto);
     return await apiPost<TrackChangeDto>(
       `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes`,
       {
@@ -111,12 +164,7 @@ export const review = {
     docId: string,
     dto: CreateCommentThreadInput,
   ): Promise<CommentThreadDto> => {
-    const range: TextRangeDto = dto.range || {
-      startLine: dto.startLine ?? 0,
-      startCol: dto.startCol ?? dto.fromIndex ?? 0,
-      endLine: dto.endLine ?? dto.startLine ?? 0,
-      endCol: dto.endCol ?? dto.toIndex ?? 0,
-    };
+    const range: TextRangeDto = resolveRange({ ...dto, content: dto.docContent });
     return await apiPost<CommentThreadDto>(
       `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/threads`,
       {

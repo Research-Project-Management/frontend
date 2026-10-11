@@ -176,7 +176,7 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
               : null;
             const fileQuery = mainFileStr ? `?file=${mainFileStr}` : '';
             const linkHref = `/projects/${projId}/pages/${page.id}${fileQuery}`;
-            const labels = (page.labels as any[]) || [];
+            const labels = (page.labels as Array<{ id?: string; name?: string; color?: string } | string>) || [];
             const authorName = page.author?.name;
             const status = page.status || 'published';
 
@@ -249,10 +249,11 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
                 <td className="px-3 h-10 py-0 align-middle">
                   <div className="flex items-center gap-1.5 overflow-hidden">
                     {labels.length > 0 ? (
-                      labels.slice(0, 2).map((label: any) => {
-                        const labelId = label.id ?? label;
-                        const labelName = label.name ?? label;
-                        const labelColor = label.color ?? '#0969DA';
+                      labels.slice(0, 2).map((label, idx) => {
+                        const labelObj = typeof label === 'object' && label !== null ? label : null;
+                        const labelId = labelObj?.id || (typeof label === 'string' ? label : `label-${idx}`);
+                        const labelName = labelObj?.name || (typeof label === 'string' ? label : '');
+                        const labelColor = labelObj?.color || '#0969DA';
                         return (
                           <span
                             key={labelId}

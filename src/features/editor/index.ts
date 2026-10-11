@@ -17,38 +17,32 @@ export { EditorToolbar } from './ui/features/editor/EditorToolbar';
 export { EditorTabs } from './ui/features/editor/EditorTabs';
 export { SourceVisualSwitcher } from './ui/features/editor/SourceVisualSwitcher';
 export { CollaboratorCursors } from './ui/features/editor/CollaboratorCursors';
-export { createDiagnosticsGutter } from './ui/features/editor/DiagnosticsGutter';
+export { createDiagnosticsGutter } from './engines/extensions/diagnostics-gutter';
 export { PdfViewer } from './ui/features/preview/PdfViewer';
 export { PdfToolbar } from './ui/features/preview/PdfToolbar';
 export { PdfSurface } from './ui/features/preview/PdfSurface';
 export { CompilerLogs } from './ui/features/preview/CompilerLogs';
 export { PdfFindBar } from './ui/features/preview/PdfFindBar';
-export { PrimarySidebar, OutlineTab } from './ui/features/sidebar';
+export { PrimarySidebar } from './ui/features/sidebar/PrimarySidebar';
+export { OutlineTab } from './ui/features/sidebar/outline/OutlineTab';
 export { BottomDockPanel } from './ui/features/panel/BottomDockPanel';
 
-export * from './ui/modals';
-export * from './ui/hooks';
-
-// Layer 4: State & Stores
-export * from './store';
-
-// Layer 3: Coordinators Spine
-export * from './coordinators';
+// Layer 4: State & Stores (Import directly from @/features/editor/store/<store-name>)
 
 // SDK: Canonical Backend API Client & Realtime
 export * from './sdk';
 
-// Layer 2: Runtime Engines & Presets
-export * from './engines';
-
-// Layer 1: Domain Core, Types & Pure Algorithms
-export * from './domain';
-
-// Explicit re-exports to resolve TS2308 ambiguity
-export { historyKeys } from './sdk';
-export type { DiffChunk, SyncTeXMap, SyncTeXNode } from './domain';
-export { runLatexLinter } from './engines';
-export type { LaTeXEngine } from './domain';
-export { forEachLine, parseSyncTeX, resolvePageForLine, extractDoiFromText, parsePdfDate } from './domain';
-export { LatexCompilerEngine, createPdfBlobAndUrl } from './coordinators';
+// Layer 2: Runtime Engines & Presets (Import directly from @/features/editor/engines/...)
+export {
+  forEachLine,
+  parseSyncTeX,
+  resolvePageForLine,
+  decompressSyncTeXData,
+  resolveForward,
+  resolveForwardDetail,
+  resolveReverse,
+} from './domain/pdf/synctex-index';
+export { extractDoiFromText, parsePdfDate } from './domain/pdf/pdf-resolver';
+export { LatexCompilerEngine } from './coordinators/compilation-pipeline';
+export { createPdfBlobAndUrl } from './domain/pdf/pdf-resolver';
 

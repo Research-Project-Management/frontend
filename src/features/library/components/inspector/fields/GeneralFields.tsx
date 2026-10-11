@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { Item } from '@/features/library/types/library.types';
-import type { TypeConversionPreview } from '../../data';
+import type { TypeConversionPreview } from '../../../data';
 import { SchemaItemTypeDefinition, ALL_ITEM_TYPES_FLAT } from '../../../types';
 import {
   DropdownMenu,

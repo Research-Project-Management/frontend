@@ -31,7 +31,7 @@ import {
   Loader2,
   ArrowLeft,
   BookOpen,
-  Sparkles,
+  SpellCheck,
   GitBranch,
   Cloud,
   ChevronRight,
@@ -63,28 +63,30 @@ import { GitHubIcon } from '@/shared/components/icons';
 
 import {
   useSettingsStore,
-  usePageStore,
-  useCompileStore,
   type CompilerEngine,
   type KeybindingMode,
   type EditorTheme,
-} from '@/features/editor/store';
-import { filesQuery, pageQuery, useFileActions } from '@/features/editor/ui/hooks/use-core';
+} from '@/features/editor/store/settings.store';
+import { usePageStore } from '@/features/editor/store/editor.store';
+import { useCompileStore } from '@/features/editor/store/compiler.store';
+import { filesQuery, pageQuery } from '@/features/editor/ui/hooks/document.queries';
+import { useFileActions } from '@/features/editor/ui/hooks/use-file-actions';
 import { useProjectExport } from '@/features/editor/ui/hooks/use-export';
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { useSpellingDictionary } from '@/features/editor/ui/hooks/use-spelling';
 import { extractProjectId } from '@/features/editor/domain/types';
-import { editorCommandBus } from '@/features/editor/coordinators';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { apiPost, apiDelete } from '@/shared/lib/api';
+import { manuscriptService } from '@/features/editor/sdk/manuscript';
 
 import {
   SettingRow,
   OverleafSwitch,
   EDITOR_FONT_FAMILIES,
   EDITOR_FONT_SIZES,
-  ProjectGithubTab,
-  ProjectReferencesTab,
-} from './project-settings';
+} from './project-settings/settings-common';
+import { ProjectGithubTab } from './project-settings/ProjectGithubTab';
+import { ProjectReferencesTab } from './project-settings/ProjectReferencesTab';
 
 export { EDITOR_FONT_FAMILIES, EDITOR_FONT_SIZES };
 
@@ -229,6 +231,10 @@ export function ProjectSettingsModal() {
 
   // Git clone copy feedback
   const [copiedGitUrl, setCopiedGitUrl] = useState(false);
+  const [gitToken, setGitToken] = useState<string | null>(null);
+  const [isCreatingToken, setIsCreatingToken] = useState(false);
+  const [copiedGitToken, setCopiedGitToken] = useState(false);
+
   const gitCloneUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/git/${effectiveProjectId || 'project'}.git`
     : `https://git.flux.app/p/${effectiveProjectId || 'project'}.git`;
@@ -239,6 +245,28 @@ export function ProjectSettingsModal() {
       setCopiedGitUrl(true);
       toast.success('Git clone command copied to clipboard!');
       setTimeout(() => setCopiedGitUrl(false), 2000);
+    }
+  };
+
+  const handleCreateGitToken = async () => {
+    setIsCreatingToken(true);
+    try {
+      const res = await manuscriptService.git.createToken(`Token ${new Date().toLocaleDateString()}`);
+      setGitToken(res.token);
+      toast.success('Đã tạo Git Access Token thành công!');
+    } catch (err: any) {
+      toast.error(err?.message || 'Không thể tạo Git Token');
+    } finally {
+      setIsCreatingToken(false);
+    }
+  };
+
+  const handleCopyGitToken = () => {
+    if (gitToken && typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(gitToken);
+      setCopiedGitToken(true);
+      toast.success('Đã sao chép Git Token vào clipboard!');
+      setTimeout(() => setCopiedGitToken(false), 2000);
     }
   };
 
@@ -467,12 +495,12 @@ export function ProjectSettingsModal() {
                   onClick={handleDownloadZip}
                   disabled={isExporting}
                   aria-label="Download Source (.zip)"
-                  className="flex flex-col items-center justify-center p-3 rounded-lg border border-border bg-card/50 hover:bg-muted/70 hover:border-primary/50 transition-all cursor-pointer group text-center"
+                  className="flex flex-col items-center justify-center p-3 rounded-md border border-border bg-card/50 hover:bg-muted/70 hover:border-foreground/30 transition-colors cursor-pointer group text-center"
                 >
-                  <div className="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                  <div className="size-8 rounded-md bg-muted text-foreground flex items-center justify-center mb-1.5">
                     {isExporting ? <Loader2 className="size-4 animate-spin" /> : <Archive className="size-4" />}
                   </div>
-                  <span className="text-xs font-semibold text-foreground">Source</span>
+                  <span className="text-xs font-medium text-foreground">Source</span>
                   <span className="text-[10px] text-muted-foreground mt-0.5">.zip archive</span>
                 </button>
 
@@ -480,12 +508,12 @@ export function ProjectSettingsModal() {
                   type="button"
                   onClick={handleDownloadPdf}
                   aria-label="Download PDF"
-                  className="flex flex-col items-center justify-center p-3 rounded-lg border border-border bg-card/50 hover:bg-muted/70 hover:border-primary/50 transition-all cursor-pointer group text-center"
+                  className="flex flex-col items-center justify-center p-3 rounded-md border border-border bg-card/50 hover:bg-muted/70 hover:border-foreground/30 transition-colors cursor-pointer group text-center"
                 >
-                  <div className="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                  <div className="size-8 rounded-md bg-muted text-foreground flex items-center justify-center mb-1.5">
                     <FileDown className="size-4" />
                   </div>
-                  <span className="text-xs font-semibold text-foreground">PDF</span>
+                  <span className="text-xs font-medium text-foreground">PDF</span>
                   <span className="text-[10px] text-muted-foreground mt-0.5">Compiled output</span>
                 </button>
               </div>
@@ -501,7 +529,7 @@ export function ProjectSettingsModal() {
               </h3>
 
               {/* GitHub */}
-              <div className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-card/40 hover:bg-card transition-colors">
+              <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-card/40 hover:bg-card transition-colors">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="size-7 rounded-md bg-foreground/5 flex items-center justify-center shrink-0">
                     <GitHubIcon className="size-4" />
@@ -521,13 +549,13 @@ export function ProjectSettingsModal() {
                 </Button>
               </div>
 
-              {/* Git Clone URL */}
-              <div className="p-2.5 rounded-lg border border-border bg-card/40 space-y-1.5">
+              {/* Git Clone URL & Smart-HTTP */}
+              <div className="p-2.5 rounded-md border border-border bg-card/40 space-y-2">
                 <div className="flex items-center gap-2">
                   <GitBranch className="size-3.5 text-muted-foreground shrink-0" />
                   <span className="text-xs font-medium text-foreground">Git Clone URL</span>
-                  <span className="text-[10px] font-medium text-warning bg-warning/10 border border-warning/20 px-1.5 py-0.5 rounded-sm ml-auto">
-                    Sắp ra mắt
+                  <span className="text-[10px] font-medium text-success bg-success/10 border border-success/20 px-1.5 py-0.5 rounded-sm ml-auto">
+                    Smart-HTTP
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 bg-background border border-border rounded-md px-2 py-1">
@@ -544,10 +572,39 @@ export function ProjectSettingsModal() {
                     <span className="ml-1">{copiedGitUrl ? 'Copied' : 'Copy'}</span>
                   </Button>
                 </div>
+                <div className="pt-1 border-t border-border/40 text-[11px] text-muted-foreground space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span>Xác thực: HTTP Basic (Password = Git Token)</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCreateGitToken}
+                      disabled={isCreatingToken}
+                      className="h-5 px-2 text-[10px] cursor-pointer"
+                    >
+                      {isCreatingToken ? 'Đang tạo...' : 'Tạo Git Token'}
+                    </Button>
+                  </div>
+                  {gitToken && (
+                    <div className="flex items-center gap-1.5 bg-muted/60 border border-border rounded-md px-2 py-1">
+                      <code className="font-mono text-[10px] text-foreground truncate flex-1 select-all">
+                        {gitToken}
+                      </code>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCopyGitToken}
+                        className="h-5 px-1.5 text-[10px] cursor-pointer"
+                      >
+                        {copiedGitToken ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Dropbox */}
-              <div className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-card/40">
+              <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-card/40">
                 <div className="flex items-center gap-2.5">
                   <div className="size-7 rounded-md bg-muted text-foreground flex items-center justify-center shrink-0">
                     <Cloud className="size-4" />
@@ -557,13 +614,13 @@ export function ProjectSettingsModal() {
                     <p className="text-[11px] text-muted-foreground">Two-way folder sync</p>
                   </div>
                 </div>
-                <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-sm">
                   Available
                 </span>
               </div>
             </section>
 
-            {/* 3. PROJECT FUNCTIONS (Overleaf Parity: Copy Project & Word Count) */}
+            {/* 3. PROJECT FUNCTIONS (Copy Project & Word Count) */}
             <section aria-labelledby="menu-wordcount-heading" className="space-y-2">
               <h3
                 id="menu-wordcount-heading"
@@ -572,20 +629,20 @@ export function ProjectSettingsModal() {
                 Project Functions
               </h3>
 
-              {/* Copy Project (Overleaf Parity: Project functions -> Copy Project) */}
+              {/* Copy Project */}
               <button
                 type="button"
                 onClick={handleMakeCopy}
                 disabled={isCopyingProject}
                 aria-label="Copy Project"
-                className="w-full flex items-center justify-between p-2.5 rounded-lg border border-border bg-card/40 hover:bg-card hover:border-primary/50 transition-colors text-left cursor-pointer group"
+                className="w-full flex items-center justify-between p-2.5 rounded-md border border-border bg-card/40 hover:bg-card hover:border-foreground/30 transition-colors text-left cursor-pointer group"
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="size-7 rounded-md bg-muted text-foreground flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="size-7 rounded-md bg-muted text-foreground flex items-center justify-center shrink-0">
                     {isCopyingProject ? <Loader2 className="size-4 animate-spin" /> : <Copy className="size-4" />}
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-foreground">Copy Project</p>
+                    <p className="text-xs font-medium text-foreground">Copy Project</p>
                     <p className="text-[11px] text-muted-foreground">Duplicate this project into a new one</p>
                   </div>
                 </div>
@@ -599,14 +656,14 @@ export function ProjectSettingsModal() {
                 type="button"
                 onClick={handleOpenWordCount}
                 aria-label="Run Word Count"
-                className="w-full flex items-center justify-between p-2.5 rounded-lg border border-border bg-card/40 hover:bg-card hover:border-primary/50 transition-colors text-left cursor-pointer group"
+                className="w-full flex items-center justify-between p-2.5 rounded-md border border-border bg-card/40 hover:bg-card hover:border-foreground/30 transition-colors text-left cursor-pointer group"
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="size-7 rounded-md bg-muted text-foreground flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="size-7 rounded-md bg-muted text-foreground flex items-center justify-center shrink-0">
                     <Calculator className="size-4" />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-foreground">Word Count</p>
+                    <p className="text-xs font-medium text-foreground">Word Count</p>
                     <p className="text-[11px] text-muted-foreground">Count words & headers with TeXcount</p>
                   </div>
                 </div>
@@ -982,7 +1039,7 @@ export function ProjectSettingsModal() {
               <button
                 type="button"
                 onClick={() => setCurrentView('references')}
-                className="w-full flex items-center justify-between p-2.5 rounded-lg border border-border bg-card/40 hover:bg-card transition-colors text-left cursor-pointer group"
+                className="w-full flex items-center justify-between p-2.5 rounded-md border border-border bg-card/40 hover:bg-card transition-colors text-left cursor-pointer group"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="size-7 rounded-md bg-muted text-foreground flex items-center justify-center shrink-0">
@@ -993,25 +1050,25 @@ export function ProjectSettingsModal() {
                     <p className="text-[11px] text-muted-foreground">Zotero & Mendeley bibliography sync</p>
                   </div>
                 </div>
-                <ChevronRight className="size-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                <ChevronRight className="size-4 text-muted-foreground" />
               </button>
 
               {/* Personal Dictionary */}
               <button
                 type="button"
                 onClick={() => setCurrentView('dictionary')}
-                className="w-full flex items-center justify-between p-2.5 rounded-lg border border-border bg-card/40 hover:bg-card transition-colors text-left cursor-pointer group"
+                className="w-full flex items-center justify-between p-2.5 rounded-md border border-border bg-card/40 hover:bg-card transition-colors text-left cursor-pointer group"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="size-7 rounded-md bg-muted text-foreground flex items-center justify-center shrink-0">
-                    <Sparkles className="size-4" />
+                    <SpellCheck className="size-4" />
                   </div>
                   <div>
                     <p className="text-xs font-medium text-foreground">Personal Dictionary</p>
                     <p className="text-[11px] text-muted-foreground">Manage learned spellcheck words</p>
                   </div>
                 </div>
-                <ChevronRight className="size-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                <ChevronRight className="size-4 text-muted-foreground" />
               </button>
 
               {/* Keyboard Shortcuts */}
@@ -1021,7 +1078,7 @@ export function ProjectSettingsModal() {
                   setSettingsPanelOpen(false);
                   editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'shortcuts' });
                 }}
-                className="w-full flex items-center justify-between p-2.5 rounded-lg border border-border bg-card/40 hover:bg-card transition-colors text-left cursor-pointer group"
+                className="w-full flex items-center justify-between p-2.5 rounded-md border border-border bg-card/40 hover:bg-card transition-colors text-left cursor-pointer group"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="size-7 rounded-md bg-muted text-foreground flex items-center justify-center shrink-0">
@@ -1032,7 +1089,7 @@ export function ProjectSettingsModal() {
                     <p className="text-[11px] text-muted-foreground">Hotkey cheat sheet & keybindings</p>
                   </div>
                 </div>
-                <ChevronRight className="size-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                <ChevronRight className="size-4 text-muted-foreground" />
               </button>
             </section>
           </div>

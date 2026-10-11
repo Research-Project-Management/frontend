@@ -385,11 +385,11 @@ export function ProjectsPage() {
           <div className="rounded-md border border-border bg-card overflow-hidden divide-y divide-border/40">
             {filteredProjects.map((project) => {
               const projectId = project.id || '';
-              const projectKey = (project as any).key || project.identifier || 'PROJ';
+              const projectKey = project.key || project.identifier || 'PROJ';
               const isPrivate = isProjectPrivate(project);
 
               const leadMember = project.members?.find(
-                (m: any) => m.role === 'owner' || m.role === 'lead'
+                (m) => m.role === 'owner' || m.role === 'lead'
               );
               const leadUser =
                 leadMember?.user ||

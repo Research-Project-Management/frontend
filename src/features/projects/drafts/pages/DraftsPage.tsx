@@ -21,7 +21,7 @@ import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout'
 import { DraftsIcon } from '@/shared/components/icons';
 import { Button } from '@/shared/components/ui';
 import type { WorkItemDraft } from '../types/draft.types';
-import type { WorkItemPriority } from '@/features/projects/project-id/work-items';
+import type { WorkItemPriority } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export default function DraftsPage() {
   const { projects = [] } = useProjects();

@@ -2,15 +2,17 @@
 
 import React, { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { DetailModal as WorkItemDialog } from '@/features/projects/project-id/work-items/components/modals/DetailModal';
 import {
-  WorkItemDialog,
   useProjectWorkItems,
   useUpdateWorkItem,
   useDeleteWorkItem,
   useDuplicateWorkItem,
+} from '@/features/projects/project-id/work-items/hooks/use-work-item';
+import {
   DEFAULT_WORK_ITEM_STATES,
   type WorkItemMutationInput,
-} from '@/features/projects/project-id/work-items';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 import { useProjectDetails } from '@/features/projects/shell/hooks/use-project';
 
 export interface WorkItemDialogModalProps {
@@ -37,15 +39,15 @@ export function WorkItemDialogModal({
   const deleteWorkItemMutation = useDeleteWorkItem();
   const duplicateWorkItemMutation = useDuplicateWorkItem();
 
-  const fetchedWorkItem = (projectWorkItems?.workItems || projectWorkItems?.items || []).find((t: any) => t.id === workItemId);
+  const fetchedWorkItem = (projectWorkItems?.workItems || projectWorkItems?.items || []).find((t: { id?: string }) => t.id === workItemId);
   const workItem = fetchedWorkItem || initialWorkItem;
+  const pDetails = projectDetails as (typeof projectDetails & { workItemColumns?: any[]; members?: any[] }) | undefined;
   const columns =
     projectWorkItems?.columns && projectWorkItems.columns.length > 0
       ? projectWorkItems.columns
-      : (projectDetails as any)?.workItemColumns && Array.isArray((projectDetails as any).workItemColumns)
-        ? (projectDetails as any).workItemColumns
+      : Array.isArray(pDetails?.workItemColumns)
+        ? pDetails.workItemColumns
         : DEFAULT_WORK_ITEM_STATES;
-  const pDetails = projectDetails as any;
   const members = pDetails?.members || [];
 
   const invalidateWorkspaceData = useCallback(() => {

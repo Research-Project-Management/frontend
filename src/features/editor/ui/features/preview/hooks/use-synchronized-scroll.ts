@@ -16,8 +16,12 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { editorCommandBus, getActiveEditorEngine } from '../../../../coordinators/command-bus';
 import { compilerCoordinator } from '../../../../coordinators/compiler.coordinator';
-import { LatexCompilerEngine } from '@/features/editor/coordinators/compilation-pipeline';
-import type { SyncTeXMap } from '@/features/editor/domain';
+import {
+  resolveForwardDetail,
+  resolveForward,
+  resolveReverse,
+  type SyncTeXMap,
+} from '@/features/editor/domain/pdf/synctex-index';
 import type { SurfaceHandle } from '../PdfSurface';
 
 export interface UseSynchronizedScrollProps {
@@ -84,7 +88,7 @@ export function useSynchronizedScroll({
             : 1;
 
       // Try forward resolution with precise coordinates
-      const detail = LatexCompilerEngine.resolveForwardDetail(
+      const detail = resolveForwardDetail(
         cmd.line,
         effectiveMap,
         activeFilePath,
@@ -96,7 +100,7 @@ export function useSynchronizedScroll({
         pdfSurfaceRef.current?.scrollToCoords?.(detail.page, y, 'auto');
       } else {
         // Fallback: estimate page number
-        const page = LatexCompilerEngine.resolveForward(
+        const page = resolveForward(
           cmd.line,
           effectiveMap,
           activeFilePath,
@@ -165,7 +169,7 @@ export function useSynchronizedScroll({
           return;
         }
 
-        const resolved = LatexCompilerEngine.resolveReverse(
+        const resolved = resolveReverse(
           info.fraction,
           info.page,
           effectiveMap,

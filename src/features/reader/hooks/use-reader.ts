@@ -11,7 +11,14 @@ import { ReadingService, StateService } from '../services/state.service';
 import { AnnotationsService } from '../services/annotations.service';
 import { readerAnnotationKeys, useAnnotations } from './use-annotations';
 import { useLibraryReaderStore } from '../store/reader.store';
-import type { ReaderPanel, ReaderDocument, AnnotationRect, ReaderNavigationTarget } from '../types/reader.types';
+import type {
+  ReaderPanel,
+  ReaderDocument,
+  AnnotationRect,
+  ReaderNavigationTarget,
+  ReaderAnnotation,
+  AnnotationType,
+} from '../types/reader.types';
 import { formatAnnotationCitation } from '../utils/reader.util';
 
 const MIN_PANEL_WIDTH = 320;
@@ -50,7 +57,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const fulltext = fulltextQuery.data ?? null;
   const isLoadingFulltext = fulltextQuery.isLoading;
 
-  const paperUrl = ItemsService.getPaperFileUrl(paper as any);
+  const paperUrl = ItemsService.getPaperFileUrl(paper);
   const {
     blobUrl: pdfBlobUrl,
     isLoading: pdfLoading,
@@ -264,7 +271,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       const pageIndex = pageNum !== undefined && pageNum > 0 ? pageNum - 1 : 0;
       const effectiveType = type === 'area' ? 'rect' : type;
       const created = await AnnotationsService.create(scopeId, effectiveAttachmentId, {
-        type: effectiveType as any,
+        type: effectiveType as AnnotationType,
         pageIndex,
         color: colorHex,
         quoteText: quote || undefined,
@@ -348,10 +355,10 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     if (!effectiveAttachmentId || selectedAnnotationIds.size === 0) return;
     setIsBatchProcessing(true);
     try {
-      // Find existing annotations to get version/pageIndex
-      const existing = (qc.getQueryData(
-        readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
-      ) || []) as any[];
+      const existing =
+        qc.getQueryData<ReaderAnnotation[]>(
+          readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
+        ) || [];
 
       const upserts = Array.from(selectedAnnotationIds).map((id) => {
         const found = existing.find((a) => a.id === id);
@@ -404,9 +411,10 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
 
   const handleBatchAddToNote = () => {
     if (!effectiveAttachmentId || selectedAnnotationIds.size === 0) return;
-    const existing = (qc.getQueryData(
-      readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
-    ) || []) as any[];
+    const existing =
+      qc.getQueryData<ReaderAnnotation[]>(
+        readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
+      ) || [];
 
     const selected = existing.filter((a) => selectedAnnotationIds.has(a.id));
     const quotes = selected

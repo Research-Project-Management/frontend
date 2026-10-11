@@ -22,7 +22,8 @@ import {
 } from '@/shared/components/ui/select';
 
 import { useCollectionsQuery } from '../../data';
-import { useLibrarySidebarStore, useProcessModalStore } from '../../store';
+import { useLibrarySidebarStore } from '../../store/library-ui.store';
+import { useProcessModalStore } from '../../store/process-modal.store';
 import type { Collection } from '../../types';
 import { cn } from '@/shared/lib/utils';
 

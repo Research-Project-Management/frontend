@@ -234,7 +234,7 @@ export const SideBySideDiffViewer = React.memo(function SideBySideDiffViewer({
                                       key={wIdx}
                                       className={cn(
                                         w.type === 'deleted' &&
-                                          'bg-destructive/20 text-destructive font-semibold px-0.5 rounded'
+                                          'bg-destructive/20 text-destructive font-semibold px-0.5 rounded-sm'
                                       )}
                                     >
                                       {w.text}
@@ -275,7 +275,7 @@ export const SideBySideDiffViewer = React.memo(function SideBySideDiffViewer({
                                       key={wIdx}
                                       className={cn(
                                         w.type === 'added' &&
-                                          'bg-success/20 text-success font-semibold px-0.5 rounded'
+                                          'bg-success/20 text-success font-semibold px-0.5 rounded-sm'
                                       )}
                                     >
                                       {w.text}

@@ -14,9 +14,9 @@ import {
   DropdownMenuItem,
 } from "@/shared/components/ui";
 
-import { libraryServices } from '../../data';
-import { generateCitationKey } from '../../domain';
-import { useLibrarySidebarStore } from '../../store';
+import { libraryServices } from '../../data/library-services';
+import { generateCitationKey } from '../../domain/citations';
+import { useLibrarySidebarStore } from '../../store/library-ui.store';
 import { useParams } from 'next/navigation';
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/shared/components/ui";
 import type { Collection, Item, CslStyle } from '../../types/library.types';

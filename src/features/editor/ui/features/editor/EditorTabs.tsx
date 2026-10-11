@@ -119,9 +119,10 @@ export interface TabsProps {
   rootPageId: string;
   activeFileId: string;
   availableFiles?: { id: string; title: string }[];
+  rightSlot?: React.ReactNode;
 }
 
-export function EditorTabs({ rootPageId, activeFileId, availableFiles }: TabsProps) {
+export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot }: TabsProps) {
   const searchParams = useSearchParams();
   const tabListRef = useRef<HTMLDivElement>(null);
 
@@ -277,9 +278,10 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles }: TabsPro
         </div>
       </LayoutGroup>
 
-      {/* ── Right side: Source / Visual Switcher (Overleaf Parity) ── */}
-      <div className="ml-auto flex items-center shrink-0 pl-2">
+      {/* ── Right side: Source / Visual Switcher + Actions (Overleaf Parity) ── */}
+      <div className="ml-auto flex items-center shrink-0 pl-2 gap-1">
         <SourceVisualSwitcher />
+        {rightSlot}
       </div>
     </div>
   );

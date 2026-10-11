@@ -28,7 +28,6 @@ export type EditorTheme =
   | 'dark';
 export type KeybindingMode = 'standard' | 'vim' | 'emacs';
 export type TrackChangesViewMode = 'changes' | 'clean' | 'original';
-export type EditorSidebarTab = 'Files' | 'Search' | 'Citations' | 'Review' | 'Chat' | 'AI';
 export type SettingsTab =
   | 'editor'
   | 'compiler'
@@ -44,8 +43,6 @@ export interface DocumentSettingsState {
   layout: LayoutMode;
   editorTheme: EditorTheme;
   keybinding: KeybindingMode;
-  sidebarWidth: number;
-  editorFlex: number;
   useCache: boolean;
   stopOnFirstError: boolean;
   settingsPanelOpen: boolean;
@@ -57,9 +54,7 @@ export interface DocumentSettingsState {
   editorMode: 'code' | 'visual';
   reviewMode: boolean;
   trackChangesViewMode: TrackChangesViewMode;
-  activeSidebarPanel: EditorSidebarTab | null;
   isHistoryOpen: boolean;
-  isReviewOpen: boolean;
   isTemplateModalOpen: boolean;
   spellCheck: boolean;
   spellCheckLanguage: string;
@@ -98,8 +93,6 @@ export interface DocumentSettingsState {
   setLayout: (layout: LayoutMode) => void;
   setEditorTheme: (editorTheme: EditorTheme) => void;
   setKeybinding: (keybinding: KeybindingMode) => void;
-  setSidebarWidth: (sidebarWidth: number) => void;
-  setEditorFlex: (editorFlex: number) => void;
   setUseCache: (useCache: boolean) => void;
   setStopOnFirstError: (stop: boolean) => void;
   toggleStopOnFirstError: () => void;
@@ -107,19 +100,8 @@ export interface DocumentSettingsState {
   toggleSettingsPanel: () => void;
   setSettingsActiveTab: (tab: SettingsTab) => void;
   openSettingsModal: (tab?: SettingsTab) => void;
-  setActiveSidebarPanel: (
-    panel:
-      | EditorSidebarTab
-      | null
-      | ((
-          prev: EditorSidebarTab | null,
-        ) => EditorSidebarTab | null),
-  ) => void;
-  toggleSidebarPanel: (panel: EditorSidebarTab) => void;
   setIsHistoryOpen: (open: boolean) => void;
   toggleHistory: () => void;
-  setIsReviewOpen: (open: boolean) => void;
-  toggleReviewOpen: () => void;
   setIsTemplateModalOpen: (open: boolean) => void;
   toggleTemplateModal: () => void;
   setMainFile: (mainFile: string) => void;
@@ -161,8 +143,6 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       isLocked: false,
       syncScroll: true,
       keybinding: 'standard',
-      sidebarWidth: 320,
-      editorFlex: 0.5,
       useCache: true,
       settingsPanelOpen: false,
       settingsActiveTab: 'editor',
@@ -173,9 +153,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       editorMode: 'code',
       reviewMode: false,
       trackChangesViewMode: 'changes',
-      activeSidebarPanel: 'Files',
       isHistoryOpen: false,
-      isReviewOpen: false,
       isTemplateModalOpen: false,
       spellCheck: true,
       spellCheckLanguage: 'en_US',
@@ -201,8 +179,6 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       setLayout: (layout) => set({ layout }),
       setEditorTheme: (editorTheme) => set({ editorTheme }),
       setKeybinding: (keybinding) => set({ keybinding }),
-      setSidebarWidth: (sidebarWidth) => set({ sidebarWidth }),
-      setEditorFlex: (editorFlex) => set({ editorFlex }),
       setUseCache: (useCache) => set({ useCache }),
       setStopOnFirstError: (stopOnFirstError) => set({ stopOnFirstError }),
       toggleStopOnFirstError: () =>
@@ -218,32 +194,8 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
           settingsPanelOpen: true,
           settingsActiveTab: tab || s.settingsActiveTab || 'editor',
         })),
-      setActiveSidebarPanel: (panelOrFn) =>
-        set((s) => ({
-          activeSidebarPanel:
-            typeof panelOrFn === 'function'
-              ? panelOrFn(s.activeSidebarPanel)
-              : panelOrFn,
-        })),
-      toggleSidebarPanel: (panel) =>
-        set((s) => ({
-          activeSidebarPanel: s.activeSidebarPanel === panel ? null : panel,
-        })),
       setIsHistoryOpen: (isHistoryOpen) => set({ isHistoryOpen }),
       toggleHistory: () => set((s) => ({ isHistoryOpen: !s.isHistoryOpen })),
-      setIsReviewOpen: (isReviewOpen) =>
-        set((s) => ({
-          isReviewOpen,
-          activeSidebarPanel: isReviewOpen ? 'Review' : s.activeSidebarPanel === 'Review' ? null : s.activeSidebarPanel,
-        })),
-      toggleReviewOpen: () =>
-        set((s) => {
-          const next = s.activeSidebarPanel === 'Review' ? null : 'Review';
-          return {
-            isReviewOpen: next === 'Review',
-            activeSidebarPanel: next,
-          };
-        }),
       setIsTemplateModalOpen: (isTemplateModalOpen) => set({ isTemplateModalOpen }),
       toggleTemplateModal: () => set((s) => ({ isTemplateModalOpen: !s.isTemplateModalOpen })),
       setMainFile: (mainFile) => set({ mainFile }),
@@ -296,7 +248,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       },
       partialize: (state) => {
         // Don't persist transient UI state or auto-compile (always on by default)
-        const { settingsPanelOpen, settingsActiveTab, autoCompile, isHistoryOpen, isTemplateModalOpen, activeSidebarPanel, isLocked, ...rest } = state;
+        const { settingsPanelOpen, settingsActiveTab, autoCompile, isHistoryOpen, isTemplateModalOpen, isLocked, ...rest } = state;
         return rest;
       },
     },

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { InboxPage } from '@/features/shell';
+import InboxPage from '@/features/shell/pages/InboxPage';
 
 export const metadata: Metadata = {
   title: 'Inbox · Flux',

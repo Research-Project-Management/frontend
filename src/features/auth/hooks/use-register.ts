@@ -36,7 +36,7 @@ export const useRegister = () => {
   const registerMutation = useMutation({
     mutationFn: (payload: RegisterPayload) => registerUser(payload),
     onSuccess: (data) => {
-      const registeredUser = data?.user || (data as any);
+      const registeredUser = data?.user;
       if (registeredUser) {
         queryClient.setQueryData(authKeys.session(), registeredUser);
       }

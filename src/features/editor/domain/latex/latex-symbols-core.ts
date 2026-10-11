@@ -2,7 +2,7 @@
  * latex-symbols-core.ts
  *
  * Pure In-Memory Symbol, Metadata & Structure Outline Engine (Domain Layer).
- * Location: `features/editor/domain/latex-symbols-core.ts`
+ * Location: `features/editor/domain/latex/latex-symbols-core.ts`
  *
  * Responsibilities:
  * - High-speed deterministic regex parsing of BibTeX (@article, @book, etc.) and LaTeX source files.

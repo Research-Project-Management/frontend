@@ -22,7 +22,7 @@ import {
 import { useLibraryUIStore } from '../../store/library-ui.store';
 import { ItemContextMenu } from './ItemContextMenu';
 import type { Item, Collection } from '../../types/library.types';
-import { cleanAcademicText, formatAcademicAuthors } from '../../utils';
+import { cleanAcademicText, formatAcademicAuthors } from '../../utils/academic-text';
 
 export interface ItemTableRowProps {
   item: Item;

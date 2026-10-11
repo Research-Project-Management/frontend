@@ -6,5 +6,7 @@
  */
 
 export * from './manuscript.service';
-export * from './realtime';
-export * from './archive';
+export * from './realtime/yjs-socket-provider';
+export * from './archive/archive-export';
+export * from './archive/archive-import';
+export * from './archive/document-download';

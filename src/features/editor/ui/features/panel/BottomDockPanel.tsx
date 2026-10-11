@@ -18,12 +18,16 @@ import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { useLayoutStore } from '@/features/editor/store/layout.store';
 import { useCompilerStore, type CompileError } from '@/features/editor/store/compiler.store';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import {
-  DockHeader,
-  DockProblemsTab,
-  DockOutputTab,
-  type ParsedLogLine,
-} from './bottom-dock';
+import { DockHeader } from './DockHeader';
+import { DockProblemsTab } from './DockProblemsTab';
+import { DockOutputTab } from './DockOutputTab';
+
+export interface ParsedLogLine {
+  text: string;
+  originalIndex: number;
+  type: 'error' | 'warning' | 'info' | 'success' | 'asset' | 'normal';
+  jumpLine?: number;
+}
 
 export function BottomDockPanel() {
   // Narrow Zustand selectors to prevent unnecessary re-renders

@@ -37,12 +37,20 @@ import {
 } from '../../data';
 import { cn } from '@/shared/lib/utils';
 
+export type TypeConversionItemLike = {
+  id?: string;
+  itemType?: string;
+  projectId?: string | null;
+  title?: string;
+  [key: string]: unknown;
+};
+
 export interface TypeConversionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Accept either item or paper for flexible caller integration */
-  item?: Item;
-  paper?: Item;
+  item?: Item | TypeConversionItemLike;
+  paper?: Item | TypeConversionItemLike;
   targetType: string;
   scopeId?: string;
   initialPreview?: TypeConversionPreview | null;

@@ -24,7 +24,7 @@ import {
 } from '@/shared/components/ui';
 import type { TreeNode } from './sidebar.types';
 import type { Collection } from '../../types/library.types';
-import { useLibrarySidebarStore } from '../../store';
+import { useLibrarySidebarStore } from '../../store/library-ui.store';
 
 interface CollectionContextMenuProps {
   node: TreeNode;

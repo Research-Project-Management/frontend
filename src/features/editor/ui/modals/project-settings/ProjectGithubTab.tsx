@@ -4,7 +4,7 @@
  * ProjectGithubTab.tsx
  *
  * Canonical Project Settings - GitHub Integration & Two-Way Sync Tab (Block 7: UI Shell / Modals Layer).
- * Location: `features/editor/ui/modals/ProjectGithubTab.tsx`
+ * Location: `features/editor/ui/modals/project-settings/ProjectGithubTab.tsx`
  */
 
 import React, { useState } from 'react';
@@ -161,7 +161,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
   if (!isGithubConnected) {
     return (
       <div className="space-y-6">
-        <div className="p-4 rounded-lg border border-border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-4 rounded-md border border-border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="size-10 rounded-md bg-muted/60 p-2 shrink-0 flex items-center justify-center">
               <GitHubIcon className="size-6 text-foreground" />
@@ -191,7 +191,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
   return (
     <div className="space-y-6">
       {/* Overview Info Header */}
-      <div className="p-3.5 rounded-lg border border-border/70 bg-muted/30 text-xs text-muted-foreground leading-relaxed flex items-start gap-2.5">
+      <div className="p-3.5 rounded-md border border-border/70 bg-muted/30 text-xs text-muted-foreground leading-relaxed flex items-start gap-2.5">
         <GitBranch className="size-4 text-foreground shrink-0 mt-0.5" />
         <div>
           Synchronize this project with GitHub. Commits are tracked in the remote repository tree, allowing seamless collaboration across Overleaf, Git, and Flux.

@@ -9,6 +9,7 @@ import {
   useRemoveProjectMember,
   useUpdateProject,
   useTransferProjectOwnership,
+  type UpdateProjectVariables,
 } from '@/features/projects/shell/hooks/use-project';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { getErrorMessage } from "@/shared/lib/utils";
@@ -23,16 +24,12 @@ export function useMembers(projectId: string) {
   const { user: currentUser } = useAuth();
 
   const {
-    data: projectData,
+    project,
     yourRole,
     permissions,
     isLoading: isProjectLoading,
     isError,
   } = useProjectDetails(projectId);
-
-  const project = useMemo(() => {
-    return (projectData as any)?.project || projectData || null;
-  }, [projectData]);
 
   // Mutations
   const addMutation = useAddProjectMember();
@@ -50,34 +47,34 @@ export function useMembers(projectId: string) {
   // Normalize project members
   const members: ProjectMemberItem[] = useMemo(() => {
     if (!project?.members) return [];
-    return normalizeProjectMembers(project.members as any[], project.createdAt);
+    return normalizeProjectMembers(project.members as Array<Record<string, unknown>>, project.createdAt);
   }, [project]);
 
   // Project settings (default assignee)
   const projectSettings = useMemo(() => {
-    return project?.settings || {};
+    return (project?.settings as Record<string, unknown> | undefined) || {};
   }, [project]);
 
-  const defaultAssigneeId = projectSettings.defaultAssigneeId || null;
+  const defaultAssigneeId = (projectSettings.defaultAssigneeId as string | undefined) || null;
   const defaultAssigneeMember = useMemo(() => {
     return members.find((m) => m.userId === defaultAssigneeId) || null;
   }, [members, defaultAssigneeId]);
 
   // Handlers for Project Settings
   const updateSettings = useCallback(
-    (newSettings: Record<string, any>) => {
+    (newSettings: Record<string, unknown>) => {
       const merged = {
         ...projectSettings,
         ...newSettings,
       };
       updateProjectMutation.mutate(
-        { projectId, settings: merged } as any,
+        { projectId, settings: merged } as UpdateProjectVariables,
         {
           onSuccess: () => {
             toast.success('Project settings updated', { id: 'settings-member' });
           },
-          onError: (err: any) => {
-            toast.error(err?.message || 'Failed to update project settings', { id: 'settings-member' });
+          onError: (err: unknown) => {
+            toast.error((err as Error)?.message || 'Failed to update project settings', { id: 'settings-member' });
           },
         },
       );

@@ -20,8 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui";
-import { Switch } from "@/shared/components/ui";
-import { useTheme, BRAND_COLOR_PRESETS, type BrandPresetKey } from "@/shared/providers";
+import { Switch } from "@/shared/components/ui/switch";
+import { useTheme, BRAND_COLOR_PRESETS, type BrandPresetKey } from "@/shared/providers/theme-provider";
 import { cn } from "@/shared/lib/utils";
 
 export function PreferencesTab() {

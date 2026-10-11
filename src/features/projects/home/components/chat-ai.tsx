@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useAiCompanionStore } from '@/features/ai/store';
+import { useAiCompanionStore } from '@/features/ai/store/ai-companion.store';
 import type { SendMessageOptions } from '@/features/ai/components/companion/CompanionInput';
 
 const CompanionInput = dynamic(

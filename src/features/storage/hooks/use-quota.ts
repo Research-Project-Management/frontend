@@ -1,8 +1,4 @@
-/**
- * @file use-quota.ts
- * @description Frontend hooks mirroring backend QuotaController.
- * Provides queries for user and workspace storage quota metrics and limits.
- */
+'use client';
 
 import { useQuery } from '@tanstack/react-query';
 import { storageKeys } from '../constants/storage.keys';
@@ -36,8 +32,8 @@ export function useStorageQuota(options: UseStorageQuotaOptions = {}) {
     enabled,
   });
 
-  const rawUsed = (query.data as any)?.usedBytes ?? (query.data as any)?.totalBytes ?? 0;
-  const rawLimit = (query.data as any)?.limitBytes ?? (query.data as any)?.maxBytes ?? 5 * 1024 * 1024 * 1024;
+  const rawUsed = query.data?.usedBytes ?? query.data?.totalBytes ?? 0;
+  const rawLimit = query.data?.limitBytes ?? query.data?.maxBytes ?? 5 * 1024 * 1024 * 1024;
   const calculatedPercentage =
     query.data?.percentage !== undefined && query.data?.percentage > 0
       ? query.data.percentage

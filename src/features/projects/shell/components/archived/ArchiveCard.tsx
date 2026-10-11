@@ -33,11 +33,11 @@ export const ArchiveCard = React.memo(function ArchiveCard({
   isRestoring,
 }: ArchiveCardProps) {
   const projectId = project.id || '';
-  const projectKey = (project as any).key || project.identifier || getProjectKey(project.name);
+  const projectKey = project.key || project.identifier || getProjectKey(project.name);
   const isPrivate = isProjectPrivate(project);
 
   const leadMember = project.members?.find(
-    (m: any) => m.role === 'owner' || m.role === 'lead'
+    (m) => m.role === 'owner' || m.role === 'lead'
   );
   const leadUser =
     leadMember?.user ||

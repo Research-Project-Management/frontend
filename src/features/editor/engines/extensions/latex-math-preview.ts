@@ -2,7 +2,7 @@
  * latex-math-preview.ts
  *
  * CodeMirror 6 KaTeX Math Hover Preview (Block 4: Engines Layer).
- * Location: `features/editor/engines/latex-math-preview.ts`
+ * Location: `features/editor/engines/extensions/latex-math-preview.ts`
  *
  * Inspects hovered text for LaTeX math delimiters ($...$, $$...$$, \begin{equation}...)
  * and renders high-fidelity KaTeX rendered math directly inside a popover tooltip.

@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   Settings,
   Users,
-  LayoutGrid,
   Bot,
   Tag,
   CircleDot,
@@ -41,8 +40,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const projectId = params?.projectId || '';
 
-  const { data: projectData } = useProjectDetails(projectId);
-  const project = (projectData as any)?.project || projectData;
+  const { project } = useProjectDetails(projectId);
   const { projects = [] } = useProjects();
 
   const base = `/projects/${projectId}/settings`;
@@ -53,7 +51,6 @@ export default function Sidebar() {
       items: [
         { id: 'general', label: 'General', icon: Settings, to: base, exact: true },
         { id: 'members', label: 'Members', icon: Users, to: `${base}/members` },
-        { id: 'modules', label: 'Modules', icon: LayoutGrid, to: `${base}/modules` },
         { id: 'ai', label: 'AI Assistant', icon: Bot, to: `${base}/ai` },
       ],
     },

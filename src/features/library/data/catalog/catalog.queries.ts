@@ -45,7 +45,7 @@ import type {
   SavedSearch,
 } from '../../types/library.types';
 import { updateLibrarySchemaRegistry } from '../../types';
-import { getPublicationVenue } from '../../domain';
+import { getPublicationVenue } from '../../domain/metadata';
 import { itemKeys, libraryKeys } from '../query-keys';
 
 export { itemKeys };

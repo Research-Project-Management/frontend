@@ -214,7 +214,7 @@ export const CompanionMessages = React.memo(function CompanionMessages({
 
   return (
     <div
-      ref={scrollContainerRef as any}
+      ref={scrollContainerRef}
       className={cn(
         'flex-1 min-h-0 px-3.5 select-text',
         isEmpty
@@ -283,7 +283,7 @@ export const CompanionMessages = React.memo(function CompanionMessages({
             </div>
           )}
 
-          <div ref={messagesEndRef as any} />
+          <div ref={messagesEndRef} />
         </>
       )}
     </div>

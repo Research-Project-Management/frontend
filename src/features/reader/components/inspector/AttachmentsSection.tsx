@@ -33,13 +33,15 @@ import {
   DropdownMenuSeparator,
 } from "@/shared/components/ui";
 import {
+  readerService,
   getPaperFileUrl,
+} from '../../data/reader.service';
+import {
   useAttachments,
   useRenameAttachment,
   useExportAnnotatedPdf,
-} from '../../data';
+} from '../../data/reader.queries';
 import { usePdf } from '../../hooks/use-pdf';
-import { readerService } from '../../data/reader.service';
 import type { Item, ItemAttachment } from '../../types/reader.types';
 import SnapshotViewerModal from '../modals/SnapshotViewerModal';
 
@@ -225,7 +227,7 @@ export default function AttachmentsSection({
   const searchParams = useSearchParams();
   const currentQuery = searchParams.get('q');
   const qParam = currentQuery ? `?q=${encodeURIComponent(currentQuery)}` : '';
-  const rawScopeId = (scopeId || projectId || (paper as any)?.projectId || (params as any)?.projectId || 'user') as string;
+  const rawScopeId = (scopeId || projectId || paper.projectId || (params?.projectId as string | undefined) || 'user');
 
   const {
     captureSnapshot,
@@ -293,16 +295,18 @@ export default function AttachmentsSection({
     }
   };
 
-  const rawAttachments = paper.attachments || (paper as any).files || EMPTY_ATTACHMENTS;
+  type ReaderAttachmentLike = ItemAttachment & { type?: string; name?: string; title?: string; fileUrl?: string };
+
+  const rawAttachments: ReaderAttachmentLike[] = (paper.attachments || EMPTY_ATTACHMENTS) as ReaderAttachmentLike[];
   const paperUrl = getPaperFileUrl(paper);
 
   const paperFilename = paper.filename;
-  const openAccessPdfUrl = (paper as any)?.openAccessPdfUrl;
+  const openAccessPdfUrl = paper.openAccessPdfUrl;
 
   const primaryAttachment = useMemo(() => {
     return (
       rawAttachments.find(
-        (att: any) =>
+        (att) =>
           att.attachmentType === 'primary_pdf' ||
           att.type === 'primary_pdf' ||
           (paperFilename && (att.filename === paperFilename || att.name === paperFilename)),
@@ -311,13 +315,13 @@ export default function AttachmentsSection({
   }, [rawAttachments, paperFilename]);
 
   const otherAttachments = useMemo(() => {
-    const list = rawAttachments.filter((att: ItemAttachment | any) => {
+    const list = rawAttachments.filter((att) => {
       if (att.attachmentType === 'primary_pdf' || att.type === 'primary_pdf') return false;
       if (paperFilename && (att.filename === paperFilename || att.name === paperFilename)) return false;
       return true;
     });
 
-    if (openAccessPdfUrl && openAccessPdfUrl !== paperUrl && !list.some((a: any) => (a.url === openAccessPdfUrl || a.fileUrl === openAccessPdfUrl))) {
+    if (openAccessPdfUrl && openAccessPdfUrl !== paperUrl && !list.some((a) => (a.url === openAccessPdfUrl || a.fileUrl === openAccessPdfUrl))) {
       list.push({
         id: 'open-access-pdf',
         filename: 'Open Access Full Text.pdf',
@@ -487,12 +491,12 @@ export default function AttachmentsSection({
               <div className="min-w-0 flex-1">
                 <p
                   className="text-12 font-medium text-foreground break-all leading-snug"
-                  title={primaryAttachment?.title || paper.filename || ((paper as any)?.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
+                  title={primaryAttachment?.title || paper.filename || (paper.openAccessPdfUrl ? 'Open Access PDF' : 'PDF') || ''}
                 >
-                  {primaryAttachment?.title || paper.filename || ((paper as any)?.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
+                  {primaryAttachment?.title || paper.filename || (paper.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
                 </p>
-                {primaryAttachment?.title && paper.filename && primaryAttachment.title !== paper.filename && (
-                  <p className="text-10 text-muted-foreground truncate" title={paper.filename}>
+                {Boolean(primaryAttachment?.title && paper.filename && primaryAttachment.title !== paper.filename) && (
+                  <p className="text-10 text-muted-foreground truncate" title={paper.filename || ''}>
                     {paper.filename}
                   </p>
                 )}

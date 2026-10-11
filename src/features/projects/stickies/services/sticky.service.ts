@@ -50,7 +50,7 @@ export const createSticky = async (variables?: {
 };
 
 export const updateSticky = async (stickyId: string, updates: Partial<Sticky>): Promise<Sticky> => {
-  const { id: _ignoredId, createdAt: _ignoredCreatedAt, updatedAt: _ignoredUpdatedAt, ...payload } = updates as any;
+  const { id: _ignoredId, createdAt: _ignoredCreatedAt, updatedAt: _ignoredUpdatedAt, ...payload } = updates;
   const res = await apiPatch<{ sticky: Partial<Sticky> } | Partial<Sticky>>(
     `/api/v1/stickies/${stickyId}`,
     payload,

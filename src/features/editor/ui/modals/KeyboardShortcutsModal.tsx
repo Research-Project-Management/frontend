@@ -9,7 +9,6 @@
 
 import React, { useState } from 'react';
 import {
-  Keyboard,
   Search,
   X,
 } from 'lucide-react';
@@ -310,11 +309,10 @@ export default function KeyboardShortcutsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl w-full p-0 gap-0 overflow-hidden bg-background border border-border/60 shadow-raised-400 rounded-lg text-foreground select-none">
+      <DialogContent className="max-w-2xl w-full p-0 gap-0 overflow-hidden bg-background border border-border/60 shadow-raised-400 rounded-md text-foreground select-none">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60 shrink-0">
-          <DialogTitle className="text-14 font-semibold text-foreground tracking-tight flex items-center gap-2">
-            <Keyboard className="size-4 text-foreground" strokeWidth={1.5} />
+          <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
             Keyboard Shortcuts
           </DialogTitle>
           <button

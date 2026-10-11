@@ -12,7 +12,7 @@ import { StreamLanguage } from '@codemirror/language';
 import { stex } from '@codemirror/legacy-modes/mode/stex';
 import { StateField, RangeSet } from '@codemirror/state';
 import { Decoration, type DecorationSet, EditorView } from '@codemirror/view';
-import { highlightLineEffect, clearHighlightEffect } from '../adapters/codemirror/codemirror.adapter';
+import { highlightLineEffect, clearHighlightEffect } from '../adapters/codemirror.adapter';
 
 export const latexLanguage = StreamLanguage.define({
   ...stex,

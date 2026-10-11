@@ -353,7 +353,7 @@ export function Activities({
       {/* Write Comment Box */}
       <div className="space-y-2">
         <Textarea
-          ref={commentTextareaRef as any}
+          ref={commentTextareaRef as React.Ref<HTMLTextAreaElement>}
           value={commentText}
           onChange={(e) => {
             if (!canComment) return;

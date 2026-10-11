@@ -8,8 +8,8 @@ import {
   useLibraryModalStore,
   useLibraryViewStore,
   useLibrarySidebarStore,
-  useProcessModalStore,
-} from '../../store';
+} from '../../store/library-ui.store';
+import { useProcessModalStore } from '../../store/process-modal.store';
 import {
   useCreateCollectionMutation,
   useCollectionsQuery,

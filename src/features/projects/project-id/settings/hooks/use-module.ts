@@ -8,10 +8,9 @@ import { toast } from 'sonner';
  * Encapsulates module toggle state, dirty tracking, and save logic.
  */
 export function useModules(projectId: string) {
-  const { data: projectData, isLoading, isError } = useProjectDetails(projectId);
+  const { project, isLoading, isError } = useProjectDetails(projectId);
   const updateMutation = useUpdateProject();
 
-  const project = (projectData as any)?.project || projectData;
   const DEFAULT_MODULES = useMemo(
     () => ['work-items', 'pages'],
     [],

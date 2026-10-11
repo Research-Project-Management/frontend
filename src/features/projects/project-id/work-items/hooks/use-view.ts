@@ -244,7 +244,8 @@ export function useKanban({
               targetLaneId = ItemHelpers.resolveAssigneeId(overItem) || '__unassigned__';
             } else if (subGroupBy === 'labels') {
               const firstLbl = (overItem.labels && overItem.labels.length > 0) ? overItem.labels[0] : null;
-              targetLaneId = firstLbl ? (typeof firstLbl === 'string' ? firstLbl : (firstLbl as any).name || (firstLbl as any).id || '__no_label__') : '__no_label__';
+              const lbl = firstLbl as { name?: string; id?: string } | null;
+              targetLaneId = firstLbl ? (typeof firstLbl === 'string' ? firstLbl : lbl?.name || lbl?.id || '__no_label__') : '__no_label__';
             }
           }
         }
@@ -343,8 +344,9 @@ export function useCard({
   }, [card.priority]);
 
   const dates = useMemo(() => {
-    const rawDue = (card as any).dueDate || (card as any).due_date;
-    const rawStart = (card as any).startDate || (card as any).start_date;
+    const rawCard = card as Item & { due_date?: string; start_date?: string };
+    const rawDue = rawCard.dueDate || rawCard.due_date;
+    const rawStart = rawCard.startDate || rawCard.start_date;
     if (!rawDue && !rawStart) return { display: null, isOverdue: false };
 
     const due = rawDue ? new Date(rawDue) : null;
@@ -354,32 +356,42 @@ export function useCard({
     return { display, isOverdue };
   }, [card]);
 
-  const comments = (card as any).commentCount ?? (card as any).comments?.length ?? 0;
-  const attachments = (card as any).attachmentCount ?? (
-    Array.isArray((card as any).attachments)
-      ? (card as any).attachments.length
-      : ((card as any).attachments?.files?.length ?? 0) +
-        ((card as any).attachments?.pages?.length ?? 0) +
-        ((card as any).attachments?.papers?.length ?? 0) +
-        ((card as any).attachments?.links?.length ?? 0)
+  const cardObj = card as Item & {
+    commentCount?: number;
+    comments?: unknown[];
+    attachmentCount?: number;
+    subItems?: any[];
+    children?: any[];
+  };
+  const comments = cardObj.commentCount ?? cardObj.comments?.length ?? 0;
+  const attachments = cardObj.attachmentCount ?? (
+    Array.isArray(card.attachments)
+      ? card.attachments.length
+      : ((card.attachments?.files?.length ?? 0) +
+        ((card.attachments as { pages?: unknown[] })?.pages?.length ?? 0) +
+        ((card.attachments as { papers?: unknown[] })?.papers?.length ?? 0) +
+        ((card.attachments as { links?: unknown[] })?.links?.length ?? 0))
   );
-  const childWorkItems = (card as any).childWorkItems ?? (card as any).subItems ?? (card as any).children ?? [];
+  const childWorkItems = card.childWorkItems ?? cardObj.subItems ?? cardObj.children ?? [];
   const childWorkItemTotal = childWorkItems.length;
-  const childWorkItemDone = childWorkItems.filter((st: any) => st.completed || st.stateGroup === 'completed' || st.state?.group === 'completed' || st.columnId === 'done').length;
+  const childWorkItemDone = childWorkItems.filter((st: unknown) => {
+    const s = st as { completed?: boolean; stateGroup?: string; state?: { group?: string }; columnId?: string };
+    return Boolean(s.completed || s.stateGroup === 'completed' || s.state?.group === 'completed' || s.columnId === 'done');
+  }).length;
 
   const labels = useMemo(() => {
     const raw = card.labels || [];
-    return raw.map((lbl: any) => {
+    return raw.map((lbl: unknown) => {
       if (typeof lbl === 'string') {
         return labelMap?.get(lbl) || { id: lbl, name: lbl };
       }
-      return lbl;
+      return lbl as { id?: string; name?: string; color?: string };
     });
   }, [card.labels, labelMap]);
 
-  const assignee = (card as any).assignee;
+  const assignee = card.assignee as ({ id?: string; name?: string; avatar?: string; fullName?: string; avatarUrl?: string }) | undefined;
   const user = assignee ? {
-    id: assignee.id || assignee.userId,
+    id: assignee.id || (assignee as { userId?: string }).userId,
     name: assignee.name || assignee.fullName || 'Unassigned',
     avatar: assignee.avatar || assignee.avatarUrl || currentUserAvatar,
   } : null;
@@ -460,7 +472,7 @@ export function useCard({
     metadataItems,
     isBlocked: Array.isArray(card.relations) && card.relations.some((relation) => relation.type === 'blocked_by'),
     status: {
-      isCompleted: Boolean(card.completed || (card as any).stateGroup === 'completed' || (card as any).state?.group === 'completed' || card.columnId === 'done'),
+      isCompleted: Boolean(card.completed || card.stateGroup === 'completed' || card.state?.group === 'completed' || card.columnId === 'done'),
       isReadOnly,
     },
   };

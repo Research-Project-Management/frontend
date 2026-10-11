@@ -4,12 +4,20 @@ import React, { useState, useRef } from 'react';
 import { Upload } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
-import { readEntriesRecursively } from './add-files.utils';
+import { readEntriesRecursively } from './directory-reader';
 
 export interface UploadTabPaneProps {
   onPickItems?: (items: { file: File; name: string }[]) => void;
   onClose: () => void;
 }
+
+const folderInputProps: React.InputHTMLAttributes<HTMLInputElement> & {
+  webkitdirectory?: string;
+  directory?: string;
+} = {
+  webkitdirectory: '',
+  directory: '',
+};
 
 export function UploadTabPane({
   onPickItems,
@@ -35,7 +43,7 @@ export function UploadTabPane({
     onPickItems?.(
       picked.map((f) => ({
         file: f,
-        name: (f as any).webkitRelativePath || f.name,
+        name: f.webkitRelativePath || f.name,
       })),
     );
   };
@@ -93,7 +101,7 @@ export function UploadTabPane({
         multiple
         className="hidden"
         onChange={handleNativeFolderPicked}
-        {...({ webkitdirectory: '', directory: '' } as any)}
+        {...folderInputProps}
       />
 
       <div className="space-y-4 pt-1">

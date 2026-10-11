@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import React from 'react';
 import { VisualEditorView } from '@/features/editor/ui/features/editor/VisualEditorView';
-import { useSettingsStore } from '@/features/editor/store';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { editorCommandBus, getActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
 
 describe('Visual Mode Bidirectional Precision SyncTeX (Overleaf Parity)', () => {

@@ -25,6 +25,7 @@ import {
   ArrowRightToLine,
   Link2,
   Link2Off,
+  ExternalLink,
 } from 'lucide-react';
 import { editorCommandBus, getActiveEditorEngine } from '../../../coordinators/command-bus';
 import {
@@ -42,9 +43,8 @@ import { CompileButton } from './CompileButton';
 import { PdfPaginationControls } from './PdfPaginationControls';
 import { PdfZoomControls } from './PdfZoomControls';
 import { useViewerStore } from '../../../store/viewer.store';
-import type { CompileStatus } from '../../../store';
-import type { CompileMode } from '../../../domain/types/compiler.types';
-import type { PdfOutlineItem } from '@/features/editor/domain/document/pdf-outline';
+import type { CompileMode, CompileStatus } from '../../../domain/types/compiler.types';
+import type { PdfOutlineItem } from '@/features/editor/domain/pdf/pdf-outline';
 
 function InvertColorsIcon({ className }: { className?: string }) {
   return (
@@ -419,6 +419,25 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                     </TooltipContent>
                   </Tooltip>
                 )}
+
+                {/* Pop-out / Detached PDF Preview Window (Overleaf Parity) */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        editorCommandBus.dispatch({ type: 'preview:detach' });
+                      }}
+                      aria-label="Mở PDF ra cửa sổ riêng biệt"
+                      className="size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[''] text-foreground hover:bg-muted"
+                    >
+                      <ExternalLink className="size-3.5 shrink-0" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    Mở PDF ra cửa sổ riêng biệt (Pop-out Preview)
+                  </TooltipContent>
+                </Tooltip>
 
               </>
             )}

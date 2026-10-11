@@ -24,7 +24,7 @@ import {
   ChevronsUpDown,
   X,
 } from 'lucide-react';
-import { usePageStore } from '@/features/editor/store';
+import { usePageStore } from '@/features/editor/store/editor.store';
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import {
@@ -269,7 +269,7 @@ export function OutlineTab({ onClose }: OutlineTabProps) {
               <button
                 type="button"
                 onClick={(e) => toggleCollapse(node.id, e)}
-                className="size-4 shrink-0 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                className="size-4 shrink-0 flex items-center justify-center rounded-sm hover:bg-muted text-muted-foreground hover:text-foreground"
                 aria-label={isCollapsed ? 'Expand section' : 'Collapse section'}
               >
                 {isCollapsed ? (
@@ -285,7 +285,7 @@ export function OutlineTab({ onClose }: OutlineTabProps) {
             {/* Level Badge */}
             <span
               className={cn(
-                'inline-flex items-center justify-center px-1.5 py-0.5 rounded text-11 leading-none font-mono font-medium border shrink-0',
+                'inline-flex items-center justify-center px-1.5 py-0.5 rounded-sm text-11 leading-none font-mono font-medium border shrink-0',
                 badge.className
               )}
             >
@@ -304,7 +304,7 @@ export function OutlineTab({ onClose }: OutlineTabProps) {
             {isOtherFile && (
               <span
                 title={`Defined in ${node.sourceFile}`}
-                className="text-[10px] font-mono text-muted-foreground/70 px-1 py-0.2 rounded bg-muted/60 max-w-[80px] truncate"
+                className="text-[10px] font-mono text-muted-foreground/70 px-1 py-0.2 rounded-sm bg-muted/60 max-w-[80px] truncate"
               >
                 {nodeFileBase}
               </span>
@@ -384,7 +384,7 @@ export function OutlineTab({ onClose }: OutlineTabProps) {
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 size-4 flex items-center justify-center rounded text-muted-foreground hover:text-foreground"
+              className="absolute right-2 size-4 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
               aria-label="Clear filter"
             >
               <X className="size-3" />
@@ -401,9 +401,9 @@ export function OutlineTab({ onClose }: OutlineTabProps) {
             type="button"
             onClick={() => setScope('project')}
             className={cn(
-              'px-2 py-0.5 rounded font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+              'px-2 py-0.5 rounded-sm font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
               scope === 'project'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
+                ? 'bg-background text-foreground font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
             aria-label="Project-wide outline"
@@ -414,9 +414,9 @@ export function OutlineTab({ onClose }: OutlineTabProps) {
             type="button"
             onClick={() => setScope('file')}
             className={cn(
-              'px-2 py-0.5 rounded font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+              'px-2 py-0.5 rounded-sm font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
               scope === 'file'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
+                ? 'bg-background text-foreground font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
             aria-label="Current file outline only"
@@ -431,9 +431,9 @@ export function OutlineTab({ onClose }: OutlineTabProps) {
             type="button"
             onClick={() => setCategoryFilter('all')}
             className={cn(
-              'px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+              'px-1.5 py-0.5 rounded-sm font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
               categoryFilter === 'all'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
+                ? 'bg-background text-foreground font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -443,9 +443,9 @@ export function OutlineTab({ onClose }: OutlineTabProps) {
             type="button"
             onClick={() => setCategoryFilter('sections')}
             className={cn(
-              'px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+              'px-1.5 py-0.5 rounded-sm font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
               categoryFilter === 'sections'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
+                ? 'bg-background text-foreground font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -455,9 +455,9 @@ export function OutlineTab({ onClose }: OutlineTabProps) {
             type="button"
             onClick={() => setCategoryFilter('figures-tables')}
             className={cn(
-              'px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+              'px-1.5 py-0.5 rounded-sm font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
               categoryFilter === 'figures-tables'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
+                ? 'bg-background text-foreground font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >

@@ -162,18 +162,38 @@ export default function ScientificViewerModal({
 
   const totalPages = Math.ceil(filteredRows.length / pageSize) || 1;
 
+interface JupyterOutput {
+  text?: string | string[];
+  data?: {
+    'image/png'?: string;
+    'text/plain'?: string | string[];
+    [key: string]: unknown;
+  };
+}
+
+interface JupyterCell {
+  cell_type: string;
+  source: string | string[];
+  execution_count?: number | null;
+  outputs?: JupyterOutput[];
+}
+
+interface JupyterNotebook {
+  cells?: JupyterCell[];
+}
+
   // ── Jupyter Notebook Parser ──────────────────────────────────────────
   const parsedNotebook = useMemo(() => {
     if (!isNotebook || !content) return null;
     try {
-      const nb = JSON.parse(content) as any;
-      const cells = (nb && Array.isArray(nb.cells)) ? nb.cells : [];
-      return cells.map((cell: any, idx: number) => ({
+      const nb = JSON.parse(content) as JupyterNotebook;
+      const cells = nb && Array.isArray(nb.cells) ? nb.cells : [];
+      return cells.map((cell, idx) => ({
         id: `cell-${idx}`,
         type: cell.cell_type, // 'markdown' or 'code'
         source: Array.isArray(cell.source) ? cell.source.join('') : cell.source || '',
         executionCount: cell.execution_count,
-        outputs: (cell.outputs || []).map((out: any) => {
+        outputs: (cell.outputs || []).map((out) => {
           if (out.text) {
             return {
               type: 'text',

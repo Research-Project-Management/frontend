@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { ModernLibraryPage } from '@/features/library';
+import { ModernLibraryPage } from '@/features/library/pages/LibraryPage';
 
 export const metadata: Metadata = { title: 'My Publications · Library · Flux' };
 

@@ -1,7 +1,4 @@
-/**
- * @file use-file-versions.ts
- * @description React Query hooks for file versioning, timeline tracking, and rollbacks.
- */
+'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {

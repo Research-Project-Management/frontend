@@ -44,7 +44,8 @@ export function getBannerGradient(id?: string): string {
  * Checks if a project is private.
  */
 export function isProjectPrivate(project: Partial<Project>): boolean {
-  return Boolean((project as any).isPrivate ?? (project as any).settings?.isPrivate ?? false);
+  const settings = project.settings as Record<string, unknown> | undefined;
+  return Boolean(project.isPrivate ?? settings?.isPrivate ?? false);
 }
 
 /**
@@ -84,8 +85,8 @@ export function searchProjects(projects: Project[], query: string): Project[] {
     (p) =>
       p.name?.toLowerCase().includes(q) ||
       p.description?.toLowerCase().includes(q) ||
-      ((p as any).identifier && (p as any).identifier.toLowerCase().includes(q)) ||
-      ((p as any).key && (p as any).key.toLowerCase().includes(q))
+      (p.identifier && p.identifier.toLowerCase().includes(q)) ||
+      (p.key && p.key.toLowerCase().includes(q))
   );
 }
 
@@ -183,18 +184,21 @@ export function filterProjectsByCriteria(
   return projects.filter((p) => {
     // 1. My projects filter (Enforces SSOT: prioritizes server-authoritative yourRole)
     if (criteria.myProjects && currentUserId) {
+      const pObj = p as Record<string, unknown>;
       const isOwner =
         p.yourRole === 'owner' ||
         p.createdBy?.id === currentUserId ||
-        (p as any).owner === currentUserId;
+        pObj.owner === currentUserId;
       const isMember =
         Boolean(p.yourRole) ||
-        p.members?.some(
-          (m: any) =>
+        p.members?.some((m) => {
+          const mObj = m as Record<string, unknown>;
+          return (
             m.user?.id === currentUserId ||
-            m.userId === currentUserId ||
-            m.user === currentUserId
-        );
+            mObj.userId === currentUserId ||
+            mObj.user === currentUserId
+          );
+        });
       if (!isOwner && !isMember) return false;
     }
 
@@ -211,24 +215,27 @@ export function filterProjectsByCriteria(
     // 3. Lead filter
     if (criteria.leads && criteria.leads.length > 0) {
       const leadMember = p.members?.find(
-        (m: any) => m.role === 'owner' || m.role === 'lead'
+        (m) => m.role === 'owner' || m.role === 'lead'
       );
+      const pObj = p as Record<string, unknown>;
       const leadId =
         leadMember?.user?.id ||
-        leadMember?.userId ||
+        (leadMember as Record<string, unknown> | undefined)?.userId ||
         p.createdBy?.id ||
-        (p as any).owner;
+        (typeof pObj.owner === 'string' ? pObj.owner : undefined);
       if (!leadId || !criteria.leads.includes(String(leadId))) return false;
     }
 
     // 4. Members filter
     if (criteria.members && criteria.members.length > 0) {
-      const projectMemberIds = (p.members || []).map(
-        (m: any) =>
+      const projectMemberIds = (p.members || []).map((m) => {
+        const mObj = m as Record<string, unknown>;
+        return (
           m.user?.id ||
-          m.userId ||
-          (typeof m.user === 'string' ? m.user : '')
-      );
+          (typeof mObj.userId === 'string' ? mObj.userId : undefined) ||
+          (typeof mObj.user === 'string' ? mObj.user : '')
+        );
+      });
       if (p.createdBy?.id) {
         projectMemberIds.push(p.createdBy.id);
       }

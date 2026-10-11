@@ -263,8 +263,11 @@ export async function rawFetch(
     }, timeout);
 
     if (signal) {
-      if (typeof (AbortSignal as any).any === 'function') {
-        finalSignal = (AbortSignal as any).any([signal, timeoutController.signal]);
+      const abortSignalWithAny = AbortSignal as unknown as {
+        any?: (signals: AbortSignal[]) => AbortSignal;
+      };
+      if (typeof abortSignalWithAny.any === 'function') {
+        finalSignal = abortSignalWithAny.any([signal, timeoutController.signal]);
       } else {
         if (signal.aborted) {
           timeoutController.abort(signal.reason);
@@ -283,7 +286,7 @@ export async function rawFetch(
       method,
       credentials: 'include',
       headers,
-      body: body !== undefined ? (isFormData ? (body as any) : JSON.stringify(body)) : undefined,
+      body: body !== undefined ? (isFormData ? (body as BodyInit) : JSON.stringify(body)) : undefined,
       signal: finalSignal,
       ...rest,
     });
@@ -309,7 +312,7 @@ export async function rawFetch(
             method,
             credentials: 'include',
             headers,
-            body: body !== undefined ? (isFormData ? (body as any) : JSON.stringify(body)) : undefined,
+            body: body !== undefined ? (isFormData ? (body as BodyInit) : JSON.stringify(body)) : undefined,
             signal: finalSignal,
             ...rest,
           });
@@ -414,7 +417,7 @@ export async function apiFetch<T>(
       } = {};
 
       try {
-        payload = (await response.json()) as any;
+        payload = (await response.json()) as typeof payload;
       } catch {
         // Non-JSON error body fallback
       }
@@ -502,22 +505,25 @@ export async function apiFetch<T>(
       if (pagination && Array.isArray(data)) {
         // Assign standard enumerable metadata properties without breaking V8 optimization
         try {
+          const pagObj = pagination as Record<string, unknown>;
           const totalCount =
-            (pagination as any).totalCount ??
-            (pagination as any).total ??
+            (pagObj.totalCount as number | undefined) ??
+            (pagObj.total as number | undefined) ??
             data.length;
-          (data as any).pagination = pagination;
-          (data as any).meta = pagination;
-          (data as any).total = totalCount;
+          const extendedData = data as unknown as Record<string, unknown>;
+          extendedData.pagination = pagination;
+          extendedData.meta = pagination;
+          extendedData.total = totalCount;
         } catch {
           // Fallback if data is frozen
         }
       } else if (pagination && typeof data === 'object' && data !== null) {
-        if (!('pagination' in (data as object))) {
-          (data as any).pagination = pagination;
+        const dataObj = data as Record<string, unknown>;
+        if (!('pagination' in dataObj)) {
+          dataObj.pagination = pagination;
         }
-        if (!('meta' in (data as object))) {
-          (data as any).meta = pagination;
+        if (!('meta' in dataObj)) {
+          dataObj.meta = pagination;
         }
       }
       return data as T;

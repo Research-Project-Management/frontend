@@ -117,11 +117,12 @@ export function FilterPillsBar({
             if (!l) continue;
             if (typeof l === 'string') {
               if (!map.has(l)) map.set(l, { name: l });
-            } else if (typeof l === 'object') {
-              const id = (l as any).id || (l as any).name;
-              const name = (l as any).name || (l as any).title || id;
+            } else if (typeof l === 'object' && l !== null) {
+              const lbl = l as { id?: string; name?: string; title?: string; color?: string };
+              const id = lbl.id || lbl.name;
+              const name = lbl.name || lbl.title || id || 'Label';
               if (id && !map.has(id)) {
-                map.set(id, { name, color: (l as any).color });
+                map.set(id, { name, color: lbl.color });
               }
             }
           }
@@ -143,7 +144,7 @@ export function FilterPillsBar({
   const activeLabels = filters ? filters.labels : [];
   const activeSubscribers = filters ? filters.subscribers : [];
   const activeAttach = filters ? filters.attach : [];
-  const activeItems = filters ? [...((filters as any).items || []), ...(filters.work_items || [])] : [];
+  const activeItems = filters ? [...((filters as { items?: string[] }).items || []), ...(filters.work_items || [])] : [];
   const activeParents = filters ? filters.parent : [];
   const activeDueDates = filters ? filters.due_date : (dueDateFilter !== 'all' ? [dueDateFilter] : []);
   const activeStartDates = filters ? filters.start_date : [];

@@ -240,7 +240,7 @@ export function createSpellingHoverTooltip(projectId?: string): Extension {
       create: () => {
         const dom = document.createElement('div');
         dom.className =
-          'p-2.5 rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-200 text-12 font-sans select-none space-y-2 min-w-52 max-w-72 z-50 animate-in fade-in-50 zoom-in-95';
+          'p-2.5 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 text-12 font-sans select-none space-y-2 min-w-52 max-w-72 z-50 animate-in fade-in-50 zoom-in-95';
 
         // Title
         const header = document.createElement('div');
@@ -265,7 +265,7 @@ export function createSpellingHoverTooltip(projectId?: string): Extension {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className =
-              'px-2 py-1 text-12 rounded bg-muted hover:bg-muted/80 text-foreground font-mono transition-colors cursor-pointer border border-border';
+              'px-2 py-1 text-12 rounded-sm bg-muted hover:bg-muted/80 text-foreground font-mono transition-colors cursor-pointer border border-border';
             btn.textContent = sug;
             btn.title = `Replace with "${sug}"`;
             btn.onclick = (e) => {
@@ -295,7 +295,7 @@ export function createSpellingHoverTooltip(projectId?: string): Extension {
         const addBtn = document.createElement('button');
         addBtn.type = 'button';
         addBtn.className =
-          'text-11 px-2 py-0.5 rounded bg-primary/10 hover:bg-primary/20 text-primary font-medium transition-colors cursor-pointer';
+          'text-11 px-2 py-0.5 rounded-sm bg-primary/10 hover:bg-primary/20 text-primary font-medium transition-colors cursor-pointer';
         addBtn.textContent = 'Add to dictionary';
         addBtn.onclick = async (e) => {
           e.preventDefault();
@@ -320,7 +320,7 @@ export function createSpellingHoverTooltip(projectId?: string): Extension {
         const ignoreBtn = document.createElement('button');
         ignoreBtn.type = 'button';
         ignoreBtn.className =
-          'text-11 px-2 py-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer';
+          'text-11 px-2 py-0.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer';
         ignoreBtn.textContent = 'Ignore';
         ignoreBtn.onclick = (e) => {
           e.preventDefault();
@@ -559,7 +559,7 @@ export function createSpellingContextMenu(projectId?: string): Extension {
 
       const menu = document.createElement('div');
       menu.className =
-        'fixed p-2 rounded-lg border border-border bg-popover text-popover-foreground shadow-lg text-xs font-sans select-none space-y-1.5 min-w-48 max-w-64 z-[9999] animate-in fade-in-50 zoom-in-95';
+        'fixed p-2 rounded-md border border-border bg-popover text-popover-foreground shadow-lg text-xs font-sans select-none space-y-1.5 min-w-48 max-w-64 z-[9999] animate-in fade-in-50 zoom-in-95';
       menu.style.left = `${Math.min(e.clientX, window.innerWidth - 220)}px`;
       menu.style.top = `${Math.min(e.clientY, window.innerHeight - 200)}px`;
 
@@ -582,7 +582,7 @@ export function createSpellingContextMenu(projectId?: string): Extension {
           const item = document.createElement('button');
           item.type = 'button';
           item.className =
-            'w-full text-left px-2 py-1 rounded text-xs font-mono text-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer flex items-center justify-between';
+            'w-full text-left px-2 py-1 rounded-md text-xs font-mono text-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer flex items-center justify-between';
           item.innerHTML = `<span>${sug}</span><span class="text-[10px] text-muted-foreground">Replace</span>`;
           item.onclick = (ev) => {
             ev.preventDefault();
@@ -608,7 +608,7 @@ export function createSpellingContextMenu(projectId?: string): Extension {
       const addBtn = document.createElement('button');
       addBtn.type = 'button';
       addBtn.className =
-        'w-full text-left px-2 py-1 rounded text-xs font-medium text-primary hover:bg-primary/10 transition-colors cursor-pointer flex items-center gap-1.5';
+        'w-full text-left px-2 py-1 rounded-md text-xs font-medium text-primary hover:bg-primary/10 transition-colors cursor-pointer flex items-center gap-1.5';
       addBtn.innerHTML = `
         <svg class="size-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
         <span>Add to project dictionary</span>
@@ -638,7 +638,7 @@ export function createSpellingContextMenu(projectId?: string): Extension {
       const ignoreBtn = document.createElement('button');
       ignoreBtn.type = 'button';
       ignoreBtn.className =
-        'w-full text-left px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer';
+        'w-full text-left px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer';
       ignoreBtn.textContent = 'Ignore in this document';
       ignoreBtn.onclick = (ev) => {
         ev.preventDefault();

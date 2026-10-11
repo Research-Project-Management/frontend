@@ -238,18 +238,32 @@ export const CardUI = React.memo(function CardUI({
     return stateList[0];
   }, [card.state, card.columnId, projectStates, columns, displayOptions?.groupBy]);
 
+  const rawCard = card as Item & {
+    attach?: {
+      files?: unknown[];
+      pages?: unknown[];
+      papers?: unknown[];
+      links?: unknown[];
+    };
+    attachmentCount?: number;
+    linkCount?: number;
+    links?: unknown[];
+    subItems?: unknown[];
+    children?: unknown[];
+  };
+
   const isDone = Boolean(
     card.completed ||
-    (card as any).stateGroup === 'completed' ||
-    (card as any).state?.group === 'completed' ||
+    card.stateGroup === 'completed' ||
+    card.state?.group === 'completed' ||
     matchedState?.group === 'completed' ||
     card.columnId === 'done' ||
     card.columnId === 'completed'
   );
 
   const isCancelled = Boolean(
-    (card as any).stateGroup === 'cancelled' ||
-    (card as any).state?.group === 'cancelled' ||
+    card.stateGroup === 'cancelled' ||
+    card.state?.group === 'cancelled' ||
     matchedState?.group === 'cancelled' ||
     card.columnId === 'cancelled' ||
     card.columnId === 'cancel'
@@ -257,7 +271,7 @@ export const CardUI = React.memo(function CardUI({
 
   const colTitle = matchedState?.title || matchedState?.name || 'Backlog';
   const currentColor = resolveStateColor(matchedState);
-  const stateGroup = matchedState?.group || (card as any).stateGroup || (card as any).state?.group || colTitle;
+  const stateGroup = matchedState?.group || card.stateGroup || card.state?.group || colTitle;
 
   const priorityKey = (card.priority || 'none').toLowerCase() as Priority;
 
@@ -265,55 +279,38 @@ export const CardUI = React.memo(function CardUI({
   const formattedDateRange = ItemHelpers.formatDateRange(card.startDate, card.dueDate);
   const isOverdue = dates.isOverdue;
 
-  // Modules resolution
-  const modulesList = Array.isArray((card as any).modules) ? (card as any).modules : [];
-  const singleModule = (card as any).module;
-  const hasModules = modulesList.length > 0 || Boolean(singleModule);
-  const moduleText = useMemo(() => {
-    if (modulesList.length > 1) {
-      return `${modulesList.length} modules`;
-    }
-    if (modulesList.length === 1) {
-      const m = modulesList[0];
-      return typeof m === 'string' ? m : (m?.name || m?.title || '1 module');
-    }
-    if (singleModule) {
-      return typeof singleModule === 'string' ? singleModule : (singleModule?.name || singleModule?.title || '1 module');
-    }
-    return '';
-  }, [modulesList, singleModule]);
-
   // Sub-items
-  const childWorkItems = (card as any).childWorkItems ?? (card as any).subItems ?? (card as any).children ?? [];
+  const childWorkItems = card.childWorkItems ?? rawCard.subItems ?? rawCard.children ?? [];
   const childWorkItemTotal = childWorkItems.length;
-  const childWorkItemDone = childWorkItems.filter((st: any) =>
-    st.completed || st.stateGroup === 'completed' || st.state?.group === 'completed' || st.columnId === 'done'
-  ).length;
+  const childWorkItemDone = childWorkItems.filter((st: unknown) => {
+    const s = st as { completed?: boolean; stateGroup?: string; state?: { group?: string }; columnId?: string };
+    return Boolean(s.completed || s.stateGroup === 'completed' || s.state?.group === 'completed' || s.columnId === 'done');
+  }).length;
 
   // Attachments count
   const attachmentsCount = useMemo(() => {
-    if (typeof (card as any).attachmentCount === 'number') return (card as any).attachmentCount;
+    if (typeof rawCard.attachmentCount === 'number') return rawCard.attachmentCount;
     if (Array.isArray(card.attachments)) return card.attachments.length;
-    const attachObj = card.attachments || (card as any).attach;
+    const attachObj = card.attachments || rawCard.attach;
     if (attachObj && typeof attachObj === 'object') {
-      const files = Array.isArray((attachObj as any).files) ? (attachObj as any).files.length : 0;
-      const pages = Array.isArray((attachObj as any).pages) ? (attachObj as any).pages.length : 0;
-      const papers = Array.isArray((attachObj as any).papers) ? (attachObj as any).papers.length : 0;
+      const files = Array.isArray(attachObj.files) ? attachObj.files.length : 0;
+      const pages = Array.isArray(attachObj.pages) ? attachObj.pages.length : 0;
+      const papers = Array.isArray(attachObj.papers) ? attachObj.papers.length : 0;
       return files + pages + papers;
     }
     return 0;
-  }, [card.attachments, (card as any).attach, (card as any).attachmentCount]);
+  }, [card.attachments, rawCard.attach, rawCard.attachmentCount]);
 
   // Links count
   const linksCount = useMemo(() => {
-    if (typeof (card as any).linkCount === 'number') return (card as any).linkCount;
-    if (Array.isArray((card as any).links)) return (card as any).links.length;
-    const attachObj = card.attachments || (card as any).attach;
-    if (attachObj && typeof attachObj === 'object' && Array.isArray((attachObj as any).links)) {
-      return (attachObj as any).links.length;
+    if (typeof rawCard.linkCount === 'number') return rawCard.linkCount;
+    if (Array.isArray(rawCard.links)) return rawCard.links.length;
+    const attachObj = card.attachments || rawCard.attach;
+    if (attachObj && typeof attachObj === 'object' && 'links' in attachObj && Array.isArray(attachObj.links)) {
+      return attachObj.links.length;
     }
     return 0;
-  }, [(card as any).links, card.attachments, (card as any).attach, (card as any).linkCount]);
+  }, [rawCard.links, card.attachments, rawCard.attach, rawCard.linkCount]);
 
   const showSubItems = displayOptions?.properties?.childWorkItemCount !== false && childWorkItemTotal > 0;
   const showAttach = displayOptions?.properties?.attachmentCount !== false && attachmentsCount > 0;
@@ -505,21 +502,6 @@ export const CardUI = React.memo(function CardUI({
             </>
           )}
 
-          {/* 4. Module Badge */}
-          {hasModules && (
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit?.(card);
-              }}
-              className="inline-flex items-center gap-1 px-1.5 h-5 rounded-sm border border-border/70 bg-muted/20 text-10 text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0"
-              title={moduleText}
-            >
-              <ModuleGridIcon className="size-3 shrink-0" />
-              <span className="truncate max-w-[85px]">{moduleText}</span>
-            </div>
-          )}
-
           {/* 5. Subitem Indicator */}
           {showSubItems && (
             <div
@@ -580,9 +562,9 @@ export const CardUI = React.memo(function CardUI({
               <LabelPopover
                 open={labelOpen}
                 onOpenChange={setLabelOpen}
-                labels={ItemHelpers.uniqueLabels(card.labels as any)}
+                labels={ItemHelpers.uniqueLabels(card.labels)}
                 setLabels={(updater) => {
-                  const current = ItemHelpers.uniqueLabels(card.labels as any);
+                  const current = ItemHelpers.uniqueLabels(card.labels);
                   const next = typeof updater === 'function' ? updater(current) : updater;
                   onUpdateItem?.(card.id, { labels: next });
                 }}
@@ -1010,7 +992,7 @@ export function BoardView({
   const isSwimlanesActive = Boolean(
     subGroupBy &&
     subGroupBy !== 'none' &&
-    VALID_SWIMLANE_OPTIONS.includes(subGroupBy as any) &&
+    VALID_SWIMLANE_OPTIONS.includes(subGroupBy as typeof VALID_SWIMLANE_OPTIONS[number]) &&
     subGroupBy !== displayOptions?.groupBy
   );
 
@@ -1033,10 +1015,11 @@ export function BoardView({
         { id: 'none', title: 'No Priority', color: PRIORITY_THEME_COLORS.none },
       ];
     } else if (subGroupBy === 'assignee') {
-      const memberLanes: SwimlaneDef[] = (members || []).map((m: any, idx: number) => {
-        const userId = m.userId || m.user?.id || m.id || `member-${idx}`;
-        const name = m.user?.name || m.name || 'Member';
-        const avatar = m.user?.avatar || m.avatar;
+      const memberLanes: SwimlaneDef[] = (members || []).map((m: unknown, idx: number) => {
+        const mem = m as { userId?: string; id?: string; name?: string; avatar?: string; user?: { id?: string; name?: string; avatar?: string } };
+        const userId = mem.userId || mem.user?.id || mem.id || `member-${idx}`;
+        const name = mem.user?.name || mem.name || 'Member';
+        const avatar = mem.user?.avatar || mem.avatar;
         return {
           id: userId,
           title: name,
@@ -1106,12 +1089,13 @@ export function BoardView({
           itemLaneId = ItemHelpers.resolveAssigneeId(t) || '__unassigned__';
         } else if (subGroupBy === 'labels') {
           const first = (t.labels && t.labels.length > 0) ? t.labels[0] : null;
-          itemLaneId = first ? (typeof first === 'string' ? first : (first as any).name || (first as any).id || '__no_label__') : '__no_label__';
+          const lbl = first as { name?: string; id?: string } | null;
+          itemLaneId = first ? (typeof first === 'string' ? first : lbl?.name || lbl?.id || '__no_label__') : '__no_label__';
         }
 
         if (itemLaneId === lane.id) {
           count++;
-          if (t.completed || (t as any).stateGroup === 'completed' || (t as any).state?.group === 'completed' || t.columnId === 'done' || t.columnId === 'completed') {
+          if (t.completed || t.stateGroup === 'completed' || t.state?.group === 'completed' || t.columnId === 'done' || t.columnId === 'completed') {
             completedCount++;
           }
           const colId = getItemBucketKey(t, displayOptions?.groupBy) || t.columnId || columnIds[0] || 'backlog';

@@ -19,6 +19,8 @@ import { persist } from 'zustand/middleware';
 
 export type ActivityBarTab = 'files' | 'search' | 'outline' | 'citations' | 'review' | 'ai';
 export type BottomPanelTab = 'problems' | 'output';
+export type EditorSplitMode = 'none' | 'vertical' | 'horizontal';
+export type ActiveEditorPane = 'primary' | 'secondary';
 
 export interface LayoutState {
   // Activity Bar & Primary Sidebar (Left)
@@ -32,6 +34,15 @@ export interface LayoutState {
 
   // Center Splitter (Editor vs Preview)
   splitRatio: number; // 0.0 - 1.0 (e.g. 0.5 = 50/50)
+
+  // Editor Multi-Pane Split (Overleaf Parity: Side-by-side editing)
+  editorSplitMode: EditorSplitMode;
+  editorSplitRatio: number; // 0.2 - 0.8
+  activeEditorPane: ActiveEditorPane;
+  secondaryFileId: string | null;
+
+  // Detached PDF Window (Overleaf Parity: Separate screen preview)
+  isPdfDetached: boolean;
 
   // Bottom Dock Panel (Problems / Diagnostics / Output)
   bottomPanelOpen: boolean;
@@ -54,6 +65,15 @@ export interface LayoutState {
 
   setSplitRatio: (ratio: number) => void;
 
+  // Editor Split & Detached PDF Actions
+  setEditorSplitMode: (mode: EditorSplitMode) => void;
+  toggleEditorSplit: (direction?: 'vertical' | 'horizontal') => void;
+  setEditorSplitRatio: (ratio: number) => void;
+  setActiveEditorPane: (pane: ActiveEditorPane) => void;
+  setSecondaryFileId: (fileId: string | null) => void;
+  setPdfDetached: (detached: boolean) => void;
+  togglePdfDetached: () => void;
+
   toggleBottomPanel: () => void;
   setBottomPanelOpen: (open: boolean) => void;
   setBottomPanelHeight: (height: number) => void;
@@ -74,6 +94,11 @@ const DEFAULT_LAYOUT = {
   reviewPanelOpen: false,
   reviewPanelWidth: 340,
   splitRatio: 0.5,
+  editorSplitMode: 'none' as EditorSplitMode,
+  editorSplitRatio: 0.5,
+  activeEditorPane: 'primary' as ActiveEditorPane,
+  secondaryFileId: null as string | null,
+  isPdfDetached: false,
   bottomPanelOpen: false,
   bottomPanelHeight: 220,
   activeBottomTab: 'problems' as BottomPanelTab,
@@ -107,6 +132,19 @@ export const useLayoutStore = create<LayoutState>()(
 
       setSplitRatio: (ratio) =>
         set({ splitRatio: Math.max(0.15, Math.min(ratio, 0.85)) }),
+
+      setEditorSplitMode: (mode) => set({ editorSplitMode: mode }),
+      toggleEditorSplit: (direction = 'vertical') =>
+        set((state) => ({
+          editorSplitMode: state.editorSplitMode === 'none' ? direction : 'none',
+        })),
+      setEditorSplitRatio: (ratio) =>
+        set({ editorSplitRatio: Math.max(0.2, Math.min(ratio, 0.8)) }),
+      setActiveEditorPane: (pane) => set({ activeEditorPane: pane }),
+      setSecondaryFileId: (fileId) => set({ secondaryFileId: fileId }),
+      setPdfDetached: (detached) => set({ isPdfDetached: detached }),
+      togglePdfDetached: () =>
+        set((state) => ({ isPdfDetached: !state.isPdfDetached })),
 
       toggleBottomPanel: () =>
         set((state) => ({ bottomPanelOpen: !state.bottomPanelOpen })),

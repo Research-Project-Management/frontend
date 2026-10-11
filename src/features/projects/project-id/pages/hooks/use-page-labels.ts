@@ -12,7 +12,7 @@ export function usePageLabels(projectId: string, pageId: string) {
   return useQuery({
     queryKey: pageLabelKeys.byPage(pageId),
     queryFn: () => getPageLabels(projectId, pageId),
-    select: (data) => (data as any)?.labels ?? [],
+    select: (data) => (data as { labels?: unknown[] })?.labels ?? [],
     enabled: !!pageId && !!projectId,
   });
 }

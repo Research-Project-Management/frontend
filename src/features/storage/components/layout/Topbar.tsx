@@ -389,8 +389,7 @@ export default function Topbar({
         type="file"
         ref={folderInputRef}
         className="hidden"
-        //@ts-ignore - webkitdirectory is non-standard but supported in all modern browsers
-        webkitdirectory="true"
+        {...({ webkitdirectory: 'true' } as React.InputHTMLAttributes<HTMLInputElement>)}
         multiple
         onChange={handleFolderSelect}
       />

@@ -105,10 +105,36 @@ export function getRowColFromOffset(text: string, offset: number): { row: number
   return { row, col };
 }
 
+/**
+ * Applies the minimal prefix/suffix splice that turns yText into 	arget, as one transaction.
+ */
+export function applyTextDiff(yText: Y.Text, target: string, origin: unknown = 'local'): boolean {
+  const current = yText.toString();
+  if (current === target) return false;
+  let start = 0;
+  const minLen = Math.min(current.length, target.length);
+  while (start < minLen && current.charCodeAt(start) === target.charCodeAt(start)) start++;
+  let endCur = current.length;
+  let endTgt = target.length;
+  while (endCur > start && endTgt > start && current.charCodeAt(endCur - 1) === target.charCodeAt(endTgt - 1)) {
+    endCur--;
+    endTgt--;
+  }
+  const doc = yText.doc;
+  const apply = () => {
+    if (endCur > start) yText.delete(start, endCur - start);
+    if (endTgt > start) yText.insert(start, target.slice(start, endTgt));
+  };
+  if (doc) doc.transact(apply, origin);
+  else apply();
+  return true;
+}
+
 export class YjsSocketIOProvider {
-  public readonly doc: Y.Doc;
-  public readonly yText: Y.Text;
-  public readonly awareness: Awareness;
+  /** Mutable: replaced when rebuilding from the server (see onDocReplaced). */
+  public doc: Y.Doc;
+  public yText: Y.Text;
+  public awareness: Awareness;
   public readonly projectId: string;
   public readonly pageId: string;
 
@@ -159,8 +185,34 @@ export class YjsSocketIOProvider {
     } else {
       this.status = 'connected';
       this.isSynced = true;
-      options.onStatusChange?.('connected');
+      this.emitStatus('connected');
       options.onSynced?.();
+    }
+  }
+
+  private statusListeners = new Set<(status: ConnectionStatus) => void>();
+
+  /** Subscribe to connection status changes (safe across pooled provider reuse). */
+  public subscribeStatus(listener: (status: ConnectionStatus) => void): () => void {
+    this.statusListeners.add(listener);
+    return () => {
+      this.statusListeners.delete(listener);
+    };
+  }
+
+  /** Number of local updates queued but not yet acknowledged-sent to the server. */
+  public get pendingUpdateCount(): number {
+    return this.pendingUpdates.length;
+  }
+
+  private emitStatus(status: ConnectionStatus): void {
+    this.options.onStatusChange?.(status);
+    for (const listener of this.statusListeners) {
+      try {
+        listener(status);
+      } catch (err) {
+        console.warn('[YjsSocketIOProvider] status listener error:', err);
+      }
     }
   }
 
@@ -183,7 +235,9 @@ export class YjsSocketIOProvider {
     };
 
     try {
-      this.socket = io(socketUrl, {
+      const fakeSocket = (globalThis as { __fluxFakeSocket?: Socket })
+        .__fluxFakeSocket;
+      this.socket = fakeSocket ?? io(socketUrl, {
         path: '/socket.io',
         transports: ['websocket', 'polling'],
         auth: authPayload,
@@ -201,7 +255,7 @@ export class YjsSocketIOProvider {
         this.handleOnline = () => {
           if (!this.destroyed && this.socket && !this.socket.connected) {
             this.status = 'connecting';
-            this.options.onStatusChange?.('connecting');
+            this.emitStatus('connecting');
             this.socket.connect();
           }
         };
@@ -210,7 +264,7 @@ export class YjsSocketIOProvider {
     } catch (err) {
       console.warn('[YjsSocketIOProvider] Failed to initialize Socket.IO client:', err);
       this.status = 'disconnected';
-      this.options.onStatusChange?.('disconnected');
+      this.emitStatus('disconnected');
     }
   }
 
@@ -220,7 +274,7 @@ export class YjsSocketIOProvider {
     this.socket.on('connect', () => {
       if (this.destroyed) return;
       this.status = 'connected';
-      this.options.onStatusChange?.('connected');
+      this.emitStatus('connected');
 
       // 1. Join project room
       this.socket?.emit(
@@ -250,7 +304,7 @@ export class YjsSocketIOProvider {
     this.socket.on('disconnect', () => {
       if (this.destroyed) return;
       this.status = 'disconnected';
-      this.options.onStatusChange?.('disconnected');
+      this.emitStatus('disconnected');
 
       // Clear remote awareness states
       const remoteClientIds = Array.from(this.socketToClientIdMap.values());
@@ -266,7 +320,7 @@ export class YjsSocketIOProvider {
       if (this.destroyed) return;
       if (this.status !== 'connecting') {
         this.status = 'connecting';
-        this.options.onStatusChange?.('connecting');
+        this.emitStatus('connecting');
       }
     });
 
@@ -421,11 +475,20 @@ export class YjsSocketIOProvider {
   }
 
   private setupLocalDocListener(): void {
-    this.doc.on('update', (update: Uint8Array, origin: any) => {
+    const doc = this.doc;
+    doc.on('update', (update: Uint8Array, origin: any) => {
+      // Ignore updates from a replaced (stale) doc: they must never reach the server.
+      if (doc !== this.doc) return;
       if (origin === 'socket.io' || this.destroyed) return;
-      if (!this.socket || !this.socket.connected) return;
 
+      // Always queue local updates. When the socket is disconnected they are retained
+      // (never dropped) and flushed after reconnect + sync handshake.
       this.pendingUpdates.push(update);
+      if (this.pendingUpdates.length > 256) {
+        // Compact to bound memory during long offline sessions.
+        this.pendingUpdates = [Y.mergeUpdates(this.pendingUpdates)];
+      }
+      if (!this.socket || !this.socket.connected) return;
       if (this.updateBatchTimer) return;
 
       // 20ms micro-batch window: merges rapid keystrokes/plugins/multi-cursors into 1 network frame
@@ -436,6 +499,122 @@ export class YjsSocketIOProvider {
     });
   }
 
+  // ── HTTP-save-while-disconnected handling ──────────────────────────────────
+
+  /**
+   * True when the document content was persisted over HTTP (REST PUT) while the socket was
+   * disconnected. The backend splices REST content into the live server Y.Doc, so on reconnect
+   * our offline Yjs items must NOT be sent (they would duplicate text). Instead the local doc
+   * is rebuilt from server state and any remaining difference is re-applied as a fresh edit.
+   */
+  private httpSavedWhileDisconnected = false;
+  private resyncInFlight = false;
+  private readonly docReplacedListeners = new Set<(provider: YjsSocketIOProvider) => void>();
+
+  public get needsServerRebuild(): boolean {
+    return this.httpSavedWhileDisconnected;
+  }
+
+  /** Called after a successful REST save. Only flags when the realtime socket is down. */
+  public markHttpSaved(): void {
+    if (this.destroyed) return;
+    if (!this.socket || !this.socket.connected) {
+      this.httpSavedWhileDisconnected = true;
+    }
+  }
+
+  /** Subscribe to doc/yText/awareness replacement (after a server rebuild). */
+  public onDocReplaced(listener: (provider: YjsSocketIOProvider) => void): () => void {
+    this.docReplacedListeners.add(listener);
+    return () => {
+      this.docReplacedListeners.delete(listener);
+    };
+  }
+
+  /**
+   * Discards local Y.Doc state and rebuilds from the server, then re-applies the local text
+   * difference as a single new transaction. Nothing is lost, nothing is duplicated.
+   */
+  private rebuildFromServer(): void {
+    if (!this.socket || !this.socket.connected || this.destroyed || this.resyncInFlight) return;
+    this.resyncInFlight = true;
+
+    const freshDoc = new Y.Doc();
+    const encoder = encoding.createEncoder();
+    syncProtocol.writeSyncStep1(encoder, freshDoc); // empty state vector => full server state
+
+    this.socket.emit(
+      'doc:sync-step-1',
+      { projectId: this.projectId, docId: this.pageId, data: encoding.toUint8Array(encoder) },
+      (res?: { success?: boolean; data?: any; error?: string }) => {
+        this.resyncInFlight = false;
+        if (this.destroyed) {
+          freshDoc.destroy();
+          return;
+        }
+        if (!res?.success) {
+          // Keep the flag; retry on next reconnect. Never fall back to sending stale items.
+          console.warn('[YjsSocketIOProvider] Server rebuild failed; will retry on reconnect:', res?.error);
+          freshDoc.destroy();
+          return;
+        }
+        try {
+          if (res.data) {
+            const rawData = res.data instanceof Uint8Array ? res.data : new Uint8Array(res.data);
+            const decoder = decoding.createDecoder(rawData);
+            const sink = encoding.createEncoder();
+            while (decoding.hasContent(decoder)) {
+              syncProtocol.readSyncMessage(decoder, sink, freshDoc, 'socket.io');
+            }
+          }
+        } catch (err) {
+          console.warn('[YjsSocketIOProvider] Error applying server state during rebuild:', err);
+          freshDoc.destroy();
+          return;
+        }
+
+        const oldDoc = this.doc;
+        const oldAwareness = this.awareness;
+        // Latest local text (includes edits typed while the rebuild was in flight).
+        const localText = oldDoc.getText('latex').toString();
+
+        // Swap in the fresh doc; drop every queued update belonging to the old doc.
+        this.pendingUpdates = [];
+        if (this.updateBatchTimer) {
+          clearTimeout(this.updateBatchTimer);
+          this.updateBatchTimer = null;
+        }
+        this.doc = freshDoc;
+        this.yText = freshDoc.getText('latex');
+        this.awareness = new Awareness(freshDoc);
+        this.socketToClientIdMap.clear();
+        if (this.options.user) this.setLocalUser(this.options.user);
+        this.setupLocalAwarenessListener();
+        this.setupLocalDocListener();
+        this.httpSavedWhileDisconnected = false;
+
+        // Re-apply any remaining local difference as a new local transaction.
+        applyTextDiff(this.yText, localText, 'local-resync');
+        this.flushPendingUpdates();
+
+        this.isSynced = true;
+        for (const listener of this.docReplacedListeners) {
+          try {
+            listener(this);
+          } catch (err) {
+            console.warn('[YjsSocketIOProvider] doc-replaced listener error:', err);
+          }
+        }
+        this.options.onSynced?.();
+        // Destroy stale instances after bindings had a chance to reconfigure.
+        setTimeout(() => {
+          oldAwareness.destroy();
+          oldDoc.destroy();
+        }, 0);
+      },
+    );
+  }
+
   /**
    * Immediately flush all pending local Yjs updates into a single merged binary sync message.
    */
@@ -444,7 +623,14 @@ export class YjsSocketIOProvider {
       clearTimeout(this.updateBatchTimer);
       this.updateBatchTimer = null;
     }
-    if (this.destroyed || !this.socket || !this.socket.connected || this.pendingUpdates.length === 0) {
+    if (
+      this.destroyed ||
+      this.httpSavedWhileDisconnected ||
+      this.resyncInFlight ||
+      !this.socket ||
+      !this.socket.connected ||
+      this.pendingUpdates.length === 0
+    ) {
       return;
     }
 
@@ -465,6 +651,12 @@ export class YjsSocketIOProvider {
 
   private initiateYjsSync(): void {
     if (!this.socket || !this.socket.connected || this.destroyed) return;
+
+    if (this.httpSavedWhileDisconnected) {
+      // Server already has our text via the REST splice: never send local items/state.
+      this.rebuildFromServer();
+      return;
+    }
 
     // Send binary sync-step-1 with local state vector
     const encoder = encoding.createEncoder();
@@ -506,8 +698,9 @@ export class YjsSocketIOProvider {
           this.doc.transact(() => {
             this.yText.insert(0, this.options.initialContent!);
           }, 'local-init');
-          this.flushPendingUpdates();
         }
+        // Flush any local updates queued while disconnected (Yjs updates are idempotent).
+        this.flushPendingUpdates();
         this.isSynced = true;
         this.options.onSynced?.();
       },
@@ -523,6 +716,7 @@ export class YjsSocketIOProvider {
       const presence: CollaborationPresence = {
         id: p.userId,
         userId: p.userId,
+        socketId: p.socketId,
         name: p.name || 'Collaborator',
         avatar: p.avatar,
         color: p.color || '#3b82f6',
@@ -603,12 +797,13 @@ export class YjsSocketIOProvider {
 
   private handleUserJoined(data: any): void {
     const idx = this.activeCollaborators.findIndex(
-      (c) => c.userId === data.userId || (data.socketId && (c as any).socketId === data.socketId),
+      (c) => c.userId === data.userId || (data.socketId && c.socketId === data.socketId),
     );
 
     const newUser: CollaborationPresence = {
       id: data.userId,
       userId: data.userId,
+      socketId: data.socketId,
       name: data.name || 'Collaborator',
       avatar: data.avatar,
       color: data.color || '#3b82f6',
@@ -640,7 +835,7 @@ export class YjsSocketIOProvider {
       if (data.userId && (c.userId === data.userId || c.id === data.userId)) {
         return false;
       }
-      if (data.socketId && (c as any).socketId === data.socketId) {
+      if (data.socketId && c.socketId === data.socketId) {
         return false;
       }
       return true;
@@ -660,12 +855,13 @@ export class YjsSocketIOProvider {
 
   private updateCollaboratorCursor(data: any): void {
     const idx = this.activeCollaborators.findIndex(
-      (c) => c.userId === data.userId || (data.socketId && (c as any).socketId === data.socketId),
+      (c) => c.userId === data.userId || (data.socketId && c.socketId === data.socketId),
     );
 
     const updatedUser: CollaborationPresence = {
       id: data.userId,
       userId: data.userId,
+      socketId: data.socketId,
       name: data.name || 'Collaborator',
       color: data.color || '#3b82f6',
       avatar: data.avatar,
@@ -916,3 +1112,24 @@ export function releaseYjsProvider(projectId: string, pageId: string): void {
   }
 }
 
+/**
+ * Notifies every pooled provider for pageId that its content was just persisted over REST.
+ * Providers whose socket is disconnected will rebuild from the server on reconnect instead of
+ * replaying offline Yjs items (the backend already spliced the REST content into the live doc).
+ */
+export function markHttpSavedWhileDisconnected(pageId: string): void {
+  for (const { provider } of providerPool.values()) {
+    if (provider.pageId === pageId) provider.markHttpSaved();
+  }
+}
+
+/**
+ * Destroys all pooled providers and clears the pool.
+ * Useful for test isolation and resetting collaboration state.
+ */
+export function clearYjsProviderPool(): void {
+  for (const item of providerPool.values()) {
+    item.provider.destroy();
+  }
+  providerPool.clear();
+}

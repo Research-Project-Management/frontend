@@ -6,7 +6,7 @@ import { workspaceCoordinator } from '@/features/editor/coordinators/workspace.c
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 
-import { usePageStore } from '@/features/editor/store';
+import { usePageStore } from '@/features/editor/store/editor.store';
 
 describe('Citation Key Refactor & Modal Workflow (Overleaf Parity)', () => {
   beforeEach(() => {

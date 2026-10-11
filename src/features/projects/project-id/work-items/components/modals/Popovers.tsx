@@ -36,6 +36,7 @@ import {
   SelectItem,
 } from "@/shared/components/ui";
 import { Calendar } from "@/shared/components/ui";
+import type { DateRange } from "react-day-picker";
 import { cn } from "@/shared/lib/utils";
 import { ItemHelpers, resolveColumnId } from '../../utils/work-item.utils';
 import { useLabelsQuery } from '../../hooks/use-label';
@@ -152,8 +153,8 @@ export interface ProjectSelectorPopoverProps {
     identifier?: string;
     emoji?: string | null;
   } | null;
-  projects: any[];
-  onSelectProject: (project: any) => void;
+  projects: Array<{ id: string; name?: string; identifier?: string; emoji?: string | null }>;
+  onSelectProject: (project: { id: string; name?: string; identifier?: string }) => void;
   disabled?: boolean;
 }
 
@@ -170,7 +171,7 @@ export const ProjectSelectorPopover: React.FC<ProjectSelectorPopoverProps> = ({
   const filteredProjects = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return projects;
-    return projects.filter((p: any) =>
+    return projects.filter((p) =>
       (p.name || p.identifier || '').toLowerCase().includes(q)
     );
   }, [projects, search]);
@@ -531,9 +532,10 @@ export function MemberPopover({
   const selectedMembers = useMemo(() => {
     return activeIds
       .map((id) => {
-        const m = (members as any[]).find(
-          (mem: any) => (mem.user?.id || mem.userId || mem.id) === id
-        );
+        const m = (members || []).find((mem: unknown) => {
+          const item = mem as { user?: { id?: string; name?: string; avatar?: string }; userId?: string; id?: string; name?: string; avatar?: string };
+          return (item.user?.id || item.userId || item.id) === id;
+        }) as { user?: { id?: string; name?: string; avatar?: string }; userId?: string; id?: string; name?: string; avatar?: string } | undefined;
         return m
           ? {
               id,
@@ -716,7 +718,8 @@ export function LabelPopover({
 
   const labelList: Label[] = useMemo(() => {
     if (Array.isArray(rawLabels)) return rawLabels;
-    if (Array.isArray((rawLabels as any)?.labels)) return (rawLabels as any).labels;
+    const labelsRecord = rawLabels as { labels?: Label[] } | undefined;
+    if (Array.isArray(labelsRecord?.labels)) return labelsRecord.labels;
     return [];
   }, [rawLabels]);
 
@@ -834,10 +837,7 @@ export function DatePopover({
   children,
   isReadOnly = false,
 }: DatePopoverProps) {
-  const [selectedRange, setSelectedRange] = useState<{
-    from: Date | undefined;
-    to?: Date | undefined;
-  }>({
+  const [selectedRange, setSelectedRange] = useState<DateRange>({
     from: startDate ? new Date(startDate) : undefined,
     to: dueDate ? new Date(dueDate) : undefined,
   });
@@ -948,8 +948,8 @@ export function DatePopover({
           <div className="p-3 flex items-center justify-center shrink-0">
             <Calendar
               mode="range"
-              selected={selectedRange as any}
-              onSelect={(range: any) => {
+              selected={selectedRange}
+              onSelect={(range: DateRange | undefined) => {
                 setSelectedRange(range || { from: undefined });
                 if (range?.from) setHasStartDate(true);
                 if (range?.to) setHasDueDate(true);

@@ -8,7 +8,6 @@ export default defineConfig({
     },
   },
   resolve: {
-    preserveSymlinks: true,
     alias: {
       '@': path.resolve(__dirname, './src'),
       '~': path.resolve(__dirname, './src'),
@@ -23,7 +22,7 @@ export default defineConfig({
     setupFiles: [path.resolve(__dirname, './tests/unit/setup.ts')],
     include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
     passWithNoTests: true,
-    pool: 'forks',
+    pool: 'threads',
     isolate: false,
     testTimeout: 30000,
     hookTimeout: 30000,

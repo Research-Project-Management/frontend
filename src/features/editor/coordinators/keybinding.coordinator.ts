@@ -296,7 +296,7 @@ export class KeybindingCoordinatorRegistry {
           if (engine && typeof engine.focus === 'function') {
             engine.focus();
           }
-          const view = engine?.getView?.() || (engine as any)?.view;
+          const view = engine?.getView?.();
           if (view) {
             gotoLine(view);
           }

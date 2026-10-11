@@ -1,5 +1,7 @@
+'use client';
+
 import { useRef, useEffect } from 'react';
-import { useIntersectionObserver } from "@/shared/hooks";
+import { useIntersectionObserver } from "@/shared/hooks/use-intersection-observer";
 
 export function useInfiniteSentinel({
   hasMore,

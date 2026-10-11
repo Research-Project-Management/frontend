@@ -37,4 +37,4 @@ export interface ReverseSyncPoint {
   column: number;
 }
 
-export type { SyncTeXMap } from '../document/synctex-index';
+export type { SyncTeXMap } from '../pdf/synctex-index';

@@ -28,7 +28,10 @@ export function SecurityTab() {
 
   const changePasswordMutation = useChangePassword();
 
-  const isOAuth = !!(user as any)?.googleId || !!(user as any)?.githubId;
+  const authUser = user as
+    | (typeof user & { googleId?: string; githubId?: string })
+    | null;
+  const isOAuth = Boolean(authUser?.googleId || authUser?.githubId);
 
   const form = useForm<z.infer<typeof changePasswordSchema>>({
     resolver: zodResolver(changePasswordSchema),

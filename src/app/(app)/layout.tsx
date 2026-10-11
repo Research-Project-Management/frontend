@@ -17,7 +17,7 @@ const Sidebar = dynamic(
   { ssr: true, loading: () => null }
 );
 
-import { useAiCompanionStore } from '@/features/ai/store';
+import { useAiCompanionStore } from '@/features/ai/store/ai-companion.store';
 
 const AiCompanionSidebar = dynamic(
   () => import('@/features/ai/components/companion/AiCompanionSidebar'),

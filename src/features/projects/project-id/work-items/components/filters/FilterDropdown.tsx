@@ -247,10 +247,11 @@ export function FilterDropdown({
 
     if (Array.isArray(members) && members.length > 0) {
       for (const m of members) {
-        const id = (m as any).userId || (m as any).user?.id || m.id;
+        const memberObj = m as { userId?: string; user?: { id?: string; name?: string; avatar?: string | null }; id?: string; name?: string; avatar?: string | null };
+        const id = memberObj.userId || memberObj.user?.id || memberObj.id;
         if (!id) continue;
-        const name = m.name || (m as any).user?.name || 'Member';
-        const avatar = m.avatar || (m as any).user?.avatar || undefined;
+        const name = memberObj.name || memberObj.user?.name || 'Member';
+        const avatar = memberObj.avatar || memberObj.user?.avatar || undefined;
         if (!map.has(id)) {
           map.set(id, { id, name, avatar });
         }
@@ -277,25 +278,25 @@ export function FilterDropdown({
   }, [filterQuery]);
 
   // Central toggle helper
-  const handleToggle = <K extends keyof Filters>(key: K, item: any) => {
+  const handleToggle = <K extends keyof Filters>(key: K, item: unknown) => {
     if (onToggleFilter) {
       onToggleFilter(key, item);
     } else {
-      if (key === 'state' && onToggleColumn) onToggleColumn(item);
-      if (key === 'assignees' && onToggleAssignee) onToggleAssignee(item);
-      if (key === 'priority' && onTogglePriority) onTogglePriority(item);
-      if (key === 'due_date' && onDueDateFilterChange) onDueDateFilterChange(item);
+      if (key === 'state' && onToggleColumn) onToggleColumn(item as string);
+      if (key === 'assignees' && onToggleAssignee) onToggleAssignee(item as string);
+      if (key === 'priority' && onTogglePriority) onTogglePriority(item as Priority);
+      if (key === 'due_date' && onDueDateFilterChange) onDueDateFilterChange((item || 'all') as DueDateFilterOption);
     }
   };
 
   // Central active state checker
-  const isItemActive = <K extends keyof Filters>(key: K, item: any): boolean => {
+  const isItemActive = <K extends keyof Filters>(key: K, item: unknown): boolean => {
     if (filters && Array.isArray(filters[key])) {
-      return (filters[key] as any[]).includes(item);
+      return (filters[key] as unknown[]).includes(item);
     }
-    if (key === 'state') return selectedColumnIds.includes(item);
-    if (key === 'assignees') return selectedAssigneeIds.includes(item);
-    if (key === 'priority') return selectedPriorities.includes(item);
+    if (key === 'state') return selectedColumnIds.includes(item as string);
+    if (key === 'assignees') return selectedAssigneeIds.includes(item as string);
+    if (key === 'priority') return selectedPriorities.includes(item as Priority);
     if (key === 'due_date') return dueDateFilter === item;
     return false;
   };
@@ -309,11 +310,12 @@ export function FilterDropdown({
           if (!l) continue;
           if (typeof l === 'string') {
             if (!map.has(l)) map.set(l, { id: l, name: l, color: '#3b82f6' });
-          } else if (typeof l === 'object') {
-            const id = (l as any).id || (l as any).name;
-            const name = (l as any).name || (l as any).title || id;
+          } else if (typeof l === 'object' && l !== null) {
+            const lbl = l as { id?: string; name?: string; title?: string; color?: string };
+            const id = lbl.id || lbl.name;
+            const name = lbl.name || lbl.title || id || 'Label';
             if (id && !map.has(id)) {
-              map.set(id, { id, name, color: (l as any).color || '#3b82f6' });
+              map.set(id, { id, name, color: lbl.color || '#3b82f6' });
             }
           }
         }

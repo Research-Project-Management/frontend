@@ -22,11 +22,12 @@ import {
   Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useLogViewerActions } from './hooks/useLogViewerActions';
+import { useLogViewerActions } from './hooks/use-log-viewer-actions';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/button';
 import { PlaneErrorState, PlaneEmptyState } from '@/shared/components/ui';
-import { usePageStore, useCompileStore } from '@/features/editor/store';
+import { usePageStore } from '@/features/editor/store/editor.store';
+import { useCompileStore } from '@/features/editor/store/compiler.store';
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import {
@@ -49,12 +50,14 @@ import type {
 import {
   parseLatexLog,
   DEFAULT_OUTPUT_FILES,
-  CompilerLogEntryRow,
-  CompilerLogsHeader,
+} from '@/features/editor/domain/compiler/compiler-logs.parser';
+import { CompilerLogEntryRow } from './logs/CompilerLogEntryRow';
+import { CompilerLogsHeader } from './logs/CompilerLogsHeader';
+import {
   CompilerLogsFilterTabs,
-  CompilerLogsFooter,
   type TabType,
-} from './logs';
+} from './logs/CompilerLogsFilterTabs';
+import { CompilerLogsFooter } from './logs/CompilerLogsFooter';
 
 export { parseLatexLog };
 export type { LogEntry, ParsedLog, CompilerLogsProps, LogsProps, ErrorExplanationDto };

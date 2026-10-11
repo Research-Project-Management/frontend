@@ -19,14 +19,13 @@ import { useLayoutStore } from '@/features/editor/store/layout.store';
 import { usePageStore } from '@/features/editor/store/editor.store';
 import { useDocumentCollaborationStore } from '@/features/editor/store/collaboration.store';
 import { useReviewPendingCount } from '@/features/editor/ui/features/sidebar/review/hooks/useReviewPendingCount';
-import { SuggestionCard } from '@/features/editor/ui/features/sidebar/review/subcomponents/SuggestionCard';
-import { SuggestionBulkActions } from '@/features/editor/ui/features/sidebar/review/subcomponents/SuggestionBulkActions';
+import { SuggestionCard, SuggestionBulkActions } from '@/features/editor/ui/features/sidebar/review/subcomponents/ReviewSuggestions';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { EditorToolbar } from '@/features/editor/ui/features/editor/EditorToolbar';
 import { ActivityBar } from '@/features/editor/ui/shell/ActivityBar';
 import { Topbar } from '@/features/editor/ui/shell/Topbar';
 import { reviewCoordinator } from '@/features/editor/coordinators/review.coordinator';
-import { jumpToEditorLine } from '@/features/editor/ui/features/sidebar/review/utils/review.util';
+import { jumpToEditorLine } from '@/features/editor/coordinators/navigation.coordinator';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
 import { suggestionService, commentService } from '@/features/editor/sdk';
 import type { PageSuggestion } from '@/features/editor/domain/types';
@@ -68,7 +67,7 @@ vi.mock('@/features/editor/ui/hooks/use-suggestion', () => ({
   }),
 }));
 
-vi.mock('@/features/editor/ui/hooks/use-core', () => ({
+vi.mock('@/features/editor/ui/hooks/use-page-actions', () => ({
   usePageActions: () => ({
     updateTitle: { isPending: false },
   }),

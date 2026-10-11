@@ -12,7 +12,7 @@ import {
   Library,
 } from 'lucide-react';
 import { useRelations, useViewItems, useCollections } from '../../data';
-import { useLibraryViewStore } from '../../store';
+import { useLibraryViewStore } from '../../store/library-ui.store';
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Input } from '@/shared/components/ui/input';
@@ -32,7 +32,7 @@ import {
 } from '@/shared/components/ui/dialog';
 import type { Item, RelatedItem } from '@/features/library/types/library.types';
 import { cn } from '@/shared/lib/utils';
-import { cleanAcademicText, formatAcademicAuthors } from '../../utils';
+import { cleanAcademicText, formatAcademicAuthors } from '../../utils/academic-text';
 
 interface VenueBearingItem {
   journal?: string;

@@ -28,21 +28,23 @@ import {
 } from "@/shared/components/ui/tooltip";
 import { cn } from '@/shared/lib/utils';
 
-import FileMenu from './topbar/file/FileMenu';
-import EditMenu from './topbar/edit/EditMenu';
-import ViewMenu from './topbar/view/ViewMenu';
-import InsertMenu from './topbar/insert/InsertMenu';
-import FormatMenu from './topbar/format/FormatMenu';
-import LayoutSwitcher from './topbar/view/LayoutSwitcher';
+import FileMenu from './topbar/FileMenu';
+import EditMenu from './topbar/EditMenu';
+import ViewMenu from './topbar/ViewMenu';
+import InsertMenu from './topbar/InsertMenu';
+import FormatMenu from './topbar/FormatMenu';
+import LayoutSwitcher from './topbar/LayoutSwitcher';
 import ProjectTitleDropdown from './topbar/ProjectTitleDropdown';
 import CollaboratorAvatarStack from './topbar/CollaboratorAvatarStack';
 import EditingModeDropdown from './topbar/EditingModeDropdown';
 
 import { editorCommandBus } from '../../coordinators/command-bus';
 import { sessionCoordinator } from '../../coordinators/session.coordinator';
-import { useSettingsStore, useCompileStore, usePageStore } from '../../store';
-import { usePageActions } from '../hooks/use-core';
-import { extractProjectId } from '@/features/editor/domain/types';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { useCompileStore } from '@/features/editor/store/compiler.store';
+import { usePageStore } from '@/features/editor/store/editor.store';
+import { usePageActions } from '../hooks/use-page-actions';
+import { extractProjectId } from '@/features/editor/domain/types/core.types';
 
 const TemplateGalleryModal = dynamic(
   () => import('../modals/TemplateGalleryModal'),
@@ -218,14 +220,8 @@ export function Topbar() {
         <div className="flex items-center gap-1.5 shrink-0">
           {/* Save Status Indicator: only show when actively saving */}
           {isSaving && (
-            <div className="flex items-center shrink-0 mr-0.5">
-              <span
-                className="flex items-center justify-center size-6 text-warning bg-warning/15 rounded-full select-none"
-                title="Saving..."
-                aria-label="Saving changes"
-              >
-                <Loader2 className="size-3 animate-spin shrink-0 motion-reduce:animate-none" />
-              </span>
+            <div className="flex items-center shrink-0 mr-1" title="Saving..." aria-label="Saving changes">
+              <Loader2 className="size-3.5 text-muted-foreground animate-spin shrink-0 motion-reduce:animate-none" />
             </div>
           )}
 

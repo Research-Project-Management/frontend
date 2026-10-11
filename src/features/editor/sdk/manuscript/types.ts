@@ -447,6 +447,7 @@ export interface ExportFileResult {
 export interface CollaborationPresence {
   id?: string;
   userId?: string;
+  socketId?: string;
   name: string;
   avatar?: string | null;
   role?: string;

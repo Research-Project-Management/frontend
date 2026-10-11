@@ -18,8 +18,9 @@ import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
-import { LibraryTopbar } from '../components/topbar';
-import { LibraryInspector, DuplicateMergeInspector } from '../components/inspector';
+import { LibraryTopbar } from '../components/topbar/LibraryTopbar';
+import { LibraryInspector } from '../components/inspector/LibraryInspector';
+import { DuplicateMergeInspector } from '../components/inspector/DuplicateMergeInspector';
 import { formatAcademicAuthors } from '../utils/academic-text';
 import { ContentSkeleton } from '../components/content/ContentSkeleton';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
@@ -31,8 +32,8 @@ import {
   useDuplicateGroupsQuery,
   useMergeDuplicatesMutation,
 } from '../data';
-import { useLibrarySidebarStore, useLibraryViewStore } from '../store';
-import { inspectItemDifferences } from '../domain';
+import { useLibrarySidebarStore, useLibraryViewStore } from '../store/library-ui.store';
+import { inspectItemDifferences } from '../domain/diff';
 import { LibraryModals } from '../components/modals/LibraryModals';
 import MergeModal from '../components/modals/MergeModal';
 import type { Item, DuplicateGroup } from '../types/library.types';

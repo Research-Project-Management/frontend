@@ -20,10 +20,10 @@ export { default as InboxTabs } from './components/inbox/InboxTabs';
 export { default as InboxItem } from './components/inbox/InboxItem';
 
 // ── Hooks ─────────────────────────────────────────────────────────────
-export * from './hooks';
+export * from './hooks/use-inbox';
 
 // ── Services ──────────────────────────────────────────────────────────
-export * from './services';
+export * from './services/inbox.service';
 
 // ── Types ─────────────────────────────────────────────────────────────
-export * from './types';
+export * from './types/inbox.types';

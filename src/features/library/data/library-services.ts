@@ -44,13 +44,13 @@ import {
   ItemTypesService,
   SavedSearchesService,
   RelationsService,
-} from './catalog';
+} from './catalog/catalog.service';
 
 import {
   ExtractionService,
   AttachmentsService,
   UploadService,
-} from './extraction';
+} from './extraction/extraction.service';
 
 import {
   IngestionDomainService,
@@ -58,16 +58,16 @@ import {
   QualityService,
   CurationService,
   RetractionService,
-} from './ingestion';
+} from './ingestion/ingestion.service';
 
 import {
   CitationDomainService,
   CitationService,
   ExportService,
-} from './citation';
+} from './citation/citation.service';
 
-import { SearchService } from './search';
-import { SyncService } from './sync';
+import { SearchService } from './search/search.service';
+import { SyncService } from './sync/sync.service';
 
 // ─── Base URL & Per-Domain Microservice Endpoints ────────────────────────────
 

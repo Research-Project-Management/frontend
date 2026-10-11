@@ -25,7 +25,7 @@ import {
   type YjsSocketIOProvider,
   type ConnectionStatus,
 } from '@/features/editor/sdk';
-import { getCachedUser } from '@/features/auth/services/auth.service';
+import { getCachedUser } from '@/features/auth';
 
 export type { CollaboratorPresenceInfo };
 
@@ -200,6 +200,7 @@ export function useEditorCollaboration({
   const [provider, setProvider] = useState<YjsSocketIOProvider | null>(null);
   const [isSynced, setIsSynced] = useState<boolean>(false);
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
+  const [, setDocGeneration] = useState(0);
   const initialValueRef = useRef(initialValue);
   if (!initialValueRef.current && initialValue) {
     initialValueRef.current = initialValue;
@@ -234,8 +235,16 @@ export function useEditorCollaboration({
     setProvider(instance);
     setIsSynced(instance.isSynced);
     setStatus(instance.status);
+    // Pooled providers keep the first caller's onStatusChange; subscribe explicitly so this
+    // hook instance always reflects the real socket status.
+    const unsubscribeStatus = instance.subscribeStatus((s) => setStatus(s));
+    // After a rebuild-from-server the provider swaps doc/yText/awareness; re-render so the
+    // editor binding reconfigures onto the new instances.
+    const unsubscribeReplaced = instance.onDocReplaced(() => setDocGeneration((g) => g + 1));
 
     return () => {
+      unsubscribeStatus();
+      unsubscribeReplaced();
       releaseYjsProvider(projectId, fileId);
     };
   }, [enabled, projectId, fileId]);

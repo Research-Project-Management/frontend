@@ -13,9 +13,9 @@ import {
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { aiCoordinator } from '@/features/editor/coordinators/ai.coordinator';
 import { manuscriptService } from '@/features/editor/sdk';
-import { CodeMirrorEngineAdapter } from '@/features/editor/engines/adapters/codemirror/codemirror.adapter';
+import { CodeMirrorEngineAdapter } from '@/features/editor/engines/adapters/codemirror.adapter';
 import { setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
-import { usePageStore } from '@/features/editor/store';
+import { usePageStore } from '@/features/editor/store/editor.store';
 import type { DiffProposal } from '@/features/editor/domain/types/ports/editor-engine.port';
 
 describe('AI Inline Ghost Diff & 1-Click Error Assist (Cursor / Overleaf Parity)', () => {

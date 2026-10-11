@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { usePreviewStore } from '../store/use-preview-store';
 import { useStorageFilterStore } from '../store/use-filter-store';
-import { useDebounce } from "@/shared/hooks";
+import { useDebounce } from "@/shared/hooks/use-debounce";
 import type { FileQueryParams } from '../services/file.service';
 
 export function useStorageQueryParams() {

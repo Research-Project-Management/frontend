@@ -1,8 +1,4 @@
-/**
- * @file use-upload.ts
- * @description Frontend hooks mirroring backend UploadController.
- * Provides upload mutations, progress tracking, and resumable multipart uploads for scientific datasets.
- */
+'use client';
 
 import { useState, useCallback, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -43,12 +39,12 @@ export function useFileUpload() {
             projectId: params.projectId,
             parentId: params.parentId,
             pageId: params.pageId,
-            onProgress: (p) => setProgress(p),
+            onProgress: (p: number) => setProgress(p),
           });
         } else {
           result = await uploadFile(file, {
             ...params,
-            onProgress: (p) => setProgress(p),
+            onProgress: (p: number) => setProgress(p),
           });
         }
 

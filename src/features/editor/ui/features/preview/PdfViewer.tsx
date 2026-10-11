@@ -22,13 +22,17 @@ import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 
-import { usePageStore, useSettingsStore, useViewerStore, useLayoutStore } from '../../../store';
-import { filesQuery, usePageActions } from '../../hooks/use-core';
+import { usePageStore } from '@/features/editor/store/editor.store';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { useViewerStore } from '@/features/editor/store/viewer.store';
+import { useLayoutStore } from '@/features/editor/store/layout.store';
+import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
+import { usePageActions } from '../../hooks/use-page-actions';
 import {
   extractPdfBookmarks,
   extractOutlineFromContent,
   type PdfOutlineItem,
-} from '@/features/editor/domain/document/pdf-outline';
+} from '@/features/editor/domain/pdf/pdf-outline';
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { editorCommandBus, setActivePdfViewer } from '../../../coordinators/command-bus';
 
@@ -60,6 +64,7 @@ export function PdfViewer() {
 
   const pdfSpreadView = useSettingsStore((s) => s.pdfSpreadView);
   const togglePdfSpreadView = useSettingsStore((s) => s.togglePdfSpreadView);
+  const pdfViewer = useSettingsStore((s) => s.pdfViewer);
   const activeFilePage = usePageStore((s) => s.activeFilePage);
 
   const { updateThumbnail: saveThumbnailMutation } = usePageActions();
@@ -309,25 +314,41 @@ export function PdfViewer() {
           onPrev={prevMatch}
           onClose={closeSearch}
         />
-        <PdfSurface
-          ref={pdfSurfaceRef}
-          pdfUrl={pdfUrl}
-          synctexMap={synctexMapRef.current}
-          scale={scale}
-          autoFit={autoFit}
-          containerWidth={containerWidth}
-          scrollMode={true}
-          numPages={numPages}
-          compileStatus={compileStatus}
-          onPageNumberChange={setPageNumber}
-          onNumPagesChange={setNumPages}
-          onDocumentLoadSuccess={onDocumentLoadSuccess}
-          onJumpToSource={handleJumpToSource}
-          onCompile={handleCompile}
-          invertColors={invertColors}
-          isSpreadView={pdfSpreadView}
-          onRenderTextLayer={applyDomHighlights}
-        />
+        {pdfViewer === 'browser' ? (
+          <div className="flex-1 w-full h-full bg-muted/10 flex flex-col items-center justify-center relative">
+            {pdfUrl ? (
+              <iframe
+                src={pdfUrl}
+                className="w-full h-full border-0"
+                title="Native Browser PDF Viewer"
+              />
+            ) : (
+              <div className="text-muted-foreground text-xs font-mono">
+                No compiled PDF available yet.
+              </div>
+            )}
+          </div>
+        ) : (
+          <PdfSurface
+            ref={pdfSurfaceRef}
+            pdfUrl={pdfUrl}
+            synctexMap={synctexMapRef.current}
+            scale={scale}
+            autoFit={autoFit}
+            containerWidth={containerWidth}
+            scrollMode={true}
+            numPages={numPages}
+            compileStatus={compileStatus}
+            onPageNumberChange={setPageNumber}
+            onNumPagesChange={setNumPages}
+            onDocumentLoadSuccess={onDocumentLoadSuccess}
+            onJumpToSource={handleJumpToSource}
+            onCompile={handleCompile}
+            invertColors={invertColors}
+            isSpreadView={pdfSpreadView}
+            onRenderTextLayer={applyDomHighlights}
+          />
+        )}
 
         {showLogsOverlay && (
           <div className="absolute inset-0 z-20 bg-background flex flex-col overflow-hidden animate-in fade-in-50 duration-150">

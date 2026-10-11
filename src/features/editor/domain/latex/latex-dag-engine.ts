@@ -30,6 +30,11 @@ export interface LatexDependencyNode {
   outDegree: number;
 }
 
+export interface InferRootOptions {
+  /** Compile a subfiles child on its own instead of via its parent (default false). */
+  subfileStandalone?: boolean;
+}
+
 export interface DependencyGraphAnalysis {
   nodes: Map<string, LatexDependencyNode>;
   cycles: string[][]; // Detected circular include chains, e.g. [["a.tex", "b.tex", "a.tex"]]
@@ -154,6 +159,7 @@ export function parseLatexDirectives(
   isSubfile: boolean;
   subfileParentPath: string | null;
   includedFiles: string[];
+  includeGroups: string[][];
 } {
   const cleanSource = stripLatexComments(content);
 
@@ -184,18 +190,30 @@ export function parseLatexDirectives(
   const hasBeginDocument = /\\begin\s*\{document\}/.test(cleanSource);
 
   const includedFilesSet = new Set<string>();
+  // Each include yields an ordered list of candidate paths (root-relative first, then
+  // relative to the including file). The engine resolves each group to ONE target.
+  const includeGroups: string[][] = [];
 
-  const registerTarget = (rawTarget: string) => {
+  const registerTarget = (rawTarget: string, ext: string = '.tex') => {
     if (!rawTarget) return;
-    const rootPath = normalizeLatexPath(rawTarget);
-    if (rootPath) includedFilesSet.add(rootPath);
+    const group: string[] = [];
+    const rootPath = normalizeLatexPath(rawTarget, ext);
+    if (rootPath) group.push(rootPath);
     if (baseDir) {
-      const relPath = resolveRelativeLatexPath(baseDir, rawTarget);
-      if (relPath) includedFilesSet.add(relPath);
+      const relPath = resolveRelativeLatexPath(baseDir, rawTarget, ext);
+      if (relPath && relPath !== rootPath) group.push(relPath);
     }
+    if (group.length === 0) return;
+    for (const p of group) includedFilesSet.add(p);
+    includeGroups.push(group);
+  };
+  const registerExact = (path: string) => {
+    if (!path) return;
+    includedFilesSet.add(path);
+    includeGroups.push([path]);
   };
 
-  // 2. \input{...} and \include{...} with optional whitespace before '{'
+  // 2. \input{...} and \include{...} with optional whitespace/newlines before '{'
   const bracedInputIncludeRegex = /\\(?:input|include)\s*\{([^}]+)\}/g;
   let m: RegExpExecArray | null;
   while ((m = bracedInputIncludeRegex.exec(cleanSource)) !== null) {
@@ -204,9 +222,13 @@ export function parseLatexDirectives(
   }
 
   // 2b. TeX primitive braceless \input filename (e.g. \input macro.tex or \input preamble)
-  // Must be separated by whitespace, not starting with \ or { or %
-  const bracelessInputRegex = /(?<!\\)\\input\s+([^\s%\\{}]+)/g;
+  // Must be separated by whitespace, not starting with \ or { or %. A preceding `\\`
+  // (line break) is allowed: only an odd run of backslashes escapes the command.
+  const bracelessInputRegex = /\\input(?![a-zA-Z@])[ \t]*(?:\r?\n[ \t]*)?([^\s%\\{}]+)/g;
   while ((m = bracelessInputRegex.exec(cleanSource)) !== null) {
+    let bs = 0;
+    for (let k = m.index - 1; k >= 0 && cleanSource[k] === '\\'; k--) bs++;
+    if (bs % 2 === 1) continue;
     const rawTarget = m[1]?.trim();
     if (rawTarget) registerTarget(rawTarget);
   }
@@ -225,7 +247,7 @@ export function parseLatexDirectives(
     const file = m[2]?.trim() || '';
     if (file) {
       const combined = dir ? `${dir.replace(/\/+$/, '')}/${file}` : file;
-      includedFilesSet.add(resolveRelativeLatexPath(baseDir, combined));
+      registerExact(resolveRelativeLatexPath(baseDir, combined));
     }
   }
 
@@ -234,7 +256,7 @@ export function parseLatexDirectives(
   while ((m = mintedRegex.exec(cleanSource)) !== null) {
     const rawTarget = m[1]?.trim();
     if (rawTarget) {
-      includedFilesSet.add(resolveRelativeLatexPath(baseDir, rawTarget));
+      registerExact(resolveRelativeLatexPath(baseDir, rawTarget));
     }
   }
 
@@ -246,10 +268,7 @@ export function parseLatexDirectives(
       const entries = rawTarget.split(',').map((s) => s.trim()).filter(Boolean);
       for (const entry of entries) {
         const bibFile = entry.endsWith('.bib') ? entry : `${entry}.bib`;
-        includedFilesSet.add(normalizeLatexPath(bibFile, '.bib'));
-        if (baseDir) {
-          includedFilesSet.add(resolveRelativeLatexPath(baseDir, bibFile, '.bib'));
-        }
+        registerTarget(bibFile, '.bib');
       }
     }
   }
@@ -260,10 +279,7 @@ export function parseLatexDirectives(
     const rawTarget = m[1]?.trim();
     if (rawTarget) {
       const bibFile = rawTarget.endsWith('.bib') ? rawTarget : `${rawTarget}.bib`;
-      includedFilesSet.add(normalizeLatexPath(bibFile, '.bib'));
-      if (baseDir) {
-        includedFilesSet.add(resolveRelativeLatexPath(baseDir, bibFile, '.bib'));
-      }
+      registerTarget(bibFile, '.bib');
     }
   }
 
@@ -273,10 +289,7 @@ export function parseLatexDirectives(
     const rawTarget = m[1]?.trim();
     if (rawTarget) {
       const pdfFile = rawTarget.endsWith('.pdf') ? rawTarget : `${rawTarget}.pdf`;
-      includedFilesSet.add(normalizeLatexPath(pdfFile, '.pdf'));
-      if (baseDir) {
-        includedFilesSet.add(resolveRelativeLatexPath(baseDir, pdfFile, '.pdf'));
-      }
+      registerTarget(pdfFile, '.pdf');
     }
   }
 
@@ -286,6 +299,7 @@ export function parseLatexDirectives(
     isSubfile,
     subfileParentPath,
     includedFiles: Array.from(includedFilesSet),
+    includeGroups,
   };
 }
 
@@ -298,6 +312,8 @@ export class LatexDagEngine {
   private reverseEdges = new Map<string, Set<string>>();
   private pathToIdMap = new Map<string, string>();
   private idToPathMap = new Map<string, string>();
+  /** Candidate groups per source node; each group resolves to exactly one edge target */
+  private includeGroups = new Map<string, string[][]>();
 
   public clear(): void {
     this.nodes.clear();
@@ -305,6 +321,67 @@ export class LatexDagEngine {
     this.reverseEdges.clear();
     this.pathToIdMap.clear();
     this.idToPathMap.clear();
+    this.includeGroups.clear();
+  }
+
+  /**
+   * Picks one target per include: the first candidate that exists as a node (root-relative
+   * first, matching TeX's cwd semantics), else the root-relative candidate. Prevents phantom
+   * edges to non-existent alternates.
+   */
+  private resolveGroup(group: string[]): string {
+    for (const candidate of group) {
+      if (this.nodes.has(candidate)) return candidate;
+    }
+    return group[0];
+  }
+
+  /** Recomputes forward/reverse edges for a single source node from its include groups. */
+  private relinkNode(sourcePath: string): void {
+    const oldTargets = this.forwardEdges.get(sourcePath) || new Set<string>();
+    for (const target of oldTargets) {
+      const rev = this.reverseEdges.get(target);
+      if (rev) {
+        rev.delete(sourcePath);
+        if (rev.size === 0) this.reverseEdges.delete(target);
+      }
+      const targetNode = this.nodes.get(target);
+      if (targetNode) targetNode.inDegree = this.reverseEdges.get(target)?.size ?? 0;
+    }
+
+    const node = this.nodes.get(sourcePath);
+    const groups = this.includeGroups.get(sourcePath);
+    if (!node || !groups) {
+      this.forwardEdges.delete(sourcePath);
+      return;
+    }
+
+    const newTargets = new Set<string>();
+    for (const group of groups) {
+      if (group.length > 0) newTargets.add(this.resolveGroup(group));
+    }
+    this.forwardEdges.set(sourcePath, newTargets);
+    node.includes = Array.from(newTargets);
+    node.outDegree = newTargets.size;
+
+    for (const target of newTargets) {
+      let rev = this.reverseEdges.get(target);
+      if (!rev) {
+        rev = new Set();
+        this.reverseEdges.set(target, rev);
+      }
+      rev.add(sourcePath);
+      const targetNode = this.nodes.get(target);
+      if (targetNode) targetNode.inDegree = rev.size;
+    }
+  }
+
+  /** Relinks every other node that has `path` among its include candidates. */
+  private relinkDependentsOf(path: string): void {
+    for (const [source, groups] of this.includeGroups) {
+      if (source === path) continue;
+      if (groups.some((g) => g.includes(path))) this.relinkNode(source);
+    }
   }
 
   public updateFileNode(fileId: string, filePath: string, content: string): void {
@@ -312,21 +389,7 @@ export class LatexDagEngine {
     this.pathToIdMap.set(normalizedPath, fileId);
     this.idToPathMap.set(fileId, normalizedPath);
 
-    const existingNode = this.nodes.get(normalizedPath);
-    if (existingNode) {
-      const oldIncludes = this.forwardEdges.get(normalizedPath) || new Set();
-      for (const target of oldIncludes) {
-        const revSet = this.reverseEdges.get(target);
-        if (revSet) {
-          revSet.delete(normalizedPath);
-        }
-        const targetNode = this.nodes.get(target);
-        if (targetNode) {
-          targetNode.inDegree = Math.max(0, targetNode.inDegree - 1);
-        }
-      }
-    }
-
+    const isNew = !this.nodes.has(normalizedPath);
     const parsed = parseLatexDirectives(content, filePath || normalizedPath);
 
     const node: LatexDependencyNode = {
@@ -337,27 +400,17 @@ export class LatexDagEngine {
       hasBeginDocument: parsed.hasBeginDocument,
       isSubfile: parsed.isSubfile,
       subfileParentPath: parsed.subfileParentPath,
-      includes: parsed.includedFiles,
+      includes: [],
       inDegree: this.reverseEdges.get(normalizedPath)?.size ?? 0,
-      outDegree: parsed.includedFiles.length,
+      outDegree: 0,
     };
 
     this.nodes.set(normalizedPath, node);
+    this.includeGroups.set(normalizedPath, parsed.includeGroups);
+    this.relinkNode(normalizedPath);
 
-    const targetSet = new Set<string>(parsed.includedFiles);
-    this.forwardEdges.set(normalizedPath, targetSet);
-
-    for (const target of targetSet) {
-      if (!this.reverseEdges.has(target)) {
-        this.reverseEdges.set(target, new Set());
-      }
-      this.reverseEdges.get(target)!.add(normalizedPath);
-
-      const targetNode = this.nodes.get(target);
-      if (targetNode) {
-        targetNode.inDegree = this.reverseEdges.get(target)!.size;
-      }
-    }
+    // A newly created node may now be the preferred resolution for other files' includes
+    if (isNew) this.relinkDependentsOf(normalizedPath);
   }
 
   /**
@@ -376,37 +429,18 @@ export class LatexDagEngine {
     const normalized = this.resolveNormalizedPath(fileIdOrPath) || normalizeLatexPath(fileIdOrPath);
     const fileId = this.pathToIdMap.get(normalized) || fileIdOrPath;
 
-    const targets = this.forwardEdges.get(normalized) || new Set();
-    for (const target of targets) {
-      const rev = this.reverseEdges.get(target);
-      if (rev) {
-        rev.delete(normalized);
-      }
-      const targetNode = this.nodes.get(target);
-      if (targetNode) {
-        targetNode.inDegree = Math.max(0, targetNode.inDegree - 1);
-      }
-    }
-    this.forwardEdges.delete(normalized);
-
-    const parents = this.reverseEdges.get(normalized) || new Set();
-    for (const p of parents) {
-      const fwd = this.forwardEdges.get(p);
-      if (fwd) {
-        fwd.delete(normalized);
-      }
-      const pNode = this.nodes.get(p);
-      if (pNode) {
-        pNode.outDegree = Math.max(0, pNode.outDegree - 1);
-      }
-    }
-    this.reverseEdges.delete(normalized);
+    // Drop this node's outgoing edges
+    this.includeGroups.delete(normalized);
+    this.relinkNode(normalized);
 
     this.nodes.delete(normalized);
     this.pathToIdMap.delete(normalized);
     if (fileId) {
       this.idToPathMap.delete(fileId);
     }
+
+    // Parents re-resolve (may fall back to an alternate candidate or a dangling target)
+    this.relinkDependentsOf(normalized);
   }
 
   public getNode(fileIdOrPath: string): LatexDependencyNode | undefined {
@@ -492,13 +526,58 @@ export class LatexDagEngine {
     return affected;
   }
 
+  /** Follows \documentclass[parent]{subfiles} chain to the top-most existing parent (cycle-safe). */
+  public resolveSubfileParent(node: LatexDependencyNode): LatexDependencyNode | null {
+    let current: LatexDependencyNode = node;
+    let result: LatexDependencyNode | null = null;
+    const seen = new Set<string>([node.path]);
+    while (current.isSubfile && current.subfileParentPath) {
+      const parentPath = this.resolveNormalizedPath(current.subfileParentPath);
+      if (!parentPath || seen.has(parentPath)) break;
+      const parent = this.nodes.get(parentPath);
+      if (!parent) break;
+      seen.add(parentPath);
+      result = parent;
+      current = parent;
+    }
+    return result;
+  }
+
+  /**
+   * Preamble-like: matches common preamble filenames, or holds \documentclass without
+   * \begin{document} while being \input by a file that has \begin{document}.
+   */
+  private isPreambleLike(node: LatexDependencyNode): boolean {
+    if (/preamble|macros?\.tex|settings\.tex|setup\.tex|config\.tex/i.test(node.path)) return true;
+    if (node.hasDocumentClass && !node.hasBeginDocument && node.inDegree > 0) {
+      const parents = this.reverseEdges.get(node.path);
+      if (parents) {
+        for (const p of parents) {
+          if (this.nodes.get(p)?.hasBeginDocument) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /** True when node has \begin{document} and inputs a file providing \documentclass. */
+  private includesDocClassPreamble(node: LatexDependencyNode): boolean {
+    if (!node.hasBeginDocument || node.hasDocumentClass) return false;
+    for (const target of this.forwardEdges.get(node.path) || []) {
+      const t = this.nodes.get(target);
+      if (t && t.hasDocumentClass && !t.hasBeginDocument) return true;
+    }
+    return false;
+  }
+
   public inferRootDocument(
     activeFileIdOrPath?: string | null,
-    explicitMainFile?: string | null
+    explicitMainFile?: string | null,
+    options: InferRootOptions = {},
   ): {
     rootPath: string;
     rootFileId?: string;
-    inferredBy: 'explicit' | 'active-standalone' | 'subfile' | 'dag-backtracking' | 'heuristic' | 'fallback';
+    inferredBy: 'explicit' | 'active-standalone' | 'subfile' | 'subfile-parent' | 'dag-backtracking' | 'heuristic' | 'fallback';
     hasCycleWarning: boolean;
   } {
     const cycles = this.detectCycles();
@@ -548,7 +627,20 @@ export class LatexDagEngine {
 
     // Subfiles standalone compile: when a file has \documentclass[...]{subfiles}
     // and is compiled directly as the active document, resolve the file itself as root
+    // Subfiles: by default compile via the parent document (\documentclass[parent]{subfiles}).
+    // Pass { subfileStandalone: true } to compile the child on its own as root.
     if (activeNode && activeNode.isSubfile) {
+      if (!options.subfileStandalone) {
+        const parent = this.resolveSubfileParent(activeNode);
+        if (parent) {
+          return {
+            rootPath: parent.path,
+            rootFileId: parent.id,
+            inferredBy: 'subfile-parent',
+            hasCycleWarning,
+          };
+        }
+      }
       return {
         rootPath: activeNode.path,
         rootFileId: activeNode.id,
@@ -570,10 +662,10 @@ export class LatexDagEngine {
 
       if (rootAncestors.length > 0) {
         rootAncestors.sort((a, b) => {
-          const aIsPreamble = /preamble|macros?\.tex|settings\.tex|setup\.tex|config\.tex/i.test(a.path);
-          const bIsPreamble = /preamble|macros?\.tex|settings\.tex|setup\.tex|config\.tex/i.test(b.path);
-          const aScore = (a.hasBeginDocument ? 100 : 0) - (aIsPreamble ? 150 : 0) - a.inDegree * 10 + a.outDegree * 2;
-          const bScore = (b.hasBeginDocument ? 100 : 0) - (bIsPreamble ? 150 : 0) - b.inDegree * 10 + b.outDegree * 2;
+          const aIsPreamble = this.isPreambleLike(a);
+          const bIsPreamble = this.isPreambleLike(b);
+          const aScore = (this.includesDocClassPreamble(a) ? 60 : 0) + (a.hasBeginDocument ? 100 : 0) - (aIsPreamble ? 150 : 0) - a.inDegree * 10 + a.outDegree * 2;
+          const bScore = (this.includesDocClassPreamble(b) ? 60 : 0) + (b.hasBeginDocument ? 100 : 0) - (bIsPreamble ? 150 : 0) - b.inDegree * 10 + b.outDegree * 2;
           return bScore - aScore;
         });
         const bestAncestor = rootAncestors[0];
@@ -590,7 +682,7 @@ export class LatexDagEngine {
 
     for (const [path, node] of this.nodes) {
       const baseName = path.toLowerCase();
-      const isPreambleFile = /preamble|macros?\.tex|settings\.tex|setup\.tex|config\.tex/i.test(baseName);
+      const isPreambleFile = this.isPreambleLike(node);
 
       const isCandidate =
         node.hasDocumentClass ||
@@ -602,6 +694,8 @@ export class LatexDagEngine {
         if (node.inDegree === 0) score += 30;
         if (node.hasBeginDocument) score += 80;
         if (node.hasDocumentClass) score += 40;
+        // \begin{document} file whose \documentclass lives in an \input'ed preamble
+        if (this.includesDocClassPreamble(node)) score += 60;
 
         if (baseName === 'main.tex') {
           score += 100;
@@ -657,8 +751,7 @@ export class LatexDagEngine {
     const rootCandidates: string[] = [];
 
     for (const [path, node] of this.nodes) {
-      const baseName = path.toLowerCase();
-      const isPreamble = /preamble|macros?\.tex|settings\.tex|setup\.tex|config\.tex/i.test(baseName);
+      const isPreamble = this.isPreambleLike(node);
       const isLikelyRoot = (node.hasDocumentClass || node.hasBeginDocument) && !node.isSubfile;
       if (isLikelyRoot && node.inDegree === 0 && !isPreamble) {
         rootCandidates.push(path);

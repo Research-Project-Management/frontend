@@ -3,7 +3,7 @@
 import React, { memo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { CitationItem } from './CitationItem';
-import type { UnifiedCitation } from '../hooks/useCitationTabState';
+import type { UnifiedCitation } from '../useCitationTabState';
 
 interface VirtualizedCitationListProps {
   items: UnifiedCitation[];

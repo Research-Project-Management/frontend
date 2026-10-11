@@ -10,7 +10,7 @@
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { filesQuery } from '@/features/editor/ui/hooks/use-core';
+import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import { documentSearchService } from '@/features/editor/sdk';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 

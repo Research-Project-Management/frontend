@@ -73,14 +73,50 @@ export function usePdfZoom({
       }
     };
 
+    // Overleaf Parity: Keyboard shortcuts (Ctrl+0 fit width, Ctrl+9 fit height, Ctrl +/- zoom)
+    let isHovered = false;
+    const onMouseEnter = () => {
+      isHovered = true;
+    };
+    const onMouseLeave = () => {
+      isHovered = false;
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isHovered && document.activeElement !== el && !el.contains(document.activeElement)) {
+        return;
+      }
+      if (!e.ctrlKey && !e.metaKey) return;
+      if (e.key === '0') {
+        e.preventDefault();
+        setFitMode('width');
+        setAutoFit(true);
+      } else if (e.key === '9') {
+        e.preventDefault();
+        setFitMode('height');
+        setAutoFit(true);
+      } else if (e.key === '=' || e.key === '+') {
+        e.preventDefault();
+        zoomIn();
+      } else if (e.key === '-') {
+        e.preventDefault();
+        zoomOut();
+      }
+    };
+
     el.addEventListener('wheel', handleWheel, { passive: false });
+    el.addEventListener('mouseenter', onMouseEnter);
+    el.addEventListener('mouseleave', onMouseLeave);
+    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
       observer.unobserve(el);
       el.removeEventListener('wheel', handleWheel);
+      el.removeEventListener('mouseenter', onMouseEnter);
+      el.removeEventListener('mouseleave', onMouseLeave);
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [containerRef, pdfUrl, zoomIn, zoomOut]);
+  }, [containerRef, pdfUrl, zoomIn, zoomOut, setFitMode, setAutoFit]);
 
   // Ideal scale to fit page width / height / auto comfortably inside the viewport
   const fittedScale = useMemo(() => {

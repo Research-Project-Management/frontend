@@ -38,8 +38,8 @@ import {
 import { getCollaboratorColor } from '../../features/editor/CollaboratorCursors';
 import { navigationCoordinator } from '../../../coordinators/navigation.coordinator';
 import { editorCommandBus } from '../../../coordinators/command-bus';
-import { usePageStore } from '../../../store';
-import { extractProjectId } from '@/features/editor/domain/types';
+import { usePageStore } from '@/features/editor/store/editor.store';
+import { extractProjectId } from '@/features/editor/domain/types/core.types';
 
 export function getInitials(name?: string): string {
   if (!name || !name.trim()) return '?';
@@ -139,7 +139,7 @@ export function CollaboratorAvatarStack({
                   zIndex,
                 }}
                 className={cn(
-                  "relative size-7 rounded-full border-2 bg-background flex items-center justify-center shrink-0 cursor-pointer outline-none transition-all duration-150 hover:scale-110 hover:z-30 focus-visible:ring-1 focus-visible:ring-primary shadow-xs"
+                  "relative size-7 rounded-full border-2 bg-background flex items-center justify-center shrink-0 cursor-pointer outline-none transition-colors hover:z-30 focus-visible:ring-1 focus-visible:ring-primary"
                 )}
               >
                 {c.avatar ? (
@@ -228,7 +228,7 @@ export function CollaboratorAvatarStack({
             <button
               type="button"
               aria-label={`+${remainingCount} more collaborators`}
-              className="relative size-7 rounded-full border-2 border-background bg-muted hover:bg-muted/80 text-foreground font-semibold text-[10px] flex items-center justify-center shrink-0 cursor-pointer outline-none transition-transform hover:scale-105 hover:z-30 focus-visible:ring-1 focus-visible:ring-primary shadow-xs select-none"
+              className="relative size-7 rounded-full border-2 border-background bg-muted hover:bg-muted/80 text-foreground font-semibold text-[10px] flex items-center justify-center shrink-0 cursor-pointer outline-none transition-colors hover:z-30 focus-visible:ring-1 focus-visible:ring-primary select-none"
             >
               +{remainingCount}
             </button>

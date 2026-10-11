@@ -16,12 +16,14 @@ import {
   exportVersionAsZip,
   type ExportZipOptions,
   type ExportVersionZipOptions,
+} from '@/features/editor/sdk/archive/archive-export';
+import {
   exportDocumentAsWord,
   exportDocumentAsMarkdown,
   exportDocumentAsHtml,
   triggerFileDownload,
   type ExportSingleDocOptions,
-} from '@/features/editor/sdk/archive';
+} from '@/features/editor/sdk/archive/document-download';
 import { getExportFilename } from '@/features/editor/domain/document/document-naming';
 
 export function useProjectExport() {

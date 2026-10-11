@@ -65,6 +65,14 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (cover && cover.startsWith('blob:')) {
+        URL.revokeObjectURL(cover);
+      }
+    };
+  }, [cover]);
+
   const handleSelectCover = (coverUrl: string) => {
     setCover(coverUrl);
     toast.success('Background updated');

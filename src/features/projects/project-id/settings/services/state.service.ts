@@ -3,5 +3,5 @@ export {
   type CreateStateInput,
   type UpdateStateInput,
   type ReorderStateItem,
-} from '@/features/projects/project-id/work-items';
+} from '../../work-items/services/state.service';
 

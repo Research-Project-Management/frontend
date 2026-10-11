@@ -1,10 +1,22 @@
 import { getFileArrayBuffer } from './file.service';
 
-async function getPdfjs() {
+interface PdfJsModule {
+  GlobalWorkerOptions?: { workerSrc: string };
+  getDocument: (params: { data: Uint8Array }) => {
+    promise: Promise<{
+      getPage: (pageNum: number) => Promise<{
+        getViewport: (params: { scale: number }) => { width: number; height: number };
+        render: (params: { canvasContext: CanvasRenderingContext2D; viewport: unknown }) => { promise: Promise<void> };
+      }>;
+    }>;
+  };
+}
+
+async function getPdfjs(): Promise<PdfJsModule | null> {
   if (typeof window === 'undefined') return null;
   try {
     const pdfModule = await import('pdfjs-dist/legacy/build/pdf.mjs');
-    const pdfjs = (pdfModule as any).default || pdfModule;
+    const pdfjs = (('default' in pdfModule ? pdfModule.default : pdfModule) as unknown as PdfJsModule);
     if (pdfjs?.GlobalWorkerOptions) {
       pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
     }
@@ -15,7 +27,7 @@ async function getPdfjs() {
       if (pdfjs?.GlobalWorkerOptions) {
         pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
       }
-      return pdfjs;
+      return (pdfjs as unknown as PdfJsModule);
     } catch {
       return null;
     }
@@ -52,7 +64,7 @@ export const previewServices = {
       await page.render({
         canvasContext: ctx,
         viewport: scaledViewport,
-      } as any).promise;
+      }).promise;
 
       return canvas.toDataURL('image/png');
     } catch (error) {

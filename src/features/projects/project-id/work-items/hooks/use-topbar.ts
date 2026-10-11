@@ -20,6 +20,8 @@ import type {
   ProjectMember,
   GroupByOption,
   SubGroupByOption,
+  OrderByOption,
+  OrderDirection,
 } from '../types/work-item.types';
 import {
   DEFAULT_DISPLAY_OPTIONS,
@@ -33,9 +35,54 @@ export type ViewMode = 'board' | 'list' | 'calendar' | 'table' | 'timeline' | 's
 
 const ITEMS_VIEW_STORAGE_KEY = 'flux:work-items-view-mode';
 const DISPLAY_OPTIONS_STORAGE_KEY = 'flux:work-item-display-options';
-const getDisplayOptionsStorageKey = (projId?: string) =>
-  projId ? `flux:work-item-display-options:${projId}` : DISPLAY_OPTIONS_STORAGE_KEY;
 const VALID_MODES: ViewMode[] = ['board', 'list', 'calendar', 'table', 'timeline', 'split'];
+
+const getDisplayOptionsStorageKey = (projId?: string, currentMode?: ViewMode) => {
+  const modeKey = currentMode || 'board';
+  return projId
+    ? `flux:work-item-display-options:${projId}:${modeKey}`
+    : `${DISPLAY_OPTIONS_STORAGE_KEY}:${modeKey}`;
+};
+
+const getInitialDisplayOptions = (projId?: string, targetMode: ViewMode = 'board'): DisplayOptions => {
+  const defaultGb: GroupByOption = targetMode === 'table' ? 'none' : 'state';
+  if (typeof window !== 'undefined') {
+    try {
+      const modeKey = getDisplayOptionsStorageKey(projId, targetMode);
+      const saved = localStorage.getItem(modeKey);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Record<string, any>;
+        const rawGb = parsed.groupBy;
+        const rawSubGb = parsed.subGroupBy;
+        const groupBy = rawGb && rawGb !== 'null' ? (rawGb as GroupByOption) : defaultGb;
+        let subGroupBy = rawSubGb && rawSubGb !== 'null' ? (rawSubGb as SubGroupByOption) : 'none';
+        if (subGroupBy === groupBy) subGroupBy = 'none';
+        return {
+          ...DEFAULT_DISPLAY_OPTIONS,
+          ...parsed,
+          groupBy,
+          subGroupBy,
+        };
+      }
+      // Fallback check legacy key if exists
+      const legacyKey = projId ? `flux:work-item-display-options:${projId}` : DISPLAY_OPTIONS_STORAGE_KEY;
+      const legacySaved = localStorage.getItem(legacyKey);
+      if (legacySaved) {
+        const parsed = JSON.parse(legacySaved) as Record<string, any>;
+        const groupBy = targetMode === 'table' ? 'none' : ((parsed.groupBy && parsed.groupBy !== 'null' ? parsed.groupBy : defaultGb) as GroupByOption);
+        return {
+          ...DEFAULT_DISPLAY_OPTIONS,
+          ...parsed,
+          groupBy,
+        };
+      }
+    } catch {}
+  }
+  return {
+    ...DEFAULT_DISPLAY_OPTIONS,
+    groupBy: defaultGb,
+  };
+};
 
 const PRIORITY_WEIGHT: Record<Priority, number> = {
   urgent: 4,
@@ -114,6 +161,9 @@ export function useTopbar({
         localStorage.setItem(ITEMS_VIEW_STORAGE_KEY, newMode);
       } catch {}
     }
+    // Switch display options to the target mode's layout preferences
+    const modeOptions = getInitialDisplayOptions(projectId, newMode);
+    setDisplayOptionsState(modeOptions);
     if (projectId) {
       updateProperties({ preferences: { viewMode: newMode } });
     }
@@ -133,12 +183,13 @@ export function useTopbar({
   // Sync userProperties into mode and display options on initial load
   useEffect(() => {
     if (userProperties) {
-      const savedMode = (userProperties.preferences as any)?.viewMode as ViewMode | undefined;
+      const prefs = userProperties.preferences as Record<string, unknown> | undefined;
+      const savedMode = prefs?.viewMode as ViewMode | undefined;
       if (savedMode && VALID_MODES.includes(savedMode)) {
         setModeState((prev) => (prev !== savedMode ? savedMode : prev));
       }
       const beDisplayProps = userProperties.displayProperties as Record<string, boolean> | undefined;
-      const beDisplayFilters = userProperties.displayFilters as Record<string, any> | undefined;
+      const beDisplayFilters = userProperties.displayFilters as Record<string, unknown> | undefined;
 
       if (
         (beDisplayProps && Object.keys(beDisplayProps).length > 0) ||
@@ -151,9 +202,12 @@ export function useTopbar({
         const rawShowEmpty = beDisplayFilters?.showEmptyGroups ?? beDisplayFilters?.show_empty_groups;
         const rawShowChild = beDisplayFilters?.showChildWorkItems ?? beDisplayFilters?.show_child_work_items;
 
-        setDisplayOptionsState((prev) => {
-          const nextGroupBy = (rawGroupBy && rawGroupBy !== 'null' && rawGroupBy !== '') ? rawGroupBy : (prev.groupBy || 'state');
-          let nextSubGroupBy = (rawSubGroupBy && rawSubGroupBy !== 'null' && rawSubGroupBy !== '') ? rawSubGroupBy : (prev.subGroupBy || 'none');
+        setDisplayOptionsState((prev: DisplayOptions): DisplayOptions => {
+          const defaultGb: GroupByOption = (savedMode || mode) === 'table' ? 'none' : 'state';
+          const nextGroupBy = ((rawGroupBy && rawGroupBy !== 'null' && rawGroupBy !== '')
+            ? (rawGroupBy === 'state' && (savedMode || mode) === 'table' ? 'none' : rawGroupBy)
+            : (prev.groupBy || defaultGb)) as GroupByOption;
+          let nextSubGroupBy = ((rawSubGroupBy && rawSubGroupBy !== 'null' && rawSubGroupBy !== '') ? rawSubGroupBy : (prev.subGroupBy || 'none')) as SubGroupByOption;
           if (nextSubGroupBy === nextGroupBy) {
             nextSubGroupBy = 'none';
           }
@@ -162,8 +216,8 @@ export function useTopbar({
             ...(beDisplayProps ? { properties: { ...prev.properties, ...beDisplayProps } } : {}),
             groupBy: nextGroupBy,
             subGroupBy: nextSubGroupBy,
-            ...(rawOrderBy ? { orderBy: rawOrderBy } : {}),
-            ...(rawOrderDirection ? { orderDirection: rawOrderDirection } : {}),
+            ...(rawOrderBy ? { orderBy: rawOrderBy as OrderByOption } : {}),
+            ...(rawOrderDirection ? { orderDirection: rawOrderDirection as OrderDirection } : {}),
             ...(rawShowEmpty !== undefined ? { showEmptyGroups: Boolean(rawShowEmpty) } : {}),
             ...(rawShowChild !== undefined ? { showChildWorkItems: Boolean(rawShowChild) } : {}),
           };
@@ -194,32 +248,17 @@ export function useTopbar({
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
 
   // ── Display Options State ─────────────────────────────────────────────────
-  const storageKey = useMemo(() => getDisplayOptionsStorageKey(projectId), [projectId]);
+  const storageKey = useMemo(() => getDisplayOptionsStorageKey(projectId, mode), [projectId, mode]);
 
   const [displayOptions, setDisplayOptionsState] = useState<DisplayOptions>(() => {
+    let currentMode: ViewMode = 'board';
     if (typeof window !== 'undefined') {
       try {
-        const key = getDisplayOptionsStorageKey(projectId);
-        const saved = localStorage.getItem(key) || (projectId ? localStorage.getItem(DISPLAY_OPTIONS_STORAGE_KEY) : null);
-        if (saved) {
-          const parsed = JSON.parse(saved) as Record<string, any>;
-          const rawGb = parsed.groupBy;
-          const rawSubGb = parsed.subGroupBy;
-          const groupBy = rawGb && rawGb !== 'null' ? (rawGb as GroupByOption) : 'state';
-          let subGroupBy = rawSubGb && rawSubGb !== 'null' ? (rawSubGb as SubGroupByOption) : 'none';
-          if (subGroupBy === groupBy) {
-            subGroupBy = 'none';
-          }
-          return {
-            ...DEFAULT_DISPLAY_OPTIONS,
-            ...parsed,
-            groupBy,
-            subGroupBy,
-          };
-        }
+        const saved = localStorage.getItem(ITEMS_VIEW_STORAGE_KEY) as ViewMode;
+        if (saved && VALID_MODES.includes(saved)) currentMode = saved;
       } catch {}
     }
-    return DEFAULT_DISPLAY_OPTIONS;
+    return getInitialDisplayOptions(projectId, currentMode);
   });
 
   const setDisplayOptions = useCallback((options: DisplayOptions) => {
@@ -232,7 +271,7 @@ export function useTopbar({
     if (projectId) {
       const { properties, ...displayFilters } = options;
       updateProperties({
-        displayProperties: properties as any,
+        displayProperties: properties as Record<string, unknown>,
         displayFilters: {
           ...displayFilters,
           group_by: displayFilters.groupBy,
@@ -241,7 +280,7 @@ export function useTopbar({
           order_direction: displayFilters.orderDirection,
           show_empty_groups: displayFilters.showEmptyGroups,
           show_child_work_items: displayFilters.showChildWorkItems,
-        } as any,
+        } as Record<string, unknown>,
       });
     }
   }, [projectId, storageKey, updateProperties]);
@@ -265,7 +304,7 @@ export function useTopbar({
       }
       const next = {
         ...prev,
-        properties: nextProps as any,
+        properties: nextProps as unknown as DisplayOptions['properties'],
       };
       if (typeof window !== 'undefined') {
         try {
@@ -273,7 +312,7 @@ export function useTopbar({
         } catch {}
       }
       if (projectId) {
-        updateProperties({ displayProperties: next.properties as any });
+        updateProperties({ displayProperties: next.properties as Record<string, unknown> });
       }
       return next;
     });
@@ -288,7 +327,7 @@ export function useTopbar({
     if (view.filters) {
       setFilters((prev) => ({
         ...prev,
-        ...(view.filters as any),
+        ...(view.filters as Record<string, unknown>),
       }));
     }
     if (view.displayProperties) {
@@ -296,7 +335,7 @@ export function useTopbar({
         ...prev,
         properties: {
           ...prev.properties,
-          ...(view.displayProperties as any),
+          ...(view.displayProperties as Record<string, unknown>),
         },
       }));
     }
@@ -307,8 +346,8 @@ export function useTopbar({
       ViewService.createView(projectId, {
         name,
         layout: mode === 'split' ? 'board' : mode,
-        filters: filters as any,
-        displayProperties: displayOptions.properties as any,
+        filters: filters as Record<string, unknown>,
+        displayProperties: displayOptions.properties as Record<string, unknown>,
         access: 'public',
       }),
     onSuccess: (newView: SavedViewRecord) => {
@@ -343,10 +382,11 @@ export function useTopbar({
     // 2. Add project members
     if (Array.isArray(members) && members.length > 0) {
       for (const member of members) {
-        const id = (member as any).userId || (member as any).user?.id || member.id;
+        const m = member as { id?: string; userId?: string; name?: string; avatar?: string; user?: { id?: string; name?: string; avatar?: string } };
+        const id = m.userId || m.user?.id || m.id;
         if (!id) continue;
-        const name = member.name || (member as any).user?.name || 'Member';
-        const avatar = member.avatar || (member as any).user?.avatar || undefined;
+        const name = m.name || m.user?.name || 'Member';
+        const avatar = m.avatar || m.user?.avatar || undefined;
         if (!map.has(id)) {
           map.set(id, { id, name, avatar });
         }
@@ -429,11 +469,12 @@ export function useTopbar({
     const hasAttachFilter = filters.attach.length > 0;
     const attachSet = new Set(filters.attach);
 
+    const filtersObj = filters as unknown as Record<string, string[] | undefined>;
     const activeWorkItemFilterIds = [
       ...(filters.work_items || []),
-      ...((filters as any).sub_work_items || []),
-      ...((filters as any).item || []),
-      ...((filters as any).items || []),
+      ...(filtersObj.sub_work_items || []),
+      ...(filtersObj.item || []),
+      ...(filtersObj.items || []),
     ];
     const hasWorkItemFilter = activeWorkItemFilterIds.length > 0;
     const workItemSet = new Set(activeWorkItemFilterIds);
@@ -499,7 +540,7 @@ export function useTopbar({
 
       // 5. Created by filter
       if (hasCreatedByFilter) {
-        const author = item.authorId || (item as any).createdBy;
+        const author = item.authorId || (item as { createdBy?: string }).createdBy;
         if (!author || !createdBySet.has(author)) {
           return false;
         }
@@ -508,12 +549,13 @@ export function useTopbar({
       // 6. Labels filter
       if (hasLabelsFilter) {
         if (!Array.isArray(item.labels) || item.labels.length === 0) return false;
-        const hasMatchingLabel = item.labels.some((labelItem: any) => {
+        const hasMatchingLabel = item.labels.some((labelItem: unknown) => {
           if (typeof labelItem === 'string') return labelSet.has(labelItem);
           if (typeof labelItem === 'object' && labelItem !== null) {
+            const lbl = labelItem as { id?: string; name?: string };
             return (
-              (labelItem.id && labelSet.has(labelItem.id)) ||
-              (labelItem.name && labelSet.has(labelItem.name))
+              (lbl.id && labelSet.has(lbl.id)) ||
+              (lbl.name && labelSet.has(lbl.name))
             );
           }
           return false;
@@ -524,12 +566,16 @@ export function useTopbar({
       // 7. Attachments filter
       if (hasAttachFilter) {
         const attachments = item.attachments;
-        const hasPages = Array.isArray((attachments as any)?.pages) && (attachments as any).pages.length > 0;
-        const hasPapers = Array.isArray((attachments as any)?.papers) && (attachments as any).papers.length > 0;
-        const hasFiles =
-          (Array.isArray((attachments as any)?.files) && (attachments as any).files.length > 0) ||
-          (Array.isArray(attachments) && attachments.length > 0);
-        const hasLinks = Array.isArray((attachments as any)?.links) && (attachments as any).links.length > 0;
+        const attObj = attachments as { pages?: unknown[]; papers?: unknown[]; files?: unknown[]; links?: unknown[] } | unknown[] | undefined;
+        const isArr = Array.isArray(attObj);
+        const pages = !isArr && Array.isArray(attObj?.pages) ? attObj.pages : [];
+        const papers = !isArr && Array.isArray(attObj?.papers) ? attObj.papers : [];
+        const files = !isArr && Array.isArray(attObj?.files) ? attObj.files : isArr ? attObj : [];
+        const links = !isArr && Array.isArray(attObj?.links) ? attObj.links : [];
+        const hasPages = pages.length > 0;
+        const hasPapers = papers.length > 0;
+        const hasFiles = files.length > 0;
+        const hasLinks = links.length > 0;
         const hasAny = hasPages || hasPapers || hasFiles || hasLinks;
 
         let matchAttach = false;
@@ -551,11 +597,11 @@ export function useTopbar({
       // 10. Parent filter
       if (hasParentFilter) {
         const rawParent =
-          (item as any).parentWorkItemId ||
-          (item as any).parentItemId ||
+          item.parentWorkItemId ||
+          item.parentItemId ||
           item.parentItem?.id ||
           item.parentWorkItem?.id;
-        const parentId = typeof rawParent === 'object' ? rawParent?.id : rawParent;
+        const parentId = typeof rawParent === 'object' && rawParent !== null ? (rawParent as { id?: string }).id : (typeof rawParent === 'string' ? rawParent : undefined);
         if (!parentId) {
           if (!hasNoParent) return false;
         } else if (!parentSet.has(parentId)) {
@@ -653,8 +699,8 @@ export function useTopbar({
 
       // 16. Subscribers filter
       if (hasSubscribersFilter) {
-        const subs: string[] = Array.isArray((item as any).subscriberIds)
-          ? (item as any).subscriberIds
+        const subs: string[] = Array.isArray(item.subscriberIds)
+          ? item.subscriberIds
           : [];
         const matched = subs.some((id) => specificSubscriberSet.has(id));
         if (!matched) return false;
@@ -745,15 +791,15 @@ export function useTopbar({
 
   // ── Filter Mutation Actions ───────────────────────────────────────────────
   const toggleFilterItem = useCallback(
-    <K extends keyof Filters>(key: K, item: any) => {
+    <K extends keyof Filters>(key: K, item: Filters[K] extends (infer E)[] ? E : string) => {
       setFilters((prev) => {
-        const arr = (prev[key] as any[]) || [];
+        const arr = ((prev[key] as unknown as typeof item[]) ?? []);
         const exists = arr.includes(item);
         const nextArr = exists ? arr.filter((itemElement) => itemElement !== item) : [...arr, item];
         const next = { ...prev, [key]: nextArr };
 
-        if (key === 'state' && propOnColFilterChange) propOnColFilterChange(nextArr);
-        if (key === 'assignees' && propOnUserFilterChange) propOnUserFilterChange(nextArr);
+        if (key === 'state' && propOnColFilterChange) propOnColFilterChange(nextArr as string[]);
+        if (key === 'assignees' && propOnUserFilterChange) propOnUserFilterChange(nextArr as string[]);
 
         return next;
       });
@@ -762,7 +808,7 @@ export function useTopbar({
   );
 
   const removeFilterItem = useCallback(
-    <K extends keyof Filters>(key: K, item?: any) => {
+    <K extends keyof Filters>(key: K, item?: Filters[K] extends (infer E)[] ? E : string) => {
       setFilters((prev) => {
         if (item === undefined) {
           const next = { ...prev, [key]: [] };
@@ -770,11 +816,11 @@ export function useTopbar({
           if (key === 'assignees' && propOnUserFilterChange) propOnUserFilterChange([]);
           return next;
         }
-        const arr = (prev[key] as any[]) || [];
+        const arr = ((prev[key] as unknown as typeof item[]) ?? []);
         const nextArr = arr.filter((itemElement) => itemElement !== item);
         const next = { ...prev, [key]: nextArr };
-        if (key === 'state' && propOnColFilterChange) propOnColFilterChange(nextArr);
-        if (key === 'assignees' && propOnUserFilterChange) propOnUserFilterChange(nextArr);
+        if (key === 'state' && propOnColFilterChange) propOnColFilterChange(nextArr as string[]);
+        if (key === 'assignees' && propOnUserFilterChange) propOnUserFilterChange(nextArr as string[]);
         return next;
       });
     },

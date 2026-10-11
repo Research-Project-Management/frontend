@@ -14,9 +14,19 @@ export { default as WorkspaceViewsPage } from './shell/pages/WorkspaceViewsPage'
 export { default as WorkspacePagesPage } from './shell/pages/WorkspacePagesPage';
 
 // Hooks
-export { useProjects, useProject } from './shell/hooks/use-project';
+export {
+  useProjects,
+  useProject,
+  useUpdateProject,
+  useDuplicateProject,
+} from './shell/hooks/use-project';
 export { useFavorites } from './shell/hooks/use-favorites';
 export * from './shell/hooks/use-project-labels';
 
-// Sub-modules
-export * from './project-id/pages';
+// Services & Keys
+export {
+  ProjectService,
+  projectKeys,
+  duplicateProjectApi,
+} from './shell/services/project.service';
+export type * from './shell/types/project.types';

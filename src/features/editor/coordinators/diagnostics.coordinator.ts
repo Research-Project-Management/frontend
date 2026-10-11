@@ -13,7 +13,7 @@
 
 import type { CompileError } from '../domain/types/compiler.types';
 import { normalizeLatexPath } from '../domain/latex/latex-dag-engine';
-import { heuristicLatexErrorFix } from '../domain/latex/ai-error-assist';
+import { heuristicLatexErrorFix } from '../domain/ai/ai-error-assist';
 
 export interface IndexedDiagnosticItem {
   id: string;

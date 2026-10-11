@@ -8,11 +8,15 @@ import { EditorArea } from '@/features/editor/ui/features/editor/EditorArea';
 import { Topbar } from '@/features/editor/ui/shell/Topbar';
 import { ActivityBar } from '@/features/editor/ui/shell/ActivityBar';
 import { WorkbenchShell } from '@/features/editor/ui/shell/WorkbenchShell';
-import { FileMenu } from '@/features/editor/ui/shell/topbar/file/FileMenu';
-import { EditMenu } from '@/features/editor/ui/shell/topbar/edit/EditMenu';
-import { FormatMenu } from '@/features/editor/ui/shell/topbar/format/FormatMenu';
+import { FileMenu } from '@/features/editor/ui/shell/topbar/FileMenu';
+import { EditMenu } from '@/features/editor/ui/shell/topbar/EditMenu';
+import { FormatMenu } from '@/features/editor/ui/shell/topbar/FormatMenu';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
-import { useSettingsStore, usePageStore, useLayoutStore, useDocumentCollaborationStore } from '@/features/editor/store';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { usePageStore } from '@/features/editor/store/editor.store';
+import { useLayoutStore } from '@/features/editor/store/layout.store';
+import { useDocumentCollaborationStore } from '@/features/editor/store/collaboration.store';
+import { clearYjsProviderPool } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -33,8 +37,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/editor/proj-123',
 }));
 
-// Mock useActiveDocument for EditorArea
-vi.mock('@/features/editor/ui/hooks/use-core', () => ({
+vi.mock('@/features/editor/ui/hooks/use-active-document', () => ({
   useActiveDocument: () => ({
     isLoading: false,
     activePage: {
@@ -53,15 +56,27 @@ vi.mock('@/features/editor/ui/hooks/use-core', () => ({
     selectedAsset: null,
     selectFile: vi.fn(),
     parentPage: null,
-    childFiles: [],
+    childFiles: [
+      { id: 'doc-1', title: 'main.tex', content: '\\section{Introduction}\nThis is LaTeX source code.' },
+      { id: 'doc-bib', title: 'ref.bib', content: '@article{einstein, author={A. Einstein}}' },
+    ],
   }),
+}));
+
+vi.mock('@/features/editor/ui/hooks/use-page-actions', () => ({
   usePageActions: () => ({
     updateThumbnail: { mutate: vi.fn() },
     updateTitle: { mutate: vi.fn(), isPending: false },
   }),
+}));
+
+vi.mock('@/features/editor/ui/hooks/use-file-actions', () => ({
   useFileActions: () => ({
     setMainFile: { mutate: vi.fn() },
   }),
+}));
+
+vi.mock('@/features/editor/ui/hooks/document.queries', () => ({
   filesQuery: () => ({ queryKey: ['files'], queryFn: vi.fn() }),
   pageQuery: () => ({ queryKey: ['page'], queryFn: vi.fn() }),
 }));
@@ -79,6 +94,7 @@ vi.mock('@/features/editor/ui/features/editor/CodeMirrorView', () => ({
 describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearYjsProviderPool();
     setActiveEditorEngine(null);
     useSettingsStore.setState({
       editorMode: 'code',
@@ -94,6 +110,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
     cleanup();
     document.body.innerHTML = '';
     setActiveEditorEngine(null);
+    clearYjsProviderPool();
   });
 
   const renderWithProviders = (ui: React.ReactElement) => {
@@ -530,12 +547,12 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       expect(useSettingsStore.getState().settingsPanelOpen).toBe(false);
     });
 
-    it('shows Git Clone URL with Sắp ra mắt badge and allows copying command', async () => {
+    it('shows Git Clone URL with Smart-HTTP badge and allows copying command', async () => {
       useSettingsStore.setState({ settingsPanelOpen: true });
       const { ProjectSettingsModal } = await import('@/features/editor/ui/modals/ProjectSettingsModal');
       renderWithProviders(<ProjectSettingsModal />);
 
-      expect(screen.getByText(/sắp ra mắt/i)).toBeInTheDocument();
+      expect(screen.getByText(/smart-http/i)).toBeInTheDocument();
       expect(screen.getByText(/^git clone url$/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /^copy$/i })).toBeInTheDocument();
     });

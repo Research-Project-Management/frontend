@@ -13,7 +13,15 @@ import {
 
 export interface NewFileTabPaneProps {
   parentPageId: string | null;
-  createFile: any;
+  createFile: {
+    mutate: (
+      variables: { parentPageId: string; title: string; content?: string },
+      options?: {
+        onSuccess?: (created: { id: string }) => void;
+        onSettled?: () => void;
+      },
+    ) => void;
+  };
   setSearchParams: (params: Record<string, string>) => void;
   onClose: () => void;
 }
@@ -25,7 +33,7 @@ export function NewFileTabPane({
   onClose,
 }: NewFileTabPaneProps) {
   const [isCreatingNewFile, setIsCreatingNewFile] = useState(false);
-  const newFileInputRef = useRef<HTMLInputElement>(null);
+  const newFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const {
     register: registerNewFile,
@@ -55,7 +63,7 @@ export function NewFileTabPane({
         content: '',
       },
       {
-        onSuccess: (created: any) => {
+        onSuccess: (created: { id: string }) => {
           setSearchParams({ file: created.id });
           resetNewFile();
           onClose();
@@ -81,7 +89,7 @@ export function NewFileTabPane({
             {...registerNewFile('fileName')}
             ref={(e) => {
               registerNewFile('fileName').ref(e);
-              (newFileInputRef as any).current = e;
+              newFileInputRef.current = e;
             }}
             placeholder="e.g. section1.tex, appendix.tex"
             className="h-8 text-12 bg-muted/40 rounded-md border-border/60 focus:bg-background"

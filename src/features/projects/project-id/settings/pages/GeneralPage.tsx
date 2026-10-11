@@ -111,7 +111,7 @@ export default function GeneralPage() {
 
           {/* ── Danger Zone: Archive & Delete ── */}
           <GeneralDanger
-            projectName={project.name || name}
+            projectName={(project as any)?.name || name}
             isArchived={isArchived}
             onToggleArchive={toggleArchive}
             onDeleteProject={deleteProj}

@@ -13,7 +13,7 @@
  *    - Soft amber highlight on commented text ranges (`cm-comment-highlight`).
  *    - Interactive comment gutter marker with reply count indicator.
  * 3. Interactive Hover Action Tooltip:
- *    - Shows author name, avatar, timestamp, and quick [Accept ✓] / [Reject ✗] buttons.
+ *    - Shows author name, avatar, timestamp, and quick [Accept] / [Reject] buttons.
  * 4. Gutter click routing:
  *    - Clicking gutter marker focuses the thread in the Review Tab sidebar.
  */
@@ -378,7 +378,7 @@ export const trackChangesGutter = gutter({
     // Group open comments by line number
     const lineMap = new Map<number, PageComment[]>();
     for (const c of config.comments) {
-      const isOpen = c.status === 'open' || !(c as any).resolved;
+      const isOpen = c.status === 'open';
       if (isOpen) {
         let lineNum = c.line;
         const fromIndex = (c as typeof c & { fromIndex?: number }).fromIndex;
@@ -440,7 +440,7 @@ export const trackChangesHoverTooltip = hoverTooltip((view, pos) => {
               <div class="flex items-center gap-1.5 font-medium">
                 <span class="w-2 h-2 rounded-full ${s.type === 'insert' ? 'bg-success' : 'bg-destructive'}"></span>
                 <span class="truncate max-w-[120px]">${author}</span>
-                <span class="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${typeBadgeColor}">${typeLabel}</span>
+                <span class="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded-sm ${typeBadgeColor}">${typeLabel}</span>
               </div>
             </div>
             <div class="flex items-center gap-2 pt-0.5">

@@ -25,7 +25,7 @@ export default function Recent() {
     id: currentUser?.id || 'me',
     name: currentUser?.name || currentUser?.email || 'You',
     email: currentUser?.email || null,
-    avatar: currentUser?.avatar || (currentUser as any)?.image || null,
+    avatar: currentUser?.avatar || (currentUser as { image?: string | null } | undefined)?.image || null,
   }), [currentUser]);
 
   const mockRecents: RecentItem[] = useMemo(() => [

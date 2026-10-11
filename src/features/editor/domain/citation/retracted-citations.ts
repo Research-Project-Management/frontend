@@ -1,5 +1,5 @@
 import type { BibEntry } from './bib-parser';
-import { getRetractionInfo } from '@/features/library';
+import { getRetractionInfo } from '@/features/library/utils/retraction';
 
 export interface RetractedItemInfo {
   title?: string;

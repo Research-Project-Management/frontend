@@ -1,13 +1,4 @@
-/**
- * @file use-storage.ts
- * @description Unified Facade for Frontend Storage Hooks.
- * Aggregates and re-exports specialized domain hooks matching backend presentation controllers:
- * - DriveController   <-> use-drive.ts
- * - UploadController  <-> use-upload.ts
- * - StreamController  <-> use-stream.ts
- * - TrashController   <-> use-trash.ts
- * - QuotaController   <-> use-quota.ts
- */
+'use client';
 
 // ── Re-export Drive Hooks (DriveController) ──────────────────────────────────
 export * from './use-drive';

@@ -26,27 +26,30 @@ import {
   createCodeMirrorPreset,
   reconfigureLineNumbers,
   reconfigureLineWrapping,
+  reconfigureKeybinding,
   reconfigureVimMode,
   reconfigureReadOnly,
   reconfigureSpellCheck,
   reconfigureTheme,
   reconfigureTypography,
-  YjsCodeMirrorAdapter,
+} from '../../../engines/codemirror/codemirror-preset';
+import { YjsCodeMirrorAdapter } from '../../../engines/collaboration/yjs-codemirror-adapter';
+import {
   createTrackChangesExtension,
   setTrackChangesViewModeEffect,
   setTrackChangesReviewModeEffect,
-} from '../../../engines';
-import { CodeMirrorEngineAdapter } from '@/features/editor/engines/adapters/codemirror/codemirror.adapter';
+} from '../../../engines/extensions/track-changes.extension';
+import { setErrorLensDiagnosticsEffect } from '../../../engines/extensions/latex-error-lens';
+import { CodeMirrorEngineAdapter } from '@/features/editor/engines/adapters/codemirror.adapter';
 import { lruDocumentCache } from '../../../domain/document/lru-document-cache';
 import { visibilityCoordinator } from '../../../coordinators/visibility.coordinator';
 import { diagnosticsCoordinator } from '../../../coordinators/diagnostics.coordinator';
-import { sessionCoordinator } from '../../../coordinators/session.coordinator';
+import { sessionCoordinator, shouldUseRealtimePersistence } from '../../../coordinators/session.coordinator';
 import { reviewCoordinator } from '../../../coordinators/review.coordinator';
 import { setActiveEditorEngine, editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { useSettingsStore } from '../../../store/settings.store';
 import { useConnectivityStore } from '../../../store/connectivity.store';
-import { createDiagnosticsGutter } from './DiagnosticsGutter';
-import { setErrorLensDiagnosticsEffect } from '../../../engines';
+import { createDiagnosticsGutter } from '../../../engines/extensions/diagnostics-gutter';
 import type { LatexFormatType } from '@/features/editor/domain/types/ports/editor-engine.port';
 import { cn } from '@/shared/lib/utils';
 
@@ -57,6 +60,8 @@ export interface CodeMirrorViewProps {
   onChange?: (nextValue: string) => void;
   yText?: Y.Text | null;
   awareness?: any | null;
+  /** True only while the realtime (Yjs socket) provider is actually connected. */
+  isRealtimeConnected?: boolean;
   readOnly?: boolean;
   className?: string;
   projectId?: string;
@@ -70,6 +75,7 @@ export function CodeMirrorView({
   onChange,
   yText,
   awareness,
+  isRealtimeConnected = false,
   readOnly = false,
   className,
   projectId,
@@ -96,6 +102,9 @@ export function CodeMirrorView({
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
+  const isRealtimeConnectedRef = useRef(isRealtimeConnected);
+  isRealtimeConnectedRef.current = isRealtimeConnected;
+
   const onCursorChangeRef = useRef(onCursorChange);
   onCursorChangeRef.current = onCursorChange;
 
@@ -111,6 +120,7 @@ export function CodeMirrorView({
       readOnly,
       lineNumbers,
       lineWrapping: wordWrap,
+      keybinding,
       vimMode: keybinding === 'vim',
       enableMathPreview: true,
       enableAutocomplete: true,
@@ -158,10 +168,17 @@ export function CodeMirrorView({
         });
 
         const nextContent = update.state.doc.toString();
-        lruDocumentCache.updateContent(fileId, nextContent, !isRemote);
+        // Remote-origin (Yjs) transactions must never mark the local model dirty — nor clear an
+        // existing dirty flag. notifyContentChange applies the content with the right semantics.
         const isOnline = useConnectivityStore.getState().isOnline;
         sessionCoordinator.notifyContentChange(fileId, nextContent, {
-          isRealtimeActive: Boolean(yText) && isOnline && Boolean(awareness),
+          // Only rely on the CRDT channel for persistence while the socket is truly connected;
+          // otherwise HTTP autosave + drafts take over.
+          isRealtimeActive: shouldUseRealtimePersistence({
+            hasYText: Boolean(yText),
+            isOnline,
+            isProviderConnected: isRealtimeConnectedRef.current,
+          }),
           hasStructuralChange,
           origin,
         });
@@ -382,7 +399,11 @@ export function CodeMirrorView({
       unsubVisibility();
       if (viewRef.current) {
         const latestDoc = viewRef.current.state.doc.toString();
-        lruDocumentCache.updateContent(fileId, latestDoc);
+        // Only persist if the view diverged from the cache (unknown origin => treat as local, dirty).
+        // Re-writing identical content must not flip a clean model (e.g. after remote edits) to dirty.
+        if (lruDocumentCache.getModel(fileId)?.content !== latestDoc) {
+          lruDocumentCache.updateContent(fileId, latestDoc, true);
+        }
         const mainSel = viewRef.current.state.selection.main;
         const scrollDOM = viewRef.current.scrollDOM;
         lruDocumentCache.updateViewState(
@@ -412,7 +433,7 @@ export function CodeMirrorView({
 
   useEffect(() => {
     if (!viewRef.current) return;
-    reconfigureVimMode(viewRef.current, keybinding === 'vim');
+    reconfigureKeybinding(viewRef.current, keybinding);
   }, [keybinding]);
 
   useEffect(() => {

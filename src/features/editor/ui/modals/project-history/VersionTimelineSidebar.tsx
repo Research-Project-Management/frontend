@@ -14,7 +14,22 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
 import type { ProjectVersionListItem } from '../../../domain/types/history.types';
-import { formatVersionTime } from './history.util';
+
+export function formatVersionTime(dateStr?: string | null): string {
+  if (!dateStr) return 'Just now';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'Recently';
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(d);
+  } catch {
+    return 'Recently';
+  }
+}
 
 export interface VersionTimelineSidebarProps {
   versions: ProjectVersionListItem[];
@@ -66,14 +81,14 @@ export function VersionTimelineSidebar({
     <aside className="w-80 sm:w-88 border-r flex flex-col bg-muted/15 shrink-0 overflow-hidden">
       {/* Filter and Search Bar */}
       <div className="p-3 border-b space-y-2 shrink-0 bg-background/50">
-        <div className="flex items-center gap-1 p-0.5 rounded-lg border bg-muted/40 text-xs font-medium">
+        <div className="flex items-center gap-1 p-0.5 rounded-md border border-border bg-muted/40 text-xs font-medium">
           <button
             type="button"
             onClick={() => setFilter('all')}
             className={cn(
-              'flex-1 py-1 text-center rounded-md transition-colors cursor-pointer',
+              'flex-1 py-1 text-center rounded-sm transition-colors cursor-pointer',
               filter === 'all'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
+                ? 'bg-background text-foreground font-medium'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -83,9 +98,9 @@ export function VersionTimelineSidebar({
             type="button"
             onClick={() => setFilter('labelled')}
             className={cn(
-              'flex-1 py-1 text-center rounded-md transition-colors cursor-pointer',
+              'flex-1 py-1 text-center rounded-sm transition-colors cursor-pointer',
               filter === 'labelled'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
+                ? 'bg-background text-foreground font-medium'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -132,9 +147,9 @@ export function VersionTimelineSidebar({
                 key={v.id || v.version}
                 onClick={() => onSelectVersion(v.version)}
                 className={cn(
-                  'group relative flex flex-col p-2.5 rounded-lg border transition-all cursor-pointer text-left',
+                  'group relative flex flex-col p-2.5 rounded-md border transition-all cursor-pointer text-left',
                   isTarget
-                    ? 'bg-primary/10 border-primary/40 shadow-xs'
+                    ? 'bg-primary/10 border-primary/40'
                     : isBase
                       ? 'bg-muted/70 border-muted-foreground/30'
                       : 'bg-card hover:bg-muted/40 border-border/70'
@@ -145,7 +160,7 @@ export function VersionTimelineSidebar({
                   <div className="flex items-center gap-1.5">
                     <span
                       className={cn(
-                        'px-1.5 py-0.5 rounded text-[11px] font-mono font-semibold',
+                        'px-1.5 py-0.5 rounded-sm text-[11px] font-mono font-semibold',
                         isTarget
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-muted text-foreground'
@@ -173,7 +188,7 @@ export function VersionTimelineSidebar({
                     {v.labels.map((lbl) => (
                       <span
                         key={lbl.id || lbl.label}
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-warning/10 text-warning border border-warning/20 rounded-md"
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-muted text-foreground border border-border rounded-sm"
                       >
                         <Tag className="size-2.5" />
                         <span>{lbl.label}</span>

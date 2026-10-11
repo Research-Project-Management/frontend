@@ -4,9 +4,9 @@ import React from 'react';
 import {
   VisualTableToolbar,
   type VisualTableToolbarProps,
-} from '@/features/editor/ui/features/editor/VisualTableToolbar';
+} from '@/features/editor/ui/features/editor/visual/toolbars/VisualTableToolbar';
 import { VisualEditorView } from '@/features/editor/ui/features/editor/VisualEditorView';
-import { useSettingsStore } from '@/features/editor/store';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
 
 describe('VisualTableToolbar Component & Visual Table Matrix Editing', () => {
   beforeEach(() => {

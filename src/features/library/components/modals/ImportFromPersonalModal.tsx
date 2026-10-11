@@ -24,7 +24,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
 import { useViewItems, useCollections, libraryServices } from '../../data';
-import { formatCreatorCompact, normalizeAuthors } from '../../domain';
+import { formatCreatorCompact, normalizeAuthors } from '../../domain/creators';
 import type { Item, Collection } from '../../types/library.types';
 
 interface ImportFromPersonalModalProps {

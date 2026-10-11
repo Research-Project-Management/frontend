@@ -1,8 +1,4 @@
-/**
- * @file use-stream.ts
- * @description Frontend hooks mirroring backend StreamController.
- * Provides hooks for authenticated streaming endpoints, RFC 7233 partial content, and file downloads.
- */
+'use client';
 
 import { useState, useCallback, useMemo } from 'react';
 import { resolveStreamUrl, downloadFile } from '../services/stream.service';

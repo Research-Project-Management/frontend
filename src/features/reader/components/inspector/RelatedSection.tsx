@@ -15,7 +15,7 @@ import {
   useRelations,
   useViewItems,
   useCollections,
-} from '../../data';
+} from '../../data/reader.queries';
 import { useReaderViewStore } from '../../store/reader-ui.store';
 import type { Item, RelatedItem } from '../../types/reader.types';
 import { cleanAcademicText, formatAcademicAuthors } from '../../utils/reader.util';
@@ -39,10 +39,10 @@ import {
 import { cn } from '@/shared/lib/utils';
 
 interface VenueBearingItem {
-  journal?: string;
-  publicationTitle?: string;
-  publisher?: string;
-  arxivId?: string;
+  journal?: string | null;
+  publicationTitle?: string | null;
+  publisher?: string | null;
+  arxivId?: string | null;
 }
 
 /**
@@ -108,25 +108,33 @@ export default function RelatedSection({
   const [selectedCollectionFilter, setSelectedCollectionFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const allItems: Item[] = useMemo(() => {
+    if (Array.isArray(allItemsRes)) return allItemsRes;
+    if (allItemsRes && typeof allItemsRes === 'object' && 'items' in allItemsRes) {
+      const maybeItems = (allItemsRes as { items?: unknown }).items;
+      return Array.isArray(maybeItems) ? (maybeItems as Item[]) : [];
+    }
+    return [];
+  }, [allItemsRes]);
+
   // Calculate item counts for collections
   const collectionCounts = useMemo(() => {
-    const all = (allItemsRes as any)?.items || [];
     const counts: Record<string, number> = {
-      all: all.length,
+      all: allItems.length,
     };
-    for (const it of all) {
+    for (const it of allItems) {
       if (it.collectionId) {
         counts[it.collectionId] = (counts[it.collectionId] || 0) + 1;
       }
       if (Array.isArray(it.collections)) {
         for (const c of it.collections) {
-          const cid = typeof c === 'string' ? c : (c as any)?.id;
+          const cid = typeof c === 'string' ? c : c?.id;
           if (cid) counts[cid] = (counts[cid] || 0) + 1;
         }
       }
     }
     return counts;
-  }, [(allItemsRes as any)?.items]);
+  }, [allItems]);
 
   const relatedList: RelatedItem[] = relatedItems;
 
@@ -142,13 +150,11 @@ export default function RelatedSection({
     [onSelectPaper, selectOnly],
   );
 
-
   // Filter available items for linking (excluding current paper & already linked papers)
   const availableItems = useMemo(() => {
-    const all = (allItemsRes as any)?.items || [];
     const linkedIdSet = new Set(relatedList.map((r) => r.id));
 
-    return all.filter((targetItem: any) => {
+    return allItems.filter((targetItem: Item) => {
       if (!targetItem?.id || targetItem.id === paper.id) return false;
       if (linkedIdSet.has(targetItem.id)) return false;
 
@@ -160,7 +166,7 @@ export default function RelatedSection({
 
         const inColIds = itemColIds.includes(selectedCollectionFilter);
         const inColObjs = Array.isArray(itemCols) && itemCols.some(
-          (c: any) => c.id === selectedCollectionFilter,
+          (c) => c?.id === selectedCollectionFilter,
         );
         const inSingle = singleColId === selectedCollectionFilter;
 
@@ -176,7 +182,7 @@ export default function RelatedSection({
           a.toLowerCase().includes(q),
         );
         const yearMatch = String(targetItem.year || '').includes(q);
-        const venueMatch = getPublicationVenue(targetItem as any).toLowerCase().includes(q);
+        const venueMatch = getPublicationVenue(targetItem).toLowerCase().includes(q);
 
         if (!cleanTitle.includes(q) && !rawTitle.includes(q) && !authorMatch && !yearMatch && !venueMatch) {
           return false;
@@ -185,7 +191,7 @@ export default function RelatedSection({
 
       return true;
     });
-  }, [allItemsRes?.items, relatedList, paper.id, selectedCollectionFilter, searchQuery]);
+  }, [allItems, relatedList, paper.id, selectedCollectionFilter, searchQuery]);
 
   const handleToggleSelect = (id: string) => {
     setSelectedTargetIds((prev) => {

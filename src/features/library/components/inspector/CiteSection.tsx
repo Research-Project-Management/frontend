@@ -19,7 +19,7 @@ import {
 } from "@/shared/components/ui";
 import { useCslCitation, useCitationStyles } from '../../data';
 import type { Item, CslStyle } from '../../types/library.types';
-import { getPaperCitationKey, getCleanStyleLabel } from '../../domain';
+import { getPaperCitationKey, getCleanStyleLabel } from '../../domain/citations';
 export { getCleanStyleLabel };
 import CslStyleSearchModal from '../modals/CslStyleSearchModal';
 import DOMPurify from 'dompurify';

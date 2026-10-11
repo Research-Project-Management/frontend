@@ -8,8 +8,8 @@ import {
   Upload,
 } from 'lucide-react';
 import { PlaneEmptyState, PlaneErrorState } from '@/shared/components/ui';
-import { InlineInput } from './FileTreeNodes';
-import type { FileTreeNode } from './tree-builder.util';
+import { InlineInput } from './FileTreePrimitives';
+import type { FileTreeNode } from '@/features/editor/domain/document/document-tree';
 
 export interface FileTreeContainerProps {
   isDragging: boolean;

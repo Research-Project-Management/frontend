@@ -9,7 +9,7 @@ import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/coord
 import { LatexCompilerEngine } from '@/features/editor/coordinators/compilation-pipeline';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import type { SurfaceHandle } from '@/features/editor/ui/features/preview/PdfSurface';
-import type { SyncTeXMap } from '@/features/editor/domain';
+import type { SyncTeXMap } from '@/features/editor/domain/pdf/synctex-index';
 
 describe('Split-View Synchronized Dual Scrolling (Overleaf Parity)', () => {
   beforeEach(() => {

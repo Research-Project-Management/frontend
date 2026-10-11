@@ -27,7 +27,7 @@ import {
   DialogFooter,
 } from "@/shared/components/ui";
 import { useProjectPages } from '@/features/projects/project-id/pages/hooks/use-page';
-import { useViewItems } from '@/features/library';
+import { useViewItems } from '@/features/library/data/catalog/catalog.queries';
 import { useUploadFilesWithToast } from '../../hooks/use-attachment';
 import type {
   AttachPageItem,
@@ -172,7 +172,8 @@ export function Attachments({
     paperSearchQuery,
   );
   const libraryPapers = React.useMemo(() => {
-    return (libraryData as any)?.items || [];
+    const dataObj = libraryData as { items?: Array<Record<string, unknown>> } | undefined;
+    return Array.isArray(dataObj?.items) ? dataObj.items : [];
   }, [libraryData]);
 
   // Attach Link State
@@ -519,7 +520,7 @@ export function Attachments({
                     {!isReadOnly && (
                       <button
                         type="button"
-                        onClick={() => onDetachPaper?.((paper as any).paperId || paper.id || '')}
+                        onClick={() => onDetachPaper?.(((paper as any).paperId || paper.id || ''))}
                         className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
                         title="Detach Paper"
                       >
@@ -636,7 +637,7 @@ export function Attachments({
                         {item.name}
                       </a>
                       <p className="text-10 text-foreground/70">
-                        {formatAttachmentMeta(item.uploadedAt || (item as any).createdAt)}
+                        {formatAttachmentMeta(item.uploadedAt || item.createdAt)}
                       </p>
                     </div>
                   </div>

@@ -4,7 +4,7 @@ import { useMemo, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
-import { useLibraryUIStore, useLibraryModalStore } from '../store';
+import { useLibraryUIStore, useLibraryModalStore } from '../store/library-ui.store';
 import {
   useBatchRestoreItemsMutation,
   useBatchDetachItemsMutation,
@@ -13,7 +13,7 @@ import {
   itemKeys,
   invalidateCollections,
 } from '../data';
-import { generateCitationKey } from '../domain';
+import { generateCitationKey } from '../domain/citations';
 import { isItemRetracted } from '../utils/retraction';
 import type { Item, Collection, CslStyle } from '../types/library.types';
 import type { LibraryScope } from '../types/core.types';

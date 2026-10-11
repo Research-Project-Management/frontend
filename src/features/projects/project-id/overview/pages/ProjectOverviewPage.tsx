@@ -58,7 +58,7 @@ export function ProjectOverviewPage() {
             Unable to load project overview
           </h2>
           <p className="text-13 text-foreground/70">
-            {(error as any)?.message || 'An error occurred while fetching the project overview data.'}
+            {(error as Error)?.message || 'An error occurred while fetching the project overview data.'}
           </p>
           <Button
             variant="outline"

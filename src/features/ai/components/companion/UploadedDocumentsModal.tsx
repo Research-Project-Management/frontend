@@ -271,7 +271,7 @@ export function UploadedDocumentsModal({
     const payload = {
       id: doc.id,
       name: doc.title || 'Untitled Document',
-      size: (doc as any).size || 0,
+      size: doc.size || 0,
     };
     onSelectItem?.(payload);
     onSelectItems?.([payload]);
@@ -285,7 +285,7 @@ export function UploadedDocumentsModal({
     const list = Array.from(selectedDocs.values()).map((doc) => ({
       id: doc.id,
       name: doc.title || 'Untitled Document',
-      size: (doc as any).size || 0,
+      size: doc.size || 0,
     }));
 
     if (onSelectItems) {

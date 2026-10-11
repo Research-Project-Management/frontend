@@ -22,11 +22,11 @@ export interface DocumentEditorState {
   texFiles: string[];
 
   // ── Setters & Actions ───────────────────────────────────────────────────
-  setCurrentPage: (page: Page | PageFile | null | ((prev: any) => any)) => void;
+  setCurrentPage: (page: Page | PageFile | null | ((prev: Page | PageFile | null) => Page | PageFile | null)) => void;
   setProjectId: (id: string) => void;
   setParentPageId: (id: string | null) => void;
   setActivePageId: (id: string | null) => void;
-  setFileHierarchy: (hierarchy: any) => void;
+  setFileHierarchy: (hierarchy: NodeTreeItem[] | null) => void;
   setActiveFilePage: (page: Page | PageFile | null) => void;
   setSelectedAsset: (asset: AssetInfo | null) => void;
   setTexFiles: (files: string[]) => void;
@@ -50,17 +50,27 @@ export const useDocumentEditorStore = create<DocumentEditorState>((set, get) => 
   texFiles: [],
 
   setCurrentPage: (pageOrUpdater) =>
-    set((state) => ({
-      currentPage:
+    set((state) => {
+      const next =
         typeof pageOrUpdater === 'function'
-          ? (pageOrUpdater as any)(state.currentPage)
-          : pageOrUpdater,
-    })),
+          ? pageOrUpdater(state.currentPage)
+          : pageOrUpdater;
+      return {
+        currentPage: next,
+        activeFilePage: next,
+        activePageId: next?.id || null,
+      };
+    }),
   setProjectId: (projectId) => set({ projectId }),
   setParentPageId: (parentPageId) => set({ parentPageId }),
   setActivePageId: (activePageId) => set({ activePageId }),
   setFileHierarchy: (fileHierarchy) => set({ fileHierarchy }),
-  setActiveFilePage: (activeFilePage) => set({ activeFilePage }),
+  setActiveFilePage: (activeFilePage) =>
+    set({
+      activeFilePage,
+      currentPage: activeFilePage,
+      activePageId: activeFilePage?.id || null,
+    }),
   setSelectedAsset: (selectedAsset) => set({ selectedAsset }),
   setTexFiles: (texFiles) => set({ texFiles }),
   resetPageState: () =>
@@ -88,12 +98,7 @@ export const useDocumentEditorStore = create<DocumentEditorState>((set, get) => 
   },
 }));
 
-// Canonical modern store export
+// Canonical modern store exports
 export const useManuscriptStore = useDocumentEditorStore;
-
-// Aliases for seamless backward compatibility
 export const usePageStore = useDocumentEditorStore;
-export const useEditorPageStore = useDocumentEditorStore;
-export const useEditorStore = useDocumentEditorStore;
-export const usePageContext = useDocumentEditorStore;
 export type { AssetInfo };

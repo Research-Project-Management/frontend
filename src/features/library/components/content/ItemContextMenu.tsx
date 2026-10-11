@@ -25,8 +25,8 @@ import {
   ContextMenuSubTrigger,
   ContextMenuShortcut,
 } from '@/shared/components/ui/context-menu';
-import { libraryServices } from '../../data';
-import { useLibraryUIStore } from '../../store';
+import { libraryServices } from '../../data/library-services';
+import { useLibraryUIStore } from '../../store/library-ui.store';
 import type { Item, Collection, CslStyle } from '../../types';
 
 export interface ItemContextMenuProps {

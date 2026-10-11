@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { BookOpen, Copy, Check, RefreshCw, Sparkles } from 'lucide-react';
+import { BookOpen, Copy, Check, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
-import { libraryServices } from '@/features/library';
-import type { Item } from '@/features/library';
+import { libraryServices } from '@/features/library/data';
+import type { Item } from '@/features/library/types';
 import {
   isLatexDocument,
   detectDocumentCitationStyle,
@@ -154,10 +154,10 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
 
         {/* Auto-detect badge */}
         <span
-          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary border border-primary/20"
+          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-primary/10 text-primary border border-primary/20"
           title="Tự động nhận diện cú pháp bài viết và chuẩn hóa tên tác giả Việt Nam"
         >
-          <Sparkles className="size-2.5 shrink-0" />
+          <Check className="size-2.5 shrink-0" />
           <span>Tự động nhận diện</span>
         </span>
       </div>
@@ -172,7 +172,7 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
           type="button"
           onClick={handleInsert}
           disabled={isInjecting}
-          className="flex-1 h-7 px-2.5 rounded bg-primary text-primary-foreground hover:bg-primary/90 text-11 font-medium flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors shadow-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          className="flex-1 h-7 px-2.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-11 font-medium flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors shadow-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
         >
           {isInjecting ? (
             <RefreshCw className="size-3 animate-spin shrink-0" />
@@ -185,7 +185,7 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
         <button
           type="button"
           onClick={handleCopy}
-          className="h-7 px-2.5 rounded border border-border bg-background hover:bg-muted text-foreground text-11 font-medium flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          className="h-7 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-foreground text-11 font-medium flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
           title="Sao chép toàn bộ danh mục tài liệu vào clipboard"
         >
           {isCopied ? (

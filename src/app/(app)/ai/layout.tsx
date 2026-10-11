@@ -1,6 +1,6 @@
 'use client';
 
-import { useAiUIStore } from '@/features/ai/store';
+import { useAiUIStore } from '@/features/ai/store/ai-ui.store';
 import { PanelRightClose } from 'lucide-react';
 import { ChatModeProvider } from '@/features/ai/hooks/use-chat-mode';
 import { Panel } from '@/features/ai/components/layout/panel';

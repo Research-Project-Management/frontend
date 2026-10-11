@@ -5,9 +5,9 @@ import {
   VisualMathSymbolPalette,
   MATH_SYMBOLS,
   type VisualMathSymbolPaletteProps,
-} from '@/features/editor/ui/features/editor/VisualMathSymbolPalette';
+} from '@/features/editor/ui/features/editor/visual/modals/VisualMathSymbolPalette';
 import { VisualEditorView } from '@/features/editor/ui/features/editor/VisualEditorView';
-import { useSettingsStore } from '@/features/editor/store';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
 
 describe('VisualMathSymbolPalette & Math Modal Integration', () => {
   beforeEach(() => {

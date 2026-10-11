@@ -1,8 +1,4 @@
-/**
- * @file use-drive.ts
- * @description Frontend hooks mirroring backend DriveController.
- * Provides React Query queries and mutations for drive navigation, hierarchy, and node mutations.
- */
+'use client';
 
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { storageKeys } from '../constants/storage.keys';

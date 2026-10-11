@@ -16,7 +16,7 @@ import {
   filterFileTree,
   type FileTreeNode,
   type BuildFileTreeParams,
-} from './tree-builder.util';
+} from '@/features/editor/domain/document/document-tree';
 
 export interface UseFileTreeParams extends BuildFileTreeParams {
   fileFilter?: string;

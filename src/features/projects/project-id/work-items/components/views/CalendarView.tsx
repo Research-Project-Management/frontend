@@ -101,12 +101,12 @@ const CalendarCard = memo(function CalendarCard({ card }: CalendarCardProps) {
         {card.assignee && (
           <div className="flex items-center gap-1">
             <Avatar className="size-4 shrink-0">
-              <AvatarImage src={(card.assignee as any).avatar} />
+              {card.assignee.avatar && <AvatarImage src={card.assignee.avatar} />}
               <AvatarFallback className="text-9">
-                {(card.assignee as any).name ? (card.assignee as any).name.charAt(0) : 'U'}
+                {card.assignee.name ? card.assignee.name.charAt(0) : 'U'}
               </AvatarFallback>
             </Avatar>
-            <span>{(card.assignee as any).name}</span>
+            <span>{card.assignee.name || 'Unassigned'}</span>
           </div>
         )}
       </div>

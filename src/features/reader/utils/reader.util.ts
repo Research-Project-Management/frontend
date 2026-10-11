@@ -204,12 +204,20 @@ export function normalizeAuthors(
       if (typeof item === 'string') {
         result.push(...splitAuthorString(item));
       } else if (typeof item === 'object') {
-        const fullName = ((item as any).fullName || (item as any).name || '').trim();
+        const authorObj = item as {
+          fullName?: string;
+          name?: string;
+          firstName?: string;
+          given?: string;
+          lastName?: string;
+          family?: string;
+        };
+        const fullName = (authorObj.fullName || authorObj.name || '').trim();
         if (fullName) {
           result.push(fullName);
         } else {
-          const first = ((item as any).firstName || (item as any).given || '').trim();
-          const last = ((item as any).lastName || (item as any).family || '').trim();
+          const first = (authorObj.firstName || authorObj.given || '').trim();
+          const last = (authorObj.lastName || authorObj.family || '').trim();
           const full = [first, last].filter(Boolean).join(' ').trim();
           if (full) result.push(full);
         }
@@ -379,10 +387,10 @@ export function normalizeTags(
       typeof t === 'string'
         ? t
         : t && typeof t === 'object'
-          ? (typeof (t as any).name === 'string'
-              ? (t as any).name
-              : typeof (t as any).tag === 'string'
-                ? (t as any).tag
+          ? (typeof (t as { name?: unknown }).name === 'string'
+              ? ((t as { name: string }).name)
+              : typeof (t as { tag?: unknown }).tag === 'string'
+                ? ((t as { tag: string }).tag)
                 : '')
           : '';
     if (!s) continue;
@@ -412,7 +420,7 @@ export interface NormalizedNote {
 }
 
 export function normalizeNotes(
-  notes?: Array<string | any | { id?: string; title?: string; content?: string; note?: string }> | null,
+  notes?: Array<string | { id?: string; title?: string; content?: string; contentMd?: string; contentJson?: unknown; note?: string; createdAt?: string; updatedAt?: string }> | null,
 ): NormalizedNote[] {
   if (!Array.isArray(notes)) return [];
 
@@ -428,7 +436,18 @@ export function normalizeNotes(
       };
     }
 
-    const noteObj = note as any;
+    const noteObj = note as {
+      id?: string;
+      title?: string;
+      content?: string;
+      contentMd?: string;
+      contentJson?: unknown;
+      note?: string;
+      createdAt?: string;
+      updatedAt?: string;
+      dateAdded?: string;
+      dateModified?: string;
+    };
     const rawContent =
       noteObj.content ||
       noteObj.contentMd ||
@@ -832,21 +851,34 @@ export function formatAndSanitizeExtraMetadata(
     }
   }
 
-  const paperTitle = associatedPaperItem?.title?.trim().toLowerCase();
-  const paperUrl = associatedPaperItem?.url?.trim();
-  const paperFileUrl = (associatedPaperItem as any)?.fileUrl?.trim();
-  const paperOaUrl = (associatedPaperItem as any)?.openAccessPdfUrl?.trim();
-  const paperCiteKey = associatedPaperItem?.citationKey?.trim().toLowerCase();
-  const paperDoi = cleanDoi((associatedPaperItem as any)?.doi || (associatedPaperItem as any)?.DOI);
-  const paperPmid = (associatedPaperItem as any)?.pmid?.trim();
-  const paperPmcid = (associatedPaperItem as any)?.pmcid?.trim();
-  const paperIsbn = (associatedPaperItem as any)?.isbn?.trim();
-  const paperIssn = (associatedPaperItem as any)?.issn?.trim();
-  const isPreprint = associatedPaperItem?.itemType === 'preprint';
+  const paper = associatedPaperItem as (Partial<ReaderDocument> & {
+    fileUrl?: string;
+    openAccessPdfUrl?: string;
+    DOI?: string;
+    pmid?: string;
+    pmcid?: string;
+    isbn?: string;
+    issn?: string;
+    archiveId?: string;
+    archiveID?: string;
+    arxivId?: string;
+  }) | null | undefined;
+
+  const paperTitle = paper?.title?.trim().toLowerCase();
+  const paperUrl = paper?.url?.trim();
+  const paperFileUrl = paper?.fileUrl?.trim();
+  const paperOaUrl = paper?.openAccessPdfUrl?.trim();
+  const paperCiteKey = paper?.citationKey?.trim().toLowerCase();
+  const paperDoi = cleanDoi(paper?.doi || paper?.DOI);
+  const paperPmid = paper?.pmid?.trim();
+  const paperPmcid = paper?.pmcid?.trim();
+  const paperIsbn = paper?.isbn?.trim();
+  const paperIssn = paper?.issn?.trim();
+  const isPreprint = paper?.itemType === 'preprint';
   const paperArchiveId = (
-    (associatedPaperItem as any)?.archiveId ||
-    (associatedPaperItem as any)?.archiveID ||
-    (associatedPaperItem as any)?.arxivId
+    paper?.archiveId ||
+    paper?.archiveID ||
+    paper?.arxivId
   )?.trim();
 
   const lines = textContent ? textContent.split(/\r?\n/) : [];
@@ -926,7 +958,7 @@ export function formatAndSanitizeExtraMetadata(
 
   if (!hasArxivLine && !isPreprint) {
     const rawArxiv =
-      (associatedPaperItem as any)?.arxivId ||
+      paper?.arxivId ||
       (typeof additionalExtraFields?.arxivId === 'string' ? additionalExtraFields.arxivId : undefined) ||
       (typeof additionalExtraFields?.archiveId === 'string' ? additionalExtraFields.archiveId : undefined);
 

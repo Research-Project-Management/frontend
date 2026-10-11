@@ -9,6 +9,7 @@ import {
   yourWorkSummaryResponseSchema,
   type YourWorkItem,
   type YourWorkActivityEvent,
+  type YourWorkSummaryResponse,
 } from '../schemas/your-work.schema';
 import {
   createProjectMap,
@@ -37,11 +38,12 @@ export function useYourWork(projectId?: string) {
     error: yourWorkError,
   } = useQuery({
     queryKey: ['your-work', projectId || 'me'],
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ signal }): Promise<YourWorkSummaryResponse> => {
       const res = await getYourWork(projectId, signal);
-      const unwrapped = (res as any)?.data ?? res;
+      const resObj = res as Record<string, unknown>;
+      const unwrapped = (typeof res === 'object' && res !== null && 'data' in resObj ? resObj.data : res);
       const parsed = yourWorkSummaryResponseSchema.safeParse(unwrapped);
-      return parsed.success ? parsed.data : unwrapped;
+      return (parsed.success ? parsed.data : (unwrapped as YourWorkSummaryResponse)) || {};
     },
     enabled: Boolean(user),
     staleTime: 30_000,
@@ -53,9 +55,10 @@ export function useYourWork(projectId?: string) {
     (isProjectsError ? new Error('Failed to load projects') : null);
 
   // Transparently normalize rawData whether directly returned or enveloped
-  const payload = useMemo(() => {
+  const payload = useMemo<YourWorkSummaryResponse | null>(() => {
     if (!rawData) return null;
-    return (rawData as any)?.data ? (rawData as any).data : rawData;
+    const rawObj = rawData as Record<string, unknown>;
+    return (typeof rawData === 'object' && rawData !== null && 'data' in rawObj && rawObj.data ? rawObj.data : rawData) as YourWorkSummaryResponse;
   }, [rawData]);
 
   const assigned: YourWorkItem[] = useMemo(
@@ -120,7 +123,7 @@ export function useYourWork(projectId?: string) {
       return projects.map((p) => ({
         projectId: p.id,
         projectName: p.name,
-        projectIdentifier: (p as any).identifier || null,
+        projectIdentifier: p.identifier || null,
         projectAvatar: p.avatar || null,
         assignedCount: 0,
         createdCount: 0,
@@ -160,7 +163,7 @@ export function useYourWork(projectId?: string) {
             name: user.name,
             email: user.email,
             avatar: user.avatar,
-            createdAt: (user as any).createdAt,
+            createdAt: (user as typeof user & { createdAt?: string }).createdAt,
           }
         : undefined),
     [payload, user],

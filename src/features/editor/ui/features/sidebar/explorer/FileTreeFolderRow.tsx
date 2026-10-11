@@ -13,8 +13,8 @@ import React from 'react';
 import { ChevronRight, Folder, FolderOpen, FileCode2, Upload } from 'lucide-react';
 import { DropdownMenuItem } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
-import { IndentGuides, RowActions } from './FileTreeNodes';
-import type { FileTreeFolderNode } from './tree-builder.util';
+import { IndentGuides, RowActions } from './FileTreePrimitives';
+import type { FileTreeFolderNode } from '@/features/editor/domain/document/document-tree';
 
 export interface FileTreeFolderRowProps {
   node: FileTreeFolderNode;

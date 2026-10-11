@@ -3,7 +3,7 @@
  * across LaTeX and Markdown documents in the Flux Editor.
  */
 
-import type { Item } from '@/features/library';
+import type { Item } from '@/features/library/types';
 import type { BibEntry } from './bib-parser';
 
 /**

@@ -21,7 +21,7 @@ import {
   formatInTextCitationPreview,
   formatBibliographyPreview,
 } from '@/features/editor/domain/citation/citation-formatter';
-import { formatRetractionReason } from '@/features/library';
+import { formatRetractionReason } from '@/features/library/utils/retraction';
 import { editorCommandBus } from '../../coordinators/command-bus';
 
 /**
@@ -138,7 +138,7 @@ function createCitationTooltip(from: number, to: number, citeKey: string): Toolt
     create() {
       const dom = document.createElement('div');
       dom.className =
-        'cm-citation-hover-card p-3.5 bg-popover text-popover-foreground border border-border rounded-lg shadow-overlay text-xs max-w-sm sm:max-w-md select-text pointer-events-auto leading-relaxed';
+        'cm-citation-hover-card p-3.5 bg-popover text-popover-foreground border border-border rounded-md shadow-overlay text-xs max-w-sm sm:max-w-md select-text pointer-events-auto leading-relaxed';
 
       if (entry) {
         renderResolvedCard(dom, entry, citeKey);
@@ -170,20 +170,20 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
 
   const typeBadge = document.createElement('span');
   typeBadge.className =
-    'px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wider bg-primary/15 text-primary border border-primary/20 uppercase';
+    'px-1.5 py-0.5 rounded-sm text-[10px] font-semibold tracking-wider bg-primary/15 text-primary border border-primary/20 uppercase';
   typeBadge.textContent = typeStr;
   leftPills.appendChild(typeBadge);
 
   const keyPill = document.createElement('span');
-  keyPill.className = 'font-mono text-[11px] font-medium text-foreground bg-muted/60 px-1.5 py-0.5 rounded';
+  keyPill.className = 'font-mono text-[11px] font-medium text-foreground bg-muted/60 px-1.5 py-0.5 rounded-sm';
   keyPill.textContent = `@${entry.key || citeKey}`;
   leftPills.appendChild(keyPill);
 
   if (entry.isRetracted) {
     const retractedBadge = document.createElement('span');
     retractedBadge.className =
-      'px-1.5 py-0.5 rounded text-[10px] font-semibold bg-destructive/15 text-destructive border border-destructive/30 uppercase tracking-wide flex items-center gap-1';
-    retractedBadge.innerHTML = '🚨 <span>THU HỒI / RETRACTED</span>';
+      'px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-destructive/15 text-destructive border border-destructive/30 uppercase tracking-wide flex items-center gap-1';
+    retractedBadge.innerHTML = '<span>THU HỒI / RETRACTED</span>';
     leftPills.appendChild(retractedBadge);
   }
 
@@ -192,12 +192,12 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
   const sourceBadge = document.createElement('span');
   sourceBadge.className = 'text-[11px] text-muted-foreground flex items-center gap-1';
   if (entry.sourceFile === 'workspace-library') {
-    sourceBadge.innerHTML = '📚 <span class="hidden sm:inline">Thư viện số</span>';
+    sourceBadge.innerHTML = '<span class="hidden sm:inline">Thư viện số</span>';
   } else if (entry.sourceFile) {
     const bibBtn = document.createElement('button');
     bibBtn.type = 'button';
     bibBtn.className = 'font-mono text-[10px] text-primary hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-0 p-0';
-    bibBtn.innerHTML = `📁 <span>${escapeHtml(entry.sourceFile)}</span>`;
+    bibBtn.innerHTML = `<span>${escapeHtml(entry.sourceFile)}</span>`;
     bibBtn.title = `Mở ${entry.sourceFile} (nhảy tới định nghĩa)`;
     bibBtn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -221,7 +221,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
 
     const alertHeader = document.createElement('div');
     alertHeader.className = 'flex items-center gap-1.5 font-semibold text-[11px] uppercase tracking-wider text-destructive';
-    alertHeader.innerHTML = '<span>🚨 CẢNH BÁO: BÀI BÁO ĐÃ BỊ THU HỒI</span>';
+    alertHeader.innerHTML = '<span>CẢNH BÁO: BÀI BÁO ĐÃ BỊ THU HỒI</span>';
     alertBox.appendChild(alertHeader);
 
     const reasonDesc = entry.retractionReason
@@ -257,19 +257,10 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
   // 3. Authors
   if (entry.author) {
     const authorEl = document.createElement('div');
-    authorEl.className = 'flex items-start gap-1.5 text-xs text-muted-foreground mb-2';
-
-    const icon = document.createElement('span');
-    icon.textContent = '👤';
-    authorEl.appendChild(icon);
-
-    const authorText = document.createElement('span');
+    authorEl.className = 'text-xs text-muted-foreground mb-2 line-clamp-2';
     // Display all authors joined cleanly
     const authorList = entry.author.split(/\s+and\s+|;\s*/i).join(', ');
-    authorText.className = 'line-clamp-2';
-    authorText.textContent = authorList;
-    authorEl.appendChild(authorText);
-
+    authorEl.textContent = authorList;
     container.appendChild(authorEl);
   }
 
@@ -279,17 +270,17 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
 
   if (entry.year) {
     const yearSpan = document.createElement('span');
-    yearSpan.className = 'inline-flex items-center gap-1 bg-muted/40 px-1.5 py-0.5 rounded';
-    yearSpan.textContent = `📅 ${entry.year}`;
+    yearSpan.className = 'inline-flex items-center gap-1 bg-muted/40 px-1.5 py-0.5 rounded-sm';
+    yearSpan.textContent = entry.year;
     metaRow.appendChild(yearSpan);
   }
 
   const venue = entry.journal || entry.booktitle;
   if (venue) {
     const venueSpan = document.createElement('span');
-    venueSpan.className = 'inline-flex items-center gap-1 bg-muted/40 px-1.5 py-0.5 rounded max-w-[200px] truncate';
+    venueSpan.className = 'inline-flex items-center gap-1 bg-muted/40 px-1.5 py-0.5 rounded-sm max-w-[200px] truncate';
     venueSpan.title = venue;
-    venueSpan.textContent = `🏛️ ${venue}`;
+    venueSpan.textContent = venue;
     metaRow.appendChild(venueSpan);
   }
 
@@ -300,8 +291,8 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
     doiLink.target = '_blank';
     doiLink.rel = 'noopener noreferrer';
     doiLink.className =
-      'inline-flex items-center gap-1 text-primary hover:underline bg-primary/10 px-1.5 py-0.5 rounded transition-colors';
-    doiLink.textContent = `🔗 ${cleanDoi}`;
+      'inline-flex items-center gap-1 text-primary hover:underline bg-primary/10 px-1.5 py-0.5 rounded-sm transition-colors';
+    doiLink.textContent = cleanDoi;
     metaRow.appendChild(doiLink);
   }
 
@@ -323,7 +314,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
   previewBox.appendChild(previewLabel);
 
   const previewText = document.createElement('div');
-  previewText.className = 'font-serif italic text-foreground text-[12px] bg-background/50 px-2 py-1 rounded border border-border/30';
+  previewText.className = 'font-serif italic text-foreground text-[12px] bg-background/50 px-2 py-1 rounded-sm border border-border/30';
   previewText.textContent = inTextPreview;
   previewBox.appendChild(previewText);
 
@@ -336,8 +327,8 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
   const renameBtn = document.createElement('button');
   renameBtn.type = 'button';
   renameBtn.className =
-    'inline-flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 px-2 py-0.5 rounded transition-colors cursor-pointer border border-border/40';
-  renameBtn.innerHTML = '✏️ <span>Đổi tên key (Refactor)</span>';
+    'inline-flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 px-2 py-0.5 rounded-md transition-colors cursor-pointer border border-border/40';
+  renameBtn.innerHTML = '<span>Đổi tên key (Refactor)</span>';
   renameBtn.title = 'Đổi tên khóa trích dẫn trong toàn bộ dự án mà không làm hỏng tài liệu';
   renameBtn.addEventListener('click', (e) => {
     e.preventDefault();
@@ -382,8 +373,8 @@ function renderUnresolvedCard(container: HTMLElement, citeKey: string): void {
 
   const warningBadge = document.createElement('span');
   warningBadge.className =
-    'px-1.5 py-0.5 rounded text-[10px] font-semibold bg-warning/15 text-warning border border-warning/30 uppercase';
-  warningBadge.textContent = '⚠️ Chưa tìm thấy';
+    'px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-warning/15 text-warning border border-warning/30 uppercase';
+  warningBadge.textContent = 'Chưa tìm thấy';
   header.appendChild(warningBadge);
 
   const keySpan = document.createElement('span');
@@ -407,13 +398,13 @@ function renderUnresolvedCard(container: HTMLElement, citeKey: string): void {
 
   const shortcutHint = document.createElement('span');
   shortcutHint.className = 'text-[11px] text-muted-foreground';
-  shortcutHint.innerHTML = 'Phím tắt: <kbd class="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px] border border-border">Ctrl+Shift+K</kbd>';
+  shortcutHint.innerHTML = 'Phím tắt: <kbd class="px-1.5 py-0.5 rounded-sm bg-muted font-mono text-[10px] border border-border">Ctrl+Shift+K</kbd>';
   actionRow.appendChild(shortcutHint);
 
   const openBtn = document.createElement('button');
   openBtn.type = 'button';
   openBtn.className =
-    'px-2.5 py-1 rounded text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm cursor-pointer';
+    'px-2.5 py-1 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer';
   openBtn.textContent = 'Mở Citation Picker';
   openBtn.addEventListener('click', (e) => {
     e.preventDefault();

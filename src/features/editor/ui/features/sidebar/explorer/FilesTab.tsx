@@ -4,9 +4,9 @@
  * FilesTab.tsx
  *
  * Canonical Files & Explorer sidebar component:
- * - Tree building extracted to `tree-builder.util.ts` & `useFileTree.ts`
+ * - File tree building handled by `document-tree.ts` & `useFileTree.ts`
  * - Folder row rendering extracted to `FileTreeFolderRow.tsx`
- * - File actions extracted to `file-actions.util.ts`
+ * - Asset insertion & LaTeX actions powered by `domain/latex` & `domain/document`
  * - Drag-drop & upload orchestration extracted to `useFileUpload.ts`
  *
  * Location: `features/editor/ui/features/sidebar/explorer/FilesTab.tsx`
@@ -38,19 +38,17 @@ import {
   extractProjectId,
   extractDocumentContentString,
 } from '@/features/editor/domain/types';
-import {
-  usePageStore,
-  useTabsStore,
-  useSettingsStore,
-  type AssetInfo,
-} from '@/features/editor/store';
+import { usePageStore } from '@/features/editor/store/editor.store';
+import { useTabsStore } from '@/features/editor/store/tabs.store';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
+import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
 import {
   pageQuery,
   filesQuery,
   deletedFilesQuery,
-  usePageActions,
-  useFileActions,
-} from '@/features/editor/ui/hooks/use-core';
+} from '@/features/editor/ui/hooks/document.queries';
+import { usePageActions } from '@/features/editor/ui/hooks/use-page-actions';
+import { useFileActions } from '@/features/editor/ui/hooks/use-file-actions';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { workspaceCoordinator } from '@/features/editor/coordinators/workspace.coordinator';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/sdk';
@@ -63,7 +61,7 @@ import { TexFileRow, displayName } from './TexFileRow';
 import { FileTreeFolderRow } from './FileTreeFolderRow';
 import { useFileUpload } from './useFileUpload';
 import { useFileTree } from './useFileTree';
-import type { FileTreeNode } from './tree-builder.util';
+import type { FileTreeNode } from '@/features/editor/domain/document/document-tree';
 import { useFileExplorerActions } from './useFileExplorerActions';
 import type { AddFilesTab } from '@/features/editor/ui/modals/AddFilesModal';
 import { DeleteFileDialog } from './DeleteFileDialog';
@@ -667,7 +665,10 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
           multiple
           className="hidden"
           onChange={handleFolderPicked}
-          {...({ webkitdirectory: '', directory: '' } as any)}
+          {...({ webkitdirectory: '', directory: '' } as React.InputHTMLAttributes<HTMLInputElement> & {
+            webkitdirectory?: string;
+            directory?: string;
+          })}
         />
 
         {/* Header Toolbar & Search Filter */}

@@ -39,7 +39,7 @@ import {
 } from '@/shared/components/icons';
 import { useProjects } from '../hooks/use-project';
 import { useFavorites } from '../hooks/use-favorites';
-import { useProject } from '@/features/projects/project-id/work-items';
+import { useProject } from '@/features/projects/project-id/work-items/hooks/use-work-item';
 
 const CreateProjectModal = dynamic(
   () =>
@@ -48,7 +48,7 @@ const CreateProjectModal = dynamic(
 );
 const CreateModal = dynamic(
   () =>
-    import('@/features/projects/project-id/work-items').then((m) => m.CreateModal),
+    import('@/features/projects/project-id/work-items/components/modals/CreateModal').then((m) => m.CreateModal),
   { ssr: false }
 );
 
@@ -708,22 +708,29 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           columns={activeProjectState.columns}
           members={activeProjectState.members}
           project={activeProjectState.project}
-          onSubmit={async (formData: any) => {
-            const targetProjId = (formData as any).projectId || activeProjectId;
+          onSubmit={async (formData: Record<string, unknown>) => {
+            const targetProjId =
+              (typeof formData.projectId === 'string' ? formData.projectId : null) ||
+              activeProjectId;
             if (!targetProjId) {
               toast.error('Please select or create a project first');
               return;
             }
-            const itemTitle = formData.title?.trim();
+            const itemTitle =
+              typeof formData.title === 'string' ? formData.title.trim() : '';
             if (!itemTitle) {
               toast.error('Work item title is required');
               return;
             }
-            await (activeProjectActions.createWorkItem || activeProjectActions.create)({
-              ...formData,
-              title: itemTitle,
-              projectId: targetProjId,
-            });
+            const createFn =
+              activeProjectActions.createWorkItem || activeProjectActions.create;
+            if (createFn) {
+              await createFn({
+                ...formData,
+                title: itemTitle,
+                projectId: targetProjId,
+              });
+            }
           }}
           isSubmitting={activeProjectState.isSaving}
         />

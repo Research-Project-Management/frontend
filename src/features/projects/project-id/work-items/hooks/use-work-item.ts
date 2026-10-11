@@ -176,7 +176,8 @@ export const useUpdateItem = () => {
       const previousQueries = queryClient.getQueriesData<ProjectItemsCache>({ queryKey: ['work-items'] });
 
       const formattedDueDate = data.dueDate instanceof Date ? data.dueDate.toISOString() : data.dueDate;
-      const formattedStartDate = (data as any).startDate instanceof Date ? (data as any).startDate.toISOString() : (data as any).startDate;
+      const rawStartDate = (data as { startDate?: unknown }).startDate;
+      const formattedStartDate = rawStartDate instanceof Date ? rawStartDate.toISOString() : (typeof rawStartDate === 'string' ? rawStartDate : undefined);
 
       queryClient.setQueriesData<any>({ queryKey: ['work-items'] }, (old: any) => {
         if (!old) return old;
@@ -371,7 +372,7 @@ export const useBulkUpdate = () => {
       }
     },
     onSettled: (_data, _error, variables) => {
-      invalidateWorkItemRelatedQueries(queryClient, (variables as any)?.projectId);
+      invalidateWorkItemRelatedQueries(queryClient, (variables as { projectId?: string } | undefined)?.projectId);
     },
   });
 };
@@ -470,7 +471,7 @@ export const useCreateSubItem = () => {
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to create sub-item', { id: 'work-item-action' }),
     onSettled: (_data, _error, variables) => {
-      invalidateWorkItemRelatedQueries(queryClient, (variables as any)?.projectId);
+      invalidateWorkItemRelatedQueries(queryClient, (variables as { projectId?: string } | undefined)?.projectId);
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
     },
   });
@@ -500,7 +501,7 @@ export const useConvertSubItemToRoot = () => {
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to convert to top-level item', { id: 'work-item-action' }),
     onSettled: (_data, _error, variables) => {
-      invalidateWorkItemRelatedQueries(queryClient, (variables as any)?.projectId);
+      invalidateWorkItemRelatedQueries(queryClient, (variables as { projectId?: string } | undefined)?.projectId);
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
     },
   });
@@ -564,7 +565,7 @@ export const useReorderItem = () => {
       toast.error(error.message || 'Failed to reorder work item', { id: 'work-item-reorder' });
     },
     onSettled: (_data, _error, variables) => {
-      invalidateWorkItemRelatedQueries(queryClient, (variables as any)?.projectId);
+      invalidateWorkItemRelatedQueries(queryClient, (variables as { projectId?: string } | undefined)?.projectId);
     },
   });
 };
@@ -621,12 +622,12 @@ export function useProject({ projectId }: UseProjectOptions) {
     return ('project' in projectData && projectData.project ? projectData.project : projectData) as Project | undefined;
   }, [detailsQ.data]);
 
-  const projectColumns = (project as any)?.workItemColumns;
+  const projectColumns = (project as { workItemColumns?: unknown[] } | undefined)?.workItemColumns;
   const columns = useMemo(() => {
     if (Array.isArray(statesQ.data) && statesQ.data.length > 0) {
       return normalizeStates(statesQ.data);
     }
-    const rawCols = itemsQ.data?.columns || (itemsQ.data as any)?.states;
+    const rawCols = itemsQ.data?.columns || (itemsQ.data as { states?: unknown[] } | undefined)?.states;
     if (Array.isArray(rawCols) && rawCols.length > 0) return normalizeStates(rawCols);
     if (Array.isArray(projectColumns) && projectColumns.length > 0) return normalizeStates(projectColumns);
     return [...DEFAULT_STATES];

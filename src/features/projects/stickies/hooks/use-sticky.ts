@@ -8,7 +8,7 @@ import {
   deleteSticky,
   reorderStickies,
 } from "../services/sticky.service";
-import type { Sticky } from "../types/sticky.types";
+import type { Sticky, StickyColor } from "../types/sticky.types";
 import { uuidv7 } from "../utils/sticky.utils";
 
 export const useSticky = (
@@ -52,7 +52,7 @@ export const useSticky = (
         id: stickyId,
         title: variables?.title || '',
         content: variables?.content || '<p></p>',
-        color: (variables?.color as any) || 'yellow-1',
+        color: (variables?.color as StickyColor) || 'yellow-1',
         position: variables?.position || { x: 0, y: 0 },
         order: previous ? previous.length : 0,
         createdAt: new Date().toISOString(),

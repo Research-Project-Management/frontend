@@ -17,12 +17,9 @@ import {
   X,
   Check,
 } from 'lucide-react';
-import {
-  libraryServices,
-  isProjectScope,
-  type Item,
-  type Collection,
-} from '@/features/library';
+import { libraryServices } from '@/features/library/data/library-services';
+import { isProjectScope } from '@/features/library/domain/item-url';
+import type { Item, Collection } from '@/features/library/types';
 import { LibraryEmptyState } from '@/features/library/components/content/LibraryEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { buildTree } from '@/features/library/components/sidebar/tree-helpers';
@@ -110,11 +107,13 @@ export function LibraryPickerModal({
         collectionId: selectedCollectionId || undefined,
         limit: 100,
       });
-      const list = res?.items || (res as any)?.data || (res as any)?.papers || (Array.isArray(res) ? res : []);
+      const list = res?.items ?? [];
       setItems(list);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[LibraryPickerModal] Failed to load items:', err);
-      setError(err?.message || 'Failed to load library papers');
+      setError(
+        err instanceof Error ? err.message : 'Failed to load library papers',
+      );
     } finally {
       setLoading(false);
     }

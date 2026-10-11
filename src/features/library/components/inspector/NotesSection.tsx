@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { MinusCircle, Plus, StickyNote } from 'lucide-react';
 import { Textarea, Button } from "@/shared/components/ui";
-import { normalizeNotes, type NormalizedNote } from '../../domain';
+import { normalizeNotes, type NormalizedNote } from '../../domain/metadata';
 import { useNotes } from '../../data';
 import { cn } from "@/shared/lib/utils";
 import type { Item } from '@/features/library/types/library.types';

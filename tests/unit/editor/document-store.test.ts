@@ -1,10 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import {
-  DocumentStore,
-  documentStore,
-  lruDocumentCache,
-  draftStorageService,
-} from '@/features/editor/domain/document';
+import { DocumentStore, documentStore } from '@/features/editor/domain/document/document-store';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 
 describe('DocumentStore Deep Module Architecture (Matt Pocock Codebase Design)', () => {
   beforeEach(() => {

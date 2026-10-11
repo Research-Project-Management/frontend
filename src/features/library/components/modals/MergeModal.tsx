@@ -35,7 +35,7 @@ import {
   aggregateItemAssets,
   type ItemFieldDiff,
   type FieldOptionValue,
-} from '../../domain';
+} from '../../domain/diff';
 
 export interface MergeModalProps {
   open: boolean;

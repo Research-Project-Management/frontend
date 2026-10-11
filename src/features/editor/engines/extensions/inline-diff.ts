@@ -2,7 +2,7 @@
  * inline-diff.ts
  *
  * CodeMirror 6 Inline Diff & Review Extension (Block 4: Engines Layer).
- * Location: `features/editor/engines/inline-diff.ts`
+ * Location: `features/editor/engines/extensions/inline-diff.ts`
  *
  * Architecture inspired by Void & Cursor:
  * - When AI proposes an edit, instead of overwriting the document directly,
@@ -143,7 +143,7 @@ function executeAcceptDiff(view: EditorView, proposal: DiffProposal) {
     action: 'accept',
     proposal,
     payload: { action: 'accept', proposal },
-  } as any);
+  });
 
   view.focus();
 }
@@ -159,7 +159,7 @@ function executeRejectDiff(view: EditorView, proposalId: string) {
     action: 'reject',
     proposalId,
     payload: { action: 'reject', proposalId },
-  } as any);
+  });
 
   view.focus();
 }

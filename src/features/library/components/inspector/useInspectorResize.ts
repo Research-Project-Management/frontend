@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useLibrarySidebarStore } from '../../store';
+import { useLibrarySidebarStore } from '../../store/library-ui.store';
 
 /**
  * Custom hook for smooth left-border drag resizing of the Inspector panel.

@@ -38,8 +38,8 @@ import {
   MediumPriorityBoxIcon,
   LowPriorityBoxIcon,
   NonePriorityBoxIcon,
-  type WorkItemPriority,
-} from '@/features/projects/project-id/work-items';
+} from '@/shared/components/icons';
+import type { WorkItemPriority } from '@/features/projects/project-id/work-items/types/work-item.types';
 import type { WorkItemDraft } from '../../types/draft.types';
 
 export interface EditorModalProps {

@@ -53,19 +53,19 @@ function formatCitationInfo(entry: BibEntry): string {
   const cached = citationInfoCache.get(entry);
   if (cached) return cached;
   const lines: string[] = [];
-  if (entry.title) lines.push(`📚 ${entry.title}`);
+  if (entry.title) lines.push(entry.title);
   if (entry.author) {
     const authorList = entry.author.split(/\s+and\s+|;\s*/i).join(', ');
-    lines.push(`👤 ${authorList}`);
+    lines.push(authorList);
   }
   const metaParts = [
-    entry.year ? `📅 ${entry.year}` : '',
-    entry.journal ? `🏛️ ${entry.journal}` : '',
-    entry.type ? `🏷️ @${entry.type}` : '',
+    entry.year ? `${entry.year}` : '',
+    entry.journal ? `${entry.journal}` : '',
+    entry.type ? `@${entry.type}` : '',
   ].filter(Boolean);
   if (metaParts.length > 0) lines.push(metaParts.join('  •  '));
-  if (entry.doi) lines.push(`🔗 DOI: ${entry.doi}`);
-  if (entry.sourceFile) lines.push(`📁 Nguồn: ${entry.sourceFile}`);
+  if (entry.doi) lines.push(`DOI: ${entry.doi}`);
+  if (entry.sourceFile) lines.push(`Nguồn: ${entry.sourceFile}`);
   const formatted = lines.join('\n');
   citationInfoCache.set(entry, formatted);
   return formatted;

@@ -3,7 +3,7 @@
 import React, { memo } from 'react';
 import { Info, Copy, Check, Plus } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import type { UnifiedCitation } from '../hooks/useCitationTabState';
+import type { UnifiedCitation } from '../useCitationTabState';
 
 interface CitationItemProps {
   item: UnifiedCitation;
@@ -36,7 +36,7 @@ export const CitationItem = memo(function CitationItem({
       {/* Top row: Key + Source badge + Year */}
       <div className="flex items-center justify-between gap-1.5 min-w-0">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="font-mono text-11 font-medium bg-background border border-border text-foreground px-1.5 py-0.5 rounded-[3px] truncate shrink-0 max-w-[150px]">
+          <span className="font-mono text-11 font-medium bg-background border border-border text-foreground px-1.5 py-0.5 rounded-sm truncate shrink-0 max-w-[150px]">
             {item.key}
           </span>
           {item.source === 'bib' && (
@@ -71,7 +71,7 @@ export const CitationItem = memo(function CitationItem({
             e.stopPropagation();
             onInspect(item.key);
           }}
-          className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+          className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
           title="Inspect details"
           aria-label="Inspect reference details"
         >
@@ -83,7 +83,7 @@ export const CitationItem = memo(function CitationItem({
             e.stopPropagation();
             onCopy(item.key);
           }}
-          className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+          className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
           title="Copy \\cite command"
           aria-label="Copy citation command"
         >
@@ -99,7 +99,7 @@ export const CitationItem = memo(function CitationItem({
             e.stopPropagation();
             onSelect(item.key);
           }}
-          className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+          className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
           title="Insert \\cite at cursor"
           aria-label="Insert citation at cursor"
         >

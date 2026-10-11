@@ -2,12 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   LRUDocumentCache,
   lruDocumentCache,
-  draftStorageService,
   type DocumentModelState,
-} from '@/features/editor/domain/document';
+} from '@/features/editor/domain/document/lru-document-cache';
+import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
 import { manuscriptService } from '@/features/editor/sdk';
-import { useCompileStore, useConnectivityStore, usePageStore } from '@/features/editor/store';
+import { useCompileStore } from '@/features/editor/store/compiler.store';
+import { useConnectivityStore } from '@/features/editor/store/connectivity.store';
+import { usePageStore } from '@/features/editor/store/editor.store';
 
 describe('LRU Document Cache & Local-First Offline Draft Sync (Overleaf Parity)', () => {
   beforeEach(() => {

@@ -29,15 +29,15 @@ interface CardProps {
   onEdit?: (page: Page) => void;
 }
 
-function extractSnippet(content?: any): string | null {
+function extractSnippet(content?: unknown): string | null {
   if (!content) return null;
   const rawText =
     typeof content === 'string'
       ? content
       : Array.isArray(content)
         ? content.join(' ')
-        : typeof content === 'object' && content.text
-          ? content.text
+        : typeof content === 'object' && content !== null && 'text' in content
+          ? String((content as { text: unknown }).text || '')
           : '';
   if (!rawText) return null;
 
@@ -78,7 +78,7 @@ export const Card = React.memo(function Card({ page, onEdit }: CardProps) {
     [page.description, page.content]
   );
   const status = page.status || 'published';
-  const labels = (page.labels as any[]) || [];
+  const labels = (page.labels as Array<{ id?: string; name?: string; color?: string } | string>) || [];
 
   const handleCopyLink = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -251,10 +251,11 @@ export const Card = React.memo(function Card({ page, onEdit }: CardProps) {
         {/* Labels / Tags row (single horizontal row, never stacking awkwardly) */}
         {labels.length > 0 && (
           <div className="flex items-center gap-1.5 overflow-hidden flex-nowrap py-0.5">
-            {labels.slice(0, 2).map((label: any) => {
-              const labelId = label.id ?? label;
-              const labelName = label.name ?? label;
-              const labelColor = label.color ?? '#0969DA';
+            {labels.slice(0, 2).map((label, idx) => {
+              const labelObj = typeof label === 'object' && label !== null ? label : null;
+              const labelId = labelObj?.id || (typeof label === 'string' ? label : `label-${idx}`);
+              const labelName = labelObj?.name || (typeof label === 'string' ? label : '');
+              const labelColor = labelObj?.color || '#0969DA';
               return (
                 <span
                   key={labelId}

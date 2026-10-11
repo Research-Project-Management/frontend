@@ -31,9 +31,11 @@ import {
   resolveForwardDetail,
   resolveForward,
   resolveReverse,
+} from '@/features/editor/domain/pdf/synctex-index';
+import {
   createPdfBlobAndUrl,
   type PdfBlobResult,
-} from '@/features/editor/domain/document';
+} from '@/features/editor/domain/pdf/pdf-resolver';
 
 export {
   type SyncTeXNode,
@@ -227,7 +229,7 @@ export const LatexCompilerEngine = {
         if (url) {
           // Fast-path: small plain text synctex parses immediately for testing & small docs
           const isSmallOrPlain = Boolean(
-            data.synctex && (data.synctex.startsWith('SyncTeX') || data.synctex.length < 5000),
+            data.synctex && !data.synctex.trimStart().startsWith('H4sI') && (data.synctex.startsWith('SyncTeX') || data.synctex.length < 5000),
           );
           let initialSyncMap: SyncTeXMap | null = null;
           if (isSmallOrPlain && data.synctex) {
@@ -385,22 +387,5 @@ export const LatexCompilerEngine = {
   resolveReverse,
 };
 
-/**
- * Extract standard DOI from text, stripping trailing punctuation.
- */
-export function extractDoiFromText(text?: string | null): string | null {
-  if (!text) return null;
-  const match = text.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)/);
-  if (!match) return null;
-  return match[1].replace(/[.,;:)\]]+$/, '');
-}
+export { extractDoiFromText, parsePdfDate } from '@/features/editor/domain/pdf/pdf-resolver';
 
-/**
- * Format PDF creation date string (e.g. "D:20240515143000Z") into ISO "YYYY-MM-DD".
- */
-export function parsePdfDate(dateStr?: string | null): string | undefined {
-  if (!dateStr) return undefined;
-  const match = dateStr.match(/D:?(\d{4})(\d{2})(\d{2})/);
-  if (!match) return undefined;
-  return `${match[1]}-${match[2]}-${match[3]}`;
-}

@@ -25,7 +25,7 @@ import {
   aggregateItemAssets,
   type ItemFieldDiff,
   type FieldOptionValue,
-} from '../../domain';
+} from '../../domain/diff';
 import type { Item } from '../../types/library.types';
 import { cn } from '@/shared/lib/utils';
 

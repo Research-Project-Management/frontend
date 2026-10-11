@@ -2,7 +2,7 @@
  * latex-linter.ts
  *
  * Web Worker Orchestrator for Real-Time LaTeX Linting (Block 4: Engines Layer).
- * Location: `features/editor/engines/latex-linter.ts`
+ * Location: `features/editor/engines/extensions/latex-linter.ts`
  *
  * Architecture (Overleaf Parity):
  * - Spawns a dedicated Web Worker to run tokenization and AST validation off-main-thread.

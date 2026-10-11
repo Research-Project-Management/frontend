@@ -1,5 +1,5 @@
 import * as api from "@/shared/lib/api";
-import { isProjectScope } from '../../domain';
+import { isProjectScope } from '../../domain/item-url';
 
 export interface SyncVersionResponse {
   version: string;

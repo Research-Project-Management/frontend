@@ -68,6 +68,15 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  compiler: {
+    removeConsole:
+      process.env.NODE_ENV === 'production'
+        ? {
+            exclude: ['error', 'warn'],
+          }
+        : false,
+  },
+
   experimental: {
     turbopackFileSystemCacheForDev: false,
     turbopackFileSystemCacheForBuild: false,
@@ -114,6 +123,18 @@ const nextConfig: NextConfig = {
       'react-day-picker',
       'zustand',
       'dompurify',
+      '@codemirror/view',
+      '@codemirror/state',
+      '@codemirror/language',
+      '@codemirror/commands',
+      '@codemirror/lint',
+      '@codemirror/autocomplete',
+      '@codemirror/search',
+      'socket.io-client',
+      'sonner',
+      'tailwind-merge',
+      'clsx',
+      'axios',
     ],
   },
 

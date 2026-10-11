@@ -22,10 +22,8 @@ import {
   DropdownMenuSeparator,
 } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
-import {
-  useCompileStore,
-  useSettingsStore,
-} from '../../../store';
+import { useCompileStore } from '@/features/editor/store/compiler.store';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
 
 export interface CompileButtonProps {
   onCompile: () => void;
@@ -53,7 +51,7 @@ export const CompileButton = React.memo(function CompileButton({
     compileStatus === 'syncing';
 
   return (
-    <div className="inline-flex items-center rounded-md shadow-xs select-none">
+    <div className="inline-flex items-center rounded-md select-none">
       {/* ── Left: Main Action Button ── */}
       <button
         type="button"
@@ -65,7 +63,7 @@ export const CompileButton = React.memo(function CompileButton({
           'flex items-center gap-1.5 h-7 px-2.5 rounded-l-md text-xs font-semibold transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary select-none bg-primary text-primary-foreground',
           isRunning
             ? 'opacity-90 cursor-wait'
-            : 'hover:bg-primary/90 active:scale-[0.98] cursor-pointer'
+            : 'hover:bg-primary/90 cursor-pointer'
         )}
       >
         {isRunning ? (

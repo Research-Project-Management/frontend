@@ -4,7 +4,7 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import { parseDocumentOutline, OUTLINE_INDENT } from '@/features/editor/domain/document/pdf-outline';
+import { parseDocumentOutline, OUTLINE_INDENT } from '@/features/editor/domain/pdf/pdf-outline';
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 
 export interface FileOutlineSectionProps {
@@ -219,12 +219,12 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
                   />
 
                   {entry.type === 'figure' && (
-                    <span className="px-1 py-0.5 rounded text-[10px] font-mono leading-none bg-warning/15 text-warning border border-warning/30 shrink-0">
+                    <span className="px-1 py-0.5 rounded-sm text-[10px] font-mono leading-none bg-warning/15 text-warning border border-warning/30 shrink-0">
                       Fig
                     </span>
                   )}
                   {entry.type === 'table' && (
-                    <span className="px-1 py-0.5 rounded text-[10px] font-mono leading-none bg-primary/15 text-primary border border-primary/30 shrink-0">
+                    <span className="px-1 py-0.5 rounded-sm text-[10px] font-mono leading-none bg-primary/15 text-primary border border-primary/30 shrink-0">
                       Tab
                     </span>
                   )}

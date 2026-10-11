@@ -22,7 +22,7 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { useSettingsStore } from '@/features/editor/store';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
 
 export function EditingModeDropdown() {
   const reviewMode = useSettingsStore((s) => s.reviewMode);

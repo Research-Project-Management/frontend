@@ -12,19 +12,18 @@ import {
   useDeleteProject,
   useArchiveProject,
   useRestoreProject,
+  type UpdateProjectVariables,
 } from '@/features/projects/shell/hooks/use-project';
 import { uploadGenericFile } from '@/features/storage/services/file.service';
 import { projectGeneralSchema, type ProjectGeneralFormValues } from '../schemas/general.schema';
 
 export function useGeneral(projectId: string) {
   const router = useRouter();
-  const { data: projectData, isLoading, isError } = useProjectDetails(projectId);
+  const { project, isLoading, isError } = useProjectDetails(projectId);
   const updateMutation = useUpdateProject();
   const deleteMutation = useDeleteProject();
   const archiveMutation = useArchiveProject();
   const restoreMutation = useRestoreProject();
-
-  const project = (projectData as any)?.project || projectData;
 
   const [isUploading, setIsUploading] = useState(false);
 
@@ -46,14 +45,14 @@ export function useGeneral(projectId: string) {
   // Sync from server
   useEffect(() => {
     if (project) {
-      const settings = (project.settings as any) || {};
+      const settings = (project.settings as Record<string, unknown> | undefined) || {};
       reset({
         name: project.name || '',
-        identifier: project.identifier || settings.identifier || project.key || '',
+        identifier: project.identifier || (settings.identifier as string | undefined) || project.key || '',
         description: project.description || '',
         avatar: project.avatar || null,
-        cover: project.cover || project.coverImage || settings.cover || null,
-        isPrivate: project.isPrivate ?? settings.isPrivate ?? false,
+        cover: project.cover || project.coverImage || (settings.cover as string | null | undefined) || null,
+        isPrivate: project.isPrivate ?? (settings.isPrivate as boolean | undefined) ?? false,
       });
     }
   }, [project, reset]);
@@ -68,7 +67,7 @@ export function useGeneral(projectId: string) {
 
   const onValidSave = useCallback(
     (values: ProjectGeneralFormValues) => {
-      const existingSettings = (project?.settings as any) || {};
+      const existingSettings = (project?.settings as Record<string, unknown> | undefined) || {};
       const newSettings = {
         ...existingSettings,
         identifier: values.identifier.toUpperCase(),
@@ -86,13 +85,13 @@ export function useGeneral(projectId: string) {
           description: values.description,
           avatar: values.avatar || undefined,
           settings: newSettings,
-        } as any,
+        } as UpdateProjectVariables,
         {
           onSuccess: () => {
             toast.success('Project details updated', { id: 'settings-general' });
             reset(values);
           },
-          onError: (err: any) => toast.error(err?.message || 'Failed to update project', { id: 'settings-general' }),
+          onError: (err: unknown) => toast.error((err as Error)?.message || 'Failed to update project', { id: 'settings-general' }),
         },
       );
     },
@@ -150,7 +149,7 @@ export function useGeneral(projectId: string) {
   );
 
   const isArchived = Boolean(
-    project?.isActive === false || project?.isArchived || (project?.settings as any)?.isArchived
+    project?.isActive === false || project?.isArchived || Boolean((project?.settings as Record<string, unknown> | undefined)?.isArchived)
   );
 
   const toggleArchive = useCallback(() => {

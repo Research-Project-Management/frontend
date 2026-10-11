@@ -29,6 +29,8 @@ export interface DocumentModelState {
   scrollViewport?: DocumentScrollViewport;
   yText?: any | null;
   isDirty: boolean;
+  /** Monotonic counter bumped on every content mutation; used for race-free markClean. */
+  contentVersion?: number;
   lastSavedAt?: number;
   lastActiveAt: number;
   metadata?: Record<string, unknown>;
@@ -277,14 +279,49 @@ export class LRUDocumentCache {
     if (!model) {
       model = this.registerModel(fileId, { content });
       model.isDirty = isDirty;
+      model.contentVersion = 1;
       return;
     }
 
+    if (model.content !== content) {
+      model.contentVersion = (model.contentVersion ?? 0) + 1;
+    }
     model.content = content;
     model.isDirty = isDirty;
     model.lastActiveAt = Date.now();
     this.touch(fileId);
     this.notify(fileId, model);
+  }
+
+  /**
+   * Applies content that originated from a remote collaborator (e.g. Yjs sync).
+   * Never marks the model dirty, and never clears an existing local dirty flag —
+   * unsaved local edits must remain flagged for persistence.
+   */
+  public applyRemoteContent(fileId: string, content: string): void {
+    const existing = this.models.get(fileId);
+    this.updateContent(fileId, content, existing?.isDirty ?? false);
+  }
+
+  /**
+   * Returns the current content version for a model (0 when unknown).
+   */
+  public getContentVersion(fileId: string): number {
+    return this.models.get(fileId)?.contentVersion ?? 0;
+  }
+
+  /**
+   * Marks the model clean only if its content has not changed since `expectedContent`
+   * was captured for saving. Returns true when the model was marked clean.
+   * Prevents losing edits typed while a save request was in flight.
+   */
+  public markCleanIfUnchanged(fileId: string, expectedContent: string, expectedVersion?: number): boolean {
+    const model = this.models.get(fileId);
+    if (!model) return false;
+    if (model.content !== expectedContent) return false;
+    if (expectedVersion !== undefined && (model.contentVersion ?? 0) !== expectedVersion) return false;
+    this.markClean(fileId);
+    return true;
   }
 
   /**

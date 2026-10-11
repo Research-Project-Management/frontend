@@ -251,7 +251,7 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
 
           {/* Comments Group */}
           <ContextMenuItem onClick={handleAddReviewComment} className="gap-2">
-            <MessageSquarePlus className="size-3.5 text-amber-500" />
+            <MessageSquarePlus className="size-3.5 text-warning" />
             <span>Add Review Comment</span>
             <ContextMenuShortcut>Ctrl+Alt+M</ContextMenuShortcut>
           </ContextMenuItem>

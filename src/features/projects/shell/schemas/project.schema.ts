@@ -157,7 +157,7 @@ export const createProjectFormSchema = z.object({
   avatar: z.string(),
   cover: z.string(),
   stateId: z.string().nullable().optional(),
-  priority: ProjectPriorityEnum.default('none'),
+  priority: ProjectPriorityEnum,
   startDate: z.string().nullable().optional(),
   targetDate: z.string().nullable().optional(),
   isPrivate: z.boolean().optional(),

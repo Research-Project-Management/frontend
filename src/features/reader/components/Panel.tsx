@@ -40,7 +40,7 @@ export default function InspectorPanel({
   onClearPendingText,
 }: InspectorPanelProps) {
   const effectiveScope =
-    scopeId || projectId || (paper as any)?.projectId || 'user';
+    scopeId || projectId || paper?.projectId || 'user';
 
   return (
     <ReaderInspector

@@ -49,11 +49,11 @@ export type LibraryBibtexModalFormValues = z.infer<typeof libraryBibtexModalSche
 
 export const figureWizardSchema = z.object({
   selectedFilename: z.string().min(1, 'Please select or upload an image'),
-  caption: z.string().default('Figure caption'),
-  label: z.string().default('fig:my_figure'),
-  width: z.string().default('0.8\\linewidth'),
-  placement: z.string().default('htbp'),
-  centering: z.boolean().default(true),
+  caption: z.string(),
+  label: z.string(),
+  width: z.string(),
+  placement: z.string(),
+  centering: z.boolean(),
 });
 
 export type FigureWizardFormValues = z.infer<typeof figureWizardSchema>;

@@ -50,6 +50,11 @@ export type EditorCommand =
   | { type: 'editor:redo' }
   | { type: 'editor:focus' }
   | { type: 'editor:find'; open?: boolean }
+  | { type: 'editor:split'; direction: 'vertical' | 'horizontal' | 'none'; fileId?: string }
+  | { type: 'editor:open-to-side'; fileId: string; filePath?: string }
+  | { type: 'editor:close-split' }
+  | { type: 'editor:focus-pane'; paneId: 'primary' | 'secondary' }
+  | { type: 'editor:swap-panes' }
   | { type: 'editor:autofix' }
   | { type: 'editor:lint-project'; projectId?: string }
   | { type: 'editor:insert-citation'; bibKey: string; textInserted?: boolean; entry?: any }
@@ -95,6 +100,8 @@ export type EditorCommand =
   | { type: 'viewer:find'; query?: string; open?: boolean; caseSensitive?: boolean; wholeWord?: boolean; regex?: boolean }
   | { type: 'viewer:find-next' }
   | { type: 'viewer:find-prev' }
+  | { type: 'preview:detach' }
+  | { type: 'preview:attach' }
   | { type: 'sidebar:toggle-panel'; panel: SidebarPanelName }
   | { type: 'sidebar:open-panel'; panel: SidebarPanelName; query?: string; showReplace?: boolean; commentId?: string; suggestionId?: string }
   | { type: 'sidebar:open-ai-panel'; initialPrompt?: string; selectedText?: string }

@@ -9,7 +9,7 @@ import {
   useLibraryViewStore,
   useLibraryModalStore,
   type InspectorSectionId,
-} from '../../store';
+} from '../../store/library-ui.store';
 import {
   useLibraryItemDetailQuery,
   useUpdateLibraryItemMutation,
@@ -17,7 +17,7 @@ import {
   useRelations,
   libraryKeys,
 } from '../../data';
-import { normalizeTags } from '../../domain';
+import { normalizeTags } from '../../domain/metadata';
 
 /**
  * 8 Inspector Levels counted from bottom icon to top icon:

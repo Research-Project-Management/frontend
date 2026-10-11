@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import { Tag, MinusCircle, Plus } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import type { Item } from '@/features/library/types/library.types';
-import { normalizeTags, cleanSingleFrontendTag } from '../../domain';
+import { normalizeTags, cleanSingleFrontendTag } from '../../domain/metadata';
 
 interface TagsSectionProps {
   onUpdatePaper?: (data: Partial<Item>, options?: { silent?: boolean }) => void;

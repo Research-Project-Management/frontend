@@ -173,11 +173,20 @@ export const storage = {
       const errText = await response.text().catch(() => '');
       throw new Error(`Upload failed (${response.status}): ${errText}`);
     }
-    const json = (await response.json()) as any;
-    const payload = json.data || json;
+    type FileUploadPayload = {
+      file?: { id?: string; filename?: string; size?: number; mimeType?: string; url?: string };
+      id?: string;
+      fileId?: string;
+      filename?: string;
+      size?: number;
+      mimeType?: string;
+      url?: string;
+    };
+    const json = (await response.json()) as { data?: FileUploadPayload } & FileUploadPayload;
+    const payload: FileUploadPayload = json.data || json;
     const fileObj = payload.file || payload;
     return {
-      id: fileObj.id || payload.id || payload.fileId,
+      id: fileObj.id || payload.id || payload.fileId || '',
       filename: fileObj.filename || file.name,
       size: typeof fileObj.size === 'number' ? fileObj.size : file.size,
       mimeType: fileObj.mimeType || file.type,
@@ -200,7 +209,12 @@ export const storage = {
       headers,
     });
     if (!response.ok) throw new Error('Upload to R2 proxy failed');
-    const json = (await response.json()) as any;
+    type R2Payload = {
+      url?: string;
+      path?: string;
+      file?: { url?: string };
+    };
+    const json = (await response.json()) as { data?: R2Payload } & R2Payload;
     const payload = json.data || json;
     const url = payload.url || payload.file?.url || payload.path || '';
     const path = payload.path || payload.url || url;

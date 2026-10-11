@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { ProjectsIcon, LibraryIcon, StorageIcon } from '@/shared/components/icons';
 import { cn } from "@/shared/lib/utils";
-import { useAiCompanionStore } from '@/features/ai/store';
+import { useAiCompanionStore } from '@/features/ai/store/ai-companion.store';
 import {
   Tooltip,
   TooltipContent,

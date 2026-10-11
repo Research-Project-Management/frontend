@@ -22,13 +22,15 @@ import {
 } from "lucide-react";
 import { Input } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { usePageStore, useTabsStore, useSearchStore } from "@/features/editor/store";
-import { filesQuery } from "@/features/editor/ui/hooks/use-core";
-import { useDebounce } from "@/shared/hooks";
-import { documentSearchService } from "@/features/editor/sdk";
+import { usePageStore } from "@/features/editor/store/editor.store";
+import { useTabsStore } from "@/features/editor/store/tabs.store";
+import { useSearchStore } from "@/features/editor/store/search.store";
+import { filesQuery } from "@/features/editor/ui/hooks/document.queries";
+import { useDebounce } from "@/shared/hooks/use-debounce";
+import { documentSearchService } from "@/features/editor/sdk/manuscript.service";
 import { useEditorInstance } from "@/features/editor/ui/hooks/use-editor-instance";
 import { editorCommandBus } from "@/features/editor/coordinators/command-bus";
-import { extractProjectId } from "@/features/editor/domain/types";
+import { extractProjectId } from "@/features/editor/domain/types/core.types";
 import { PlaneEmptyState, PlaneErrorState } from "@/shared/components/ui";
 import { SidebarPanelHeader } from "../SidebarPanelHeader";
 
@@ -547,7 +549,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                                   }}
                                   title="Replace this occurrence"
                                   aria-label={`Replace match on line ${match.line}`}
-                                  className="mr-2 h-6 px-1.5 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-muted text-muted-foreground hover:text-foreground text-10 font-medium transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                                  className="mr-2 h-6 px-1.5 rounded-md opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-muted text-muted-foreground hover:text-foreground text-10 font-medium transition-all flex items-center gap-1 cursor-pointer shrink-0"
                                 >
                                   <Replace className="size-3 shrink-0" />
                                   <span>Replace</span>

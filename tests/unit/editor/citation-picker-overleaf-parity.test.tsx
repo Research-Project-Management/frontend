@@ -40,7 +40,7 @@ vi.mock('@/features/editor/ui/hooks/use-citation', () => ({
   }),
 }));
 
-import { usePageStore } from '@/features/editor/store';
+import { usePageStore } from '@/features/editor/store/editor.store';
 
 describe('Overleaf Parity: Citation Picker & Reference Workflow', () => {
   let mockEngine: any;

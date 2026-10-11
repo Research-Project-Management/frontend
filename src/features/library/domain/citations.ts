@@ -11,13 +11,24 @@
 
 import type { Item } from '../types/library.types';
 
+export interface CitationKeyInput {
+  title?: string | null;
+  authors?: Array<string | { name?: string; fullName?: string; lastName?: string; [key: string]: unknown }> | null;
+  year?: number | string | null;
+  doi?: string | null;
+  citationKey?: string | null;
+  key?: string | null;
+  id?: string | null;
+  [key: string]: unknown;
+}
+
 /**
  * Computes or accesses a BibTeX-compliant citation key.
  * Format: {firstAuthorSurname}{year}{firstSignificantTitleWord}
  * Supports disambiguation suffixes (a, b, c...) when collisions exist.
  */
 export function generateCitationKey(
-  paper?: Partial<Item> | null,
+  paper?: Partial<Item> | CitationKeyInput | null,
   existingKeys?: Set<string> | string[],
 ): string {
   if (!paper) return 'ref';

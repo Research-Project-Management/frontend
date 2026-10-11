@@ -10,7 +10,7 @@ import {
 } from '../services/chat.service';
 import { buildResponseWidgetsFromActions } from '../components/chat/response-widgets';
 import { useChatMode } from './use-chat-mode';
-import { libraryServices } from '@/features/library';
+import { libraryServices } from '@/features/library/data/library-services';
 
 export function mergeAgentAction(current: AgentAction[], action: AgentAction): AgentAction[] {
   // If the action is finishing or updating a currently calling tool

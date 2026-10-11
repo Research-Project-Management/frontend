@@ -33,7 +33,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/shared/components/ui";
-import { getItemFileUrl, getPaperFileUrl } from '../../domain';
+import { getItemFileUrl, getPaperFileUrl } from '../../domain/item-url';
 import { usePdf } from '../../hooks/use-pdf';
 import {
   useAttachments,
@@ -41,7 +41,7 @@ import {
   downloadAnnotatedPdf,
   uploadLibraryAttachment,
 } from '../../data';
-import { SnapshotViewerModal } from '../modals';
+import SnapshotViewerModal from '../modals/SnapshotViewerModal';
 import type { Item, ItemAttachment } from '../../types/library.types';
 
 
@@ -299,7 +299,12 @@ export default function AttachmentsSection({
     }
   };
 
-  type AttachmentLike = ItemAttachment & { type?: string; name?: string; fileUrl?: string };
+  type AttachmentLike = Omit<ItemAttachment, 'attachmentType'> & {
+    attachmentType?: ItemAttachment['attachmentType'] | 'web_snapshot';
+    type?: string;
+    name?: string;
+    fileUrl?: string;
+  };
 
   const rawAttachments = paper.attachments || paper.files || EMPTY_ATTACHMENTS;
   const paperUrl = getItemFileUrl(paper);

@@ -14,11 +14,20 @@ import {
   type LibraryBibtexModalFormValues,
 } from '@/features/editor/domain/types';
 import { formatItemToBibtex } from '@/features/editor/domain/citation/citation-formatter';
-import { useViewItems, type Item } from '@/features/library';
+import { useViewItems } from '@/features/library/data';
+import type { Item } from '@/features/library/types';
 
 export interface LibraryTabPaneProps {
   parentPageId: string | null;
-  createFile: any;
+  createFile: {
+    mutate: (
+      variables: { parentPageId: string; title: string; content?: string },
+      options?: {
+        onSuccess?: (created: { id: string }) => void;
+        onSettled?: () => void;
+      },
+    ) => void;
+  };
   setSearchParams: (params: Record<string, string>) => void;
   onClose: () => void;
 }
@@ -90,7 +99,7 @@ export function LibraryTabPane({
         content: bibEntries,
       },
       {
-        onSuccess: (created: any) => {
+        onSuccess: (created: { id: string }) => {
           setSearchParams({ file: created.id });
           onClose();
         },

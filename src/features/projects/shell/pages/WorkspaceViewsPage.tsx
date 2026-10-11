@@ -275,7 +275,7 @@ export function WorkspaceViewsPage() {
                   </div>
 
                   <div className="flex items-center justify-between text-11 text-muted-foreground font-mono pt-2 border-t border-border/50">
-                    <span className="truncate max-w-[180px]">{(view as any).projectName || selectedProject?.name || 'Project View'}</span>
+                    <span className="truncate max-w-[180px]">{(view as typeof view & { projectName?: string }).projectName || selectedProject?.name || 'Project View'}</span>
                     <ExternalLink className="size-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </Link>

@@ -2,7 +2,7 @@
  * latex-symbols.worker.ts
  *
  * Dedicated Web Worker for Project Symbols & Metadata Indexing (Block 4: Engines Layer).
- * Location: `features/editor/engines/latex-symbols.worker.ts`
+ * Location: `features/editor/engines/workers/latex-symbols.worker.ts`
  *
  * Architecture (Overleaf Parity):
  * - Offloads all regex parsing, line-by-line comment stripping, and BibTeX extraction

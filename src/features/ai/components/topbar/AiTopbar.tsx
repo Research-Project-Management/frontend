@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { PanelLeft, ChevronRight, Database, PanelRightOpen } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { useAiUIStore } from '../../store';
+import { useAiUIStore } from '../../store/ai-ui.store';
 import { getChatSession } from '../../services/chat.service';
 import { DocumentLibraryModal } from '../modals/document-library-modal';
 

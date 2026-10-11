@@ -28,6 +28,7 @@ export interface StorageQuotaResponse {
   usedBytes: number;
   projectBytes?: number;
   limitBytes?: number;
+  maxBytes?: number;
   usedFormatted?: string;
   projectFormatted?: string;
   limitFormatted?: string;

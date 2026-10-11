@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { Search } from 'lucide-react';
-import { useAiCompanionStore } from '@/features/ai/store';
+import { useAiCompanionStore } from '@/features/ai/store/ai-companion.store';
 import { usePathname } from 'next/navigation';
 import AccountDropdown from './AccountDropdown';
 

@@ -84,7 +84,7 @@ interface ConditionRow {
 export interface CreateSavedSearchModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: CreateSavedSearchInput) => Promise<any> | void;
+  onSubmit: (data: CreateSavedSearchInput) => Promise<unknown> | void;
   savedSearch?: SavedSearch | null;
   scopeId?: string;
   isPending?: boolean;
@@ -680,8 +680,8 @@ export function CreateSavedSearchModal({
           setConditions(
             rawConds.map((c, idx: number) => ({
               id: `row-${idx}-${Date.now()}`,
-              field: (c.field || 'title') as SearchFieldKey,
-              operator: (c.operator || 'contains') as ConditionOperator,
+              field: (c.field || 'title') as SavedSearchField,
+              operator: (c.operator || 'contains') as SavedSearchOperator,
               value: c.value !== undefined && c.value !== null ? String(c.value) : '',
             })),
           );

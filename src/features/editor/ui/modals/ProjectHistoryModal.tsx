@@ -25,7 +25,7 @@ import {
   Columns2,
   AlignJustify,
   Loader2,
-  Sparkles,
+  Bookmark,
   Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -42,21 +42,21 @@ import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 
 import { manuscriptService, historyService, historyKeys, exportVersionAsZip } from '@/features/editor/sdk';
-import { extractProjectId } from '@/features/editor/domain/types';
+import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { editorCommandBus } from '../../coordinators/command-bus';
-import { usePageStore } from '../../store';
+import { usePageStore } from '@/features/editor/store/editor.store';
 import type {
   ProjectDiffResponse,
   ProjectSnapshotDetail,
 } from '../../domain/types/history.types';
 import {
   SideBySideDiffViewer,
-  UnifiedDiffViewer,
   alignHunkForSplitView,
   type AlignedSplitRow,
-  VersionTimelineSidebar,
-  DiffContentPane,
-} from './project-history';
+} from './project-history/SideBySideDiffViewer';
+import { UnifiedDiffViewer } from './project-history/UnifiedDiffViewer';
+import { VersionTimelineSidebar } from './project-history/VersionTimelineSidebar';
+import { DiffContentPane } from './project-history/DiffContentPane';
 
 export {
   SideBySideDiffViewer,
@@ -396,7 +396,7 @@ export default function ProjectHistoryModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-6xl w-[95vw] h-[88vh] max-h-[950px] flex flex-col p-0 gap-0 overflow-hidden bg-background border border-border rounded-lg shadow-overlay"
+        className="max-w-6xl w-[95vw] h-[88vh] max-h-[950px] flex flex-col p-0 gap-0 overflow-hidden bg-background border border-border rounded-md shadow-overlay"
         showCloseButton={false}
       >
         <DialogTitle className="sr-only">Project Version History</DialogTitle>
@@ -405,21 +405,19 @@ export default function ProjectHistoryModal({
         </DialogDescription>
 
         {/* ── Top Header Bar ── */}
-        <header className="flex items-center justify-between px-4 py-2.5 bg-muted/40 border-b shrink-0 select-none">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center size-8 rounded-lg bg-primary/10 text-primary">
-              <History className="size-4 shrink-0" />
-            </div>
+        <header className="flex items-center justify-between px-5 py-3 border-b border-border bg-background shrink-0 select-none">
+          <div className="flex items-center gap-2.5">
+            <History className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-foreground">Project History</h2>
+                <h2 className="text-14 font-semibold text-foreground tracking-tight">Project History</h2>
                 {selectedTargetVersion && selectedBaseVersion && (
                   <Badge variant="outline" className="text-[11px] font-mono py-0 h-5">
                     v{selectedBaseVersion} → v{selectedTargetVersion}
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-12 text-muted-foreground mt-0.5">
                 {versions.length} total {versions.length === 1 ? 'version' : 'versions'} recorded
               </p>
             </div>
@@ -428,10 +426,10 @@ export default function ProjectHistoryModal({
           {/* Center: Diff Stats */}
           {diffData && (
             <div className="hidden sm:flex items-center gap-2">
-              <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-success bg-success/10 rounded-full border border-success/20">
+              <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono font-medium text-success bg-success/10 rounded-sm border border-success/20">
                 {`+${diffData.totalAdditions}`}
               </span>
-              <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-destructive bg-destructive/10 rounded-full border border-destructive/20">
+              <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono font-medium text-destructive bg-destructive/10 rounded-sm border border-destructive/20">
                 {`-${diffData.totalDeletions}`}
               </span>
               <span className="text-xs text-muted-foreground">
@@ -443,14 +441,14 @@ export default function ProjectHistoryModal({
           {/* Right: Actions */}
           <div className="flex items-center gap-2">
             {/* View Mode Switcher */}
-            <div className="flex items-center rounded-lg border bg-background p-0.5 text-muted-foreground">
+            <div className="flex items-center rounded-md border border-border bg-background p-0.5 text-muted-foreground">
               <button
                 type="button"
                 onClick={() => setViewMode('unified')}
                 className={cn(
                   'flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer',
                   viewMode === 'unified'
-                    ? 'bg-muted text-foreground shadow-xs font-semibold'
+                    ? 'bg-muted text-foreground'
                     : 'hover:text-foreground'
                 )}
                 title="Unified Diff View"
@@ -464,7 +462,7 @@ export default function ProjectHistoryModal({
                 className={cn(
                   'flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer',
                   viewMode === 'split'
-                    ? 'bg-muted text-foreground shadow-xs font-semibold'
+                    ? 'bg-muted text-foreground'
                     : 'hover:text-foreground'
                 )}
                 title="Side-by-Side Split Diff View"
@@ -558,8 +556,8 @@ export default function ProjectHistoryModal({
 
         {/* ── Snapshot Creation Inline Banner ── */}
         {isCreatingSnapshot && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-primary/5 border-b shrink-0 animate-in fade-in duration-150">
-            <Sparkles className="size-4 text-primary shrink-0" />
+          <div className="flex items-center gap-2 px-4 py-2 bg-muted/40 border-b border-border shrink-0 animate-in fade-in duration-150">
+            <Bookmark className="size-4 text-muted-foreground shrink-0" />
             <span className="text-xs font-medium text-foreground whitespace-nowrap">
               New Milestone Snapshot:
             </span>

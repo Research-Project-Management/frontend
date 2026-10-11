@@ -20,7 +20,7 @@ import {
 import {
   useCslCitation,
   useCitationStyles,
-} from '../../data';
+} from '../../data/reader.queries';
 import type { Item, CslStyle } from '../../types/reader.types';
 import { getPaperCitationKey } from '../../utils/reader.util';
 import CslStyleSearchModal from '../modals/CslStyleSearchModal';
@@ -113,15 +113,9 @@ function sanitizeCslHtml(html?: string): string {
   if (typeof window === 'undefined') return html;
 
   try {
-    const rawDOMPurify = (DOMPurify as any)?.default || DOMPurify;
-    const purify = typeof rawDOMPurify?.sanitize === 'function'
-      ? rawDOMPurify
-      : typeof rawDOMPurify === 'function'
-        ? rawDOMPurify(window)
-        : (typeof (window as any)?.DOMPurify?.sanitize === 'function' ? (window as any).DOMPurify : null);
-
-    if (purify && typeof purify.sanitize === 'function') {
-      const sanitized = purify.sanitize(html, {
+    const rawDOMPurify = (DOMPurify as unknown as { default?: typeof DOMPurify })?.default || DOMPurify;
+    if (rawDOMPurify && typeof rawDOMPurify.sanitize === 'function') {
+      const sanitized = rawDOMPurify.sanitize(html, {
         ALLOWED_TAGS: ['i', 'b', 'em', 'strong', 'span', 'a', 'div', 'p', 'sub', 'sup'],
         ALLOWED_ATTR: ['href', 'class', 'target', 'rel'],
       });
@@ -144,7 +138,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [searchedStyle, setSearchedStyle] = useState<{ id: string; label: string } | null>(null);
 
-  const activeScopeId = scopeId || projectId || (paper as any)?.projectId || 'user';
+  const activeScopeId = scopeId || projectId || paper.projectId || 'user';
 
   // 1. Backend CSL style registry is the single source of truth for styles
   const { data: serverStyles = [] } = useCitationStyles(activeScopeId);
@@ -263,7 +257,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
       <div className="flex flex-col gap-2 min-w-0 font-sans select-none">
 
       {/* ⚠️ Citation Guard: Retraction Notice (Zotero Style) */}
-      {(paper.isRetracted || (paper as any).retractionStatus === 'retracted') && (
+      {Boolean(paper.isRetracted || (paper as unknown as { retractionStatus?: string }).retractionStatus === 'retracted') && (
         <div className="p-2 rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-12 flex items-start gap-2 select-none shrink-0 animate-in fade-in duration-200">
           <ShieldAlert className="size-4 text-destructive shrink-0 mt-0.5" strokeWidth={1.5} />
           <div className="flex-1 space-y-1 min-w-0">
@@ -273,9 +267,9 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
             <p className="text-11 text-destructive/90 leading-snug break-words">
               This publication has been flagged as retracted in academic databases. Citing this paper may compromise academic rigor.
             </p>
-            {((paper.retractionDetails as Record<string, any>)?.noticeUrl || (paper as any).noticeUrl || (paper.doi ? `https://doi.org/${paper.doi}` : undefined)) && (
+            {((paper.retractionDetails as { noticeUrl?: string } | undefined)?.noticeUrl || (paper as unknown as { noticeUrl?: string }).noticeUrl || (paper.doi ? `https://doi.org/${paper.doi}` : undefined)) && (
               <a
-                href={((paper.retractionDetails as Record<string, any>)?.noticeUrl || (paper as any).noticeUrl || `https://doi.org/${paper.doi}`)}
+                href={((paper.retractionDetails as { noticeUrl?: string } | undefined)?.noticeUrl || (paper as unknown as { noticeUrl?: string }).noticeUrl || `https://doi.org/${paper.doi}`)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-11 font-medium text-destructive hover:underline mt-0.5"

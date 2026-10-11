@@ -7,25 +7,8 @@
 import { apiPost, apiDelete, apiGet, getAuthToken } from '@/shared/lib/api';
 import { API_BASE_URL } from '@/config/env';
 
-export interface UploadFileParams {
-  projectId?: string;
-  pageId?: string;
-  parentId?: string | null;
-  onProgress?: (progress: number) => void;
-  metaData?: Record<string, any>;
-}
-
-export interface CreateFileRecordParams {
-  filename: string;
-  size: number;
-  mimeType?: string;
-  url: string;
-  thumbnail?: string | null;
-  parentId?: string | null;
-  projectId?: string;
-  pageId?: string;
-  metaData?: Record<string, any>;
-}
+import type { UploadFileParams, CreateFileRecordParams } from '../types/storage-item.types';
+export type { UploadFileParams, CreateFileRecordParams };
 
 export interface PresignUploadDto {
   filename: string;
@@ -426,7 +409,7 @@ export const uploadFile = async (
     return uploadLargeFileResumable(file, {
       projectId: params.projectId,
       parentId: params.parentId,
-      pageId: params.pageId,
+      pageId: params.pageId || undefined,
       onProgress: params.onProgress,
     });
   }

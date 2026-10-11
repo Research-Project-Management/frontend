@@ -19,7 +19,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { BookText, Library, Check, Sparkles, Edit2 } from 'lucide-react';
+import { BookText, Library, Check, AlertTriangle, Edit2 } from 'lucide-react';
 import {
   CommandDialog,
   CommandInput,
@@ -29,8 +29,8 @@ import {
   CommandItem,
 } from '@/shared/components/ui/command';
 import { cn } from '@/shared/lib/utils';
-import { usePageStore } from '@/features/editor/store';
-import { filesQuery } from '@/features/editor/ui/hooks/use-core';
+import { usePageStore } from '@/features/editor/store/editor.store';
+import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import { useEditorCitations } from '@/features/editor/ui/hooks/use-citation';
 import { latexSymbolsIndex, type BibEntry } from '@/features/editor/domain/latex/latex-symbols-index';
 import {
@@ -223,9 +223,8 @@ export default function CitationPickerModal({
 
       {/* Style Selector Toolbar */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/30 text-xs select-none">
-        <span className="text-muted-foreground font-medium flex items-center gap-1.5">
-          <Sparkles className="size-3.5 text-primary" />
-          <span>Kiểu trích dẫn:</span>
+        <span className="text-muted-foreground font-medium">
+          Kiểu trích dẫn:
         </span>
         <div className="flex items-center gap-1">
           {(
@@ -242,9 +241,9 @@ export default function CitationPickerModal({
               type="button"
               onClick={() => setSelectedStyle(style.id)}
               className={cn(
-                'px-2 py-0.5 rounded text-[11px] font-mono transition-colors cursor-pointer',
+                'px-2 py-0.5 rounded-sm text-[11px] font-mono transition-colors cursor-pointer',
                 selectedStyle === style.id
-                  ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
+                  ? 'bg-primary text-primary-foreground font-semibold shadow-none'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               )}
             >
@@ -334,15 +333,16 @@ function CitationItemRow({
         </div>
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-mono text-[11px] font-semibold text-primary bg-primary/10 px-1.5 py-0.2 rounded">
+            <span className="font-mono text-[11px] font-semibold text-primary bg-primary/10 px-1.5 py-0.2 rounded-sm">
               @{entry.key}
             </span>
             {entry.isRetracted && (
-              <span className="text-[10px] font-semibold text-destructive bg-destructive/15 border border-destructive/30 px-1.5 py-0.5 rounded flex items-center gap-1">
-                🚨 Thu hồi
+              <span className="text-[10px] font-semibold text-destructive bg-destructive/15 border border-destructive/30 px-1.5 py-0.5 rounded-sm flex items-center gap-1">
+                <AlertTriangle className="size-3 shrink-0" />
+                <span>Thu hồi</span>
               </span>
             )}
-            <span className="text-[10px] uppercase font-semibold text-muted-foreground border border-border px-1 rounded">
+            <span className="text-[10px] uppercase font-semibold text-muted-foreground border border-border px-1 rounded-sm">
               {typeStr}
             </span>
             {entry.year && (
@@ -377,7 +377,7 @@ function CitationItemRow({
               e.stopPropagation();
               onRename();
             }}
-            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
           >
             <Edit2 className="size-3" />
           </button>

@@ -74,11 +74,12 @@ export type UploadFileParams = {
 
 export type CreateFileRecordParams = {
     projectId?: string;
+    pageId?: string | null;
     filename: string;
     size: number;
-    mimeType: string;
+    mimeType?: string;
     url: string;
-    thumbnail?: string;
+    thumbnail?: string | null;
     metaData?: Record<string, any>;
     parentId?: string | null;
 };

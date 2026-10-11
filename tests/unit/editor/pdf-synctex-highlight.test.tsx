@@ -8,8 +8,8 @@ import {
   type SynctexHighlightState,
 } from '@/features/editor/ui/features/preview/PdfSurface';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import { LatexCompilerEngine } from '@/features/editor/domain/document';
-import { usePageStore } from '@/features/editor/store';
+import { LatexCompilerEngine } from '@/features/editor/coordinators/compilation-pipeline';
+import { usePageStore } from '@/features/editor/store/editor.store';
 
 // Mock react-pdf to avoid canvas & worker initialization in jsdom
 vi.mock('react-pdf', () => ({

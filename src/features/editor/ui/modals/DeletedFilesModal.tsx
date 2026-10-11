@@ -31,7 +31,8 @@ import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 import { useQuery } from '@tanstack/react-query';
-import { deletedFilesQuery, usePageActions } from '@/features/editor/ui/hooks/use-core';
+import { deletedFilesQuery } from '@/features/editor/ui/hooks/document.queries';
+import { usePageActions } from '@/features/editor/ui/hooks/use-page-actions';
 import type { PageFile } from '@/features/editor/domain/types';
 
 export interface DeletedFilesModalProps {
@@ -114,7 +115,7 @@ export default function DeletedFilesModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="sm:max-w-lg w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-200 rounded-lg text-foreground flex flex-col max-h-[85vh] select-none"
+        className="sm:max-w-lg w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-200 rounded-md text-foreground flex flex-col max-h-[85vh] select-none"
       >
         {/* ── Dialog Header (Only Title and Close Icon) ─────────────────────── */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-background shrink-0">
@@ -158,9 +159,7 @@ export default function DeletedFilesModal({
             </div>
           ) : filteredFiles.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-              <div className="size-9 rounded-full bg-muted/60 flex items-center justify-center mb-2.5">
-                <Trash2 className="size-4 text-muted-foreground/60" strokeWidth={1.5} />
-              </div>
+              <Trash2 className="size-6 text-muted-foreground/60 mb-2" strokeWidth={1.5} />
               <p className="text-13 font-medium text-foreground">
                 {searchQuery ? 'No matching deleted files' : 'No deleted files'}
               </p>
@@ -191,7 +190,7 @@ export default function DeletedFilesModal({
                         </div>
                         <div className="flex items-center gap-1 text-10 text-muted-foreground mt-0.5">
                           <Clock className="size-3" strokeWidth={1.5} />
-                          <span>Deleted {formatDeletedTime((file as any).deletedAt)}</span>
+                          <span>Deleted {formatDeletedTime(file.deletedAt)}</span>
                         </div>
                       </div>
                     </div>
@@ -218,7 +217,7 @@ export default function DeletedFilesModal({
         </div>
 
         {/* ── Dialog Footer (Only Close button) ─────────────────────────────── */}
-        <div className="px-5 py-3 border-t border-border bg-muted/20 flex items-center justify-end shrink-0 m-0">
+        <div className="px-5 py-3 border-t border-border bg-background flex items-center justify-end shrink-0 m-0">
           <Button
             type="button"
             variant="outline"

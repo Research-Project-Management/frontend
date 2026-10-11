@@ -19,14 +19,11 @@ import { BatchBar } from './BatchBar';
 import {
   useLibraryModalStore,
   useLibraryUIStore,
-  useProcessModalStore,
-  cleanFilenameToTitle,
-} from '../../store';
-import {
-  useQuickCopyShortcuts,
-  useLibraryBatchCoordinator,
-  useLibraryNavigation,
-} from '../../hooks';
+} from '../../store/library-ui.store';
+import { useProcessModalStore, cleanFilenameToTitle } from '../../store/process-modal.store';
+import { useQuickCopyShortcuts } from '../../hooks/use-quick-copy';
+import { useLibraryBatchCoordinator } from '../../hooks/useLibraryBatchCoordinator';
+import { useLibraryNavigation } from '../../hooks/useLibraryNavigation';
 import type { Item, Collection } from '../../types';
 import type { LibraryOrderBy } from '../topbar/LibraryDisplayPopover';
 

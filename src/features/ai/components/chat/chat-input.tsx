@@ -45,7 +45,7 @@ import { cn } from "@/shared/lib/utils";
 import { ProjectAvatar } from '@/shared/components/icons';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { useChatMode } from '../../hooks/use-chat-mode';
-import { useAiUIStore } from '../../store';
+import { useAiUIStore } from '../../store/ai-ui.store';
 import { uploadDocument } from '../../services/chat.service';
 import { SourcePickerModal } from '../modals/source-picker-modal';
 import { DocumentLibraryModal } from '../modals/document-library-modal';
@@ -405,7 +405,10 @@ export function ChatInput({
         name: s.name,
         size: s.size,
         type: s.name.split('.').pop() || '',
-        sourceType: (s.sourceType as any) || 'upload',
+        sourceType:
+          s.sourceType === 'library' || s.sourceType === 'storage'
+            ? s.sourceType
+            : 'upload',
       }));
 
     onSend?.(

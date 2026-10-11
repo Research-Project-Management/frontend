@@ -31,7 +31,7 @@ import {
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { useFileExplorerActions } from './useFileExplorerActions';
-import { IndentGuides, RenameInput, RowActions } from './FileTreeNodes';
+import { IndentGuides, RenameInput, RowActions } from './FileTreePrimitives';
 
 export function getFileIcon(filename: string) {
   const ext = filename.split('.').pop()?.toLowerCase() ?? '';
@@ -64,7 +64,7 @@ export function getFileIcon(filename: string) {
   }
 }
 
-import { displayName, cleanBasename } from './file-actions.util';
+import { displayName, cleanBasename } from '@/features/editor/domain/document/document-naming';
 export { displayName, cleanBasename };
 
 export interface TexFileRowProps {
@@ -200,7 +200,7 @@ export const TexFileRow = React.memo(function TexFileRow({
       {isMain && (
         <Tooltip delayDuration={300}>
           <TooltipTrigger asChild>
-            <span className="shrink-0 flex items-center gap-1 text-11 font-mono px-1.5 py-0.5 rounded border border-warning/40 bg-warning/10 text-warning font-medium cursor-default select-none">
+            <span className="shrink-0 flex items-center gap-1 text-11 font-mono px-1.5 py-0.5 rounded-sm border border-warning/40 bg-warning/10 text-warning font-medium cursor-default select-none">
               <Star className="size-2.5 fill-current shrink-0" />
               <span>main</span>
             </span>
@@ -214,7 +214,7 @@ export const TexFileRow = React.memo(function TexFileRow({
       {linkedFile && (
         <Tooltip delayDuration={300}>
           <TooltipTrigger asChild>
-            <span className="shrink-0 flex items-center gap-1 text-11 font-mono px-1.5 py-0.5 rounded border border-border bg-primary/10 text-primary cursor-default">
+            <span className="shrink-0 flex items-center gap-1 text-11 font-mono px-1.5 py-0.5 rounded-sm border border-border bg-primary/10 text-primary cursor-default">
               <Link2 className="size-3 shrink-0" />
               <span>{linkedFile.providerType || 'linked'}</span>
             </span>

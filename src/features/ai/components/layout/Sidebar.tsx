@@ -39,7 +39,7 @@ import {
   deleteChatSession,
   renameChatSession,
 } from '../../services/chat.service';
-import { useAiUIStore } from '../../store';
+import { useAiUIStore } from '../../store/ai-ui.store';
 
 export function Sidebar() {
   const { chatId } = useParams<{ chatId?: string }>();

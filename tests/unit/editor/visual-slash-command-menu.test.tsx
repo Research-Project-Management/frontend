@@ -5,7 +5,7 @@ import {
   VisualSlashCommandMenu,
   SLASH_COMMANDS,
   type SlashCommandItem,
-} from '@/features/editor/ui/features/editor/VisualSlashCommandMenu';
+} from '@/features/editor/ui/features/editor/visual/toolbars/VisualSlashCommandMenu';
 import { VisualEditorView } from '@/features/editor/ui/features/editor/VisualEditorView';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 

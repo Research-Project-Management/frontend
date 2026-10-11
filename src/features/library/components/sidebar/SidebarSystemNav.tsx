@@ -6,7 +6,7 @@ import { cn } from "@/shared/lib/utils";
 import { SidebarNavItem } from './SidebarNavItem';
 import { SYSTEM_BOTTOM_NAV_ITEMS, type SystemNavStats } from './sidebar-nav.config';
 import { SavedSearchContextMenu } from './SavedSearchContextMenu';
-import { parseEmojiPrefix } from '../../utils';
+import { parseEmojiPrefix } from '../../utils/academic-text';
 import type { SavedSearch } from '../../types/saved-searches.types';
 
 interface SidebarSystemNavProps {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useUpload } from "@/shared/hooks/use-upload";
 import { useUpdateProfile } from '../../hooks/use-profile';
@@ -113,6 +113,14 @@ export function ProfileTab() {
   };
 
   const { cover, setCover } = useUserCover();
+
+  useEffect(() => {
+    return () => {
+      if (cover && cover.startsWith('blob:')) {
+        URL.revokeObjectURL(cover);
+      }
+    };
+  }, [cover]);
 
   const handleSelectCover = (coverUrl: string) => {
     setCover(coverUrl);

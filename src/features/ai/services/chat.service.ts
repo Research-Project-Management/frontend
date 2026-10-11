@@ -474,7 +474,7 @@ export function uploadDocument(
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
-          const json = JSON.parse(xhr.responseText) as any;
+          const json = JSON.parse(xhr.responseText) as { data?: { id: string; name: string; size: number } } & { id?: string; name?: string; size?: number };
           const data = json?.data || json;
           resolve(data as { id: string; name: string; size: number });
         } catch {
@@ -482,7 +482,7 @@ export function uploadDocument(
         }
       } else {
         try {
-          const errJson = JSON.parse(xhr.responseText) as any;
+          const errJson = JSON.parse(xhr.responseText) as { message?: string };
           reject(new Error(errJson?.message || `Upload failed with status ${xhr.status}`));
         } catch {
           reject(new Error(`Failed to upload document: ${xhr.status}`));
@@ -546,7 +546,7 @@ export async function fetchDocuments(
     `/api/ai/documents${qs}`,
   );
   if (Array.isArray(res)) return res;
-  if (Array.isArray((res as any)?.data)) return (res as any).data;
+  if (res && 'data' in res && Array.isArray(res.data)) return res.data;
   return [];
 }
 

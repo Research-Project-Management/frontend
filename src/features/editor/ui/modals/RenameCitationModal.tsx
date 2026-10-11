@@ -74,14 +74,13 @@ export const RenameCitationModal: React.FC<RenameCitationModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[440px] text-foreground bg-background border border-border shadow-overlay p-6">
+      <DialogContent className="sm:max-w-[440px] text-foreground bg-background border border-border shadow-raised-200 p-6 rounded-md">
         <form onSubmit={handleSubmit} className="space-y-4">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold flex items-center gap-2">
-              <span>✏️</span>
-              <span>Đổi tên khóa trích dẫn (Refactor Citekey)</span>
+            <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
+              Đổi tên khóa trích dẫn (Refactor Citekey)
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
+            <DialogDescription className="text-12 text-muted-foreground mt-0.5">
               Đổi tên khóa trích dẫn trong tất cả các tệp <code>.tex</code>, <code>.bib</code> và <code>.md</code> của dự án mà không làm mất liên kết hay gây lỗi biên dịch.
             </DialogDescription>
           </DialogHeader>
@@ -89,7 +88,7 @@ export const RenameCitationModal: React.FC<RenameCitationModalProps> = ({
           <div className="space-y-3 py-1">
             <div className="text-xs flex items-center justify-between">
               <span className="text-muted-foreground">Khóa hiện tại:</span>
-              <span className="font-mono bg-muted/60 px-2 py-0.5 rounded text-foreground font-semibold">
+              <span className="font-mono bg-muted/60 px-2 py-0.5 rounded-sm text-foreground font-semibold">
                 @{oldKey}
               </span>
             </div>
@@ -140,7 +139,7 @@ export const RenameCitationModal: React.FC<RenameCitationModalProps> = ({
               type="submit"
               size="sm"
               disabled={!validation.isValid || isSubmitting}
-              className="text-xs bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-sm"
+              className="text-xs bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-none"
             >
               {isSubmitting ? 'Đang cập nhật...' : 'Xác nhận đổi tên'}
             </Button>

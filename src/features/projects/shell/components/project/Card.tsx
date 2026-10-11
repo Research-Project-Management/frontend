@@ -37,7 +37,7 @@ export type CardProps = {
 
 export const Card = React.memo(function Card({ project, onArchive, onManageTags }: CardProps) {
   const projectId = project.id || '';
-  const projectKey = (project as any).key || project.identifier || getProjectKey(project.name);
+  const projectKey = project.key || project.identifier || getProjectKey(project.name);
   const isPrivate = isProjectPrivate(project);
 
   const { isFavorite, toggleFavorite } = useFavorites();

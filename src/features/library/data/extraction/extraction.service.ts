@@ -1,8 +1,9 @@
 import * as api from "@/shared/lib/api";
+import { getEffectiveBaseUrl } from "@/shared/lib/api";
 import { API_BASE_URL } from '@/config/env';
 import { getAuthToken } from "@/shared/lib/token-storage";
 import type { AttachmentDto } from "../../types/library.types";
-import { isProjectScope } from '../../domain';
+import { isProjectScope } from '../../domain/item-url';
 
 export type { AttachmentDto };
 
@@ -311,7 +312,7 @@ export async function uploadLibraryFileMultipart(
     const uploadBase = isProject
       ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/upload`
       : `/api/v1/library/upload`;
-    const baseUrl = (typeof getEffectiveBaseUrl === 'function' ? getEffectiveBaseUrl() : API_BASE_URL) || API_BASE_URL;
+    const baseUrl = getEffectiveBaseUrl() || API_BASE_URL;
     const uploadUrl = `${baseUrl}${uploadBase}`;
 
     xhr.open('POST', uploadUrl, true);

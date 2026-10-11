@@ -52,7 +52,7 @@ export const UnresolvedKeysList = memo(function UnresolvedKeysList({
                   e.stopPropagation();
                   onFind(key);
                 }}
-                className="h-6 px-1.5 rounded text-10 font-medium text-warning hover:bg-warning/20 transition-colors cursor-pointer flex items-center gap-1"
+                className="h-6 px-1.5 rounded-md text-10 font-medium text-warning hover:bg-warning/20 transition-colors cursor-pointer flex items-center gap-1"
                 title="Search reference in inspector"
               >
                 <Search className="size-2.5" />
@@ -64,7 +64,7 @@ export const UnresolvedKeysList = memo(function UnresolvedKeysList({
                   e.stopPropagation();
                   onCopy(key);
                 }}
-                className="h-6 px-1.5 rounded text-11 text-muted-foreground hover:text-foreground hover:bg-warning/20 transition-colors cursor-pointer"
+                className="h-6 px-1.5 rounded-md text-11 text-muted-foreground hover:text-foreground hover:bg-warning/20 transition-colors cursor-pointer"
                 title="Copy \\cite command"
               >
                 {isCopied ? (

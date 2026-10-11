@@ -170,8 +170,8 @@ export function GeneralFields({
           targetType={targetConversionType}
           scopeId={paper.projectId || 'user'}
           initialPreview={previewData}
-          onSuccess={(updatedPaper: any) => {
-            onUpdatePaper?.(updatedPaper);
+          onSuccess={(updatedPaper: unknown) => {
+            onUpdatePaper?.(updatedPaper as Partial<Item>);
           }}
         />
       )}

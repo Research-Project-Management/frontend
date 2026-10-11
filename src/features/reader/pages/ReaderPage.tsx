@@ -20,7 +20,7 @@ import { useReaderStore } from '../store/reader.store';
 import { useReaderUIStore } from '../store/reader-ui.store';
 import { readerService } from '../data/reader.service';
 import { useOcrExtraction, useExportAnnotatedPdf } from '../data/reader.queries';
-import { ReaderInspector } from '../components/inspector';
+import { ReaderInspector } from '../components/inspector/ReaderInspector';
 import Topbar from '../components/Topbar';
 import ReaderToolbar from '../components/ReaderToolbar';
 import Sidebar from '../components/Sidebar';
@@ -279,19 +279,24 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   );
 
   // Scanned document detection & OCR status
-  const primaryAttachment = (paper?.attachments as any[])?.find(
+  const primaryAttachment = paper?.attachments?.find(
     (a) => a.id === effectiveAttachmentId
-  ) || (paper?.attachments as any[])?.[0];
+  ) || paper?.attachments?.[0];
+
+  const attachmentMeta = primaryAttachment?.metadata as Record<string, unknown> | undefined;
+  const paperMeta = (paper as unknown as { metadata?: Record<string, unknown> })?.metadata;
 
   const isScanned = Boolean(
-    (primaryAttachment?.metadata as any)?.isScanned ||
-    (paper as any)?.metadata?.isScanned ||
+    attachmentMeta?.isScanned ||
+    paperMeta?.isScanned ||
     (fulltext && (!fulltext.sections || fulltext.sections.length === 0) && (!fulltext.abstract || fulltext.abstract.length === 0) && (numPages > 0))
   );
 
-  const rawOcrStatus = (primaryAttachment?.extractionStatus?.toLowerCase() as any) ||
-    (primaryAttachment?.metadata as any)?.ocrStatus ||
-    (paper as any)?.metadata?.ocrStatus ||
+  const rawOcrStatus = (typeof (primaryAttachment as unknown as { extractionStatus?: string })?.extractionStatus === 'string'
+    ? (primaryAttachment as unknown as { extractionStatus?: string }).extractionStatus!.toLowerCase()
+    : null) ||
+    (typeof attachmentMeta?.ocrStatus === 'string' ? attachmentMeta.ocrStatus : null) ||
+    (typeof paperMeta?.ocrStatus === 'string' ? paperMeta.ocrStatus : null) ||
     'none';
 
   const ocrStatus = (['pending', 'processing', 'ready', 'completed', 'none'].includes(rawOcrStatus)
@@ -390,24 +395,24 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       )}
 
       {/* 2.1 RETRACTION WARNING BANNER (Zotero-style alert) */}
-      {(paper as any)?.isRetracted && (
+      {paper?.isRetracted && (
         <div className="bg-destructive text-destructive-foreground px-4 py-2 flex items-center justify-between text-12 z-30 shrink-0 border-b border-destructive/20 select-none">
           <div className="flex items-center gap-2 min-w-0">
             <ShieldAlert className="size-4 shrink-0 text-destructive-foreground animate-pulse" />
             <span className="font-semibold tracking-normal">
-              {(paper as any).retractionNature === 'expression_of_concern'
+              {paper.retractionNature === 'expression_of_concern'
                 ? 'Expression of Concern'
-                : (paper as any).retractionNature === 'correction'
+                : paper.retractionNature === 'correction'
                 ? 'Publisher Correction'
                 : 'Retracted Publication'}
             </span>
             <span className="text-destructive-foreground/90 truncate max-w-xl">
-              - {(((paper as any).retractionDetails as any)?.reason) || 'This publication has been flagged as retracted or unreliable.'}
+              - {((paper.retractionDetails as { reason?: string; noticeUrl?: string } | undefined)?.reason) || 'This publication has been flagged as retracted or unreliable.'}
             </span>
           </div>
-          {(((paper as any).retractionDetails as any)?.noticeUrl) && (
+          {((paper.retractionDetails as { reason?: string; noticeUrl?: string } | undefined)?.noticeUrl) && (
             <a
-              href={((paper as any).retractionDetails as any).noticeUrl}
+              href={(paper.retractionDetails as { reason?: string; noticeUrl?: string }).noticeUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-12 text-destructive-foreground underline font-medium hover:text-destructive-foreground/80 shrink-0 ml-4 relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -596,8 +601,8 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         {/* 5. UNIFIED INSPECTOR PANEL */}
         {!isReadingMode && (
           <ReaderInspector
-            paper={paper as any}
-            item={paper as any}
+            paper={paper}
+            item={paper}
             scopeId={scopeId}
             projectId={projectId}
             canEdit={true}

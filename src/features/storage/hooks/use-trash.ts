@@ -1,8 +1,4 @@
-/**
- * @file use-trash.ts
- * @description Frontend hooks mirroring backend TrashController.
- * Provides queries and mutations for soft-deleted trash items, recovery, and permanent deletion.
- */
+'use client';
 
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { storageKeys } from '../constants/storage.keys';

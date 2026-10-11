@@ -32,19 +32,20 @@ import { PrimarySidebar } from '../features/sidebar/PrimarySidebar';
 import { EditorArea } from '../features/editor/EditorArea';
 import { BottomDockPanel } from '../features/panel/BottomDockPanel';
 
-import { filesQuery } from '../hooks/use-core';
-import { usePageStore, useSettingsStore } from '../../store';
+import { filesQuery } from '../hooks/document.queries';
+import { usePageStore } from '@/features/editor/store/editor.store';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { useLayoutStore, type ActivityBarTab } from '../../store/layout.store';
 import { useEditorInstance } from '../hooks/use-editor-instance';
 import { editorCommandBus, getActiveEditorEngine } from '../../coordinators/command-bus';
 import { keybindingCoordinator } from '../../coordinators/keybinding.coordinator';
-import { useViewItems } from '@/features/library';
+import { useViewItems } from '@/features/library/data';
 import { latexSymbolsIndex } from '../../domain/latex/latex-symbols-index';
 
 const PdfViewer = dynamic(() => import('../features/preview/PdfViewer'), { ssr: false });
 const ProjectSettingsModal = dynamic(() => import('../modals/ProjectSettingsModal'), { ssr: false });
 const DeletedFilesModal = dynamic(() => import('../modals/DeletedFilesModal'), { ssr: false });
-const WordCountDialog = dynamic(() => import('../modals/WordCountDialog'), { ssr: false });
+const WordCountModal = dynamic(() => import('../modals/WordCountModal'), { ssr: false });
 const CitationPickerModal = dynamic(() => import('../modals/CitationPickerModal'), { ssr: false });
 const RenameCitationModal = dynamic(() => import('../modals/RenameCitationModal'), { ssr: false });
 const ProjectHistoryModal = dynamic(() => import('../modals/ProjectHistoryModal'), { ssr: false });
@@ -199,27 +200,22 @@ export function ModernWorkbenchLayout() {
       }
     });
 
-    const tabMap: Record<string, ActivityBarTab> = {
-      Files: 'files',
-      Explorer: 'files',
-      Outline: 'files',
-      Search: 'search',
-      Citations: 'citations',
-      Review: 'review',
-      AI: 'ai',
+    const normalizeTab = (panel: string): ActivityBarTab => {
+      const lower = (panel || '').toLowerCase();
+      if (lower === 'explorer' || lower === 'outline') return 'files';
+      if (lower === 'files' || lower === 'search' || lower === 'citations' || lower === 'review' || lower === 'ai') {
+        return lower as ActivityBarTab;
+      }
+      return 'files';
     };
 
     const unsubSidebarToggle = editorCommandBus.subscribe('sidebar:toggle-panel', (cmd) => {
-      const targetTab = tabMap[cmd.panel] || 'files';
-      useLayoutStore.getState().selectActivityTab(targetTab);
+      useLayoutStore.getState().selectActivityTab(normalizeTab(cmd.panel));
     });
 
     const unsubSidebarOpen = editorCommandBus.subscribe('sidebar:open-panel', (cmd) => {
-      const targetTab = tabMap[cmd.panel];
-      if (targetTab) {
-        useLayoutStore.getState().setActiveSidebarTab(targetTab);
-        useLayoutStore.getState().setSidebarLeftOpen(true);
-      }
+      useLayoutStore.getState().setActiveSidebarTab(normalizeTab(cmd.panel));
+      useLayoutStore.getState().setSidebarLeftOpen(true);
     });
 
     const unsubAiToggle = editorCommandBus.subscribe('sidebar:toggle-ai-panel', () => {
@@ -241,6 +237,7 @@ export function ModernWorkbenchLayout() {
     };
   }, []);
 
+  const isPdfDetached = useLayoutStore((s) => s.isPdfDetached);
   const isEditorOnly = layout === 'editor-only';
   const isViewerOnly = layout === 'viewer-only';
 
@@ -251,7 +248,7 @@ export function ModernWorkbenchLayout() {
         activityBar={<ActivityBar />}
         leftSidebar={<PrimarySidebar />}
         editor={!isViewerOnly ? <EditorArea /> : null}
-        preview={!isEditorOnly ? <PdfViewer /> : null}
+        preview={!isEditorOnly && !isPdfDetached ? <PdfViewer /> : null}
         bottomPanel={<BottomDockPanel />}
         statusBar={null}
       />
@@ -260,7 +257,7 @@ export function ModernWorkbenchLayout() {
       <ProjectSettingsModal />
 
       {wordCountOpen && (
-        <WordCountDialog
+        <WordCountModal
           open={wordCountOpen}
           onClose={() => editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'word-count' })}
           content={getDocContent(currentDoc, engine?.getContent())}

@@ -136,7 +136,7 @@ export const fileService = {
 
   setMain: async (
     params: string | { pageId: string; fileId: string; projectId?: string },
-  ): Promise<Page> => {
+  ): Promise<{ id: string; mainFileId: string }> => {
     let effectiveProjectId: string;
     let fileId: string;
     let pageId: string;
@@ -156,7 +156,7 @@ export const fileService = {
     } catch {
       // Non-fatal if rootDoc already synced
     }
-    return { id: pageId, mainFileId: fileId } as any;
+    return { id: pageId, mainFileId: fileId };
   },
 };
 

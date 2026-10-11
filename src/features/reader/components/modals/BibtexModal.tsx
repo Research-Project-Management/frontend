@@ -56,7 +56,7 @@ export default function PaperBibtexDialog({
   }, [open, paper?.id, paper?.projectId, format]);
 
   const citationKey = generateCitationKey(paper);
-  const fallbackString = format === 'bibtex' ? ((paper as any)?.bibtex || '') : '';
+  const fallbackString = format === 'bibtex' ? (paper?.bibtex || '') : '';
   const contentString = remoteContent || fallbackString || (isLoading ? 'Loading citation from server…' : '');
 
   const handleCopy = async () => {

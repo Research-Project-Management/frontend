@@ -151,8 +151,8 @@ export const UnifiedDiffViewer = React.memo(function UnifiedDiffViewer({
                         <span
                           key={wIdx}
                           className={cn(
-                            w.type === 'added' && 'bg-success/20 text-success font-semibold px-0.5 rounded',
-                            w.type === 'deleted' && 'bg-destructive/20 text-destructive line-through px-0.5 rounded',
+                            w.type === 'added' && 'bg-success/20 text-success font-semibold px-0.5 rounded-sm',
+                            w.type === 'deleted' && 'bg-destructive/20 text-destructive line-through px-0.5 rounded-sm',
                           )}
                         >
                           {w.text}

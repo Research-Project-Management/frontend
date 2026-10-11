@@ -14,12 +14,12 @@ import {
   maskLatexEntities,
   getAcademicSystemPrompt,
   applyHeuristicTransformation,
-} from '@/features/editor/domain/latex/ai-academic-assistant';
+} from '@/features/editor/domain/ai/ai-academic-assistant';
 import {
   type AiErrorFixParams,
   type AiErrorFixResult,
   heuristicLatexErrorFix,
-} from '@/features/editor/domain/latex/ai-error-assist';
+} from '@/features/editor/domain/ai/ai-error-assist';
 
 export class AcademicAiService {
   /**
@@ -156,12 +156,23 @@ export async function suggestLatexFix(params: AiErrorFixParams): Promise<AiError
       return heuristicLatexErrorFix(params);
     }
 
-    const json = (await res.json()) as any;
-    const data = json?.data || json;
+    type AiCompletionPayload = {
+      content?: string;
+      reply?: string;
+      message?: string;
+    };
+    type AiCompletionResponse = {
+      data?: AiCompletionPayload | string;
+    } & AiCompletionPayload;
+
+    const json = (await res.json()) as AiCompletionResponse | string;
+    const data = (typeof json === 'object' && json !== null && 'data' in json ? json.data : json) || json;
     const rawContent: string =
       typeof data === 'string'
         ? data
-        : (data?.content || data?.reply || data?.message || '');
+        : typeof data === 'object' && data !== null
+          ? (data.content || data.reply || data.message || '')
+          : '';
 
     // Clean JSON text (strip markdown code blocks if returned)
     const jsonText = rawContent
@@ -170,7 +181,7 @@ export async function suggestLatexFix(params: AiErrorFixParams): Promise<AiError
       .replace(/\s*```$/, '')
       .trim();
 
-    const parsed = JSON.parse(jsonText) as Record<string, any>;
+    const parsed = JSON.parse(jsonText) as Record<string, unknown>;
     if (parsed && typeof parsed === 'object' && parsed.explanation && parsed.fixedSnippet !== undefined) {
       let explanation = String(parsed.explanation).trim();
       explanation = explanation
@@ -206,11 +217,11 @@ export const ai = {
 export type {
   AiErrorFixParams,
   AiErrorFixResult,
-} from '@/features/editor/domain/latex/ai-error-assist';
+} from '@/features/editor/domain/ai/ai-error-assist';
 
 export type {
   AcademicAiActionParams,
   AcademicAiActionResult,
   AcademicAiActionType,
-} from '@/features/editor/domain/latex/ai-academic-assistant';
+} from '@/features/editor/domain/ai/ai-academic-assistant';
 

@@ -443,3 +443,28 @@ export function parseHtmlToLatex(html: string): string {
   // Normalize redundant empty lines (max 2 newlines)
   return result.replace(/\n{3,}/g, '\n\n');
 }
+
+/**
+ * Generates an asset inclusion snippet and checks whether graphicx package is needed in LaTeX preamble.
+ */
+export function prepareAssetInsertion(
+  name: string,
+  currentDocSource: string,
+): { snippet: string; newDocSource?: string } {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  const snippet =
+    ext === 'svg'
+      ? `\\includesvg[width=\\linewidth]{${name}}`
+      : `\\includegraphics[width=\\linewidth]{${name}}`;
+
+  if (ext !== 'svg' && !/\\usepackage(?:\[.*?\])?\{graphicx\}/.test(currentDocSource)) {
+    const lines = currentDocSource.split('\n');
+    const beginDocIdx = lines.findIndex((l) => /\\begin\{document\}/.test(l));
+    if (beginDocIdx >= 0) {
+      lines.splice(beginDocIdx, 0, '\\usepackage{graphicx}');
+      return { snippet, newDocSource: lines.join('\n') };
+    }
+  }
+
+  return { snippet };
+}

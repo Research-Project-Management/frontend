@@ -125,8 +125,8 @@ export function useUpdateReaderAnnotation(scopeId?: string, attachmentId?: strin
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, expectedVersion, dto }: { id: string; expectedVersion?: number; dto: UpdateAnnotationDto }) => {
-      const targetAttachmentId = attachmentId || (dto as any).attachmentId;
+    mutationFn: ({ id, expectedVersion, dto }: { id: string; expectedVersion?: number; dto: UpdateAnnotationDto & { attachmentId?: string } }) => {
+      const targetAttachmentId = attachmentId || dto.attachmentId;
       if (!targetAttachmentId) throw new Error('Attachment ID is required');
       return readerService.annotations.update(scopeId, targetAttachmentId, id, expectedVersion, dto);
     },
@@ -235,7 +235,7 @@ export function useNotes(scopeId?: string, itemId?: string) {
 
   const createMutation = useMutation({
     mutationFn: (dto: CreateNoteDto) =>
-      readerService.notes.create(scopeId, { ...dto, itemId: (dto as any).itemId !== undefined ? (dto as any).itemId : itemId }),
+      readerService.notes.create(scopeId, { ...dto, itemId: dto.itemId !== undefined ? dto.itemId : itemId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: readerQueryKeys.notes(scopeId, itemId) });
       toast.success('Note saved', { id: 'reader-note-toast' });
@@ -752,7 +752,7 @@ export function useConversion(scopeId?: string) {
     convertAsync: convertMutation.mutateAsync,
     isPreviewing: previewMutation.isPending,
     isConverting: convertMutation.isPending,
-    previewData: previewMutation.data as any,
+    previewData: previewMutation.data,
     conversionResult: convertMutation.data,
   };
 }
@@ -838,7 +838,7 @@ export function useAttachments(
         filename: data.filename || 'attachment',
         url: data.url,
         fileId: data.fileId,
-        contentType: data.mimeType || (data as any).contentType,
+        contentType: data.mimeType || data.contentType,
         size: data.size,
         isPrimary: data.isPrimary,
       });

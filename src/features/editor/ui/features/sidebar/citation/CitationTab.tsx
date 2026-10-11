@@ -12,7 +12,7 @@ import { Search as SearchIcon, Plus, X } from 'lucide-react';
 import { Input } from '@/shared/components/ui/input';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
 import { PlaneEmptyState, PlaneErrorState } from '@/shared/components/ui';
-import { useCitationTabState } from './hooks/useCitationTabState';
+import { useCitationTabState } from './useCitationTabState';
 import { CitationItem } from './subcomponents/CitationItem';
 import { VirtualizedCitationList } from './subcomponents/VirtualizedCitationList';
 import { CitationValidationBanner } from './subcomponents/CitationValidationBanner';

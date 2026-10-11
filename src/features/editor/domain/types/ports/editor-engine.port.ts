@@ -36,6 +36,9 @@ export interface EditorSelectionRange {
   startColumn: number;
   endLine: number;
   endColumn: number;
+  /** Backward compatibility aliases */
+  fromLine?: number;
+  toLine?: number;
 }
 
 export interface DiffProposal {
@@ -100,6 +103,9 @@ export interface IEditorEngine {
   /** Returns the scrollable DOM element of the editor */
   getScrollContainer?(): HTMLElement | null;
 
+  /** Retrieves the total number of lines in the document */
+  getLineCount?(): number;
+
   /** Triggers editor undo operation */
   undo(): void;
 
@@ -161,6 +167,9 @@ export interface IEditorEngine {
     regexp?: boolean;
     wholeWord?: boolean;
   }): { current: number; total: number };
+
+  /** Optional access to underlying editor view instance (e.g. EditorView) */
+  getView?(): any;
 
   /** Cleanup handler invoked when engine unmounts */
   onDestroy(): void;

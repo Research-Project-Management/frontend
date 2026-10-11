@@ -4,7 +4,7 @@
  * ProjectReferencesTab.tsx
  *
  * Canonical Project Settings - Reference & Citation Integrations Tab (Block 7: UI Shell / Modals Layer).
- * Location: `features/editor/ui/modals/ProjectReferencesTab.tsx`
+ * Location: `features/editor/ui/modals/project-settings/ProjectReferencesTab.tsx`
  */
 
 import React, { useState } from 'react';
@@ -84,7 +84,7 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
   return (
     <div className="space-y-6">
       {/* Overview Info Header */}
-      <div className="p-3.5 rounded-lg border border-border/70 bg-muted/30 text-xs text-muted-foreground leading-relaxed flex items-start gap-2.5">
+      <div className="p-3.5 rounded-md border border-border/70 bg-muted/30 text-xs text-muted-foreground leading-relaxed flex items-start gap-2.5">
         <Blocks className="size-4 text-foreground shrink-0 mt-0.5" />
         <div>
           Synchronize remote citation libraries into this LaTeX manuscript. Synced references are saved directly to a <code>.bib</code> file in your project files tree.

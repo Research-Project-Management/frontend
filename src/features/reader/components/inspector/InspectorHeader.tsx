@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldAlert, X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { useUpdateLibraryItemMutation, useRetraction } from '../../data';
+import { useUpdateLibraryItemMutation, useRetraction } from '../../data/reader.queries';
 import type { Item } from '../../types/reader.types';
 import { isItemRetracted, getRetractionInfo } from '../../utils/reader.util';
 import { RetractionNoticeModal } from '../modals/RetractionNoticeModal';
@@ -121,7 +121,7 @@ export function InspectorHeader({
         <RetractionNoticeModal
           open={isRetractionModalOpen}
           onOpenChange={setIsRetractionModalOpen}
-          item={item as any}
+          item={item}
           canEdit={canEdit}
           onDismiss={() => unflagItem(item.id)}
           isDismissing={isUnflagging}

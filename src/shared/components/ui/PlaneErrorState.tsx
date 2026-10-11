@@ -283,21 +283,27 @@ export function PlaneErrorState({
   const errorMessage = (() => {
     if (!error) return null;
     if (typeof error === 'string' && error.trim()) return error;
-    if (typeof error === 'object') {
-      if ('message' in error && typeof error.message === 'string' && error.message.trim()) {
-        return error.message;
+    if (typeof error === 'object' && error !== null) {
+      const errObj = error as Record<string, unknown>;
+      if ('message' in errObj && typeof errObj.message === 'string' && errObj.message.trim()) {
+        return errObj.message;
       }
-      if ('response' in error && (error as any).response?.data?.error?.message) {
-        return String((error as any).response.data.error.message);
+      if (typeof errObj.response === 'object' && errObj.response !== null) {
+        const resObj = errObj.response as Record<string, unknown>;
+        if (typeof resObj.data === 'object' && resObj.data !== null) {
+          const dataObj = resObj.data as Record<string, unknown>;
+          if (typeof dataObj.error === 'object' && dataObj.error !== null) {
+            const innerErr = dataObj.error as Record<string, unknown>;
+            if (innerErr.message) return String(innerErr.message);
+          }
+          if (dataObj.message) return String(dataObj.message);
+        }
       }
-      if ('response' in error && (error as any).response?.data?.message) {
-        return String((error as any).response.data.message);
+      if (typeof errObj.error === 'string') {
+        return errObj.error;
       }
-      if ('error' in error && typeof (error as any).error === 'string') {
-        return (error as any).error;
-      }
-      if ('statusText' in error && typeof (error as any).statusText === 'string') {
-        return (error as any).statusText;
+      if (typeof errObj.statusText === 'string') {
+        return errObj.statusText;
       }
       try {
         const json = JSON.stringify(error);
@@ -307,7 +313,10 @@ export function PlaneErrorState({
     return String(error);
   })();
 
-  const errorDigest = error && typeof error === 'object' && 'digest' in error ? (error as any).digest : undefined;
+  const errorDigest =
+    error && typeof error === 'object' && 'digest' in error
+      ? String((error as Record<string, unknown>).digest)
+      : undefined;
 
   return (
     <div

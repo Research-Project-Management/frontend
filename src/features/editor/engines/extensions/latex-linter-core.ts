@@ -2,7 +2,7 @@
  * latex-linter-core.ts
  *
  * Core LaTeX Linter Tokenizer & State Machine Interpreter (Block 4: Engines Layer).
- * Location: `features/editor/engines/latex-linter-core.ts`
+ * Location: `features/editor/engines/extensions/latex-linter-core.ts`
  *
  * Architecture inspired by Overleaf's Custom Tokenizer & State Machine:
  * - Pure, deterministic function: (text, options) -> Diagnostic[]
@@ -57,6 +57,18 @@ const TEXT_ONLY_COMMANDS = new Set([
   'item', 'maketitle', 'newpage', 'clearpage',
 ]);
 
+// Math environments (star variants normalized)
+const MATH_ENVS = new Set([
+  'equation', 'align', 'gather', 'multline', 'flalign', 'alignat', 'displaymath', 'math', 'eqnarray',
+  'matrix', 'pmatrix', 'bmatrix', 'Bmatrix', 'vmatrix', 'Vmatrix', 'smallmatrix', 'cases', 'dcases', 'rcases',
+]);
+
+// Commands whose braced argument is typeset in text mode even inside math
+const TEXT_GROUP_COMMANDS = new Set([
+  'text', 'textrm', 'textbf', 'textit', 'textsf', 'texttt', 'textup', 'textmd', 'textsl', 'textsc',
+  'textnormal', 'emph', 'mbox', 'hbox', 'fbox', 'intertext', 'shortintertext',
+]);
+
 /**
  * Checks if the character at index is escaped by an odd number of preceding backslashes
  */
@@ -82,13 +94,21 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
   const length = text.length;
   const envStack: OpenEnv[] = [];
   interface MathStackEntry {
-    type: 'dollar' | 'double-dollar' | 'bracket' | 'paren' | 'env';
+    /** 'text' = a text-mode group (e.g. \text{...}) nested inside math; math may re-open inside it */
+    type: 'dollar' | 'double-dollar' | 'bracket' | 'paren' | 'env' | 'text';
     name?: string;
     from: number;
     line: number;
+    /** For 'text' frames: brace-stack depth of the group's opening '{' */
+    braceDepth?: number;
   }
   const mathStack: MathStackEntry[] = [];
+  const isInMath = () => {
+    const top = mathStack[mathStack.length - 1];
+    return !!top && top.type !== 'text';
+  };
   const braceStack: Array<{ from: number; line: number }> = [];
+  const leftDelimStack: Array<{ from: number; to: number; line: number }> = [];
   const labelSeen = new Map<string, number>();
 
   let inNovalidateBlock = false;
@@ -163,7 +183,12 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
             source: 'LaTeX Linter',
           });
         } else {
+          const depthBeforePop = braceStack.length;
           braceStack.pop();
+          const topMath = mathStack[mathStack.length - 1];
+          if (topMath && topMath.type === 'text' && topMath.braceDepth === depthBeforePop) {
+            mathStack.pop();
+          }
         }
       }
     }
@@ -177,7 +202,7 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
       const top = mathStack[mathStack.length - 1];
       if (top && top.type === currentDelimiterType) {
         mathStack.pop();
-      } else if (!top || top.type === 'env') {
+      } else if (!top || top.type === 'env' || top.type === 'text') {
         mathStack.push({ type: currentDelimiterType, from: i, line: currentLine });
       } else {
         diagnostics.push({
@@ -229,6 +254,19 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
         const cmdFrom = i;
         const cmdTo = i + cmdMatch[0].length;
 
+        // 5-. Text-mode group inside math (\text{...}, \mbox{...}, ...): push a 'text' frame so
+        // nested $...$ re-enters math without corrupting the outer math state.
+        if (TEXT_GROUP_COMMANDS.has(cmdName) && isInMath()) {
+          const openMatch = /^\s*\{/.exec(text.slice(cmdTo));
+          if (openMatch) {
+            const bracePos = cmdTo + openMatch[0].length - 1;
+            braceStack.push({ from: bracePos, line: currentLine });
+            mathStack.push({ type: 'text', name: cmdName, from: cmdFrom, line: currentLine, braceDepth: braceStack.length });
+            for (let k = cmdTo; k < bracePos; k++) if (text[k] === '\n') currentLine++;
+            i = bracePos + 1;
+            continue;
+          }
+        }
         // 5a. \begin{env}
         if (cmdName === 'begin') {
           const envNameMatch = /^\s*\{([a-zA-Z*0-9_-]+)\}/.exec(text.slice(cmdTo));
@@ -239,7 +277,7 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
 
             // If entering a known math environment
             // If entering a known math environment
-            if (['equation', 'align', 'gather', 'multline', 'flalign', 'alignat', 'displaymath', 'matrix', 'pmatrix', 'bmatrix', 'cases', 'dcases', 'rcases'].includes(envName.replace(/\*$/, ''))) {
+            if (MATH_ENVS.has(envName.replace(/\*$/, ''))) {
               mathStack.push({ type: 'env', name: envName, from: cmdFrom, line: currentLine });
             }
 
@@ -276,7 +314,7 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
               }
             }
 
-            if (['equation', 'align', 'gather', 'multline', 'flalign', 'alignat', 'displaymath', 'matrix', 'pmatrix', 'bmatrix', 'cases', 'dcases', 'rcases'].includes(envName.replace(/\*$/, ''))) {
+            if (MATH_ENVS.has(envName.replace(/\*$/, ''))) {
               let idx = -1;
               for (let k = mathStack.length - 1; k >= 0; k--) {
                 const entry = mathStack[k];
@@ -293,6 +331,31 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
             i = fullTo;
             continue;
           }
+        // 5b-2. \left and \right delimiter matching (Overleaf Parity)
+        if (cmdName === 'left') {
+          const delimMatch = /^\s*(?:\\[{}|()\[\]]|\S)/.exec(text.slice(cmdTo));
+          const fullTo = delimMatch ? cmdTo + delimMatch[0].length : cmdTo;
+          leftDelimStack.push({ from: cmdFrom, to: fullTo, line: currentLine });
+          i = fullTo;
+          continue;
+        }
+
+        if (cmdName === 'right') {
+          const delimMatch = /^\s*(?:\\[{}|()\[\]]|\S)/.exec(text.slice(cmdTo));
+          const fullTo = delimMatch ? cmdTo + delimMatch[0].length : cmdTo;
+          if (leftDelimStack.length === 0) {
+            diagnostics.push({
+              from: cmdFrom,
+              to: fullTo,
+              severity: 'error',
+              message: 'Unexpected \\right delimiter with no matching \\left',
+              source: 'LaTeX Linter',
+            });
+          } else {
+            leftDelimStack.pop();
+          }
+          i = fullTo;
+          continue;
         }
 
         // 5c. \label{...} - duplicate detection
@@ -350,7 +413,7 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
                       from: keyOffset,
                       to: keyOffset + k.length,
                       severity: 'warning',
-                      message: `⚠️ Retracted Paper: Citation "${k}" (${info?.title || 'Untitled'}) has been officially retracted${info?.reason ? `: ${info.reason}` : '.'}`,
+                      message: `Retracted Paper: Citation "${k}" (${info?.title || 'Untitled'}) has been officially retracted${info?.reason ? `: ${info.reason}` : '.'}`,
                       source: 'LaTeX Linter',
                     });
                   }
@@ -384,7 +447,7 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
         }
 
         // 5e. Math-only / Text-only context verification
-        const inMathMode = mathStack.length > 0;
+        const inMathMode = isInMath();
         if (!inMathMode && MATH_ONLY_COMMANDS.has(cmdName)) {
           diagnostics.push({
             from: cmdFrom,
@@ -413,7 +476,7 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
 
   // 6. Check unclosed math mode at EOF
   for (const unclosed of mathStack) {
-    if (unclosed.type !== 'env') {
+    if (unclosed.type !== 'env' && unclosed.type !== 'text') {
       const symbol = unclosed.type === 'double-dollar' ? '$$' : unclosed.type === 'bracket' ? '\\[' : unclosed.type === 'paren' ? '\\(' : '$';
       diagnostics.push({
         from: unclosed.from,
@@ -443,6 +506,17 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
       to: unclosed.from + 1,
       severity: 'error',
       message: `Unclosed opening brace '{'. Missing matching '}'`,
+      source: 'LaTeX Linter',
+    });
+  }
+
+  // 9. Check unclosed \left delimiters at EOF (Overleaf Parity)
+  for (const unclosed of leftDelimStack) {
+    diagnostics.push({
+      from: unclosed.from,
+      to: unclosed.to,
+      severity: 'error',
+      message: `Unclosed \\left delimiter on line ${unclosed.line} with no matching \\right`,
       source: 'LaTeX Linter',
     });
   }

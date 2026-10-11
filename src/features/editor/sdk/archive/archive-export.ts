@@ -85,33 +85,6 @@ async function bundleAndDownloadZip({
       .trim()
       .replace(/\s+/g, '_') || (isArxiv ? 'manuscript' : 'flux-project');
 
-  // 1. Attempt high-performance server-side streaming ZIP export first
-  if (parentPageId) {
-    try {
-      const blob = await manuscriptService.exportImport.exportProjectZip(parentPageId, {
-        cleanArxiv: isArxiv,
-        projectName: cleanTitle,
-      });
-
-      const filename = isArxiv ? `arxiv-${cleanTitle}.zip` : `${cleanTitle}.zip`;
-      const downloadUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(downloadUrl);
-      return filename;
-    } catch (serverErr) {
-      console.warn(
-        '[export-zip] Server streaming ZIP export unavailable; falling back to client-side JSZip:',
-        serverErr,
-      );
-    }
-  }
-
-  // 2. Client-side JSZip fallback
   try {
     const zip = new JSZip();
 

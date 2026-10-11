@@ -2,7 +2,7 @@
  * latex-linter.worker.ts
  *
  * Dedicated Web Worker for In-Memory LaTeX Syntax Linting (Block 4: Engines Layer).
- * Location: `features/editor/engines/latex-linter.worker.ts`
+ * Location: `features/editor/engines/workers/latex-linter.worker.ts`
  *
  * Offloads 100% of syntax parsing, state-machine tracking, and tokenization from
  * the browser's UI thread, ensuring zero typing latency and 120 FPS editor responsiveness.

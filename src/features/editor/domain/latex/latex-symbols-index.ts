@@ -2,7 +2,7 @@
  * latex-symbols-index.ts
  *
  * Web Worker Orchestrator & Client for Project Symbols & Metadata (Domain Layer).
- * Location: `features/editor/domain/latex-symbols-index.ts`
+ * Location: `features/editor/domain/latex/latex-symbols-index.ts`
  *
  * Architecture (Overleaf Parity):
  * - Spawns a dedicated Web Worker (`latex-symbols.worker.ts`) to offload 100% of
@@ -28,7 +28,7 @@ import {
   type SymbolsWorkerMessageOut,
 } from './latex-symbols-core';
 import { PrefixTrie, LatexSymbolCatalog } from './prefix-trie';
-import { isItemRetracted, getRetractionInfo } from '@/features/library';
+import { isItemRetracted, getRetractionInfo } from '@/features/library/utils/retraction';
 
 export type {
   BibEntry,

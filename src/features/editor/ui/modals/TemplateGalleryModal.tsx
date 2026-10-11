@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * TemplateGalleryModal.tsx
@@ -7,7 +7,7 @@
  * Location: `features/editor/ui/modals/TemplateGalleryModal.tsx`
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   BookOpen,
   Check,
@@ -23,7 +23,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { useTemplateGalleryActions } from './hooks/useTemplateGalleryActions';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -33,17 +33,27 @@ import {
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
-import { useSettingsStore, usePageStore } from '@/features/editor/store';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { usePageStore } from '@/features/editor/store/editor.store';
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { manuscriptService } from '@/features/editor/sdk';
 
 import {
   type AcademicTemplate,
   ACADEMIC_TEMPLATES,
-} from './template-gallery.data';
+} from '@/features/editor/domain/document/template-gallery.data';
 
 export type { AcademicTemplate };
 export { ACADEMIC_TEMPLATES };
+
+const TEMPLATE_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  Layout,
+  BookOpen,
+  Scroll,
+  FileCode,
+  GraduationCap,
+  FileText,
+};
 
 
 export default function TemplateGalleryModal() {
@@ -76,17 +86,38 @@ export default function TemplateGalleryModal() {
 
   const combinedTemplates = useMemo(() => {
     const list: AcademicTemplate[] = [...ACADEMIC_TEMPLATES];
-    serverTemplates.forEach((st: any) => {
+    type RawServerTemplate = {
+      id: string;
+      name: string;
+      category?: string;
+      publisher?: string;
+      description?: string;
+      badge?: string;
+      mainTex?: string;
+    };
+    const validCategories: AcademicTemplate['category'][] = [
+      'Conference',
+      'Journal',
+      'Preprint',
+      'Thesis',
+      'Resume',
+    ];
+    (serverTemplates as RawServerTemplate[]).forEach((st) => {
       if (!list.some((t) => t.id === st.id)) {
+        const matchedCat = validCategories.find(
+          (c) => c.toLowerCase() === st.category?.toLowerCase(),
+        );
         list.push({
           id: st.id,
           name: st.name,
-          category: (st.category as any) || 'Conference',
+          category: matchedCat ?? 'Conference',
           publisher: st.publisher || 'Manuscripts',
           description: st.description || 'Verified academic template from backend repository',
-          icon: Layout,
+          iconName: 'Layout',
           badge: st.badge || 'latex',
-          mainTex: `% Template: ${st.name}\n\\documentclass{article}\n\\begin{document}\n\\title{${st.name}}\n\\maketitle\n\n\\section{Introduction}\nDocument initialized from template.\n\\end{document}`,
+          mainTex:
+            st.mainTex ||
+            `% Template: ${st.name}\n\\documentclass{article}\n\\begin{document}\n\\title{${st.name}}\n\\maketitle\n\n\\section{Introduction}\nDocument initialized from template.\n\\end{document}`,
         });
       }
     });
@@ -105,11 +136,11 @@ export default function TemplateGalleryModal() {
     setSelectedTemplate(tpl);
     setPreviewTab('main');
     // If it's a server template, dynamically fetch latest template payload
-    if (!ACADEMIC_TEMPLATES.some((a) => a.id === tpl.id)) {
+    if (!ACADEMIC_TEMPLATES.some((a: AcademicTemplate) => a.id === tpl.id)) {
       try {
         const remoteDetails = await manuscriptService.templates.getById(tpl.id);
         if (remoteDetails?.mainTex || remoteDetails?.content) {
-          setSelectedTemplate((prev) => ({
+          setSelectedTemplate((prev: AcademicTemplate) => ({
             ...prev,
             mainTex: remoteDetails.mainTex || remoteDetails.content || prev.mainTex,
             bibTex: remoteDetails.bibTex || prev.bibTex,
@@ -121,23 +152,60 @@ export default function TemplateGalleryModal() {
     }
   };
 
-  const {
-    isScaffolding,
-    applyTemplate,
-    scaffoldProject,
-    copyCode,
-  } = useTemplateGalleryActions({
-    selectedTemplate,
-    engine,
-    activeFileTitle: activeFilePage?.title,
-    projectId,
-    previewTab,
-    onClose: () => setIsTemplateModalOpen(false),
-  });
+  const [isScaffolding, setIsScaffolding] = useState(false);
+
+  const applyTemplate = useCallback(async () => {
+    if (!selectedTemplate) return;
+    try {
+      if (engine) {
+        engine.setContent(selectedTemplate.mainTex);
+        toast.success(`Applied "${selectedTemplate.name}" to ${activeFilePage?.title || 'current document'}`);
+        setIsTemplateModalOpen(false);
+      } else {
+        navigator.clipboard.writeText(selectedTemplate.mainTex);
+        toast.success(`Copied "${selectedTemplate.name}" template code to clipboard`);
+        setIsTemplateModalOpen(false);
+      }
+    } catch {
+      toast.error('Could not apply template');
+    }
+  }, [selectedTemplate, engine, activeFilePage?.title, setIsTemplateModalOpen]);
+
+  const scaffoldProject = useCallback(async () => {
+    if (!selectedTemplate) return;
+    if (!projectId) {
+      applyTemplate();
+      return;
+    }
+    setIsScaffolding(true);
+    try {
+      await manuscriptService.templates.scaffold(projectId, selectedTemplate.id);
+      toast.success(`Project scaffolded successfully with "${selectedTemplate.name}"!`);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+      }
+      setIsTemplateModalOpen(false);
+    } catch (err) {
+      console.warn('[TemplateGallery] Backend scaffolding failed, falling back to active file update:', err);
+      applyTemplate();
+    } finally {
+      setIsScaffolding(false);
+    }
+  }, [selectedTemplate, projectId, applyTemplate, setIsTemplateModalOpen]);
+
+  const copyCode = useCallback(() => {
+    if (!selectedTemplate) return;
+    const code =
+      previewTab === 'bib' && selectedTemplate.bibTex
+        ? selectedTemplate.bibTex
+        : selectedTemplate.mainTex;
+    navigator.clipboard.writeText(code);
+    toast.success('Template code copied to clipboard');
+  }, [previewTab, selectedTemplate]);
 
   return (
     <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
-      <DialogContent className="sm:max-w-4xl lg:max-w-5xl max-h-[85vh] h-[600px] flex flex-col p-0 overflow-hidden rounded-lg bg-background border border-border/60 shadow-raised-400 text-foreground select-none">
+      <DialogContent className="sm:max-w-4xl lg:max-w-5xl max-h-[85vh] h-[600px] flex flex-col p-0 overflow-hidden rounded-md bg-background border border-border/60 shadow-raised-400 text-foreground select-none">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60 shrink-0">
           <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
@@ -188,7 +256,7 @@ export default function TemplateGalleryModal() {
               ) : (
                 combinedTemplates.map((tpl) => {
                   const isSelected = selectedTemplate.id === tpl.id;
-                  const IconComp = tpl.icon || Layout;
+                  const IconComp = (tpl.iconName && TEMPLATE_ICON_MAP[tpl.iconName]) || Layout;
                   return (
                     <div
                       key={tpl.id}

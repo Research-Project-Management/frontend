@@ -17,11 +17,13 @@ import {
   useRetraction,
   useSavedSearches,
 } from '../../data';
-import { useLibrarySidebarStore, useLibraryPermissions } from '../../store';
+import { useLibrarySidebarStore } from '../../store/library-ui.store';
+import { useLibraryPermissions } from '../../store/selectors';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 
-import { CreateCollectionModal, TrashModal } from '../modals';
+import CreateCollectionModal from '../modals/CreateCollectionModal';
+import TrashModal from '../modals/TrashModal';
 import type { SavedSearch } from '../../types/saved-searches.types';
 
 import { buildTree, filterCollections } from './tree-helpers';

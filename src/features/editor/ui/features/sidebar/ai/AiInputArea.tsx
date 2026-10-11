@@ -33,7 +33,7 @@ import {
   QUICK_ACTIONS,
   type AttachedFile,
   type UploadingFileItem,
-} from './ai-tab.helpers';
+} from './ai-attachments';
 
 const LibraryPickerModal = nextDynamic(
   () =>
@@ -205,7 +205,7 @@ export function AiInputArea({
                       <button
                         type="button"
                         onClick={() => onRemoveAttachedFile(file.id)}
-                        className="size-4.5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted ml-0.5 cursor-pointer"
+                        className="size-4.5 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted ml-0.5 cursor-pointer"
                         aria-label={`Remove ${file.name}`}
                       >
                         <X className="size-2.5" />
@@ -269,7 +269,7 @@ export function AiInputArea({
                 align="start"
                 side="top"
                 sideOffset={8}
-                className="w-56 p-1 rounded-lg shadow-raised-100 border border-border bg-popover text-foreground select-none space-y-0.5"
+                className="w-56 p-1 rounded-md shadow-raised-100 border border-border bg-popover text-foreground select-none space-y-0.5"
               >
                 <DropdownMenuItem
                   onClick={() => fileInputRef.current?.click()}
@@ -351,7 +351,7 @@ export function AiInputArea({
                   <button
                     type="button"
                     onClick={onStopStreaming}
-                    className="flex size-7 items-center justify-center rounded-md bg-ai text-white hover:bg-ai-hover transition-all active:scale-95 cursor-pointer"
+                    className="flex size-7 items-center justify-center rounded-md bg-ai text-ai-foreground hover:bg-ai-hover transition-colors cursor-pointer"
                     aria-label="Stop generating"
                   >
                     <Square className="size-3 fill-current" />
@@ -374,7 +374,7 @@ export function AiInputArea({
                         ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
                         : (!inputPrompt.trim() && attachedFiles.length === 0)
                           ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-40'
-                          : 'bg-ai text-white hover:bg-ai-hover active:scale-95 cursor-pointer'
+                          : 'bg-ai text-ai-foreground hover:bg-ai-hover cursor-pointer'
                     )}
                     aria-label={uploadingFiles.length > 0 ? 'Processing documents...' : 'Send message'}
                   >

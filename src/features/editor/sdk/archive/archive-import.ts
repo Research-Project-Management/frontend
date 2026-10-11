@@ -423,8 +423,18 @@ export async function extractAndImportZipToProject({
       name: finalProjectName,
       modules: ['pages', 'work-items'],
     });
-    const proj = (projectRes as any)?.project || (projectRes as any)?.data || projectRes;
-    effectiveProjectId = proj.id;
+    let extractedId: string | null = null;
+    if (projectRes && typeof projectRes === 'object') {
+      const pObj = projectRes as Record<string, unknown>;
+      if (pObj.project && typeof pObj.project === 'object' && 'id' in pObj.project) {
+        extractedId = String((pObj.project as { id: unknown }).id);
+      } else if (pObj.data && typeof pObj.data === 'object' && 'id' in pObj.data) {
+        extractedId = String((pObj.data as { id: unknown }).id);
+      } else if ('id' in pObj && pObj.id) {
+        extractedId = String(pObj.id);
+      }
+    }
+    effectiveProjectId = extractedId ?? '';
   }
 
   if (!effectiveProjectId) {
@@ -482,7 +492,10 @@ export async function extractAndImportZipToProject({
           folderName,
           parentFolderId,
         );
-        folderIdMap[fPath] = (created as any).id;
+        folderIdMap[fPath] =
+          created && typeof created === 'object' && 'id' in created
+            ? String((created as { id: unknown }).id)
+            : '';
       } catch (folderErr) {
         console.warn(`[import-zip] Folder creation note for "${fPath}":`, folderErr);
       }

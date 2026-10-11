@@ -6,7 +6,7 @@ import { Library, Folder, FolderKanban, X, Plus, Search } from 'lucide-react';
 import {
   useUpdateReaderItem,
   useReaderCollections,
-} from '../../data';
+} from '../../data/reader.queries';
 import { useReaderModalStore } from '../../store/reader-ui.store';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import {
@@ -57,21 +57,22 @@ export function ReaderCollectionPickerPopover({
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const effectiveScope = scopeId || (paper as any)?.projectId || 'user';
+  const effectiveScope = scopeId || paper?.projectId || 'user';
   const { mutate: updatePaper } = useUpdateReaderItem(effectiveScope);
   const { data: rawCollections = [] } = useReaderCollections(effectiveScope);
   const collections = Array.isArray(rawCollections)
     ? rawCollections
-    : (rawCollections as any)?.collections || [];
+    : (rawCollections as { collections?: Collection[] })?.collections || [];
   const openModal = useReaderModalStore((s) => s.openModal);
 
   // Map collections for lookup
   const colMap = useMemo(() => {
     const map = new Map<string, Collection>();
     collections.forEach((c: Collection) => map.set(c.id, c));
-    ((paper as any).collections || []).forEach((c: any) => {
+    const paperColls = (paper as unknown as { collections?: Collection[] }).collections || [];
+    paperColls.forEach((c) => {
       if (c?.id && !map.has(c.id)) {
-        map.set(c.id, c as Collection);
+        map.set(c.id, c);
       }
     });
     return map;
@@ -84,8 +85,9 @@ export function ReaderCollectionPickerPopover({
     if (Array.isArray(paper.collectionIds)) {
       paper.collectionIds.forEach((id) => id && ids.add(id));
     }
-    if (Array.isArray((paper as any).collections)) {
-      (paper as any).collections.forEach((c: any) => c?.id && ids.add(c.id));
+    const paperColls = (paper as unknown as { collections?: Array<{ id?: string }> }).collections;
+    if (Array.isArray(paperColls)) {
+      paperColls.forEach((c) => c?.id && ids.add(c.id));
     }
     return ids;
   }, [paper.collectionId, paper.collectionIds, paper]);
@@ -267,25 +269,25 @@ export default function CollectionsSection({
   hideHeader = false,
   canEdit = true,
 }: CollectionsSectionProps) {
-  const effectiveScope = scopeId || projectId || (paper as any)?.projectId || 'user';
+  const effectiveScope = scopeId || projectId || paper?.projectId || 'user';
   const { mutate: updatePaper } = useUpdateReaderItem(effectiveScope);
   const { data: rawCollections = [] } = useReaderCollections(effectiveScope);
   const collections = Array.isArray(rawCollections)
     ? rawCollections
-    : (rawCollections as any)?.collections || [];
+    : (rawCollections as { collections?: Collection[] })?.collections || [];
   const { projects = [] } = useProjects();
 
   // Resolve active library root name (My Library vs Project Library)
   const isProject = Boolean(
     (typeof effectiveScope === 'string' && effectiveScope.startsWith('project:')) ||
-      (paper as any)?.projectId,
+      paper?.projectId,
   );
 
   const matchedProject = useMemo(() => {
     if (!isProject) return null;
     const cleanId = effectiveScope.replace(/^project:/, '');
     return (
-      projects.find((p: any) => p.id === cleanId || p.id === (paper as any)?.projectId) || null
+      projects.find((p: { id: string; name?: string }) => p.id === cleanId || p.id === paper?.projectId) || null
     );
   }, [isProject, effectiveScope, paper, projects]);
 
@@ -301,9 +303,9 @@ export default function CollectionsSection({
   const colMap = useMemo(() => {
     const map = new Map<string, Collection>();
     collections.forEach((c: Collection) => map.set(c.id, c));
-    ((paper as any).collections || []).forEach((c: any) => {
+    (paper.collections || []).forEach((c) => {
       if (c?.id && !map.has(c.id)) {
-        map.set(c.id, c as Collection);
+        map.set(c.id, c);
       }
     });
     return map;
@@ -316,11 +318,11 @@ export default function CollectionsSection({
     if (Array.isArray(paper.collectionIds)) {
       paper.collectionIds.forEach((id) => id && ids.add(id));
     }
-    if (Array.isArray((paper as any).collections)) {
-      (paper as any).collections.forEach((c: any) => c?.id && ids.add(c.id));
+    if (Array.isArray(paper.collections)) {
+      paper.collections.forEach((c) => c?.id && ids.add(c.id));
     }
     return ids;
-  }, [paper.collectionId, paper.collectionIds, paper]);
+  }, [paper.collectionId, paper.collectionIds, paper.collections]);
 
   // List of assigned collection objects with resolved names and paths
   const assignedCollections = useMemo(() => {

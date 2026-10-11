@@ -32,7 +32,7 @@ export function WorkItemProgressCard({
     completionPercentage = 0,
   } = metrics || {};
 
-  const totalCount = metrics?.totalWorkItems ?? (metrics as any)?.totalIssues ?? 0;
+  const totalCount = metrics?.totalWorkItems ?? (metrics as { totalIssues?: number })?.totalIssues ?? 0;
   const cancelledCount = metrics?.cancelled ?? 0;
 
   // Calculate segment widths

@@ -5,12 +5,12 @@ import { Plus, Minus, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import type { Item, CreatorCredit } from '@/features/library/types/library.types';
-import { normalizeAuthors, splitAuthorString, parseCreatorName } from '../../../domain';
+import { normalizeAuthors, splitAuthorString, parseCreatorName } from '../../../domain/creators';
 import {
   ALL_CREATOR_TYPES,
   getPrimaryCreatorType,
-  SchemaItemTypeDefinition,
-} from '../../../types';
+  type SchemaItemTypeDefinition,
+} from '../../../types/item-types.types';
 import {
   DropdownMenu,
   DropdownMenuContent,

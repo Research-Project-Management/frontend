@@ -8,9 +8,11 @@
  */
 
 import { useCallback, useEffect } from 'react';
-import { usePageStore, useViewerStore } from '../../../../store';
+import { toast } from 'sonner';
+import { usePageStore } from '@/features/editor/store/editor.store';
+import { useViewerStore } from '@/features/editor/store/viewer.store';
 import { useTabsStore, type EditorTab } from '../../../../store/tabs.store';
-import type { SyncTeXMap } from '@/features/editor/domain';
+import type { SyncTeXMap } from '@/features/editor/domain/pdf/synctex-index';
 import { editorCommandBus, getActiveEditorEngine } from '../../../../coordinators/command-bus';
 import { navigationCoordinator } from '../../../../coordinators/navigation.coordinator';
 import { compilerCoordinator } from '../../../../coordinators/compiler.coordinator';
@@ -216,7 +218,12 @@ export function useViewerSyncTeX({
 
       const rootId = projectId || pageId;
       if (!rootId) return;
-      const filename = (activeFilePage as any)?.path || activeFilePage?.title || 'main.tex';
+      const filename =
+        (activeFilePage && 'path' in activeFilePage && typeof activeFilePage.path === 'string'
+          ? activeFilePage.path
+          : undefined) ||
+        activeFilePage?.title ||
+        'main.tex';
 
       const effectiveScale =
         autoFit && containerWidth && containerWidth > 0
@@ -322,8 +329,11 @@ export function useViewerSyncTeX({
         }
       }
 
-      if (resolved?.line) {
+      if (resolved?.line && resolved.line >= 1) {
         void handleJumpToSource(resolved.sourcePath, resolved.line, p, customX, customY);
+      } else {
+        // No SyncTeX data for this location: do not jump (previously fell back to line 1)
+        toast.info('SyncTeX data unavailable for this location');
       }
     };
 

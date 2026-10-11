@@ -6,23 +6,23 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import { Trash2 } from 'lucide-react';
-import { LibraryTopbar, type BreadcrumbItem } from '../components/topbar';
-import { LibraryContent } from '../components/content';
-import { LibraryInspector } from '../components/inspector';
+import { LibraryTopbar, type BreadcrumbItem } from '../components/topbar/LibraryTopbar';
+import { LibraryContent } from '../components/content/LibraryContent';
+import { LibraryInspector } from '../components/inspector/LibraryInspector';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
-import { useLibraryNavigation } from '../hooks';
+import { useLibraryNavigation } from '../hooks/useLibraryNavigation';
 
 const LibraryModals = dynamic(
-  () => import('../components/modals').then((m) => m.LibraryModals),
+  () => import('../components/modals/LibraryModals').then((m) => m.LibraryModals),
   { ssr: false }
 );
 import {
   useLibrarySidebarStore,
   useLibraryModalStore,
   useLibraryUIStore,
-  useProcessModalStore,
-  useLibraryPermissions,
-} from '../store';
+} from '../store/library-ui.store';
+import { useLibraryPermissions } from '../store/selectors';
+import { useProcessModalStore } from '../store/process-modal.store';
 import {
   useCollectionsQuery,
   useSavedSearches,
@@ -34,8 +34,8 @@ import {
   libraryKeys,
   invalidateCollections,
 } from '../data';
-import { formatItemTypeLabel } from '../domain';
-import { parseEmojiPrefix } from '../utils';
+import { formatItemTypeLabel } from '../domain/metadata';
+import { parseEmojiPrefix } from '../utils/academic-text';
 
 interface LibraryPageProps {
   scopeId?: string;

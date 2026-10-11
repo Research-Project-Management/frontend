@@ -65,7 +65,7 @@ export function ProjectFilterPopover({
 
     for (const p of projects) {
       const leadMember = p.members?.find(
-        (m: any) => m.role === 'owner' || m.role === 'lead'
+        (m) => m.role === 'owner' || m.role === 'lead'
       );
       const user =
         leadMember?.user ||
@@ -101,7 +101,7 @@ export function ProjectFilterPopover({
     for (const p of projects) {
       if (Array.isArray(p.members)) {
         for (const m of p.members) {
-          const user = (m as any).user;
+          const user = m.user;
           if (user) {
             const id = String(user.id || '');
             if (id && !memberMap.has(id)) {
@@ -382,18 +382,20 @@ export function ProjectFilterPopover({
 
             {dateOpen && (
               <div className="space-y-1 mt-1.5 pl-1">
-                {[
-                  { id: 'today', label: 'Today' },
-                  { id: 'yesterday', label: 'Yesterday' },
-                  { id: 'last-7-days', label: 'Last 7 days' },
-                  { id: 'last-30-days', label: 'Last 30 days' },
-                  { id: 'custom', label: 'Custom' },
-                ].map((item) => {
+                {(
+                  [
+                    { id: 'today', label: 'Today' },
+                    { id: 'yesterday', label: 'Yesterday' },
+                    { id: 'last-7-days', label: 'Last 7 days' },
+                    { id: 'last-30-days', label: 'Last 30 days' },
+                    { id: 'custom', label: 'Custom' },
+                  ] as const
+                ).map((item) => {
                   const isSelected = filter.createdDate === item.id;
                   return (
                     <label
                       key={item.id}
-                      onClick={() => setCreatedDate(isSelected ? 'all' : (item.id as any))}
+                      onClick={() => setCreatedDate(isSelected ? 'all' : item.id)}
                       className="flex items-center gap-2 py-1 px-1.5 rounded-md hover:bg-muted cursor-pointer text-xs transition-colors"
                     >
                       <FilterCheckbox checked={isSelected} />

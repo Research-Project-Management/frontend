@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { WorkItemPage } from '@/features/projects/project-id/work-items';
+import { WorkItemPage } from '@/features/projects/project-id/work-items/pages/WorkItemPage';
 
 export const metadata: Metadata = { title: 'Work Items · Flux' };
 

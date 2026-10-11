@@ -3,20 +3,21 @@
 /**
  * SymbolPaletteModal.tsx
  *
- * Canonical Presentational Modal for LaTeX symbol palette (Block 7: UI Shell / Modals Layer):
+ * Modal for LaTeX symbol palette (UI Shell / Modals Layer):
  * - Fast interactive symbol palette categorized by Greek, Operators, Relations, Arrows, Delimiters
- * - Instant insertion at cursor via `useSymbolPalette`
+ * - Instant insertion at cursor with feedback
  * - Keep open toggle for multiple symbol selections
  * Location: `features/editor/ui/modals/SymbolPaletteModal.tsx`
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Sigma,
   Search,
   Info,
   X,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -34,7 +35,6 @@ import {
   TabsTrigger,
 } from '@/shared/components/ui/tabs';
 import { cn } from '@/shared/lib/utils';
-import { useSymbolPalette } from './hooks/useSymbolPalette';
 
 export interface SymbolPaletteModalProps {
   open: boolean;
@@ -42,136 +42,9 @@ export interface SymbolPaletteModalProps {
   onInsert: (latexSymbol: string) => void;
 }
 
-interface MathSymbol {
-  command: string;
-  display: string;
-  name: string;
-  category: 'greek-lower' | 'greek-upper' | 'operators' | 'relations' | 'arrows' | 'delimiters';
-}
+import { getModalSymbols, type MathSymbol } from '@/features/editor/domain/latex/latex-symbols';
 
-const SYMBOLS: MathSymbol[] = [
-  // ── Greek Lowercase ───────────────────────────────────────────
-  { command: '\\alpha', display: 'α', name: 'alpha', category: 'greek-lower' },
-  { command: '\\beta', display: 'β', name: 'beta', category: 'greek-lower' },
-  { command: '\\gamma', display: 'γ', name: 'gamma', category: 'greek-lower' },
-  { command: '\\delta', display: 'δ', name: 'delta', category: 'greek-lower' },
-  { command: '\\epsilon', display: 'ϵ', name: 'epsilon', category: 'greek-lower' },
-  { command: '\\varepsilon', display: 'ε', name: 'varepsilon', category: 'greek-lower' },
-  { command: '\\zeta', display: 'ζ', name: 'zeta', category: 'greek-lower' },
-  { command: '\\eta', display: 'η', name: 'eta', category: 'greek-lower' },
-  { command: '\\theta', display: 'θ', name: 'theta', category: 'greek-lower' },
-  { command: '\\vartheta', display: 'ϑ', name: 'vartheta', category: 'greek-lower' },
-  { command: '\\iota', display: 'ι', name: 'iota', category: 'greek-lower' },
-  { command: '\\kappa', display: 'κ', name: 'kappa', category: 'greek-lower' },
-  { command: '\\lambda', display: 'λ', name: 'lambda', category: 'greek-lower' },
-  { command: '\\mu', display: 'μ', name: 'mu', category: 'greek-lower' },
-  { command: '\\nu', display: 'ν', name: 'nu', category: 'greek-lower' },
-  { command: '\\xi', display: 'ξ', name: 'xi', category: 'greek-lower' },
-  { command: '\\pi', display: 'π', name: 'pi', category: 'greek-lower' },
-  { command: '\\varpi', display: 'ϖ', name: 'varpi', category: 'greek-lower' },
-  { command: '\\rho', display: 'ρ', name: 'rho', category: 'greek-lower' },
-  { command: '\\varrho', display: 'ϱ', name: 'varrho', category: 'greek-lower' },
-  { command: '\\sigma', display: 'σ', name: 'sigma', category: 'greek-lower' },
-  { command: '\\varsigma', display: 'ς', name: 'varsigma', category: 'greek-lower' },
-  { command: '\\tau', display: 'τ', name: 'tau', category: 'greek-lower' },
-  { command: '\\upsilon', display: 'υ', name: 'upsilon', category: 'greek-lower' },
-  { command: '\\phi', display: 'ϕ', name: 'phi', category: 'greek-lower' },
-  { command: '\\varphi', display: 'φ', name: 'varphi', category: 'greek-lower' },
-  { command: '\\chi', display: 'χ', name: 'chi', category: 'greek-lower' },
-  { command: '\\psi', display: 'ψ', name: 'psi', category: 'greek-lower' },
-  { command: '\\omega', display: 'ω', name: 'omega', category: 'greek-lower' },
-
-  // ── Greek Uppercase ───────────────────────────────────────────
-  { command: '\\Gamma', display: 'Γ', name: 'Gamma', category: 'greek-upper' },
-  { command: '\\Delta', display: 'Δ', name: 'Delta', category: 'greek-upper' },
-  { command: '\\Theta', display: 'Θ', name: 'Theta', category: 'greek-upper' },
-  { command: '\\Lambda', display: 'Λ', name: 'Lambda', category: 'greek-upper' },
-  { command: '\\Xi', display: 'Ξ', name: 'Xi', category: 'greek-upper' },
-  { command: '\\Pi', display: 'Π', name: 'Pi', category: 'greek-upper' },
-  { command: '\\Sigma', display: 'Σ', name: 'Sigma', category: 'greek-upper' },
-  { command: '\\Upsilon', display: 'Υ', name: 'Upsilon', category: 'greek-upper' },
-  { command: '\\Phi', display: 'Φ', name: 'Phi', category: 'greek-upper' },
-  { command: '\\Psi', display: 'Ψ', name: 'Psi', category: 'greek-upper' },
-  { command: '\\Omega', display: 'Ω', name: 'Omega', category: 'greek-upper' },
-
-  // ── Operators & Calculus ──────────────────────────────────────
-  { command: '\\pm', display: '±', name: 'plus-minus', category: 'operators' },
-  { command: '\\mp', display: '∓', name: 'minus-plus', category: 'operators' },
-  { command: '\\times', display: '×', name: 'times multiply', category: 'operators' },
-  { command: '\\div', display: '÷', name: 'divide', category: 'operators' },
-  { command: '\\cdot', display: '·', name: 'center dot', category: 'operators' },
-  { command: '\\ast', display: '∗', name: 'asterisk', category: 'operators' },
-  { command: '\\star', display: '⋆', name: 'star', category: 'operators' },
-  { command: '\\circ', display: '∘', name: 'compose circle', category: 'operators' },
-  { command: '\\bullet', display: '•', name: 'bullet', category: 'operators' },
-  { command: '\\oplus', display: '⊕', name: 'direct sum oplus', category: 'operators' },
-  { command: '\\otimes', display: '⊗', name: 'tensor product otimes', category: 'operators' },
-  { command: '\\int', display: '∫', name: 'integral', category: 'operators' },
-  { command: '\\iint', display: '∬', name: 'double integral', category: 'operators' },
-  { command: '\\iiint', display: '∭', name: 'triple integral', category: 'operators' },
-  { command: '\\oint', display: '∮', name: 'contour integral', category: 'operators' },
-  { command: '\\sum_{i=1}^{n}', display: '∑', name: 'summation sum', category: 'operators' },
-  { command: '\\prod_{i=1}^{n}', display: '∏', name: 'product', category: 'operators' },
-  { command: '\\coprod', display: '∐', name: 'coproduct', category: 'operators' },
-  { command: '\\partial', display: '∂', name: 'partial derivative', category: 'operators' },
-  { command: '\\nabla', display: '∇', name: 'nabla gradient del', category: 'operators' },
-  { command: '\\infty', display: '∞', name: 'infinity', category: 'operators' },
-
-  // ── Relations & Sets ──────────────────────────────────────────
-  { command: '\\le', display: '≤', name: 'less than or equal', category: 'relations' },
-  { command: '\\ge', display: '≥', name: 'greater than or equal', category: 'relations' },
-  { command: '\\neq', display: '≠', name: 'not equal', category: 'relations' },
-  { command: '\\approx', display: '≈', name: 'approximate', category: 'relations' },
-  { command: '\\equiv', display: '≡', name: 'equivalent', category: 'relations' },
-  { command: '\\sim', display: '∼', name: 'similar', category: 'relations' },
-  { command: '\\simeq', display: '≃', name: 'asymptotically equal', category: 'relations' },
-  { command: '\\ll', display: '≪', name: 'much less than', category: 'relations' },
-  { command: '\\gg', display: '≫', name: 'much greater than', category: 'relations' },
-  { command: '\\in', display: '∈', name: 'element of in', category: 'relations' },
-  { command: '\\notin', display: '∉', name: 'not in', category: 'relations' },
-  { command: '\\ni', display: '∋', name: 'contains as member', category: 'relations' },
-  { command: '\\subset', display: '⊂', name: 'subset', category: 'relations' },
-  { command: '\\supset', display: '⊃', name: 'superset', category: 'relations' },
-  { command: '\\subseteq', display: '⊆', name: 'subset or equal', category: 'relations' },
-  { command: '\\supseteq', display: '⊇', name: 'superset or equal', category: 'relations' },
-  { command: '\\cap', display: '∩', name: 'intersection cap', category: 'relations' },
-  { command: '\\cup', display: '∪', name: 'union cup', category: 'relations' },
-  { command: '\\emptyset', display: '∅', name: 'empty set', category: 'relations' },
-  { command: '\\propto', display: '∝', name: 'proportional to', category: 'relations' },
-  { command: '\\perp', display: '⊥', name: 'perpendicular orthogonal', category: 'relations' },
-  { command: '\\parallel', display: '∥', name: 'parallel', category: 'relations' },
-
-  // ── Arrows & Logic ────────────────────────────────────────────
-  { command: '\\leftarrow', display: '←', name: 'left arrow', category: 'arrows' },
-  { command: '\\rightarrow', display: '→', name: 'right arrow', category: 'arrows' },
-  { command: '\\leftrightarrow', display: '↔', name: 'left right arrow', category: 'arrows' },
-  { command: '\\Leftarrow', display: '⇐', name: 'double left arrow', category: 'arrows' },
-  { command: '\\Rightarrow', display: '⇒', name: 'implies double right arrow', category: 'arrows' },
-  { command: '\\Leftrightarrow', display: '⇔', name: 'iff double left right arrow', category: 'arrows' },
-  { command: '\\mapsto', display: '↦', name: 'maps to', category: 'arrows' },
-  { command: '\\uparrow', display: '↑', name: 'up arrow', category: 'arrows' },
-  { command: '\\downarrow', display: '↓', name: 'down arrow', category: 'arrows' },
-  { command: '\\forall', display: '∀', name: 'for all universal', category: 'arrows' },
-  { command: '\\exists', display: '∃', name: 'exists existential', category: 'arrows' },
-  { command: '\\neg', display: '¬', name: 'not negation', category: 'arrows' },
-  { command: '\\land', display: '∧', name: 'logical and wedge', category: 'arrows' },
-  { command: '\\lor', display: '∨', name: 'logical or vee', category: 'arrows' },
-
-  // ── Accents & Delimiters ──────────────────────────────────────
-  { command: '\\frac{a}{b}', display: 'a/b', name: 'fraction frac', category: 'delimiters' },
-  { command: '\\sqrt{x}', display: '√x', name: 'square root sqrt', category: 'delimiters' },
-  { command: '\\sqrt[n]{x}', display: 'ⁿ√x', name: 'nth root', category: 'delimiters' },
-  { command: '\\hat{x}', display: 'x̂', name: 'hat accent', category: 'delimiters' },
-  { command: '\\bar{x}', display: 'x̄', name: 'bar accent', category: 'delimiters' },
-  { command: '\\vec{x}', display: 'x⃗', name: 'vector vec', category: 'delimiters' },
-  { command: '\\dot{x}', display: 'ẋ', name: 'dot derivative', category: 'delimiters' },
-  { command: '\\ddot{x}', display: 'ẍ', name: 'double dot derivative', category: 'delimiters' },
-  { command: '\\tilde{x}', display: 'x̃', name: 'tilde', category: 'delimiters' },
-  { command: '\\left\\{ x \\right\\}', display: '{x}', name: 'curly braces set', category: 'delimiters' },
-  { command: '\\left\\langle x \\right\\rangle', display: '⟨x⟩', name: 'angle brackets', category: 'delimiters' },
-  { command: '\\left\\lfloor x \\right\\rfloor', display: '⌊x⌋', name: 'floor', category: 'delimiters' },
-  { command: '\\left\\lceil x \\right\\rceil', display: '⌈x⌉', name: 'ceiling', category: 'delimiters' },
-];
+const SYMBOLS = getModalSymbols();
 
 export function SymbolPaletteModal({
   open,
@@ -181,12 +54,21 @@ export function SymbolPaletteModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<string>('all');
 
-  const {
-    lastInserted,
-    keepOpen,
-    setKeepOpen,
-    insertSymbol,
-  } = useSymbolPalette({ onInsert, onOpenChange });
+  const [lastInserted, setLastInserted] = useState<string | null>(null);
+  const [keepOpen, setKeepOpen] = useState(true);
+
+  const insertSymbol = useCallback(
+    (sym: MathSymbol) => {
+      onInsert(`${sym.command} `);
+      setLastInserted(sym.command);
+      toast.success(`Inserted ${sym.command}`, { duration: 1200 });
+
+      if (!keepOpen) {
+        onOpenChange(false);
+      }
+    },
+    [onInsert, keepOpen, onOpenChange],
+  );
 
   const filteredSymbols = useMemo(() => {
     let list = SYMBOLS;
@@ -207,21 +89,14 @@ export function SymbolPaletteModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-6 gap-3.5 text-xs bg-background border border-border shadow-raised-300 rounded-lg">
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-6 gap-3.5 text-xs bg-background border border-border shadow-raised-200 rounded-md">
         <DialogHeader>
-          <div className="flex items-center gap-2">
-            <div className="size-8 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <Sigma className="size-4" />
-            </div>
-            <div>
-              <DialogTitle className="text-base font-semibold">
-                LaTeX Symbol Palette
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Click any symbol to insert directly into your document at current cursor.
-              </DialogDescription>
-            </div>
-          </div>
+          <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
+            LaTeX Symbol Palette
+          </DialogTitle>
+          <DialogDescription className="text-12 text-muted-foreground mt-0.5">
+            Click any symbol to insert directly into your document at current cursor.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Search Input */}

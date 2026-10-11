@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -53,7 +53,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
 
   // Synchronous lookup from projects list cache
   const projectFromList = useMemo(
-    () => (projectId ? projects.find((p) => p.id === projectId || (p as any).identifier === projectId) : null),
+    () => (projectId ? projects.find((p) => p.id === projectId || (p as { identifier?: string }).identifier === projectId) : null),
     [projects, projectId]
   );
 
@@ -106,11 +106,12 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
             if (!map.has(id)) {
               map.set(id, { id, name, color });
             }
-          } else if (typeof l === 'object') {
-            const id = (l as any).id || (l as any).name;
-            const matched = projectLabels.find((pl: any) => pl.id === id || pl.name === (l as any).name);
-            const name = matched?.name || (l as any).name || (l as any).title || id;
-            const color = (l as any).color || matched?.color || '#3b82f6';
+          } else if (typeof l === 'object' && l !== null) {
+            const labelObj = l as { id?: string; name?: string; title?: string; color?: string };
+            const id = labelObj.id || labelObj.name;
+            const matched = projectLabels.find((pl) => pl.id === id || pl.name === labelObj.name);
+            const name = matched?.name || labelObj.name || labelObj.title || id || '';
+            const color = labelObj.color || matched?.color || '#3b82f6';
             if (id && !map.has(id)) {
               map.set(id, { id, name, color });
             }
@@ -123,7 +124,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
     if (selectedLabelIds.length > 0) {
       for (const id of selectedLabelIds) {
         if (!map.has(id)) {
-          const matched = projectLabels.find((pl: any) => pl.id === id || pl.name === id);
+          const matched = projectLabels.find((pl) => pl.id === id || pl.name === id);
           if (matched) {
             map.set(id, matched);
           }
@@ -135,7 +136,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
   }, [pages, projectLabels, selectedLabelIds]);
 
   const selectedLabels = useMemo(
-    () => assignedLabels.filter((l: any) => selectedLabelIds.includes(l.id)),
+    () => assignedLabels.filter((l) => selectedLabelIds.includes(l.id)),
     [assignedLabels, selectedLabelIds]
   );
 
@@ -143,9 +144,9 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
     let result = pages;
     if (selectedLabelIds.length > 0) {
       result = result.filter((page) =>
-        (page.labels as any[])?.some((label) => {
+        (page.labels as Array<{ id?: string; name?: string } | string> | undefined)?.some((label) => {
           const lid = typeof label === 'string' ? label : (label?.id || label?.name);
-          return selectedLabelIds.includes(lid);
+          return lid ? selectedLabelIds.includes(lid) : false;
         })
       );
     }
@@ -185,7 +186,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
         data.mainFileId ||
         (typeof data.mainFile === 'string'
           ? data.mainFile
-          : (data.mainFile as any)?.id);
+          : (data.mainFile as { id?: string } | undefined)?.id);
       const queryStr = mainFileId ? `?file=${mainFileId}` : '';
       const targetUrl = `/projects/${projectId}/pages/${data.page.id}${queryStr}`;
       router.push(targetUrl);

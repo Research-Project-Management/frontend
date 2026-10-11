@@ -3,14 +3,13 @@
 /**
  * FigureWizardModal.tsx
  *
- * Canonical Presentational Modal for LaTeX figure insertion (Block 7: UI Shell / Modals Layer):
- * - State and validation managed by `useFigureWizard` (React Hook Form + Zod)
- * - Toasts and clipboard operations encapsulated within the hook
- * - Zero direct toast imports in this presentation component
+ * Modal for LaTeX figure insertion (UI Shell / Modals Layer):
+ * - State and validation managed with React Hook Form + Zod
+ * - Live preview with configurable dimensions, caption, and label
  * Location: `features/editor/ui/modals/FigureWizardModal.tsx`
  */
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   Image as ImageIcon,
   Upload,
@@ -19,6 +18,9 @@ import {
   FileImage,
   Loader2,
 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -33,7 +35,10 @@ import { Checkbox } from '@/shared/components/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
 import { useEditorStorage } from '@/features/editor/ui/hooks/use-storage';
 import { resolveFileUrl } from '@/features/editor/domain/latex/latex-structure';
-import { useFigureWizard } from './hooks/useFigureWizard';
+import {
+  figureWizardSchema,
+  type FigureWizardFormValues,
+} from '@/features/editor/domain/types';
 
 export interface FigureWizardModalProps {
   open: boolean;
@@ -70,19 +75,68 @@ export function FigureWizardModal({
     });
   }, [files]);
 
-  const {
-    form,
-    values,
-    generatedLatex,
-    handleSelectImage,
-    insertFigure,
-    copyFigureCode,
-  } = useFigureWizard({
-    onInsert,
-    onClose: () => onOpenChange(false),
+  const form = useForm<FigureWizardFormValues>({
+    resolver: zodResolver(figureWizardSchema),
+    defaultValues: {
+      selectedFilename: '',
+      caption: 'Figure caption',
+      label: 'fig:my_figure',
+      width: '0.8\\linewidth',
+      placement: 'htbp',
+      centering: true,
+    },
   });
 
-  const { register, setValue } = form;
+  const { watch, setValue, register } = form;
+  const values = watch();
+
+  const handleSelectImage = useCallback(
+    (filename: string) => {
+      setValue('selectedFilename', filename, { shouldValidate: true });
+      const stem = filename
+        .replace(/\.[^/.]+$/, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, '_');
+      setValue('label', `fig:${stem}`);
+    },
+    [setValue],
+  );
+
+  const generatedLatex = useMemo(() => {
+    const imgName = values.selectedFilename || 'example-image.png';
+
+    let code = `\\begin{figure}[${values.placement}]\n`;
+    if (values.centering) {
+      code += `  \\centering\n`;
+    }
+    code += `  \\includegraphics[width=${values.width}]{${imgName}}\n`;
+    if (values.caption) {
+      code += `  \\caption{${values.caption}}\n`;
+    }
+    if (values.label) {
+      code += `  \\label{${values.label}}\n`;
+    }
+    code += `\\end{figure}\n`;
+    return code;
+  }, [
+    values.selectedFilename,
+    values.placement,
+    values.centering,
+    values.width,
+    values.caption,
+    values.label,
+  ]);
+
+  const insertFigure = useCallback(() => {
+    onInsert(generatedLatex);
+    toast.success('Figure inserted into document');
+    onOpenChange(false);
+  }, [onInsert, generatedLatex, onOpenChange]);
+
+  const copyFigureCode = useCallback(() => {
+    navigator.clipboard.writeText(generatedLatex);
+    toast.info('LaTeX code copied to clipboard');
+  }, [generatedLatex]);
 
   // Auto-select first image if none selected
   useEffect(() => {
@@ -116,21 +170,14 @@ export function FigureWizardModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-6 gap-4 text-xs bg-background border border-border shadow-raised-300 rounded-lg">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-6 gap-4 text-xs bg-background border border-border shadow-raised-200 rounded-md">
         <DialogHeader>
-          <div className="flex items-center gap-2">
-            <div className="size-8 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <ImageIcon className="size-4" />
-            </div>
-            <div>
-              <DialogTitle className="text-base font-semibold">
-                Insert LaTeX Figure
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Select an image from your project files or upload a new figure.
-              </DialogDescription>
-            </div>
-          </div>
+          <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
+            Insert LaTeX Figure
+          </DialogTitle>
+          <DialogDescription className="text-12 text-muted-foreground mt-0.5">
+            Select an image from your project files or upload a new figure.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Hidden File Input */}

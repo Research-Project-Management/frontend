@@ -26,8 +26,10 @@ import {
   CommandItem,
 } from '@/shared/components/ui/command';
 import { cn } from '@/shared/lib/utils';
-import { usePageStore, useTabsStore } from '@/features/editor/store';
-import { filesQuery } from '@/features/editor/ui/hooks/use-core';
+import { usePageStore } from '@/features/editor/store/editor.store';
+import { useTabsStore } from '@/features/editor/store/tabs.store';
+import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
+import type { PageFile } from '@/features/editor/domain/types';
 
 interface QuickOpenModalProps {
   open: boolean;
@@ -70,13 +72,17 @@ export default function QuickOpenModal({ open, onOpenChange }: QuickOpenModalPro
   });
 
   const effectiveProjectId =
-    (currentPage?.projectId as any)?.id ||
+    (typeof currentPage?.projectId === 'object' &&
+    currentPage?.projectId !== null &&
+    'id' in currentPage.projectId
+      ? (currentPage.projectId as { id: string }).id
+      : null) ||
     (typeof currentPage?.projectId === 'string' ? currentPage.projectId : null) ||
     params?.projectId ||
     rootId ||
     '';
 
-  const handleSelectFile = (file: any) => {
+  const handleSelectFile = (file: PageFile) => {
     if (!file) return;
     setActiveFilePage(file);
     if (effectiveProjectId) {
@@ -103,7 +109,7 @@ export default function QuickOpenModal({ open, onOpenChange }: QuickOpenModalPro
           No matching files found.
         </CommandEmpty>
         <CommandGroup heading="Project Files">
-          {pageFiles.map((file: any) => {
+          {pageFiles.map((file: PageFile) => {
             const { icon: IconComp, color } = getFileIcon(file.title || '');
             const isActive = file.id === activeFilePage?.id;
 

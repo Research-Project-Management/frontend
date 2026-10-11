@@ -1,6 +1,6 @@
 import * as api from "@/shared/lib/api";
 import type { SearchResponse } from "../../types";
-import { isProjectScope } from '../../domain';
+import { isProjectScope } from '../../domain/item-url';
 
 export interface SearchItemsParams {
   query: string;

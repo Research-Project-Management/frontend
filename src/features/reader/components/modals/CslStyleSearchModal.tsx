@@ -14,7 +14,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
 import { Search, Check, Loader2, X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { useSearchCslStyles } from '../../data';
+import { useSearchCslStyles } from '../../data/reader.queries';
 import type { CslStyleMetadata } from '../../types/reader.types';
 import { getCleanStyleLabel } from '../../utils/reader.util';
 

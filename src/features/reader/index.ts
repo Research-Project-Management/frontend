@@ -22,10 +22,12 @@ export {
 } from './store/reader-ui.store';
 
 // Data SDK & Queries
-export * from './data';
+export * from './data/reader.service';
+export * from './data/query-keys';
+export * from './data/reader.queries';
 
 // Components
-export * from './components/inspector';
+export { ReaderInspector } from './components/inspector/ReaderInspector';
 export { default as Panel, default as InspectorPanel } from './components/Panel';
 
 // Types

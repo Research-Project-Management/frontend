@@ -2,7 +2,7 @@
  * latex-folding.ts
  *
  * CodeMirror 6 Intelligent LaTeX Code Folding Service (Block 4: Engines Layer).
- * Location: `features/editor/engines/latex-folding.ts`
+ * Location: `features/editor/engines/extensions/latex-folding.ts`
  *
  * Capabilities:
  * 1. Environment Folding: Folds \begin{env} ... \end{env} with nested environment awareness.

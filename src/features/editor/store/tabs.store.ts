@@ -19,6 +19,7 @@ export interface EditorTab {
 export interface DocumentTabsState {
   tabsByProject: Record<string, EditorTab[]>;
   activeByProject: Record<string, string | null>;
+  secondaryActiveByProject: Record<string, string | null>;
 
   openTab: (projectIdOrTab: string | EditorTab, maybeTab?: EditorTab) => void;
   closeTab: (
@@ -27,8 +28,10 @@ export interface DocumentTabsState {
     router?: (pageId: string | null) => void,
   ) => void;
   setActive: (projectId: string, tabId: string) => void;
+  setSecondaryActive: (projectId: string, tabId: string | null) => void;
   getTabs: (projectId: string) => EditorTab[];
   getActive: (projectId: string) => string | null;
+  getSecondaryActive: (projectId: string) => string | null;
   closeAllForProject: (projectId: string) => void;
   updateTabTitle: (projectId: string, tabId: string, title: string) => void;
   clearAll: () => void;
@@ -47,6 +50,7 @@ function isMainDocTab(tab: { id?: string; title?: string }, projectId: string): 
 export const useDocumentTabsStore = create<DocumentTabsState>()((set, get) => ({
   tabsByProject: {},
   activeByProject: {},
+  secondaryActiveByProject: {},
 
   openTab(projectIdOrTab, maybeTab) {
     let projectId: string;
@@ -175,6 +179,15 @@ export const useDocumentTabsStore = create<DocumentTabsState>()((set, get) => ({
     }));
   },
 
+  setSecondaryActive(projectId, tabId) {
+    set((state) => ({
+      secondaryActiveByProject: {
+        ...state.secondaryActiveByProject,
+        [projectId]: tabId,
+      },
+    }));
+  },
+
   getTabs(projectId) {
     return get().tabsByProject[projectId] ?? [];
   },
@@ -183,13 +196,19 @@ export const useDocumentTabsStore = create<DocumentTabsState>()((set, get) => ({
     return get().activeByProject[projectId] ?? null;
   },
 
+  getSecondaryActive(projectId) {
+    return get().secondaryActiveByProject[projectId] ?? null;
+  },
+
   closeAllForProject(projectId) {
     set((state) => {
       const { [projectId]: _tabs, ...remainingTabs } = state.tabsByProject;
       const { [projectId]: _active, ...remainingActive } = state.activeByProject;
+      const { [projectId]: _secActive, ...remainingSecActive } = state.secondaryActiveByProject;
       return {
         tabsByProject: remainingTabs,
         activeByProject: remainingActive,
+        secondaryActiveByProject: remainingSecActive,
       };
     });
   },
@@ -209,7 +228,7 @@ export const useDocumentTabsStore = create<DocumentTabsState>()((set, get) => ({
   },
 
   clearAll() {
-    set({ tabsByProject: {}, activeByProject: {} });
+    set({ tabsByProject: {}, activeByProject: {}, secondaryActiveByProject: {} });
   },
 }));
 

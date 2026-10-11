@@ -16,7 +16,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { StorageService, type EditorStorageItem } from '@/features/editor/sdk';
-import { usePageStore } from '../../store';
+import { usePageStore } from '@/features/editor/store/editor.store';
 import { workspaceCoordinator } from '../../coordinators/workspace.coordinator';
 
 export function useResolvedProjectId(
@@ -26,11 +26,14 @@ export function useResolvedProjectId(
   const currentPage = usePageStore((s) => s.currentPage);
   const storeProjectId = usePageStore((s) => s.projectId);
 
+  const rawProjectId = currentPage?.projectId;
   const resolvedProjectId =
     explicitProjectId ||
-    (typeof currentPage?.projectId === 'string'
-      ? currentPage.projectId
-      : (currentPage?.projectId as any)?.id) ||
+    (typeof rawProjectId === 'string'
+      ? rawProjectId
+      : typeof rawProjectId === 'object' && rawProjectId !== null && 'id' in rawProjectId
+        ? String((rawProjectId as { id?: unknown }).id ?? '')
+        : '') ||
     storeProjectId ||
     '';
 

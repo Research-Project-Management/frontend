@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { UnfiledPage } from '@/features/library';
+import UnfiledPage from '@/features/library/pages/UnfiledPage';
 
 export const metadata: Metadata = { title: 'Unfiled Items · Library · Flux' };
 

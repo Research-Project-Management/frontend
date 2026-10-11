@@ -155,16 +155,20 @@ export function YourWorkItemList({
       const p = getWorkItemProject(item, workItemProjectMap);
       const pId = p?.id || 'unassigned-project';
       const pName = p?.name || 'No Project';
+      const projectObj =
+        typeof item.projectId === 'object' && item.projectId !== null
+          ? (item.projectId as Record<string, unknown>)
+          : null;
       const pIdentifier =
         item.project?.identifier ||
-        (typeof item.projectId === 'object' && item.projectId !== null
-          ? (item.projectId as any).identifier
+        (typeof projectObj?.identifier === 'string'
+          ? projectObj.identifier
           : null) ||
         null;
       const pAvatar =
         item.project?.avatar ||
-        (typeof item.projectId === 'object' && item.projectId !== null
-          ? (item.projectId as any).avatar
+        (typeof projectObj?.avatar === 'string'
+          ? projectObj.avatar
           : null) ||
         p?.avatar ||
         null;

@@ -427,7 +427,7 @@ export { DEFAULT_STATES, PRIORITY_THEME_COLORS, GROUP_DEFAULT_COLORS } from '../
 
 export function getItemBucketKey(item: Item, groupBy?: string): string {
   if (!groupBy || groupBy === 'state') {
-    return item.columnId || (item as any).stateId || '';
+    return item.columnId || (item as { stateId?: string }).stateId || '';
   }
   if (groupBy === 'none') {
     return '__all__';
@@ -441,17 +441,24 @@ export function getItemBucketKey(item: Item, groupBy?: string): string {
   if (groupBy === 'labels') {
     const itemLabels = Array.isArray(item.labels) ? item.labels : [];
     if (itemLabels.length === 0) return '__no_label__';
-    const first = itemLabels[0] as any;
+    const first = itemLabels[0];
     const firstLabel =
       typeof first === 'object' && first !== null
-        ? first.id || first.name
-        : first;
+        ? (first as { id?: string; name?: string }).id ||
+          (first as { id?: string; name?: string }).name
+        : String(first ?? '');
     return firstLabel || '__no_label__';
   }
+  const itemRecord = item as Record<string, unknown>;
   if (groupBy === 'createdBy') {
-    const authorId = item.authorId || (item as any).createdBy || (item as any).author?.id;
+    const authorId =
+      item.authorId ||
+      (typeof itemRecord.createdBy === 'string' ? itemRecord.createdBy : undefined) ||
+      (typeof itemRecord.author === 'object' && itemRecord.author !== null && 'id' in itemRecord.author
+        ? (itemRecord.author as { id?: string }).id
+        : undefined);
     return authorId || '__unknown__';
   }
-  return item.columnId || (item as any).stateId || '';
+  return item.columnId || (typeof itemRecord.stateId === 'string' ? itemRecord.stateId : '');
 }
 

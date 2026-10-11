@@ -16,17 +16,87 @@
  */
 
 import { LatexCompilerEngine } from './compilation-pipeline';
-import type { SyncTeXMap } from '@/features/editor/domain';
+import {
+  resolveForwardDetail,
+  resolveForward,
+  resolveReverse,
+  type SyncTeXMap,
+} from '../domain/pdf/synctex-index';
+import {
+  assembleCompilationSnapshot,
+  type ProjectCompilationSnapshot,
+  type SnapshotProjectFile,
+} from '../domain/document/compilation-snapshot';
 import { latexDagEngine } from '../domain/latex/latex-dag-engine';
 import { lruDocumentCache } from '../domain/document/lru-document-cache';
-import { CompilationSnapshotProvider } from './compilation-snapshot.coordinator';
+import { workspaceCoordinator } from './workspace.coordinator';
 import { diagnosticsCoordinator } from './diagnostics.coordinator';
 import { sessionCoordinator } from './session.coordinator';
 import { editorCommandBus } from './command-bus';
-import { useCompileStore, usePageStore, useSettingsStore, useConnectivityStore } from '../store';
+import { useCompileStore } from '../store/compiler.store';
+import { usePageStore } from '../store/editor.store';
+import { useSettingsStore } from '../store/settings.store';
+import { useConnectivityStore } from '../store/connectivity.store';
 import { getActiveEditorContent, getActiveEditorEngine, getActivePdfViewer } from './command-bus';
 import type { CompileError, CompileStatus } from '../domain/types/compiler.types';
 import { extractProjectId, extractDocumentContentString } from '../domain/types/core.types';
+import type { NodeTreeItem } from '../domain/types/node.types';
+
+export interface CreateSnapshotOptions {
+  rootFileId?: string;
+  resolvedMainFile?: string;
+  projectFiles?: SnapshotProjectFile[];
+}
+
+/**
+ * Collects fileId -> path/title from every page-store source (file hierarchy, current page,
+ * active file page) so in-memory models registered without a filePath are not keyed by UUID.
+ */
+export function buildPageStoreFilePaths(pageStore: {
+  fileHierarchy?: NodeTreeItem[] | null;
+  currentPage?: { id?: string; title?: string; path?: string } | null;
+  activeFilePage?: { id?: string; title?: string; path?: string } | null;
+}): Record<string, string> {
+  const map: Record<string, string> = {};
+  const add = (id?: string, path?: string) => {
+    if (id && path && path !== id && !map[id]) map[id] = path;
+  };
+  add(pageStore.activeFilePage?.id, pageStore.activeFilePage?.path || pageStore.activeFilePage?.title);
+  add(pageStore.currentPage?.id, pageStore.currentPage?.path || pageStore.currentPage?.title);
+  const stack: NodeTreeItem[] = [...(pageStore.fileHierarchy ?? [])];
+  while (stack.length > 0) {
+    const node = stack.pop()!;
+    add(node.id, node.title);
+    if (node.children?.length) stack.push(...node.children);
+  }
+  return map;
+}
+
+export class CompilationSnapshotProvider {
+  public static createSnapshot(options: CreateSnapshotOptions = {}): ProjectCompilationSnapshot {
+    const pageStore = usePageStore.getState();
+    const compileStore = useCompileStore.getState();
+
+    const activeDoc = pageStore.getActiveDocument();
+    const activeContent = getActiveEditorContent() || (activeDoc?.content as string) || '';
+
+    const baseFiles = options.projectFiles || workspaceCoordinator.getProjectFiles() || [];
+    const lruModels = lruDocumentCache.getAllModels();
+    const dirtyFiles = compileStore.getDirtyFiles();
+
+    return assembleCompilationSnapshot({
+      baseFiles,
+      lruModels,
+      dirtyFiles,
+      currentPage: pageStore.currentPage,
+      activeDoc,
+      activeContent,
+      rootFileId: options.rootFileId,
+      resolvedMainFile: options.resolvedMainFile,
+      filePathsById: buildPageStoreFilePaths(pageStore),
+    });
+  }
+}
 
 export interface CompileOptions {
   forceClean?: boolean;
@@ -410,7 +480,7 @@ export class CompilerCoordinatorRegistry {
     synctexMapOverride?: SyncTeXMap | null,
   ): SyncTeXForwardDetail | null {
     const map = synctexMapOverride !== undefined ? synctexMapOverride : this.synctexMap;
-    return LatexCompilerEngine.resolveForwardDetail(line, map, activeTitle, maxPages);
+    return resolveForwardDetail(line, map, activeTitle, maxPages);
   }
 
   public resolveForward(
@@ -420,7 +490,7 @@ export class CompilerCoordinatorRegistry {
     synctexMapOverride?: SyncTeXMap | null,
   ): number | null {
     const map = synctexMapOverride !== undefined ? synctexMapOverride : this.synctexMap;
-    return LatexCompilerEngine.resolveForward(line, map, activeTitle, maxPages);
+    return resolveForward(line, map, activeTitle, maxPages);
   }
 
   public resolveReverse(
@@ -431,7 +501,7 @@ export class CompilerCoordinatorRegistry {
     synctexMapOverride?: SyncTeXMap | null,
   ): SyncTeXReverseDetail | null {
     const map = synctexMapOverride !== undefined ? synctexMapOverride : this.synctexMap;
-    return LatexCompilerEngine.resolveReverse(clickFraction, pageNum, map, ptX, ptY);
+    return resolveReverse(clickFraction, pageNum, map, ptX, ptY);
   }
 
   public async resolveReverseRemote(

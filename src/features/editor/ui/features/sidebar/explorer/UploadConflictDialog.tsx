@@ -65,9 +65,9 @@ export function UploadConflictDialog({
 }: UploadConflictDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md p-6 bg-background border border-border shadow-raised-200 rounded-md">
         <DialogHeader>
-          <DialogTitle className="text-sm">Upload Files</DialogTitle>
+          <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">Upload Files</DialogTitle>
           <DialogDescription className="sr-only">
             Review and resolve duplicate files or zip extraction settings before uploading.
           </DialogDescription>

@@ -26,9 +26,9 @@ import React, {
 } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Loader2 } from 'lucide-react';
-import type { SyncTeXMap } from '@/features/editor/domain';
+import type { SyncTeXMap } from '@/features/editor/domain/pdf/synctex-index';
 import { compilerCoordinator } from '@/features/editor/coordinators/compiler.coordinator';
-import { useIntersectionObserver } from "@/shared/hooks";
+import { useIntersectionObserver } from "@/shared/hooks/use-intersection-observer";
 import { logger, cn } from "@/shared/lib/utils";
 import { PlaneErrorState, PlaneEmptyState } from '@/shared/components/ui';
 import { useViewerStore } from '@/features/editor/store/viewer.store';
@@ -372,6 +372,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
   );
 
   const scrollRafRef = useRef<number | null>(null);
+  const lastScrollTopRef = useRef<number>(0);
 
   useEffect(() => {
     return () => {
@@ -460,6 +461,9 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
   }));
 
   const handleContainerScroll = useCallback(() => {
+    if (scrollContainerRef.current && scrollContainerRef.current.scrollTop > 0) {
+      lastScrollTopRef.current = scrollContainerRef.current.scrollTop;
+    }
     if (!onScroll) return;
     if (scrollRafRef.current !== null) return;
 
@@ -494,6 +498,16 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
       setDocLoadError(null);
       onNumPagesChange?.(pdf.numPages);
       parentOnLoadSuccess?.(pdf);
+
+      // Overleaf Parity: Restore scroll position across recompiles
+      if (scrollContainerRef.current && lastScrollTopRef.current > 0) {
+        const savedTop = lastScrollTopRef.current;
+        requestAnimationFrame(() => {
+          if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = savedTop;
+          }
+        });
+      }
     });
   }, [onNumPagesChange, parentOnLoadSuccess]);
 

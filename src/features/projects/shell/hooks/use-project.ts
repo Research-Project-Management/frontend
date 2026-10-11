@@ -444,7 +444,7 @@ export interface UseProjectsReturn {
   isLoading: boolean;
   isError: boolean;
   error: Error | null;
-  refetch: () => Promise<any>;
+  refetch: () => Promise<unknown>;
 }
 
 export function useProjects(options?: { isArchived?: boolean }): UseProjectsReturn {
@@ -460,13 +460,17 @@ export function useProjects(options?: { isArchived?: boolean }): UseProjectsRetu
   const toggleFavMutation = useToggleProjectFavorite();
   const deleteMutation = useDeleteProject();
 
-  const pData = query.data as any;
+  const pData = query.data as Record<string, unknown> | undefined;
   const projectsList: Project[] = useMemo(() => {
-    return (
-      pData?.projects ??
-      pData?.data?.projects ??
-      (Array.isArray(pData?.data) ? pData.data : Array.isArray(pData) ? pData : [])
-    );
+    if (!pData) return [];
+    if (Array.isArray(pData)) return pData as Project[];
+    if (Array.isArray(pData.projects)) return pData.projects as Project[];
+    if (typeof pData.data === 'object' && pData.data !== null) {
+      const nested = pData.data as Record<string, unknown>;
+      if (Array.isArray(nested.projects)) return nested.projects as Project[];
+      if (Array.isArray(nested)) return nested as Project[];
+    }
+    return [];
   }, [pData]);
 
   const state: UseProjectsState = useMemo(
@@ -585,22 +589,35 @@ export function useProject(
 
   const project: Project | null = useMemo(() => {
     if (!query.data) return null;
-    return (query.data as any)?.project || (query.data as any)?.data || query.data;
+    const dataObj = query.data as Record<string, unknown>;
+    if ('project' in dataObj && dataObj.project) {
+      return dataObj.project as Project;
+    }
+    if ('data' in dataObj && dataObj.data && typeof dataObj.data === 'object') {
+      return dataObj.data as Project;
+    }
+    return query.data as unknown as Project;
   }, [query.data]);
 
   const yourRole = useMemo(() => {
+    if (!query.data) return null;
+    const dataObj = query.data as Record<string, unknown>;
+    const nestedProject = dataObj.project as Record<string, unknown> | undefined;
     return (
-      (query.data as any)?.yourRole ||
-      (query.data as any)?.project?.yourRole ||
+      (dataObj.yourRole as string | null | undefined) ||
+      (nestedProject?.yourRole as string | null | undefined) ||
       project?.yourRole ||
       null
     );
   }, [query.data, project]);
 
   const permissions = useMemo<ProjectPermissions | null>(() => {
+    if (!query.data) return null;
+    const dataObj = query.data as Record<string, unknown>;
+    const nestedProject = dataObj.project as Record<string, unknown> | undefined;
     return (
-      (query.data as any)?.permissions ||
-      (query.data as any)?.project?.permissions ||
+      (dataObj.permissions as ProjectPermissions | null | undefined) ||
+      (nestedProject?.permissions as ProjectPermissions | null | undefined) ||
       project?.permissions ||
       null
     );
@@ -789,7 +806,8 @@ export const useTrashedProjects = () => {
     staleTime: 30_000,
   });
 
-  const projects = (query.data as any)?.projects ?? [];
+  const queryData = query.data as { projects?: Project[] } | undefined;
+  const projects = queryData?.projects ?? [];
   return {
     projects,
     isLoading: query.isLoading,

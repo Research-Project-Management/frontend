@@ -97,7 +97,7 @@ export function ActivityBar() {
                     className={cn(
                       'group relative flex size-9 items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                       isActive
-                        ? 'bg-sidebar-accent text-foreground font-semibold shadow-xs'
+                        ? 'bg-sidebar-accent text-foreground font-semibold'
                         : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-hover'
                     )}
                   >

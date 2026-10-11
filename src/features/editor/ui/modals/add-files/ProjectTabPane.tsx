@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -16,10 +16,29 @@ import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
 import { pageService } from '@/features/editor/sdk';
 
+interface ProjectOption {
+  id: string;
+  name?: string;
+  title?: string;
+}
+
+interface ProjectPageOption {
+  id: string;
+  title: string;
+}
+
 export interface ProjectTabPaneProps {
   projectId?: string;
   parentPageId: string | null;
-  createFile: any;
+  createFile: {
+    mutate: (
+      variables: { parentPageId: string; title: string; content?: string },
+      options?: {
+        onSuccess?: (created: { id: string }) => void;
+        onSettled?: () => void;
+      },
+    ) => void;
+  };
   setSearchParams: (params: Record<string, string>) => void;
   onClose: () => void;
 }
@@ -38,7 +57,7 @@ export function ProjectTabPane({
   const [isCopyingFromProject, setIsCopyingFromProject] = useState(false);
 
   const availableProjects = useMemo(() => {
-    return allProjects.filter((p: any) => p.id !== projectId);
+    return (allProjects as ProjectOption[]).filter((p) => p.id !== projectId);
   }, [allProjects, projectId]);
 
   const {
@@ -56,9 +75,17 @@ export function ProjectTabPane({
     try {
       const sourcePage = await pageService.getById(selectedFileId);
       const rawContent = sourcePage?.content;
-      const contentStr = typeof rawContent === 'string'
-        ? rawContent
-        : (rawContent as any)?.text || (rawContent as any)?.content || '';
+      let contentStr = '';
+      if (typeof rawContent === 'string') {
+        contentStr = rawContent;
+      } else if (rawContent && typeof rawContent === 'object') {
+        const rc = rawContent as Record<string, unknown>;
+        if (typeof rc.text === 'string') {
+          contentStr = rc.text;
+        } else if (typeof rc.content === 'string') {
+          contentStr = rc.content;
+        }
+      }
       createFile.mutate(
         {
           parentPageId,
@@ -66,7 +93,7 @@ export function ProjectTabPane({
           content: contentStr,
         },
         {
-          onSuccess: (created: any) => {
+          onSuccess: (created: { id: string }) => {
             setSearchParams({ file: created.id });
             onClose();
           },
@@ -110,7 +137,7 @@ export function ProjectTabPane({
                 <SelectValue placeholder="Select a project" />
               </SelectTrigger>
               <SelectContent>
-                {availableProjects.map((p: any) => (
+                {availableProjects.map((p) => (
                   <SelectItem
                     key={p.id}
                     value={p.id}
@@ -144,8 +171,8 @@ export function ProjectTabPane({
                 value={selectedFileId}
                 onValueChange={(val) => {
                   setSelectedFileId(val);
-                  const target = otherProjectPages.find(
-                    (f: any) => f.id === val,
+                  const target = (otherProjectPages as ProjectPageOption[]).find(
+                    (f) => f.id === val,
                   );
                   if (target) setProjectTargetName(target.title);
                 }}
@@ -154,7 +181,7 @@ export function ProjectTabPane({
                   <SelectValue placeholder="Select a file" />
                 </SelectTrigger>
                 <SelectContent>
-                  {otherProjectPages.map((f: any) => (
+                  {(otherProjectPages as ProjectPageOption[]).map((f) => (
                     <SelectItem
                       key={f.id}
                       value={f.id}

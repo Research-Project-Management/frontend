@@ -100,7 +100,7 @@ export function CompanionHistory({
     setEditTitle(chat.title || '');
   };
 
-  const handleSaveRename = async (e: React.MouseEvent, id: string) => {
+  const handleSaveRename = async (e: React.SyntheticEvent, id: string) => {
     e.stopPropagation();
     if (!editTitle.trim()) {
       setEditingId(null);
@@ -283,7 +283,7 @@ export function CompanionHistory({
                           onChange={(e) => setEditTitle(e.target.value)}
                           onClick={(e) => e.stopPropagation()}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSaveRename(e as any, chat.id);
+                            if (e.key === 'Enter') handleSaveRename(e, chat.id);
                             if (e.key === 'Escape') setEditingId(null);
                           }}
                           className='h-6 flex-1 px-1.5 text-12 rounded border border-ai bg-background text-foreground outline-none'

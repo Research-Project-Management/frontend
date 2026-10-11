@@ -1,14 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   draftStorageService,
-  lruDocumentCache,
-  documentStore,
-  type ProjectFileSnapshot,
   type OfflineMutation,
-} from '@/features/editor/domain/document';
+} from '@/features/editor/domain/document/draft-storage';
+import {
+  lruDocumentCache,
+  type ProjectFileSnapshot,
+} from '@/features/editor/domain/document/lru-document-cache';
+import { documentStore } from '@/features/editor/domain/document/document-store';
 import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
 import { manuscriptService } from '@/features/editor/sdk';
-import { useConnectivityStore, useCompileStore } from '@/features/editor/store';
+import { useConnectivityStore } from '@/features/editor/store/connectivity.store';
+import { useCompileStore } from '@/features/editor/store/compiler.store';
 
 describe('Direction 3: Offline-First Persistence (Project Snapshot Cache & Mutation Queue)', () => {
   beforeEach(() => {

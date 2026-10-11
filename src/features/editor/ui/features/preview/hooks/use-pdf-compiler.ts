@@ -8,10 +8,11 @@
  */
 
 import { useRef, useEffect, useCallback } from 'react';
-import { useSettingsStore, useCompileStore } from '../../../../store';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { useCompileStore } from '@/features/editor/store/compiler.store';
 import { compilerLifecycleCoordinator } from '../../../../coordinators/compiler.coordinator';
 import { editorCommandBus } from '../../../../coordinators/command-bus';
-import type { SyncTeXMap } from '@/features/editor/domain/document/synctex-index';
+import type { SyncTeXMap } from '@/features/editor/domain/pdf/synctex-index';
 import { toast } from 'sonner';
 
 export interface UsePdfCompilerOptions {

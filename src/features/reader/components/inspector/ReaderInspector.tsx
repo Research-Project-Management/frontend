@@ -15,7 +15,7 @@ import {
   useUpdateLibraryItemMutation,
   useCollections,
   useRelations,
-} from '../../data';
+} from '../../data/reader.queries';
 import type { InspectorSectionId } from '../../types/reader.types';
 import { normalizeTags } from '../../utils/reader.util';
 
@@ -293,18 +293,21 @@ function ReaderInspectorContent({
   const updateMutation = useUpdateLibraryItemMutation(targetScope);
 
   const handleUpdatePaper = (
-    payload: Partial<Item>,
+    payload: Partial<Item> & { expectedVersion?: number; silent?: boolean },
     options?: { silent?: boolean },
   ) => {
     if (!effectiveItem) return;
     const version =
-      (payload as any)?.expectedVersion ??
-      (payload as any)?.version ??
+      payload.expectedVersion ??
+      payload.version ??
       effectiveItem.version;
-    const isSilent = Boolean(options?.silent || (payload as any)?.silent);
+    const isSilent = Boolean(options?.silent || payload.silent);
     updateMutation.mutate({
       itemId: effectiveItem.id,
-      data: payload as any,
+      data: {
+        ...payload,
+        expectedVersion: version,
+      },
     });
   };
 
@@ -382,7 +385,7 @@ function ReaderInspectorContent({
   const hasFiles = Boolean(
     effectiveItem?.filename ||
     (effectiveItem?.attachments && effectiveItem.attachments.length > 0) ||
-    (effectiveItem as any)?.openAccessPdfUrl
+    effectiveItem?.openAccessPdfUrl
   );
   const hasNotes = noteCount > 0 || isAddingNote;
   const hasTags = tagsList.length > 0 || isAddingTag;

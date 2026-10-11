@@ -35,6 +35,7 @@ export interface DocumentItem {
   chunk_count: number;
   tags: string[];
   type?: string;
+  size?: number;
   created_at?: string;
   user_id?: string;
   chat_id?: string;

@@ -10,7 +10,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { fetchLogEntryExplanation } from '../hooks/useLogViewerActions';
+import { fetchLogEntryExplanation } from '../hooks/use-log-viewer-actions';
 import { LogExplanationPanel } from './LogExplanationPanel';
 import { LogAiFixPanel } from './LogAiFixPanel';
 import type { LogEntry, ErrorExplanationDto } from '@/features/editor/domain/types';
@@ -95,10 +95,10 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
                     e.stopPropagation();
                     onClick?.();
                   }}
-                  className="flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-medium text-primary bg-primary/10 border border-primary/25 hover:bg-primary/20 hover:border-primary/40 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors shrink-0"
+                  className="flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-medium text-foreground bg-muted hover:bg-muted/80 border border-border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors shrink-0"
                   title={`Nhảy tới dòng ${entry.line}${entry.file ? ` trong ${entry.file}` : ''} (Go to code)`}
                 >
-                  <CornerDownLeft className="size-3" />
+                  <CornerDownLeft className="size-3 text-muted-foreground" />
                   <span>Dòng {entry.line}</span>
                 </button>
               )}

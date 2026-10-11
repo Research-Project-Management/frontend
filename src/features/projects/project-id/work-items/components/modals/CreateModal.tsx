@@ -124,7 +124,7 @@ export function CreateModal({
 
   const activeProject = useMemo(() => {
     if (effectiveProjectId) {
-      const found = projects.find((p: any) => p.id === effectiveProjectId);
+      const found = projects.find((p) => p.id === effectiveProjectId);
       if (found) return found;
     }
     return project || (projects.length > 0 ? projects[0] : null);
@@ -150,12 +150,12 @@ export function CreateModal({
 
   const effectiveMembers = useMemo<ProjectMember[]>(() => {
     if (isDifferentProject && remoteDetails) {
-      const proj = ('project' in remoteDetails && remoteDetails.project ? remoteDetails.project : remoteDetails) as any;
+      const proj = ('project' in remoteDetails && remoteDetails.project ? remoteDetails.project : remoteDetails) as { members?: ProjectMember[] } | undefined;
       return (proj?.members || []) as ProjectMember[];
     }
     if (members && members.length > 0) return members;
     if (remoteDetails) {
-      const proj = ('project' in remoteDetails && remoteDetails.project ? remoteDetails.project : remoteDetails) as any;
+      const proj = ('project' in remoteDetails && remoteDetails.project ? remoteDetails.project : remoteDetails) as { members?: ProjectMember[] } | undefined;
       return (proj?.members || []) as ProjectMember[];
     }
     return [];
@@ -163,11 +163,13 @@ export function CreateModal({
 
   const effectiveAvailableItems = useMemo<Item[]>(() => {
     if (isDifferentProject && remoteItemsData) {
-      return (remoteItemsData as any).items || (remoteItemsData as any).workItems || [];
+      const data = remoteItemsData as { items?: Item[]; workItems?: Item[] };
+      return data.items || data.workItems || [];
     }
     if (availableItems && availableItems.length > 0) return availableItems;
     if (remoteItemsData) {
-      return (remoteItemsData as any).items || (remoteItemsData as any).workItems || [];
+      const data = remoteItemsData as { items?: Item[]; workItems?: Item[] };
+      return data.items || data.workItems || [];
     }
     return [];
   }, [isDifferentProject, remoteItemsData, availableItems]);
@@ -177,7 +179,8 @@ export function CreateModal({
 
   const projectLabels = useMemo(() => {
     if (Array.isArray(rawLabels)) return rawLabels;
-    if (Array.isArray((rawLabels as any)?.labels)) return (rawLabels as any).labels;
+    const labelsRecord = rawLabels as { labels?: any[] } | undefined;
+    if (Array.isArray(labelsRecord?.labels)) return labelsRecord.labels;
     return [];
   }, [rawLabels]);
 
@@ -247,7 +250,7 @@ export function CreateModal({
   useEffect(() => {
     if (effectiveColumns.length > 0 && columnId) {
       const exists = effectiveColumns.some(
-        (c) => resolveStateId(c) === columnId || resolveColumnId(c) === columnId || (c as any).id === columnId
+        (c) => resolveStateId(c) === columnId || resolveColumnId(c) === columnId || c.id === columnId
       );
       if (!exists) {
         const defaultCol = effectiveColumns.find((c) => c.isDefault) || effectiveColumns[0];
@@ -326,7 +329,7 @@ export function CreateModal({
         initialData.dueDate ||
         initialData.startDate ||
         initialData.assigneeId ||
-        ((initialData as any).assigneeIds && (initialData as any).assigneeIds.length > 0) ||
+        (initialData.assigneeIds && initialData.assigneeIds.length > 0) ||
         (initialData.title && initialData.title.trim()) ||
         (initialData.description && initialData.description.trim()) ||
         (initialData.content && initialData.content.trim()) ||
@@ -337,14 +340,15 @@ export function CreateModal({
     );
 
     if (hasInitialData) {
-      const initialAssigneeIds = Array.isArray((initialData as any)?.assigneeIds)
-        ? (initialData as any).assigneeIds
-        : (initialData as any)?.assignees && Array.isArray((initialData as any).assignees)
-        ? (initialData as any).assignees.map((a: any) => a.id).filter(Boolean)
-        : (initialData as any)?.assignee?.id
-        ? [(initialData as any).assignee.id]
-        : initialData?.assigneeId
-        ? [initialData.assigneeId]
+      const init = initialData as Partial<Item> | undefined;
+      const initialAssigneeIds = Array.isArray(init?.assigneeIds)
+        ? init.assigneeIds
+        : init?.assignees && Array.isArray(init.assignees)
+        ? init.assignees.map((a) => a.id).filter(Boolean)
+        : init?.assignee?.id
+        ? [init.assignee.id]
+        : init?.assigneeId
+        ? [init.assigneeId]
         : [];
 
       restoreFromDraft({
@@ -388,7 +392,7 @@ export function CreateModal({
     setAttachments((prev) => ({
       ...prev,
       pages: (prev.pages || []).filter(
-        (p) => (p as any).pageId !== pageId && p.id !== pageId
+        (p) => (p as typeof p & { pageId?: string }).pageId !== pageId && p.id !== pageId
       ),
     }));
   };
@@ -405,7 +409,6 @@ export function CreateModal({
         ...(prev.papers || []),
         {
           id: paper.paperId,
-          paperId: paper.paperId,
           title: paper.title,
           doi: paper.doi,
           citationKey: paper.citationKey,
@@ -420,7 +423,7 @@ export function CreateModal({
     setAttachments((prev) => ({
       ...prev,
       papers: (prev.papers || []).filter(
-        (p) => (p as any).paperId !== paperId && p.id !== paperId
+        (p) => (p as typeof p & { paperId?: string }).paperId !== paperId && p.id !== paperId
       ),
     }));
   };
@@ -572,7 +575,7 @@ export function CreateModal({
               <ProjectSelectorPopover
                 open={openProjectPopover}
                 onOpenChange={setOpenProjectPopover}
-                project={(activeProject as any) || undefined}
+                project={activeProject || undefined}
                 projects={projects}
                 onSelectProject={(proj) => {
                   setSelectedProjectId(proj.id);
@@ -666,7 +669,27 @@ export function CreateModal({
               triggerLabel="Assignees"
             />
 
-            {/* 4. Labels */}
+            {/* 4. Start date */}
+            <SingleDatePopover
+              label="Start date"
+              date={startDate}
+              onSelectDate={setStartDate}
+              open={openStartDatePopover}
+              onOpenChange={setOpenStartDatePopover}
+              actionBtnClass={pillBtnClass}
+            />
+
+            {/* 5. Due date */}
+            <SingleDatePopover
+              label="Due date"
+              date={dueDate}
+              onSelectDate={setDueDate}
+              open={openDueDatePopover}
+              onOpenChange={setOpenDueDatePopover}
+              actionBtnClass={pillBtnClass}
+            />
+
+            {/* 6. Labels */}
             <LabelPopover
               open={openLabelPopover}
               onOpenChange={setOpenLabelPopover}
@@ -678,27 +701,7 @@ export function CreateModal({
               actionBtnClass={pillBtnClass}
             />
 
-            {/* 5. Start date */}
-            <SingleDatePopover
-              label="Start date"
-              date={startDate}
-              onSelectDate={setStartDate}
-              open={openStartDatePopover}
-              onOpenChange={setOpenStartDatePopover}
-              actionBtnClass={pillBtnClass}
-            />
-
-            {/* 6. Due date */}
-            <SingleDatePopover
-              label="Due date"
-              date={dueDate}
-              onSelectDate={setDueDate}
-              open={openDueDatePopover}
-              onOpenChange={setOpenDueDatePopover}
-              actionBtnClass={pillBtnClass}
-            />
-
-            {/* 8. Attach (replaces Modules) */}
+            {/* 7. Attach */}
             <Button
               type="button"
               variant="outline"
@@ -716,7 +719,7 @@ export function CreateModal({
               </span>
             </Button>
 
-            {/* 9. Add parent */}
+            {/* 8. Add parent */}
             <ParentItemPopover
               open={openParentPopover}
               onOpenChange={setOpenParentPopover}

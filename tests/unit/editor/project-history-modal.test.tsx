@@ -1,11 +1,11 @@
-﻿import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ProjectHistoryModal from '@/features/editor/ui/modals/ProjectHistoryModal';
 import { manuscriptService, historyService } from '@/features/editor/sdk';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import { usePageStore } from '@/features/editor/store';
+import { usePageStore } from '@/features/editor/store/editor.store';
 import type { ProjectVersionListItem, ProjectDiffResponse } from '@/features/editor/domain/types/history.types';
 
 describe('ProjectHistoryModal Component (Overleaf Parity)', () => {

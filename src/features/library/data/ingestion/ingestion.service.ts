@@ -16,7 +16,7 @@ import type {
   FlagRetractionInput,
   RetractionStats,
 } from '../../types/library.types';
-import { isProjectScope } from '../../domain';
+import { isProjectScope } from '../../domain/item-url';
 
 export * from '../../types/ingestion.types';
 

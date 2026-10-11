@@ -19,7 +19,7 @@ export interface RetractionNoticeModalProps {
   onOpenChange: (open: boolean) => void;
   item: Item;
   canEdit?: boolean;
-  onDismiss?: () => any;
+  onDismiss?: () => void | Promise<unknown>;
   isDismissing?: boolean;
 }
 

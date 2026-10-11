@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { MinusCircle, Plus, StickyNote } from 'lucide-react';
 import { Textarea, Button } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { useNotes } from '../../data';
+import { useNotes } from '../../data/reader.queries';
 import type { Item as Paper } from '../../types/reader.types';
 import { normalizeNotes, type NormalizedNote } from '../../utils/reader.util';
 
@@ -52,7 +52,7 @@ export default function NotesSection({
   onNavigateToAnnotation,
 }: NotesSectionProps) {
   const paperId = paper.id;
-  const activeScopeId = scopeId || projectId || (paper as any)?.projectId || 'user';
+  const activeScopeId = scopeId || projectId || paper?.projectId || 'user';
   const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
@@ -143,7 +143,7 @@ export default function NotesSection({
       }
     }
     return null;
-  }, [paper.extraFields, (paper as any).extra]);
+  }, [paper.extraFields, paper.extra]);
 
   const hasCommentInNotes = useMemo(() => {
     if (!potentialCommentText) return false;

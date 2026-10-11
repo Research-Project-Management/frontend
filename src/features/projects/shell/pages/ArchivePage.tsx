@@ -42,7 +42,8 @@ import {
 import { ArchiveCard } from '../components/archived/ArchiveCard';
 import { DeletePermanentModal } from '../components/archived/DeletePermanentModal';
 import { ArchivedEmptyState } from '../components/archived/ArchivedEmptyState';
-import { ArchiveService, type Item } from '@/features/projects/project-id/work-items';
+import { ArchiveService } from '@/features/projects/project-id/work-items/services/archive.service';
+import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
 import { ViewService } from '@/features/projects/project-id/views/services/view.service';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
 import type { Project } from '../types/project.types';
@@ -115,7 +116,8 @@ export function ArchivePage() {
       const res = await ArchiveService.getArchived(currentProjectId);
       if (Array.isArray(res)) return res as Item[];
       if (res && typeof res === 'object') {
-        const items = (res as any).archivedItems || (res as any).workItems || (res as any).data;
+        const resObj = res as unknown as Record<string, unknown>;
+        const items = resObj.archivedItems || resObj.workItems || resObj.data;
         if (Array.isArray(items)) return items as Item[];
       }
       return [] as Item[];

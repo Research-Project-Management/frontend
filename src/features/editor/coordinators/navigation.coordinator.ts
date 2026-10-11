@@ -14,6 +14,7 @@
 import { useTabsStore, type EditorTab } from '../store/tabs.store';
 import { usePageStore } from '../store/editor.store';
 import { useCompileStore } from '../store/compiler.store';
+import { useLayoutStore } from '../store/layout.store';
 import { lruDocumentCache } from '../domain/document/lru-document-cache';
 import { diagnosticsCoordinator } from './diagnostics.coordinator';
 import { editorCommandBus } from './command-bus';
@@ -36,6 +37,7 @@ export class NavigationCoordinatorRegistry {
   private lastDiagnosticIndex: number = -1;
   private lastDiagnosticLine: number | null = null;
   private lastDiagnosticFile: string | null = null;
+  private broadcastChannel: BroadcastChannel | null = null;
 
   constructor() {
     this.initCommandSubscriptions();
@@ -79,6 +81,77 @@ export class NavigationCoordinatorRegistry {
 
     editorCommandBus.subscribe('navigation:prev-error', () => {
       this.jumpToPrevDiagnostic('error');
+    });
+
+    // Multi-Pane Split Editor Subscriptions
+    editorCommandBus.subscribe('editor:split', (cmd) => {
+      const layoutStore = useLayoutStore.getState();
+      layoutStore.setEditorSplitMode(cmd.direction);
+      if (cmd.fileId) {
+        layoutStore.setSecondaryFileId(cmd.fileId);
+      }
+    });
+
+    editorCommandBus.subscribe('editor:open-to-side', (cmd) => {
+      const layoutStore = useLayoutStore.getState();
+      layoutStore.setEditorSplitMode('vertical');
+      layoutStore.setSecondaryFileId(cmd.fileId);
+      layoutStore.setActiveEditorPane('secondary');
+    });
+
+    editorCommandBus.subscribe('editor:close-split', () => {
+      const layoutStore = useLayoutStore.getState();
+      layoutStore.setEditorSplitMode('none');
+      layoutStore.setSecondaryFileId(null);
+      layoutStore.setActiveEditorPane('primary');
+    });
+
+    editorCommandBus.subscribe('editor:focus-pane', (cmd) => {
+      useLayoutStore.getState().setActiveEditorPane(cmd.paneId);
+    });
+
+    editorCommandBus.subscribe('editor:swap-panes', () => {
+      const layoutStore = useLayoutStore.getState();
+      const pageStore = usePageStore.getState();
+      const primaryId = pageStore.getActiveDocumentId();
+      const secondaryId = layoutStore.secondaryFileId;
+      if (primaryId && secondaryId) {
+        this.openDocument({ fileId: secondaryId, title: '' });
+        layoutStore.setSecondaryFileId(primaryId);
+      }
+    });
+
+    // Cross-window BroadcastChannel for Detached PDF & SyncTeX
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        this.broadcastChannel = new BroadcastChannel('flux-synctex-bus');
+        this.broadcastChannel.onmessage = (event) => {
+          const { type, payload } = event.data || {};
+          if (type === 'synctex:jump-to-code' && payload?.line) {
+            this.jumpToLine({ line: payload.line, column: payload.column, highlight: 'synctex' });
+          } else if (type === 'synctex:forward' && payload?.line) {
+            editorCommandBus.dispatch({ type: 'synctex:forward', line: payload.line, column: payload.column });
+          }
+        };
+      } catch (err) {
+        console.warn('[NavigationCoordinator] BroadcastChannel initialization failed:', err);
+      }
+    }
+
+    editorCommandBus.subscribe('preview:detach', () => {
+      useLayoutStore.getState().setPdfDetached(true);
+      const projectId = usePageStore.getState().projectId;
+      if (projectId && typeof window !== 'undefined') {
+        const previewUrl = `/projects/${projectId}/preview`;
+        window.open(previewUrl, `flux_pdf_preview_${projectId}`, 'width=900,height=1000,menubar=no,toolbar=no');
+        toast.info('PDF preview đã được mở ở cửa sổ riêng biệt.');
+      }
+    });
+
+    editorCommandBus.subscribe('preview:attach', () => {
+      useLayoutStore.getState().setPdfDetached(false);
+      this.broadcastChannel?.postMessage({ type: 'preview:attached' });
+      toast.info('PDF preview đã được gắn trở lại giao diện chính.');
     });
   }
 
@@ -438,3 +511,12 @@ export class NavigationCoordinatorRegistry {
 }
 
 export const navigationCoordinator = new NavigationCoordinatorRegistry();
+
+/**
+ * Dispatches jump-to-line commands to CodeMirror editor and PDF viewer
+ */
+export function jumpToEditorLine(line: number): void {
+  if (line <= 0) return;
+  editorCommandBus.dispatch({ type: 'editor:jump-to-line', line, highlight: 'synctex' });
+  editorCommandBus.dispatch({ type: 'viewer:jump-to-line', line });
+}

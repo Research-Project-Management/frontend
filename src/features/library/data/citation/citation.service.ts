@@ -1,7 +1,8 @@
 import * as api from "@/shared/lib/api";
 import { logger } from "@/shared/lib/utils";
 import type { FormattedCitation, CslStyle, ReferenceData, CslStyleMetadata, ExportBundleResponse } from '../../types/library.types';
-import { cleanDoi, isProjectScope } from '../../domain';
+import { cleanDoi } from '../../domain/identifiers';
+import { isProjectScope } from '../../domain/item-url';
 
 export type { ReferenceData, CslStyleMetadata };
 

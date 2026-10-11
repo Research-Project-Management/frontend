@@ -4,7 +4,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { Library, Folder, FolderKanban, X, Plus, Search, Loader2 } from 'lucide-react';
 import { useItems, useCollections } from '../../data';
-import { useLibraryModalStore } from '../../store';
+import { useLibraryModalStore } from '../../store/library-ui.store';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import {
   Popover,

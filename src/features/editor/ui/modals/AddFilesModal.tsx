@@ -16,20 +16,20 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/shared/components/ui/dialog';
-import { useFileActions } from '@/features/editor/ui/hooks/use-core';
+import { useFileActions } from '@/features/editor/ui/hooks/use-file-actions';
 import { useEditorStorage } from '@/features/editor/ui/hooks/use-storage';
 
-import {
-  type AddFilesTab,
-  type AddFilesModalProps,
-  type AddFilesTabItem,
-  AddFilesSidebar,
-  NewFileTabPane,
-  UploadTabPane,
-  ProjectTabPane,
-  UrlTabPane,
-  LibraryTabPane,
-} from './add-files';
+import type {
+  AddFilesTab,
+  AddFilesModalProps,
+  AddFilesTabItem,
+} from './add-files/add-files.types';
+import { AddFilesSidebar } from './add-files/AddFilesSidebar';
+import { NewFileTabPane } from './add-files/NewFileTabPane';
+import { UploadTabPane } from './add-files/UploadTabPane';
+import { ProjectTabPane } from './add-files/ProjectTabPane';
+import { UrlTabPane } from './add-files/UrlTabPane';
+import { LibraryTabPane } from './add-files/LibraryTabPane';
 
 export type { AddFilesTab, AddFilesModalProps };
 
@@ -81,14 +81,14 @@ export default function AddFilesModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-300 rounded-lg text-foreground select-none">
+      <DialogContent className="max-w-3xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-200 rounded-md text-foreground select-none">
         {/* Header with Title & Accessible Description */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-border">
           <div>
-            <DialogTitle className="text-14 font-semibold text-foreground">
+            <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
               Add files
             </DialogTitle>
-            <DialogDescription className="text-11 text-muted-foreground mt-0.5">
+            <DialogDescription className="text-12 text-muted-foreground mt-0.5">
               Create a new file, upload from your device, or import from an external source.
             </DialogDescription>
           </div>

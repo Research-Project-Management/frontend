@@ -6,7 +6,7 @@ import { Bot, Check } from 'lucide-react';
 import { Button, Textarea, Switch, Skeleton } from "@/shared/components/ui";
 import { toast } from 'sonner';
 import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
-import { useProjectDetails, useUpdateProject } from '@/features/projects/shell/hooks/use-project';
+import { useProjectDetails, useUpdateProject, type UpdateProjectVariables } from '@/features/projects/shell/hooks/use-project';
 
 const DEFAULT_SYSTEM_PROMPT =
   'You are an AI assistant specialized in in-depth scientific research. Provide precise answers adhering strictly to research methodology, always cite reference sources, and format formulas clearly.';
@@ -15,9 +15,8 @@ export default function AiPage() {
   const params = useParams<{ projectId: string }>();
   const projectId = params?.projectId || '';
 
-  const { data: projectData, isLoading, isError } = useProjectDetails(projectId);
+  const { project, isLoading, isError } = useProjectDetails(projectId);
   const updateMutation = useUpdateProject();
-  const project = (projectData as any)?.project || projectData;
 
   // Form states
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);
@@ -29,8 +28,8 @@ export default function AiPage() {
 
   // Sync from server settings
   useEffect(() => {
-    if (project?.settings?.ai) {
-      const ai = project.settings.ai;
+    const ai = (project?.settings as Record<string, any> | undefined)?.ai;
+    if (ai) {
       if (typeof ai.systemPrompt === 'string') setSystemPrompt(ai.systemPrompt);
       if (typeof ai.selectedModel === 'string') setSelectedModel(ai.selectedModel);
       if (typeof ai.enableRAG === 'boolean') setEnableRAG(ai.enableRAG);
@@ -38,10 +37,10 @@ export default function AiPage() {
       if (typeof ai.commenterFactCheck === 'boolean') setCommenterFactCheck(ai.commenterFactCheck);
       if (typeof ai.viewerSummaryOnly === 'boolean') setViewerSummaryOnly(ai.viewerSummaryOnly);
     }
-  }, [project?.settings?.ai]);
+  }, [project]);
 
   const hasChanges = useMemo(() => {
-    const ai = project?.settings?.ai || {};
+    const ai = (project?.settings as Record<string, any> | undefined)?.ai || {};
     return (
       systemPrompt !== (ai.systemPrompt ?? DEFAULT_SYSTEM_PROMPT) ||
       selectedModel !== (ai.selectedModel ?? 'gemini-1.5-pro') ||
@@ -53,7 +52,7 @@ export default function AiPage() {
   }, [project, systemPrompt, selectedModel, enableRAG, contributorCanDraft, commenterFactCheck, viewerSummaryOnly]);
 
   const handleSave = () => {
-    const existingSettings = (project?.settings as any) || {};
+    const existingSettings = (project?.settings as Record<string, unknown> | undefined) || {};
     const newSettings = {
       ...existingSettings,
       ai: {
@@ -70,10 +69,10 @@ export default function AiPage() {
       {
         projectId,
         settings: newSettings,
-      } as any,
+      } as UpdateProjectVariables,
       {
         onSuccess: () => toast.success('AI configuration saved', { id: 'settings-ai' }),
-        onError: (err: any) => toast.error(err?.message || 'Failed to save AI configuration', { id: 'settings-ai' }),
+        onError: (err: unknown) => toast.error((err as Error)?.message || 'Failed to save AI configuration', { id: 'settings-ai' }),
       },
     );
   };

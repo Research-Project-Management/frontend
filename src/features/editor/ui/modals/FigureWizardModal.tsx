@@ -82,6 +82,7 @@ export function FigureWizardModal({
       caption: 'Figure caption',
       label: 'fig:my_figure',
       width: '0.8\\linewidth',
+      angle: '0',
       placement: 'htbp',
       centering: true,
     },
@@ -109,7 +110,8 @@ export function FigureWizardModal({
     if (values.centering) {
       code += `  \\centering\n`;
     }
-    code += `  \\includegraphics[width=${values.width}]{${imgName}}\n`;
+    const anglePart = values.angle && values.angle !== '0' ? `, angle=${values.angle}` : '';
+    code += `  \\includegraphics[width=${values.width}${anglePart}]{${imgName}}\n`;
     if (values.caption) {
       code += `  \\caption{${values.caption}}\n`;
     }
@@ -347,6 +349,30 @@ export function FigureWizardModal({
                     )}
                   >
                     [{spec}]
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Overleaf Parity: Rotation angle */}
+            <div className="flex items-center gap-2">
+              <label className="text-11 font-medium text-muted-foreground">
+                Rotate:
+              </label>
+              <div className="flex items-center gap-1">
+                {['0', '90', '180', '270'].map((deg) => (
+                  <button
+                    key={deg}
+                    type="button"
+                    onClick={() => setValue('angle', deg, { shouldValidate: true })}
+                    className={cn(
+                      'px-2 py-0.5 text-11 font-mono rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                      (values.angle ?? '0') === deg
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background border-border text-foreground hover:bg-muted',
+                    )}
+                  >
+                    {deg}°
                   </button>
                 ))}
               </div>

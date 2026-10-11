@@ -52,6 +52,7 @@ export const figureWizardSchema = z.object({
   caption: z.string(),
   label: z.string(),
   width: z.string(),
+  angle: z.string().optional().default('0'),
   placement: z.string(),
   centering: z.boolean(),
 });

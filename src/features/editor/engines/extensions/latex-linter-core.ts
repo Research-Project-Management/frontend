@@ -331,6 +331,8 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
             i = fullTo;
             continue;
           }
+        }
+
         // 5b-2. \left and \right delimiter matching (Overleaf Parity)
         if (cmdName === 'left') {
           const delimMatch = /^\s*(?:\\[{}|()\[\]]|\S)/.exec(text.slice(cmdTo));

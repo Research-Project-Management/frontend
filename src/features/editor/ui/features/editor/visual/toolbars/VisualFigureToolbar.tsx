@@ -27,6 +27,7 @@ import {
   Tag,
   FileText,
   FolderOpen,
+  RotateCw,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -35,13 +36,15 @@ import { cn } from '@/shared/lib/utils';
 export interface VisualFigureToolbarProps {
   position: { top: number; left: number };
   src: string;
-  width: string;
-  caption: string;
-  label: string;
-  isCentering: boolean;
-  isStarred: boolean;
+  width?: string;
+  angle?: string | number;
+  caption?: string;
+  label?: string;
+  isCentering?: boolean;
+  isStarred?: boolean;
   projectImageFiles?: string[];
-  onChangeWidth: (newWidth: string) => void;
+  onChangeWidth: (spec: string) => void;
+  onChangeAngle?: (deg: number) => void;
   onChangeImage: (newSrc: string) => void;
   onUpdateMetadata: (caption: string, label: string) => void;
   onToggleCentering: () => void;
@@ -62,12 +65,14 @@ export function VisualFigureToolbar({
   position,
   src,
   width,
+  angle = 0,
   caption = '',
   label = '',
   isCentering = true,
   isStarred = false,
   projectImageFiles = [],
   onChangeWidth,
+  onChangeAngle,
   onChangeImage,
   onUpdateMetadata,
   onToggleCentering,
@@ -197,6 +202,20 @@ export function VisualFigureToolbar({
           >
             <Columns className="size-3.5" />
           </Button>
+
+          {onChangeAngle && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+              onClick={() => onChangeAngle(((Number(angle) || 0) + 90) % 360)}
+              title={`Rotate Figure (${Number(angle) || 0}°)`}
+              aria-label="Rotate figure"
+            >
+              <RotateCw className="size-3.5" />
+            </Button>
+          )}
         </div>
 
         <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />

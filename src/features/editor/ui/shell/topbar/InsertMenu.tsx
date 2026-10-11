@@ -155,6 +155,43 @@ export function InsertMenu() {
           <span className="whitespace-nowrap">Citation</span>
         </MenubarItem>
 
+        {/* 5b. Bibliography > */}
+        <MenubarSub>
+          <MenubarSubTrigger className="cursor-pointer">
+            <span className="whitespace-nowrap">Bibliography</span>
+          </MenubarSubTrigger>
+          <MenubarSubContent className="min-w-48 text-xs select-none">
+            <MenubarItem
+              onClick={() => insertSnippet('\\printbibliography\n')}
+              className="cursor-pointer"
+            >
+              <span className="whitespace-nowrap">\printbibliography (biblatex)</span>
+            </MenubarItem>
+            <MenubarItem
+              onClick={() => insertSnippet('\\bibliography{references}\n')}
+              className="cursor-pointer"
+            >
+              <span className="whitespace-nowrap">\bibliography&#123;references&#125; (BibTeX)</span>
+            </MenubarItem>
+            <MenubarSub>
+              <MenubarSubTrigger className="cursor-pointer">
+                <span className="whitespace-nowrap">\bibliographystyle</span>
+              </MenubarSubTrigger>
+              <MenubarSubContent className="min-w-36 text-xs select-none">
+                {['plain', 'ieeetr', 'alpha', 'abbrv', 'acm', 'unsrt', 'apalike'].map((style) => (
+                  <MenubarItem
+                    key={style}
+                    onClick={() => insertSnippet(`\\bibliographystyle{${style}}\n`)}
+                    className="cursor-pointer"
+                  >
+                    <span className="whitespace-nowrap">{style}</span>
+                  </MenubarItem>
+                ))}
+              </MenubarSubContent>
+            </MenubarSub>
+          </MenubarSubContent>
+        </MenubarSub>
+
         {/* 6. Link */}
         <MenubarItem
           onClick={() => insertSnippet('\\href{https://example.com}{Link text}')}

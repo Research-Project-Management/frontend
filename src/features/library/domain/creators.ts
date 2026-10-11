@@ -379,24 +379,33 @@ export function parseCreatorName(rawName: string): ParsedCreator {
 
 export const parseAuthorName = parseCreatorName;
 
+export interface RawCreatorLike {
+  creatorType?: string;
+  name?: string;
+  fullName?: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  [key: string]: unknown;
+}
+
 /**
  * Extracts and normalizes authors array for UI presentation.
  * Supports string arrays and structured creator objects.
  */
 export function normalizeAuthors(
   rawAuthors?: unknown,
-  creators?: Array<{ creatorType?: string; name?: string; fullName?: string; firstName?: string | null; lastName?: string | null; [key: string]: any }> | null,
-  contributors?: Array<{ creatorType?: string; name?: string; fullName?: string; firstName?: string | null; lastName?: string | null; [key: string]: any }> | null,
+  creators?: Array<RawCreatorLike> | null,
+  contributors?: Array<RawCreatorLike> | null,
 ): string[] {
   // If passed an item-like object
   if (rawAuthors && typeof rawAuthors === 'object' && !Array.isArray(rawAuthors)) {
     const candidate = rawAuthors as {
       authors?: unknown;
-      creators?: unknown[];
-      contributors?: unknown[];
+      creators?: RawCreatorLike[];
+      contributors?: RawCreatorLike[];
     };
     if (candidate.authors !== undefined || candidate.creators !== undefined || candidate.contributors !== undefined) {
-      return normalizeAuthors(candidate.authors, candidate.creators as any, candidate.contributors as any);
+      return normalizeAuthors(candidate.authors, candidate.creators, candidate.contributors);
     }
   }
 

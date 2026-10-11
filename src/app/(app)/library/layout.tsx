@@ -11,7 +11,7 @@ export default function LibraryLayout({
 }) {
   const pathname = usePathname();
   const isReader = pathname.includes('/library/papers/');
-  const { isOpen } = useLibrarySidebarStore();
+  const isSidebarOpen = useLibrarySidebarStore((s) => s.isSidebarOpen);
 
   if (isReader) {
     return (
@@ -23,7 +23,7 @@ export default function LibraryLayout({
 
   return (
     <div className="flex h-full w-full min-h-0 relative">
-      {isOpen && <Sidebar />}
+      {isSidebarOpen && <Sidebar />}
       <main className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden relative">
         {children}
       </main>

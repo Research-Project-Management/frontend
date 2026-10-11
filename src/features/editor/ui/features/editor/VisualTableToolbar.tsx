@@ -91,7 +91,7 @@ export function VisualTableToolbar({
       role="toolbar"
       aria-label="Table Matrix Toolbar"
       className={cn(
-        'fixed z-50 flex flex-col items-start bg-card/95 backdrop-blur-md border border-border/80 shadow-2xl rounded-xl p-1.5 transition-all text-xs text-foreground select-none',
+        'fixed z-50 flex flex-col items-start bg-popover/95 backdrop-blur-md border border-border shadow-overlay rounded-md p-1.5 text-xs text-foreground select-none',
         'animate-in fade-in zoom-in-95 duration-150'
       )}
       style={{

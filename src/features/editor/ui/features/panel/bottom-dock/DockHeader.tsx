@@ -70,7 +70,7 @@ export function DockHeader({
   onClosePanel,
 }: DockHeaderProps) {
   return (
-    <div className="h-8 shrink-0 flex items-center justify-between border-b border-border bg-surface px-2">
+    <div className="h-9 shrink-0 flex items-center justify-between border-b border-border bg-surface px-2.5">
       {/* Left Dock Tabs */}
       <div className="flex items-center h-full">
         {/* Problems Tab */}
@@ -80,7 +80,7 @@ export function DockHeader({
           aria-selected={activeBottomTab === 'problems'}
           onClick={() => setActiveBottomTab('problems')}
           className={cn(
-            'relative flex items-center gap-1.5 h-full px-3 text-12 font-medium cursor-pointer transition-colors border-r border-border/60 outline-none select-none',
+            'relative flex items-center gap-1.5 h-full px-3 text-xs font-medium cursor-pointer transition-colors border-r border-border/60 outline-none select-none',
             activeBottomTab === 'problems'
               ? 'text-foreground bg-canvas font-semibold after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-primary'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium'
@@ -96,7 +96,7 @@ export function DockHeader({
           {(errorCount > 0 || warningCount > 0) && (
             <span
               className={cn(
-                'ml-1 px-1.5 py-0.2 rounded-full text-11 font-mono font-medium',
+                'ml-1.5 px-1.5 py-0.5 rounded-full text-xs font-mono font-medium',
                 errorCount > 0
                   ? 'bg-destructive/15 text-destructive'
                   : 'bg-warning/15 text-warning'
@@ -114,7 +114,7 @@ export function DockHeader({
           aria-selected={activeBottomTab === 'output'}
           onClick={() => setActiveBottomTab('output')}
           className={cn(
-            'relative flex items-center gap-1.5 h-full px-3 text-12 font-medium cursor-pointer transition-colors border-r border-border/60 outline-none select-none',
+            'relative flex items-center gap-1.5 h-full px-3 text-xs font-medium cursor-pointer transition-colors border-r border-border/60 outline-none select-none',
             activeBottomTab === 'output'
               ? 'text-foreground bg-canvas font-semibold after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-primary'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium'
@@ -133,17 +133,17 @@ export function DockHeader({
       </div>
 
       {/* Right Toolbar Actions */}
-      <div className="flex items-center gap-1.5 min-w-0">
+      <div className="flex items-center gap-2 min-w-0">
         {/* ── TAB 1 CONTROLS: PROBLEMS ── */}
         {activeBottomTab === 'problems' && (
           <>
-            {/* 1. Severity Filter (Desktop pills) */}
-            <div className="hidden sm:flex items-center p-0.5 rounded-md bg-muted/40 text-11">
+            {/* 1. Severity Filter (Desktop pills) with comfortable padding */}
+            <div className="hidden sm:flex items-center p-1 gap-1 rounded-md bg-muted/40 border border-border/50 text-xs">
               <button
                 type="button"
                 onClick={() => setFilterSeverity('all')}
                 className={cn(
-                  'px-2 py-0.5 rounded-xs font-medium transition-colors cursor-pointer',
+                  'px-2.5 py-0.5 rounded-xs font-medium transition-colors cursor-pointer',
                   filterSeverity === 'all'
                     ? 'bg-canvas text-foreground shadow-2xs font-semibold'
                     : 'text-muted-foreground hover:text-foreground'
@@ -155,7 +155,7 @@ export function DockHeader({
                 type="button"
                 onClick={() => setFilterSeverity('error')}
                 className={cn(
-                  'px-2 py-0.5 rounded-xs font-medium transition-colors cursor-pointer flex items-center gap-1',
+                  'px-2.5 py-0.5 rounded-xs font-medium transition-colors cursor-pointer flex items-center gap-1',
                   filterSeverity === 'error'
                     ? 'bg-canvas text-destructive shadow-2xs font-semibold'
                     : 'text-muted-foreground hover:text-destructive'
@@ -168,7 +168,7 @@ export function DockHeader({
                 type="button"
                 onClick={() => setFilterSeverity('warning')}
                 className={cn(
-                  'px-2 py-0.5 rounded-xs font-medium transition-colors cursor-pointer flex items-center gap-1',
+                  'px-2.5 py-0.5 rounded-xs font-medium transition-colors cursor-pointer flex items-center gap-1',
                   filterSeverity === 'warning'
                     ? 'bg-canvas text-warning shadow-2xs font-semibold'
                     : 'text-muted-foreground hover:text-warning'
@@ -185,7 +185,7 @@ export function DockHeader({
                 type="button"
                 onClick={onAutoFixFirst}
                 title="1-Click AI AutoFix for first error in workspace"
-                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-11 font-medium bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-sm text-xs font-medium bg-success/10 hover:bg-success/20 text-success border border-success/20 transition-colors cursor-pointer"
               >
                 <Wand2 className="size-3 shrink-0" />
                 <span>AutoFix</span>
@@ -197,7 +197,7 @@ export function DockHeader({
               <select
                 value={filterSeverity}
                 onChange={(e) => setFilterSeverity(e.target.value as 'all' | 'error' | 'warning')}
-                className="bg-canvas border border-border/70 text-11 font-medium text-foreground rounded-md h-6 px-1.5 outline-none cursor-pointer"
+                className="bg-canvas border border-border/70 text-xs font-medium text-foreground rounded-md h-7 px-2 outline-none cursor-pointer"
               >
                 <option value="all">All ({compileErrorsCount})</option>
                 <option value="error">Errors ({errorCount})</option>
@@ -206,7 +206,7 @@ export function DockHeader({
             </div>
 
             {/* 2. Search Filter Input */}
-            <div className="flex items-center gap-1.5 px-2 h-6 rounded-md border border-border/70 bg-canvas text-12 w-28 sm:w-44 focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all">
+            <div className="flex items-center gap-1.5 px-2.5 h-7 rounded-md border border-border/70 bg-canvas text-xs w-28 sm:w-44 focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all">
               <Search className="size-3 text-muted-foreground shrink-0" />
               <input
                 type="text"

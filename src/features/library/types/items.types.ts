@@ -344,7 +344,6 @@ export type CollectionRelation = z.infer<typeof collectionRelationSchema>;
 export type ItemTagRelation = z.infer<typeof itemTagRelationSchema>;
 
 export type Item = z.infer<typeof itemSchema>;
-/** @deprecated Use Item */
 export type Paper = Item;
 export type ItemDto = Item;
 

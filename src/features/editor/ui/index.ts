@@ -7,13 +7,10 @@
 export * from './shell/WorkbenchShell';
 export * from './shell/ModernWorkbenchLayout';
 export * from './shell/ActivityBar';
-export * from './shell/StatusBar';
 export * from './shell/Topbar';
 export * from './shell/ResizeHandle';
 export * from './shell/EditorPage';
 export * from './shell/ClientEditor';
-export * from './shell/StandaloneViewerPage';
-export * from './shell/ClientStandaloneViewer';
 
 // Features (Contributions)
 export * from './features/editor';

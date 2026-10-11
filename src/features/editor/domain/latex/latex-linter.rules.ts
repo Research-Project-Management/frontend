@@ -55,7 +55,7 @@ export const TYPO_ENTRIES = Object.entries(COMMAND_TYPOS);
 export const EMPTY_REF_REGEX = /\\(cite|ref|label|pageref|eqref)\{\s*\}/g;
 export const ENV_MATCH_REGEX = /\\(begin|end)\{([a-zA-Z0-9*_-]+)\}/g;
 export const UNESCAPED_PERCENT_REGEX = /([a-zA-Z0-9)\]])(\s*)%/g;
-export const MASKED_COMMANDS_REGEX = /\\(cite|citep|citet|ref|pageref|eqref|label|url|href|includegraphics|input|include)(?:\[[^\]]*\])?\{[^}]*\}/g;
+export const MASKED_COMMANDS_REGEX = /\\(cite|citep|citet|parencite|textcite|nocite|ref|autoref|cref|Cref|pageref|eqref|label|url|href|path|lstinline|includegraphics|input|include)(?:\[[^\]]*\])?\{[^}]*\}/g;
 export const LATEX_CITE_REGEX = /\\(cite|citep|citet|parencite|textcite|nocite)(?:\[[^\]]*\])*\{([^}]+)\}/g;
 
 /**
@@ -67,9 +67,10 @@ export function toLines(input: string | readonly string[]): readonly string[] {
   return [];
 }
 
-// Alignment environments where unescaped & is valid
+// Alignment environments where unescaped & is valid (modern tables and math alignments)
 export const ALIGNMENT_ENVIRONMENTS = new Set([
-  'tabular', 'tabular*', 'array', 'align', 'align*', 'aligned',
+  'tabular', 'tabular*', 'tabularx', 'tabulary', 'longtable', 'supertabular',
+  'tblr', 'NiceTabular', 'nicematrix', 'array', 'align', 'align*', 'aligned',
   'gather', 'gather*', 'gathered', 'matrix', 'pmatrix', 'bmatrix',
   'Bmatrix', 'vmatrix', 'Vmatrix', 'cases', 'dcases', 'rcases',
   'alignat', 'alignat*', 'flalign', 'flalign*', 'split', 'multline', 'multline*',
@@ -79,7 +80,8 @@ export const ALIGNMENT_ENVIRONMENTS = new Set([
 export const MATH_ENVIRONMENTS = new Set([
   'equation', 'equation*', 'align', 'align*', 'aligned', 'gather',
   'gather*', 'gathered', 'multline', 'multline*', 'split', 'math',
-  'displaymath', 'matrix', 'pmatrix', 'bmatrix', 'cases', 'dcases',
+  'displaymath', 'matrix', 'pmatrix', 'bmatrix', 'Bmatrix', 'vmatrix', 'Vmatrix',
+  'cases', 'dcases', 'rcases', 'alignat', 'alignat*', 'flalign', 'flalign*',
 ]);
 
 /**
@@ -247,9 +249,11 @@ export function lintSpecialCharacters(input: string | readonly string[]): LatexL
   lines.forEach((lineText, lineIdx) => {
     const lineNum = lineIdx + 1;
 
-    // Check display math delimiters
-    if (lineText.includes('\\[') && !lineText.includes('\\]')) inDisplayMath = true;
-    if (lineText.includes('\\]')) inDisplayMath = false;
+    // Check display math delimiters \[ ... \] (excluding table newline spacing \\[...pt])
+    const isDisplayMathOpen = /(?<!\\)\\\[(?![0-9.\-]+(?:pt|mm|cm|in|ex|em))/.test(lineText);
+    const isDisplayMathClose = /(?<!\\)\\\]/.test(lineText);
+    if (isDisplayMathOpen && !isDisplayMathClose) inDisplayMath = true;
+    if (isDisplayMathClose) inDisplayMath = false;
 
     // Track \begin and \end on this line to update activeEnvs
     ENV_MATCH_REGEX.lastIndex = 0;
@@ -296,11 +300,14 @@ export function lintSpecialCharacters(input: string | readonly string[]): LatexL
 
     // ── Check B: Unescaped & outside alignment environments ─────────────────
     if (!isInsideAlignEnv) {
+      MASKED_COMMANDS_REGEX.lastIndex = 0;
+      const maskedLineForAmp = cleanLine.replace(MASKED_COMMANDS_REGEX, (m) => ' '.repeat(m.length));
+
       let inEscape = false;
       let inInlineMath = false;
 
-      for (let colIdx = 0; colIdx < cleanLine.length; colIdx++) {
-        const ch = cleanLine[colIdx];
+      for (let colIdx = 0; colIdx < maskedLineForAmp.length; colIdx++) {
+        const ch = maskedLineForAmp[colIdx];
         if (ch === '\\') {
           inEscape = !inEscape;
           continue;
@@ -417,11 +424,20 @@ export function lintInlineMath(input: string | readonly string[]): LatexLintDiag
 /**
  * 5. Lint Duplicate Labels & Undefined References
  */
-export function lintLabelsAndReferences(input: string | readonly string[]): LatexLintDiagnostic[] {
+export function lintLabelsAndReferences(
+  input: string | readonly string[],
+  projectLabels?: Set<string> | string[]
+): LatexLintDiagnostic[] {
   const diagnostics: LatexLintDiagnostic[] = [];
   const lines = toLines(input);
 
   const definedLabels = new Map<string, { line: number; col: number }>();
+  const externalLabels = new Set<string>();
+
+  if (projectLabels) {
+    for (const l of projectLabels) externalLabels.add(l);
+  }
+
   const references: Array<{ key: string; cmd: string; line: number; col: number; len: number }> = [];
 
   const labelRegex = /\\label\{([^}]+)\}/g;
@@ -464,10 +480,11 @@ export function lintLabelsAndReferences(input: string | readonly string[]): Late
     }
   });
 
-  // Check undefined references (if document defines any labels at all)
-  if (definedLabels.size > 0) {
+  // Check undefined references (if document or project defines any labels at all)
+  const hasKnownLabels = definedLabels.size > 0 || externalLabels.size > 0;
+  if (hasKnownLabels) {
     for (const ref of references) {
-      if (!definedLabels.has(ref.key)) {
+      if (!definedLabels.has(ref.key) && !externalLabels.has(ref.key)) {
         diagnostics.push({
           startLineNumber: ref.line,
           startColumn: ref.col,

@@ -11,12 +11,14 @@
 import { hoverTooltip, type Tooltip } from '@codemirror/view';
 import katex from 'katex';
 
-export const latexMathHoverTooltip = hoverTooltip((view, pos, side): Tooltip | null => {
-  const line = view.state.doc.lineAt(pos);
-  const lineText = line.text;
-  const col = pos - line.from;
+export interface MathMatchResult {
+  type: 'inline' | 'display' | 'bracket' | 'environment';
+  formula: string;
+  from: number;
+  to: number;
+}
 
-  // Check for inline or display math on the line
+export function detectMathAtPosition(lineText: string, col: number): MathMatchResult | null {
   // 1. Double dollar $$ ... $$
   const displayDollarRegex = /\$\$([\s\S]*?)\$\$/g;
   let match: RegExpExecArray | null;
@@ -25,29 +27,130 @@ export const latexMathHoverTooltip = hoverTooltip((view, pos, side): Tooltip | n
     const start = match.index;
     const end = start + match[0].length;
     if (col >= start && col <= end) {
-      const mathContent = match[1].trim();
-      return renderMathTooltip(line.from + start, line.from + end, mathContent, true);
+      return {
+        type: 'display',
+        formula: match[1].trim(),
+        from: start,
+        to: end,
+      };
     }
   }
 
-  // 2. Single dollar $ ... $
+  // 2. Bracket math \[ ... \]
+  const bracketRegex = /\\\[([\s\S]*?)\\\]/g;
+  while ((match = bracketRegex.exec(lineText)) !== null) {
+    const start = match.index;
+    const end = start + match[0].length;
+    if (col >= start && col <= end) {
+      return {
+        type: 'bracket',
+        formula: match[1].trim(),
+        from: start,
+        to: end,
+      };
+    }
+  }
+
+  // 3. Single dollar $ ... $
   const singleDollarRegex = /\$([^\$]+)\$/g;
   while ((match = singleDollarRegex.exec(lineText)) !== null) {
     const start = match.index;
     const end = start + match[0].length;
     if (col >= start && col <= end) {
-      const mathContent = match[1].trim();
-      return renderMathTooltip(line.from + start, line.from + end, mathContent, false);
+      return {
+        type: 'inline',
+        formula: match[1].trim(),
+        from: start,
+        to: end,
+      };
     }
   }
 
-  // 3. LaTeX Environment \begin{equation|align|gather}...
+  // 4. Closed LaTeX Environment \begin{...}...\end{...}
   const envRegex = /\\begin\{(equation\*?|align\*?|gather\*?|matrix|pmatrix|bmatrix)\}([\s\S]*?)\\end\{\1\}/g;
   while ((match = envRegex.exec(lineText)) !== null) {
     const start = match.index;
     const end = start + match[0].length;
     if (col >= start && col <= end) {
-      return renderMathTooltip(line.from + start, line.from + end, match[0], true);
+      return {
+        type: 'environment',
+        formula: match[0],
+        from: start,
+        to: end,
+      };
+    }
+  }
+
+  // 5. Unclosed \begin{equation...} on line
+  const beginEnvRegex = /\\begin\{(equation\*?|align\*?|gather\*?|matrix|pmatrix|bmatrix)\}/g;
+  while ((match = beginEnvRegex.exec(lineText)) !== null) {
+    const start = match.index;
+    const end = start + match[0].length;
+    if (col >= start && col <= end) {
+      return {
+        type: 'environment',
+        formula: match[0],
+        from: start,
+        to: end,
+      };
+    }
+  }
+
+  return null;
+}
+
+export const latexMathHoverTooltip = hoverTooltip((view, pos): Tooltip | null => {
+  const doc = view.state.doc;
+  const line = doc.lineAt(pos);
+  const col = pos - line.from;
+  const match = detectMathAtPosition(line.text, col);
+
+  if (match) {
+    return renderMathTooltip(
+      line.from + match.from,
+      line.from + match.to,
+      match.formula,
+      match.type !== 'inline'
+    );
+  }
+
+  // Multiline environment fallback (equation, align, gather, etc.)
+  const MATH_ENVS = ['equation', 'equation*', 'align', 'align*', 'gather', 'gather*', 'multline', 'multline*', 'matrix', 'pmatrix', 'bmatrix'];
+  const maxScan = 35;
+  const startLine = Math.max(1, line.number - maxScan);
+  const endLine = Math.min(doc.lines, line.number + maxScan);
+
+  for (const env of MATH_ENVS) {
+    const beginTag = `\\begin{${env}}`;
+    const endTag = `\\end{${env}}`;
+    let beginPos = -1;
+    let endPos = -1;
+
+    for (let l = line.number; l >= startLine; l--) {
+      const text = doc.line(l).text;
+      const idx = text.indexOf(beginTag);
+      if (idx !== -1) {
+        beginPos = doc.line(l).from + idx;
+        break;
+      }
+      if (l < line.number && text.includes(endTag)) break;
+    }
+
+    if (beginPos !== -1) {
+      for (let l = line.number; l <= endLine; l++) {
+        const text = doc.line(l).text;
+        const idx = text.indexOf(endTag);
+        if (idx !== -1) {
+          endPos = doc.line(l).from + idx + endTag.length;
+          break;
+        }
+        if (l > line.number && text.includes(beginTag)) break;
+      }
+
+      if (endPos !== -1 && pos >= beginPos && pos <= endPos) {
+        const formula = doc.sliceString(beginPos, endPos);
+        return renderMathTooltip(beginPos, endPos, formula, true);
+      }
     }
   }
 

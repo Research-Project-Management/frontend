@@ -20,9 +20,8 @@ import { CompanionMessages } from './CompanionMessages';
 import { CompanionInput } from './CompanionInput';
 import { CompanionHistory } from './CompanionHistory';
 
-export function AiCompanionSidebar() {
+function AiCompanionSidebarInner() {
   const {
-    isOpen,
     setOpen,
     width,
     setWidth,
@@ -130,12 +129,6 @@ export function AiCompanionSidebar() {
       window.removeEventListener('mouseup', handleMouseUp, { capture: true });
     };
   }, [isResizing, setOpen, setWidth]);
-
-  const pathname = usePathname();
-  const router = useRouter();
-
-  // If closed or currently on the full /ai page, do not render companion sidebar
-  if (!isOpen || pathname?.startsWith('/ai')) return null;
 
   const currentWidth = liveWidth ?? width;
 
@@ -351,7 +344,7 @@ export function AiCompanionSidebar() {
             activeActions={activeActions}
             messagesEndRef={messagesEndRef}
             scrollContainerRef={scrollContainerRef}
-            onSelectPrompt={(p) => setPromptToFill(p)}
+            onSelectPrompt={setPromptToFill}
           />
 
           <CompanionInput
@@ -368,8 +361,18 @@ export function AiCompanionSidebar() {
       )}
         </div>
     </aside>
-
   </>
   );
 }
+
+export function AiCompanionSidebar() {
+  const isOpen = useAiCompanionStore((s) => s.isOpen);
+  const pathname = usePathname();
+
+  // If closed or currently on the full /ai page, do not render companion sidebar
+  if (!isOpen || pathname?.startsWith('/ai')) return null;
+
+  return <AiCompanionSidebarInner />;
+}
+
 export default AiCompanionSidebar;

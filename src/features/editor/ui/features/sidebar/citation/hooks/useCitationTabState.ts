@@ -8,11 +8,12 @@ import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instanc
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { useEditorCitations } from '@/features/editor/ui/hooks/use-citation';
 import { useCitationPickerActions } from './useCitationPickerActions';
-import { manuscriptService, type CitationValidationResult } from '@/features/editor/coordinators/services/manuscript.service';
+import { manuscriptService, type CitationValidationResult } from '@/features/editor/sdk';
 import { generateCitationKey } from '@/features/library';
 import { filesQuery } from '@/features/editor/ui/hooks/use-core';
 import { parseBibContent, type BibEntry } from '@/features/editor/domain/citation/bib-parser';
 import { extractCitationKeys, stripLatexComments } from '@/features/editor/domain/citation/citation-formatter';
+import { extractProjectId } from '@/features/editor/domain/types';
 
 export interface UnifiedCitation {
   id: string;
@@ -48,13 +49,13 @@ export function useCitationTabState() {
   const projectId =
     params?.projectId ||
     storeProjectId ||
-    (typeof currentPage?.projectId === 'string' ? currentPage.projectId : currentPage?.projectId?.id) ||
+    extractProjectId(currentPage) ||
     '';
 
   const activeFilePath =
-    (currentPage as any)?.path ||
-    (currentPage as any)?.title ||
-    (currentPage as any)?.name ||
+    (currentPage as { path?: string; filePath?: string; title?: string; name?: string })?.path ||
+    (currentPage as { path?: string; filePath?: string; title?: string; name?: string })?.filePath ||
+    currentPage?.title ||
     '';
 
   const [content, setContent] = useState<string>('');
@@ -118,8 +119,9 @@ export function useCitationTabState() {
 
   // Parse BibTeX entries from all .bib files with cache lookup
   const bibEntries = useMemo<BibEntry[]>(() => {
-    const bibFiles = (projectFiles || []).filter((f: any) => {
-      const fileName = ((f as any)?.name || f?.title || (f as any)?.filename || '').toLowerCase();
+    type BibCandidate = { id: string; name?: string; title?: string; filename?: string; content?: string };
+    const bibFiles = ((projectFiles || []) as BibCandidate[]).filter((f) => {
+      const fileName = (f.name || f.title || f.filename || '').toLowerCase();
       return fileName.endsWith('.bib') && Boolean(f?.content);
     });
 
@@ -128,7 +130,7 @@ export function useCitationTabState() {
 
     for (const f of bibFiles) {
       if (!f.content || typeof f.content !== 'string') continue;
-      const fileId = f.id || (f as any).title || (f as any).name || 'bib-file';
+      const fileId = f.id || f.title || f.name || 'bib-file';
       const sample = f.content.length > 200 ? f.content.slice(0, 100) + f.content.slice(-100) : f.content;
       const cached = bibParseCache.get(fileId);
 
@@ -186,9 +188,9 @@ export function useCitationTabState() {
         title: item.title || 'Untitled item',
         authorsSummary: getAuthorSummary(item),
         year: item.year ? String(item.year) : undefined,
-        journal: item.journal || (item as any).publicationTitle,
+        journal: item.journal || (item as { publicationTitle?: string }).publicationTitle,
         source: 'library',
-        collectionId: (item as any).collectionId,
+        collectionId: (item as { collectionId?: string }).collectionId,
       });
     }
 

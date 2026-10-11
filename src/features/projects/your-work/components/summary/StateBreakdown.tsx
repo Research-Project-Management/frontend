@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ResponsiveContainer,
   PieChart,
@@ -47,7 +47,7 @@ function StateCustomTooltip({ active, payload, total }: StateTooltipProps) {
   );
 }
 
-export function StateBreakdown({
+export const StateBreakdown = React.memo<StateBreakdownProps>(function StateBreakdown({
   statusBreakdown = {},
   total = 0,
   totalAssigned,
@@ -59,11 +59,11 @@ export function StateBreakdown({
   }, []);
 
   const effectiveTotal = totalAssigned !== undefined ? totalAssigned : total;
-  const workloadStates = getWorkloadStates(statusBreakdown);
+  const workloadStates = useMemo(() => getWorkloadStates(statusBreakdown), [statusBreakdown]);
   const isEmpty = effectiveTotal === 0 || workloadStates.every((s) => (s.count || 0) === 0);
 
   // Filter out states with 0 items for the donut slices
-  const chartData = workloadStates.filter((s) => s.count > 0);
+  const chartData = useMemo(() => workloadStates.filter((s) => s.count > 0), [workloadStates]);
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
@@ -160,6 +160,6 @@ export function StateBreakdown({
       </div>
     </div>
   );
-}
+});
 
 export default StateBreakdown;

@@ -64,7 +64,7 @@ export function DiffContentPane({
     return (
       <main className="flex-1 flex flex-col items-center justify-center text-muted-foreground text-xs p-6 text-center bg-background">
         <div className="size-12 rounded-full bg-muted/60 flex items-center justify-center mb-3">
-          <Check className="size-6 text-emerald-500" />
+          <Check className="size-6 text-success" />
         </div>
         <h3 className="font-semibold text-foreground text-sm">No differences detected</h3>
         <p className="text-muted-foreground text-xs mt-1 max-w-sm">
@@ -98,10 +98,10 @@ export function DiffContentPane({
               >
                 <FileText className="size-3 shrink-0" />
                 <span>{file.path}</span>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-sans">
+                <span className="text-[10px] text-success font-sans">
                   +{file.additions}
                 </span>
-                <span className="text-[10px] text-rose-600 dark:text-rose-400 font-sans">
+                <span className="text-[10px] text-destructive font-sans">
                   -{file.deletions}
                 </span>
               </button>
@@ -116,8 +116,8 @@ export function DiffContentPane({
               <FileText className="size-3.5 text-muted-foreground" />
               <span className="font-mono font-semibold text-foreground text-xs">{activeFileDiff.path}</span>
               <Badge variant="outline" className="text-[10px] font-mono h-4 px-1.5 gap-1">
-                <span className="text-emerald-600 dark:text-emerald-400">+{activeFileDiff.additions}</span>
-                <span className="text-rose-600 dark:text-rose-400">-{activeFileDiff.deletions}</span>
+                <span className="text-success">+{activeFileDiff.additions}</span>
+                <span className="text-destructive">-{activeFileDiff.deletions}</span>
               </Badge>
             </div>
 

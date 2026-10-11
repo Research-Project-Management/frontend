@@ -44,7 +44,8 @@ const ProcessModal = dynamic(() => import('./ProcessModal'), { ssr: false });
 export function LibraryModals({ scopeId }: { scopeId?: string }) {
   const queryClient = useQueryClient();
   const activeModal = useLibraryModalStore((s) => s.activeModal);
-  const payload = useLibraryModalStore((s) => s.payload);
+  const modalProps = useLibraryModalStore((s) => s.modalProps);
+  const payload = modalProps;
   const closeModal = useLibraryModalStore((s) => s.closeModal);
   const clearSelection = useLibraryViewStore((s) => s.clearSelection);
   const activeScope = useLibrarySidebarStore((s) => s.activeScope);

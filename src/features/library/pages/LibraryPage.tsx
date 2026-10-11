@@ -31,7 +31,7 @@ import {
   useLibraryCountsQuery,
   useItemTypes,
   libraryServices,
-  itemKeys,
+  libraryKeys,
   invalidateCollections,
 } from '../data';
 import { formatItemTypeLabel } from '../domain';
@@ -193,10 +193,10 @@ export function ModernLibraryPage({
         title: `Untitled ${label}`,
         collectionId: effectiveCollectionId,
       });
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });
+      queryClient.invalidateQueries({ queryKey: libraryKeys.items(effectiveScopeId) });
       if (effectiveCollectionId) {
         queryClient.invalidateQueries({
-          queryKey: itemKeys.byCollection(effectiveScopeId, effectiveCollectionId),
+          queryKey: libraryKeys.items(effectiveScopeId, { collectionId: effectiveCollectionId }),
         });
       }
       invalidateCollections(queryClient, effectiveScopeId);

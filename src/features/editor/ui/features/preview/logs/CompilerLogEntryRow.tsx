@@ -14,7 +14,7 @@ import { fetchLogEntryExplanation } from '../hooks/useLogViewerActions';
 import { LogExplanationPanel } from './LogExplanationPanel';
 import { LogAiFixPanel } from './LogAiFixPanel';
 import type { LogEntry, ErrorExplanationDto } from '@/features/editor/domain/types';
-import type { AiErrorFixResult } from '@/features/editor/coordinators/services/ai-error-assist.service';
+import type { AiErrorFixResult } from '@/features/editor/sdk';
 
 export interface CompilerLogEntryRowProps {
   id?: string;
@@ -175,7 +175,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
             </p>
           )}
           {entry.rawExcerpt ? (
-            <pre className="mt-1.5 pl-3 py-1 border-l-2 border-border/70 font-mono text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed select-text overflow-x-auto bg-transparent">
+            <pre className="mt-1.5 pl-3 py-1 border-l border-border/70 font-mono text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed select-text overflow-x-auto bg-transparent">
               {entry.rawExcerpt}
             </pre>
           ) : (

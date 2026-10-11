@@ -21,6 +21,8 @@ import {
 } from "@/shared/components/ui";
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { useSettingsStore } from '@/features/editor/store';
+import { useDocumentCollaborationStore } from '@/features/editor/store/collaboration.store';
+import { useLayoutStore } from '@/features/editor/store/layout.store';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 
 export function InsertMenu() {
@@ -37,7 +39,20 @@ export function InsertMenu() {
   };
 
   const handleComment = () => {
-    editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
+    const sel = engine?.getSelection?.();
+    const cursor = engine?.getCursorPosition?.();
+
+    const startLine = sel?.fromLine ?? cursor?.line ?? 1;
+    const endLine = sel?.toLine ?? cursor?.line ?? 1;
+    const selectedText = engine?.getSelectedText?.() || '';
+
+    useDocumentCollaborationStore.getState().setPendingComment({
+      startLine,
+      endLine,
+      selectedText,
+    });
+    useLayoutStore.getState().setActiveSidebarTab('review');
+    useLayoutStore.getState().setSidebarLeftOpen(true);
   };
 
   return (

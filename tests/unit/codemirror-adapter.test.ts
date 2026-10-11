@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { CodeMirrorEngineAdapter } from '@/features/editor/adapters/codemirror/codemirror.adapter';
+import { CodeMirrorEngineAdapter } from '@/features/editor/engines/adapters/codemirror/codemirror.adapter';
 
 describe('CodeMirrorEngineAdapter (IEditorEngine Implementation for CM6)', () => {
   let view: EditorView;
@@ -65,7 +65,7 @@ describe('CodeMirrorEngineAdapter (IEditorEngine Implementation for CM6)', () =>
 
   it('should notify content change listeners on updates', () => {
     let changed = '';
-    const unsub = adapter.onContentChange((content) => {
+    const unsub = adapter.onContentChange((content: string) => {
       changed = content;
     });
 

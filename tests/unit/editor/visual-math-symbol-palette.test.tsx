@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 import React from 'react';
 import {
   VisualMathSymbolPalette,
@@ -208,6 +208,49 @@ describe('VisualMathSymbolPalette & Math Modal Integration', () => {
       fireEvent.click(cancelBtn);
 
       expect(screen.queryByText(/Edit LaTeX Math/i)).toBeNull();
+    });
+
+    it('opens math editor modal on double-click and provides Matrix Wizard button (Overleaf Parity)', async () => {
+      const { editorCommandBus } = await import('@/features/editor/coordinators/command-bus');
+      const busSpy = vi.spyOn(editorCommandBus, 'dispatch');
+
+      const { container } = render(
+        <VisualEditorView filePath="math.tex" value={mathLatex} onChange={vi.fn()} />
+      );
+
+      const mathEl = container.querySelector('.latex-math-inline');
+      expect(mathEl).toBeTruthy();
+
+      // Double-click on math element
+      fireEvent.doubleClick(mathEl!);
+
+      // Modal should be open
+      expect(screen.getByText(/Edit LaTeX Math \(Inline Formula\)/i)).toBeInTheDocument();
+
+      // Matrix Wizard button should be visible
+      const matrixBtn = screen.getByRole('button', { name: /Open Matrix Wizard/i });
+      expect(matrixBtn).toBeInTheDocument();
+
+      fireEvent.click(matrixBtn);
+      expect(busSpy).toHaveBeenCalledWith({
+        type: 'dialog:open',
+        dialog: 'matrix-wizard',
+      });
+
+      // External text insertion via editorCommandBus inserts into math input
+      act(() => {
+        editorCommandBus.dispatch({
+          type: 'editor:insert-text',
+          text: '\\begin{pmatrix} 1 & 0 \\\\ 0 & 1 \\end{pmatrix}',
+        });
+      });
+
+      await waitFor(() => {
+        const input = screen.getByLabelText(/LaTeX equation input/i) as HTMLInputElement;
+        expect(input.value).toContain('\\begin{pmatrix}');
+      });
+
+      busSpy.mockRestore();
     });
   });
 });

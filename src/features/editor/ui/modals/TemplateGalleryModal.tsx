@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * TemplateGalleryModal.tsx
@@ -35,7 +35,7 @@ import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 import { useSettingsStore, usePageStore } from '@/features/editor/store';
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
-import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk';
 
 import {
   type AcademicTemplate,

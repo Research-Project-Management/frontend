@@ -35,7 +35,7 @@ export type CardProps = {
   onManageTags?: (project: Project) => void;
 };
 
-export function Card({ project, onArchive, onManageTags }: CardProps) {
+export const Card = React.memo(function Card({ project, onArchive, onManageTags }: CardProps) {
   const projectId = project.id || '';
   const projectKey = (project as any).key || project.identifier || getProjectKey(project.name);
   const isPrivate = isProjectPrivate(project);
@@ -303,6 +303,6 @@ export function Card({ project, onArchive, onManageTags }: CardProps) {
       </div>
     </div>
   );
-}
+});
 
 export default Card;

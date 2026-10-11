@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import { CompilerLogs, parseLatexLog, type LogEntry } from '@/features/editor/ui/features/preview/CompilerLogs';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { toast } from 'sonner';
@@ -14,16 +14,13 @@ vi.mock('sonner', () => ({
 }));
 
 
-vi.mock('@/features/editor/coordinators/services/compiler.service', () => ({
-  listAuxFiles: vi.fn().mockResolvedValue([]),
-  downloadAuxFileUrl: vi.fn(),
-  downloadAllArtifactsZipUrl: vi.fn(),
-}));
-
-vi.mock('@/features/editor/coordinators/services/manuscript.service', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/features/editor/coordinators/services/manuscript.service')>();
+vi.mock('@/features/editor/sdk', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/editor/sdk')>();
   return {
     ...actual,
+    listAuxFiles: vi.fn().mockResolvedValue([]),
+    downloadAuxFileUrl: vi.fn(),
+    downloadAllArtifactsZipUrl: vi.fn(),
     manuscriptService: {
       ...actual.manuscriptService,
       diagnostics: {
@@ -159,4 +156,127 @@ No pages of output.`;
     fireEvent.keyDown(window, { key: 'F8', shiftKey: true });
     expect(onJumpToError).toHaveBeenCalledWith(undefined, 42);
   });
+
+  it('updates currentErrorIdx when editor:error-stepped event is dispatched across command bus', () => {
+    render(
+      <CompilerLogs
+        log={sampleLog}
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/1\/2 lỗi/i)).toBeInTheDocument();
+
+    // Dispatch external error-stepped event for index 1
+    act(() => {
+      editorCommandBus.dispatch({
+        type: 'editor:error-stepped',
+        errorIndex: 1,
+        file: 'sections/intro.tex',
+        line: 18,
+        message: "File 'algorithm.sty' not found.",
+      });
+    });
+
+    expect(screen.getByText(/2\/2 lỗi/i)).toBeInTheDocument();
+  });
+
+  it('diagnosticsCoordinator.getAllDiagnostics returns indexed diagnostics across all files sorted by file and line', async () => {
+    const { diagnosticsCoordinator } = await import('@/features/editor/coordinators/diagnostics.coordinator');
+    diagnosticsCoordinator.clear();
+
+    diagnosticsCoordinator.ingestCompilerErrors([
+      { line: 50, message: 'Error in main', file: 'main.tex', severity: 'error' },
+      { line: 12, message: 'Error in intro', file: 'chapters/intro.tex', severity: 'error' },
+      { line: 5, message: 'Warning in main', file: 'main.tex', severity: 'warning' },
+    ], 'main.tex');
+
+    const all = diagnosticsCoordinator.getAllDiagnostics();
+    expect(all.length).toBe(3);
+    expect(diagnosticsCoordinator.getDiagnosticsCount('error')).toBe(2);
+    expect(diagnosticsCoordinator.getDiagnosticsCount('warning')).toBe(1);
+
+    // chapters/intro.tex should sort before main.tex alphabetically
+    expect(all[0].file).toBe('chapters/intro.tex');
+    expect(all[0].line).toBe(12);
+
+    expect(all[1].file).toBe('main.tex');
+    expect(all[1].line).toBe(5);
+
+    expect(all[2].file).toBe('main.tex');
+    expect(all[2].line).toBe(50);
+  });
+
+  it('navigationCoordinator steps across project diagnostics on F8 / Shift+F8 (Overleaf Parity)', async () => {
+    const { navigationCoordinator } = await import('@/features/editor/coordinators/navigation.coordinator');
+    const { diagnosticsCoordinator } = await import('@/features/editor/coordinators/diagnostics.coordinator');
+    const { usePageStore } = await import('@/features/editor/store/editor.store');
+
+    diagnosticsCoordinator.clear();
+    diagnosticsCoordinator.ingestCompilerErrors([
+      { line: 15, message: 'First error in intro', file: 'sections/intro.tex', severity: 'error' },
+      { line: 30, message: 'Second error in intro', file: 'sections/intro.tex', severity: 'error' },
+      { line: 88, message: 'Fatal in main', file: 'main.tex', severity: 'error' },
+    ], 'main.tex');
+
+    // Simulate active document is sections/intro.tex at line 10
+    usePageStore.getState().setActiveFilePage({
+      id: 'file-intro',
+      title: 'sections/intro.tex',
+      path: 'sections/intro.tex',
+      content: '',
+      pageId: 'project-1',
+    });
+
+    const jumpSpy = vi.spyOn(navigationCoordinator, 'jumpToLine').mockImplementation(() => {});
+    const steppedEvents: any[] = [];
+    const unsub = editorCommandBus.subscribe('editor:error-stepped', (cmd) => {
+      steppedEvents.push(cmd);
+    });
+
+    // Step next (F8) -> should jump to line 15 in sections/intro.tex
+    navigationCoordinator.jumpToNextDiagnostic('error');
+    expect(jumpSpy).toHaveBeenCalledWith(expect.objectContaining({
+      filePath: 'sections/intro.tex',
+      line: 15,
+      highlight: 'error',
+    }));
+    expect(steppedEvents.length).toBe(1);
+    expect(steppedEvents[0].line).toBe(15);
+
+    // Step previous (Shift+F8) -> should wrap around to line 88 in main.tex
+    navigationCoordinator.jumpToPrevDiagnostic('error');
+    expect(jumpSpy).toHaveBeenCalledWith(expect.objectContaining({
+      filePath: 'main.tex',
+      line: 88,
+      highlight: 'error',
+    }));
+
+    unsub();
+    jumpSpy.mockRestore();
+  });
+
+  it('renders "Download raw log" button in footer and triggers log file download', () => {
+    const createObjectURLMock = vi.fn().mockReturnValue('blob:http://localhost/mock-log');
+    const revokeObjectURLMock = vi.fn();
+    window.URL.createObjectURL = createObjectURLMock;
+    window.URL.revokeObjectURL = revokeObjectURLMock;
+
+    render(
+      <CompilerLogs
+        log={sampleLog}
+        onClose={vi.fn()}
+      />
+    );
+
+    const downloadBtn = screen.getByRole('button', { name: /download raw log/i });
+    expect(downloadBtn).toBeInTheDocument();
+
+    fireEvent.click(downloadBtn);
+
+    expect(createObjectURLMock).toHaveBeenCalled();
+    expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('output.log'));
+  });
 });
+
+

@@ -9,7 +9,7 @@ interface GridViewProps {
   onEdit?: (page: Page) => void;
 }
 
-export function GridView({ pages, onEdit }: GridViewProps) {
+export const GridView = React.memo(function GridView({ pages, onEdit }: GridViewProps) {
   return (
     <div className="p-4 sm:p-6 pb-12 sm:pb-16 w-full max-w-7xl mx-auto">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4.5">
@@ -19,6 +19,7 @@ export function GridView({ pages, onEdit }: GridViewProps) {
       </div>
     </div>
   );
-}
+});
 
 export default GridView;
+

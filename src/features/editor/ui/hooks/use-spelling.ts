@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * use-spelling.ts
@@ -9,7 +9,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { spellingService } from '../../coordinators/services/spelling.service';
+import { manuscriptService } from '@/features/editor/sdk';
+const spellingService = manuscriptService.spelling;
 
 export const spellingKeys = {
   all: ['spelling-dictionary'] as const,

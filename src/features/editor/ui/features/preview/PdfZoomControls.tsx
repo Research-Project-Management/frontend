@@ -25,7 +25,9 @@ import {
 export interface PdfZoomControlsProps {
   scale: number;
   autoFit: boolean;
+  fitMode?: 'width' | 'height' | 'auto';
   onToggleAutoFit: () => void;
+  onSetFitMode?: (mode: 'width' | 'height' | 'auto') => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onSetScale?: (scale: number) => void;
@@ -37,13 +39,17 @@ const ZOOM_PRESETS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0];
 export const PdfZoomControls = React.memo(function PdfZoomControls({
   scale,
   autoFit,
+  fitMode = 'width',
   onToggleAutoFit,
+  onSetFitMode,
   onZoomIn,
   onZoomOut,
   onSetScale,
   compact = false,
 }: PdfZoomControlsProps) {
   const percentage = Math.round(scale * 100);
+  const fitLabel =
+    fitMode === 'height' ? 'Fit Page' : fitMode === 'auto' ? 'Auto' : 'Fit Width';
 
   return (
     <div className="flex items-center gap-0.5 select-none">
@@ -71,7 +77,7 @@ export const PdfZoomControls = React.memo(function PdfZoomControls({
             aria-label="Select zoom level"
             className="h-7 px-2 flex items-center gap-1 rounded-md text-xs font-mono font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
-            <span>{autoFit ? 'Fit' : `${percentage}%`}</span>
+            <span>{autoFit ? fitLabel : `${percentage}%`}</span>
             <ChevronDown className="size-3 opacity-60" />
           </button>
         </DropdownMenuTrigger>
@@ -81,11 +87,42 @@ export const PdfZoomControls = React.memo(function PdfZoomControls({
           className="w-32 p-1 text-xs bg-popover text-popover-foreground border border-border shadow-md rounded-md z-50 select-none"
         >
           <DropdownMenuItem
-            onClick={onToggleAutoFit}
+            onClick={() => {
+              if (onSetFitMode) onSetFitMode('width');
+              else onToggleAutoFit();
+            }}
             className="flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
           >
             <span>Fit Width</span>
-            {autoFit && <Check className="size-3.5 text-primary" />}
+            {autoFit && fitMode !== 'height' && fitMode !== 'auto' && (
+              <Check className="size-3.5 text-primary" />
+            )}
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onClick={() => {
+              if (onSetFitMode) onSetFitMode('height');
+              else onToggleAutoFit();
+            }}
+            className="flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
+          >
+            <span>Fit Page</span>
+            {autoFit && fitMode === 'height' && (
+              <Check className="size-3.5 text-primary" />
+            )}
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onClick={() => {
+              if (onSetFitMode) onSetFitMode('auto');
+              else onToggleAutoFit();
+            }}
+            className="flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
+          >
+            <span>Auto Zoom</span>
+            {autoFit && fitMode === 'auto' && (
+              <Check className="size-3.5 text-primary" />
+            )}
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />

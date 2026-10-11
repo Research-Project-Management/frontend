@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * use-notification-bundler.ts
@@ -8,7 +8,8 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { notificationBundlerService } from '../../coordinators/services/notification-bundler.service';
+import { manuscriptService } from '@/features/editor/sdk';
+const notificationBundlerService = manuscriptService.notifications;
 import { toast } from 'sonner';
 
 export const notificationBundlerKeys = {

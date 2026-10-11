@@ -1,4 +1,4 @@
-/**
+﻿/**
  * review.coordinator.ts
  *
  * Headless Review & Track Changes Coordinator (Coordinators Layer).
@@ -13,9 +13,7 @@
 
 import { type EditorView } from '@codemirror/view';
 import { editorCommandBus, getActiveEditorEngine } from './command-bus';
-import { suggestionService } from './services/suggestion.service';
-import { commentService } from './services/comment.service';
-import { manuscriptService } from './services/manuscript.service';
+import { suggestionService, commentService, manuscriptService } from '@/features/editor/sdk';
 import {
   setTrackChangesSuggestionsEffect,
   setTrackChangesCommentsEffect,

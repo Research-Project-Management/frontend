@@ -32,7 +32,7 @@ export function getProviderIcon(provider: IntegrationProvider): React.ComponentT
   }
 }
 
-export function IntegrationCard({ item, onConfigure }: IntegrationCardProps) {
+export const IntegrationCard = React.memo(function IntegrationCard({ item, onConfigure }: IntegrationCardProps) {
   const Icon = getProviderIcon(item.provider);
   const isConnected = item.status === 'connected' && !item.needsReconnect;
   const needsReconnect = item.needsReconnect;
@@ -91,6 +91,6 @@ export function IntegrationCard({ item, onConfigure }: IntegrationCardProps) {
       </Button>
     </div>
   );
-}
+});
 
 export default IntegrationCard;

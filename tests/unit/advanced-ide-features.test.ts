@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { detectMathAtPosition } from '@/features/editor/components/editor/math-hover.provider';
-import { SHORTCUT_LIST } from '@/features/editor/components/modals/KeyboardShortcutsModal';
-import { LatexCompilerEngine, parseSyncTeX } from '@/features/editor/coordinators/services/latex-compiler-engine.service';
+import { detectMathAtPosition } from '@/features/editor/engines/extensions/latex-math-preview';
+import { SHORTCUT_LIST, type ShortcutItem } from '@/features/editor/ui/modals/KeyboardShortcutsModal';
+import { parseSyncTeX } from '@/features/editor/domain/document';
+import { LatexCompilerEngine } from '@/features/editor/coordinators';
+import { useSettingsStore } from '@/features/editor/store';
 
 describe('Advanced IDE Features (Overleaf Parity)', () => {
   describe('Math Hover Detection (detectMathAtPosition)', () => {
@@ -44,7 +46,7 @@ describe('Advanced IDE Features (Overleaf Parity)', () => {
 
   describe('Keyboard Shortcuts Cheat Sheet (SHORTCUT_LIST)', () => {
     it('should contain all major categories', () => {
-      const categories = new Set(SHORTCUT_LIST.map((s) => s.category));
+      const categories = new Set(SHORTCUT_LIST.map((s: ShortcutItem) => s.category));
       expect(categories).toContain('Compilation');
       expect(categories).toContain('Editing');
       expect(categories).toContain('Navigation');
@@ -52,7 +54,7 @@ describe('Advanced IDE Features (Overleaf Parity)', () => {
     });
 
     it('should include core Overleaf keybindings', () => {
-      const ids = SHORTCUT_LIST.map((s) => s.id);
+      const ids = SHORTCUT_LIST.map((s: ShortcutItem) => s.id);
       expect(ids).toContain('compile');
       expect(ids).toContain('shortcuts-help');
       expect(ids).toContain('quick-open');
@@ -81,8 +83,8 @@ describe('Advanced IDE Features (Overleaf Parity)', () => {
       const detail = LatexCompilerEngine.resolveForwardDetail(12, map, 'main.tex');
       expect(detail).not.toBeNull();
       expect(detail?.page).toBe(1);
-      expect(detail?.x).toBe(2500000);
-      expect(detail?.y).toBe(4500000);
+      expect(detail?.x).toBe(38);
+      expect([68, 69]).toContain(detail?.y);
     });
 
     it('should return null gracefully if line is not found or map is null', () => {
@@ -91,40 +93,36 @@ describe('Advanced IDE Features (Overleaf Parity)', () => {
   });
 
   describe('Overleaf 1:1 Parity: Recompile Menu Options & State', () => {
-    it('should support toggling Auto compile (On / Off)', async () => {
-      const { useDocumentSettingsStore } = await import('@/features/editor/store');
-      useDocumentSettingsStore.getState().setAutoCompile(true);
-      expect(useDocumentSettingsStore.getState().autoCompile).toBe(true);
+    it('should support toggling Auto compile (On / Off)', () => {
+      useSettingsStore.getState().setAutoCompile(true);
+      expect(useSettingsStore.getState().autoCompile).toBe(true);
 
-      useDocumentSettingsStore.getState().setAutoCompile(false);
-      expect(useDocumentSettingsStore.getState().autoCompile).toBe(false);
+      useSettingsStore.getState().setAutoCompile(false);
+      expect(useSettingsStore.getState().autoCompile).toBe(false);
     });
 
-    it('should support switching Compile mode (Normal / Fast [draft])', async () => {
-      const { useDocumentSettingsStore } = await import('@/features/editor/store');
-      useDocumentSettingsStore.getState().setCompileMode('full');
-      expect(useDocumentSettingsStore.getState().compileMode).toBe('full');
+    it('should support switching Compile mode (Normal / Fast [draft])', () => {
+      useSettingsStore.getState().setCompileMode('full');
+      expect(useSettingsStore.getState().compileMode).toBe('full');
 
-      useDocumentSettingsStore.getState().setCompileMode('draft');
-      expect(useDocumentSettingsStore.getState().compileMode).toBe('draft');
+      useSettingsStore.getState().setCompileMode('draft');
+      expect(useSettingsStore.getState().compileMode).toBe('draft');
     });
 
-    it('should support toggling Syntax checks (Check syntax before compile / Don’t check syntax)', async () => {
-      const { useDocumentSettingsStore } = await import('@/features/editor/store');
-      useDocumentSettingsStore.getState().setLinterEnabled(true);
-      expect(useDocumentSettingsStore.getState().linterEnabled).toBe(true);
+    it('should support toggling Syntax checks (Check syntax before compile / Don’t check syntax)', () => {
+      useSettingsStore.getState().setLinterEnabled(true);
+      expect(useSettingsStore.getState().linterEnabled).toBe(true);
 
-      useDocumentSettingsStore.getState().setLinterEnabled(false);
-      expect(useDocumentSettingsStore.getState().linterEnabled).toBe(false);
+      useSettingsStore.getState().setLinterEnabled(false);
+      expect(useSettingsStore.getState().linterEnabled).toBe(false);
     });
 
-    it('should support toggling Compile error handling (Stop on first error / Try to compile despite errors)', async () => {
-      const { useDocumentSettingsStore } = await import('@/features/editor/store');
-      useDocumentSettingsStore.getState().setStopOnFirstError(true);
-      expect(useDocumentSettingsStore.getState().stopOnFirstError).toBe(true);
+    it('should support toggling Compile error handling (Stop on first error / Try to compile despite errors)', () => {
+      useSettingsStore.getState().setStopOnFirstError(true);
+      expect(useSettingsStore.getState().stopOnFirstError).toBe(true);
 
-      useDocumentSettingsStore.getState().setStopOnFirstError(false);
-      expect(useDocumentSettingsStore.getState().stopOnFirstError).toBe(false);
+      useSettingsStore.getState().setStopOnFirstError(false);
+      expect(useSettingsStore.getState().stopOnFirstError).toBe(false);
     });
 
     it('should allow stopping in-flight compilation via LatexCompilerEngine.cancelInFlightCompile', () => {

@@ -8,10 +8,8 @@
  */
 
 import React from 'react';
-import { useParams } from 'next/navigation';
 import {
   Columns2,
-  ExternalLink,
   Scan,
   Check,
 } from 'lucide-react';
@@ -27,7 +25,7 @@ import {
 } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import { useSettingsStore, useCompileStore } from '@/features/editor/store';
+import { useSettingsStore } from '@/features/editor/store';
 import { useShallow } from 'zustand/react/shallow';
 
 function PenIcon({ className }: { className?: string }) {
@@ -130,39 +128,12 @@ export function ViewMenu() {
     }))
   );
 
-  const pdfUrl = useCompileStore((s) => s.pdfUrl);
-  const setIsViewerPoppedOut = useCompileStore((s) => s.setIsViewerPoppedOut);
-  const params = useParams<{ projectId?: string; pageId?: string }>();
-
-  const handleOpenPdfSeparateTab = () => {
-    const pageId = params?.pageId;
-    if (pageId) {
-      const url = params.projectId
-        ? `/projects/${params.projectId}/pages/${pageId}/popout`
-        : `/editor/${pageId}/popout`;
-      window.open(url, '_blank');
-      setIsViewerPoppedOut(true);
-    } else if (pdfUrl) {
-      window.open(pdfUrl, '_blank');
-    }
-  };
-
   const handleToggleFocusMode = () => {
     if (typeof document === 'undefined') return;
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     } else {
       document.documentElement.requestFullscreen().catch(() => {});
-    }
-  };
-
-  const handlePresentationMode = () => {
-    setLayout('viewer-only');
-    if (typeof document === 'undefined') return;
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
-    } else {
-      document.exitFullscreen().catch(() => {});
     }
   };
 
@@ -238,18 +209,7 @@ export function ViewMenu() {
           <span className="flex-1 text-xs whitespace-nowrap">PDF only</span>
         </MenubarItem>
 
-        {/* 4. Open PDF in separate tab */}
-        <MenubarItem
-          onClick={handleOpenPdfSeparateTab}
-          className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors text-xs font-medium select-none"
-        >
-          <div className="size-4 flex items-center justify-center shrink-0">
-            <ExternalLink className="size-4 opacity-70" strokeWidth={1.8} />
-          </div>
-          <span className="flex-1 text-xs whitespace-nowrap">Open PDF in separate tab</span>
-        </MenubarItem>
-
-        {/* 5. Focus mode */}
+        {/* 4. Focus mode */}
         <MenubarItem
           onClick={handleToggleFocusMode}
           className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors text-xs font-medium select-none"
@@ -374,14 +334,6 @@ export function ViewMenu() {
         <div className="text-12 font-medium text-muted-foreground px-2.5 py-1.5 select-none">
           PDF preview
         </div>
-
-        {/* Presentation mode */}
-        <MenubarItem
-          onClick={handlePresentationMode}
-          className="flex items-center px-2.5 py-1.5 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors text-xs font-medium select-none"
-        >
-          <span className="flex-1 text-xs">Presentation mode</span>
-        </MenubarItem>
 
         {/* PDF zoom > */}
         <MenubarSub>

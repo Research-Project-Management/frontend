@@ -4,5 +4,4 @@ export * from "./assignment.schema";
 export * from "./attachment.schema";
 export * from "./comment.schema";
 export * from "./relation.schema";
-export * from "./template.schema";
 export * from "./property.schema";

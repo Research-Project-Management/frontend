@@ -89,7 +89,7 @@ Chúng tôi áp dụng kiến trúc Transformer kết hợp cơ chế chú ý.`;
 
       // 5. Generate formatted bibliography section for Markdown (APA style)
       const bibSection = buildBibliographySection({
-        bibliographyText: batchResult.bibliographyText,
+        bibliographyText: batchResult.bibliographyText || '',
         format: 'markdown',
         styleId: 'apa',
         citations: batchResult.citations.map((c, idx) => ({
@@ -275,7 +275,7 @@ Nghiên cứu về mô hình thị giác [@tran2023deep] và trí tuệ nhân t�
       expect(batchResult.bibliographyText).toContain('Trần Thị Bình và Lê Văn Cường (2023)');
 
       const bibSection = buildBibliographySection({
-        bibliographyText: batchResult.bibliographyText,
+        bibliographyText: batchResult.bibliographyText || '',
         format: 'markdown',
         styleId: 'tcvn',
         citations: batchResult.citations.map((c, idx) => ({

@@ -12,9 +12,9 @@
  * - Dispatches typed notifications on `editorCommandBus`.
  */
 
-import { manuscriptService, type LinkedFileDto } from './services/manuscript.service';
-import { fileService } from './services/core.service';
+import { manuscriptService, fileService, type LinkedFileDto } from '@/features/editor/sdk';
 import { lruDocumentCache } from '../domain/document/lru-document-cache';
+import { extractDocumentContentString } from '../domain/types/core.types';
 import { latexDagEngine, normalizeLatexPath } from '../domain/latex/latex-dag-engine';
 import { latexSymbolsIndex } from '../domain/latex/latex-symbols-index';
 import {
@@ -25,6 +25,7 @@ import { diagnosticsCoordinator } from './diagnostics.coordinator';
 import { editorCommandBus } from './command-bus';
 import { useTabsStore } from '../store/tabs.store';
 import { usePageStore } from '../store/editor.store';
+import { useSettingsStore } from '../store/settings.store';
 import { toast } from 'sonner';
 
 export interface CreateFileOptions {
@@ -50,6 +51,7 @@ export interface MoveItemOptions {
 
 export class WorkspaceCoordinatorRegistry {
   private initialized = false;
+  private projectFiles: Array<{ id: string; title?: string; name?: string; path?: string; content?: any }> = [];
 
   constructor() {
     this.initCommandSubscriptions();
@@ -77,6 +79,14 @@ export class WorkspaceCoordinatorRegistry {
 
     editorCommandBus.registerExecutor('workspace:delete-file', async (cmd) => {
       return this.deleteFile(cmd.fileId);
+    });
+
+    editorCommandBus.registerExecutor('workspace:restore-file', async (cmd) => {
+      return this.restoreFile(cmd.fileId, cmd.projectId);
+    });
+
+    editorCommandBus.registerExecutor('workspace:set-main-file', async (cmd) => {
+      return this.setMainFile(cmd.fileId, cmd.projectId);
     });
 
     editorCommandBus.registerExecutor('editor:rename-citekey', async (cmd) => {
@@ -252,16 +262,97 @@ export class WorkspaceCoordinatorRegistry {
   }
 
   /**
+   * Restores a deleted file from trash, warms cache, re-indexes symbols and DAG
+   */
+  public async restoreFile(fileId: string, optProjectId?: string): Promise<any> {
+    const effectiveProjectId = optProjectId || usePageStore.getState().projectId;
+    try {
+      const res: any = await manuscriptService.docs.restore(fileId);
+      const page = res?.page || res?.data || res;
+
+      if (page) {
+        // 1. Warm LRU cache
+        lruDocumentCache.warm(page.id, {
+          filePath: page.title || page.name || 'restored.tex',
+          content: page.content || '',
+          projectId: page.projectId || effectiveProjectId,
+        });
+
+        // 2. Re-index in DAG & Symbols
+        const docTitle = page.title || page.name || 'restored.tex';
+        if (typeof page.content === 'string') {
+          latexDagEngine.parseAndRegister(docTitle, page.content, page.id);
+          latexSymbolsIndex.indexFile(page.id, docTitle, page.content);
+        }
+      }
+
+      // 3. Notify CommandBus & filetree
+      editorCommandBus.dispatch({
+        type: 'filetree:updated',
+        payload: { action: 'restore', fileId, page },
+      });
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+      }
+
+      toast.success('File restored');
+      return res;
+    } catch (err: any) {
+      console.error('[WorkspaceCoordinator] Restore error:', err);
+      toast.error(err?.message || 'Failed to restore file');
+      throw err;
+    }
+  }
+
+  /**
+   * Sets a document as the primary LaTeX entry point (Main Document)
+   */
+  public async setMainFile(fileId: string, optProjectId?: string): Promise<boolean> {
+    const effectiveProjectId = optProjectId || usePageStore.getState().projectId;
+    if (!effectiveProjectId) return false;
+
+    try {
+      await manuscriptService.structure.setRootDoc(effectiveProjectId, fileId);
+      useSettingsStore.getState().setMainFile(fileId);
+
+      editorCommandBus.dispatch({
+        type: 'filetree:updated',
+        payload: { action: 'set-root', fileId },
+      });
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+      }
+
+      toast.success('Set as main document');
+      return true;
+    } catch (err: any) {
+      console.error('[WorkspaceCoordinator] Set main document error:', err);
+      toast.error(err?.message || 'Failed to set main document');
+      throw err;
+    }
+  }
+
+  /**
    * High-speed initial bulk indexing of all project files for cross-referencing and DAG
    */
-  public initProjectSymbols(files: Array<{ id: string; title?: string; name?: string; path?: string; content?: string }>): void {
+  public initProjectSymbols(files: Array<{ id: string; title?: string; name?: string; path?: string; content?: any }>): void {
+    this.projectFiles = [...files];
     latexSymbolsIndex.clear();
     for (const file of files) {
       const path = file.path || file.title || file.name || file.id;
-      const content = file.content || '';
+      const content = extractDocumentContentString(file.content);
       latexSymbolsIndex.indexFile(file.id, path, content);
       latexDagEngine.parseAndRegister(path, content, file.id);
     }
+  }
+
+  /**
+   * Returns all known project files from the most recent workspace load or indexing.
+   */
+  public getProjectFiles(): Array<{ id: string; title?: string; name?: string; path?: string; content?: any }> {
+    return this.projectFiles;
   }
 
   /**
@@ -312,7 +403,7 @@ export class WorkspaceCoordinatorRegistry {
     }
 
     // 3. Apply updates to LRU cache, backend, symbol index, and active editor
-    const activePage = usePageStore.getState().activeFilePage || usePageStore.getState().currentPage;
+    const activePage = usePageStore.getState().getActiveDocument();
 
     for (const mod of modifiedFiles) {
       lruDocumentCache.updateContent(mod.id, mod.newContent, true);

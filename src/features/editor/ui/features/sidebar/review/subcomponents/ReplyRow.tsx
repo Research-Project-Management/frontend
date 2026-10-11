@@ -23,11 +23,11 @@ export const ReplyRow = React.memo(function ReplyRow({
   membersMap,
 }: ReplyRowProps) {
   const isAuthor = Boolean(
-    currentUserId && (currentUserId === reply.author?.id || (reply as any).userId === currentUserId),
+    currentUserId && (currentUserId === reply.author?.id || reply.userId === currentUserId),
   );
 
   const authorDisplay = useMemo(
-    () => resolveAuthorDisplay(reply.author, membersMap, (reply as any).userId),
+    () => resolveAuthorDisplay(reply.author, membersMap, reply.userId),
     [reply, membersMap],
   );
 

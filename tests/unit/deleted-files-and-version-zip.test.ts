@@ -1,9 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { exportVersionAsZip } from '@/features/editor/coordinators/services/archive-export.service';
-import { fileService, documentService } from '@/features/editor/coordinators/services/core.service';
-import { versionService } from '@/features/editor/coordinators/services/history.service';
-import { StorageService } from '@/features/editor/coordinators/services/storage.service';
-import { pageKeys } from '@/features/editor/hooks/use-core';
+import {
+  exportVersionAsZip,
+  fileService,
+  documentService,
+  versionService,
+  StorageService,
+} from '@/features/editor/sdk';
+import { pageKeys } from '@/features/editor/ui/hooks/use-core';
 
 // Mock browser globals for JSZip file download
 const mockClick = vi.fn();

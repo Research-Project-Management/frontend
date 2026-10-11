@@ -372,8 +372,8 @@ export function formatItemToBibtex(item: Item): string {
       .filter(Boolean);
     if (names.length > 0) fields.push(`  author = {${names.join(' and ')}}`);
   }
-  if (item.journal || (item as any).publicationTitle) {
-    fields.push(`  journal = {${item.journal || (item as any).publicationTitle}}`);
+  if (item.journal || item.publicationTitle) {
+    fields.push(`  journal = {${item.journal || item.publicationTitle}}`);
   }
   if (item.year) fields.push(`  year = {${item.year}}`);
   if (item.doi) fields.push(`  doi = {${item.doi}}`);

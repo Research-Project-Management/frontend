@@ -258,7 +258,10 @@ export function RecentlyReadVerticalStackIllustration({ className }: TIllustrati
  */
 export function RecentlyReadEmptyState() {
   return (
-    <div className="flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200">
+    <div
+      data-testid="recently-read-empty"
+      className="flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200"
+    >
       <style dangerouslySetInnerHTML={{ __html: libraryIllustrationStyles }} />
 
       {/* 3D Isometric Multi-Layer Recently Read Illustration */}

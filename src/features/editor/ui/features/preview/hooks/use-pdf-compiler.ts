@@ -10,6 +10,7 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { useSettingsStore, useCompileStore } from '../../../../store';
 import { compilerLifecycleCoordinator } from '../../../../coordinators/compiler.coordinator';
+import { editorCommandBus } from '../../../../coordinators/command-bus';
 import type { SyncTeXMap } from '@/features/editor/domain/document/synctex-index';
 import { toast } from 'sonner';
 
@@ -44,6 +45,11 @@ export function usePdfCompiler({
   useEffect(() => {
     synctexMapRef.current = compilerLifecycleCoordinator.getSynctexMap();
     rawSynctexRef.current = compilerLifecycleCoordinator.getRawSynctex();
+
+    const unsub = editorCommandBus.subscribe('synctex:map-updated', (cmd) => {
+      synctexMapRef.current = cmd.map;
+    });
+    return unsub;
   }, [lastCompiledAt]);
 
   const handleCompile = useCallback(

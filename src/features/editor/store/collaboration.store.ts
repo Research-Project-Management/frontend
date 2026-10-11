@@ -64,9 +64,19 @@ export const useDocumentCollaborationStore = create<DocumentCollaborationState>(
   updateCollaborator: (collaborator) =>
     set((state) => {
       const idx = state.collaborators.findIndex((c) => c.id === collaborator.id);
+      const isOnline = collaborator.isOnline !== undefined ? collaborator.isOnline : (idx >= 0 ? state.collaborators[idx].isOnline : true);
+      const lastActiveAt = collaborator.lastActiveAt ?? Date.now();
+
       if (idx >= 0) {
         const next = [...state.collaborators];
-        next[idx] = { ...next[idx], ...collaborator };
+        const nextCursor = !isOnline ? undefined : (collaborator.cursor !== undefined ? collaborator.cursor : next[idx].cursor);
+        next[idx] = {
+          ...next[idx],
+          ...collaborator,
+          isOnline,
+          cursor: nextCursor,
+          lastActiveAt,
+        };
         return { collaborators: next };
       }
       return {
@@ -75,8 +85,10 @@ export const useDocumentCollaborationStore = create<DocumentCollaborationState>(
           {
             name: 'Collaborator',
             color: '#3b82f6',
-            isOnline: true,
+            lastActiveAt,
             ...collaborator,
+            isOnline,
+            cursor: isOnline ? collaborator.cursor : undefined,
           } as CollaboratorPresenceInfo,
         ],
       };

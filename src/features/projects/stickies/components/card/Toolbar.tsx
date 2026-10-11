@@ -17,7 +17,7 @@ interface ToolbarProps {
   onActiveModalChange: (modal: any) => void;
 }
 
-export default function Toolbar({
+const Toolbar = React.memo(function Toolbar({
   sticky,
   onUpdate,
   onDelete,
@@ -82,4 +82,6 @@ export default function Toolbar({
       />
     </div>
   );
-}
+});
+
+export default Toolbar;

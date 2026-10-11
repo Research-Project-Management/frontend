@@ -16,7 +16,6 @@ import {
   Link2,
   Briefcase,
   Layers,
-  BarChart3,
   PanelLeft,
   MessageSquare,
   Wallet,
@@ -40,7 +39,7 @@ import {
 } from '@/shared/components/icons';
 import { useProjects } from '../hooks/use-project';
 import { useFavorites } from '../hooks/use-favorites';
-import { useProject } from '@/features/projects/project-id/work-items/hooks/use-work-item';
+import { useProject } from '@/features/projects/project-id/work-items';
 
 const CreateProjectModal = dynamic(
   () =>
@@ -49,9 +48,7 @@ const CreateProjectModal = dynamic(
 );
 const CreateModal = dynamic(
   () =>
-    import(
-      '@/features/projects/project-id/work-items/components/modals/CreateModal'
-    ).then((m) => m.CreateModal),
+    import('@/features/projects/project-id/work-items').then((m) => m.CreateModal),
   { ssr: false }
 );
 
@@ -130,12 +127,6 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         label: 'Projects',
         icon: Briefcase,
         to: '/projects',
-      },
-      {
-        id: 'analytics',
-        label: 'Analytics',
-        icon: BarChart3,
-        to: '/projects/analytics',
       },
       {
         id: 'archives',
@@ -238,19 +229,26 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           <div className="flex items-center gap-0.5 shrink-0">
             {/* 3-dots dropdown menu */}
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="Project options"
-                  className={cn(
-                    "size-6 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-sidebar-accent transition-all duration-150 active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary",
-                    "opacity-0 group-hover/row:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-sidebar-accent focus:opacity-100"
-                  )}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <MoreHorizontal className="size-3.5 text-inherit shrink-0" />
-                </button>
-              </DropdownMenuTrigger>
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Project options"
+                      className={cn(
+                        "size-6 flex items-center justify-center rounded-md cursor-pointer text-muted-foreground hover:text-foreground hover:bg-background hover:shadow-2xs transition-all duration-150 active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                        "opacity-0 group-hover/row:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-background data-[state=open]:text-foreground data-[state=open]:shadow-2xs focus:opacity-100"
+                      )}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MoreHorizontal className="size-3.5 text-inherit shrink-0" />
+                    </button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={6}>
+                  Project options
+                </TooltipContent>
+              </Tooltip>
               <DropdownMenuContent
                 side="right"
                 align="start"
@@ -339,23 +337,30 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
             </DropdownMenu>
 
             {/* Chevron collapse / expand toggle button */}
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                aria-label={isOpen ? "Collapse project" : "Expand project"}
-                className={cn(
-                  "size-6 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-sidebar-accent transition-all duration-150 active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary",
-                  isOpen ? "opacity-100" : "opacity-0 group-hover/row:opacity-100 focus:opacity-100"
-                )}
-              >
-                <ChevronDown
-                  className={cn(
-                    "size-3.5 text-inherit transition-transform duration-200",
-                    isOpen ? "" : "-rotate-90"
-                  )}
-                />
-              </button>
-            </CollapsibleTrigger>
+            <Tooltip delayDuration={300}>
+              <TooltipTrigger asChild>
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={isOpen ? "Collapse project" : "Expand project"}
+                    className={cn(
+                      "size-6 flex items-center justify-center rounded-md cursor-pointer text-muted-foreground hover:text-foreground hover:bg-background hover:shadow-2xs transition-all duration-150 active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                      isOpen ? "opacity-100" : "opacity-0 group-hover/row:opacity-100 focus:opacity-100"
+                    )}
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "size-3.5 text-inherit transition-transform duration-200",
+                        isOpen ? "" : "-rotate-90"
+                      )}
+                    />
+                  </button>
+                </CollapsibleTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={6}>
+                {isOpen ? "Collapse project" : "Expand project"}
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
@@ -444,7 +449,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         <button
           type="button"
           onClick={() => setIsCreateWorkItemOpen(true)}
-          className="flex h-8 w-full items-center gap-2 rounded-md border border-border bg-background px-2.5 text-13 font-medium text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          className="flex h-8 w-full items-center gap-2 rounded-md border border-border bg-background px-2.5 text-13 font-medium text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shadow-2xs"
         >
           <AddWorkItemIcon className="size-4 shrink-0 text-foreground" />
           <span className="tracking-tight">New work item</span>

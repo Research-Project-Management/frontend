@@ -18,6 +18,7 @@ import { ProjectService } from '@/features/projects/shell/services/project.servi
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { reviewCoordinator } from '@/features/editor/coordinators/review.coordinator';
 import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
+import { extractProjectId } from '@/features/editor/domain/types';
 import { useReviewRealtimeNotifications } from '../useReviewRealtimeNotifications';
 import { jumpToEditorLine, scrollToReviewItem } from '../utils/review.util';
 
@@ -25,14 +26,28 @@ export type { ReviewPendingCountResult } from './useReviewPendingCount';
 export { useReviewPendingCount } from './useReviewPendingCount';
 export type ReviewScope = 'current' | 'overview';
 
+interface ProjectMemberItem {
+  id?: string;
+  userId?: string;
+  name?: string;
+  email?: string;
+  avatar?: string;
+  role?: string;
+  user?: {
+    id?: string;
+    name?: string;
+    email?: string;
+    avatar?: string;
+  };
+}
+
 export function useReviewState() {
   const { pageId: rootPageId, projectId: routeProjectId } = useParams<{ pageId: string; projectId?: string }>();
   const storeActivePageId = usePageStore((s) => s.activePageId);
   const currentPage = usePageStore((s) => s.currentPage);
   const pageId = storeActivePageId || currentPage?.id || rootPageId;
   const storeProjectId = usePageStore((s) => s.projectId);
-  const rawProjectId = currentPage?.projectId || routeProjectId || storeProjectId || '';
-  const projectId = typeof rawProjectId === 'string' ? rawProjectId : (rawProjectId as any)?.id || '';
+  const projectId = routeProjectId || storeProjectId || extractProjectId(currentPage) || '';
 
   const { user } = useAuth();
   const { selectFile } = useActiveDocument();
@@ -59,8 +74,11 @@ export function useReviewState() {
     queryFn: async () => {
       if (!projectId) return [];
       try {
-        const res = await ProjectService.getMembers(projectId);
-        return res?.members || (res as any)?.data?.members || [];
+        const res = (await ProjectService.getMembers(projectId)) as {
+          members?: ProjectMemberItem[];
+          data?: { members?: ProjectMemberItem[] };
+        } | null;
+        return res?.members || res?.data?.members || [];
       } catch {
         return [];
       }
@@ -75,17 +93,16 @@ export function useReviewState() {
     const seen = new Set<string>();
 
     if (Array.isArray(projectMembersData)) {
-      for (const m of projectMembersData) {
-        const anyM = m as any;
-        const id = m.userId || anyM.id || m.user?.id;
-        const name = m.user?.name || anyM.name || m.user?.email?.split('@')[0] || 'Collaborator';
+      for (const m of projectMembersData as ProjectMemberItem[]) {
+        const id = m.userId || m.id || m.user?.id;
+        const name = m.user?.name || m.name || m.user?.email?.split('@')[0] || 'Collaborator';
         if (id && !seen.has(id)) {
           seen.add(id);
           list.push({
             id,
             name,
-            email: m.user?.email || anyM.email,
-            avatar: m.user?.avatar || anyM.avatar,
+            email: m.user?.email || m.email,
+            avatar: m.user?.avatar || m.avatar,
             role: m.role,
           });
         }

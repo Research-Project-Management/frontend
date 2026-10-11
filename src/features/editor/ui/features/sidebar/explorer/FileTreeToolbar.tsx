@@ -6,6 +6,7 @@ import {
   FilePlus,
   FolderPlus,
   Upload,
+  Trash2,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -33,6 +34,8 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
   onOpenFileModal,
   onStartCreateFolder,
   onOpenUploadModal,
+  onOpenDeletedFilesModal,
+  deletedFilesCount = 0,
 }: FileTreeToolbarProps) {
   return (
     <div
@@ -111,6 +114,30 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-11">Upload files</TooltipContent>
             </Tooltip>
+
+            {/* 4. Deleted files (Overleaf Parity) */}
+            {onOpenDeletedFilesModal && (
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onOpenDeletedFilesModal}
+                    aria-label="Deleted files"
+                    className="relative flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground motion-reduce:transition-none"
+                  >
+                    <Trash2 className="size-4 shrink-0 text-foreground/80 hover:text-foreground" strokeWidth={1.5} />
+                    {deletedFilesCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-0.5 items-center justify-center rounded-full text-[9px] font-mono font-semibold bg-muted-foreground/30 text-foreground leading-none">
+                        {deletedFilesCount > 9 ? '9+' : deletedFilesCount}
+                      </span>
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-11">
+                  Deleted files {deletedFilesCount > 0 ? `(${deletedFilesCount})` : ''}
+                </TooltipContent>
+              </Tooltip>
+            )}
           </>
         )}
       </div>

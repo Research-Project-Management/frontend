@@ -12,15 +12,11 @@ import {
 } from '@/features/editor/engines/extensions/inline-diff';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { aiCoordinator } from '@/features/editor/coordinators/ai.coordinator';
-import { suggestLatexFix } from '@/features/editor/coordinators/services/ai-error-assist.service';
+import { manuscriptService } from '@/features/editor/sdk';
 import { CodeMirrorEngineAdapter } from '@/features/editor/engines/adapters/codemirror/codemirror.adapter';
 import { setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
 import { usePageStore } from '@/features/editor/store';
 import type { DiffProposal } from '@/features/editor/domain/types/ports/editor-engine.port';
-
-vi.mock('@/features/editor/coordinators/services/ai-error-assist.service', () => ({
-  suggestLatexFix: vi.fn(),
-}));
 
 describe('AI Inline Ghost Diff & 1-Click Error Assist (Cursor / Overleaf Parity)', () => {
   let view: EditorView;
@@ -249,7 +245,8 @@ describe('AI Inline Ghost Diff & 1-Click Error Assist (Cursor / Overleaf Parity)
 
   describe('3. aiCoordinator 1-Click AutoFix & Compiler Error Integration', () => {
     it('executes autoFixDiagnostic, calls AI service, and mounts inline diff', async () => {
-      vi.mocked(suggestLatexFix).mockResolvedValue({
+      const suggestSpy = vi.spyOn(manuscriptService.ai, 'suggestLatexFix').mockResolvedValue({
+        originalSnippet: '\\undefinedMacro',
         fixedSnippet: '\\textbf{Fixed Macro}',
         explanation: 'Replaced unknown macro with textbf',
         confidence: 'high',
@@ -265,10 +262,11 @@ describe('AI Inline Ghost Diff & 1-Click Error Assist (Cursor / Overleaf Parity)
         line: 3,
         file: 'main.tex',
         severity: 'error',
+        source: 'compiler',
       });
 
       expect(success).toBe(true);
-      expect(suggestLatexFix).toHaveBeenCalledTimes(1);
+      expect(suggestSpy).toHaveBeenCalledTimes(1);
 
       // Must have jumped to line 3
       expect(jumpSpy).toHaveBeenCalledWith(

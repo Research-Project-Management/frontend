@@ -26,14 +26,14 @@ import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instanc
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { Download, FileArchive, FileText, FileCode, Archive } from 'lucide-react';
 import { duplicateProjectApi } from '@/features/projects/shell/services/project.service';
+import { extractProjectId } from '@/features/editor/domain/types';
 
-export function FileMenu() {
+export function FileMenu({ value = 'file' }: { value?: string } = {}) {
   const params = useParams<{ pageId?: string; projectId?: string }>();
   const currentPage = usePageStore((s) => s.currentPage);
   const activeFilePage = usePageStore((s) => s.activeFilePage);
   const { getContent } = useEditorInstance();
   const pdfUrl = useCompileStore((s) => s.pdfUrl);
-  const setSettingsPanelOpen = useSettingsStore((s) => s.setSettingsPanelOpen);
   const setIsTemplateModalOpen = useSettingsStore((s) => s.setIsTemplateModalOpen);
   const [isZipping, setIsZipping] = useState(false);
 
@@ -50,10 +50,6 @@ export function FileMenu() {
   const handleUploadFile = () => {
     useSettingsStore.getState().setActiveSidebarPanel('Files');
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'add-files', payload: { initialTab: 'upload' } });
-  };
-
-  const handleDeletedFiles = () => {
-    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'deleted-files' });
   };
 
   const handleTemplateGallery = () => {
@@ -74,20 +70,23 @@ export function FileMenu() {
   const [isCopying, setIsCopying] = useState(false);
 
   const handleMakeCopy = async () => {
-    const projId = params?.projectId || (currentPage as any)?.projectId;
-    const effectiveProjId = typeof projId === 'object' ? projId?.id : projId;
+    const effectiveProjId = params?.projectId || extractProjectId(currentPage);
     if (effectiveProjId) {
       const toastId = toast.loading('Duplicating project...');
       setIsCopying(true);
       try {
-        const res = await duplicateProjectApi(effectiveProjId);
-        const newProjId = (res as any)?.project?.id || (res as any)?.id;
+        const res = (await duplicateProjectApi(effectiveProjId)) as {
+          project?: { id?: string };
+          id?: string;
+        } | null;
+        const newProjId = res?.project?.id || res?.id;
         toast.success('Project duplicated successfully!', { id: toastId });
         if (newProjId) {
           router.push(`/projects/${newProjId}/pages`);
         }
-      } catch (err: any) {
-        toast.error(err?.message || 'Failed to duplicate project, downloading backup file instead.', { id: toastId });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to duplicate project, downloading backup file instead.';
+        toast.error(message, { id: toastId });
         downloadCopy(getContent(), activeFilePage?.title || currentPage?.title);
       } finally {
         setIsCopying(false);
@@ -97,9 +96,6 @@ export function FileMenu() {
     }
   };
 
-  const handleWordCount = () => {
-    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'word-count' });
-  };
 
   const handleDownloadPdf = () => {
     downloadPdf(pdfUrl, currentPage?.title);
@@ -155,7 +151,7 @@ export function FileMenu() {
   };
 
   return (
-    <MenubarMenu>
+    <MenubarMenu value={value}>
       <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary select-none transition-colors">
         File
       </MenubarTrigger>
@@ -187,22 +183,6 @@ export function FileMenu() {
         </MenubarItem>
 
         <MenubarItem
-          onClick={handleDeletedFiles}
-          className="cursor-pointer"
-        >
-          <span className="whitespace-nowrap">Deleted files</span>
-        </MenubarItem>
-        <MenubarItem
-          onClick={handleWordCount}
-          onSelect={handleWordCount}
-          className="cursor-pointer"
-        >
-          <span className="whitespace-nowrap">Word count</span>
-        </MenubarItem>
-
-        <MenubarSeparator />
-
-        <MenubarItem
           onClick={handleTemplateGallery}
           className="cursor-pointer"
         >
@@ -224,7 +204,7 @@ export function FileMenu() {
               disabled={isZipping}
               className="cursor-pointer flex items-center gap-2"
             >
-              <FileArchive className="size-3.5 text-primary shrink-0" />
+              <FileArchive className="size-3.5 text-foreground/80 shrink-0" />
               <div className="flex flex-col">
                 <span className="font-medium whitespace-nowrap">Download Source (.zip)</span>
                 <span className="text-[10px] text-muted-foreground whitespace-nowrap">Tải toàn bộ mã nguồn LaTeX & thư viện</span>
@@ -246,7 +226,7 @@ export function FileMenu() {
               disabled={!pdfUrl}
               className="cursor-pointer flex items-center gap-2"
             >
-              <FileText className="size-3.5 text-rose-500 shrink-0" />
+              <FileText className="size-3.5 text-foreground/80 shrink-0" />
               <div className="flex flex-col">
                 <span className="font-medium whitespace-nowrap">Download PDF</span>
                 <span className="text-[10px] text-muted-foreground whitespace-nowrap">
@@ -259,32 +239,25 @@ export function FileMenu() {
               onClick={handleExportWord}
               className="cursor-pointer flex items-center gap-2"
             >
-              <FileText className="size-3.5 text-blue-500 shrink-0" />
+              <FileText className="size-3.5 text-foreground/80 shrink-0" />
               <span className="whitespace-nowrap">Export as Word document (.docx)</span>
             </MenubarItem>
             <MenubarItem
               onClick={handleExportMarkdown}
               className="cursor-pointer flex items-center gap-2"
             >
-              <FileCode className="size-3.5 text-amber-500 shrink-0" />
+              <FileCode className="size-3.5 text-foreground/80 shrink-0" />
               <span className="whitespace-nowrap">Export as Markdown (.md)</span>
             </MenubarItem>
             <MenubarItem
               onClick={handleExportHtml}
               className="cursor-pointer flex items-center gap-2"
             >
-              <FileCode className="size-3.5 text-emerald-500 shrink-0" />
+              <FileCode className="size-3.5 text-foreground/80 shrink-0" />
               <span className="whitespace-nowrap">Export as HTML (.html)</span>
             </MenubarItem>
           </MenubarSubContent>
         </MenubarSub>
-
-        <MenubarItem
-          onClick={() => setSettingsPanelOpen(true)}
-          className="cursor-pointer"
-        >
-          <span className="whitespace-nowrap">Settings</span>
-        </MenubarItem>
       </MenubarContent>
     </MenubarMenu>
   );

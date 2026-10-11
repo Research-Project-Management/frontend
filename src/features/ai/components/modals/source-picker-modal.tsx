@@ -27,7 +27,7 @@ import {
   useCollections,
   useItems as usePapers,
   type Collection,
-  type Paper,
+  type Item as Paper,
 } from '@/features/library';
 import { LibraryEmptyState } from '@/features/library/components/content/LibraryEmptyState';
 import { storageFileService, type StorageItem } from '@/features/storage';

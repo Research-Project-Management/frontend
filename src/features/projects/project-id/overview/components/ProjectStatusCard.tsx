@@ -122,7 +122,7 @@ export function ProjectStatusCard({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowHistory(!showHistory)}
-                className="h-7 text-12 font-medium text-muted-foreground hover:text-foreground gap-1 px-2 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="h-7 text-12 font-medium text-foreground hover:bg-muted gap-1 px-2 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <History className="size-3.5" />
                 {showHistory ? 'Hide History' : `History (${updatesList.length})`}
@@ -137,7 +137,7 @@ export function ProjectStatusCard({
               variant="outline"
               size="sm"
               onClick={() => setIsModalOpen(true)}
-              className="h-7 text-12 font-medium gap-1 px-2.5 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-7 text-12 font-medium gap-1 px-2.5 text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <Plus className="size-3.5" />
               Post Update
@@ -160,11 +160,11 @@ export function ProjectStatusCard({
                     <span className="text-12 font-semibold text-foreground">
                       {config.label}
                     </span>
-                    <span className="text-11 text-muted-foreground">
+                    <span className="text-11 text-foreground/70">
                       • {formatRelativeTime(currentUpdate.createdAt)}
                     </span>
                   </div>
-                  <p className="text-11 text-muted-foreground mt-0.5">
+                  <p className="text-11 text-foreground/70 mt-0.5">
                     {config.sublabel}
                   </p>
                 </div>
@@ -172,12 +172,12 @@ export function ProjectStatusCard({
             </div>
 
             {/* Message Body */}
-            <div className="text-13 text-foreground/90 whitespace-pre-wrap leading-relaxed pl-1">
+            <div className="text-13 text-foreground whitespace-pre-wrap leading-relaxed pl-1">
               {currentUpdate.message}
             </div>
 
             {/* Author Footer */}
-            <div className="flex items-center justify-between pt-1 border-t border-border/40 text-11 text-muted-foreground">
+            <div className="flex items-center justify-between pt-1 border-t border-border/40 text-11 text-foreground/70">
               <div className="flex items-center gap-1.5">
                 <div className="size-4 rounded-full bg-muted flex items-center justify-center overflow-hidden">
                   {currentUpdate.author.avatar ? (
@@ -202,20 +202,20 @@ export function ProjectStatusCard({
         ) : (
           /* Empty State */
           <div className="flex flex-col items-center justify-center py-6 text-center border border-dashed border-border/70 rounded-lg p-4 bg-muted/10">
-            <div className="size-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground mb-2">
+            <div className="size-8 rounded-full bg-muted flex items-center justify-center text-foreground mb-2">
               <CheckCircle2 className="size-4" />
             </div>
             <p className="text-13 font-medium text-foreground">
               No status updates yet
             </p>
-            <p className="text-11 text-muted-foreground max-w-xs mt-1">
-              Keep collaborators and stakeholders informed about milestones, progress, and blockers.
+            <p className="text-11 text-foreground/70 max-w-xs mt-1">
+              Keep collaborators and stakeholders informed about progress and blockers.
             </p>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsModalOpen(true)}
-              className="mt-3 text-12 font-medium gap-1.5 h-7 px-2.5 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="mt-3 text-12 font-medium gap-1.5 h-7 px-2.5 text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <Plus className="size-3" />
               Post first status update
@@ -226,7 +226,7 @@ export function ProjectStatusCard({
         {/* Historical Timeline (Collapsible) */}
         {showHistory && updatesList && updatesList.length > 0 && (
           <div className="flex flex-col gap-2 pt-2 border-t border-border/50">
-            <span className="text-11 font-medium text-muted-foreground tracking-normal">
+            <span className="text-11 font-medium text-foreground/70 tracking-normal">
               Update Timeline History
             </span>
             <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1">
@@ -246,10 +246,10 @@ export function ProjectStatusCard({
                           <itemConfig.icon className="size-2.5" />
                           {itemConfig.label}
                         </Badge>
-                        <span className="text-10 text-muted-foreground">
+                        <span className="text-10 text-foreground/70">
                           {formatRelativeTime(item.createdAt)}
                         </span>
-                        <span className="text-10 text-muted-foreground">
+                        <span className="text-10 text-foreground/70">
                           by {item.author.name || 'Member'}
                         </span>
                       </div>
@@ -257,14 +257,14 @@ export function ProjectStatusCard({
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDeleteUpdate(item.id)}
-                        className="size-6 text-muted-foreground hover:text-destructive cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className="size-6 text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         title="Delete update"
                         aria-label="Delete update"
                       >
                         <Trash2 className="size-3" />
                       </Button>
                     </div>
-                    <p className="text-11 text-foreground/80 whitespace-pre-wrap">
+                    <p className="text-11 text-foreground/70 whitespace-pre-wrap">
                       {item.message}
                     </p>
                   </div>

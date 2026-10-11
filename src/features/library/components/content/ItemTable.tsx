@@ -294,6 +294,27 @@ export const ItemTable = React.memo(function ItemTable({
     [sortedItems, selectAll, toggleSelect],
   );
 
+  const handleOpenItem = useCallback(
+    (itemId: string) => {
+      if (isTrash) return;
+      const currentQuery =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search).get('q')
+          : null;
+      const currentProjectId =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search).get('projectId')
+          : null;
+      const queryParts = [
+        currentProjectId ? `projectId=${encodeURIComponent(currentProjectId)}` : '',
+        currentQuery ? `q=${encodeURIComponent(currentQuery)}` : '',
+      ].filter(Boolean);
+      const qParam = queryParts.length ? `?${queryParts.join('&')}` : '';
+      router.push(`/library/papers/${itemId}${qParam}`);
+    },
+    [router, isTrash],
+  );
+
   // Keyboard navigation matching Zotero 7 desktop parity
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!sortedItems.length) return;
@@ -327,9 +348,7 @@ export const ItemTable = React.memo(function ItemTable({
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (activeItemId && !isTrash) {
-        const currentQuery = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('q') : null;
-        const qParam = currentQuery ? `?q=${encodeURIComponent(currentQuery)}` : '';
-        router.push(`/library/papers/${activeItemId}${qParam}`);
+        handleOpenItem(activeItemId);
       }
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
@@ -337,7 +356,7 @@ export const ItemTable = React.memo(function ItemTable({
       const rawIds = currentSelectedIds.size > 0 ? Array.from(currentSelectedIds) : (activeItemId ? [activeItemId] : []);
       const processingIds = new Set(
         items
-          .filter((it: any) => it._isProcessing || it.id.startsWith('temp-') || it.id.startsWith('provisional-'))
+          .filter((it) => it._isProcessing || it.id.startsWith('temp-') || it.id.startsWith('provisional-'))
           .map((it) => it.id),
       );
       const hasProcessing = rawIds.some((id) => processingIds.has(id));
@@ -543,6 +562,7 @@ export const ItemTable = React.memo(function ItemTable({
                   onPurge={handlePurge}
                   onMoveToCollection={handleMoveToCollection}
                   onDetachFromCollection={onDetachItem}
+                  onOpenItem={handleOpenItem}
                 />
               );
             })}

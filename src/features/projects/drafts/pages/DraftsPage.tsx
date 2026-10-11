@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import {
@@ -21,7 +21,7 @@ import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout'
 import { DraftsIcon } from '@/shared/components/icons';
 import { Button } from '@/shared/components/ui';
 import type { WorkItemDraft } from '../types/draft.types';
-import type { WorkItemPriority } from '@/features/projects/project-id/work-items/types/work-item.types';
+import type { WorkItemPriority } from '@/features/projects/project-id/work-items';
 
 export default function DraftsPage() {
   const { projects = [] } = useProjects();
@@ -48,29 +48,29 @@ export default function DraftsPage() {
   const deleteDraft = useDeleteDraft();
 
   // Action Handlers
-  const handleOpenCreate = () => {
+  const handleOpenCreate = useCallback(() => {
     setEditingDraft(null);
     setIsEditorModalOpen(true);
-  };
+  }, []);
 
-  const handleEdit = (draft: WorkItemDraft) => {
+  const handleEdit = useCallback((draft: WorkItemDraft) => {
     setEditingDraft(draft);
     setIsEditorModalOpen(true);
-  };
+  }, []);
 
-  const handleDuplicate = async (draft: WorkItemDraft) => {
+  const handleDuplicate = useCallback(async (draft: WorkItemDraft) => {
     await duplicateDraft.mutateAsync(draft.id);
-  };
+  }, [duplicateDraft]);
 
-  const handleOpenMove = (draft: WorkItemDraft) => {
+  const handleOpenMove = useCallback((draft: WorkItemDraft) => {
     setMovingDraft(draft);
     setIsMoveModalOpen(true);
-  };
+  }, []);
 
-  const handleOpenDelete = (draft: WorkItemDraft) => {
+  const handleOpenDelete = useCallback((draft: WorkItemDraft) => {
     setDeletingDraft(draft);
     setIsDeleteModalOpen(true);
-  };
+  }, []);
 
   const handleSaveDraft = async (formData: {
     title: string;

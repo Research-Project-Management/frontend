@@ -9,16 +9,17 @@ import {
   Bot,
   Loader2,
   Wand2,
+  Lightbulb,
 } from 'lucide-react';
-import type { CompileError } from '../../../store/compiler.store';
-import { editorCommandBus } from '../../../coordinators/command-bus';
+import type { CompileError } from '@/features/editor/store/compiler.store';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 
 export interface DockProblemsTabProps {
   filteredErrors: CompileError[];
   searchFilter: string;
 }
 
-export function DockProblemsTab({
+export const DockProblemsTab = React.memo(function DockProblemsTab({
   filteredErrors,
   searchFilter,
 }: DockProblemsTabProps) {
@@ -49,6 +50,9 @@ export function DockProblemsTab({
         file: err.file || 'main.tex',
         severity: err.severity === 'warning' ? 'warning' : 'error',
         context: err.context,
+        suggestion: err.suggestion,
+        fixedSnippet: err.fixedSnippet,
+        originalSnippet: err.originalSnippet,
       },
     });
 
@@ -98,22 +102,24 @@ export function DockProblemsTab({
   }
 
   return (
-    <div className="h-full w-full overflow-y-auto">
-      <table className="w-full text-left font-sans text-12 border-collapse">
+    <div className="h-full w-full overflow-y-auto pb-10">
+      <table className="w-full text-left font-sans text-xs border-collapse">
         <thead>
-          <tr className="border-b border-border bg-muted/30 text-muted-foreground text-11 font-medium uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
-            <th className="py-1.5 px-3 w-12 text-center">Type</th>
-            <th className="py-1.5 px-3 w-40 sm:w-48">Location</th>
-            <th className="py-1.5 px-3">Description</th>
-            <th className="py-1.5 px-3 w-28 text-right">Action</th>
+          <tr className="border-b border-border bg-muted/30 text-muted-foreground text-xs font-medium uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
+            <th className="py-2 px-3 w-12 text-center">Type</th>
+            <th className="py-2 px-3 w-40 sm:w-48">Location</th>
+            <th className="py-2 px-3">Description</th>
+            <th className="py-2 px-3 w-32 text-right">Action</th>
           </tr>
         </thead>
         <tbody>
           {filteredErrors.map((err, idx) => {
             const isError = err.severity === 'error' || !err.severity;
+            const cleanMessage = (err.message || '').replace(/[\u2014\u2013]/g, '-');
+            const cleanContext = (err.context || '').replace(/[\u2014\u2013]/g, '-');
             return (
               <tr
-                key={idx}
+                key={`${err.file || 'main'}-${err.line ?? 1}-${idx}`}
                 onClick={() => handleJumpToProblem(err.line, err.file)}
                 className="border-b border-border/40 hover:bg-muted/25 transition-colors cursor-pointer group"
               >
@@ -128,8 +134,8 @@ export function DockProblemsTab({
 
                 {/* File & Line Location */}
                 <td className="py-2 px-3 align-top">
-                  <span className="flex items-center gap-1.5 font-mono text-12">
-                    <FileCode className="size-3 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  <span className="flex items-center gap-1.5 font-mono text-xs">
+                    <FileCode className="size-3.5 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
                     <span className="truncate font-medium text-foreground max-w-[130px] sm:max-w-[170px]">
                       {err.file || 'main.tex'}
                     </span>
@@ -139,27 +145,33 @@ export function DockProblemsTab({
                   </span>
                 </td>
 
-                {/* Error Description & Context */}
+                {/* Error Description & Context - Clean unnested monospace excerpt */}
                 <td className="py-2 px-3 align-top min-w-0">
-                  <span className="font-medium text-foreground leading-normal block">
-                    {err.message}
+                  <span className="font-medium text-foreground leading-normal block text-xs">
+                    {cleanMessage}
                   </span>
-                  {err.context && (
-                    <div className="font-mono text-11 text-foreground/85 bg-muted/40 border border-border/50 rounded-md p-2 mt-1.5 leading-relaxed whitespace-pre-wrap select-text">
-                      {err.context}
+                  {cleanContext && (
+                    <pre className="font-mono text-xs text-foreground/80 bg-muted/25 px-2.5 py-1.5 rounded-sm mt-1.5 leading-relaxed whitespace-pre-wrap select-text overflow-x-auto font-normal">
+                      {cleanContext}
+                    </pre>
+                  )}
+                  {err.suggestion && (
+                    <div className="flex items-start gap-1.5 text-xs text-primary bg-primary/10 border border-primary/20 rounded px-2.5 py-1.5 mt-1.5 leading-relaxed">
+                      <Lightbulb className="size-3.5 mt-0.5 shrink-0 text-warning" />
+                      <span>{err.suggestion}</span>
                     </div>
                   )}
                 </td>
 
                 {/* AI Fix CTA Action Buttons */}
-                <td className="py-2 px-3 text-right align-top w-36 whitespace-nowrap">
+                <td className="py-2 px-3 text-right align-top w-40 whitespace-nowrap">
                   <div className="flex items-center justify-end gap-1.5">
                     <button
                       type="button"
                       onClick={(e) => handle1ClickAiFix(e, err)}
                       disabled={fixingLine === (err.line ?? 1)}
                       title="1-Click AI Fix: Generate inline ghost diff directly in CodeMirror (Tab to accept)"
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-11 font-medium bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/30 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-success/10 hover:bg-success/20 text-success border border-success/20 hover:border-success/30 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
                     >
                       {fixingLine === (err.line ?? 1) ? (
                         <Loader2 className="size-3 animate-spin shrink-0" />
@@ -173,7 +185,7 @@ export function DockProblemsTab({
                       type="button"
                       onClick={(e) => handleAskAiToFix(e, err)}
                       title="Open full AI Error Assist in companion sidebar"
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-11 font-medium bg-ai/10 hover:bg-ai/20 text-ai border border-ai/20 hover:border-ai/30 transition-colors cursor-pointer shrink-0"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-ai/10 hover:bg-ai/20 text-ai border border-ai/20 hover:border-ai/30 transition-colors cursor-pointer shrink-0"
                     >
                       <Bot className="size-3 shrink-0" />
                       <span>Ask AI</span>
@@ -187,4 +199,5 @@ export function DockProblemsTab({
       </table>
     </div>
   );
-}
+});
+

@@ -43,17 +43,3 @@ export const reorderLabelsDtoSchema = z.object({
   labels: z.array(reorderLabelItemDtoSchema),
 });
 export type ReorderLabelsDtoInput = z.infer<typeof reorderLabelsDtoSchema>;
-
-// ── Import Label Item DTO Schema (Matches ImportLabelItemDto) ────────────────
-export const importLabelItemDtoSchema = z.object({
-  name: z.string().trim().min(1, 'Label name is required').max(255),
-  color: z.string().optional(),
-  description: z.string().max(1000).optional(),
-});
-export type ImportLabelItemDtoInput = z.infer<typeof importLabelItemDtoSchema>;
-
-// ── Import Labels DTO Schema (Matches ImportLabelsDto) ───────────────────────
-export const importLabelsDtoSchema = z.object({
-  labels: z.array(importLabelItemDtoSchema),
-});
-export type ImportLabelsDtoInput = z.infer<typeof importLabelsDtoSchema>;

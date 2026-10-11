@@ -42,6 +42,7 @@ export interface DocumentSearchState {
   expandAllFiles: () => void;
   setIsSearching: (isSearching: boolean) => void;
   clearSearch: () => void;
+  reset: () => void;
 }
 
 export const useDocumentSearchStore = create<DocumentSearchState>((set) => ({
@@ -89,6 +90,18 @@ export const useDocumentSearchStore = create<DocumentSearchState>((set) => ({
       query: '',
       instantQuery: null,
       replaceText: '',
+      collapsedFiles: new Set(),
+      isSearching: false,
+    }),
+  reset: () =>
+    set({
+      query: '',
+      instantQuery: null,
+      replaceText: '',
+      showReplace: false,
+      caseSensitive: false,
+      wholeWord: false,
+      useRegex: false,
       collapsedFiles: new Set(),
       isSearching: false,
     }),

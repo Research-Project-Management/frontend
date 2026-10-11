@@ -13,7 +13,7 @@ export interface SubscribedWorkItemListProps {
   className?: string;
 }
 
-export function SubscribedWorkItemList({
+export const SubscribedWorkItemList = React.memo<SubscribedWorkItemListProps>(function SubscribedWorkItemList({
   workItems = [],
   onWorkItemClick,
   workItemProjectMap = {},
@@ -30,6 +30,6 @@ export function SubscribedWorkItemList({
       className={className}
     />
   );
-}
+});
 
 export default SubscribedWorkItemList;

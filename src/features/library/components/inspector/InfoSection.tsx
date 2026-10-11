@@ -56,7 +56,7 @@ export const DIRECT_METADATA_FIELDS = new Set([
 ]);
 
 /** Filter out empty, null, undefined, or junk placeholder string values */
-export function isValidValue(val?: any): boolean {
+export function isValidValue(val?: unknown): boolean {
   if (val === null || val === undefined) return false;
   if (typeof val === 'number') return !isNaN(val) && Number.isFinite(val) && val !== 0;
   if (typeof val === 'boolean') return true;
@@ -83,7 +83,7 @@ export function isValidValue(val?: any): boolean {
 }
 
 /** Clean string value or return empty string */
-export function cleanValue(val?: any): string {
+export function cleanValue(val?: unknown): string {
   if (!isValidValue(val)) return '';
   return String(val).trim();
 }

@@ -27,7 +27,6 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { WorkbenchShell } from './WorkbenchShell';
 import { ActivityBar } from './ActivityBar';
-import { StatusBar } from './StatusBar';
 import Topbar from './Topbar';
 import { PrimarySidebar } from '../features/sidebar/PrimarySidebar';
 import { EditorArea } from '../features/editor/EditorArea';
@@ -37,39 +36,31 @@ import { filesQuery } from '../hooks/use-core';
 import { usePageStore, useSettingsStore } from '../../store';
 import { useLayoutStore, type ActivityBarTab } from '../../store/layout.store';
 import { useEditorInstance } from '../hooks/use-editor-instance';
-import { editorCommandBus } from '../../coordinators/command-bus';
+import { editorCommandBus, getActiveEditorEngine } from '../../coordinators/command-bus';
+import { keybindingCoordinator } from '../../coordinators/keybinding.coordinator';
 import { useViewItems } from '@/features/library';
 import { latexSymbolsIndex } from '../../domain/latex/latex-symbols-index';
 
 const PdfViewer = dynamic(() => import('../features/preview/PdfViewer'), { ssr: false });
-const ProjectSettingsModal = dynamic(
-  () => import('../modals/ProjectSettingsModal'),
-  { ssr: false }
-);
-const DeletedFilesModal = dynamic(
-  () => import('../modals/DeletedFilesModal'),
-  { ssr: false }
-);
-const WordCountDialog = dynamic(
-  () => import('../modals/WordCountDialog').then((mod) => (mod.WordCountDialog || mod.default)),
-  { ssr: false }
-);
-const CitationPickerModal = dynamic(
-  () => import('../modals/CitationPickerModal'),
-  { ssr: false }
-);
-const RenameCitationModal = dynamic(
-  () => import('../modals/RenameCitationModal'),
-  { ssr: false }
-);
-const ProjectHistoryModal = dynamic(
-  () => import('../modals/ProjectHistoryModal'),
-  { ssr: false }
-);
-const TableWizardModal = dynamic(
-  () => import('../modals/TableWizardModal'),
-  { ssr: false }
-);
+const ProjectSettingsModal = dynamic(() => import('../modals/ProjectSettingsModal'), { ssr: false });
+const DeletedFilesModal = dynamic(() => import('../modals/DeletedFilesModal'), { ssr: false });
+const WordCountDialog = dynamic(() => import('../modals/WordCountDialog'), { ssr: false });
+const CitationPickerModal = dynamic(() => import('../modals/CitationPickerModal'), { ssr: false });
+const RenameCitationModal = dynamic(() => import('../modals/RenameCitationModal'), { ssr: false });
+const ProjectHistoryModal = dynamic(() => import('../modals/ProjectHistoryModal'), { ssr: false });
+const TableWizardModal = dynamic(() => import('../modals/TableWizardModal'), { ssr: false });
+const FigureWizardModal = dynamic(() => import('../modals/FigureWizardModal'), { ssr: false });
+const SymbolPaletteModal = dynamic(() => import('../modals/SymbolPaletteModal'), { ssr: false });
+
+/** Safely extracts LaTeX string content from active engine or document entity */
+function getDocContent(doc: any, fallbackEngineContent?: string): string {
+  if (fallbackEngineContent) return fallbackEngineContent;
+  if (!doc) return '';
+  if (typeof doc.content === 'string') return doc.content;
+  if (doc.content && typeof doc.content.source === 'string') return doc.content.source;
+  if (typeof doc.docContent === 'string') return doc.docContent;
+  return '';
+}
 
 export function ModernWorkbenchLayout() {
   const { projectId: routeProjectId, pageId, draftId } = useParams<{
@@ -107,6 +98,8 @@ export function ModernWorkbenchLayout() {
   const [tableWizardOpen, setTableWizardOpen] = useState(false);
   const [tableWizardTab, setTableWizardTab] = useState<'table' | 'matrix'>('table');
   const [tableWizardInitialLatex, setTableWizardInitialLatex] = useState('');
+  const [figureWizardOpen, setFigureWizardOpen] = useState(false);
+  const [symbolPaletteOpen, setSymbolPaletteOpen] = useState(false);
 
   // Sync workspace library references into latexSymbolsIndex for instant autocomplete & hover
   const { data: libraryData } = useViewItems(rawProjectId || 'me', 'all');
@@ -128,13 +121,7 @@ export function ModernWorkbenchLayout() {
   const combinedProjectFiles = useMemo(() => {
     if (!wordCountOpen) return [];
 
-    const currentDocContent =
-      engine?.getContent() ||
-      (currentDoc?.content
-        ? typeof currentDoc.content === 'string'
-          ? currentDoc.content
-          : (currentDoc.content as any).source || ''
-        : (currentDoc as any)?.docContent || '');
+    const currentDocContent = getDocContent(currentDoc, engine?.getContent());
 
     const currentDocItem = {
       id: currentDoc?.id || 'current',
@@ -142,10 +129,12 @@ export function ModernWorkbenchLayout() {
       content: currentDocContent,
     };
 
-    const list: any[] = (serverFiles as any[]).map((f: any) => ({
+    const list: Array<{ id: string; title: string; content: string }> = (
+      serverFiles as Array<{ id: string; title?: string; name?: string; content?: string }>
+    ).map((f) => ({
       id: f.id,
-      title: f.title || f.name,
-      content: f.id === currentDoc?.id ? currentDocContent : f.content,
+      title: f.title || f.name || 'document',
+      content: f.id === currentDoc?.id ? currentDocContent : (f.content || ''),
     }));
 
     if (!list.some((f) => f.id === currentDocItem.id || f.title === currentDocItem.title)) {
@@ -155,6 +144,8 @@ export function ModernWorkbenchLayout() {
   }, [serverFiles, currentDoc, engine, wordCountOpen]);
 
   useEffect(() => {
+    const disposeKeybindings = keybindingCoordinator.init();
+
     const unsubCmd = editorCommandBus.subscribe('dialog:open', (cmd) => {
       if (cmd.dialog === 'word-count') {
         setWordCountOpen(true);
@@ -163,16 +154,24 @@ export function ModernWorkbenchLayout() {
       } else if (cmd.dialog === 'citation-picker') {
         setCitationPickerInitialQuery(cmd.payload?.initialQuery || undefined);
         setCitationPickerOpen(true);
-      } else if (cmd.dialog === 'rename-symbol' || (cmd.dialog as any) === 'rename-citation') {
+      } else if (cmd.dialog === 'rename-symbol' || cmd.dialog === 'rename-citation') {
         const key = cmd.payload?.oldKey || cmd.payload?.key || '';
         setRenameCitationOldKey(key);
         setRenameCitationOpen(true);
-      } else if (cmd.dialog === 'table-wizard' || (cmd.dialog as any) === 'matrix-wizard') {
+      } else if (cmd.dialog === 'table-wizard' || cmd.dialog === 'matrix-wizard') {
         const initialTab = cmd.dialog === 'matrix-wizard' ? 'matrix' : (cmd.payload?.initialTab || 'table');
-        const selectedText = engine?.getSelectedText?.() || cmd.payload?.initialLatex || '';
+        const selectedText = getActiveEditorEngine()?.getSelectedText?.() || cmd.payload?.initialLatex || '';
         setTableWizardTab(initialTab);
         setTableWizardInitialLatex(selectedText);
         setTableWizardOpen(true);
+      } else if (cmd.dialog === 'figure-wizard') {
+        setFigureWizardOpen(true);
+      } else if (cmd.dialog === 'symbol-palette') {
+        setSymbolPaletteOpen(true);
+      } else if (cmd.dialog === 'github-sync') {
+        useSettingsStore.getState().openSettingsModal('github');
+      } else if (cmd.dialog === 'project-settings') {
+        useSettingsStore.getState().openSettingsModal(cmd.payload?.tab || 'editor');
       }
     });
 
@@ -186,18 +185,24 @@ export function ModernWorkbenchLayout() {
       if (!cmd.dialog || cmd.dialog === 'citation-picker') {
         setCitationPickerOpen(false);
       }
-      if (!cmd.dialog || cmd.dialog === 'rename-symbol' || (cmd.dialog as any) === 'rename-citation') {
+      if (!cmd.dialog || cmd.dialog === 'rename-symbol' || cmd.dialog === 'rename-citation') {
         setRenameCitationOpen(false);
       }
-      if (!cmd.dialog || cmd.dialog === 'table-wizard' || (cmd.dialog as any) === 'matrix-wizard') {
+      if (!cmd.dialog || cmd.dialog === 'table-wizard' || cmd.dialog === 'matrix-wizard') {
         setTableWizardOpen(false);
+      }
+      if (!cmd.dialog || cmd.dialog === 'figure-wizard') {
+        setFigureWizardOpen(false);
+      }
+      if (!cmd.dialog || cmd.dialog === 'symbol-palette') {
+        setSymbolPaletteOpen(false);
       }
     });
 
     const tabMap: Record<string, ActivityBarTab> = {
       Files: 'files',
       Explorer: 'files',
-      Outline: 'outline',
+      Outline: 'files',
       Search: 'search',
       Citations: 'citations',
       Review: 'review',
@@ -222,10 +227,11 @@ export function ModernWorkbenchLayout() {
     });
 
     const unsubHistory = editorCommandBus.subscribe('history:open-modal', () => {
-      setIsHistoryOpen(true);
+      useSettingsStore.getState().setIsHistoryOpen(true);
     });
 
     return () => {
+      disposeKeybindings();
       unsubCmd();
       unsubClose();
       unsubSidebarToggle();
@@ -247,24 +253,17 @@ export function ModernWorkbenchLayout() {
         editor={!isViewerOnly ? <EditorArea /> : null}
         preview={!isEditorOnly ? <PdfViewer /> : null}
         bottomPanel={<BottomDockPanel />}
-        statusBar={<StatusBar />}
+        statusBar={null}
       />
 
       {/* Global Modals */}
-      {settingsPanelOpen && <ProjectSettingsModal />}
+      <ProjectSettingsModal />
 
       {wordCountOpen && (
         <WordCountDialog
           open={wordCountOpen}
           onClose={() => editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'word-count' })}
-          content={
-            engine?.getContent() ||
-            (currentDoc?.content
-              ? typeof currentDoc.content === 'string'
-                ? currentDoc.content
-                : (currentDoc.content as any).source || ''
-              : (currentDoc as any)?.docContent || '')
-          }
+          content={getDocContent(currentDoc, engine?.getContent())}
           selectedText={engine?.getSelectedText() || ''}
           activeFileName={currentDoc?.title || 'main.tex'}
           projectFiles={combinedProjectFiles}
@@ -285,7 +284,7 @@ export function ModernWorkbenchLayout() {
               setDeletedFilesOpen(true);
             }
           }}
-          pageId={rootPageId || (currentPage as any)?.id || ''}
+          pageId={rootPageId || currentPage?.id || ''}
         />
       )}
 
@@ -337,6 +336,39 @@ export function ModernWorkbenchLayout() {
           initialLatex={tableWizardInitialLatex}
           onInsert={(latexCode) => {
             editorCommandBus.dispatch({ type: 'editor:insert-text', text: latexCode });
+            editorCommandBus.dispatch({ type: 'editor:focus' });
+          }}
+        />
+      )}
+
+      {figureWizardOpen && (
+        <FigureWizardModal
+          open={figureWizardOpen}
+          onOpenChange={(open) => {
+            setFigureWizardOpen(open);
+            if (!open) {
+              editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'figure-wizard' });
+            }
+          }}
+          parentPageId={rootPageId || currentPage?.id || ''}
+          onInsert={(latexCode) => {
+            editorCommandBus.dispatch({ type: 'editor:insert-text', text: latexCode });
+            editorCommandBus.dispatch({ type: 'editor:focus' });
+          }}
+        />
+      )}
+
+      {symbolPaletteOpen && (
+        <SymbolPaletteModal
+          open={symbolPaletteOpen}
+          onOpenChange={(open) => {
+            setSymbolPaletteOpen(open);
+            if (!open) {
+              editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'symbol-palette' });
+            }
+          }}
+          onInsert={(symbol) => {
+            editorCommandBus.dispatch({ type: 'editor:insert-text', text: symbol });
             editorCommandBus.dispatch({ type: 'editor:focus' });
           }}
         />

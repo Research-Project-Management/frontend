@@ -7,7 +7,7 @@ import {
   detectCommonRootPrefix,
   isTextFile,
   parseZipArchive,
-} from '@/features/editor/coordinators/services/archive-import.service';
+} from '@/features/editor/sdk/archive';
 
 describe('import-zip.util', () => {
   describe('isZipFile', () => {
@@ -35,6 +35,16 @@ describe('import-zip.util', () => {
       expect(sanitizeZipPath('sections\\intro.tex')).toBe('sections/intro.tex');
       expect(sanitizeZipPath('/root/folder/file.tex/')).toBe('root/folder/file.tex');
       expect(sanitizeZipPath('   figures/plot.png   ')).toBe('figures/plot.png');
+    });
+
+    it('neutralizes Path Traversal (Zip Slip: CWE-22) sequences and drive letters', () => {
+      expect(sanitizeZipPath('../../etc/passwd')).toBe('etc/passwd');
+      expect(sanitizeZipPath('..\\..\\windows\\system32\\cmd.exe')).toBe('windows/system32/cmd.exe');
+      expect(sanitizeZipPath('C:\\Windows\\System32\\calc.exe')).toBe('Windows/System32/calc.exe');
+      expect(sanitizeZipPath('sections/../../secret.tex')).toBe('secret.tex');
+      expect(sanitizeZipPath('sub/././nested/../file.tex')).toBe('sub/file.tex');
+      expect(sanitizeZipPath('file\0name.tex')).toBe('filename.tex');
+      expect(sanitizeZipPath('../../')).toBe('');
     });
   });
 
@@ -143,6 +153,26 @@ describe('import-zip.util', () => {
       expect(parsed.mainFilePath).toBe('paper.tex');
       expect(parsed.items.map((i) => i.path)).toContain('paper.tex');
       expect(parsed.items.map((i) => i.path)).toContain('appendix.tex');
+    });
+
+    it('safely confines malicious Zip Slip entries to project root', async () => {
+      const zip = new JSZip();
+      zip.file('../../etc/passwd.tex', 'malicious content');
+      zip.file('sections/../../root_escape.tex', 'traversal content');
+      zip.file('main.tex', '\\documentclass{article}\n\\begin{document}\nSafe\n\\end{document}');
+
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const file = new File([blob], 'zip-slip-attack.zip', { type: 'application/zip' });
+
+      const parsed = await parseZipArchive(file);
+
+      // Traversal sequences must be neutralized: cannot contain ../ or absolute paths
+      for (const item of parsed.items) {
+        expect(item.path).not.toContain('..');
+        expect(item.path.startsWith('/')).toBe(false);
+      }
+      expect(parsed.items.map((i) => i.path)).toContain('etc/passwd.tex');
+      expect(parsed.items.map((i) => i.path)).toContain('root_escape.tex');
     });
   });
 });

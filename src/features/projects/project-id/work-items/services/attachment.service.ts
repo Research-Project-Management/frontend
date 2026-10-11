@@ -9,6 +9,8 @@ import type {
   AttachPaperItem,
   AttachFileItem,
   AttachLinkItem,
+  ItemAttachment,
+  Attachments,
 } from "../types/work-item.types";
 
 export const AttachmentService = {
@@ -19,7 +21,16 @@ export const AttachmentService = {
     ),
 
   getWorkItemAttachments: (itemId: string) =>
-    apiGet<any>(`/api/work-items/${itemId}/attachments`),
+    apiGet<{
+      workItemId?: string;
+      total?: number;
+      attachments?: ItemAttachment[];
+      center?: Attachments;
+      pages?: AttachPageItem[];
+      papers?: AttachPaperItem[];
+      files?: AttachFileItem[];
+      links?: AttachLinkItem[];
+    }>(`/api/work-items/${itemId}/attachments`),
 
   getAttachment: (attachmentId: string) =>
     apiGet<unknown>(`/api/attachments/${attachmentId}`),

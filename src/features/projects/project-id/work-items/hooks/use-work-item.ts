@@ -39,7 +39,7 @@ import {
 } from '../schemas/work-item.schema';
 import type { AttachCenterData } from '../components/modals/Attachments';
 import { useLabelsQuery } from './use-label';
-import { StateService } from '@/features/projects/project-id/settings/services/state.service';
+import { StateService } from '../services/state.service';
 
 // ── Query Keys ──────────────────────────────────────────────────────────────
 export const stateKeys = {
@@ -198,10 +198,14 @@ export const useUpdateItem = () => {
           });
         };
 
+        if (Array.isArray(old)) {
+          return updateList(old);
+        }
+
         return {
           ...old,
-          items: updateList(old.items),
-          workItems: updateList(old.workItems),
+          ...(old.items ? { items: updateList(old.items) } : {}),
+          ...(old.workItems ? { workItems: updateList(old.workItems) } : {}),
         };
       });
 
@@ -250,10 +254,14 @@ export const useDeleteItem = () => {
           return list.filter((item) => resolveItemId(item) !== targetId);
         };
 
+        if (Array.isArray(old)) {
+          return filterList(old);
+        }
+
         return {
           ...old,
-          items: filterList(old.items),
-          workItems: filterList(old.workItems),
+          ...(old.items ? { items: filterList(old.items) } : {}),
+          ...(old.workItems ? { workItems: filterList(old.workItems) } : {}),
         };
       });
 
@@ -333,10 +341,14 @@ export const useBulkUpdate = () => {
           });
         };
 
+        if (Array.isArray(old)) {
+          return updateList(old);
+        }
+
         return {
           ...old,
-          items: updateList(old.items),
-          workItems: updateList(old.workItems),
+          ...(old.items ? { items: updateList(old.items) } : {}),
+          ...(old.workItems ? { workItems: updateList(old.workItems) } : {}),
         };
       });
 
@@ -402,10 +414,14 @@ export const useBulkDelete = () => {
           return list.filter((item) => !targetIds.has(resolveItemId(item)));
         };
 
+        if (Array.isArray(old)) {
+          return filterList(old);
+        }
+
         return {
           ...old,
-          items: filterList(old.items),
-          workItems: filterList(old.workItems),
+          ...(old.items ? { items: filterList(old.items) } : {}),
+          ...(old.workItems ? { workItems: filterList(old.workItems) } : {}),
         };
       });
 
@@ -434,7 +450,18 @@ export const useBulkDeleteWorkItems = useBulkDelete;
 export const useCreateSubItem = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, itemId, workItemId, ...data }: { id?: string; itemId?: string; workItemId?: string } & CreateSubItemInput) => {
+    mutationFn: ({
+      id,
+      itemId,
+      workItemId,
+      projectId: _projectId,
+      ...data
+    }: {
+      id?: string;
+      itemId?: string;
+      workItemId?: string;
+      projectId?: string;
+    } & CreateSubItemInput) => {
       const targetId = (id || itemId || workItemId) ?? '';
       return CoreService.createSubItem(targetId, data);
     },
@@ -444,6 +471,7 @@ export const useCreateSubItem = () => {
     onError: (error: Error) => toast.error(error.message || 'Failed to create sub-item', { id: 'work-item-action' }),
     onSettled: (_data, _error, variables) => {
       invalidateWorkItemRelatedQueries(queryClient, (variables as any)?.projectId);
+      queryClient.invalidateQueries({ queryKey: ['work-items'] });
     },
   });
 };
@@ -453,7 +481,17 @@ export const useCreateSubWorkItem = useCreateSubItem;
 export const useConvertSubItemToRoot = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, itemId, workItemId }: { id?: string; itemId?: string; workItemId?: string }) => {
+    mutationFn: ({
+      id,
+      itemId,
+      workItemId,
+      projectId: _projectId,
+    }: {
+      id?: string;
+      itemId?: string;
+      workItemId?: string;
+      projectId?: string;
+    }) => {
       const targetId = (id || itemId || workItemId) ?? '';
       return CoreService.convertToRoot(targetId);
     },
@@ -463,6 +501,7 @@ export const useConvertSubItemToRoot = () => {
     onError: (error: Error) => toast.error(error.message || 'Failed to convert to top-level item', { id: 'work-item-action' }),
     onSettled: (_data, _error, variables) => {
       invalidateWorkItemRelatedQueries(queryClient, (variables as any)?.projectId);
+      queryClient.invalidateQueries({ queryKey: ['work-items'] });
     },
   });
 };
@@ -503,10 +542,14 @@ export const useReorderItem = () => {
           });
         };
 
+        if (Array.isArray(old)) {
+          return updateList(old);
+        }
+
         return {
           ...old,
-          items: updateList(old.items),
-          workItems: updateList(old.workItems),
+          ...(old.items ? { items: updateList(old.items) } : {}),
+          ...(old.workItems ? { workItems: updateList(old.workItems) } : {}),
         };
       });
 

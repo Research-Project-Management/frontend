@@ -84,7 +84,7 @@ export function AiMessageItem({
                 <button
                   type="button"
                   onClick={() => onProposeDiff(codeString)}
-                  className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-purple-400 hover:bg-purple-500/15 transition-colors cursor-pointer font-medium"
+                  className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-ai hover:bg-ai-subtle transition-colors cursor-pointer font-medium"
                   title="Review diff interactively in editor (⌘⏎ Accept, Esc Reject)"
                 >
                   <GitCompare className="size-3" />

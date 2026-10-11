@@ -145,7 +145,12 @@ const ModalStickyCard = React.memo(function ModalStickyCard({
 });
 
 // ── Main StickyDock Component ────────────────────────────────────────────────
-export default function StickyDock() {
+export interface StickyDockProps {
+  className?: string;
+  buttonClassName?: string;
+}
+
+export default function StickyDock({ className, buttonClassName }: StickyDockProps = {}) {
   const [isPillOpen, setIsPillOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeStickyId, setActiveStickyId] = useState<string | null>(null);
@@ -208,7 +213,7 @@ export default function StickyDock() {
 
   return (
     <>
-      <div ref={dockRef} className="relative flex items-center justify-center size-8">
+      <div ref={dockRef} className={cn("relative flex items-center justify-center size-8", className)}>
         {/* ── A. Rail Icon Button at Bottom of Sidebar (Single sticky note) ──── */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -222,10 +227,11 @@ export default function StickyDock() {
                   ? 'opacity-0 pointer-events-none'
                   : activeStickyId
                   ? 'bg-sidebar-accent'
-                  : 'hover:bg-sidebar-hover'
+                  : 'hover:bg-sidebar-hover',
+                buttonClassName
               )}
             >
-              <StickyRailIcon className="size-5 shrink-0" />
+              <StickyRailIcon className="size-4.5 shrink-0" />
             </button>
           </TooltipTrigger>
           {!isPillOpen && (

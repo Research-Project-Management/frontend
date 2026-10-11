@@ -29,11 +29,8 @@ import {
   BookOpen,
   Tag,
   Cpu,
-  Sparkles,
-  Search,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { Badge } from '@/shared/components/ui/badge';
 
 export interface SlashCommandItem {
   id: string;
@@ -134,6 +131,15 @@ export const SLASH_COMMANDS: SlashCommandItem[] = [
     description: 'Insert an editable 3x3 table with headers',
     category: 'Media & Tables',
     keywords: ['table', 'grid', 'tabular', 'matrix'],
+    icon: Table,
+  },
+  {
+    id: 'table-wizard',
+    title: 'Table Wizard',
+    description: 'Configure custom table dimensions, headers & style',
+    category: 'Media & Tables',
+    keywords: ['table', 'wizard', 'matrix', 'tabular', 'spreadsheet', 'grid'],
+    shortcut: 'Ctrl+Shift+T',
     icon: Table,
   },
   {
@@ -249,23 +255,20 @@ export function VisualSlashCommandMenu({
         left: `${Math.max(10, position.left)}px`,
       }}
       className={cn(
-        'fixed z-50 w-72 max-h-84 overflow-y-auto rounded-xl border border-border/80 bg-popover text-popover-foreground shadow-2xl backdrop-blur-md',
-        'p-1.5 space-y-1 animate-in fade-in-50 zoom-in-95 duration-100 select-none'
+        'fixed z-50 w-64 max-h-76 overflow-y-auto rounded-md border border-border bg-popover text-popover-foreground shadow-md',
+        'p-1 space-y-0.5 animate-in fade-in-50 zoom-in-95 duration-100 select-none'
       )}
     >
-      <div className="px-2 py-1.5 border-b border-border/50 flex items-center justify-between text-xs text-muted-foreground font-sans">
-        <span className="font-semibold flex items-center gap-1.5 text-foreground/80">
-          <Sparkles className="size-3.5 text-primary" />
-          <span>Insert Blocks</span>
-        </span>
+      <div className="px-2 py-1 border-b border-border flex items-center justify-between text-11 text-muted-foreground">
+        <span className="font-medium text-foreground">Insert</span>
         {query ? (
-          <span className="text-[11px] font-mono text-muted-foreground">/{query}</span>
+          <span className="font-mono text-foreground font-medium">/{query}</span>
         ) : (
-          <span className="text-[10px] text-muted-foreground/70">Type to filter</span>
+          <span className="text-[10px]">Filter</span>
         )}
       </div>
 
-      <div className="py-1">
+      <div className="py-0.5 space-y-0.5">
         {filteredCommands.map((item, idx) => {
           const isSelected = idx === selectedIndex;
           const Icon = item.icon;
@@ -280,41 +283,31 @@ export function VisualSlashCommandMenu({
               onClick={() => onSelect(item)}
               onMouseEnter={() => onHoverIndex(idx)}
               className={cn(
-                'w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer text-xs',
+                'w-full flex items-center gap-2 px-2 py-1 rounded-xs text-left transition-colors cursor-pointer text-12',
                 isSelected
-                  ? 'bg-primary text-primary-foreground font-medium shadow-xs'
-                  : 'hover:bg-muted/70 text-foreground'
+                  ? 'bg-primary text-primary-foreground font-medium'
+                  : 'hover:bg-muted text-foreground'
               )}
             >
-              <div
-                className={cn(
-                  'size-6 rounded-md flex items-center justify-center shrink-0 border',
-                  isSelected
-                    ? 'bg-primary-foreground/20 border-primary-foreground/30 text-primary-foreground'
-                    : 'bg-muted/50 border-border/60 text-muted-foreground'
-                )}
-              >
-                <Icon className="size-3.5" />
-              </div>
+              <Icon className={cn('size-3.5 shrink-0', isSelected ? 'text-primary-foreground' : 'text-muted-foreground')} />
 
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-1.5">
-                  <span className="font-medium truncate leading-snug">{item.title}</span>
+                <div className="flex items-center justify-between gap-1">
+                  <span className="truncate leading-tight font-medium">{item.title}</span>
                   {item.shortcut && (
-                    <Badge
-                      variant="outline"
+                    <span
                       className={cn(
-                        'text-[10px] px-1 py-0 h-4 shrink-0 font-mono',
-                        isSelected ? 'border-primary-foreground/40 text-primary-foreground' : 'text-muted-foreground'
+                        'text-[10px] px-1 font-mono rounded-xs shrink-0',
+                        isSelected ? 'text-primary-foreground/90 bg-primary-foreground/20' : 'text-muted-foreground bg-muted'
                       )}
                     >
                       {item.shortcut}
-                    </Badge>
+                    </span>
                   )}
                 </div>
                 <p
                   className={cn(
-                    'text-[11px] truncate leading-tight mt-0.5',
+                    'text-[10px] truncate leading-tight',
                     isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'
                   )}
                 >
@@ -326,7 +319,7 @@ export function VisualSlashCommandMenu({
         })}
       </div>
 
-      <div className="px-2 py-1 border-t border-border/40 flex items-center justify-between text-[10px] text-muted-foreground/70 font-sans">
+      <div className="px-2 py-1 border-t border-border flex items-center justify-between text-[10px] text-muted-foreground font-sans">
         <span>↑↓ Navigate</span>
         <span>↵ Select</span>
         <span>Esc Close</span>

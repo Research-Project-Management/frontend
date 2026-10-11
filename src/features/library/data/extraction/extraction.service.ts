@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPatch, apiDelete, getEffectiveBaseUrl } from "@/shared/lib/api";
+import * as api from "@/shared/lib/api";
 import { API_BASE_URL } from '@/config/env';
 import { getAuthToken } from "@/shared/lib/token-storage";
 import type { AttachmentDto } from "../../types/library.types";
@@ -58,7 +58,7 @@ function getFileUrl(scopeId: string | undefined, fileId: string, suffix = ''): s
 // ── Attachment API Functions ──────────────────────────────────────────────────
 
 export async function getAttachments(scopeId: string, itemId: string): Promise<AttachmentDto[]> {
-  const response = await apiGet<{ attachments: AttachmentDto[] }>(
+  const response = await api.apiGet<{ attachments: AttachmentDto[] }>(
     getItemAttachmentUrl(scopeId, itemId),
   );
   return response.attachments || [];
@@ -68,7 +68,7 @@ export async function getAttachment(
   scopeId: string,
   attachmentId: string,
 ): Promise<AttachmentDto> {
-  const response = await apiGet<{ attachment?: AttachmentDto } | AttachmentDto>(
+  const response = await api.apiGet<{ attachment?: AttachmentDto } | AttachmentDto>(
     getAttachmentUrl(scopeId, attachmentId),
   );
   if (response && typeof response === 'object' && 'attachment' in response && response.attachment) {
@@ -83,7 +83,7 @@ export async function deleteAttachment(
   scopeId: string,
   attachmentId: string,
 ): Promise<boolean> {
-  const response = await apiDelete<{ success: boolean }>(
+  const response = await api.apiDelete<{ success: boolean }>(
     getAttachmentUrl(scopeId, attachmentId),
   );
   return response.success;
@@ -94,7 +94,7 @@ export async function captureSnapshot(
   itemId: string,
   url?: string,
 ): Promise<AttachmentDto> {
-  const response = await apiPost<{ attachment: AttachmentDto } | AttachmentDto>(
+  const response = await api.apiPost<{ attachment: AttachmentDto } | AttachmentDto>(
     getItemAttachmentUrl(scopeId, itemId, 'snapshot'),
     url ? { url } : {},
   );
@@ -106,7 +106,7 @@ export async function createAttachment(
   itemId: string,
   data: Record<string, unknown>,
 ): Promise<AttachmentDto> {
-  const response = await apiPost<{ attachment?: AttachmentDto } | AttachmentDto>(
+  const response = await api.apiPost<{ attachment?: AttachmentDto } | AttachmentDto>(
     getItemAttachmentUrl(scopeId, itemId),
     data,
   );
@@ -118,7 +118,7 @@ export async function setPrimaryAttachment(
   itemId: string,
   attachmentId: string,
 ): Promise<{ success: boolean }> {
-  return apiPost(
+  return api.apiPost(
     getItemAttachmentUrl(scopeId, itemId, `${encodeURIComponent(attachmentId)}/set-primary`),
     {},
   );
@@ -129,7 +129,7 @@ export function getFileContentUrl(scopeId: string, fileId: string): string {
 }
 
 export async function fetchFileContent(scopeId: string, fileId: string): Promise<Blob> {
-  return apiGet<Blob>(getFileUrl(scopeId, fileId, 'content'), { responseType: 'blob' });
+  return api.apiGet<Blob>(getFileUrl(scopeId, fileId, 'content'), { responseType: 'blob' });
 }
 
 export function getAttachmentContentUrl(scopeId: string, attachmentId: string): string {
@@ -137,7 +137,7 @@ export function getAttachmentContentUrl(scopeId: string, attachmentId: string): 
 }
 
 export async function fetchAttachmentContent(scopeId: string, attachmentId: string): Promise<Blob> {
-  return apiGet<Blob>(getAttachmentUrl(scopeId, attachmentId, 'content'), { responseType: 'blob' });
+  return api.apiGet<Blob>(getAttachmentUrl(scopeId, attachmentId, 'content'), { responseType: 'blob' });
 }
 
 export async function uploadLibraryAttachment(
@@ -159,7 +159,7 @@ export async function uploadLibraryAttachment(
     data?: UploadPayload;
   }
 
-  const response = await apiPost<UploadPayload>(uploadUrl, formData);
+  const response = await api.apiPost<UploadPayload>(uploadUrl, formData);
   const data = response?.data || response;
   return {
     fileId: String(data?.fileId || data?.id || ''),
@@ -175,7 +175,7 @@ export async function renameAttachment(
   attachmentId: string,
   dto: RenameAttachmentInput,
 ): Promise<{ attachment: AttachmentDto; oldFilename: string; newFilename: string }> {
-  const response = await apiPatch<{ attachment: AttachmentDto; oldFilename: string; newFilename: string }>(
+  const response = await api.apiPatch<{ attachment: AttachmentDto; oldFilename: string; newFilename: string }>(
     getAttachmentUrl(scopeId, attachmentId, 'rename'),
     dto,
   );
@@ -192,7 +192,7 @@ export async function batchRenameAttachments(
   const batchBase = isProjectScope(scopeId)
     ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/attachments/batch-rename`
     : `/api/v1/library/attachments/batch-rename`;
-  const response = await apiPost<{
+  const response = await api.apiPost<{
     renamedCount: number;
     results: Array<{ attachmentId: string; itemId: string; oldFilename: string; newFilename: string }>;
   }>(
@@ -207,7 +207,7 @@ export async function reExtractAttachment(
   attachmentId: string,
 ): Promise<{ status: string; attachmentId: string; message: string }> {
   const url = getAttachmentUrl(scopeId, attachmentId, 're-extract');
-  return apiPost<{ status: string; attachmentId: string; message: string }>(url, {});
+  return api.apiPost<{ status: string; attachmentId: string; message: string }>(url, {});
 }
 
 export const AttachmentsService = {

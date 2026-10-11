@@ -291,7 +291,7 @@ export function Activities({
               "px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer",
               activeTab === "all"
                 ? "bg-background text-foreground font-semibold"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                : "text-foreground/70 hover:text-foreground hover:bg-muted/60"
             )}
           >
             All
@@ -303,12 +303,12 @@ export function Activities({
               "px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer flex items-center gap-1",
               activeTab === "activity"
                 ? "bg-background text-foreground font-semibold"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                : "text-foreground/70 hover:text-foreground hover:bg-muted/60"
             )}
           >
             <span>Activity</span>
             {activityCount > 0 && (
-              <span className="text-10 text-muted-foreground tabular-nums">({activityCount})</span>
+              <span className="text-10 text-foreground/70 tabular-nums">({activityCount})</span>
             )}
           </button>
           <button
@@ -318,12 +318,12 @@ export function Activities({
               "px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer flex items-center gap-1",
               activeTab === "comments"
                 ? "bg-background text-foreground font-semibold"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                : "text-foreground/70 hover:text-foreground hover:bg-muted/60"
             )}
           >
             <span>Comments</span>
             {commentCount > 0 && (
-              <span className="text-10 text-muted-foreground tabular-nums">({commentCount})</span>
+              <span className="text-10 text-foreground/70 tabular-nums">({commentCount})</span>
             )}
           </button>
           <button
@@ -333,7 +333,7 @@ export function Activities({
               "px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer",
               activeTab === "history"
                 ? "bg-background text-foreground font-semibold"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                : "text-foreground/70 hover:text-foreground hover:bg-muted/60"
             )}
           >
             History
@@ -343,7 +343,7 @@ export function Activities({
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 px-2 text-11 font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer shadow-none rounded-md"
+          className="h-6 px-2 text-11 font-medium text-foreground/70 hover:text-foreground hover:bg-muted cursor-pointer shadow-none rounded-md"
           onClick={() => setShowDetailActivity((prev) => !prev)}
         >
           {showDetailActivity ? "Hide details" : "Show details"}
@@ -406,12 +406,12 @@ export function Activities({
             <Button
               type="button"
               size="sm"
-              className="h-8 px-3 text-13 font-medium rounded-md shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-8 px-3 text-13 font-medium rounded-md shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-foreground text-background hover:bg-foreground/90"
               onClick={handleSaveComment}
               disabled={!commentText.trim() || isSavingComment}
             >
               {isSavingComment ? (
-                <span className="inline-block size-3 animate-spin motion-reduce:animate-none rounded-full border-2 border-primary-foreground border-t-transparent mr-1" />
+                <span className="inline-block size-3 animate-spin motion-reduce:animate-none rounded-full border-2 border-background border-t-transparent mr-1" />
               ) : null}
               Comment
             </Button>
@@ -422,7 +422,7 @@ export function Activities({
       {/* Activity Timeline List */}
       <div className="space-y-3 pt-1">
         {activityLoading ? (
-          <div className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+          <div className="rounded-md bg-muted px-3 py-2 text-xs text-foreground/70">
             Loading activity...
           </div>
         ) : null}
@@ -457,7 +457,7 @@ export function Activities({
                       <>
                         <div className="flex items-center gap-1.5 text-xs">
                           <span className="font-semibold text-foreground truncate">{item.author}</span>
-                          <span className="text-10 text-muted-foreground">{item.timestamp}</span>
+                          <span className="text-10 text-foreground/70">{item.timestamp}</span>
                         </div>
 
                         {isEditing ? (
@@ -483,12 +483,12 @@ export function Activities({
                               <Button
                                 type="button"
                                 size="sm"
-                                className="h-7 px-3 text-12 font-medium rounded-md shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+                                className="h-7 px-3 text-12 font-medium rounded-md shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-foreground text-background hover:bg-foreground/90"
                                 onClick={handleSaveEditedComment}
                                 disabled={!editingCommentText.trim() || isSubmittingEdit}
                               >
                                 {isSubmittingEdit ? (
-                                  <span className="inline-block size-2.5 animate-spin motion-reduce:animate-none rounded-full border-2 border-primary-foreground border-t-transparent mr-1" />
+                                  <span className="inline-block size-2.5 animate-spin motion-reduce:animate-none rounded-full border-2 border-background border-t-transparent mr-1" />
                                 ) : null}
                                 Save
                               </Button>
@@ -505,13 +505,13 @@ export function Activities({
                               </div>
                             ) : null}
 
-                            <div className="relative inline-flex items-center gap-1.5 text-10 text-muted-foreground">
+                            <div className="relative inline-flex items-center gap-1.5 text-10 text-foreground/70">
                               <button
                                 type="button"
                                 disabled={isReadOnly}
                                 className={cn(
                                   "inline-flex size-5 items-center justify-center rounded-md text-foreground transition-colors focus:outline-none relative before:absolute before:-inset-2 md:before:hidden",
-                                  isReadOnly ? "cursor-not-allowed opacity-30" : "hover:bg-muted hover:text-foreground cursor-pointer"
+                                  isReadOnly ? "cursor-not-allowed opacity-30" : "hover:bg-muted cursor-pointer"
                                 )}
                                 aria-label="Open reaction picker"
                                 title="Open reaction picker"
@@ -521,7 +521,7 @@ export function Activities({
                                   )
                                 }
                               >
-                                <SmilePlus className="size-3" />
+                                <SmilePlus className="size-3 text-foreground" />
                               </button>
 
                               {!isReadOnly && (item.permissions?.canEdit ?? true) ? (
@@ -536,7 +536,7 @@ export function Activities({
                                   <span>·</span>
                                   <button
                                     type="button"
-                                    className="hover:text-destructive cursor-pointer transition-colors relative before:absolute before:-inset-1.5 md:before:hidden"
+                                    className="hover:text-foreground cursor-pointer transition-colors relative before:absolute before:-inset-1.5 md:before:hidden"
                                     onClick={() => setDeleteCommentId(item.id)}
                                   >
                                     Delete
@@ -568,7 +568,7 @@ export function Activities({
                         <p className="text-foreground">
                           <span className="font-semibold">{item.author}</span> {item.content}
                         </p>
-                        <p className="text-10 text-muted-foreground mt-0.5">
+                        <p className="text-10 text-foreground/70 mt-0.5">
                           {item.timestamp}
                         </p>
                       </div>
@@ -579,11 +579,11 @@ export function Activities({
             })}
           </div>
         ) : canComment ? (
-          <div className="py-6 text-center text-xs text-muted-foreground">
+          <div className="py-6 text-center text-xs text-foreground/70">
             No activity yet for {activeTab}
           </div>
         ) : (
-          <div className="py-6 text-center text-xs text-muted-foreground">
+          <div className="py-6 text-center text-xs text-foreground/70">
             Add a comment or view activity
           </div>
         )}
@@ -601,7 +601,7 @@ export function Activities({
             <DialogTitle className="text-16 font-semibold text-foreground">
               Delete comment?
             </DialogTitle>
-            <DialogDescription className="text-12 text-muted-foreground">
+            <DialogDescription className="text-12 text-foreground/70">
               This comment will be removed and cannot be recovered.
             </DialogDescription>
           </DialogHeader>

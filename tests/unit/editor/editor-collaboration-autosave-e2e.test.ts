@@ -31,12 +31,11 @@ import {
   YjsSocketIOProvider,
   getOffsetFromRowCol,
   getRowColFromOffset,
-} from '@/features/editor/coordinators/services/realtime/yjs-socket-provider';
-import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+} from '@/features/editor/sdk';
+import { lruDocumentCache, draftStorageService } from '@/features/editor/domain/document';
 import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
-import { draftStorageService } from '@/features/editor/coordinators/services/draft-storage.service';
 import { useCompileStore, useConnectivityStore } from '@/features/editor/store';
-import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk';
 
 describe('Editor Real-Time Collaboration & Auto-Save Subsystem', () => {
   describe('1. Mathematical CRDT Convergence & Strong Eventual Consistency (SEC)', () => {
@@ -243,6 +242,10 @@ describe('Editor Real-Time Collaboration & Auto-Save Subsystem', () => {
     const fileId = 'test-flush-doc.tex';
 
     beforeEach(() => {
+      useConnectivityStore.setState({ isOnline: true, syncStatus: 'saved', pendingCount: 0 });
+      try {
+        Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
+      } catch {}
       lruDocumentCache.clearAll();
       useCompileStore.getState().clearDirty(fileId);
       draftStorageService.clearDraft(fileId);

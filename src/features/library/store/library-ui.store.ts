@@ -35,10 +35,8 @@ export type LibraryModalType =
 export interface LibraryUIState {
   // ── Layout State ─────────────────────────────────────────────────────────────
   activeScope: LibraryScope;
-  isOpen: boolean; // Sidebar open (legacy name)
-  isSidebarOpen: boolean; // Sidebar open (canonical name)
-  width: number; // Sidebar width (legacy name)
-  sidebarWidth: number; // Sidebar width (canonical name)
+  isSidebarOpen: boolean;
+  sidebarWidth: number;
   inspectorWidth: number;
   isInspectorOpen: boolean;
   activeInspectorTab: InspectorSectionId;
@@ -51,21 +49,15 @@ export interface LibraryUIState {
 
   // ── Centralized Modal Dialog Bus ─────────────────────────────────────────────
   activeModal: LibraryModalType | null;
-  /** @deprecated Use modalProps instead */
-  payload: any;
   modalProps: Record<string, any>;
 
   // ── Actions: Scope & Layout ──────────────────────────────────────────────────
   setActiveScope: (scope: LibraryScope) => void;
-  setIsOpen: (isOpen: boolean) => void;
   setSidebarOpen: (isOpen: boolean) => void;
-  toggle: () => void;
   toggleSidebar: () => void;
-  setWidth: (width: number) => void;
   setSidebarWidth: (width: number) => void;
   setInspectorWidth: (width: number) => void;
   setIsInspectorOpen: (isOpen: boolean) => void;
-  setInspectorOpen: (isOpen: boolean) => void;
   toggleInspector: () => void;
   setActiveInspectorTab: (tab: InspectorSectionId) => void;
   toggleInspectorTab: (tab: InspectorSectionId) => void;
@@ -99,9 +91,7 @@ export const useLibraryUIStore = create<LibraryUIState>()(
         id: 'user',
         name: 'Library',
       },
-      isOpen: true,
       isSidebarOpen: true,
-      width: 240,
       sidebarWidth: 240,
       inspectorWidth: 360,
       isInspectorOpen: false,
@@ -113,7 +103,6 @@ export const useLibraryUIStore = create<LibraryUIState>()(
       displayOptions: DEFAULT_LIBRARY_DISPLAY_OPTIONS,
 
       activeModal: null,
-      payload: null,
       modalProps: {},
 
       // Display options handler
@@ -128,26 +117,19 @@ export const useLibraryUIStore = create<LibraryUIState>()(
       // Layout handlers
       setActiveScope: (activeScope) => set({ activeScope }),
 
-      setIsOpen: (isOpen: boolean) => set({ isOpen, isSidebarOpen: isOpen }),
-      setSidebarOpen: (isOpen: boolean) => set({ isOpen, isSidebarOpen: isOpen }),
+      setSidebarOpen: (isSidebarOpen: boolean) => set({ isSidebarOpen }),
 
-      toggle: () => set((s) => ({ isOpen: !s.isOpen, isSidebarOpen: !s.isOpen })),
-      toggleSidebar: () => set((s) => ({ isOpen: !s.isOpen, isSidebarOpen: !s.isOpen })),
+      toggleSidebar: () => set((s) => ({ isSidebarOpen: !s.isSidebarOpen })),
 
-      setWidth: (width: number) => {
-        const clamped = Math.min(Math.max(width, 200), 400);
-        set({ width: clamped, sidebarWidth: clamped });
-      },
       setSidebarWidth: (width: number) => {
         const clamped = Math.min(Math.max(width, 200), 400);
-        set({ width: clamped, sidebarWidth: clamped });
+        set({ sidebarWidth: clamped });
       },
 
       setInspectorWidth: (inspectorWidth: number) =>
         set({ inspectorWidth: Math.min(Math.max(inspectorWidth, 300), 640) }),
 
       setIsInspectorOpen: (isInspectorOpen: boolean) => set({ isInspectorOpen }),
-      setInspectorOpen: (isInspectorOpen: boolean) => set({ isInspectorOpen }),
 
       toggleInspector: () => set((s) => ({ isInspectorOpen: !s.isInspectorOpen })),
 
@@ -198,23 +180,19 @@ export const useLibraryUIStore = create<LibraryUIState>()(
       setViewMode: (viewMode: ViewMode) => set({ viewMode }),
 
       // Modal handlers
-      openModal: (activeModal: LibraryModalType, payloadOrProps: any = null) =>
+      openModal: (activeModal: LibraryModalType, props: any = {}) =>
         set({
           activeModal,
-          payload: payloadOrProps,
           modalProps:
-            typeof payloadOrProps === 'object' && payloadOrProps !== null
-              ? payloadOrProps
-              : {},
+            typeof props === 'object' && props !== null ? props : {},
         }),
 
-      closeModal: () => set({ activeModal: null, payload: null, modalProps: {} }),
+      closeModal: () => set({ activeModal: null, modalProps: {} }),
     }),
     {
       name: 'flux_library_sidebar_v1',
       partialize: (state) => ({
         activeScope: state.activeScope,
-        width: state.width,
         sidebarWidth: state.sidebarWidth,
         inspectorWidth: state.inspectorWidth,
         displayOptions: state.displayOptions,

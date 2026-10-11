@@ -17,7 +17,7 @@ import type { Item } from '../types/library.types';
  * Supports disambiguation suffixes (a, b, c...) when collisions exist.
  */
 export function generateCitationKey(
-  paper?: Partial<Item> | { title?: string; authors?: any[]; year?: number | string | null; citationKey?: string | null; key?: string; id?: string; doi?: string | null; [key: string]: any } | null,
+  paper?: Partial<Item> | null,
   existingKeys?: Set<string> | string[],
 ): string {
   if (!paper) return 'ref';
@@ -25,10 +25,14 @@ export function generateCitationKey(
   let baseKey = '';
 
   let authorPart = '';
-  const rawAuthors = (paper as any).authors;
+  const rawAuthors = paper.authors;
   if (Array.isArray(rawAuthors) && rawAuthors.length > 0) {
     const firstAuthor = rawAuthors[0];
-    let authorStr = typeof firstAuthor === 'string' ? firstAuthor : (firstAuthor?.lastName || firstAuthor?.name || firstAuthor?.fullName || '');
+    const authorObj = typeof firstAuthor === 'object' && firstAuthor ? (firstAuthor as Record<string, unknown>) : null;
+    let authorStr =
+      typeof firstAuthor === 'string'
+        ? firstAuthor
+        : String(authorObj?.lastName || authorObj?.name || authorObj?.fullName || '');
     if (authorStr.includes(',')) {
       authorStr = authorStr.split(',')[0].trim();
     } else {

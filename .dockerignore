@@ -13,6 +13,9 @@ README.md
 .agents
 .github
 playwright-report
+.playwright
 tests
 coverage
 *.log
+*.tsbuildinfo
+.turbo

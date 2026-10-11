@@ -683,18 +683,19 @@ function patchItemInCacheData(oldData: any, targetId: string, patch: Partial<Ite
 /**
  * Safely patch single item detail cache ({ item: Item, paper: Item } or Item)
  */
-function patchSingleItemCache(oldData: any, patch: Partial<Item>): any {
-  if (!oldData) return oldData;
-  if (oldData.item) {
-    const updated = { ...oldData.item, ...patch };
+function patchSingleItemCache<T>(oldData: T, patch: Partial<Item>): T {
+  if (!oldData || typeof oldData !== 'object') return oldData;
+  const old = oldData as Record<string, unknown>;
+  if (old.item && typeof old.item === 'object') {
+    const updated = { ...(old.item as Record<string, unknown>), ...patch };
     return {
-      ...oldData,
+      ...old,
       ...updated,
       item: updated,
       paper: updated,
-    };
+    } as T;
   }
-  return { ...oldData, ...patch };
+  return { ...old, ...patch } as T;
 }
 
 export function useItemState(scopeId?: string, itemId?: string | null) {
@@ -719,14 +720,19 @@ export function useItemState(scopeId?: string, itemId?: string | null) {
     },
     onSuccess: (newData) => {
       if (effectiveItemId) {
+        const patch: Partial<Item> = {
+          readStatus: newData.readStatus,
+          rating: newData.rating,
+          lastReadAt: newData.lastReadAt,
+        };
         queryClient.setQueryData(itemKeys.state(effectiveScope, effectiveItemId), newData);
         queryClient.setQueryData(
           itemKeys.byId(effectiveScope, effectiveItemId),
-          (old: any) => patchSingleItemCache(old, newData as any),
+          (old) => patchSingleItemCache(old, patch),
         );
         queryClient.setQueriesData(
           { queryKey: ['library', 'items', effectiveScope] },
-          (old) => patchItemInCacheData(old, effectiveItemId, newData as any),
+          (old) => patchItemInCacheData(old, effectiveItemId, patch),
         );
       }
       toast.success('Reading state updated', { id: 'library-reading-state' });
@@ -743,14 +749,19 @@ export function useItemState(scopeId?: string, itemId?: string | null) {
     },
     onSuccess: (newData) => {
       if (effectiveItemId) {
+        const patch: Partial<Item> = {
+          readStatus: newData.readStatus,
+          rating: newData.rating,
+          lastReadAt: newData.lastReadAt,
+        };
         queryClient.setQueryData(itemKeys.state(effectiveScope, effectiveItemId), newData);
         queryClient.setQueryData(
           itemKeys.byId(effectiveScope, effectiveItemId),
-          (old: any) => patchSingleItemCache(old, newData as any),
+          (old) => patchSingleItemCache(old, patch),
         );
         queryClient.setQueriesData(
           { queryKey: ['library', 'items', effectiveScope] },
-          (old) => patchItemInCacheData(old, effectiveItemId, newData as any),
+          (old) => patchItemInCacheData(old, effectiveItemId, patch),
         );
       }
       toast.success('Marked as read', { id: 'library-reading-state' });

@@ -173,7 +173,7 @@ export function VersionTimelineSidebar({
                     {v.labels.map((lbl) => (
                       <span
                         key={lbl.id || lbl.label}
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 rounded-md"
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-warning/10 text-warning border border-warning/20 rounded-md"
                       >
                         <Tag className="size-2.5" />
                         <span>{lbl.label}</span>

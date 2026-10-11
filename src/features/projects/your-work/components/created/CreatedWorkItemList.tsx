@@ -13,7 +13,7 @@ export interface CreatedWorkItemListProps {
   className?: string;
 }
 
-export function CreatedWorkItemList({
+export const CreatedWorkItemList = React.memo<CreatedWorkItemListProps>(function CreatedWorkItemList({
   workItems = [],
   onWorkItemClick,
   workItemProjectMap = {},
@@ -30,6 +30,6 @@ export function CreatedWorkItemList({
       className={className}
     />
   );
-}
+});
 
 export default CreatedWorkItemList;

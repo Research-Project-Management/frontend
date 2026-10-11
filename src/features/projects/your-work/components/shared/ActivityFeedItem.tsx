@@ -14,7 +14,7 @@ export interface ActivityFeedItemProps {
   className?: string;
 }
 
-export function ActivityFeedItem({
+export const ActivityFeedItem = React.memo<ActivityFeedItemProps>(function ActivityFeedItem({
   activity,
   onWorkItemClick,
   workItemProjectMap = {},
@@ -116,6 +116,6 @@ export function ActivityFeedItem({
       </div>
     </div>
   );
-}
+});
 
 export default ActivityFeedItem;

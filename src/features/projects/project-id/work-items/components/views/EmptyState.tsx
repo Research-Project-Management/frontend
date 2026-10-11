@@ -273,7 +273,7 @@ export function EmptyState({
         Start with your first work item.
       </h3>
 
-      <p className="text-13 text-muted-foreground max-w-[420px] leading-relaxed mb-6 font-normal">
+      <p className="text-13 text-foreground/70 max-w-[420px] leading-relaxed mb-6 font-normal">
         Work items are the building blocks of your project - assign owners, set priorities, and track progress easily.
       </p>
 
@@ -281,7 +281,7 @@ export function EmptyState({
         <Button
           onClick={handleCreate}
           size="sm"
-          className="relative h-8 px-4 rounded-md font-medium text-13 bg-primary text-primary-foreground hover:bg-primary-hover transition-colors shadow-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
+          className="relative h-8 px-4 rounded-md font-medium text-13 bg-foreground text-background hover:bg-foreground/90 transition-colors shadow-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
         >
           Create your first work item
         </Button>

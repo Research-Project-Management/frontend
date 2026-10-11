@@ -25,7 +25,7 @@ export interface DeleteModalProps {
  * Settings-scoped DeleteModal.
  * Organized under components/labels for label deletion confirmation.
  */
-export function DeleteModal({
+export const DeleteModal = React.memo(function DeleteModal({
   isOpen,
   onClose,
   onConfirm,
@@ -35,6 +35,8 @@ export function DeleteModal({
   cancelText = 'Cancel',
   loading = false,
 }: DeleteModalProps) {
+  if (!isOpen) return null;
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md p-5 overflow-hidden border border-border bg-card shadow-overlay">
@@ -84,6 +86,6 @@ export function DeleteModal({
       </DialogContent>
     </Dialog>
   );
-}
+});
 
 export default DeleteModal;

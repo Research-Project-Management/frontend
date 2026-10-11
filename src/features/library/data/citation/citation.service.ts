@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "@/shared/lib/api";
+import * as api from "@/shared/lib/api";
 import { logger } from "@/shared/lib/utils";
 import type { FormattedCitation, CslStyle, ReferenceData, CslStyleMetadata, ExportBundleResponse } from '../../types/library.types';
 import { cleanDoi, isProjectScope } from '../../domain';
@@ -29,7 +29,7 @@ export async function fetchReferenceByDoi(
   const resolveUrl = `/api/v1/library/citation/resolve`;
 
   try {
-    const referenceResponse = await apiPost<unknown>(
+    const referenceResponse = await api.apiPost<unknown>(
       resolveUrl,
       { doi: normalizedDoi },
       { silent: true },
@@ -42,7 +42,7 @@ export async function fetchReferenceByDoi(
     // Fallback: GET by encoded DOI
     try {
       const doiUrl = `/api/v1/library/citation/doi/${encodeURIComponent(normalizedDoi)}`;
-      const fallback = await apiGet<unknown>(
+      const fallback = await api.apiGet<unknown>(
         doiUrl,
         { silent: true },
       );
@@ -69,7 +69,7 @@ export async function searchReferences(
   const searchUrl = `/api/v1/library/citation/crossref/search?query=${encodeURIComponent(trimmedQuery)}&rows=10`;
 
   try {
-    const response = await apiGet<{
+    const response = await api.apiGet<{
       works?: ReferenceData[];
       results?: ReferenceData[];
       data?: ReferenceData[];
@@ -126,7 +126,7 @@ export const CitationService = {
     index: number = 1,
   ) => {
     const projectQuery = isProjectScope(scopeId) ? `&projectId=${encodeURIComponent(scopeId!)}` : '';
-    return apiGet<FormattedCitation>(
+    return api.apiGet<FormattedCitation>(
       `/api/v1/library/citation/items/${encodeURIComponent(itemId)}/citation?style=${encodeURIComponent(style)}&index=${index}${projectQuery}`,
     );
   },
@@ -136,7 +136,7 @@ export const CitationService = {
    */
   getStyles: (scopeId?: string) => {
     const projectQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
-    return apiGet<import('../../types/library.types').StyleSummary[]>(
+    return api.apiGet<import('../../types/library.types').StyleSummary[]>(
       `/api/v1/library/citation/styles${projectQuery}`,
     );
   },
@@ -145,7 +145,7 @@ export const CitationService = {
    * Search CSL styles with metadata (GET /citation/styles/search)
    */
   searchStyles: (query: string = '', limit: number = 30) => {
-    return apiGet<{ styles: CslStyleMetadata[]; total: number }>(
+    return api.apiGet<{ styles: CslStyleMetadata[]; total: number }>(
       `/api/v1/library/citation/styles/search?q=${encodeURIComponent(query)}&limit=${limit}`,
     );
   },
@@ -154,7 +154,7 @@ export const CitationService = {
    * Upload custom CSL XML style (POST /citation/styles/custom)
    */
   uploadCustomStyle: (xml: string, title?: string) => {
-    return apiPost<{ styleId?: string; id?: string; title: string; message: string }>(
+    return api.apiPost<{ styleId?: string; id?: string; title: string; message: string }>(
       `/api/v1/library/citation/styles/custom`,
       { xml, title },
     ).then((res) => ({
@@ -174,7 +174,7 @@ export const CitationService = {
     style: CslStyle = 'apa',
   ) => {
     const projectId = isProjectScope(scopeId) ? scopeId : undefined;
-    return apiPost<{
+    return api.apiPost<{
       style: CslStyle;
       total: number;
       combinedInText?: string;
@@ -202,7 +202,7 @@ export const CitationService = {
     styleId: string = 'apa-7th',
     index: number = 1,
   ) =>
-    apiPost<FormattedCitation>(
+    api.apiPost<FormattedCitation>(
       `/api/v1/library/citation/format`,
       { item, styleId, index },
     ),
@@ -216,7 +216,7 @@ export const CitationService = {
     items: Record<string, any>[],
     styleId: string = 'apa-7th',
   ) =>
-    apiPost<{
+    api.apiPost<{
       styleId: string;
       citations: Array<{ id?: string; inText: string; bibliography: string }>;
       bibliographyText: string;
@@ -243,7 +243,7 @@ export const ExportService = {
     const projectId =
       options?.projectId ||
       (isProjectScope(scopeId) ? scopeId : undefined);
-    return apiPost<{ content: string; filename: string; itemCount: number }>(
+    return api.apiPost<{ content: string; filename: string; itemCount: number }>(
       `/api/v1/library/exports`,
       {
         ...options,
@@ -256,7 +256,7 @@ export const ExportService = {
    * Export citations by specific citation keys in BibTeX format (POST /exports/citations/bibtex)
    */
   exportByCitationKeys: (scopeId?: string, keys: string[] = []) =>
-    apiPost<{ bibtex: string; count: number }>(
+    api.apiPost<{ bibtex: string; count: number }>(
       `/api/v1/library/exports/citations/bibtex`,
       {
         keys,
@@ -269,7 +269,7 @@ export const ExportService = {
    */
   exportBibtex: (scopeId?: string, collectionId?: string) => {
     const projectQuery = isProjectScope(scopeId) ? `&projectId=${encodeURIComponent(scopeId!)}` : '';
-    return apiGet<{ bibtex: string; total: number; filename: string }>(
+    return api.apiGet<{ bibtex: string; total: number; filename: string }>(
       `/api/v1/library/exports?format=bibtex&collectionId=${encodeURIComponent(collectionId || '')}${projectQuery}`,
     );
   },
@@ -278,7 +278,7 @@ export const ExportService = {
    * Export full bundle containing BibTeX and associated file metadata
    */
   exportBundle: (_scopeId?: string, collectionId?: string) =>
-    apiGet<ExportBundleResponse>(
+    api.apiGet<ExportBundleResponse>(
       `/api/v1/library/exports/${encodeURIComponent(collectionId || '')}/export-bundle`,
     ),
 
@@ -287,7 +287,7 @@ export const ExportService = {
    */
   exportAnnotatedPdf: (scopeId?: string, itemId?: string) => {
     const projectQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
-    return apiGet<{ filename: string; mimeType: string; base64: string }>(
+    return api.apiGet<{ filename: string; mimeType: string; base64: string }>(
       `/api/v1/library/exports/items/${encodeURIComponent(itemId || '')}/annotated-pdf${projectQuery}`,
     );
   },
@@ -297,7 +297,7 @@ export const ExportService = {
    */
   downloadAnnotatedPdf: async (scopeId?: string, itemId?: string, fallbackFilename?: string) => {
     const projectQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
-    const res = await apiGet<{ filename: string; mimeType: string; base64: string }>(
+    const res = await api.apiGet<{ filename: string; mimeType: string; base64: string }>(
       `/api/v1/library/exports/items/${encodeURIComponent(itemId || '')}/annotated-pdf${projectQuery}`,
     );
     if (!res || !res.base64) {

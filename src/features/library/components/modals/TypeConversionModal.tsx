@@ -41,12 +41,12 @@ export interface TypeConversionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Accept either item or paper for flexible caller integration */
-  item?: any;
-  paper?: any;
+  item?: Item;
+  paper?: Item;
   targetType: string;
   scopeId?: string;
   initialPreview?: TypeConversionPreview | null;
-  onSuccess?: (updatedItem: any) => void;
+  onSuccess?: (updatedItem: Item) => void;
 }
 
 export type ConvertModalProps = TypeConversionModalProps;

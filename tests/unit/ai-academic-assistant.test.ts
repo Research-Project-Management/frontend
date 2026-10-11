@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AcademicAiService } from '@/features/editor/coordinators/services/ai-academic-assistant.service';
+﻿import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { AcademicAiService } from '@/features/editor/sdk';
 
 describe('AI Inline Floating Assistant & Academic Rephrase (Overleaf AI Parity)', () => {
   beforeEach(() => {

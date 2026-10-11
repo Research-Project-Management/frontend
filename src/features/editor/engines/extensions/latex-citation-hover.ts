@@ -138,7 +138,7 @@ function createCitationTooltip(from: number, to: number, citeKey: string): Toolt
     create() {
       const dom = document.createElement('div');
       dom.className =
-        'cm-citation-hover-card p-3.5 bg-popover text-popover-foreground border border-border rounded-lg shadow-xl text-xs max-w-sm sm:max-w-md select-text pointer-events-auto leading-relaxed';
+        'cm-citation-hover-card p-3.5 bg-popover text-popover-foreground border border-border rounded-lg shadow-overlay text-xs max-w-sm sm:max-w-md select-text pointer-events-auto leading-relaxed';
 
       if (entry) {
         renderResolvedCard(dom, entry, citeKey);
@@ -182,7 +182,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
   if (entry.isRetracted) {
     const retractedBadge = document.createElement('span');
     retractedBadge.className =
-      'px-1.5 py-0.5 rounded text-[10px] font-bold bg-destructive/15 text-destructive border border-destructive/30 uppercase tracking-wide flex items-center gap-1';
+      'px-1.5 py-0.5 rounded text-[10px] font-semibold bg-destructive/15 text-destructive border border-destructive/30 uppercase tracking-wide flex items-center gap-1';
     retractedBadge.innerHTML = '🚨 <span>THU HỒI / RETRACTED</span>';
     leftPills.appendChild(retractedBadge);
   }
@@ -220,7 +220,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
       'rounded-md bg-destructive/10 border border-destructive/30 p-2.5 my-2 text-xs flex flex-col gap-1 text-destructive';
 
     const alertHeader = document.createElement('div');
-    alertHeader.className = 'flex items-center gap-1.5 font-bold text-[11px] uppercase tracking-wider text-destructive';
+    alertHeader.className = 'flex items-center gap-1.5 font-semibold text-[11px] uppercase tracking-wider text-destructive';
     alertHeader.innerHTML = '<span>🚨 CẢNH BÁO: BÀI BÁO ĐÃ BỊ THU HỒI</span>';
     alertBox.appendChild(alertHeader);
 
@@ -284,8 +284,8 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
     metaRow.appendChild(yearSpan);
   }
 
-  if (entry.journal || (entry as any).booktitle) {
-    const venue = entry.journal || (entry as any).booktitle;
+  const venue = entry.journal || entry.booktitle;
+  if (venue) {
     const venueSpan = document.createElement('span');
     venueSpan.className = 'inline-flex items-center gap-1 bg-muted/40 px-1.5 py-0.5 rounded max-w-[200px] truncate';
     venueSpan.title = venue;
@@ -382,7 +382,7 @@ function renderUnresolvedCard(container: HTMLElement, citeKey: string): void {
 
   const warningBadge = document.createElement('span');
   warningBadge.className =
-    'px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase';
+    'px-1.5 py-0.5 rounded text-[10px] font-semibold bg-warning/15 text-warning border border-warning/30 uppercase';
   warningBadge.textContent = '⚠️ Chưa tìm thấy';
   header.appendChild(warningBadge);
 

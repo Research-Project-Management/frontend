@@ -41,8 +41,6 @@ import DuplicateModal from '../modal/DuplicateModal';
 import MoveModal from '../modal/MoveModal';
 import { useViewStore } from '../../store/use-view-store';
 import { StorageFilterPopover } from '../filters/StorageFilterPopover';
-import StorageQuotaWidget from './StorageQuotaWidget';
-
 import { useStorageUIStore, type StorageSection } from '../../store/storage-ui.store';
 
 export interface BreadcrumbItem {
@@ -198,10 +196,6 @@ export default function Topbar({
                       </DropdownMenuItem>
                     );
                   })}
-                  <DropdownMenuSeparator className="my-1" />
-                  <div className="p-2">
-                    <StorageQuotaWidget compact={false} className="border-0 bg-transparent p-0 shadow-none" />
-                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

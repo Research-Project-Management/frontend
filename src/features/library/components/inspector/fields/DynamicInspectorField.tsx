@@ -22,7 +22,7 @@ export interface DynamicInspectorFieldProps {
   onCopy: (text: string, label: string) => void;
 }
 
-function isValidValue(val?: any): boolean {
+function isValidValue(val?: unknown): boolean {
   if (val === null || val === undefined) return false;
   if (typeof val === 'number') return !isNaN(val) && Number.isFinite(val) && val !== 0;
   if (typeof val === 'boolean') return true;

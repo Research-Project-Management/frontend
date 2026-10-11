@@ -26,7 +26,12 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-import { ViewService, type SavedViewRecord } from '../services/view.service';
+import {
+  ViewService,
+  type SavedViewRecord,
+  type CreateViewInput,
+  type UpdateViewInput,
+} from '../services/view.service';
 import type { Item, WorkItem, Column } from '../types/work-item.types';
 import { resolveColumnId, resolveWorkItemColumnId, getItemBucketKey } from '../utils/work-item.utils';
 import { ItemHelpers, WorkItemHelpers } from '../utils/work-item.utils';
@@ -53,14 +58,7 @@ export function useViewsQuery(projectId: string) {
 export function useCreateViewMutation(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: {
-      name: string;
-      description?: string;
-      layout?: string;
-      filters?: Record<string, unknown>;
-      displayProperties?: Record<string, unknown>;
-      access?: 'public' | 'private';
-    }) => ViewService.createView(projectId, data),
+    mutationFn: (data: CreateViewInput) => ViewService.createView(projectId, data),
     onSuccess: (newView) => {
       queryClient.invalidateQueries({ queryKey: viewKeys.list(projectId) });
       toast.success(`Created view "${newView.name}"`, { id: 'work-item-view-action' });
@@ -79,14 +77,7 @@ export function useUpdateViewMutation(projectId: string) {
       data,
     }: {
       viewId: string;
-      data: Partial<{
-        name: string;
-        description?: string;
-        layout?: string;
-        filters?: Record<string, unknown>;
-        displayProperties?: Record<string, unknown>;
-        access?: 'public' | 'private';
-      }>;
+      data: UpdateViewInput;
     }) => ViewService.updateView(projectId, viewId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: viewKeys.list(projectId) });

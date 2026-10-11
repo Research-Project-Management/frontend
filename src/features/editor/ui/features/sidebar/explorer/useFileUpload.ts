@@ -4,9 +4,10 @@ import { useState, useRef, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { filesQuery } from '@/features/editor/ui/hooks/use-core';
-import type { EditorStorageItem as StorageItem } from '@/features/editor/coordinators/services/storage.service';
+import type { EditorStorageItem as StorageItem } from '@/features/editor/sdk';
 import { TEX_EXTS, type PendingUploadItem as PendingItem } from './UploadConflictDialog';
-import { parseZipArchive, extractAndImportZipToProject } from '@/features/editor/coordinators/services/archive-import.service';
+import { parseZipArchive, extractAndImportZipToProject } from '@/features/editor/sdk/archive';
+import { extractProjectId } from '@/features/editor/domain/types';
 
 export interface UseFileUploadOptions {
   parentPageId: string | null;
@@ -115,7 +116,10 @@ export function useFileUpload({
     if (!picked.length) return;
     setPendingUploads(
       markDuplicates(
-        picked.map((f: any) => ({ file: f, name: (f as any).webkitRelativePath || f.name })),
+        picked.map((f) => ({
+          file: f,
+          name: (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name,
+        })),
       ),
     );
     setUploadDialogOpen(true);
@@ -218,12 +222,7 @@ export function useFileUpload({
   const handleUploadToFolder = useCallback(
     (droppedFiles: File[], folderId: string) => {
       if (!parentPageId) return;
-      const tabProjectId =
-        (typeof parentPage?.projectId === 'string'
-          ? parentPage.projectId
-          : (parentPage?.projectId as any)?.id) ||
-        projectId ||
-        '';
+      const tabProjectId = extractProjectId(parentPage) || projectId || '';
       setUploadingCount((prev) => prev + droppedFiles.length);
 
       const settle = () => setUploadingCount((prev) => Math.max(0, prev - 1));
@@ -275,12 +274,7 @@ export function useFileUpload({
 
     if (zipUnpackItems.length > 0 && parentPageId) {
       void (async () => {
-        const tabProjectId =
-          (typeof parentPage?.projectId === 'string'
-            ? parentPage.projectId
-            : (parentPage?.projectId as any)?.id) ||
-          projectId ||
-          '';
+        const tabProjectId = extractProjectId(parentPage) || projectId || '';
 
         for (const zipItem of zipUnpackItems) {
           try {
@@ -426,7 +420,7 @@ export function useFileUpload({
               parentId: folderParentId ?? undefined,
               pageId: parentPageId,
             });
-            const folderId = (created as any).folder?.id ?? (created as any).id;
+            const folderId = (created as { folder?: { id: string }; id?: string })?.folder?.id ?? (created as { id?: string })?.id ?? '';
             folderIdMap[folderPath] = folderId;
           }
 

@@ -16,7 +16,7 @@ export { default as WorkspacePagesPage } from './shell/pages/WorkspacePagesPage'
 // Hooks
 export { useProjects, useProject } from './shell/hooks/use-project';
 export { useFavorites } from './shell/hooks/use-favorites';
-export * from './shell/hooks/use-project-state';
+export * from './shell/hooks/use-project-labels';
 
 // Sub-modules
 export * from './project-id/pages';

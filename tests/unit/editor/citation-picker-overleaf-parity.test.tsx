@@ -146,7 +146,7 @@ describe('Overleaf Parity: Citation Picker & Reference Workflow', () => {
     const tooltip = citationHoverSource(view, pos, 1);
     expect(tooltip).not.toBeNull();
 
-    const dom = tooltip!.create().dom;
+    const dom = tooltip!.create(view).dom;
     expect(dom.textContent).toContain('@knuth1984');
     expect(dom.textContent).toContain('Literate Programming');
 

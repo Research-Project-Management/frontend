@@ -64,7 +64,7 @@ const SECONDARY_CREATOR_ROLES = new Set([
 ]);
 
 /** Filter out empty, null, undefined, or junk placeholder string values */
-function cleanValue(val?: any): string {
+function cleanValue(val?: unknown): string {
   if (val === null || val === undefined) return '';
   const str = String(val).trim();
   const lower = str.toLowerCase();

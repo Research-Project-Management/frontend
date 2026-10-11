@@ -413,6 +413,51 @@ describe('VisualEditorView (Overleaf Visual Mode Parity)', () => {
       expect(latestLatex).not.toContain('diagram.png');
     });
   });
+
+  describe('10. Dual-Engine Roundtrip & Unmount Flush Zero Data Loss', () => {
+    it('should immediately flush pending modifications on unmount without waiting for 250ms debounce', () => {
+      const handleChange = vi.fn();
+      const { container, unmount } = render(
+        <VisualEditorView
+          filePath="paper.tex"
+          value="Initial text before editing"
+          onChange={handleChange}
+        />
+      );
+
+      const surface = container.querySelector('.visual-editor-surface') as HTMLElement;
+      expect(surface).toBeTruthy();
+
+      // Directly modify innerHTML simulating rapid typing before debounce fires
+      surface.innerHTML = '<p>Modified text right before unmount</p>';
+      fireEvent.input(surface);
+
+      // Unmount immediately (simulating user toggling to Source mode within 250ms)
+      unmount();
+
+      expect(handleChange).toHaveBeenCalled();
+      const lastCallArg = handleChange.mock.calls[handleChange.mock.calls.length - 1][0];
+      expect(lastCallArg).toContain('Modified text right before unmount');
+    });
+
+    it('should toggle editor mode when pressing Ctrl+Shift+V inside visual surface', () => {
+      const { container } = render(
+        <VisualEditorView
+          filePath="paper.tex"
+          value="Test document"
+          onChange={vi.fn()}
+        />
+      );
+
+      const surface = container.querySelector('.visual-editor-surface') as HTMLElement;
+      expect(surface).toBeTruthy();
+
+      expect(useSettingsStore.getState().editorMode).toBe('visual');
+      fireEvent.keyDown(surface, { key: 'V', shiftKey: true, ctrlKey: true });
+      expect(useSettingsStore.getState().editorMode).toBe('code');
+    });
+  });
 });
+
 
 

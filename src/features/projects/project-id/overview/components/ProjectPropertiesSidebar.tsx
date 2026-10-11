@@ -27,23 +27,23 @@ const STATE_CONFIG: Record<
   ProjectState,
   { label: string; color: string }
 > = {
-  draft: { label: 'Draft', color: 'bg-muted text-muted-foreground' },
-  planning: { label: 'Planning', color: 'bg-muted text-foreground' },
-  execution: { label: 'In Execution', color: 'bg-warning/10 text-warning border border-warning/30' },
-  monitoring: { label: 'Monitoring', color: 'bg-muted text-foreground' },
-  completed: { label: 'Completed', color: 'bg-success/10 text-success border border-success/30' },
-  cancelled: { label: 'Cancelled', color: 'bg-muted text-muted-foreground line-through' },
+  draft: { label: 'Draft', color: 'bg-muted text-foreground border border-border' },
+  planning: { label: 'Planning', color: 'bg-muted text-foreground border border-border' },
+  execution: { label: 'In Execution', color: 'bg-muted text-foreground border border-border' },
+  monitoring: { label: 'Monitoring', color: 'bg-muted text-foreground border border-border' },
+  completed: { label: 'Completed', color: 'bg-muted text-foreground border border-border' },
+  cancelled: { label: 'Cancelled', color: 'bg-muted text-foreground/60 border border-border line-through' },
 };
 
 const PRIORITY_CONFIG: Record<
   ProjectPriority,
   { label: string; color: string }
 > = {
-  urgent: { label: 'Urgent', color: 'text-destructive font-medium' },
-  high: { label: 'High', color: 'text-warning font-medium' },
+  urgent: { label: 'Urgent', color: 'text-foreground font-medium' },
+  high: { label: 'High', color: 'text-foreground font-medium' },
   medium: { label: 'Medium', color: 'text-foreground font-medium' },
-  low: { label: 'Low', color: 'text-muted-foreground font-normal' },
-  none: { label: 'None', color: 'text-muted-foreground/60' },
+  low: { label: 'Low', color: 'text-foreground/70 font-normal' },
+  none: { label: 'None', color: 'text-foreground/50' },
 };
 
 function formatDate(dateStr: string | null): string {
@@ -61,11 +61,11 @@ export function ProjectPropertiesSidebar({
 }: ProjectPropertiesSidebarProps) {
   const stateMeta = STATE_CONFIG[project.state] || {
     label: project.state,
-    color: 'bg-muted text-muted-foreground',
+    color: 'bg-muted text-foreground border border-border',
   };
   const priorityMeta = PRIORITY_CONFIG[project.priority] || {
     label: project.priority,
-    color: 'text-muted-foreground',
+    color: 'text-foreground',
   };
 
   return (
@@ -74,7 +74,7 @@ export function ProjectPropertiesSidebar({
         <h3 className="text-13 font-semibold tracking-tight text-foreground">
           Project Details
         </h3>
-        <Button asChild variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-foreground cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+        <Button asChild variant="ghost" size="icon" className="size-7 text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
           <Link href={`/projects/${project.id}/settings`}>
             <Settings className="size-3.5" />
           </Link>
@@ -84,7 +84,7 @@ export function ProjectPropertiesSidebar({
       <div className="flex flex-col gap-4 text-12">
         {/* State */}
         <div className="flex items-center justify-between py-1 border-b border-border/40">
-          <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+          <span className="text-foreground/70 font-medium flex items-center gap-1.5">
             <Clock className="size-3.5" /> State
           </span>
           <span
@@ -96,7 +96,7 @@ export function ProjectPropertiesSidebar({
 
         {/* Priority */}
         <div className="flex items-center justify-between py-1 border-b border-border/40">
-          <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+          <span className="text-foreground/70 font-medium flex items-center gap-1.5">
             <Flag className="size-3.5" /> Priority
           </span>
           <span className={`capitalize text-12 ${priorityMeta.color}`}>
@@ -106,7 +106,7 @@ export function ProjectPropertiesSidebar({
 
         {/* Health Status */}
         <div className="flex items-center justify-between py-1 border-b border-border/40">
-          <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+          <span className="text-foreground/70 font-medium flex items-center gap-1.5">
             <Activity className="size-3.5" /> Health
           </span>
           {currentUpdate ? (
@@ -122,13 +122,13 @@ export function ProjectPropertiesSidebar({
               {currentUpdate.status.replace('_', ' ')}
             </span>
           ) : (
-            <span className="text-muted-foreground italic text-11">Not reported</span>
+            <span className="text-foreground/70 italic text-11">Not reported</span>
           )}
         </div>
 
         {/* Lead */}
         <div className="flex items-center justify-between py-1 border-b border-border/40">
-          <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+          <span className="text-foreground/70 font-medium flex items-center gap-1.5">
             <Shield className="size-3.5" /> Project Lead
           </span>
           {project.lead ? (
@@ -149,22 +149,22 @@ export function ProjectPropertiesSidebar({
               </span>
             </div>
           ) : (
-            <span className="text-muted-foreground italic">None</span>
+            <span className="text-foreground/70 italic">None</span>
           )}
         </div>
 
         {/* Timeline Dates */}
         <div className="flex flex-col gap-2 py-1 border-b border-border/40">
-          <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+          <span className="text-foreground/70 font-medium flex items-center gap-1.5">
             <Calendar className="size-3.5" /> Timeline
           </span>
           <div className="grid grid-cols-2 gap-2 text-foreground">
             <div>
-              <span className="text-10 text-muted-foreground block">Start Date</span>
+              <span className="text-10 text-foreground/70 block">Start Date</span>
               <span className="font-medium">{formatDate(project.startDate)}</span>
             </div>
             <div>
-              <span className="text-10 text-muted-foreground block">Target Date</span>
+              <span className="text-10 text-foreground/70 block">Target Date</span>
               <span className="font-medium">{formatDate(project.targetDate)}</span>
             </div>
           </div>
@@ -172,12 +172,12 @@ export function ProjectPropertiesSidebar({
           {project.daysRemaining !== null && (
             <div className="mt-1">
               <Badge
-                variant={project.isOverdue ? 'destructive' : 'secondary'}
-                className="text-11 font-medium"
+                variant="outline"
+                className="text-11 font-medium bg-muted text-foreground border-border"
               >
                 {project.isOverdue ? (
                   <span className="flex items-center gap-1">
-                    <AlertCircle className="size-3" /> Overdue by{' '}
+                    <AlertCircle className="size-3 text-foreground" /> Overdue by{' '}
                     {Math.abs(project.daysRemaining)} days
                   </span>
                 ) : project.daysRemaining === 0 ? (
@@ -193,12 +193,12 @@ export function ProjectPropertiesSidebar({
         {/* Members */}
         <div className="flex flex-col gap-2 pt-1">
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+            <span className="text-foreground/70 font-medium flex items-center gap-1.5">
               <Users className="size-3.5" /> Members ({project.totalMembers})
             </span>
             <Link
               href={`/projects/${project.id}/settings/members`}
-              className="text-11 text-primary hover:underline relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="text-11 text-foreground hover:underline relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               Manage
             </Link>
@@ -219,20 +219,20 @@ export function ProjectPropertiesSidebar({
                         className="size-full object-cover"
                       />
                     ) : (
-                      <User className="size-3 text-muted-foreground" />
+                      <User className="size-3 text-foreground/70" />
                     )}
                   </div>
                   <span className="font-medium text-foreground truncate">
                     {m.name}
                   </span>
                 </div>
-                <span className="text-10 text-muted-foreground uppercase font-mono tracking-wider">
+                <span className="text-10 text-foreground/70 font-mono tracking-normal">
                   {m.role}
                 </span>
               </div>
             ))}
             {(project.totalMembers || 0) > 5 && (
-              <span className="text-11 text-muted-foreground mt-1">
+              <span className="text-11 text-foreground/70 mt-1">
                 +{(project.totalMembers || 0) - 5} more members
               </span>
             )}

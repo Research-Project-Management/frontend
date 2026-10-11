@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -64,7 +64,7 @@ const PRIORITY_DEFINITIONS = [
   { key: 'none', label: 'None', hex: '#94A3B8' },
 ];
 
-export function PriorityBreakdown({
+export const PriorityBreakdown = React.memo<PriorityBreakdownProps>(function PriorityBreakdown({
   priorityBreakdown = {},
   total = 0,
   totalAssigned,
@@ -77,10 +77,10 @@ export function PriorityBreakdown({
 
   const effectiveTotal = totalAssigned !== undefined ? totalAssigned : total;
 
-  const priorities: PriorityItem[] = PRIORITY_DEFINITIONS.map((def) => ({
+  const priorities: PriorityItem[] = useMemo(() => PRIORITY_DEFINITIONS.map((def) => ({
     ...def,
     count: priorityBreakdown[def.key] || 0,
-  }));
+  })), [priorityBreakdown]);
 
   const isEmpty =
     effectiveTotal === 0 || priorities.every((p) => (p.count || 0) === 0);
@@ -172,6 +172,6 @@ export function PriorityBreakdown({
       </div>
     </div>
   );
-}
+});
 
 export default PriorityBreakdown;

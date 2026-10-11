@@ -2,16 +2,20 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   LRUDocumentCache,
   lruDocumentCache,
+  draftStorageService,
   type DocumentModelState,
-} from '@/features/editor/domain/document/lru-document-cache';
-import { draftStorageService } from '@/features/editor/coordinators/services/draft-storage.service';
+} from '@/features/editor/domain/document';
 import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
-import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk';
 import { useCompileStore, useConnectivityStore, usePageStore } from '@/features/editor/store';
 
 describe('LRU Document Cache & Local-First Offline Draft Sync (Overleaf Parity)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    useConnectivityStore.setState({ isOnline: true, syncStatus: 'saved', pendingCount: 0 });
+    try {
+      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
+    } catch {}
     lruDocumentCache.clear();
     lruDocumentCache.setCapacity(25);
     lruDocumentCache.setActiveFileId(null);
@@ -59,7 +63,7 @@ describe('LRU Document Cache & Local-First Offline Draft Sync (Overleaf Parity)'
       expect(stats.lruFileId).toBe('doc-1');
 
       // Accessing doc-1 should promote it to MRU
-      cache.touch('doc-1');
+      cache.getModel('doc-1');
       stats = cache.getStats();
       expect(stats.mruFileId).toBe('doc-1');
       expect(stats.lruFileId).toBe('doc-2');

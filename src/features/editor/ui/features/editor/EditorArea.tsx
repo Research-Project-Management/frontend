@@ -16,19 +16,30 @@
 'use client';
 
 import React from 'react';
-import { FileCode2 } from 'lucide-react';
+import { FileCode2, AlertCircle, WifiOff } from 'lucide-react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { PlaneEmptyState, Button } from '@/shared/components/ui';
+import { toast } from 'sonner';
 
 import Tabs from './EditorTabs';
 import { ImagePanel } from './ImagePanel';
 import { CodeMirrorView } from './CodeMirrorView';
+import { EditorContextMenu } from './EditorContextMenu';
 import { VisualEditorView } from './VisualEditorView';
 import { EditorToolbar } from './EditorToolbar';
+import { SourceVisualSwitcher } from './SourceVisualSwitcher';
 
 import { useActiveDocument } from '../../hooks/use-core';
+import { useEditorCollaboration } from '../../hooks/use-collaboration';
 import { useSettingsStore } from '../../../store/settings.store';
 import { usePageStore } from '../../../store/editor.store';
+import { useDocumentCollaborationStore } from '../../../store/collaboration.store';
+import { useLayoutStore } from '../../../store/layout.store';
+import { useConnectivityStore } from '../../../store/connectivity.store';
+import { getActiveEditorEngine, editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { extractProjectId } from '@/features/editor/domain/types';
+import { sessionCoordinator, type DraftSnapshot } from '@/features/editor/coordinators/session.coordinator';
 
 interface EmptyEditorStateProps {
   onOpenDefaultFile?: () => void;
@@ -114,6 +125,112 @@ export function EditorArea() {
     }
   }, [pageId, selectFile]);
 
+  const cachedModel = displayPage?.id ? lruDocumentCache.getModel(displayPage.id) : null;
+  const rawContent =
+    cachedModel?.content !== undefined
+      ? cachedModel.content
+      : typeof displayPage?.content === 'string'
+        ? displayPage.content
+        : typeof displayPage?.content === 'object' && displayPage.content !== null && 'source' in displayPage.content
+          ? String((displayPage.content as { source?: unknown }).source ?? '')
+          : '';
+
+  const effectiveProjectId = extractProjectId(activePage) ?? extractProjectId(parentPage) ?? pageId;
+  const { yText, awareness } = useEditorCollaboration({
+    projectId: effectiveProjectId,
+    fileId: displayPage?.id,
+    initialValue: rawContent,
+    enabled: Boolean(!isLoading && activePage && displayPage && effectiveProjectId && editorMode !== 'visual'),
+  });
+
+  const isOnline = useConnectivityStore((s) => s.isOnline);
+  const offlinePendingCompile = useConnectivityStore((s) => s.offlinePendingCompile);
+
+  // Offline draft recovery state
+  const [recoverableDraft, setRecoverableDraft] = React.useState<DraftSnapshot | null>(null);
+
+  React.useEffect(() => {
+    let isCancelled = false;
+    if (!displayPage?.id) {
+      setRecoverableDraft(null);
+      return;
+    }
+
+    const checkDraft = async () => {
+      try {
+        const result = await sessionCoordinator.checkDraftRecoveryAsync(displayPage.id, rawContent);
+        if (!isCancelled && result.hasRecoverableDraft && result.draft) {
+          setRecoverableDraft(result.draft);
+        } else if (!isCancelled) {
+          setRecoverableDraft(null);
+        }
+      } catch {
+        if (!isCancelled) setRecoverableDraft(null);
+      }
+    };
+
+    void checkDraft();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [displayPage?.id, rawContent]);
+
+  const handleRestoreDraft = React.useCallback(() => {
+    if (!recoverableDraft || !displayPage?.id) return;
+    const restoredContent = recoverableDraft.content;
+    lruDocumentCache.updateContent(displayPage.id, restoredContent, true);
+    sessionCoordinator.notifyContentChange(displayPage.id, restoredContent, {
+      isRealtimeActive: false,
+    });
+    editorCommandBus.dispatch({ type: 'editor:set-content', content: restoredContent });
+    setRecoverableDraft(null);
+    toast.success('Đã khôi phục bản nháp ngoại tuyến thành công!');
+  }, [recoverableDraft, displayPage?.id]);
+
+  const handleDismissDraft = React.useCallback(() => {
+    if (!displayPage?.id) return;
+    sessionCoordinator.clearDraftSnapshot(displayPage.id);
+    setRecoverableDraft(null);
+    toast.info('Đã bỏ qua bản nháp ngoại tuyến');
+  }, [displayPage?.id]);
+
+  // Global shortcut (Ctrl+Alt+M / Cmd+Alt+M) -> Add Comment / Open Review in both modes
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+      const modKey = isMac ? e.metaKey : e.ctrlKey;
+
+      if (modKey && e.shiftKey && (e.key === 'V' || e.key === 'v')) {
+        e.preventDefault();
+        useSettingsStore.getState().toggleEditorMode();
+        return;
+      }
+
+      if (modKey && e.altKey && e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        const engine = getActiveEditorEngine();
+        const sel = engine?.getSelection?.();
+        const cursor = engine?.getCursorPosition?.();
+
+        const startLine = sel?.fromLine ?? cursor?.line ?? 1;
+        const endLine = sel?.toLine ?? cursor?.line ?? 1;
+        const selectedText = engine?.getSelectedText?.() || '';
+
+        useDocumentCollaborationStore.getState().setPendingComment({
+          startLine,
+          endLine,
+          selectedText,
+        });
+        useLayoutStore.getState().setActiveSidebarTab('review');
+        useLayoutStore.getState().setSidebarLeftOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   if (isLoading) return <LoadingSkeleton />;
 
   if (!activePage) {
@@ -124,22 +241,66 @@ export function EditorArea() {
     );
   }
 
-  const rawContent =
-    displayPage?.content != null
-      ? typeof displayPage.content === 'string'
-        ? displayPage.content
-        : (displayPage.content as any).source || ''
-      : '';
-
   return (
     <div className="h-full w-full flex flex-col bg-canvas min-h-0">
-      {/* ── Multi-file Tabs Header ────────────────────────────────────────── */}
-      {showEditorTabs && pageId && (
+      {/* ── Multi-file Tabs Header (Overleaf Parity: holds file tabs + SourceVisualSwitcher) ── */}
+      {showEditorTabs && pageId ? (
         <Tabs
           rootPageId={pageId}
           activeFileId={fileId ?? activePage.id ?? ''}
           availableFiles={childFiles}
         />
+      ) : (
+        <div className="flex items-center justify-end h-8 bg-muted/20 border-b border-border px-2 shrink-0">
+          <SourceVisualSwitcher />
+        </div>
+      )}
+
+      {/* ── Offline Mode Notice ── */}
+      {!isOnline && (
+        <div className="flex items-center justify-between px-3 py-1 bg-warning/10 border-b border-warning/20 text-warning text-xs shrink-0 animate-in fade-in duration-200">
+          <div className="flex items-center gap-2">
+            <WifiOff className="size-3.5 shrink-0 text-warning" />
+            <span>
+              {offlinePendingCompile
+                ? 'Đang ngoại tuyến: Bản nháp đã được lưu vào IndexedDB. Quá trình biên dịch đã được xếp hàng.'
+                : 'Đang ngoại tuyến: Các thay đổi đang được lưu an toàn vào bộ nhớ máy (IndexedDB). Sẽ tự động đồng bộ khi có mạng.'}
+            </span>
+          </div>
+          <span className="text-[10px] text-warning/80 font-mono hidden sm:inline">
+            Tự động đồng bộ khi kết nối lại
+          </span>
+        </div>
+      )}
+
+      {/* ── Offline Draft Recovery Banner ── */}
+      {recoverableDraft && (
+        <div className="flex items-center justify-between px-3 py-1.5 bg-warning/10 border-b border-warning/30 text-warning text-xs shrink-0 animate-in fade-in duration-200">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="size-3.5 shrink-0 text-warning" />
+            <span>
+              Phát hiện bản nháp ngoại tuyến chưa lưu ({new Date(recoverableDraft.savedAt).toLocaleTimeString()}). Bạn có muốn khôi phục không?
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button
+              size="sm"
+              variant="default"
+              className="h-6 px-2.5 text-xs bg-warning hover:bg-warning/90 text-white font-medium"
+              onClick={handleRestoreDraft}
+            >
+              Khôi phục bản nháp
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={handleDismissDraft}
+            >
+              Bỏ qua
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* ── Core Editor Body ──────────────────────────────────────────────── */}
@@ -148,7 +309,7 @@ export function EditorArea() {
           <ImagePanel asset={selectedAsset!} />
         ) : displayPage ? (
           <div className="flex-1 min-h-0 min-w-0 w-full h-full flex flex-col bg-canvas">
-            <EditorToolbar />
+            {editorMode === 'visual' && <EditorToolbar />}
             <div className="flex-1 min-h-0 min-w-0 w-full h-full overflow-hidden">
               {editorMode === 'visual' ? (
                 <VisualEditorView
@@ -156,23 +317,23 @@ export function EditorArea() {
                   filePath={displayPage.title || 'main.tex'}
                   value={rawContent}
                   onChange={(nextText) => {
-                    usePageStore.getState().setCurrentPage((prev: any) =>
-                      prev ? { ...prev, content: nextText } : prev
-                    );
+                    lruDocumentCache.updateContent(displayPage.id, nextText, true);
+                    sessionCoordinator.notifyContentChange(displayPage.id, nextText, {
+                      isRealtimeActive: false,
+                    });
                   }}
                 />
               ) : (
-                <CodeMirrorView
-                  fileId={displayPage.id}
-                  filePath={displayPage.title || 'main.tex'}
-                  value={rawContent}
-                  projectId={(activePage as any)?.projectId ?? (parentPage as any)?.projectId}
-                  onChange={(nextText) => {
-                    usePageStore.getState().setCurrentPage((prev: any) =>
-                      prev ? { ...prev, content: nextText } : prev
-                    );
-                  }}
-                />
+                <EditorContextMenu>
+                  <CodeMirrorView
+                    fileId={displayPage.id}
+                    filePath={displayPage.title || 'main.tex'}
+                    value={rawContent}
+                    yText={yText}
+                    awareness={awareness}
+                    projectId={effectiveProjectId}
+                  />
+                </EditorContextMenu>
               )}
             </div>
           </div>

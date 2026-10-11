@@ -18,17 +18,15 @@ import {
   Download,
   MoreHorizontal,
   BookOpen,
-  Presentation,
-  Minimize2,
-  ExternalLink,
   Minus,
   Plus,
   Search,
   ArrowLeftToLine,
+  ArrowRightToLine,
   Link2,
   Link2Off,
 } from 'lucide-react';
-import { editorCommandBus } from '../../../coordinators/command-bus';
+import { editorCommandBus, getActiveEditorEngine } from '../../../coordinators/command-bus';
 import {
   Tooltip,
   TooltipContent,
@@ -43,6 +41,7 @@ import { cn } from '@/shared/lib/utils';
 import { CompileButton } from './CompileButton';
 import { PdfPaginationControls } from './PdfPaginationControls';
 import { PdfZoomControls } from './PdfZoomControls';
+import { useViewerStore } from '../../../store/viewer.store';
 import type { CompileStatus } from '../../../store';
 import type { CompileMode } from '../../../domain/types/compiler.types';
 import type { PdfOutlineItem } from '@/features/editor/domain/document/pdf-outline';
@@ -82,7 +81,9 @@ export interface PdfToolbarProps {
   // Zoom
   scale: number;
   autoFit: boolean;
+  fitMode?: 'width' | 'height' | 'auto';
   onToggleAutoFit: () => void;
+  onSetFitMode?: (mode: 'width' | 'height' | 'auto') => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetZoom?: () => void;
@@ -92,7 +93,7 @@ export interface PdfToolbarProps {
   outline?: PdfOutlineItem[];
 
   // Pages
-  pageNumber: number;
+  pageNumber?: number;
   numPages: number;
   onPrevPage: () => void;
   onNextPage: () => void;
@@ -114,9 +115,6 @@ export interface PdfToolbarProps {
   showLog: boolean;
   onToggleLog: () => void;
   onDownload: () => void;
-  onPopout?: () => void;
-  isPoppedOut?: boolean;
-  onOpenPresentationMode?: () => void;
   errorCount?: number;
   warningCount?: number;
 }
@@ -128,7 +126,9 @@ export const PdfToolbar = React.memo(function PdfToolbar({
   onStopCompilation,
   scale,
   autoFit,
+  fitMode,
   onToggleAutoFit,
+  onSetFitMode,
   onZoomIn,
   onZoomOut,
   onSetScale,
@@ -145,9 +145,6 @@ export const PdfToolbar = React.memo(function PdfToolbar({
   onToggleSearch,
   syncScroll = true,
   onToggleSyncScroll,
-  onOpenPresentationMode,
-  onPopout,
-  isPoppedOut,
   pdfUrl,
   showLog,
   onToggleLog,
@@ -204,7 +201,13 @@ export const PdfToolbar = React.memo(function PdfToolbar({
             <button
               type="button"
               onClick={onToggleLog}
-              aria-label="Logs and output files"
+              aria-label={
+                errorCount > 0
+                  ? `Logs and output files (${errorCount} error${errorCount > 1 ? 's' : ''})`
+                  : warningCount > 0
+                    ? `Logs and output files (${warningCount} warning${warningCount > 1 ? 's' : ''})`
+                    : 'Logs and output files'
+              }
               className={cn(
                 'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
                 showLog
@@ -213,10 +216,29 @@ export const PdfToolbar = React.memo(function PdfToolbar({
               )}
             >
               <FileText className="size-3.5 shrink-0" />
+              {errorCount > 0 ? (
+                <span
+                  data-testid="compiler-error-badge"
+                  className="absolute -top-1 -right-1 flex min-w-3.5 h-3.5 px-0.5 items-center justify-center rounded-full text-[9px] font-mono font-semibold bg-destructive text-destructive-foreground leading-none animate-in zoom-in-50 duration-100"
+                >
+                  {errorCount > 99 ? '99+' : errorCount}
+                </span>
+              ) : warningCount > 0 ? (
+                <span
+                  data-testid="compiler-warning-badge"
+                  className="absolute -top-1 -right-1 flex min-w-3.5 h-3.5 px-0.5 items-center justify-center rounded-full text-[9px] font-mono font-semibold bg-warning text-warning-foreground leading-none animate-in zoom-in-50 duration-100"
+                >
+                  {warningCount > 99 ? '99+' : warningCount}
+                </span>
+              ) : null}
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">
-            Logs and output files
+            {errorCount > 0
+              ? `Logs and output files (${errorCount} error${errorCount > 1 ? 's' : ''})`
+              : warningCount > 0
+                ? `Logs and output files (${warningCount} warning${warningCount > 1 ? 's' : ''})`
+                : 'Logs and output files'}
           </TooltipContent>
         </Tooltip>
 
@@ -241,72 +263,61 @@ export const PdfToolbar = React.memo(function PdfToolbar({
 
       {/* 2. Right section: Controls + adaptive 3-dot utility menu */}
       <div className="flex items-center gap-1 shrink-0 select-none">
-        {isPoppedOut ? (
-          onPopout && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={onPopout}
-                  aria-label="Reattach viewer"
-                  className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
-                >
-                  <Minimize2 className="size-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
-                Reattach viewer
-              </TooltipContent>
-            </Tooltip>
-          )
-        ) : (
-          <>
-            {/* View utility buttons: only shown on toolbar when not ultra-compact */}
+        {/* View utility buttons: only shown on toolbar when not ultra-compact */}
             {!isUltraCompact && (
               <>
-                {/* Sync to Code (SyncTeX) */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        editorCommandBus.dispatch({ type: 'synctex:backward', page: pageNumber });
-                      }}
-                      disabled={!pdfUrl}
-                      aria-label="Jump to LaTeX source (SyncTeX)"
-                      className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
-                    >
-                      <ArrowLeftToLine className="size-3.5 shrink-0" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    Jump to LaTeX source (SyncTeX)
-                  </TooltipContent>
-                </Tooltip>
-
-                {/* Sync Scrolling toggle */}
-                {onToggleSyncScroll && (
+                {/* Symmetrical Bidirectional SyncTeX Navigation (Overleaf Parity) */}
+                <div className="flex items-center rounded-md border border-border/60 bg-muted/20 p-0.5 shrink-0">
+                  {/* Jump to Code (SyncTeX: PDF -> LaTeX Source) */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        onClick={onToggleSyncScroll}
-                        aria-label={syncScroll ? 'Disable synchronized scrolling' : 'Enable synchronized scrolling'}
-                        className={cn(
-                          'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
-                          syncScroll
-                            ? 'bg-primary/10 text-primary font-medium'
-                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                        )}
+                        onClick={() => {
+                          const p = pageNumber ?? useViewerStore.getState().pageNumber;
+                          editorCommandBus.dispatch({ type: 'synctex:backward', page: p });
+                        }}
+                        disabled={!pdfUrl}
+                        aria-label="Jump to LaTeX source (SyncTeX)"
+                        className="size-6 relative flex items-center justify-center rounded-sm text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       >
-                        {syncScroll ? <Link2 className="size-3.5 shrink-0" /> : <Link2Off className="size-3.5 shrink-0" />}
+                        <ArrowLeftToLine className="size-3.5 shrink-0" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-xs">
-                      {syncScroll ? 'Sync Scrolling: ON' : 'Sync Scrolling: OFF'}
+                      Jump to LaTeX source (SyncTeX)
                     </TooltipContent>
                   </Tooltip>
-                )}
+
+                  <div className="h-3 w-px bg-border/60 mx-0.5" />
+
+                  {/* Jump to PDF (SyncTeX: LaTeX Source -> PDF) */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const engine = getActiveEditorEngine();
+                          const pos = engine?.getCursorPosition?.();
+                          editorCommandBus.dispatch({
+                            type: 'synctex:forward',
+                            line: pos?.line ?? 1,
+                            column: pos?.column ?? 1,
+                          });
+                        }}
+                        disabled={!pdfUrl}
+                        aria-label="Jump to PDF location (SyncTeX)"
+                        className="size-6 relative flex items-center justify-center rounded-sm text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      >
+                        <ArrowRightToLine className="size-3.5 shrink-0" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">
+                      <span>Jump to PDF location (SyncTeX)</span>
+                      <span className="ml-1.5 opacity-60">(Mod-Alt-j)</span>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
 
                 {/* Find in document (Ctrl+F) */}
                 {onToggleSearch && (
@@ -381,48 +392,34 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                   </Tooltip>
                 )}
 
-                {/* Presentation mode */}
-                {onOpenPresentationMode && (
+                {/* Synchronized Scrolling Toggle (Overleaf Parity) */}
+                {onToggleSyncScroll && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        onClick={onOpenPresentationMode}
-                        disabled={!pdfUrl}
-                        aria-label="Presentation mode (F5)"
-                        className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
+                        onClick={onToggleSyncScroll}
+                        aria-label={syncScroll ? 'Disable synchronized scrolling' : 'Enable synchronized scrolling'}
+                        className={cn(
+                          'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
+                          syncScroll
+                            ? 'text-primary hover:bg-muted font-medium'
+                            : 'text-muted-foreground hover:bg-muted',
+                        )}
                       >
-                        <Presentation className="size-4" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-xs">
-                      Presentation mode (F5)
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-
-                {/* Popout detached window */}
-                {onPopout && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={onPopout}
-                        aria-label={isPoppedOut ? 'Reattach viewer' : 'Detach viewer to new window'}
-                        className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
-                      >
-                        {isPoppedOut ? (
-                          <Minimize2 className="size-4" />
+                        {syncScroll ? (
+                          <Link2 className="size-3.5 shrink-0" />
                         ) : (
-                          <ExternalLink className="size-4" />
+                          <Link2Off className="size-3.5 shrink-0" />
                         )}
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-xs">
-                      {isPoppedOut ? 'Reattach viewer' : 'Detach viewer to new window'}
+                      {syncScroll ? 'Disable synchronized scrolling' : 'Enable synchronized scrolling'}
                     </TooltipContent>
                   </Tooltip>
                 )}
+
               </>
             )}
 
@@ -443,8 +440,10 @@ export const PdfToolbar = React.memo(function PdfToolbar({
               <PdfZoomControls
                 scale={scale}
                 autoFit={autoFit}
+                fitMode={fitMode}
                 compact={true}
                 onToggleAutoFit={onToggleAutoFit}
+                onSetFitMode={onSetFitMode}
                 onZoomIn={onZoomIn}
                 onZoomOut={onZoomOut}
                 onSetScale={onSetScale}
@@ -494,7 +493,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                       type="button"
                       onClick={onZoomOut}
                       aria-label="Zoom out"
-                      className="size-7 flex-1 flex items-center justify-center rounded-md border border-border/70 hover:bg-muted text-foreground transition-colors cursor-pointer"
+                      className="size-7 flex-1 flex items-center justify-center rounded-sm border border-border/70 hover:bg-muted text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       title="Zoom out"
                     >
                       <Minus className="size-3.5" />
@@ -503,7 +502,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                       type="button"
                       onClick={() => onToggleAutoFit()}
                       className={cn(
-                        'h-7 px-3 flex items-center justify-center rounded-md border text-xs font-medium transition-colors cursor-pointer',
+                        'h-7 px-3 flex items-center justify-center rounded-sm border text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                         autoFit
                           ? 'bg-primary text-primary-foreground border-primary font-semibold'
                           : 'border-border/70 hover:bg-muted text-foreground',
@@ -515,7 +514,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                       type="button"
                       onClick={onZoomIn}
                       aria-label="Zoom in"
-                      className="size-7 flex-1 flex items-center justify-center rounded-md border border-border/70 hover:bg-muted text-foreground transition-colors cursor-pointer"
+                      className="size-7 flex-1 flex items-center justify-center rounded-sm border border-border/70 hover:bg-muted text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       title="Zoom in"
                     >
                       <Plus className="size-3.5" />
@@ -534,7 +533,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                             onSetScale?.(preset);
                           }}
                           className={cn(
-                            'h-6 px-1 rounded text-[11px] font-mono flex items-center justify-center transition-colors cursor-pointer',
+                            'h-6 px-1 rounded-sm text-[11px] font-mono flex items-center justify-center transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                             isSelected
                               ? 'bg-primary/10 text-primary font-semibold border border-primary/30'
                               : 'hover:bg-muted text-foreground',
@@ -545,30 +544,9 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                       );
                     })}
                   </div>
-
-                  {onToggleSyncScroll && (
-                    <div className="flex items-center justify-between pt-1.5 mt-2 border-t border-border/60">
-                      <span className="font-semibold text-foreground text-xs">Sync Scrolling</span>
-                      <button
-                        type="button"
-                        onClick={onToggleSyncScroll}
-                        className={cn(
-                          'h-6 px-2 rounded text-[11px] font-medium flex items-center gap-1 transition-colors cursor-pointer',
-                          syncScroll
-                            ? 'bg-primary/10 text-primary font-semibold border border-primary/30'
-                            : 'hover:bg-muted text-muted-foreground border border-border/60',
-                        )}
-                      >
-                        {syncScroll ? <Link2 className="size-3" /> : <Link2Off className="size-3" />}
-                        <span>{syncScroll ? 'ON' : 'OFF'}</span>
-                      </button>
-                    </div>
-                  )}
                 </PopoverContent>
               </Popover>
             )}
-          </>
-        )}
       </div>
     </div>
   );

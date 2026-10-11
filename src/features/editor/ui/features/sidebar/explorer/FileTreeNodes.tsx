@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useCallback } from 'react';
 import { useStorageItemActions } from './useFileExplorerActions';
@@ -41,7 +41,7 @@ import {
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { useEditorStorageFiles, useEditorStorageMutations } from '@/features/editor/ui/hooks/use-storage';
-import type { EditorStorageItem as StorageItem } from '@/features/editor/coordinators/services/storage.service';
+import type { EditorStorageItem as StorageItem } from '@/features/editor/sdk';
 
 export function getStorageIcon(item: StorageItem) {
   const mime = item.mimeType ?? '';

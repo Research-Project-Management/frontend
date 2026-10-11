@@ -123,6 +123,8 @@ export interface FileSnapshotDto {
   content?: string;
   type?: 'doc' | 'file';
   hash?: string;
+  docId?: string;
+  sizeBytes?: number;
 }
 
 export interface ProjectSnapshotDetail extends ProjectVersionListItem {

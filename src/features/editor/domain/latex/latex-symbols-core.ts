@@ -20,6 +20,7 @@ export interface BibEntry {
   author?: string;
   year?: string;
   journal?: string;
+  booktitle?: string;
   doi?: string;
   sourceFile: string;
   isRetracted?: boolean;
@@ -54,7 +55,12 @@ export type SectionLevel =
   | 'subsection'
   | 'subsubsection'
   | 'paragraph'
-  | 'subparagraph';
+  | 'subparagraph'
+  | 'figure'
+  | 'table'
+  | 'slide'
+  | 'appendix'
+  | 'abstract';
 
 export interface OutlineItem {
   id: string;
@@ -78,6 +84,11 @@ export const SECTION_LEVEL_WEIGHT: Record<SectionLevel, number> = {
   subsubsection: 4,
   paragraph: 5,
   subparagraph: 6,
+  appendix: 2,
+  abstract: 2,
+  slide: 3,
+  figure: 3,
+  table: 3,
 };
 
 export function buildOutlineTree(items: OutlineItem[]): OutlineNode[] {
@@ -109,9 +120,23 @@ export interface SymbolSnapshot {
   commands: CommandEntry[];
   environments: EnvironmentEntry[];
   includeFiles: string[];
+  imageFiles?: string[];
   outlineByFile: Record<string, OutlineNode[]>;
   flatOutlineByFile: Record<string, OutlineItem[]>;
+  projectOutline?: OutlineNode[];
+  projectFlatOutline?: OutlineItem[];
   version: number;
+}
+
+export type SymbolsWorkerMessageIn =
+  | { type: 'indexFile'; fileId: string; filePath: string; content: string; id: number }
+  | { type: 'removeFile'; fileId: string; filePath?: string; id: number }
+  | { type: 'clear'; id: number }
+  | { type: 'getSnapshot'; id: number };
+
+export interface SymbolsWorkerMessageOut {
+  id: number;
+  snapshot: SymbolSnapshot;
 }
 
 export class LatexSymbolsIndexCore {
@@ -120,6 +145,7 @@ export class LatexSymbolsIndexCore {
   private commandEntries = new Map<string, Map<string, CommandEntry>>(); // fileId -> (name -> CommandEntry)
   private environmentEntries = new Map<string, Map<string, EnvironmentEntry>>(); // fileId -> (name -> EnvironmentEntry)
   private outlineEntries = new Map<string, OutlineItem[]>(); // fileId -> OutlineItem[]
+  private includeEntries = new Map<string, Array<{ path: string; line: number }>>(); // fileId -> includes
   private filePaths = new Map<string, string>(); // fileId -> normalized filePath
   private knownFiles = new Set<string>(); // List of known project file paths
   private version = 0;
@@ -149,6 +175,7 @@ export class LatexSymbolsIndexCore {
     this.commandEntries.delete(fileId);
     this.environmentEntries.delete(fileId);
     this.outlineEntries.delete(fileId);
+    this.includeEntries.delete(fileId);
     this.filePaths.delete(fileId);
     if (filePath) {
       this.knownFiles.delete(filePath.replace(/\\/g, '/'));
@@ -165,6 +192,7 @@ export class LatexSymbolsIndexCore {
     this.commandEntries.clear();
     this.environmentEntries.clear();
     this.outlineEntries.clear();
+    this.includeEntries.clear();
     this.filePaths.clear();
     this.knownFiles.clear();
     this.version++;
@@ -203,6 +231,9 @@ export class LatexSymbolsIndexCore {
     }
 
     const includeFiles = Array.from(this.knownFiles).filter((p) => p.endsWith('.tex'));
+    const imageFiles = Array.from(this.knownFiles).filter((p) =>
+      /\.(png|jpe?g|pdf|eps|svg|gif|webp)$/i.test(p)
+    );
 
     const outlineByFile: Record<string, OutlineNode[]> = {};
     const flatOutlineByFile: Record<string, OutlineItem[]> = {};
@@ -216,14 +247,70 @@ export class LatexSymbolsIndexCore {
       outlineByFile[fileId] = tree;
     }
 
+    // 5. Construct hierarchical multi-file Project Outline (Overleaf Parity)
+    const projectFlatOutline: OutlineItem[] = [];
+    const visitedFiles = new Set<string>();
+
+    const allPaths = Array.from(this.knownFiles);
+    const rootPath =
+      allPaths.find((p) => /(^|\/)main\.tex$/i.test(p)) ||
+      allPaths.find((p) => /(^|\/)index\.tex$/i.test(p)) ||
+      allPaths.find((p) => p.endsWith('.tex')) ||
+      '';
+
+    const appendFileOutlines = (targetPath: string) => {
+      const norm = targetPath.replace(/\\/g, '/');
+      if (visitedFiles.has(norm)) return;
+      visitedFiles.add(norm);
+
+      const bareName = norm.split('/').pop() || norm;
+      const fileIdMatch = Array.from(this.filePaths.entries()).find(
+        ([_, p]) => p === norm || p.endsWith('/' + bareName) || bareName === p.split('/').pop()
+      );
+      const resolvedId = fileIdMatch ? fileIdMatch[0] : norm;
+      const items = this.outlineEntries.get(resolvedId) || this.outlineEntries.get(norm) || [];
+      const includes = this.includeEntries.get(resolvedId) || this.includeEntries.get(norm) || [];
+
+      let incIdx = 0;
+      for (const item of items) {
+        while (incIdx < includes.length && includes[incIdx].line < item.line) {
+          appendFileOutlines(includes[incIdx].path);
+          incIdx++;
+        }
+        projectFlatOutline.push(item);
+      }
+      while (incIdx < includes.length) {
+        appendFileOutlines(includes[incIdx].path);
+        incIdx++;
+      }
+    };
+
+    if (rootPath) {
+      appendFileOutlines(rootPath);
+    }
+    // Append any orphan / unincluded .tex files so they are still discoverable in project outline
+    for (const [fId, items] of this.outlineEntries.entries()) {
+      const p = this.filePaths.get(fId) || fId;
+      if (!visitedFiles.has(p.replace(/\\/g, '/'))) {
+        for (const it of items) {
+          projectFlatOutline.push(it);
+        }
+      }
+    }
+
+    const projectOutline = buildOutlineTree(projectFlatOutline);
+
     return {
       citations,
       labels,
       commands,
       environments,
       includeFiles,
+      imageFiles,
       outlineByFile,
       flatOutlineByFile,
+      projectOutline,
+      projectFlatOutline,
       version: this.version,
     };
   }
@@ -290,6 +377,7 @@ export class LatexSymbolsIndexCore {
     const fileCommandMap = new Map<string, CommandEntry>();
     const fileEnvironmentMap = new Map<string, EnvironmentEntry>();
     const fileOutlineItems: OutlineItem[] = [];
+    const fileIncludes: Array<{ path: string; line: number }> = [];
 
     // Also support embedded \bibitem references directly in .tex files
     let fileBibMap = this.bibEntries.get(fileId);
@@ -299,12 +387,62 @@ export class LatexSymbolsIndexCore {
     }
 
     const lines = content.split('\n');
+    let inFigure = false;
+    let inTable = false;
 
     for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
       const line = lines[lineIdx];
       // Accurate comment stripping: ignore escaped \%
       const activeLine = this.getNonCommentedContent(line);
       if (!activeLine.trim()) continue;
+
+      // Environment tracking for Figures & Tables (Overleaf Parity)
+      if (/\\begin\s*\{\s*figure\*?\s*\}/.test(activeLine)) {
+        inFigure = true;
+        inTable = false;
+      } else if (/\\end\s*\{\s*figure\*?\s*\}/.test(activeLine)) {
+        inFigure = false;
+      } else if (/\\begin\s*\{\s*table\*?\s*\}/.test(activeLine)) {
+        inTable = true;
+        inFigure = false;
+      } else if (/\\end\s*\{\s*table\*?\s*\}/.test(activeLine)) {
+        inTable = false;
+      }
+
+      // 0. Figure / Table Caption Extraction (Overleaf Parity)
+      if (inFigure || inTable) {
+        const captionRegex = /\\caption(?:\s*\[[^\]]*\])?\{([^}]+)\}/g;
+        let capMatch: RegExpExecArray | null;
+        while ((capMatch = captionRegex.exec(activeLine)) !== null) {
+          const rawCaption = capMatch[1];
+          const cleanTitle = rawCaption
+            .replace(/\\cite\{[^}]+\}/g, '')
+            .replace(/\\label\{[^}]+\}/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+          const type: SectionLevel = inFigure ? 'figure' : 'table';
+          fileOutlineItems.push({
+            id: `${filePath}:${lineIdx + 1}`,
+            title: `${inFigure ? 'Fig: ' : 'Tab: '}${cleanTitle || (inFigure ? 'Figure' : 'Table')}`,
+            level: SECTION_LEVEL_WEIGHT[type],
+            type,
+            line: lineIdx + 1,
+            sourceFile: filePath,
+            hasStar: false,
+          });
+        }
+      }
+
+      // 0b. Subfile inclusion tracking (\input, \include, \subfile)
+      const incRegex = /\\(?:input|include|subfile)\{([^}]+)\}/g;
+      let incMatch: RegExpExecArray | null;
+      while ((incMatch = incRegex.exec(activeLine)) !== null) {
+        let incPath = incMatch[1].trim().replace(/\\/g, '/');
+        if (!incPath.endsWith('.tex') && !incPath.includes('.')) {
+          incPath += '.tex';
+        }
+        fileIncludes.push({ path: incPath, line: lineIdx + 1 });
+      }
 
       // 1a. Match standard \label{key} with safe length limit (Overleaf parity)
       const labelRegex = /\\label\{([^}]{1,80})\}/g;
@@ -388,6 +526,7 @@ export class LatexSymbolsIndexCore {
     this.commandEntries.set(fileId, fileCommandMap);
     this.environmentEntries.set(fileId, fileEnvironmentMap);
     this.outlineEntries.set(fileId, fileOutlineItems);
+    this.includeEntries.set(fileId, fileIncludes);
   }
 
   private registerLabel(map: Map<string, LabelEntry>, name: string, line: number, sourceFile: string): void {
@@ -491,6 +630,18 @@ export class LatexSymbolsIndexCore {
     const q = query.toLowerCase();
     return Array.from(this.knownFiles)
       .filter((path) => path.endsWith('.tex') && (!q || path.toLowerCase().includes(q)));
+  }
+
+  /**
+   * Returns all known image filenames for \includegraphics
+   */
+  public getImageFiles(query = ''): string[] {
+    const q = query.toLowerCase();
+    return Array.from(this.knownFiles).filter(
+      (path) =>
+        /\.(png|jpe?g|pdf|eps|svg|gif|webp)$/i.test(path) &&
+        (!q || path.toLowerCase().includes(q))
+    );
   }
 
   /**

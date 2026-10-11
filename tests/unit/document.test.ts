@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseSyncTeX,
-  LatexCompilerEngine,
   extractDoiFromText,
   parsePdfDate,
-} from '@/features/editor/coordinators/services/latex-compiler-engine.service';
+} from '@/features/editor/domain/document';
+import { LatexCompilerEngine } from '@/features/editor/coordinators/compilation-pipeline';
 import { parseCompileErrors } from '@/features/editor/domain/latex/latex-structure';
 
 describe('Document & LaTeX Compiler Frontend Utilities', () => {

@@ -26,9 +26,9 @@ import {
   MediumPriorityBoxIcon,
   LowPriorityBoxIcon,
   NonePriorityBoxIcon,
-} from '@/features/projects/project-id/work-items/components/modals/Popovers';
+  type WorkItemPriority,
+} from '@/features/projects/project-id/work-items';
 import type { WorkItemDraft } from '../../types/draft.types';
-import type { WorkItemPriority } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export interface ListItemProps {
   draft: WorkItemDraft;
@@ -53,13 +53,13 @@ function PriorityPillIcon({ priority }: { priority?: WorkItemPriority | string }
   }
 }
 
-export const ListItem: React.FC<ListItemProps> = ({
+export const ListItem = React.memo<ListItemProps>(function ListItem({
   draft,
   onEdit,
   onDuplicate,
   onMoveToProject,
   onDelete,
-}) => {
+}) {
   const title = draft.title?.trim() || 'Untitled draft';
   const projectIdentifier =
     draft.project?.identifier?.toUpperCase() ||
@@ -198,6 +198,6 @@ export const ListItem: React.FC<ListItemProps> = ({
       </div>
     </div>
   );
-};
+});
 
 export default ListItem;

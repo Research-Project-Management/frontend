@@ -11,7 +11,7 @@ import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { filesQuery } from '@/features/editor/ui/hooks/use-core';
-import { documentSearchService } from '@/features/editor/coordinators/services/search.service';
+import { documentSearchService } from '@/features/editor/sdk';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 
 interface UseProjectSearchActionsParams {
@@ -107,9 +107,32 @@ export function useProjectSearchActions({
     handleReplaceAllCurrentFile,
   ]);
 
+  const handleReplaceSingleMatch = useCallback(
+    (fileId: string, line: number, matchStart: number, matchEnd: number) => {
+      if (!engine || fileId !== activeFileId) {
+        toast.info('Please open this file to replace this match');
+        return;
+      }
+      const content = engine.getContent();
+      const lines = content.split('\n');
+      if (line - 1 < 0 || line - 1 >= lines.length) return;
+      const targetLine = lines[line - 1];
+      const before = targetLine.slice(0, matchStart);
+      const after = targetLine.slice(matchEnd);
+      lines[line - 1] = before + replaceText + after;
+      const newContent = lines.join('\n');
+      engine.setContent(newContent);
+      engine.jumpToLine(line);
+      engine.focus();
+      toast.success('Replaced occurrence in current file');
+    },
+    [engine, activeFileId, replaceText]
+  );
+
   return {
     isReplacingAll,
     handleReplaceAllCurrentFile,
     handleReplaceAllEverywhere,
+    handleReplaceSingleMatch,
   };
 }

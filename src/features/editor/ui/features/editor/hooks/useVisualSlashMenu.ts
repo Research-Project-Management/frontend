@@ -124,6 +124,10 @@ export function useVisualSlashMenu({
           document.execCommand('insertHTML', false, tableHtml);
           break;
         }
+        case 'table-wizard': {
+          editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'table-wizard' });
+          break;
+        }
         case 'figure': {
           const defaultSrc = projectImageFiles[0] || 'diagram.png';
           const figLatex = `\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\linewidth]{${defaultSrc}}\n  \\caption{Figure caption}\n  \\label{fig:example}\n\\end{figure}`;

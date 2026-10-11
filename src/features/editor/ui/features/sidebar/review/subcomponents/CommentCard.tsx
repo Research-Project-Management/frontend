@@ -44,14 +44,14 @@ export const CommentCard = React.memo(function CommentCard({
   const isAuthor = Boolean(
     currentUserId && (
       currentUserId === comment.author?.id ||
-      (comment as any).createdById === currentUserId ||
-      (comment as any).authorId === currentUserId ||
-      (comment as any).userId === currentUserId
+      comment.createdById === currentUserId ||
+      comment.authorId === currentUserId ||
+      comment.userId === currentUserId
     ),
   );
 
   const authorDisplay = useMemo(
-    () => resolveAuthorDisplay(comment.author, membersMap, (comment as any).authorId || (comment as any).userId),
+    () => resolveAuthorDisplay(comment.author, membersMap, comment.authorId || comment.userId),
     [comment, membersMap],
   );
 

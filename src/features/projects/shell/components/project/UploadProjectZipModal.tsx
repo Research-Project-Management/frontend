@@ -31,7 +31,7 @@ import {
   extractAndImportZipToProject,
   type ExtractedZipProject,
   type ImportZipProgress,
-} from '@/features/editor/coordinators/services/archive-import.service';
+} from '@/features/editor/sdk/archive';
 
 export interface UploadProjectZipModalProps {
   open: boolean;

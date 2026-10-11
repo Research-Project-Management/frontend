@@ -291,6 +291,36 @@ export function useTableMatrixWizard({
     }
   }, [pastedText, hasHeaderRow]);
 
+  const importRawText = useCallback((text: string) => {
+    if (!text || !text.trim()) return false;
+    const parsedLatex = parseLatexTabular(text);
+    if (parsedLatex) {
+      setTableRows(parsedLatex.rows);
+      setTableCols(parsedLatex.cols);
+      setTableHeaders(parsedLatex.headers);
+      setTableData(parsedLatex.data);
+      setTableAlignments(parsedLatex.alignments);
+      setTableStyle(parsedLatex.style);
+      if (parsedLatex.caption) setCaption(parsedLatex.caption);
+      if (parsedLatex.label) setLabel(parsedLatex.label);
+      if (parsedLatex.placement) setPlacement(parsedLatex.placement);
+      setCentering(Boolean(parsedLatex.centering));
+      setHasHeaderRow(Boolean(parsedLatex.hasHeaderRow));
+      return true;
+    }
+
+    const { headers, data, cols, rows } = parseDelimitedTextToGrid(text, true);
+    if (cols > 0 && (rows > 0 || headers.length > 0)) {
+      setTableCols(cols);
+      setTableRows(Math.max(rows, 1));
+      setTableHeaders(headers);
+      setTableData(data.length > 0 ? data : [Array(cols).fill('')]);
+      setTableAlignments(Array(cols).fill('c'));
+      return true;
+    }
+    return false;
+  }, []);
+
   // ─── 5. Matrix Grid Actions ─────────────────────────────────────────────────
 
   const setMatrixDimension = useCallback((rows: number, cols: number) => {
@@ -454,6 +484,7 @@ export function useTableMatrixWizard({
     addTableColumn,
     removeTableColumn,
     importPastedData,
+    importRawText,
     generatedTableLatex,
 
     // Matrix state & actions

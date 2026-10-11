@@ -15,9 +15,9 @@
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
-import { useLayoutStore } from '../../../store/layout.store';
-import { useCompilerStore, type CompileError } from '../../../store/compiler.store';
-import { editorCommandBus } from '../../../coordinators/command-bus';
+import { useLayoutStore } from '@/features/editor/store/layout.store';
+import { useCompilerStore, type CompileError } from '@/features/editor/store/compiler.store';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import {
   DockHeader,
   DockProblemsTab,
@@ -98,9 +98,9 @@ export function BottomDockPanel() {
     });
   }, [compileErrors, filterSeverity, searchFilter]);
 
-  // Process & syntax-highlight LaTeX log lines
+  // Process & syntax-highlight LaTeX log lines (gated to output tab to prevent background CPU churn)
   const parsedLogLines = useMemo(() => {
-    if (!compileLog) return [];
+    if (!compileLog || activeBottomTab !== 'output') return [];
     const rawLines = compileLog.split('\n');
     const result: ParsedLogLine[] = [];
     const query = logSearch.trim().toLowerCase();
@@ -153,7 +153,7 @@ export function BottomDockPanel() {
     }
 
     return result;
-  }, [compileLog, showLogErrorsOnly, logSearch]);
+  }, [compileLog, activeBottomTab, showLogErrorsOnly, logSearch]);
 
   const handleCopyLogs = async () => {
     if (!compileLog) return;

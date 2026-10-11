@@ -480,7 +480,7 @@ export function AvatarStack({
         <span
           className={cn(
             sizeClass,
-            "flex items-center justify-center rounded-full bg-muted text-muted-foreground font-mono font-medium ring-1.5 ring-background shrink-0 select-none",
+            "flex items-center justify-center rounded-full bg-muted text-foreground font-mono font-medium ring-1.5 ring-background shrink-0 select-none",
           )}
           title={`${remaining} more members`}
         >
@@ -594,7 +594,7 @@ export function MemberPopover({
           {selectedMembers.length > 1 ? (
             <div className="flex items-center gap-1.5">
               <AvatarStack users={selectedMembers} size="xs" max={3} />
-              <span className="text-11 text-muted-foreground">{selectedMembers.length} assignees</span>
+              <span className="text-11 text-foreground">{selectedMembers.length} assignees</span>
             </div>
           ) : selectedMembers.length === 1 ? (
             <>
@@ -636,7 +636,7 @@ export function MemberPopover({
             <button
               type="button"
               onClick={handleClearAll}
-              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors hover:bg-muted cursor-pointer text-left text-foreground hover:text-destructive"
+              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors hover:bg-muted cursor-pointer text-left text-foreground"
             >
               <span>Unassign all</span>
             </button>
@@ -931,7 +931,7 @@ export function DatePopover({
       >
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border shrink-0 bg-popover">
           <div className="flex items-center gap-2">
-            <Clock className="size-3.5 shrink-0 text-primary" />
+            <Clock className="size-3.5 shrink-0 text-foreground" />
             <span className="text-xs font-semibold text-foreground">Dates & Deadlines</span>
           </div>
           <Button
@@ -1050,7 +1050,7 @@ export function DatePopover({
             size="sm"
             variant="ghost"
             onClick={handleRemove}
-            className="h-7 text-xs text-foreground hover:text-destructive cursor-pointer px-2.5 rounded-md"
+            className="h-7 text-xs text-foreground hover:bg-muted cursor-pointer px-2.5 rounded-md"
           >
             Clear
           </Button>
@@ -1066,7 +1066,7 @@ export function DatePopover({
             <Button
               size="sm"
               onClick={handleSave}
-              className="h-7 text-xs font-semibold px-4 cursor-pointer rounded-md shadow-none"
+              className="h-7 text-xs font-semibold px-4 cursor-pointer rounded-md shadow-none bg-foreground text-background hover:bg-foreground/90"
             >
               Apply
             </Button>
@@ -1160,7 +1160,7 @@ export function SingleDatePopover({
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 px-2 text-11 text-foreground hover:text-destructive cursor-pointer rounded-md"
+              className="h-6 px-2 text-11 text-foreground hover:bg-muted cursor-pointer rounded-md"
               onClick={() => {
                 onSelectDate('');
                 onOpenChange(false);
@@ -1259,7 +1259,7 @@ export const ParentItemPopover: React.FC<ParentItemPopoverProps> = ({
                 setParentId(null);
                 onOpenChange(false);
               }}
-              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors hover:bg-muted cursor-pointer text-left text-foreground hover:text-destructive"
+              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors hover:bg-muted cursor-pointer text-left text-foreground"
             >
               <span>Remove parent</span>
             </button>

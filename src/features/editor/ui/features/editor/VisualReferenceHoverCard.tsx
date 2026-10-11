@@ -355,7 +355,7 @@ export function VisualReferenceHoverCard({
           closeTimeoutRef.current = setTimeout(() => setActiveCard(null), 200);
         }}
         className={cn(
-          'visual-hover-card fixed z-50 w-96 p-4 rounded-xl border border-border/80 shadow-2xl bg-card/95 backdrop-blur-md text-foreground text-xs leading-relaxed select-text animate-in fade-in-0 zoom-in-95 duration-150',
+          'visual-hover-card fixed z-50 w-96 p-4 rounded-md border border-border shadow-overlay bg-popover text-foreground text-xs leading-relaxed select-text animate-in fade-in-0 zoom-in-95 duration-150',
           className
         )}
         style={{
@@ -367,7 +367,7 @@ export function VisualReferenceHoverCard({
         {/* Header Bar */}
         <div className="flex items-center justify-between gap-2 pb-2 mb-2.5 border-b border-border/50">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider bg-primary/10 text-primary border border-primary/20 uppercase font-sans">
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wider bg-primary/10 text-primary border border-primary/20 uppercase font-sans">
               {entry?.type ? entry.type.toUpperCase() : 'CITATION'}
             </span>
             <span className="font-mono text-[11px] font-semibold text-foreground/90 bg-muted/80 px-1.5 py-0.5 rounded">
@@ -395,7 +395,7 @@ export function VisualReferenceHoverCard({
           <div className="mb-2.5 p-2 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-[11px] flex items-start gap-1.5 font-sans leading-normal">
             <AlertTriangle className="size-3.5 shrink-0 mt-0.5 text-destructive" />
             <div>
-              <span className="font-bold">CẢNH BÁO BÀI BÁO BỊ THU HỒI / RETRACTED:</span>
+              <span className="font-semibold">CẢNH BÁO BÀI BÁO BỊ THU HỒI / RETRACTED:</span>
               <p className="opacity-90 mt-0.5">
                 {entry.retractionReason || 'Ấn phẩm này đã bị nhà xuất bản rút lại.'}
               </p>
@@ -445,7 +445,7 @@ export function VisualReferenceHoverCard({
           </div>
         ) : (
           <div className="py-1 space-y-1 text-muted-foreground font-sans">
-            <div className="flex items-center gap-1.5 text-amber-500 font-medium">
+            <div className="flex items-center gap-1.5 text-warning font-medium">
               <AlertTriangle className="size-3.5" />
               <span>Unresolved Citation Key</span>
             </div>
@@ -464,7 +464,7 @@ export function VisualReferenceHoverCard({
             onClick={() => handleCopyCitation(entry, citeKey)}
             className="h-7 px-2 text-[11px] gap-1 cursor-pointer font-sans"
           >
-            {isCopied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+            {isCopied ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
             <span>{isCopied ? 'Copied' : 'Copy'}</span>
           </Button>
 
@@ -497,7 +497,7 @@ export function VisualReferenceHoverCard({
         closeTimeoutRef.current = setTimeout(() => setActiveCard(null), 200);
       }}
       className={cn(
-        'visual-hover-card fixed z-50 w-80 p-3.5 rounded-xl border border-border/80 shadow-2xl bg-card/95 backdrop-blur-md text-foreground text-xs leading-relaxed select-text animate-in fade-in-0 zoom-in-95 duration-150',
+        'visual-hover-card fixed z-50 w-80 p-3.5 rounded-md border border-border shadow-overlay bg-popover text-foreground text-xs leading-relaxed select-text animate-in fade-in-0 zoom-in-95 duration-150',
         className
       )}
       style={{
@@ -572,7 +572,7 @@ export function VisualReferenceHoverCard({
         </div>
       ) : (
         <div className="py-1 space-y-1 text-muted-foreground font-sans">
-          <div className="flex items-center gap-1.5 text-amber-500 font-medium">
+          <div className="flex items-center gap-1.5 text-warning font-medium">
             <AlertTriangle className="size-3.5" />
             <span>Target Not Found</span>
           </div>

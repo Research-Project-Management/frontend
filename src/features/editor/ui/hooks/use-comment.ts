@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * use-comment.ts
@@ -9,7 +9,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { PageComment, CommentStatus } from '../../domain/types';
-import { commentService } from '../../coordinators/services/comment.service';
+import { commentService } from '@/features/editor/sdk';
 import { toast } from 'sonner';
 
 export const commentKeys = {

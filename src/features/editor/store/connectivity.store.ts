@@ -2,7 +2,7 @@
  * connectivity.store.ts
  *
  * Store for Network Connectivity and Cloud Sync Status (State Layer).
- * Tracks online/offline transitions, pending cloud writes, and sync health.
+ * Tracks online/offline transitions, pending cloud writes, offline queues, and sync health.
  */
 
 import { create } from 'zustand';
@@ -13,9 +13,14 @@ export interface ConnectivityState {
   isOnline: boolean;
   syncStatus: CloudSyncStatus;
   lastSavedAt: Date | null;
+  offlineSince: Date | null;
   pendingSaveCount: number;
+  offlinePendingCompile: boolean;
 
   setIsOnline: (isOnline: boolean) => void;
+  recordOffline: (since?: Date) => void;
+  recordOnline: () => void;
+  setOfflinePendingCompile: (pending: boolean) => void;
   setSyncStatus: (status: CloudSyncStatus) => void;
   setLastSavedAt: (date: Date) => void;
   incrementPending: () => void;
@@ -27,16 +32,44 @@ export const useConnectivityStore = create<ConnectivityState>((set) => ({
   isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
   syncStatus: 'synced',
   lastSavedAt: null,
+  offlineSince: null,
   pendingSaveCount: 0,
+  offlinePendingCompile: false,
 
   setIsOnline: (isOnline) =>
-    set({
+    set((s) => ({
       isOnline,
-      syncStatus: !isOnline ? 'offline' : 'synced',
-    }),
+      offlineSince: !isOnline ? (s.offlineSince ?? new Date()) : null,
+      syncStatus: !isOnline ? 'offline' : s.pendingSaveCount > 0 ? 'saving' : 'synced',
+    })),
 
-  setSyncStatus: (syncStatus) => set({ syncStatus }),
-  setLastSavedAt: (lastSavedAt) => set({ lastSavedAt, syncStatus: 'synced' }),
+  recordOffline: (since) =>
+    set((s) => ({
+      isOnline: false,
+      offlineSince: since ?? s.offlineSince ?? new Date(),
+      syncStatus: 'offline',
+    })),
+
+  recordOnline: () =>
+    set((s) => ({
+      isOnline: true,
+      offlineSince: null,
+      syncStatus: s.pendingSaveCount > 0 ? 'saving' : 'synced',
+    })),
+
+  setOfflinePendingCompile: (offlinePendingCompile) =>
+    set({ offlinePendingCompile }),
+
+  setSyncStatus: (syncStatus) =>
+    set((s) => ({
+      syncStatus: !s.isOnline && syncStatus !== 'offline' ? 'offline' : syncStatus,
+    })),
+
+  setLastSavedAt: (lastSavedAt) =>
+    set((s) => ({
+      lastSavedAt,
+      syncStatus: s.isOnline ? 'synced' : 'offline',
+    })),
 
   incrementPending: () =>
     set((s) => ({
@@ -49,13 +82,21 @@ export const useConnectivityStore = create<ConnectivityState>((set) => ({
       const nextCount = Math.max(0, s.pendingSaveCount - 1);
       return {
         pendingSaveCount: nextCount,
-        syncStatus: nextCount === 0 && s.isOnline ? 'synced' : s.syncStatus,
+        syncStatus: !s.isOnline
+          ? 'offline'
+          : nextCount === 0
+          ? 'synced'
+          : s.syncStatus,
       };
     }),
 
   setPendingSaveCount: (pendingSaveCount) =>
     set((s) => ({
       pendingSaveCount,
-      syncStatus: pendingSaveCount === 0 && s.isOnline ? 'synced' : s.isOnline ? 'saving' : 'offline',
+      syncStatus: !s.isOnline
+        ? 'offline'
+        : pendingSaveCount === 0
+        ? 'synced'
+        : 'saving',
     })),
 }));

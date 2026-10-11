@@ -15,7 +15,7 @@ export function LogExplanationPanel({ explanation }: LogExplanationPanelProps) {
       role="region"
       aria-label="LaTeX Error Guide"
       onClick={(e) => e.stopPropagation()}
-      className="ml-6 mt-2 pl-3.5 pr-2 py-2 border-l-2 border-primary/40 text-xs space-y-2.5 select-text"
+      className="ml-6 mt-2 pl-3.5 pr-2 py-2 border-l border-primary/40 text-xs space-y-2.5 select-text"
     >
       <div className="flex items-center justify-between">
         <h4 className="font-semibold text-13 text-foreground tracking-tight">
@@ -43,7 +43,7 @@ export function LogExplanationPanel({ explanation }: LogExplanationPanelProps) {
       {explanation.suggestedFix && (
         <div className="space-y-1 pt-0.5">
           <span className="font-medium text-xs text-foreground/80">Suggested Fix:</span>
-          <p className="text-xs text-muted-foreground pl-3 py-1 border-l-2 border-border/60 font-mono leading-relaxed">
+          <p className="text-xs text-muted-foreground pl-3 py-1 border-l border-border/60 font-mono leading-relaxed">
             {explanation.suggestedFix}
           </p>
         </div>
@@ -62,7 +62,7 @@ export function LogExplanationPanel({ explanation }: LogExplanationPanelProps) {
               <span>Copy</span>
             </button>
           </div>
-          <pre className="font-mono text-xs pl-3 py-1 border-l-2 border-border/60 text-foreground overflow-x-auto leading-relaxed bg-transparent">
+          <pre className="font-mono text-xs pl-3 py-1 border-l border-border/60 text-foreground overflow-x-auto leading-relaxed bg-transparent">
             {explanation.exampleSnippet}
           </pre>
         </div>

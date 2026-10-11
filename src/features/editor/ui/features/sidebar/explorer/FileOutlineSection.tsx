@@ -19,7 +19,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
   activeFileName,
 }: FileOutlineSectionProps) {
   const { engine } = useEditorInstance();
-  const [isOutlineOpen, setIsOutlineOpen] = useState(false);
+  const [isOutlineOpen, setIsOutlineOpen] = useState(true);
   const [outlineHeight, setOutlineHeight] = useState(200);
   const [activeLine, setActiveLine] = useState<number>(1);
   const [content, setContent] = useState<string>(docContent);
@@ -124,6 +124,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
       } else {
         editorCommandBus.dispatch({ type: 'editor:jump-to-line', line, highlight: 'synctex' });
       }
+      editorCommandBus.dispatch({ type: 'synctex:forward', line });
     },
     [engine],
   );
@@ -216,6 +217,18 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
                     )}
                     strokeWidth={isActive ? 2 : 1.5}
                   />
+
+                  {entry.type === 'figure' && (
+                    <span className="px-1 py-0.5 rounded text-[10px] font-mono leading-none bg-warning/15 text-warning border border-warning/30 shrink-0">
+                      Fig
+                    </span>
+                  )}
+                  {entry.type === 'table' && (
+                    <span className="px-1 py-0.5 rounded text-[10px] font-mono leading-none bg-primary/15 text-primary border border-primary/30 shrink-0">
+                      Tab
+                    </span>
+                  )}
+
                   <span
                     className={cn(
                       'min-w-0 flex-1 truncate',

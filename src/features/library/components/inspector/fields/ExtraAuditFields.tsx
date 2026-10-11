@@ -12,7 +12,7 @@ export interface ExtraAuditFieldsProps {
   onUpdatePaper?: (data: Partial<Item>) => void;
 }
 
-function isValidValue(val?: any): boolean {
+function isValidValue(val?: unknown): boolean {
   if (val === null || val === undefined) return false;
   if (typeof val === 'number') return !isNaN(val) && Number.isFinite(val) && val !== 0;
   if (typeof val === 'boolean') return true;
@@ -135,7 +135,7 @@ export function ExtraAuditFields({
         </div>
       )}
 
-      {/* Metadata Provenance Sources (arXiv, GROBID, CrossRef) */}
+      {/* Metadata Provenance Sources (arXiv, MeXtract, CrossRef) */}
       {sources.length > 0 && (
         <div className="grid grid-cols-[84px_1fr] gap-2 items-start py-0.5">
           <span

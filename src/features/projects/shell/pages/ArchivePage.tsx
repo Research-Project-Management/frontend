@@ -42,11 +42,10 @@ import {
 import { ArchiveCard } from '../components/archived/ArchiveCard';
 import { DeletePermanentModal } from '../components/archived/DeletePermanentModal';
 import { ArchivedEmptyState } from '../components/archived/ArchivedEmptyState';
-import { ArchiveService } from '@/features/projects/project-id/work-items/services/archive.service';
+import { ArchiveService, type Item } from '@/features/projects/project-id/work-items';
 import { ViewService } from '@/features/projects/project-id/views/services/view.service';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
 import type { Project } from '../types/project.types';
-import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
 import type { WorkItemViewItem } from '@/features/projects/project-id/views/types/view.types';
 import type { Page } from '@/features/projects/project-id/pages/types/page.types';
 import { cn } from '@/shared/lib/utils';
@@ -223,24 +222,30 @@ export function ArchivePage() {
     });
   };
 
-  const handleBulkRestoreSelected = () => {
+  const handleBulkRestoreSelected = React.useCallback(() => {
     if (selectedItemIds.size === 0) return;
     bulkRestoreMutation.mutate(Array.from(selectedItemIds));
-  };
+  }, [selectedItemIds, bulkRestoreMutation]);
 
-  const handleRestoreProject = (projectId: string, e: React.MouseEvent) => {
+  const handleRestoreProject = React.useCallback((projectId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     restoreProjectMutation.mutate({ projectId });
-  };
+  }, [restoreProjectMutation]);
 
-  const handleDeletePermanent = () => {
+  const handleOpenDeletePermanent = React.useCallback((p: Project, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDeleteConfirmProject(p);
+  }, []);
+
+  const handleDeletePermanent = React.useCallback(() => {
     if (!deleteConfirmProject?.id) return;
     deleteProjectMutation.mutate(
       { projectId: deleteConfirmProject.id },
       { onSettled: () => setDeleteConfirmProject(null) }
     );
-  };
+  }, [deleteConfirmProject?.id, deleteProjectMutation]);
 
   const currentProject = activeProjects.find((p) => p.id === currentProjectId);
 
@@ -555,11 +560,7 @@ export function ArchivePage() {
                     key={project.id}
                     project={project}
                     onRestore={handleRestoreProject}
-                    onDeletePermanent={(p: Project, e: React.MouseEvent) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setDeleteConfirmProject(p);
-                    }}
+                    onDeletePermanent={handleOpenDeletePermanent}
                     isRestoring={restoreProjectMutation.isPending}
                   />
                 ))}

@@ -17,7 +17,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type ActivityBarTab = 'files' | 'search' | 'outline' | 'citations' | 'review' | 'chat' | 'ai';
+export type ActivityBarTab = 'files' | 'search' | 'outline' | 'citations' | 'review' | 'ai';
 export type BottomPanelTab = 'problems' | 'output';
 
 export interface LayoutState {
@@ -77,7 +77,7 @@ const DEFAULT_LAYOUT = {
   bottomPanelOpen: false,
   bottomPanelHeight: 220,
   activeBottomTab: 'problems' as BottomPanelTab,
-  statusBarOpen: true,
+  statusBarOpen: false, // Default false: Overleaf 1:1 clean full-height viewport
 };
 
 export const useLayoutStore = create<LayoutState>()(

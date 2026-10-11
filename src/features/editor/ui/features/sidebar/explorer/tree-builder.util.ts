@@ -1,4 +1,4 @@
-/**
+﻿/**
  * tree-builder.util.ts
  *
  * Pure, deterministic tree-building algorithms for Editor File Explorer:
@@ -7,7 +7,7 @@
  * - Deep recursive filtering by file/folder name
  */
 
-import type { EditorStorageItem as StorageItem } from '@/features/editor/coordinators/services/storage.service';
+import type { EditorStorageItem as StorageItem } from '@/features/editor/sdk';
 import { displayName } from './TexFileRow';
 
 export type FileTreeFolderNode = {

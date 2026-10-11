@@ -13,6 +13,7 @@ export interface EditorTab {
   isDirty?: boolean;
   fileUrl?: string;
   path?: string;
+  isRoot?: boolean;
 }
 
 export interface DocumentTabsState {

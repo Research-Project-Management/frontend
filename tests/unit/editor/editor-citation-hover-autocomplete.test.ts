@@ -184,11 +184,11 @@ describe('Editor Citation Autocomplete & Hover Tooltip Suite', () => {
       const tooltip = citationHoverSource(view, hoverPos, 1);
 
       expect(tooltip).not.toBeNull();
-      expect(tooltip.pos).toBe(doc.indexOf('nguyen2024ai'));
-      expect(tooltip.end).toBe(doc.indexOf('nguyen2024ai') + 'nguyen2024ai'.length);
+      expect(tooltip!.pos).toBe(doc.indexOf('nguyen2024ai'));
+      expect(tooltip!.end).toBe(doc.indexOf('nguyen2024ai') + 'nguyen2024ai'.length);
 
       // Render DOM
-      const { dom } = tooltip.create();
+      const { dom } = tooltip!.create(view);
       expect(dom.textContent).toContain('@nguyen2024ai');
       expect(dom.textContent).toContain('Nghiên cứu ứng dụng Trí tuệ nhân tạo');
       expect(dom.textContent).toContain('Nguyễn Văn An & Trần Thị Bình');
@@ -211,7 +211,7 @@ describe('Editor Citation Autocomplete & Hover Tooltip Suite', () => {
       const tooltip2 = citationHoverSource(view, hoverPos2, 1);
 
       expect(tooltip2).not.toBeNull();
-      const dom2 = tooltip2!.create().dom;
+      const dom2 = tooltip2!.create(view).dom;
       expect(dom2.textContent).toContain('@nguyen2024ai');
       expect(dom2.textContent).toContain('Nguyễn Văn An & Trần Thị Bình');
 
@@ -220,7 +220,7 @@ describe('Editor Citation Autocomplete & Hover Tooltip Suite', () => {
       const tooltip1 = citationHoverSource(view, hoverPos1, 1);
 
       expect(tooltip1).not.toBeNull();
-      const dom1 = tooltip1!.create().dom;
+      const dom1 = tooltip1!.create(view).dom;
       expect(dom1.textContent).toContain('@vaswani2017attention');
       expect(dom1.textContent).toContain('Attention Is All You Need');
 
@@ -239,13 +239,13 @@ describe('Editor Citation Autocomplete & Hover Tooltip Suite', () => {
       const pos1 = doc.indexOf('@vaswani2017attention') + 3;
       const tooltip1 = citationHoverSource(view, pos1, 1);
       expect(tooltip1).not.toBeNull();
-      expect(tooltip1!.create().dom.textContent).toContain('Attention Is All You Need');
+      expect(tooltip1!.create(view).dom.textContent).toContain('Attention Is All You Need');
 
       // Hover over inline @nguyen2024ai
       const pos2 = doc.lastIndexOf('@nguyen2024ai') + 3;
       const tooltip2 = citationHoverSource(view, pos2, 1);
       expect(tooltip2).not.toBeNull();
-      expect(tooltip2!.create().dom.textContent).toContain('Nguyễn Văn An & Trần Thị Bình');
+      expect(tooltip2!.create(view).dom.textContent).toContain('Nguyễn Văn An & Trần Thị Bình');
 
       view.destroy();
     });
@@ -262,7 +262,7 @@ describe('Editor Citation Autocomplete & Hover Tooltip Suite', () => {
       const tooltip = citationHoverSource(view, hoverPos, 1);
 
       expect(tooltip).not.toBeNull();
-      const dom = tooltip.create().dom;
+      const dom = tooltip!.create(view).dom;
       expect(dom.textContent).toContain('Chưa tìm thấy');
       expect(dom.textContent).toContain('@unknownKey2025');
       expect(dom.textContent).toContain('Ctrl+Shift+K');

@@ -67,13 +67,13 @@ describe('pdf-outline.util', () => {
         getOutline: vi.fn().mockResolvedValue(null),
       };
 
-      const outline = await extractPdfBookmarks(mockPdfDoc);
+      const outline = await extractPdfBookmarks(mockPdfDoc as any);
       expect(outline).toEqual([]);
     });
 
     it('should handle null or invalid pdfDoc gracefully', async () => {
       expect(await extractPdfBookmarks(null)).toEqual([]);
-      expect(await extractPdfBookmarks({})).toEqual([]);
+      expect(await extractPdfBookmarks({} as any)).toEqual([]);
     });
   });
 

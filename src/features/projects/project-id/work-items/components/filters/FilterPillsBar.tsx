@@ -163,7 +163,7 @@ export function FilterPillsBar({
             <button
               type="button"
               onClick={() => onRemoveFilter?.('search')}
-              className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+              className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
               aria-label="Remove search filter"
             >
               <X className="size-3 shrink-0" />
@@ -195,7 +195,7 @@ export function FilterPillsBar({
                   if (onRemoveFilter) onRemoveFilter('state', colId);
                   else onRemoveColumn?.(colId);
                 }}
-                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove ${title} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -223,7 +223,7 @@ export function FilterPillsBar({
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('state_group', group)}
-                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove ${label} group filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -256,7 +256,7 @@ export function FilterPillsBar({
                   if (onRemoveFilter) onRemoveFilter('priority', priority);
                   else onRemovePriority?.(priority);
                 }}
-                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove priority ${priority} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -297,7 +297,7 @@ export function FilterPillsBar({
                   if (onRemoveFilter) onRemoveFilter('assignees', userId);
                   else onRemoveAssignee?.(userId);
                 }}
-                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove ${name} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -320,7 +320,7 @@ export function FilterPillsBar({
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('mentions', m)}
-                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove mention ${name} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -343,7 +343,7 @@ export function FilterPillsBar({
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('created_by', cId)}
-                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove creator ${name} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -375,7 +375,7 @@ export function FilterPillsBar({
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('labels', lbl)}
-                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove label ${displayName} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -399,7 +399,7 @@ export function FilterPillsBar({
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('subscribers', userId)}
-                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove subscriber ${name} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -435,7 +435,7 @@ export function FilterPillsBar({
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('attach', att)}
-                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove ${label} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -461,7 +461,7 @@ export function FilterPillsBar({
                   onRemoveFilter?.('items', tId);
                   onRemoveFilter?.('work_items', tId);
                 }}
-                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove ${label} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -485,7 +485,7 @@ export function FilterPillsBar({
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('parent', pId)}
-                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove ${label} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -510,7 +510,7 @@ export function FilterPillsBar({
                   if (onRemoveFilter) onRemoveFilter('due_date', d);
                   else onRemoveDueDate?.();
                 }}
-                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove due date ${label} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -532,7 +532,7 @@ export function FilterPillsBar({
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('start_date', s)}
-                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove start date ${label} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -554,7 +554,7 @@ export function FilterPillsBar({
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('created_at', c)}
-                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove created date ${label} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -576,7 +576,7 @@ export function FilterPillsBar({
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('updated_at', u)}
-                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove updated date ${label} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -592,7 +592,7 @@ export function FilterPillsBar({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="relative size-6 rounded-md border border-border bg-background hover:bg-muted flex items-center justify-center text-foreground hover:text-foreground transition-colors cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
+                className="relative size-6 rounded-md border border-border bg-background hover:bg-muted flex items-center justify-center text-foreground transition-colors cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
                 title="Filter by due date"
                 aria-label="Filter by due date"
               >
@@ -612,7 +612,7 @@ export function FilterPillsBar({
                     className="flex items-center justify-between text-xs cursor-pointer rounded-md"
                   >
                     <span>{opt.label}</span>
-                    {active && <Check className="size-3.5 text-primary shrink-0" />}
+                    {active && <Check className="size-3.5 text-foreground shrink-0" />}
                   </DropdownMenuItem>
                 );
               })}
@@ -624,7 +624,7 @@ export function FilterPillsBar({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="relative size-6 rounded-md border border-border bg-background hover:bg-muted flex items-center justify-center text-foreground hover:text-foreground transition-colors cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
+                className="relative size-6 rounded-md border border-border bg-background hover:bg-muted flex items-center justify-center text-foreground transition-colors cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
                 title="Filter by assignee"
                 aria-label="Filter by assignee"
               >
@@ -661,7 +661,7 @@ export function FilterPillsBar({
                       )}
                       <span className="truncate">{u.name}</span>
                     </div>
-                    {active && <Check className="size-3.5 text-primary shrink-0" />}
+                    {active && <Check className="size-3.5 text-foreground shrink-0" />}
                   </DropdownMenuItem>
                 );
               })}
@@ -674,7 +674,7 @@ export function FilterPillsBar({
       <button
         type="button"
         onClick={onClearAll}
-        className="relative inline-flex items-center gap-1 text-11 font-medium text-muted-foreground hover:text-foreground hover:underline cursor-pointer ml-auto shrink-0 px-1 py-0.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
+        className="relative inline-flex items-center gap-1 text-11 font-medium text-foreground hover:bg-muted cursor-pointer ml-auto shrink-0 px-1.5 py-0.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
       >
         <RotateCcw className="size-3 shrink-0" />
         <span>Clear all</span>

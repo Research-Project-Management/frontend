@@ -294,7 +294,7 @@ export function Attachments({
             Attach Center
           </h3>
           {totalAttachments > 0 && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted text-muted-foreground">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted text-foreground">
               {totalAttachments}
             </span>
           )}
@@ -311,10 +311,10 @@ export function Attachments({
                 : 'text-foreground/80 hover:text-foreground'
             }`}
           >
-            <FileText className="size-3.5 shrink-0" />
+            <FileText className="size-3.5 shrink-0 text-foreground" />
             <span>Pages</span>
             {pagesCount > 0 && (
-              <span className="ml-0.5 rounded-md bg-muted px-1.5 py-0.5 text-10 font-semibold">
+              <span className="ml-0.5 rounded-md bg-muted px-1.5 py-0.5 text-10 font-semibold text-foreground">
                 {pagesCount}
               </span>
             )}
@@ -329,10 +329,10 @@ export function Attachments({
                 : 'text-foreground/80 hover:text-foreground'
             }`}
           >
-            <BookOpen className="size-3.5 shrink-0" />
+            <BookOpen className="size-3.5 shrink-0 text-foreground" />
             <span>Papers</span>
             {papersCount > 0 && (
-              <span className="ml-0.5 rounded-md bg-muted px-1.5 py-0.5 text-10 font-semibold">
+              <span className="ml-0.5 rounded-md bg-muted px-1.5 py-0.5 text-10 font-semibold text-foreground">
                 {papersCount}
               </span>
             )}
@@ -347,10 +347,10 @@ export function Attachments({
                 : 'text-foreground/80 hover:text-foreground'
             }`}
           >
-            <Paperclip className="size-3.5 shrink-0" />
+            <Paperclip className="size-3.5 shrink-0 text-foreground" />
             <span>Files</span>
             {filesCount > 0 && (
-              <span className="ml-0.5 rounded-md bg-muted px-1.5 py-0.5 text-10 font-semibold">
+              <span className="ml-0.5 rounded-md bg-muted px-1.5 py-0.5 text-10 font-semibold text-foreground">
                 {filesCount}
               </span>
             )}
@@ -365,10 +365,10 @@ export function Attachments({
                 : 'text-foreground/80 hover:text-foreground'
             }`}
           >
-            <Link2 className="size-3.5 shrink-0" />
+            <Link2 className="size-3.5 shrink-0 text-foreground" />
             <span>Links</span>
             {linksCount > 0 && (
-              <span className="ml-0.5 rounded-md bg-muted px-1.5 py-0.5 text-10 font-semibold">
+              <span className="ml-0.5 rounded-md bg-muted px-1.5 py-0.5 text-10 font-semibold text-foreground">
                 {linksCount}
               </span>
             )}
@@ -381,9 +381,9 @@ export function Attachments({
         <div className="space-y-2">
           {pagesCount === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-md border border-dashed border-border py-6 px-4 text-center">
-              <FileText className="size-8 text-muted-foreground mb-2 shrink-0" />
-              <p className="text-xs text-muted-foreground font-medium">No Editor Pages attached</p>
-              <p className="text-11 text-muted-foreground mt-0.5">
+              <FileText className="size-8 text-foreground/70 mb-2 shrink-0" />
+              <p className="text-xs text-foreground/70 font-medium">No Editor Pages attached</p>
+              <p className="text-11 text-foreground/70 mt-0.5">
                 Link LaTeX chapters, manuscripts, or research drafts to this work item.
               </p>
               {!isReadOnly && (
@@ -392,9 +392,9 @@ export function Attachments({
                   variant="outline"
                   size="sm"
                   onClick={() => setOpenPageDialog(true)}
-                  className="mt-3 h-7 text-xs gap-1.5"
+                  className="mt-3 h-7 text-xs gap-1.5 text-foreground hover:bg-muted"
                 >
-                  <Plus className="size-3.5 shrink-0" />
+                  <Plus className="size-3.5 shrink-0 text-foreground" />
                   Attach Page
                 </Button>
               )}
@@ -408,14 +408,14 @@ export function Attachments({
                     className="group flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2.5 transition-colors hover:bg-muted"
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                        <FileText className="size-4 shrink-0" />
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
+                        <FileText className="size-4 shrink-0 text-foreground" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-semibold text-foreground">
                           {page.title}
                         </p>
-                        <p className="text-10 text-muted-foreground">
+                        <p className="text-10 text-foreground/70">
                           {formatAttachmentMeta(page.addedAt)}
                         </p>
                       </div>
@@ -428,16 +428,16 @@ export function Attachments({
                         className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors shrink-0"
                         title="Open in LaTeX Editor"
                       >
-                        <ExternalLink className="size-3.5 shrink-0" />
+                        <ExternalLink className="size-3.5 shrink-0 text-foreground" />
                       </Link>
                       {!isReadOnly && (
                         <button
                           type="button"
                           onClick={() => onDetachPage?.((page as any).pageId || page.id || '')}
-                          className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:text-destructive hover:bg-muted transition-colors cursor-pointer"
+                          className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
                           title="Detach Page"
                         >
-                          <Trash2 className="size-3.5 shrink-0" />
+                          <Trash2 className="size-3.5 shrink-0 text-foreground" />
                         </button>
                       )}
                     </div>
@@ -451,9 +451,9 @@ export function Attachments({
                   variant="ghost"
                   size="sm"
                   onClick={() => setOpenPageDialog(true)}
-                  className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground mt-1"
+                  className="h-7 text-xs gap-1 text-foreground hover:bg-muted mt-1"
                 >
-                  <Plus className="size-3.5 shrink-0" />
+                  <Plus className="size-3.5 shrink-0 text-foreground" />
                   Attach Another Page
                 </Button>
               )}
@@ -467,9 +467,9 @@ export function Attachments({
         <div className="space-y-2">
           {papersCount === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-md border border-dashed border-border py-6 px-4 text-center">
-              <BookOpen className="size-8 text-muted-foreground mb-2 shrink-0" />
-              <p className="text-xs text-muted-foreground font-medium">No Research Papers attached</p>
-              <p className="text-11 text-muted-foreground mt-0.5">
+              <BookOpen className="size-8 text-foreground/70 mb-2 shrink-0" />
+              <p className="text-xs text-foreground/70 font-medium">No Research Papers attached</p>
+              <p className="text-11 text-foreground/70 mt-0.5">
                 Link reference citations with DOI and BibTeX keys.
               </p>
               {!isReadOnly && (
@@ -478,9 +478,9 @@ export function Attachments({
                   variant="outline"
                   size="sm"
                   onClick={() => setOpenPaperDialog(true)}
-                  className="mt-3 h-7 text-xs gap-1.5"
+                  className="mt-3 h-7 text-xs gap-1.5 text-foreground hover:bg-muted"
                 >
-                  <Plus className="size-3.5 shrink-0" />
+                  <Plus className="size-3.5 shrink-0 text-foreground" />
                   Attach Paper
                 </Button>
               )}
@@ -494,8 +494,8 @@ export function Attachments({
                     className="group flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2.5 transition-colors hover:bg-muted"
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-warning/10 text-warning">
-                        <BookOpen className="size-4 shrink-0" />
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
+                        <BookOpen className="size-4 shrink-0 text-foreground" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-semibold text-foreground">
@@ -508,7 +508,7 @@ export function Attachments({
                             </span>
                           )}
                           {paper.doi && (
-                            <span className="font-mono text-10 text-muted-foreground">
+                            <span className="font-mono text-10 text-foreground/70">
                               DOI: {paper.doi}
                             </span>
                           )}
@@ -520,10 +520,10 @@ export function Attachments({
                       <button
                         type="button"
                         onClick={() => onDetachPaper?.((paper as any).paperId || paper.id || '')}
-                        className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:text-destructive hover:bg-muted transition-colors cursor-pointer"
+                        className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
                         title="Detach Paper"
                       >
-                        <Trash2 className="size-3.5 shrink-0" />
+                        <Trash2 className="size-3.5 shrink-0 text-foreground" />
                       </button>
                     )}
                   </div>
@@ -536,9 +536,9 @@ export function Attachments({
                   variant="ghost"
                   size="sm"
                   onClick={() => setOpenPaperDialog(true)}
-                  className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground mt-1"
+                  className="h-7 text-xs gap-1 text-foreground hover:bg-muted mt-1"
                 >
-                  <Plus className="size-3.5 shrink-0" />
+                  <Plus className="size-3.5 shrink-0 text-foreground" />
                   Attach Another Paper
                 </Button>
               )}
@@ -561,9 +561,9 @@ export function Attachments({
           )}
           {filesCount === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-md border border-dashed border-border py-6 px-4 text-center">
-              <Paperclip className="size-8 text-muted-foreground mb-2 shrink-0" />
-              <p className="text-xs text-muted-foreground font-medium">No files attached</p>
-              <p className="text-11 text-muted-foreground mt-0.5">
+              <Paperclip className="size-8 text-foreground/70 mb-2 shrink-0" />
+              <p className="text-xs text-foreground/70 font-medium">No files attached</p>
+              <p className="text-11 text-foreground/70 mt-0.5">
                 Upload experimental datasets, figures, or document assets.
               </p>
               {!isReadOnly && (
@@ -573,7 +573,7 @@ export function Attachments({
                   size="sm"
                   disabled={uploadingFiles}
                   onClick={() => fileInputRef.current?.click()}
-                  className="mt-3 h-7 text-xs gap-1.5"
+                  className="mt-3 h-7 text-xs gap-1.5 text-foreground hover:bg-muted"
                 >
                   {uploadingFiles ? (
                     <>
@@ -582,7 +582,7 @@ export function Attachments({
                     </>
                   ) : (
                     <>
-                      <Upload className="size-3.5 shrink-0" />
+                      <Upload className="size-3.5 shrink-0 text-foreground" />
                       Upload File
                     </>
                   )}
@@ -599,7 +599,7 @@ export function Attachments({
                     size="sm"
                     disabled={uploadingFiles}
                     onClick={() => fileInputRef.current?.click()}
-                    className="h-7 text-xs gap-1.5"
+                    className="h-7 text-xs gap-1.5 text-foreground hover:bg-muted"
                   >
                     {uploadingFiles ? (
                       <>
@@ -608,7 +608,7 @@ export function Attachments({
                       </>
                     ) : (
                       <>
-                        <Upload className="size-3.5 shrink-0" />
+                        <Upload className="size-3.5 shrink-0 text-foreground" />
                         Upload File
                       </>
                     )}
@@ -622,7 +622,7 @@ export function Attachments({
                   className="group flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2.5 transition-colors hover:bg-muted"
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-10 font-semibold text-muted-foreground border border-border">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-10 font-semibold text-foreground border border-border">
                       {getAttachmentTypeLabel(item)}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -635,7 +635,7 @@ export function Attachments({
                       >
                         {item.name}
                       </a>
-                      <p className="text-10 text-muted-foreground">
+                      <p className="text-10 text-foreground/70">
                         {formatAttachmentMeta(item.uploadedAt || (item as any).createdAt)}
                       </p>
                     </div>
@@ -649,7 +649,7 @@ export function Attachments({
                       className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors"
                       title="Open file"
                     >
-                      <ExternalLink className="size-3.5 shrink-0" />
+                      <ExternalLink className="size-3.5 shrink-0 text-foreground" />
                     </a>
                     {!isReadOnly && (
                       <button
@@ -660,10 +660,10 @@ export function Attachments({
                           if (onDetachFile) onDetachFile(id);
                           else if (onRemoveAttachment) onRemoveAttachment(id);
                         }}
-                        className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:text-destructive hover:bg-muted transition-colors cursor-pointer"
+                        className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
                         title="Remove file"
                       >
-                        <Trash2 className="size-3.5 shrink-0" />
+                        <Trash2 className="size-3.5 shrink-0 text-foreground" />
                       </button>
                     )}
                   </div>
@@ -680,9 +680,9 @@ export function Attachments({
         <div className="space-y-2">
           {linksCount === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-md border border-dashed border-border py-6 px-4 text-center">
-              <Globe className="size-8 text-muted-foreground mb-2 shrink-0" />
-              <p className="text-xs text-muted-foreground font-medium">No external links attached</p>
-              <p className="text-11 text-muted-foreground mt-0.5">
+              <Globe className="size-8 text-foreground/70 mb-2 shrink-0" />
+              <p className="text-xs text-foreground/70 font-medium">No external links attached</p>
+              <p className="text-11 text-foreground/70 mt-0.5">
                 Attach ArXiv preprints, GitHub repositories, or journal articles.
               </p>
               {!isReadOnly && (
@@ -691,9 +691,9 @@ export function Attachments({
                   variant="outline"
                   size="sm"
                   onClick={() => setOpenLinkDialog(true)}
-                  className="mt-3 h-7 text-xs gap-1.5"
+                  className="mt-3 h-7 text-xs gap-1.5 text-foreground hover:bg-muted"
                 >
-                  <Plus className="size-3.5 shrink-0" />
+                  <Plus className="size-3.5 shrink-0 text-foreground" />
                   Add Link
                 </Button>
               )}
@@ -707,8 +707,8 @@ export function Attachments({
                     className="group flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2.5 transition-colors hover:bg-muted"
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                        <Link2 className="size-4 shrink-0" />
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
+                        <Link2 className="size-4 shrink-0 text-foreground" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-semibold text-foreground">
@@ -718,7 +718,7 @@ export function Attachments({
                           href={link.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="block truncate text-10 text-primary hover:underline"
+                          className="block truncate text-10 text-foreground underline-offset-2 hover:underline"
                         >
                           {link.url}
                         </a>
@@ -733,16 +733,16 @@ export function Attachments({
                         className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors"
                         title="Open Link"
                       >
-                        <ExternalLink className="size-3.5 shrink-0" />
+                        <ExternalLink className="size-3.5 shrink-0 text-foreground" />
                       </a>
                       {!isReadOnly && (
                         <button
                           type="button"
                           onClick={() => onDetachLink?.(idx)}
-                          className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:text-destructive hover:bg-muted transition-colors cursor-pointer"
+                          className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
                           title="Remove Link"
                         >
-                          <Trash2 className="size-3.5 shrink-0" />
+                          <Trash2 className="size-3.5 shrink-0 text-foreground" />
                         </button>
                       )}
                     </div>
@@ -758,7 +758,7 @@ export function Attachments({
                   onClick={() => setOpenLinkDialog(true)}
                   className="h-7 text-xs gap-1 text-foreground hover:bg-muted mt-1 rounded-md cursor-pointer"
                 >
-                  <Plus className="size-3.5 shrink-0" />
+                  <Plus className="size-3.5 shrink-0 text-foreground" />
                   Add Another Link
                 </Button>
               )}
@@ -772,10 +772,10 @@ export function Attachments({
         <DialogContent className="sm:max-w-md rounded-md shadow-raised-200">
           <DialogHeader>
             <DialogTitle className="text-16 font-semibold flex items-center gap-2">
-              <FileText className="size-4 text-primary shrink-0" />
+              <FileText className="size-4 text-foreground shrink-0" />
               Attach Editor Page
             </DialogTitle>
-            <DialogDescription className="text-12 text-muted-foreground">
+            <DialogDescription className="text-12 text-foreground/70">
               Select a LaTeX manuscript or document from this project.
             </DialogDescription>
           </DialogHeader>
@@ -783,7 +783,7 @@ export function Attachments({
           <div className="space-y-3 py-2">
             {loadingPages ? (
               <div className="flex items-center justify-center py-6">
-                <Loader2 className="size-5 animate-spin motion-reduce:animate-none text-muted-foreground shrink-0" />
+                <Loader2 className="size-5 animate-spin motion-reduce:animate-none text-foreground/70 shrink-0" />
               </div>
             ) : projectPages.length > 0 ? (
               <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
@@ -794,20 +794,20 @@ export function Attachments({
                     onClick={() => setSelectedPageId(page.id)}
                     className={`w-full text-left p-2.5 rounded-md border text-13 flex items-center justify-between transition-colors cursor-pointer ${
                       selectedPageId === page.id
-                        ? 'border-primary bg-primary/5 text-foreground font-semibold'
-                        : 'border-border hover:bg-muted text-muted-foreground'
+                        ? 'border-border bg-muted text-foreground font-semibold'
+                        : 'border-border hover:bg-muted text-foreground'
                     }`}
                   >
                     <span className="truncate">{page.title}</span>
                     {selectedPageId === page.id && (
-                      <span className="size-2 rounded-full bg-primary shrink-0" />
+                      <span className="size-2 rounded-full bg-foreground shrink-0" />
                     )}
                   </button>
                 ))}
               </div>
             ) : (
               <div className="space-y-2">
-                <p className="text-12 text-muted-foreground">
+                <p className="text-12 text-foreground/70">
                   No existing project pages found. Enter page ID or title manually:
                 </p>
                 <Input
@@ -832,7 +832,7 @@ export function Attachments({
               variant="outline"
               size="sm"
               onClick={() => setOpenPageDialog(false)}
-              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring text-foreground hover:bg-muted"
             >
               Cancel
             </Button>
@@ -841,7 +841,7 @@ export function Attachments({
               size="sm"
               disabled={!selectedPageId}
               onClick={handleConfirmAttachPage}
-              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-foreground text-background hover:bg-foreground/90"
             >
               Attach Page
             </Button>
@@ -854,10 +854,10 @@ export function Attachments({
         <DialogContent className="sm:max-w-lg rounded-md shadow-raised-200">
           <DialogHeader>
             <DialogTitle className="text-16 font-semibold flex items-center gap-2">
-              <BookOpen className="size-4 text-warning shrink-0" />
+              <BookOpen className="size-4 text-foreground shrink-0" />
               Attach Research Paper
             </DialogTitle>
-            <DialogDescription className="text-12 text-muted-foreground">
+            <DialogDescription className="text-12 text-foreground/70">
               Link a research publication, citation, or preprint to this work item.
             </DialogDescription>
           </DialogHeader>
@@ -869,11 +869,11 @@ export function Attachments({
               onClick={() => setPaperDialogMode('library')}
               className={`px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 relative before:absolute before:-inset-1 md:before:hidden ${
                 paperDialogMode === 'library'
-                  ? 'bg-warning/10 text-warning font-semibold'
+                  ? 'bg-muted text-foreground font-semibold'
                   : 'text-foreground/80 hover:text-foreground'
               }`}
             >
-              <BookOpen className="size-3.5" />
+              <BookOpen className="size-3.5 text-foreground" />
               From Library
             </button>
             <button
@@ -881,11 +881,11 @@ export function Attachments({
               onClick={() => setPaperDialogMode('manual')}
               className={`px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 relative before:absolute before:-inset-1 md:before:hidden ${
                 paperDialogMode === 'manual'
-                  ? 'bg-warning/10 text-warning font-semibold'
+                  ? 'bg-muted text-foreground font-semibold'
                   : 'text-foreground/80 hover:text-foreground'
               }`}
             >
-              <FileText className="size-3.5" />
+              <FileText className="size-3.5 text-foreground" />
               Manual Entry
             </button>
           </div>
@@ -904,7 +904,7 @@ export function Attachments({
 
               <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
                 {loadingLibraryPapers ? (
-                  <div className="py-6 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                  <div className="py-6 text-center text-xs text-foreground/70 flex items-center justify-center gap-2">
                     <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
                     Searching library...
                   </div>
@@ -925,7 +925,7 @@ export function Attachments({
                         onClick={() => setSelectedLibraryPaper(paper)}
                         className={`p-2.5 rounded-md border text-13 cursor-pointer transition-all ${
                           isSelected
-                            ? 'border-primary bg-primary/5'
+                            ? 'border-border bg-muted ring-1 ring-border'
                             : 'border-border hover:bg-muted/60'
                         }`}
                       >
@@ -935,7 +935,7 @@ export function Attachments({
                               {paper.title || 'Untitled Paper'}
                             </h4>
                             {authorsList && (
-                              <p className="text-11 text-muted-foreground truncate mt-0.5">
+                              <p className="text-11 text-foreground/70 truncate mt-0.5">
                                 {authorsList}
                               </p>
                             )}
@@ -946,26 +946,26 @@ export function Attachments({
                                 </span>
                               )}
                               {doi && (
-                                <span className="px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-10 font-mono">
+                                <span className="px-1.5 py-0.5 rounded-md bg-muted text-foreground text-10 font-mono">
                                   DOI: {doi}
                                 </span>
                               )}
                               {citationKey && (
-                                <span className="px-1.5 py-0.5 rounded-md bg-success/10 text-success text-10 font-mono">
+                                <span className="px-1.5 py-0.5 rounded-md bg-muted text-foreground text-10 font-mono">
                                   @{citationKey}
                                 </span>
                               )}
                             </div>
                           </div>
                           {isSelected && (
-                            <Check className="size-4 text-warning shrink-0 mt-0.5" />
+                            <Check className="size-4 text-foreground shrink-0 mt-0.5" />
                           )}
                         </div>
                       </div>
                     );
                   })
                 ) : (
-                  <div className="py-6 text-center text-xs text-muted-foreground">
+                  <div className="py-6 text-center text-xs text-foreground/70">
                     <p>No papers found matching query.</p>
                     <p className="text-11 mt-1">
                       Use the &quot;Manual Entry&quot; tab above if the paper is not in your library.
@@ -1020,7 +1020,7 @@ export function Attachments({
               variant="outline"
               size="sm"
               onClick={() => setOpenPaperDialog(false)}
-              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring text-foreground hover:bg-muted"
             >
               Cancel
             </Button>
@@ -1033,7 +1033,7 @@ export function Attachments({
                   : !paperTitle.trim()
               }
               onClick={handleConfirmAttachPaper}
-              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-foreground text-background hover:bg-foreground/90"
             >
               Attach Paper
             </Button>
@@ -1046,10 +1046,10 @@ export function Attachments({
         <DialogContent className="sm:max-w-md rounded-md shadow-raised-200">
           <DialogHeader>
             <DialogTitle className="text-16 font-semibold flex items-center gap-2">
-              <Link2 className="size-4 text-primary shrink-0" />
+              <Link2 className="size-4 text-foreground shrink-0" />
               Add External Link
             </DialogTitle>
-            <DialogDescription className="text-12 text-muted-foreground">
+            <DialogDescription className="text-12 text-foreground/70">
               Attach an external reference URL to this work item.
             </DialogDescription>
           </DialogHeader>
@@ -1086,7 +1086,7 @@ export function Attachments({
               variant="outline"
               size="sm"
               onClick={() => setOpenLinkDialog(false)}
-              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring text-foreground hover:bg-muted"
             >
               Cancel
             </Button>
@@ -1095,7 +1095,7 @@ export function Attachments({
               size="sm"
               disabled={!linkUrl.trim()}
               onClick={handleConfirmAttachLink}
-              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-foreground text-background hover:bg-foreground/90"
             >
               Add Link
             </Button>

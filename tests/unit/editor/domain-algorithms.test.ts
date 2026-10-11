@@ -139,3 +139,79 @@ describe('3. Diagnostics Coordinator (Interval Partitioning)', () => {
     expect(summary.total).toBe(3);
   });
 });
+
+describe('4. Prefix Trie & Symbol Inverted Index (O(K) Autocomplete)', () => {
+  it('performs O(K) prefix lookups and Vietnamese normalization', async () => {
+    const { PrefixTrie } = await import('@/features/editor/domain/latex/prefix-trie');
+    const trie = new PrefixTrie<{ name: string }>();
+
+    trie.insertNormalized('Nguyễn Văn An', { name: 'Nguyen Van An' });
+    trie.insertNormalized('Attention Is All You Need', { name: 'Vaswani Attention' });
+    trie.insert('vaswani2017attention', { name: 'Citation Key' });
+
+    // Exact lookup O(K)
+    expect(trie.findExact('vaswani2017attention')?.name).toBe('Citation Key');
+    expect(trie.findExact('nonexistent')).toBeUndefined();
+
+    // Normalized search without diacritics
+    const unaccentedSearch = trie.findPrefix('nguyen');
+    expect(unaccentedSearch).toHaveLength(1);
+    expect(unaccentedSearch[0].name).toBe('Nguyen Van An');
+
+    // Accented search
+    const accentedSearch = trie.findPrefix('Nguyễn');
+    expect(accentedSearch).toHaveLength(1);
+    expect(accentedSearch[0].name).toBe('Nguyen Van An');
+
+    // Subtree limit
+    trie.insert('test1', { name: 'Test 1' });
+    trie.insert('test2', { name: 'Test 2' });
+    trie.insert('test3', { name: 'Test 3' });
+    const limited = trie.findPrefix('test', { limit: 2 });
+    expect(limited).toHaveLength(2);
+  });
+
+  it('indexes and resolves symbols in LatexSymbolsIndex via Prefix Trie', async () => {
+    const { LatexSymbolsIndex } = await import('@/features/editor/domain/latex/latex-symbols-index');
+    const index = new LatexSymbolsIndex();
+
+    index.setLibraryCitations([
+      {
+        id: 'c1',
+        citationKey: 'knuth1984texbook',
+        title: 'The TeXbook',
+        authors: [{ fullName: 'Donald E. Knuth' }],
+        year: 1984,
+      },
+      {
+        id: 'c2',
+        citationKey: 'lamport1994latex',
+        title: 'LaTeX: A Document Preparation System',
+        authors: [{ fullName: 'Leslie Lamport' }],
+        year: 1994,
+      },
+    ]);
+
+    // O(K) exact citation lookup
+    const knuth = index.getCitationByKey('knuth1984texbook');
+    expect(knuth).toBeDefined();
+    expect(knuth?.title).toBe('The TeXbook');
+
+    // Autocomplete queries
+    expect(index.getCitations('knuth')).toHaveLength(1);
+    expect(index.getCitations('lamport')).toHaveLength(1);
+    expect(index.getCitations('1994')).toHaveLength(1);
+
+    // Labels indexing with colon partition
+    index.indexFile('main.tex', 'main.tex', '\\label{sec:introduction}\n\\label{fig:architecture}\n\\newcommand{\\customMacro}{foo}', true);
+
+    const labels = index.getLabels('sec:');
+    expect(labels.some((l) => l.name === 'sec:introduction')).toBe(true);
+
+    const introLabels = index.getLabels('introduction');
+    expect(introLabels.some((l) => l.name === 'sec:introduction')).toBe(true);
+
+    index.dispose();
+  });
+});
+

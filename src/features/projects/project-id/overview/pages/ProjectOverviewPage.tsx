@@ -51,20 +51,20 @@ export function ProjectOverviewPage() {
     return (
       <div className="flex-1 flex min-h-0 flex-col h-full bg-background overflow-hidden items-center justify-center p-4">
         <div className="flex flex-col items-center gap-3 text-center max-w-sm">
-          <div className="size-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
+          <div className="size-12 rounded-full bg-muted text-foreground flex items-center justify-center">
             <AlertCircle className="size-6" />
           </div>
           <h2 className="text-16 font-semibold text-foreground">
             Unable to load project overview
           </h2>
-          <p className="text-13 text-muted-foreground">
+          <p className="text-13 text-foreground/70">
             {(error as any)?.message || 'An error occurred while fetching the project overview data.'}
           </p>
           <Button
             variant="outline"
             size="sm"
             onClick={() => refetch()}
-            className="mt-2 h-8 px-3 text-12 font-medium gap-1.5 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="mt-2 h-8 px-3 text-12 font-medium gap-1.5 text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <RefreshCw className="size-3.5" />
             <span>Retry</span>

@@ -16,8 +16,7 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { pageService } from '@/features/editor/coordinators/services/core.service';
-import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
+import { manuscriptService, pageService } from '@/features/editor/sdk';
 import { filesQuery } from '@/features/editor/ui/hooks/use-core';
 import type { Page, PageFile } from '@/features/editor/domain/types';
 import { displayName, prepareAssetInsertion } from './file-actions.util';
@@ -44,13 +43,17 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
           rawContent = doc?.content ?? '';
         }
 
+        const record = typeof rawContent === 'object' && rawContent !== null ? (rawContent as Record<string, unknown>) : null;
         const textContent =
           typeof rawContent === 'string'
             ? rawContent
-            : (rawContent as any)?.source ||
-              (rawContent as any)?.text ||
-              (rawContent as any)?.content ||
-              '';
+            : typeof record?.source === 'string'
+              ? record.source
+              : typeof record?.text === 'string'
+                ? record.text
+                : typeof record?.content === 'string'
+                  ? record.content
+                  : '';
 
         const blob = new Blob([textContent], { type: 'text/x-tex;charset=utf-8' });
         const url = URL.createObjectURL(blob);

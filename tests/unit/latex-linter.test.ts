@@ -11,6 +11,7 @@ import {
   type RetractedItemInfo,
   type LatexLintDiagnostic,
 } from '@/features/editor/domain/latex/latex-linter';
+import { lintLatexDocument } from '@/features/editor/engines/extensions/latex-linter-core';
 
 describe('LaTeX Syntax & Structural Diagnostics Engine (Overleaf Parity)', () => {
   describe('1. Unmatched Curly Braces {}', () => {
@@ -122,6 +123,49 @@ describe('LaTeX Syntax & Structural Diagnostics Engine (Overleaf Parity)', () =>
       const amp = diags.find((d: LatexLintDiagnostic) => d.code === 'UNESCAPED_AMPERSAND');
       expect(amp).toBeUndefined();
     });
+
+    it('should allow & inside \\begin{tabularx}, \\begin{longtable}, and \\begin{tblr}', () => {
+      const input = `
+\\begin{tabularx}{\\textwidth}{XX}
+Col 1 & Col 2 \\\\
+\\end{tabularx}
+\\begin{longtable}{cc}
+Header 1 & Header 2 \\\\
+\\end{longtable}
+\\begin{tblr}{colspec={cc}}
+Alpha & Beta \\\\
+\\end{tblr}
+`;
+      const diags = lintSpecialCharacters(input);
+      const ampDiags = diags.filter((d: LatexLintDiagnostic) => d.code === 'UNESCAPED_AMPERSAND');
+      expect(ampDiags).toHaveLength(0);
+    });
+
+    it('should allow & inside \\href{...} and \\url{...} query strings', () => {
+      const input = 'See link \\href{https://example.com?a=1&b=2}{My Link} and \\url{https://api.org?foo=bar&baz=qux}.';
+      const diags = lintSpecialCharacters(input);
+      const ampDiags = diags.filter((d: LatexLintDiagnostic) => d.code === 'UNESCAPED_AMPERSAND');
+      expect(ampDiags).toHaveLength(0);
+    });
+
+    it('should not get stuck in display math after table newline with vertical space \\\\[6pt]', () => {
+      const input = `\\begin{tabular}{cc}
+A & B \\\\[6pt]
+C & D
+\\end{tabular}
+Regular text with & outside tabular.`;
+      const diags = lintSpecialCharacters(input);
+      const ampDiags = diags.filter((d: LatexLintDiagnostic) => d.code === 'UNESCAPED_AMPERSAND');
+      expect(ampDiags).toHaveLength(1);
+      expect(ampDiags[0].startLineNumber).toBe(5);
+    });
+
+    it('should allow _ in \\autoref, \\cref, \\path, and \\lstinline', () => {
+      const input = 'Refer to \\autoref{sec_intro}, \\cref{fig_architecture}, \\path{src_dir/file.ts}, and \\lstinline{var_name}.';
+      const diags = lintSpecialCharacters(input);
+      const underDiags = diags.filter((d: LatexLintDiagnostic) => d.code === 'UNESCAPED_UNDERSCORE');
+      expect(underDiags).toHaveLength(0);
+    });
   });
 
   describe('4. Inline Math Mode ($ count)', () => {
@@ -157,6 +201,14 @@ describe('LaTeX Syntax & Structural Diagnostics Engine (Overleaf Parity)', () =>
       const undef = diags.find((d: LatexLintDiagnostic) => d.code === 'UNDEFINED_REFERENCE');
       expect(undef).toBeDefined();
       expect(undef?.message).toContain('sec:nonexistent');
+    });
+
+    it('should allow \\ref{} referencing projectLabels from other files without warning', () => {
+      const input = 'See section \\ref{sec:external_chap}.';
+      const diags = lintLabelsAndReferences(input, new Set(['sec:external_chap']));
+
+      const undef = diags.find((d: LatexLintDiagnostic) => d.code === 'UNDEFINED_REFERENCE');
+      expect(undef).toBeUndefined();
     });
   });
 
@@ -220,6 +272,42 @@ describe('LaTeX Syntax & Structural Diagnostics Engine (Overleaf Parity)', () =>
       expect(results.some((r: LatexLintDiagnostic) => r.code === 'COMMAND_TYPO')).toBe(true);
       expect(results.some((r: LatexLintDiagnostic) => r.code === 'UNESCAPED_PERCENT')).toBe(true);
       expect(results.some((r: LatexLintDiagnostic) => r.code === 'UNCLOSED_ENV')).toBe(true);
+    });
+  });
+
+  describe('9. Worker Tokenizer Diagnostics (latex-linter-core)', () => {
+    it('should handle nested \\text{$x = 1$} inside \\begin{equation} without delimiter error', () => {
+      const input = `
+\\begin{equation}
+f(x) = \\text{let $x = 1$ in } x^2
+\\end{equation}
+`;
+      const diags = lintLatexDocument(input);
+      const delimiterErrors = diags.filter((d) => d.message.includes('Mismatched math delimiter'));
+      expect(delimiterErrors).toHaveLength(0);
+    });
+
+    it('should flag unclosed opening curly brace { at EOF', () => {
+      const input = '\\textbf{Unfinished text';
+      const diags = lintLatexDocument(input);
+      const unclosedBrace = diags.find((d) => d.message.includes("Unclosed opening brace '{'"));
+      expect(unclosedBrace).toBeDefined();
+    });
+
+    it('should isolate minted and Verbatim environments from syntax rules', () => {
+      const input = `
+\\begin{minted}{python}
+def test():
+    x = 10 % 3
+    user_name = "test"
+    dict = {a: b}
+\\end{minted}
+\\begin{Verbatim}
+Unescaped & and _ and { braces here
+\\end{Verbatim}
+`;
+      const diags = lintLatexDocument(input);
+      expect(diags).toHaveLength(0);
     });
   });
 });

@@ -14,18 +14,11 @@
 import {
   LatexSymbolsIndexCore,
   type SymbolSnapshot,
+  type SymbolsWorkerMessageIn,
+  type SymbolsWorkerMessageOut,
 } from '../../domain/latex/latex-symbols-core';
 
-export type SymbolsWorkerMessageIn =
-  | { type: 'indexFile'; fileId: string; filePath: string; content: string; id: number }
-  | { type: 'removeFile'; fileId: string; filePath?: string; id: number }
-  | { type: 'clear'; id: number }
-  | { type: 'getSnapshot'; id: number };
-
-export interface SymbolsWorkerMessageOut {
-  id: number;
-  snapshot: SymbolSnapshot;
-}
+export type { SymbolsWorkerMessageIn, SymbolsWorkerMessageOut };
 
 const core = new LatexSymbolsIndexCore();
 

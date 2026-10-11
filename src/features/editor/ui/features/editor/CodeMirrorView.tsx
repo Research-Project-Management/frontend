@@ -19,6 +19,7 @@ import React, { useEffect, useRef, useMemo } from 'react';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { forceLinting } from '@codemirror/lint';
+import { ySyncAnnotation } from 'y-codemirror.next';
 import type * as Y from 'yjs';
 
 import {
@@ -28,6 +29,8 @@ import {
   reconfigureVimMode,
   reconfigureReadOnly,
   reconfigureSpellCheck,
+  reconfigureTheme,
+  reconfigureTypography,
   YjsCodeMirrorAdapter,
   createTrackChangesExtension,
   setTrackChangesViewModeEffect,
@@ -41,6 +44,7 @@ import { sessionCoordinator } from '../../../coordinators/session.coordinator';
 import { reviewCoordinator } from '../../../coordinators/review.coordinator';
 import { setActiveEditorEngine, editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { useSettingsStore } from '../../../store/settings.store';
+import { useConnectivityStore } from '../../../store/connectivity.store';
 import { createDiagnosticsGutter } from './DiagnosticsGutter';
 import { setErrorLensDiagnosticsEffect } from '../../../engines';
 import type { LatexFormatType } from '@/features/editor/domain/types/ports/editor-engine.port';
@@ -50,7 +54,7 @@ export interface CodeMirrorViewProps {
   fileId: string;
   filePath: string;
   value: string;
-  onChange: (nextValue: string) => void;
+  onChange?: (nextValue: string) => void;
   yText?: Y.Text | null;
   awareness?: any | null;
   readOnly?: boolean;
@@ -84,6 +88,10 @@ export function CodeMirrorView({
   const trackChangesViewMode = useSettingsStore((s) => s.trackChangesViewMode);
   const spellCheck = useSettingsStore((s) => s.spellCheck);
   const spellCheckLanguage = useSettingsStore((s) => s.spellCheckLanguage);
+  const fontSize = useSettingsStore((s) => s.fontSize);
+  const fontFamily = useSettingsStore((s) => s.fontFamily);
+  const lineHeight = useSettingsStore((s) => s.lineHeight);
+  const editorTheme = useSettingsStore((s) => s.editorTheme);
 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -110,6 +118,10 @@ export function CodeMirrorView({
       enableSpellCheck: spellCheck,
       spellCheckLanguage,
       projectId,
+      editorTheme,
+      fontSize,
+      fontFamily,
+      lineHeight,
     });
 
     const diagnosticsExtension = createDiagnosticsGutter({
@@ -129,12 +141,31 @@ export function CodeMirrorView({
       }
 
       if (update.docChanged) {
-        const nextContent = update.state.doc.toString();
-        lruDocumentCache.updateContent(fileId, nextContent, true);
-        sessionCoordinator.notifyContentChange(fileId, nextContent, {
-          isRealtimeActive: Boolean(yText),
+        // Detect if changes originated from remote peer via Yjs collaboration
+        const isRemote = update.transactions.some((tr) => Boolean(tr.annotation(ySyncAnnotation)));
+        const origin: 'local' | 'remote' = isRemote ? 'remote' : 'local';
+
+        let hasStructuralChange = false;
+        // Fast incremental check: only check if changes involve backslash directives
+        update.changes.iterChanges((_fromA, _toA, _fromB, _toB, inserted) => {
+          if (hasStructuralChange) return;
+          if (inserted.length > 0) {
+            const slice = inserted.sliceString(0, Math.min(inserted.length, 500));
+            if (slice.includes('\\')) {
+              hasStructuralChange = true;
+            }
+          }
         });
-        onChangeRef.current(nextContent);
+
+        const nextContent = update.state.doc.toString();
+        lruDocumentCache.updateContent(fileId, nextContent, !isRemote);
+        const isOnline = useConnectivityStore.getState().isOnline;
+        sessionCoordinator.notifyContentChange(fileId, nextContent, {
+          isRealtimeActive: Boolean(yText) && isOnline && Boolean(awareness),
+          hasStructuralChange,
+          origin,
+        });
+        onChangeRef.current?.(nextContent);
       }
 
       if (update.selectionSet || update.geometryChanged) {
@@ -251,9 +282,11 @@ export function CodeMirrorView({
         scrollRafId = null;
         if (!viewRef.current) return;
         const line = engineAdapter.getVisibleLine();
+        const totalLines = view.state.doc.lines;
+        const fraction = totalLines > 1 ? (line - 1) / (totalLines - 1) : 0;
         if (line !== lastDispatchedLine) {
           lastDispatchedLine = line;
-          editorCommandBus.dispatch({ type: 'sync:editor-scrolled', line });
+          editorCommandBus.dispatch({ type: 'sync:editor-scrolled', line, totalLines, fraction });
         }
       });
     };
@@ -347,6 +380,17 @@ export function CodeMirrorView({
       unsubVisualCmd();
       unsubDiagnostics();
       unsubVisibility();
+      if (viewRef.current) {
+        const latestDoc = viewRef.current.state.doc.toString();
+        lruDocumentCache.updateContent(fileId, latestDoc);
+        const mainSel = viewRef.current.state.selection.main;
+        const scrollDOM = viewRef.current.scrollDOM;
+        lruDocumentCache.updateViewState(
+          fileId,
+          { anchor: mainSel.anchor, head: mainSel.head },
+          { top: scrollDOM.scrollTop, left: scrollDOM.scrollLeft }
+        );
+      }
       reviewCoordinator.bindEditorView(null, fileId);
       setActiveEditorEngine(null);
       adapterRef.current = null;
@@ -380,6 +424,16 @@ export function CodeMirrorView({
     if (!viewRef.current) return;
     reconfigureSpellCheck(viewRef.current, spellCheck, projectId, spellCheckLanguage);
   }, [spellCheck, spellCheckLanguage, projectId]);
+
+  useEffect(() => {
+    if (!viewRef.current) return;
+    reconfigureTheme(viewRef.current, editorTheme);
+  }, [editorTheme]);
+
+  useEffect(() => {
+    if (!viewRef.current) return;
+    reconfigureTypography(viewRef.current, fontSize, fontFamily, lineHeight);
+  }, [fontSize, fontFamily, lineHeight]);
 
   // Reconfigure Track Changes mode & viewMode dynamically in-place
   useEffect(() => {

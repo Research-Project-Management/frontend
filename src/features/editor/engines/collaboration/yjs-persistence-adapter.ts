@@ -21,12 +21,15 @@ export class YjsPersistenceAdapter {
   private syncDebounceMap = new Map<string, ReturnType<typeof setTimeout>>();
 
   constructor() {
-    if (typeof window !== 'undefined' && 'indexedDB' in window) {
+    if (typeof window !== 'undefined' && 'indexedDB' in window && process.env.NODE_ENV !== 'test') {
       this.initDB();
     }
   }
 
   private initDB(): Promise<IDBDatabase | null> {
+    if (process.env.NODE_ENV === 'test') {
+      return Promise.resolve(null);
+    }
     if (this.dbPromise) return this.dbPromise;
 
     this.dbPromise = new Promise((resolve) => {
@@ -68,7 +71,8 @@ export class YjsPersistenceAdapter {
 
         req.onsuccess = () => {
           if (req.result && req.result.state) {
-            const uint8Array = new Uint8Array(req.result.state);
+            const raw = req.result.state;
+            const uint8Array = raw instanceof Uint8Array ? raw : new Uint8Array(raw);
             Y.applyUpdate(ydoc, uint8Array);
             resolve(true);
           } else {
@@ -125,9 +129,17 @@ export class YjsPersistenceAdapter {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
 
+      // Sliced copy prevents offset misalignment in underlying shared buffer
+      const cleanArray = new Uint8Array(
+        stateVector.buffer.slice(
+          stateVector.byteOffset,
+          stateVector.byteOffset + stateVector.byteLength
+        )
+      );
+
       store.put({
         docName,
-        state: stateVector.buffer,
+        state: cleanArray,
         updatedAt: Date.now(),
       });
     } catch (err) {

@@ -62,6 +62,13 @@ export const SHORTCUT_LIST: ShortcutItem[] = [
     keys: ['Ctrl', 'Shift', 'M'],
     description: 'Toggle fullscreen focus',
   },
+  {
+    id: 'word-count',
+    label: 'Word Count',
+    category: 'Compilation',
+    keys: ['Ctrl', 'Shift', 'W'],
+    description: 'TeXcount metrics & word statistics',
+  },
 
   // Editing & LaTeX Formatting
   {
@@ -136,8 +143,50 @@ export const SHORTCUT_LIST: ShortcutItem[] = [
     id: 'add-comment',
     label: 'Add Comment',
     category: 'Editing',
-    keys: ['Ctrl', 'Alt', 'C'],
-    description: 'Add review comment',
+    keys: ['Ctrl', 'Alt', 'M'],
+    description: 'Add review comment to selection',
+  },
+  {
+    id: 'fold-code',
+    label: 'Fold Code',
+    category: 'Editing',
+    keys: ['Ctrl', 'Alt', '['],
+    description: 'Fold current section/environment',
+  },
+  {
+    id: 'unfold-code',
+    label: 'Unfold Code',
+    category: 'Editing',
+    keys: ['Ctrl', 'Alt', ']'],
+    description: 'Unfold current section/environment',
+  },
+  {
+    id: 'fold-all',
+    label: 'Fold All',
+    category: 'Editing',
+    keys: ['Ctrl', 'Alt', 'Shift', '['],
+    description: 'Fold all sections in document',
+  },
+  {
+    id: 'unfold-all',
+    label: 'Unfold All',
+    category: 'Editing',
+    keys: ['Ctrl', 'Alt', 'Shift', ']'],
+    description: 'Unfold all sections in document',
+  },
+  {
+    id: 'table-wizard',
+    label: 'Table / Matrix Wizard',
+    category: 'Editing',
+    keys: ['Ctrl', 'Shift', 'T'],
+    description: 'Insert customizable table or matrix',
+  },
+  {
+    id: 'math-dollar',
+    label: 'Inline Math',
+    category: 'Editing',
+    keys: ['$'],
+    description: 'Insert or wrap formula ($...$)',
   },
 
   // Navigation & Search
@@ -194,8 +243,8 @@ export const SHORTCUT_LIST: ShortcutItem[] = [
     id: 'goto-line',
     label: 'Go to Line',
     category: 'Navigation',
-    keys: ['Ctrl', 'Shift', 'L'],
-    description: 'Jump to line number (or Ctrl+G)',
+    keys: ['Ctrl', 'G'],
+    description: 'Jump to line number (or Ctrl+Shift+L)',
   },
   {
     id: 'command-palette',
@@ -226,6 +275,13 @@ export const SHORTCUT_LIST: ShortcutItem[] = [
     category: 'Layout',
     keys: ['Topbar', 'Layout'],
     description: 'Switch editor & PDF layout',
+  },
+  {
+    id: 'toggle-editor-mode',
+    label: 'Toggle Source / Visual',
+    category: 'Layout',
+    keys: ['Ctrl', 'Shift', 'V'],
+    description: 'Switch between Code and Visual editor',
   },
 ];
 

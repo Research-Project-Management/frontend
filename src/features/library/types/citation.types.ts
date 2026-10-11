@@ -68,8 +68,6 @@ export const itemBundleSchema = z.object({
   totalRelatedItems: z.number().optional().default(0),
 });
 
-export const paperAcademicBundleSchema = itemBundleSchema;
-
 export type CslStyle = z.infer<typeof cslStyleSchema>;
 export type FormattedCitation = z.infer<typeof formattedCitationSchema>;
 export type FormatCitationInput = z.infer<typeof formatCitationInputSchema>;
@@ -80,8 +78,6 @@ export type ResolveQueryInput = z.infer<typeof resolveQueryInputSchema>;
 export type BatchResolveQueryInput = z.infer<typeof batchResolveQueryInputSchema>;
 
 export type ItemBundle = z.infer<typeof itemBundleSchema>;
-/** @deprecated Use ItemBundle */
-export type PaperAcademicBundle = ItemBundle;
 
 export interface ReferenceData {
   extraFields?: Record<string, unknown>;

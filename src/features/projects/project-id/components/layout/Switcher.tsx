@@ -197,8 +197,8 @@ export function Switcher({
             aria-label="Switch project"
             title="Switch project"
             className={cn(
-              'size-6 flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer outline-none relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring shrink-0',
-              open && 'bg-muted/60 text-foreground',
+              'size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring shrink-0',
+              open && 'bg-muted text-foreground',
             )}
           >
             <ChevronRight
@@ -218,21 +218,21 @@ export function Switcher({
         >
           {/* Search Box */}
           <div className="flex items-center gap-2 border border-border/70 rounded-md px-2.5 py-1.5 mb-1 bg-background">
-            <Search className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
+            <Search className="size-3.5 text-foreground/70 shrink-0" strokeWidth={1.5} />
             <input
               ref={searchRef}
               type="text"
               placeholder="Search projects…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-12 text-foreground placeholder:text-muted-foreground focus:outline-none"
+              className="flex-1 bg-transparent text-12 text-foreground placeholder:text-foreground/50 focus:outline-none"
             />
           </div>
 
           {/* Project List */}
           <div className="max-h-56 overflow-y-auto space-y-0.5">
             {filteredProjects.length === 0 ? (
-              <div className="py-4 text-center text-12 text-muted-foreground">
+              <div className="py-4 text-center text-12 text-foreground/70">
                 {search ? 'No projects found' : 'No projects yet'}
               </div>
             ) : (
@@ -270,7 +270,7 @@ export function Switcher({
           {moduleTitle}
         </span>
         {typeof count === 'number' && (
-          <span className="inline-flex items-center justify-center px-2 py-0.5 min-w-[20px] h-5 rounded-full text-11 font-mono font-medium bg-primary/10 text-primary">
+          <span className="inline-flex items-center justify-center px-2 py-0.5 min-w-[20px] h-5 rounded-full text-11 font-mono font-medium bg-muted text-foreground border border-border">
             {count}
           </span>
         )}

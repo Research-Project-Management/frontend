@@ -1,6 +1,12 @@
 import type { BibEntry } from './bib-parser';
-import type { RetractedItemInfo } from '../latex/latex-linter';
 import { getRetractionInfo } from '@/features/library';
+
+export interface RetractedItemInfo {
+  title?: string;
+  reason?: string;
+  nature?: string;
+  noticeUrl?: string;
+}
 
 /** Natures that Zotero does not warn about; only real retractions are flagged. */
 const NON_RETRACTION_NATURES = new Set(['expression_of_concern', 'correction']);

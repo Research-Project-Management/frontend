@@ -128,8 +128,8 @@ export const UnifiedDiffViewer = React.memo(function UnifiedDiffViewer({
                   key={lIdx}
                   className={cn(
                     'flex items-start px-2 py-0.5 leading-5 font-mono transition-colors',
-                    isAdded && 'bg-emerald-500/10 text-emerald-900 dark:text-emerald-200 border-l-2 border-emerald-500',
-                    isDeleted && 'bg-rose-500/10 text-rose-900 dark:text-rose-200 border-l-2 border-rose-500 line-through opacity-85',
+                    isAdded && 'bg-success/10 text-success border-l border-success',
+                    isDeleted && 'bg-destructive/10 text-destructive border-l border-destructive line-through opacity-85',
                     !isAdded && !isDeleted && 'text-muted-foreground hover:bg-muted/30'
                   )}
                 >
@@ -140,7 +140,7 @@ export const UnifiedDiffViewer = React.memo(function UnifiedDiffViewer({
                   </div>
 
                   {/* Prefix Sign */}
-                  <span className="w-4 select-none shrink-0 font-bold">
+                  <span className="w-4 select-none shrink-0 font-semibold">
                     {isAdded ? '+' : isDeleted ? '-' : ' '}
                   </span>
 
@@ -151,8 +151,8 @@ export const UnifiedDiffViewer = React.memo(function UnifiedDiffViewer({
                         <span
                           key={wIdx}
                           className={cn(
-                            w.type === 'added' && 'bg-emerald-500/30 text-emerald-950 dark:text-emerald-100 font-semibold px-0.5 rounded',
-                            w.type === 'deleted' && 'bg-rose-500/30 text-rose-950 dark:text-rose-100 line-through px-0.5 rounded',
+                            w.type === 'added' && 'bg-success/20 text-success font-semibold px-0.5 rounded',
+                            w.type === 'deleted' && 'bg-destructive/20 text-destructive line-through px-0.5 rounded',
                           )}
                         >
                           {w.text}

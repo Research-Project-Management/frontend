@@ -1,10 +1,15 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+﻿import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as Y from 'yjs';
+import * as syncProtocol from 'y-protocols/sync';
+import * as encoding from 'lib0/encoding';
+import * as decoding from 'lib0/decoding';
 import {
   YjsSocketIOProvider,
+  getOrCreateYjsProvider,
+  releaseYjsProvider,
   getOffsetFromRowCol,
   getRowColFromOffset,
-} from '@/features/editor/coordinators/services/realtime/yjs-socket-provider';
+} from '@/features/editor/sdk';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { yCollab } from 'y-codemirror.next';
@@ -255,6 +260,79 @@ describe('Editor Real-Time Socket.IO & Yjs Collaboration Subsystem', () => {
       view.destroy();
       provider.destroy();
       doc.destroy();
+    });
+  });
+
+  describe('4. Provider Pooling & Two-Way CRDT Handshake', () => {
+    it('should reuse provider instance with ref counting', () => {
+      const p1 = getOrCreateYjsProvider('proj-pool', 'file-pool');
+      const p2 = getOrCreateYjsProvider('proj-pool', 'file-pool');
+      expect(p1).toBe(p2);
+
+      releaseYjsProvider('proj-pool', 'file-pool');
+      expect(p1.isDestroyed).toBe(false);
+
+      releaseYjsProvider('proj-pool', 'file-pool');
+      expect(p1.isDestroyed).toBe(true);
+    });
+
+    it('should handle simulated server SyncStep2 + SyncStep1 payload and produce doc:sync-step-2 reply', () => {
+      const clientDoc = new Y.Doc();
+      const serverDoc = new Y.Doc();
+
+      // Server has existing content
+      serverDoc.getText('latex').insert(0, 'Server authoritative content');
+
+      // Client had offline local edit
+      clientDoc.getText('latex').insert(0, 'Local offline edit: ');
+
+      const emittedEvents: Array<{ event: string; payload: any }> = [];
+      const mockSocket: any = {
+        connected: true,
+        emit: vi.fn((event: string, payload: any) => {
+          emittedEvents.push({ event, payload });
+        }),
+      };
+
+      const provider = new YjsSocketIOProvider('p-test', 'd-test', clientDoc);
+      (provider as any).socket = mockSocket;
+
+      // Server prepares reply to client's SyncStep1:
+      // It includes writeSyncStep2 (server missing to client) + writeSyncStep1 (server state vector)
+      const serverEncoder = encoding.createEncoder();
+      const clientStateVector = Y.encodeStateVector(clientDoc);
+      syncProtocol.writeSyncStep2(serverEncoder, serverDoc, clientStateVector);
+      syncProtocol.writeSyncStep1(serverEncoder, serverDoc);
+      const serverPayload = encoding.toUint8Array(serverEncoder);
+
+      // Simulate client receiving the handshake response:
+      const decoder = decoding.createDecoder(serverPayload);
+      const replyEncoder = encoding.createEncoder();
+      while (decoding.hasContent(decoder)) {
+        syncProtocol.readSyncMessage(decoder, replyEncoder, clientDoc, 'socket.io');
+      }
+
+      // 1. Client doc should now have received server content
+      expect(clientDoc.getText('latex').toString()).toContain('Server authoritative content');
+
+      // 2. replyEncoder should have generated a SyncStep2 message for the server
+      expect(encoding.length(replyEncoder)).toBeGreaterThan(0);
+
+      // 3. Applying that reply to server should synchronize server doc
+      const clientReply = encoding.toUint8Array(replyEncoder);
+      const serverReplyDecoder = decoding.createDecoder(clientReply);
+      while (decoding.hasContent(serverReplyDecoder)) {
+        syncProtocol.readSyncMessage(serverReplyDecoder, encoding.createEncoder(), serverDoc, 'client');
+      }
+
+      // Both docs must be in full mathematical convergence!
+      expect(serverDoc.getText('latex').toString()).toEqual(clientDoc.getText('latex').toString());
+      expect(serverDoc.getText('latex').toString()).toContain('Local offline edit: ');
+      expect(serverDoc.getText('latex').toString()).toContain('Server authoritative content');
+
+      provider.destroy();
+      serverDoc.destroy();
+      clientDoc.destroy();
     });
   });
 });

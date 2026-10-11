@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * useCitationPickerActions.ts
@@ -17,7 +17,7 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk';
 import { formatBibEntryToBibtex } from '@/features/editor/domain/citation/citation-formatter';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import type { BibEntry } from '@/features/editor/domain/citation/bib-parser';

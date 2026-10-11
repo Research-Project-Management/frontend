@@ -35,6 +35,8 @@ import {
   createFileSchema,
   createFolderSchema,
   renameItemSchema,
+  extractProjectId,
+  extractDocumentContentString,
 } from '@/features/editor/domain/types';
 import {
   usePageStore,
@@ -51,8 +53,8 @@ import {
 } from '@/features/editor/ui/hooks/use-core';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { workspaceCoordinator } from '@/features/editor/coordinators/workspace.coordinator';
-import type { EditorStorageItem as StorageItem } from '@/features/editor/coordinators/services/storage.service';
-import { manuscriptService, type LinkedFileDto } from '@/features/editor/coordinators/services/manuscript.service';
+import type { EditorStorageItem as StorageItem } from '@/features/editor/sdk';
+import { manuscriptService, type LinkedFileDto } from '@/features/editor/sdk';
 import { StorageFileRow } from './FileTreeNodes';
 import { UploadConflictDialog } from './UploadConflictDialog';
 import { FileOutlineSection } from './FileOutlineSection';
@@ -138,12 +140,8 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   });
 
   const projectId =
-    (typeof parentPage?.projectId === 'string'
-      ? parentPage.projectId
-      : (parentPage?.projectId as any)?.id) ||
-    (typeof currentPage?.projectId === 'string'
-      ? currentPage.projectId
-      : (currentPage?.projectId as any)?.id) ||
+    extractProjectId(parentPage) ||
+    extractProjectId(currentPage) ||
     '';
 
   const mainFileId =
@@ -176,7 +174,11 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     }
     if (files && Array.isArray(files)) {
       for (const f of files) {
-        allFiles.push(f as any);
+        allFiles.push({
+          id: f.id,
+          title: f.title || (f as { name?: string }).name,
+          content: typeof f.content === 'string' ? f.content : undefined,
+        });
       }
     }
     const names = allFiles.map((f) => f.title || f.name || 'untitled.tex');
@@ -440,9 +442,10 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   const handleCreateFolder = useCallback(() => {
     const name = newFolderName.trim();
     const parsed = createFolderSchema.safeParse({ name });
-    if (!parentPageId || !projectId || !parsed.success) return;
+    const effectiveProjectId = projectId || parentPageId;
+    if (!parentPageId || !parsed.success) return;
     createFolder.mutate(
-      { name: parsed.data.name, projectId, pageId: parentPageId },
+      { name: parsed.data.name, projectId: effectiveProjectId, pageId: parentPageId },
       {
         onSuccess: () => {
           setIsCreatingFolder(false);
@@ -727,13 +730,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
                 ? displayName(currentPage.title)
                 : 'main.tex'
           }
-          docContent={
-            typeof currentPage?.content === 'string'
-              ? currentPage.content
-              : (currentPage?.content as any)?.source ||
-                (currentPage?.content as any)?.text ||
-                ''
-          }
+          docContent={extractDocumentContentString(currentPage?.content)}
         />
       </div>
 

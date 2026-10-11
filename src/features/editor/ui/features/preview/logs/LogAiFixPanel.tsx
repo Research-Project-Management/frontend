@@ -4,7 +4,7 @@ import React from 'react';
 import { Check, Loader2 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { LogEntry } from '@/features/editor/domain/types';
-import type { AiErrorFixResult } from '@/features/editor/coordinators/services/ai-error-assist.service';
+import type { AiErrorFixResult } from '@/features/editor/sdk';
 
 export interface LogAiFixPanelProps {
   entry: LogEntry;
@@ -28,7 +28,7 @@ export function LogAiFixPanel({
       role="region"
       aria-label="AI Error Assist"
       onClick={(e) => e.stopPropagation()}
-      className="ml-6 mt-2 pl-3.5 pr-2 py-2 border-l-2 border-ai/40 text-xs space-y-2.5 select-text"
+      className="ml-6 mt-2 pl-3.5 pr-2 py-2 border-l border-ai/40 text-xs space-y-2.5 select-text"
     >
       <div className="flex items-center justify-between">
         <h4 className="font-semibold text-13 text-foreground tracking-tight">

@@ -8,7 +8,9 @@
  * Guarantees zero unhandled network errors and zero polling spam when offline / disconnected.
  */
 
-import { useEffect, useMemo, useContext } from 'react';
+import { useEffect, useMemo, useContext, useState, useRef } from 'react';
+import type * as Y from 'yjs';
+import type { Awareness } from 'y-protocols/awareness';
 import { QueryClient, QueryClientContext, useQuery } from '@tanstack/react-query';
 import { editorCommandBus } from '../../coordinators/command-bus';
 import {
@@ -17,8 +19,29 @@ import {
 } from '../../store/collaboration.store';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
 import { getCollaboratorColor } from '../features/editor/CollaboratorCursors';
+import {
+  getOrCreateYjsProvider,
+  releaseYjsProvider,
+  type YjsSocketIOProvider,
+  type ConnectionStatus,
+} from '@/features/editor/sdk';
+import { getCachedUser } from '@/features/auth/services/auth.service';
 
 export type { CollaboratorPresenceInfo };
+
+interface MemberRecord {
+  id?: string;
+  userId?: string;
+  name?: string;
+  email?: string;
+  avatar?: string;
+  user?: {
+    id?: string;
+    name?: string;
+    email?: string;
+    avatar?: string;
+  };
+}
 
 let _fallbackQueryClient: QueryClient | null = null;
 function getFallbackQueryClient(): QueryClient {
@@ -92,8 +115,11 @@ export function useCollaborationPresence(
       queryFn: async () => {
         if (!projectId) return [];
         try {
-          const res = await ProjectService.getMembers(projectId);
-          return res?.members || (res as any)?.data?.members || [];
+          const res = (await ProjectService.getMembers(projectId)) as {
+            members?: MemberRecord[];
+            data?: { members?: MemberRecord[] };
+          } | null;
+          return res?.members || res?.data?.members || [];
         } catch {
           return [];
         }
@@ -111,9 +137,9 @@ export function useCollaborationPresence(
       return storeCollaborators;
     }
 
-    const memberMap = new Map<string, any>();
-    for (const m of projectMembers) {
-      const id = m.userId || (m as any).id || m.user?.id;
+    const memberMap = new Map<string, MemberRecord>();
+    for (const m of (projectMembers as MemberRecord[])) {
+      const id = m.userId || m.id || m.user?.id;
       if (id) {
         memberMap.set(id, m);
       }
@@ -125,9 +151,9 @@ export function useCollaborationPresence(
       const userObj = member.user || {};
       return {
         ...c,
-        name: c.name || userObj.name || (member as any).name || 'Collaborator',
-        email: c.email || userObj.email || (member as any).email,
-        avatar: c.avatar || userObj.avatar || (member as any).avatar,
+        name: c.name || userObj.name || member.name || 'Collaborator',
+        email: c.email || userObj.email || member.email,
+        avatar: c.avatar || userObj.avatar || member.avatar,
         color: c.color || getCollaboratorColor(c.id),
       };
     });
@@ -143,3 +169,83 @@ export function useCollaborationPresence(
 export function useCollaborationStream(_projectId?: string | null, _pageId?: string | null) {
   // Pure UI shell - no-op to eliminate legacy EventSource network errors
 }
+
+export interface UseEditorCollaborationProps {
+  projectId?: string | null;
+  fileId?: string | null;
+  initialValue?: string;
+  enabled?: boolean;
+}
+
+export interface UseEditorCollaborationReturn {
+  yText: Y.Text | null;
+  awareness: Awareness | null;
+  provider: YjsSocketIOProvider | null;
+  isSynced: boolean;
+  status: ConnectionStatus;
+}
+
+/**
+ * useEditorCollaboration
+ *
+ * Coordinates Yjs CRDT session and Socket.IO real-time channel per document tab.
+ * Leverages provider pooling so switching tabs reuses warm awareness and avoids socket churn.
+ */
+export function useEditorCollaboration({
+  projectId,
+  fileId,
+  initialValue,
+  enabled = true,
+}: UseEditorCollaborationProps): UseEditorCollaborationReturn {
+  const [provider, setProvider] = useState<YjsSocketIOProvider | null>(null);
+  const [isSynced, setIsSynced] = useState<boolean>(false);
+  const [status, setStatus] = useState<ConnectionStatus>('connecting');
+  const initialValueRef = useRef(initialValue);
+  if (!initialValueRef.current && initialValue) {
+    initialValueRef.current = initialValue;
+  }
+
+  useEffect(() => {
+    if (!enabled || !projectId || !fileId) {
+      setProvider(null);
+      setIsSynced(false);
+      setStatus('disconnected');
+      return;
+    }
+
+    const cachedUser = getCachedUser();
+    const user = cachedUser
+      ? {
+          id: cachedUser.id,
+          name: cachedUser.name || 'Collaborator',
+          avatar: cachedUser.avatar,
+          color: getCollaboratorColor(cachedUser.id),
+        }
+      : undefined;
+
+    const instance = getOrCreateYjsProvider(projectId, fileId, {
+      user,
+      initialContent: initialValueRef.current,
+      commandBus: editorCommandBus,
+      onStatusChange: (s) => setStatus(s),
+      onSynced: () => setIsSynced(true),
+    });
+
+    setProvider(instance);
+    setIsSynced(instance.isSynced);
+    setStatus(instance.status);
+
+    return () => {
+      releaseYjsProvider(projectId, fileId);
+    };
+  }, [enabled, projectId, fileId]);
+
+  return {
+    yText: provider ? provider.yText : null,
+    awareness: provider ? provider.awareness : null,
+    provider,
+    isSynced,
+    status,
+  };
+}
+

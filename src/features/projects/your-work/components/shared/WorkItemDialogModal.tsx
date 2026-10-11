@@ -1,18 +1,16 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { DetailModal as WorkItemDialog } from '@/features/projects/project-id/work-items/components/modals/DetailModal';
 import {
+  WorkItemDialog,
   useProjectWorkItems,
   useUpdateWorkItem,
   useDeleteWorkItem,
   useDuplicateWorkItem,
-} from '@/features/projects/project-id/work-items/hooks/use-work-item';
-import {
   DEFAULT_WORK_ITEM_STATES,
   type WorkItemMutationInput,
-} from '@/features/projects/project-id/work-items/types/work-item.types';
+} from '@/features/projects/project-id/work-items';
 import { useProjectDetails } from '@/features/projects/shell/hooks/use-project';
 
 export interface WorkItemDialogModalProps {
@@ -50,13 +48,13 @@ export function WorkItemDialogModal({
   const pDetails = projectDetails as any;
   const members = pDetails?.members || [];
 
-  const invalidateWorkspaceData = () => {
+  const invalidateWorkspaceData = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['your-work'] });
     queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
     queryClient.invalidateQueries({ queryKey: ['project-work-items', projectId] });
-  };
+  }, [queryClient, projectId]);
 
-  const handleSave = (data: WorkItemMutationInput) => {
+  const handleSave = useCallback((data: WorkItemMutationInput) => {
     updateWorkItemMutation.mutate(
       {
         workItemId,
@@ -70,9 +68,9 @@ export function WorkItemDialogModal({
         },
       },
     );
-  };
+  }, [updateWorkItemMutation, workItemId, projectId, invalidateWorkspaceData]);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     deleteWorkItemMutation.mutate(
       { workItemId, id: workItemId, projectId },
       {
@@ -82,9 +80,9 @@ export function WorkItemDialogModal({
         },
       },
     );
-  };
+  }, [deleteWorkItemMutation, workItemId, projectId, invalidateWorkspaceData, onOpenChange]);
 
-  const handleDuplicate = () => {
+  const handleDuplicate = useCallback(() => {
     duplicateWorkItemMutation.mutate(
       { workItemId, id: workItemId, projectId },
       {
@@ -93,7 +91,7 @@ export function WorkItemDialogModal({
         },
       },
     );
-  };
+  }, [duplicateWorkItemMutation, workItemId, projectId, invalidateWorkspaceData]);
 
   if (!workItem) return null;
 

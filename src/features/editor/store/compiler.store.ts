@@ -11,6 +11,9 @@ export interface DocumentCompilerState {
   // ── Dirty content tracking ─────────────────────────────────────────────
   /** fileId → latest editor content (updated on every keystroke, debounced ~300ms) */
   dirtyContentMap: Map<string, string>;
+  /** Set of dirty file IDs for O(1) reactive checking without content churn */
+  dirtyFileIds: Set<string>;
+  isDirtyFile: (fileId: string) => boolean;
   markDirty: (fileId: string, content: string) => void;
   clearDirty: (fileId: string) => void;
   clearAllDirty: () => void;
@@ -46,31 +49,47 @@ export interface DocumentCompilerState {
 export const useDocumentCompilerStore = create<DocumentCompilerState>()((set, get) => ({
   // ── Dirty tracking ────────────────────────────────────────────────────
   dirtyContentMap: new Map(),
+  dirtyFileIds: new Set(),
+
+  isDirtyFile(fileId: string) {
+    return get().dirtyFileIds.has(fileId);
+  },
 
   markDirty(fileId, content) {
     set((s) => {
-      // If already dirty, update buffer in-place without triggering cascade store subscriber re-renders
-      if (s.dirtyContentMap.has(fileId)) {
-        s.dirtyContentMap.set(fileId, content);
+      s.dirtyContentMap.set(fileId, content);
+      if (s.dirtyFileIds.has(fileId)) {
         return s;
       }
-      const next = new Map(s.dirtyContentMap);
-      next.set(fileId, content);
-      return { dirtyContentMap: next };
+      const nextDirtyFileIds = new Set(s.dirtyFileIds);
+      nextDirtyFileIds.add(fileId);
+      const nextMap = new Map(s.dirtyContentMap);
+      return {
+        dirtyContentMap: nextMap,
+        dirtyFileIds: nextDirtyFileIds,
+      };
     });
   },
 
   clearDirty(fileId) {
     set((s) => {
-      if (!s.dirtyContentMap.has(fileId)) return s;
-      const next = new Map(s.dirtyContentMap);
-      next.delete(fileId);
-      return { dirtyContentMap: next };
+      s.dirtyContentMap.delete(fileId);
+      if (!s.dirtyFileIds.has(fileId)) return s;
+      const nextDirtyFileIds = new Set(s.dirtyFileIds);
+      nextDirtyFileIds.delete(fileId);
+      const nextMap = new Map(s.dirtyContentMap);
+      return {
+        dirtyContentMap: nextMap,
+        dirtyFileIds: nextDirtyFileIds,
+      };
     });
   },
 
   clearAllDirty() {
-    set({ dirtyContentMap: new Map() });
+    set({
+      dirtyContentMap: new Map(),
+      dirtyFileIds: new Set(),
+    });
   },
 
   getDirtyFiles() {

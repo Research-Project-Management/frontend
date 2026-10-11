@@ -57,3 +57,18 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// Global fetch fallback to guarantee network isolation across unit test suites
+if (typeof globalThis.fetch === 'undefined' || !(globalThis.fetch as any)._isMockFunction) {
+  const defaultMockFetch = vi.fn().mockImplementation(async () => {
+    return new Response(
+      JSON.stringify({ ok: true, data: {}, items: [], collections: [], pagination: {} }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
+  });
+  (defaultMockFetch as any)._isMockFunction = true;
+  globalThis.fetch = defaultMockFetch;
+}
+

@@ -113,14 +113,11 @@ function downloadFile(filename: string, content: string, mimeType = 'text/plain;
 function sanitizeCslHtml(html?: string): string {
   if (!html) return '';
   try {
-    const purify = (DOMPurify as any)?.default || DOMPurify;
-    if (purify && typeof purify.sanitize === 'function') {
-      const sanitized = purify.sanitize(html, {
-        ALLOWED_TAGS: ['i', 'b', 'em', 'strong', 'span', 'a', 'div', 'p', 'sub', 'sup'],
-        ALLOWED_ATTR: ['href', 'class', 'target', 'rel'],
-      });
-      if (sanitized) return sanitized;
-    }
+    const sanitized = DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: ['i', 'b', 'em', 'strong', 'span', 'a', 'div', 'p', 'sub', 'sup'],
+      ALLOWED_ATTR: ['href', 'class', 'target', 'rel'],
+    });
+    if (sanitized) return sanitized;
   } catch {
     // If sanitization fails, return original html/text rather than blanking out citation
   }

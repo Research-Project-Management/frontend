@@ -18,7 +18,7 @@ export function ProjectHeaderCard({ project }: ProjectHeaderCardProps) {
     <div className="relative overflow-hidden rounded-xl border border-border bg-card">
       {/* Cover / Gradient Header */}
       <div
-        className="h-28 sm:h-36 w-full bg-gradient-to-r from-primary/10 via-primary/5 to-muted border-b border-border/40 relative"
+        className="h-28 sm:h-36 w-full bg-gradient-to-r from-muted/60 via-muted/30 to-muted/10 border-b border-border/40 relative"
         style={
           project.coverImage
             ? {
@@ -36,7 +36,7 @@ export function ProjectHeaderCard({ project }: ProjectHeaderCardProps) {
       <div className="px-5 pb-5 pt-0 -mt-10 sm:-mt-12 relative flex flex-col gap-3">
         <div className="flex items-end justify-between gap-3">
           {/* Avatar Icon */}
-          <div className="size-16 sm:size-20 rounded-xl border-4 border-card bg-muted flex items-center justify-center text-primary font-semibold text-xl sm:text-2xl select-none shrink-0 overflow-hidden">
+          <div className="size-16 sm:size-20 rounded-xl border-4 border-card bg-muted flex items-center justify-center text-foreground font-semibold text-xl sm:text-2xl select-none shrink-0 overflow-hidden">
             {project.avatar ? (
               <img
                 src={project.avatar}
@@ -44,7 +44,7 @@ export function ProjectHeaderCard({ project }: ProjectHeaderCardProps) {
                 className="size-full object-cover"
               />
             ) : (
-              <FolderKanban className="size-8 sm:size-10 text-primary" />
+              <FolderKanban className="size-8 sm:size-10 text-foreground" />
             )}
           </div>
 
@@ -52,7 +52,7 @@ export function ProjectHeaderCard({ project }: ProjectHeaderCardProps) {
           <div className="pb-1">
             <Badge
               variant="outline"
-              className="text-11 font-mono font-medium tracking-wider uppercase px-2 py-0.5 bg-muted/60 text-muted-foreground border-border"
+              className="text-11 font-mono font-medium tracking-normal px-2 py-0.5 bg-muted text-foreground border-border"
             >
               {project.identifier}
             </Badge>
@@ -66,7 +66,7 @@ export function ProjectHeaderCard({ project }: ProjectHeaderCardProps) {
           </h1>
 
           {description ? (
-            <div className="text-13 text-muted-foreground leading-relaxed">
+            <div className="text-13 text-foreground/70 leading-relaxed">
               <p className={!isExpanded && isLongDescription ? 'line-clamp-2' : ''}>
                 {description}
               </p>
@@ -74,7 +74,7 @@ export function ProjectHeaderCard({ project }: ProjectHeaderCardProps) {
                 <button
                   type="button"
                   onClick={() => setIsExpanded(!isExpanded)}
-                  className="mt-1 flex items-center gap-1 text-12 font-medium text-primary hover:underline cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="mt-1 flex items-center gap-1 text-12 font-medium text-foreground hover:underline cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   {isExpanded ? (
                     <>
@@ -89,7 +89,7 @@ export function ProjectHeaderCard({ project }: ProjectHeaderCardProps) {
               )}
             </div>
           ) : (
-            <p className="text-13 text-muted-foreground italic">
+            <p className="text-13 text-foreground/70 italic">
               No description or project charter provided yet.
             </p>
           )}

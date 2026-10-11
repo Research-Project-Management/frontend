@@ -19,6 +19,7 @@ import {
   AlertCircle,
   ChevronRight,
   ChevronLeft,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLogViewerActions } from './hooks/useLogViewerActions';
@@ -29,17 +30,13 @@ import { usePageStore, useCompileStore } from '@/features/editor/store';
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import {
+  manuscriptService,
+  listAuxFiles,
   suggestLatexFix,
   type AiErrorFixResult,
-} from '@/features/editor/coordinators/services/ai-error-assist.service';
-import {
-  listAuxFiles,
   type AuxFileItem,
-} from '@/features/editor/coordinators/services/compiler.service';
-import {
-  manuscriptService,
   type DiagnosticReportDto,
-} from '@/features/editor/coordinators/services/manuscript.service';
+} from '@/features/editor/sdk';
 
 import type {
   LogEntry,
@@ -127,6 +124,14 @@ export function CompilerLogs({
     [enrichedReport],
   );
 
+  const handleClearCacheAndCompile = useCallback(() => {
+    if (onClearCacheAndCompile) {
+      onClearCacheAndCompile();
+    } else {
+      editorCommandBus.dispatch({ type: 'compiler:trigger', forceClean: true });
+    }
+  }, [onClearCacheAndCompile]);
+
   const {
     applyQuickFix,
     applyAiFix,
@@ -136,7 +141,7 @@ export function CompilerLogs({
     engine,
     projectId,
     onCompile,
-    onClearCacheAndCompile,
+    onClearCacheAndCompile: handleClearCacheAndCompile,
   });
 
   const handleApplyQuickFix = (
@@ -163,6 +168,23 @@ export function CompilerLogs({
     }
     return DEFAULT_OUTPUT_FILES;
   }, [auxFiles]);
+
+  const handleDownloadRawLog = useCallback(() => {
+    if (!log || !log.trim()) {
+      toast.info('Chưa có dữ liệu log biên dịch để tải về');
+      return;
+    }
+    const blob = new Blob([log], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'output.log';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Đã tải xuống tệp output.log');
+  }, [log]);
 
   // AI Error Assist state
   const [fixState, setFixState] = useState<
@@ -295,8 +317,25 @@ export function CompilerLogs({
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [handleNextError, handlePrevError]);
+
+  // Sync with external error-stepped events from navigation coordinator
+  useEffect(() => {
+    const unsubStepped = editorCommandBus.subscribe('editor:error-stepped', (cmd) => {
+      if (cmd.errorIndex !== undefined && cmd.errorIndex >= 0) {
+        setCurrentErrorIdx(cmd.errorIndex);
+        const el = document.getElementById(`log-entry-err-${cmd.errorIndex}`);
+        el?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+      }
+    });
+
+    return () => {
+      unsubStepped();
+    };
+  }, []);
 
   const totalLogsCount = parsed.errors.length + parsed.warnings.length + parsed.badBoxes.length;
 
@@ -504,10 +543,11 @@ export function CompilerLogs({
 
       {/* ── Bottom Action Bar (Clear cached files & Other logs and files) ── */}
       <CompilerLogsFooter
-        onClearCacheAndCompile={onClearCacheAndCompile}
+        onClearCacheAndCompile={handleClearCacheAndCompile}
         outputFiles={outputFiles}
         onDownloadFile={downloadFile}
         onDownloadAll={downloadAllArtifacts}
+        onDownloadRawLog={handleDownloadRawLog}
       />
     </div>
   );

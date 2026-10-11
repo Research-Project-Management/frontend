@@ -17,7 +17,7 @@ import { highlightLineEffect, clearHighlightEffect } from '../adapters/codemirro
 export const latexLanguage = StreamLanguage.define({
   ...stex,
   languageData: {
-    commentTokens: { line: '% ' },
+    commentTokens: { line: '%' },
   },
 });
 
@@ -55,15 +55,13 @@ export const lineHighlightField = StateField.define<DecorationSet>({
 
 export const synctexHighlightTheme = EditorView.baseTheme({
   '.cm-synctex-flash': {
-    backgroundColor: 'rgba(234, 179, 8, 0.24) !important',
-    borderLeft: '4px solid #eab308 !important',
-    boxShadow: 'inset 0 0 10px rgba(234, 179, 8, 0.12)',
-    transition: 'background-color 0.4s ease, border-left-color 0.4s ease',
+    position: 'relative',
+    animation: 'cm-synctex-pulse 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+    borderRadius: '2px',
   },
   '.cm-error-line': {
-    backgroundColor: 'rgba(239, 68, 68, 0.20) !important',
-    borderLeft: '4px solid #ef4444 !important',
-    boxShadow: 'inset 0 0 10px rgba(239, 68, 68, 0.12)',
-    transition: 'background-color 0.4s ease, border-left-color 0.4s ease',
+    position: 'relative',
+    animation: 'cm-error-pulse 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+    borderRadius: '2px',
   },
 });

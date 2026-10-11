@@ -8,8 +8,6 @@ export * from "./breadcrumb";
 export * from "./button";
 export * from "./calendar";
 export * from "./card";
-// Note: "chart" (recharts) and "carousel" (embla-carousel) are heavy isolated components
-// and should be imported directly (e.g. from '@/shared/components/ui/chart') to avoid polluting the core UI bundle.
 export * from "./checkbox";
 export * from "./collapsible";
 export * from "./command";

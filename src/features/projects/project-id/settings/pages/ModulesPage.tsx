@@ -13,7 +13,7 @@ import type { ModuleDef } from '../types/module.types';
 // ── Module Registry ───────────────────────────────────────────────────────────
 
 const MODULES: ModuleDef[] = [
-  { id: 'work-items', label: 'Work items',  desc: 'Research activities, milestones and work item tracking', icon: WorkItemsIcon, locked: true },
+  { id: 'work-items', label: 'Work items',  desc: 'Research activities and work item tracking', icon: WorkItemsIcon, locked: true },
   { id: 'pages',      label: 'Pages',       desc: 'Collaborative documents, notes and manuscripts', icon: FileText },
 ];
 

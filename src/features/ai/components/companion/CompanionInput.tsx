@@ -966,13 +966,6 @@ export function CompanionInput({
         </div>
       </div>
 
-      {/* Plane Style Disclaimer Footer */}
-      {showDisclaimer && (
-        <p className='text-12 text-muted-foreground text-center select-none pt-2 pb-0.5 leading-normal'>
-          AI Assistant can make mistakes, please double-check responses.
-        </p>
-      )}
-
       {/* Library Picker Modal */}
       {isLibraryModalOpen && (
         <LibraryPickerModal

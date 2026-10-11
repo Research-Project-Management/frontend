@@ -374,6 +374,10 @@ export async function apiFetch<T>(
       path.includes('/auth/forgot-password') ||
       path.includes('/auth/oauth/exchange');
 
+    if (!response) {
+      return {} as T;
+    }
+
     if (response.status === 401 && !options.skipAuth && !isUnauthenticatedAuthEndpoint) {
       const refreshResult = await tryRefresh();
 

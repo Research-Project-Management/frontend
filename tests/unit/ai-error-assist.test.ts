@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { suggestLatexFix } from '@/features/editor/coordinators/services/ai-error-assist.service';
+﻿import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { suggestLatexFix } from '@/features/editor/sdk';
 
 describe('AI Error Assist Service', () => {
   beforeEach(() => {

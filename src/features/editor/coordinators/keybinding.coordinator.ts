@@ -11,9 +11,12 @@
  * - Platform awareness (Mac Cmd vs Windows/Linux Ctrl).
  */
 
-import { editorCommandBus } from './command-bus';
+import { editorCommandBus, getActiveEditorInstance } from './command-bus';
 import { sessionCoordinator } from './session.coordinator';
 import { useLayoutStore } from '../store/layout.store';
+import { useDocumentCollaborationStore } from '../store/collaboration.store';
+import { useSettingsStore } from '../store/settings.store';
+import { gotoLine } from '@codemirror/search';
 
 export type KeybindingScope = 'any' | 'editorTextFocus' | 'viewerFocus';
 
@@ -59,7 +62,7 @@ export class KeybindingCoordinatorRegistry {
       scope: 'any',
       handler: (e) => {
         e.preventDefault();
-        editorCommandBus.dispatch({ type: 'compiler:trigger', reason: 'shortcut' } as any);
+        editorCommandBus.dispatch({ type: 'compiler:trigger', reason: 'shortcut' });
       },
     });
 
@@ -83,7 +86,7 @@ export class KeybindingCoordinatorRegistry {
       scope: 'any',
       handler: (e) => {
         e.preventDefault();
-        editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'quick-open' as any });
+        editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'quick-open' });
       },
     });
 
@@ -169,17 +172,171 @@ export class KeybindingCoordinatorRegistry {
       },
     });
 
-    // 10. Global Search Across Files (Mod-Shift-f)
+    // 10. Global Search Across Files (Mod-Shift-f - Overleaf Parity)
     this.register({
       id: 'workbench.findInFiles',
       key: 'Mod-Shift-f',
-      description: 'Search across all project files',
+      description: 'Search across all project files (Ctrl+Shift+F)',
       scope: 'any',
       handler: (e) => {
         e.preventDefault();
+        let selectedText: string | undefined;
+        if (typeof window !== 'undefined') {
+          const sel = window.getSelection()?.toString();
+          if (sel && sel.trim().length > 0 && sel.length < 200) {
+            selectedText = sel.trim();
+          }
+        }
         useLayoutStore.getState().setSidebarLeftOpen(true);
         useLayoutStore.getState().setActiveSidebarTab('search');
-        editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Search' });
+        editorCommandBus.dispatch({
+          type: 'sidebar:open-panel',
+          panel: 'Search',
+          query: selectedText,
+        });
+      },
+    });
+
+    // 10b. Global Replace Across Files (Mod-Shift-h - Overleaf Parity)
+    this.register({
+      id: 'workbench.replaceInFiles',
+      key: 'Mod-Shift-h',
+      description: 'Search & Replace across all project files (Ctrl+Shift+H)',
+      scope: 'any',
+      handler: (e) => {
+        e.preventDefault();
+        let selectedText: string | undefined;
+        if (typeof window !== 'undefined') {
+          const sel = window.getSelection()?.toString();
+          if (sel && sel.trim().length > 0 && sel.length < 200) {
+            selectedText = sel.trim();
+          }
+        }
+        useLayoutStore.getState().setSidebarLeftOpen(true);
+        useLayoutStore.getState().setActiveSidebarTab('search');
+        editorCommandBus.dispatch({
+          type: 'sidebar:open-panel',
+          panel: 'Search',
+          query: selectedText,
+          showReplace: true,
+        });
+      },
+    });
+
+    // 11. Keyboard Shortcuts Help (F1 or Mod-/)
+    this.register({
+      id: 'workbench.shortcutsHelpF1',
+      key: 'F1',
+      description: 'Open Keyboard Shortcuts Reference',
+      scope: 'any',
+      handler: (e) => {
+        e.preventDefault();
+        editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'shortcuts' });
+      },
+    });
+
+    this.register({
+      id: 'workbench.shortcutsHelpSlash',
+      key: 'Mod-/',
+      description: 'Open Keyboard Shortcuts Reference',
+      scope: 'any',
+      handler: (e) => {
+        if (this.isEditorFocused()) {
+          // Let CodeMirror toggle LaTeX comment (%)
+          return;
+        }
+        e.preventDefault();
+        editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'shortcuts' });
+      },
+    });
+
+    // 12. Add Review Comment (Mod-Alt-m - Overleaf Parity)
+    this.register({
+      id: 'workbench.addComment',
+      key: 'Mod-Alt-m',
+      description: 'Add Review Comment to Selected Text',
+      scope: 'any',
+      handler: (e) => {
+        e.preventDefault();
+        const engine = getActiveEditorInstance();
+        let selectedText = '';
+        let startLine = 1;
+        let endLine = 1;
+
+        if (engine && typeof engine.getCursorPosition === 'function') {
+          const cursor = engine.getCursorPosition();
+          startLine = cursor?.line ?? 1;
+          endLine = cursor?.line ?? 1;
+        }
+
+        useDocumentCollaborationStore.getState().setPendingComment({
+          startLine,
+          endLine,
+          selectedText,
+        });
+
+        useLayoutStore.getState().setSidebarLeftOpen(true);
+        useLayoutStore.getState().setActiveSidebarTab('review');
+        editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
+      },
+    });
+
+    // 13. Jump to Line (Mod-g - Overleaf Parity)
+    this.register({
+      id: 'workbench.jumpToLine',
+      key: 'Mod-g',
+      description: 'Jump to Line in Editor (Ctrl+G)',
+      scope: 'any',
+      handler: (e) => {
+        const activeEl = typeof document !== 'undefined' ? document.activeElement : null;
+        const isEditor = activeEl?.closest('.cm-editor');
+        if (!isEditor) {
+          e.preventDefault();
+          const engine = getActiveEditorInstance();
+          if (engine && typeof engine.focus === 'function') {
+            engine.focus();
+          }
+          const view = engine?.getView?.() || (engine as any)?.view;
+          if (view) {
+            gotoLine(view);
+          }
+        }
+      },
+    });
+
+    // 14. Table & Matrix Wizard (Mod-Shift-t - Overleaf Parity)
+    this.register({
+      id: 'editor.insertTable',
+      key: 'Mod-Shift-t',
+      description: 'Open Table & Matrix Wizard (Ctrl+Shift+T)',
+      scope: 'any',
+      handler: (e) => {
+        e.preventDefault();
+        editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'table-wizard' });
+      },
+    });
+
+    // 15. Toggle Source / Visual Editor Mode (Mod-Shift-v - Overleaf Parity)
+    this.register({
+      id: 'workbench.toggleEditorMode',
+      key: 'Mod-Shift-v',
+      description: 'Toggle Source / Visual Mode (Ctrl+Shift+V)',
+      scope: 'any',
+      handler: (e) => {
+        e.preventDefault();
+        useSettingsStore.getState().toggleEditorMode();
+      },
+    });
+
+    // 16. Word Count & Document Metrics (Mod-Shift-w - Overleaf Parity)
+    this.register({
+      id: 'workbench.wordCount',
+      key: 'Mod-Shift-w',
+      description: 'Open Word Count Dialog (Ctrl+Shift+W)',
+      scope: 'any',
+      handler: (e) => {
+        e.preventDefault();
+        editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'word-count' });
       },
     });
   }

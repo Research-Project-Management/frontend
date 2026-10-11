@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { collaborationService, type CollaborationEvent } from '@/features/editor/coordinators/services/collaboration.service';
+import { collaborationService, type CollaborationEvent } from '@/features/editor/sdk';
 import { useSettingsStore } from '@/features/editor/store';
-import { parseSyncTeX, LatexCompilerEngine } from '@/features/editor/coordinators/services/latex-compiler-engine.service';
+import { parseSyncTeX } from '@/features/editor/domain/document/synctex-index';
+import { LatexCompilerEngine } from '@/features/editor/coordinators/compilation-pipeline';
 import { fromAny, fromPartial } from '@/shared/lib/type-utilities';
 
 describe('Editor & Document End-to-End Integration Tests', () => {
@@ -91,7 +92,7 @@ describe('Editor & Document End-to-End Integration Tests', () => {
         pageId: 'page-123',
         type: 'suggestion-created',
         timestamp: Date.now(),
-        suggestion: fromPartial({ id: 'sugg-1', description: 'Fix typo' }),
+        suggestion: fromPartial({ id: 'sugg-1' } as any),
       };
 
       expect(messageHandler).toBeDefined();

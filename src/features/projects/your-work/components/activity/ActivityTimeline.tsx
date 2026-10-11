@@ -12,7 +12,7 @@ export interface ActivityTimelineProps {
   className?: string;
 }
 
-export function ActivityTimeline({
+export const ActivityTimeline = React.memo<ActivityTimelineProps>(function ActivityTimeline({
   activities = [],
   isLoading = false,
   onWorkItemClick,
@@ -38,6 +38,6 @@ export function ActivityTimeline({
       />
     </div>
   );
-}
+});
 
 export default ActivityTimeline;

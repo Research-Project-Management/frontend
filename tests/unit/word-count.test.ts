@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { countLatexWords } from '@/features/editor/components/editor/subcomponents/WordCountDialog';
+import { countLatexWords } from '@/features/editor/ui/modals/WordCountDialog';
 
 describe('countLatexWords (TeXcount utility)', () => {
   it('should return 0 stats for empty string', () => {

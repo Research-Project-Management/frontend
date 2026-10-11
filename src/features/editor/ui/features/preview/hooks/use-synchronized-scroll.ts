@@ -14,9 +14,9 @@
  */
 
 import { useEffect, useRef, useCallback } from 'react';
-import { editorCommandBus } from '../../../../coordinators/command-bus';
+import { editorCommandBus, getActiveEditorEngine } from '../../../../coordinators/command-bus';
 import { compilerCoordinator } from '../../../../coordinators/compiler.coordinator';
-import { LatexCompilerEngine } from '@/features/editor/coordinators/services/latex-compiler-engine.service';
+import { LatexCompilerEngine } from '@/features/editor/coordinators/compilation-pipeline';
 import type { SyncTeXMap } from '@/features/editor/domain';
 import type { SurfaceHandle } from '../PdfSurface';
 
@@ -104,6 +104,19 @@ export function useSynchronizedScroll({
         );
         if (page) {
           pdfSurfaceRef.current?.scrollToCoords?.(page, 0, 'auto');
+        } else if (numPages > 0) {
+          // Proportional scrolling fallback from Editor to Viewer (Overleaf parity)
+          const fraction =
+            cmd.fraction !== undefined
+              ? cmd.fraction
+              : cmd.totalLines && cmd.totalLines > 0
+                ? cmd.line / cmd.totalLines
+                : 0;
+          const rawTargetPage = fraction * numPages;
+          const targetPage = Math.min(numPages, Math.max(1, Math.floor(rawTargetPage) + 1));
+          const pageFraction = rawTargetPage - Math.floor(rawTargetPage);
+          const targetY = pageFraction * 842 * effectiveScale;
+          pdfSurfaceRef.current?.scrollToCoords?.(targetPage, targetY, 'auto');
         }
       }
     });
@@ -133,7 +146,24 @@ export function useSynchronizedScroll({
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(() => {
         const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
-        if (!effectiveMap) return;
+        if (!effectiveMap) {
+          // Proportional scrolling fallback from Viewer to Editor (Overleaf parity)
+          const activeEngine = getActiveEditorEngine();
+          const totalLines = activeEngine?.getLineCount?.() || 100;
+          if (numPages > 0) {
+            const overallFraction = (info.page - 1 + (info.fraction ?? 0)) / numPages;
+            const targetLine = Math.min(
+              totalLines,
+              Math.max(1, Math.round(overallFraction * totalLines))
+            );
+            editorCommandBus.dispatch({
+              type: 'editor:scroll-to-line',
+              line: targetLine,
+              smooth: true,
+            });
+          }
+          return;
+        }
 
         const resolved = LatexCompilerEngine.resolveReverse(
           info.fraction,
@@ -152,7 +182,7 @@ export function useSynchronizedScroll({
         }
       });
     },
-    [enabled, synctexMapRef, setDriverWithTimeout],
+    [enabled, synctexMapRef, numPages, setDriverWithTimeout],
   );
 
   return {

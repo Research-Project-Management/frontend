@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { suggestionService } from '@/features/editor/coordinators/services/suggestion.service';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { suggestionService } from '@/features/editor/sdk';
 import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
-import type { PageSuggestion, SuggestionType, SuggestionStatus } from '@/features/editor/types';
+import type { PageSuggestion, SuggestionType, SuggestionStatus } from '@/features/editor/domain/types';
 
 import * as api from '@/shared/lib/api';
 

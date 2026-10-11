@@ -6,7 +6,11 @@ import type { Item } from '@/features/library/types/library.types';
 import { cn } from "@/shared/lib/utils";
 
 interface AbstractSectionProps {
-  paper: Item;
+  item?: Item;
+  /** @deprecated Use item instead */
+  paper?: Item;
+  onUpdateItem?: (data: Partial<Item>) => void;
+  /** @deprecated Use onUpdateItem instead */
   onUpdatePaper?: (data: Partial<Item>) => void;
   hideHeader?: boolean;
   canEdit?: boolean;
@@ -20,16 +24,20 @@ function getAbstractValue(p: Item): string {
 }
 
 export default function AbstractSection({
-  paper,
+  item: propItem,
+  paper: propPaper,
+  onUpdateItem,
   onUpdatePaper,
   hideHeader = false,
   canEdit = true,
 }: AbstractSectionProps) {
-  const currentAbstract = getAbstractValue(paper);
+  const item = propItem || propPaper;
+  const currentAbstract = item ? getAbstractValue(item) : '';
   const [draft, setDraft] = useState(currentAbstract);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const handleUpdate = onUpdateItem || onUpdatePaper;
 
-  // On paper change, initialize draft directly from backend canonical abstract
+  // On item change, initialize draft directly from backend canonical abstract
   useEffect(() => {
     setDraft(currentAbstract || '');
   }, [currentAbstract]);
@@ -57,17 +65,18 @@ export default function AbstractSection({
   }, [adjustHeight]);
 
   const commit = useCallback(() => {
+    if (!item) return;
     const trimmed = draft.trim();
-    const existing = getAbstractValue(paper).trim();
+    const existing = getAbstractValue(item).trim();
     if (trimmed !== existing) {
-      if (onUpdatePaper) {
-        onUpdatePaper({
+      if (handleUpdate) {
+        handleUpdate({
           abstract: trimmed || undefined,
           abstractNote: trimmed || undefined,
         } as unknown as Partial<Item>);
       }
     }
-  }, [draft, paper, onUpdatePaper]);
+  }, [draft, item, handleUpdate]);
 
   return (
     <div className="space-y-1 text-xs min-w-0">

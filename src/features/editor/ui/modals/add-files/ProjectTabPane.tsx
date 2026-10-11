@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -14,7 +14,7 @@ import {
 } from '@/shared/components/ui/select';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
-import { pageService } from '@/features/editor/coordinators/services/core.service';
+import { pageService } from '@/features/editor/sdk';
 
 export interface ProjectTabPaneProps {
   projectId?: string;

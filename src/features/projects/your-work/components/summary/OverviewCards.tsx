@@ -13,7 +13,7 @@ export interface OverviewCardsProps {
   className?: string;
 }
 
-export function OverviewCards({
+export const OverviewCards = React.memo<OverviewCardsProps>(function OverviewCards({
   createdCount = 0,
   assignedCount = 0,
   subscribedCount = 0,
@@ -72,6 +72,6 @@ export function OverviewCards({
       </div>
     </div>
   );
-}
+});
 
 export default OverviewCards;

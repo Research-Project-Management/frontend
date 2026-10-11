@@ -72,12 +72,12 @@ export function AnalyticsDrawer({
             </SheetTitle>
             <Badge
               variant="outline"
-              className="text-10 font-medium px-1.5 py-0 h-4 text-success border-success/30 bg-success/10"
+              className="text-10 font-medium px-1.5 py-0 h-4 text-foreground border-border bg-muted"
             >
               Live SSOT
             </Badge>
           </div>
-          <SheetDescription className="text-12 text-muted-foreground">
+          <SheetDescription className="text-12 text-foreground/70">
             Real-time performance and work item progress overview.
           </SheetDescription>
         </SheetHeader>
@@ -86,25 +86,25 @@ export function AnalyticsDrawer({
           {/* Top Quick Metrics */}
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-md border border-border bg-card space-y-1">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center justify-between text-xs text-foreground/70">
                 <span>Total Items</span>
                 <BarChart3 className="size-3.5 text-foreground shrink-0" />
               </div>
               <div className="text-xl font-semibold text-foreground font-mono">
                 {isLoading ? <Skeleton className="h-7 w-12" /> : totalItems}
               </div>
-              <p className="text-10 text-muted-foreground">Total work items</p>
+              <p className="text-10 text-foreground/70">Total work items</p>
             </div>
 
             <div className="p-3 rounded-md border border-border bg-card space-y-1">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center justify-between text-xs text-foreground/70">
                 <span>Completion</span>
-                <CheckCircle2 className="size-3.5 text-success shrink-0" />
+                <CheckCircle2 className="size-3.5 text-foreground shrink-0" />
               </div>
               <div className="text-xl font-semibold text-foreground font-mono">
                 {isLoading ? <Skeleton className="h-7 w-16" /> : `${completionRate}%`}
               </div>
-              <p className="text-10 text-muted-foreground">
+              <p className="text-10 text-foreground/70">
                 {completedItems}/{totalItems} completed
               </p>
             </div>
@@ -114,7 +114,7 @@ export function AnalyticsDrawer({
           <div className="p-4 rounded-md border border-border bg-card space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-foreground">Status distribution</span>
-              <span className="text-10 text-muted-foreground font-mono">Workflow distribution</span>
+              <span className="text-10 text-foreground/70 font-mono">Workflow distribution</span>
             </div>
             <div className="space-y-2.5 pt-1">
               {columns.map((col) => {
@@ -124,7 +124,7 @@ export function AnalyticsDrawer({
                 const pct = totalItems > 0 ? Math.round((count / totalItems) * 100) : 0;
                 return (
                   <div key={col.id} className="space-y-1">
-                    <div className="flex justify-between text-11 text-muted-foreground">
+                    <div className="flex justify-between text-11 text-foreground/70">
                       <span className="flex items-center gap-1.5 truncate">
                         <span
                           className="size-2 rounded-full shrink-0"
@@ -144,7 +144,7 @@ export function AnalyticsDrawer({
                         style={{
                           width: `${pct}%`,
                           backgroundColor:
-                            col.color || col.accentColor || 'var(--primary)',
+                            col.color || col.accentColor || 'var(--foreground)',
                         }}
                       />
                     </div>
@@ -159,20 +159,20 @@ export function AnalyticsDrawer({
             <div className="p-4 rounded-md border border-border bg-card space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-foreground">Priority distribution</span>
-                <span className="text-10 text-muted-foreground font-mono">Priority breakdown</span>
+                <span className="text-10 text-foreground/70 font-mono">Priority breakdown</span>
               </div>
               <div className="space-y-2 pt-1">
                 {Object.entries(analytics.priority).map(([prio, count]) => {
                   const pct = totalItems > 0 ? Math.round((count / totalItems) * 100) : 0;
                   return (
                     <div key={prio} className="space-y-1">
-                      <div className="flex justify-between text-11 text-muted-foreground">
+                      <div className="flex justify-between text-11 text-foreground/70">
                         <span className="capitalize">{prio}</span>
                         <span className="font-mono">{count} ({pct}%)</span>
                       </div>
                       <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-primary/70 rounded-full"
+                          className="h-full bg-foreground rounded-full"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -219,11 +219,11 @@ export function AnalyticsDrawer({
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-center justify-between text-11">
                           <span className="truncate text-foreground font-medium">{a.name}</span>
-                          <span className="text-muted-foreground font-mono">{a.count} ({aPct}%)</span>
+                          <span className="text-foreground/70 font-mono">{a.count} ({aPct}%)</span>
                         </div>
                         <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-primary/80 rounded-full"
+                            className="h-full bg-foreground rounded-full"
                             style={{ width: `${aPct}%` }}
                           />
                         </div>
@@ -233,7 +233,7 @@ export function AnalyticsDrawer({
                 })}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground py-2 text-center">
+              <p className="text-xs text-foreground/70 py-2 text-center">
                 No workload assignment data available.
               </p>
             )}

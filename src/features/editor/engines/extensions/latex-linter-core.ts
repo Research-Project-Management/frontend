@@ -81,11 +81,15 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
 
   const length = text.length;
   const envStack: OpenEnv[] = [];
+  interface MathStackEntry {
+    type: 'dollar' | 'double-dollar' | 'bracket' | 'paren' | 'env';
+    name?: string;
+    from: number;
+    line: number;
+  }
+  const mathStack: MathStackEntry[] = [];
+  const braceStack: Array<{ from: number; line: number }> = [];
   const labelSeen = new Map<string, number>();
-
-  let inMathMode = false;
-  let mathModeStart = -1;
-  let mathModeType: 'dollar' | 'double-dollar' | 'bracket' | 'paren' | null = null;
 
   let inNovalidateBlock = false;
   let i = 0;
@@ -124,10 +128,9 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
       continue;
     }
 
-    // 3. Verbatim & lstlisting Isolation
+    // 3. Verbatim & lstlisting Isolation (minted, Verbatim, alltt, tcblisting, filecontents)
     if (char === '\\' && !isEscaped(text, i)) {
-      // Check \begin{verbatim} or \begin{lstlisting}
-      const verbatimMatch = /^\\begin\{(verbatim|lstlisting)\}/.exec(text.slice(i));
+      const verbatimMatch = /^\\begin\{(verbatim\*?|lstlisting|minted|Verbatim|alltt|filecontents\*?|tcblisting)\}/.exec(text.slice(i));
       if (verbatimMatch) {
         const envName = verbatimMatch[1];
         const closeTag = `\\end{${envName}}`;
@@ -146,34 +149,45 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
       }
     }
 
+    // 3b. Curly Braces {} Balance Tracking (ignoring escaped \{ and \})
+    if ((char === '{' || char === '}') && !isEscaped(text, i)) {
+      if (char === '{') {
+        braceStack.push({ from: i, line: currentLine });
+      } else {
+        if (braceStack.length === 0) {
+          diagnostics.push({
+            from: i,
+            to: i + 1,
+            severity: 'error',
+            message: "Unmatched closing brace '}'. Found '}' without matching '{'",
+            source: 'LaTeX Linter',
+          });
+        } else {
+          braceStack.pop();
+        }
+      }
+    }
+
     // 4. Math Mode Delimiters ($ and $$)
     if (char === '$' && !isEscaped(text, i)) {
       const isDouble = i + 1 < length && text[i + 1] === '$';
       const delimiterLen = isDouble ? 2 : 1;
-      const currentDelimiterType = isDouble ? 'double-dollar' : 'dollar';
+      const currentDelimiterType: 'double-dollar' | 'dollar' = isDouble ? 'double-dollar' : 'dollar';
 
-      if (!inMathMode) {
-        inMathMode = true;
-        mathModeStart = i;
-        mathModeType = currentDelimiterType;
+      const top = mathStack[mathStack.length - 1];
+      if (top && top.type === currentDelimiterType) {
+        mathStack.pop();
+      } else if (!top || top.type === 'env') {
+        mathStack.push({ type: currentDelimiterType, from: i, line: currentLine });
       } else {
-        // Closing math mode
-        if (mathModeType === currentDelimiterType) {
-          inMathMode = false;
-          mathModeStart = -1;
-          mathModeType = null;
-        } else {
-          diagnostics.push({
-            from: i,
-            to: i + delimiterLen,
-            severity: 'error',
-            message: `Mismatched math delimiter: opened with '${mathModeType === 'double-dollar' ? '$$' : '$'}' but closed with '${isDouble ? '$$' : '$'}'`,
-            source: 'LaTeX Linter',
-          });
-          inMathMode = false;
-          mathModeStart = -1;
-          mathModeType = null;
-        }
+        diagnostics.push({
+          from: i,
+          to: i + delimiterLen,
+          severity: 'error',
+          message: `Mismatched math delimiter: opened with '${top.type === 'double-dollar' ? '$$' : '$'}' but closed with '${isDouble ? '$$' : '$'}'`,
+          source: 'LaTeX Linter',
+        });
+        mathStack.pop();
       }
 
       i += delimiterLen;
@@ -185,20 +199,15 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
       const nextChar = text[i + 1];
       if (nextChar === '[' || nextChar === '(') {
         const type = nextChar === '[' ? 'bracket' : 'paren';
-        if (!inMathMode) {
-          inMathMode = true;
-          mathModeStart = i;
-          mathModeType = type;
-        }
+        mathStack.push({ type, from: i, line: currentLine });
         i += 2;
         continue;
       } else if (nextChar === ']' || nextChar === ')') {
         const expectedType = nextChar === ']' ? 'bracket' : 'paren';
-        if (inMathMode && mathModeType === expectedType) {
-          inMathMode = false;
-          mathModeStart = -1;
-          mathModeType = null;
-        } else if (!inMathMode) {
+        const top = mathStack[mathStack.length - 1];
+        if (top && top.type === expectedType) {
+          mathStack.pop();
+        } else {
           diagnostics.push({
             from: i,
             to: i + 2,
@@ -229,8 +238,9 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
             envStack.push({ name: envName, from: cmdFrom, to: fullTo, line: currentLine });
 
             // If entering a known math environment
-            if (['equation', 'align', 'gather', 'multline', 'flalign', 'alignat', 'displaymath'].includes(envName.replace(/\*$/, ''))) {
-              inMathMode = true;
+            // If entering a known math environment
+            if (['equation', 'align', 'gather', 'multline', 'flalign', 'alignat', 'displaymath', 'matrix', 'pmatrix', 'bmatrix', 'cases', 'dcases', 'rcases'].includes(envName.replace(/\*$/, ''))) {
+              mathStack.push({ type: 'env', name: envName, from: cmdFrom, line: currentLine });
             }
 
             i = fullTo;
@@ -266,8 +276,18 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
               }
             }
 
-            if (['equation', 'align', 'gather', 'multline', 'flalign', 'alignat', 'displaymath'].includes(envName.replace(/\*$/, ''))) {
-              inMathMode = false;
+            if (['equation', 'align', 'gather', 'multline', 'flalign', 'alignat', 'displaymath', 'matrix', 'pmatrix', 'bmatrix', 'cases', 'dcases', 'rcases'].includes(envName.replace(/\*$/, ''))) {
+              let idx = -1;
+              for (let k = mathStack.length - 1; k >= 0; k--) {
+                const entry = mathStack[k];
+                if (entry && entry.type === 'env' && entry.name === envName) {
+                  idx = k;
+                  break;
+                }
+              }
+              if (idx !== -1) {
+                mathStack.splice(idx, 1);
+              }
             }
 
             i = fullTo;
@@ -364,6 +384,7 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
         }
 
         // 5e. Math-only / Text-only context verification
+        const inMathMode = mathStack.length > 0;
         if (!inMathMode && MATH_ONLY_COMMANDS.has(cmdName)) {
           diagnostics.push({
             from: cmdFrom,
@@ -391,14 +412,17 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
   }
 
   // 6. Check unclosed math mode at EOF
-  if (inMathMode && mathModeStart !== -1) {
-    diagnostics.push({
-      from: mathModeStart,
-      to: Math.min(mathModeStart + 2, length),
-      severity: 'error',
-      message: `Unclosed math mode starting here`,
-      source: 'LaTeX Linter',
-    });
+  for (const unclosed of mathStack) {
+    if (unclosed.type !== 'env') {
+      const symbol = unclosed.type === 'double-dollar' ? '$$' : unclosed.type === 'bracket' ? '\\[' : unclosed.type === 'paren' ? '\\(' : '$';
+      diagnostics.push({
+        from: unclosed.from,
+        to: Math.min(unclosed.from + 2, length),
+        severity: 'error',
+        message: `Unclosed math mode '${symbol}' starting here`,
+        source: 'LaTeX Linter',
+      });
+    }
   }
 
   // 7. Check unclosed environments at EOF
@@ -412,5 +436,18 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
     });
   }
 
+  // 8. Check unclosed curly braces at EOF
+  for (const unclosed of braceStack) {
+    diagnostics.push({
+      from: unclosed.from,
+      to: unclosed.from + 1,
+      severity: 'error',
+      message: `Unclosed opening brace '{'. Missing matching '}'`,
+      source: 'LaTeX Linter',
+    });
+  }
+
   return diagnostics;
 }
+
+export const lintLatexDocument = runLatexLinter;

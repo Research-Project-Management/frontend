@@ -31,8 +31,6 @@ export const relatedItemSchema = z.object({
   linkedAt: z.string().optional(),
 });
 
-export const relatedPaperItemSchema = relatedItemSchema;
-
 export const linkRelationSchema = z.object({
   targetItemId: z.string().optional(),
   targetItemIds: z.array(z.string()).optional(),
@@ -42,6 +40,4 @@ export const linkRelationSchema = z.object({
 
 export type RelationType = z.infer<typeof relationTypeSchema>;
 export type RelatedItem = z.infer<typeof relatedItemSchema>;
-/** @deprecated Use RelatedItem */
-export type RelatedPaperItem = RelatedItem;
 export type LinkRelationInput = z.infer<typeof linkRelationSchema>;

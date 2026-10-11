@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import {
   ExternalLink,
   Star,
@@ -40,6 +40,7 @@ export interface ItemContextMenuProps {
   onPurge?: () => void;
   onMoveToCollection?: (collectionId: string) => void;
   onDetachFromCollection?: () => void;
+  onOpenItem?: (id: string) => void;
   /** scopeId needed to call setMyPublication (project id or 'user') */
   scopeId?: string;
 }
@@ -55,17 +56,10 @@ export function ItemContextMenu({
   onPurge,
   onMoveToCollection,
   onDetachFromCollection,
+  onOpenItem,
   scopeId,
 }: ItemContextMenuProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const currentQuery = searchParams.get('q');
-  const currentProjectId = searchParams.get('projectId');
-  const queryParts = [
-    currentProjectId ? `projectId=${encodeURIComponent(currentProjectId)}` : '',
-    currentQuery ? `q=${encodeURIComponent(currentQuery)}` : '',
-  ].filter(Boolean);
-  const qParam = queryParts.length ? `?${queryParts.join('&')}` : '';
   const openModal = useLibraryUIStore((s) => s.openModal);
 
   const isStarred =
@@ -92,7 +86,7 @@ export function ItemContextMenu({
     const toastId = toast.loading(`Đang tạo trích dẫn trong bài (${style.toUpperCase()})...`);
     try {
       const res = await libraryServices.citations.formatCitation(scopeId, item.id, style);
-      const text = res.inText || (res as any).citation || '';
+      const text = res.inText || res.citation || '';
       if (text) {
         await copyToClipboard(text);
         toast.success(`Đã sao chép trích dẫn trong bài (${style.toUpperCase()})`, { id: toastId });
@@ -112,7 +106,13 @@ export function ItemContextMenu({
         {!isTrash ? (
           <>
             <ContextMenuItem
-              onClick={() => router.push(`/library/papers/${item.id}${qParam}`)}
+              onClick={() => {
+                if (onOpenItem) {
+                  onOpenItem(item.id);
+                } else {
+                  router.push(`/library/papers/${item.id}`);
+                }
+              }}
               className="gap-2 text-12 py-1.5 px-2 cursor-pointer"
             >
               <ExternalLink className="size-3.5 text-foreground" />

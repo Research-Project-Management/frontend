@@ -39,6 +39,7 @@ import { getCollaboratorColor } from '../../features/editor/CollaboratorCursors'
 import { navigationCoordinator } from '../../../coordinators/navigation.coordinator';
 import { editorCommandBus } from '../../../coordinators/command-bus';
 import { usePageStore } from '../../../store';
+import { extractProjectId } from '@/features/editor/domain/types';
 
 export function getInitials(name?: string): string {
   if (!name || !name.trim()) return '?';
@@ -68,8 +69,7 @@ export function CollaboratorAvatarStack({
   const storeProjectId = usePageStore((s) => s.projectId);
 
   const pageId = storeActivePageId || currentPage?.id || params?.pageId || null;
-  const rawProjectId = currentPage?.projectId || params?.projectId || storeProjectId || null;
-  const projectId = typeof rawProjectId === 'string' ? rawProjectId : (rawProjectId as any)?.id || null;
+  const projectId = params?.projectId || storeProjectId || extractProjectId(currentPage) || null;
 
   const { data: presenceData } = useCollaborationPresence(pageId, projectId);
 
@@ -151,7 +151,7 @@ export function CollaboratorAvatarStack({
                 ) : (
                   <span
                     style={{ backgroundColor: color }}
-                    className="size-full rounded-full flex items-center justify-center font-bold text-[10px] text-white tracking-wider"
+                    className="size-full rounded-full flex items-center justify-center font-semibold text-[10px] text-white tracking-wider"
                   >
                     {initials}
                   </span>
@@ -163,8 +163,8 @@ export function CollaboratorAvatarStack({
                   className={cn(
                     "absolute -bottom-0.5 -right-0.5 size-2 rounded-full border border-background ring-1 ring-background",
                     c.isOnline
-                      ? "bg-emerald-500 animate-pulse motion-reduce:animate-none"
-                      : "bg-amber-500"
+                      ? "bg-success animate-pulse motion-reduce:animate-none"
+                      : "bg-warning"
                   )}
                 />
               </button>
@@ -185,7 +185,7 @@ export function CollaboratorAvatarStack({
                   className={cn(
                     "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0",
                     c.isOnline
-                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                      ? "bg-success/15 text-success"
                       : "bg-muted text-muted-foreground"
                   )}
                 >
@@ -238,7 +238,7 @@ export function CollaboratorAvatarStack({
             align="end"
             side="bottom"
             sideOffset={8}
-            className="w-72 p-3 space-y-2 text-xs shadow-lg border-border"
+            className="w-72 p-3 space-y-2 text-xs shadow-overlay border-border"
           >
             <div className="flex items-center justify-between pb-1.5 border-b border-border">
               <div className="flex items-center gap-1.5 font-medium text-foreground">
@@ -271,7 +271,7 @@ export function CollaboratorAvatarStack({
                         ) : (
                           <span
                             style={{ backgroundColor: color }}
-                            className="size-full rounded-full flex items-center justify-center font-bold text-[9px] text-white"
+                            className="size-full rounded-full flex items-center justify-center font-semibold text-[9px] text-white"
                           >
                             {initials}
                           </span>
@@ -279,7 +279,7 @@ export function CollaboratorAvatarStack({
                         <span
                           className={cn(
                             "absolute -bottom-0.5 -right-0.5 size-1.5 rounded-full border border-background",
-                            c.isOnline ? "bg-emerald-500" : "bg-amber-500"
+                            c.isOnline ? "bg-success" : "bg-warning"
                           )}
                         />
                       </div>

@@ -25,9 +25,9 @@ export default defineConfig({
     passWithNoTests: true,
     pool: 'forks',
     isolate: false,
-    testTimeout: 120000,
-    hookTimeout: 120000,
-    teardownTimeout: 120000,
+    testTimeout: 30000,
+    hookTimeout: 30000,
+    teardownTimeout: 30000,
     fileParallelism: false,
     coverage: {
       provider: 'v8',

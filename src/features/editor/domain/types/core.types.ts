@@ -122,6 +122,7 @@ export interface PageProjectContext {
 export interface Page {
   id: string;
   title: string;
+  path?: string;
   content: DocumentContent; // LaTeX source text or JSON structure
   status: PageStatus;
   projectId: string | PageProjectContext;
@@ -141,10 +142,79 @@ export interface Page {
 export interface PageFile {
   id: string;
   title: string;
+  path?: string;
   content?: string;
   pageId: string;
   projectId?: string | PageProjectContext;
   createdAt?: string;
   updatedAt?: string;
   deletedAt?: string | null;
+}
+
+// ── Canonical Manuscript & LaTeX Domain Models (Overleaf Parity) ────────────
+
+export type ManuscriptNodeType = 'FOLDER' | 'DOC' | 'FILE';
+
+export interface ManuscriptNode {
+  id: string;
+  projectId: string;
+  parentId: string | null;
+  type: ManuscriptNodeType;
+  name: string;
+  path: string;
+  depth: number;
+  docId?: string | null;
+  fileId?: string | null;
+  isRootDoc?: boolean;
+  sizeBytes?: number;
+  hash?: string | null;
+  sortOrder?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface TextDocument {
+  id: string;
+  projectId: string;
+  path: string;
+  title: string;
+  content: string;
+  rev?: number;
+  version?: number;
+  isRootDoc?: boolean;
+  updatedAt?: string;
+}
+
+/**
+ * Safely extracts a string projectId from a Page, PageFile, PageProjectContext, or raw string.
+ */
+export function extractProjectId(
+  doc?: Page | PageFile | PageProjectContext | { id?: string; projectId?: string | PageProjectContext } | string | null,
+): string | undefined {
+  if (!doc) return undefined;
+  if (typeof doc === 'string') return doc;
+  if ('projectId' in doc && doc.projectId) {
+    if (typeof doc.projectId === 'string') return doc.projectId;
+    return (doc.projectId as PageProjectContext).id;
+  }
+  if ('id' in doc && typeof doc.id === 'string') {
+    return doc.id;
+  }
+  return undefined;
+}
+
+/**
+ * Safely extracts raw string LaTeX or text content from DocumentContent union or nested object.
+ */
+export function extractDocumentContentString(content?: DocumentContent | unknown | null): string {
+  if (!content) return '';
+  if (typeof content === 'string') return content;
+  if (typeof content === 'object') {
+    const c = content as { source?: string; text?: string; content?: string; lines?: string[] };
+    if (typeof c.source === 'string') return c.source;
+    if (typeof c.text === 'string') return c.text;
+    if (typeof c.content === 'string') return c.content;
+    if (Array.isArray(c.lines)) return c.lines.join('\n');
+  }
+  return '';
 }

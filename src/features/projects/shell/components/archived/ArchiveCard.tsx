@@ -26,7 +26,7 @@ export type ArchiveCardProps = {
   isRestoring?: boolean;
 };
 
-export function ArchiveCard({
+export const ArchiveCard = React.memo(function ArchiveCard({
   project,
   onRestore,
   onDeletePermanent,
@@ -154,6 +154,6 @@ export function ArchiveCard({
       </div>
     </div>
   );
-}
+});
 
 export default ArchiveCard;

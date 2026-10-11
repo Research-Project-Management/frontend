@@ -23,7 +23,7 @@
  */
 
 import React, { useMemo, useCallback } from 'react';
-import { Bot, BookMarked } from 'lucide-react';
+import { Bot } from 'lucide-react';
 import {
   MenubarMenu,
   MenubarTrigger,
@@ -38,7 +38,7 @@ import { useSettingsStore } from '@/features/editor/store';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import type { LatexFormatType } from '@/features/editor/domain/types/ports/editor-engine.port';
 
-export function FormatMenu() {
+export function FormatMenu({ value = 'format' }: { value?: string } = {}) {
   const { engine } = useEditorInstance();
   const editorMode = useSettingsStore((s) => s.editorMode);
 
@@ -94,7 +94,7 @@ export function FormatMenu() {
   }, [engine]);
 
   return (
-    <MenubarMenu>
+    <MenubarMenu value={value}>
       <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary select-none transition-colors">
         Format
       </MenubarTrigger>
@@ -121,6 +121,16 @@ export function FormatMenu() {
           <span className="whitespace-nowrap">Italics</span>
           <MenubarShortcut className="text-11 text-muted-foreground/80 font-mono tracking-tight ml-auto whitespace-nowrap shrink-0">
             {modLabel}I
+          </MenubarShortcut>
+        </MenubarItem>
+
+        <MenubarItem
+          onClick={() => handleFormat('underline')}
+          className="px-2.5 py-1.5 cursor-pointer text-xs rounded-sm hover:bg-accent hover:text-accent-foreground flex items-center justify-between"
+        >
+          <span className="whitespace-nowrap">Underline</span>
+          <MenubarShortcut className="text-11 text-muted-foreground/80 font-mono tracking-tight ml-auto whitespace-nowrap shrink-0">
+            {modLabel}U
           </MenubarShortcut>
         </MenubarItem>
 
@@ -207,25 +217,12 @@ export function FormatMenu() {
         <MenubarSeparator />
 
         <MenubarItem
-          onClick={() => editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'citation-picker' })}
-          className="px-2.5 py-1.5 cursor-pointer text-xs rounded-sm hover:bg-accent hover:text-accent-foreground flex items-center justify-between"
-        >
-          <span className="flex items-center gap-2 whitespace-nowrap">
-            <BookMarked className="size-3.5 text-foreground shrink-0" />
-            <span>Insert Citation...</span>
-          </span>
-          <MenubarShortcut className="text-11 text-muted-foreground/80 font-mono tracking-tight ml-auto whitespace-nowrap shrink-0">
-            {modLabel}Shift K
-          </MenubarShortcut>
-        </MenubarItem>
-
-        <MenubarItem
           onClick={() => editorCommandBus.dispatch({ type: 'editor:autofix' })}
           className="px-2.5 py-1.5 cursor-pointer text-xs rounded-sm hover:bg-accent hover:text-accent-foreground flex items-center justify-between"
         >
           <span className="flex items-center gap-2 whitespace-nowrap">
             <Bot className="size-3.5 text-foreground shrink-0" />
-            <span>Auto-Fix Page Syntax</span>
+            <span>Format Document</span>
           </span>
           <MenubarShortcut className="text-11 text-muted-foreground/80 font-mono tracking-tight ml-auto whitespace-nowrap shrink-0">
             Alt Shift F

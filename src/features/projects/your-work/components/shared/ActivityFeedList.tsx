@@ -11,7 +11,7 @@ export interface ActivityFeedListProps {
   emptyPadding?: string;
 }
 
-export function ActivityFeedList({
+export const ActivityFeedList = React.memo<ActivityFeedListProps>(function ActivityFeedList({
   items,
   isLoading = false,
   onWorkItemClick,
@@ -40,4 +40,4 @@ export function ActivityFeedList({
       )}
     </div>
   );
-}
+});

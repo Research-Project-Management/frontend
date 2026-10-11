@@ -102,8 +102,8 @@ export function VisualSelectionBubbleMenu({
       role="toolbar"
       aria-label="Selection Bubble Menu"
       className={cn(
-        'fixed z-50 flex items-center bg-card/95 backdrop-blur-md border border-border/80 shadow-xl rounded-xl p-1 gap-0.5 text-xs text-foreground select-none',
-        'animate-in fade-in zoom-in-95 duration-150'
+        'fixed z-50 flex items-center bg-popover border border-border shadow-md rounded-md p-0.5 gap-0.5 text-12 text-foreground select-none',
+        'animate-in fade-in zoom-in-95 duration-100'
       )}
       style={{
         top: `${Math.max(10, position.top)}px`,
@@ -122,19 +122,19 @@ export function VisualSelectionBubbleMenu({
           type="button"
           variant="ghost"
           size="sm"
-          className="h-7 px-2 flex items-center gap-1.5 hover:bg-muted font-medium text-xs text-foreground/80 hover:text-foreground cursor-pointer rounded-lg"
+          className="h-6 px-1.5 flex items-center gap-1 hover:bg-muted font-medium text-11 text-foreground/90 hover:text-foreground cursor-pointer rounded-xs"
           onClick={() => setIsDropdownOpen((prev) => !prev)}
           title="Change block style"
           aria-label={`Block style: ${currentBlockConfig.label}`}
         >
-          <CurrentBlockIcon className="size-3.5 text-primary" />
+          <CurrentBlockIcon className="size-3.5 text-foreground" />
           <span className="hidden sm:inline-block max-w-[85px] truncate">{currentBlockConfig.label}</span>
           <ChevronDown className="size-3 opacity-60 ml-0.5" />
         </Button>
 
         {isDropdownOpen && (
           <div
-            className="absolute top-full left-0 mt-1.5 w-44 bg-popover/95 backdrop-blur-md border border-border/80 shadow-2xl rounded-xl p-1 z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
+            className="absolute top-full left-0 mt-1 w-40 bg-popover border border-border shadow-md rounded-md p-0.5 z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
             role="menu"
             aria-label="Block style options"
           >
@@ -147,10 +147,10 @@ export function VisualSelectionBubbleMenu({
                   type="button"
                   role="menuitem"
                   className={cn(
-                    'flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors cursor-pointer',
+                    'flex items-center gap-2 w-full px-2 py-1 rounded-xs text-left text-11 transition-colors cursor-pointer',
                     isSelected
                       ? 'bg-primary/10 text-primary font-semibold'
-                      : 'text-foreground/80 hover:bg-muted hover:text-foreground'
+                      : 'text-foreground hover:bg-muted'
                   )}
                   onClick={() => {
                     onBlockTypeChange(type);
@@ -167,7 +167,7 @@ export function VisualSelectionBubbleMenu({
         )}
       </div>
 
-      <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />
+      <div className="w-px h-3.5 bg-border mx-0.5 shrink-0" />
 
       {/* ── Basic Formatting Controls ── */}
       <Button
@@ -175,9 +175,9 @@ export function VisualSelectionBubbleMenu({
         variant="ghost"
         size="icon"
         className={cn(
-          'size-7 rounded-lg cursor-pointer transition-colors',
+          'size-6 rounded-xs cursor-pointer transition-colors p-0 flex items-center justify-center',
           activeFormats.bold
-            ? 'bg-primary/15 text-primary font-bold shadow-xs'
+            ? 'bg-primary/15 text-primary font-semibold'
             : 'hover:bg-muted text-foreground/80 hover:text-foreground'
         )}
         onClick={() => onFormat('bold')}
@@ -192,9 +192,9 @@ export function VisualSelectionBubbleMenu({
         variant="ghost"
         size="icon"
         className={cn(
-          'size-7 rounded-lg cursor-pointer transition-colors',
+          'size-6 rounded-xs cursor-pointer transition-colors p-0 flex items-center justify-center',
           activeFormats.italic
-            ? 'bg-primary/15 text-primary shadow-xs'
+            ? 'bg-primary/15 text-primary'
             : 'hover:bg-muted text-foreground/80 hover:text-foreground'
         )}
         onClick={() => onFormat('italic')}
@@ -209,9 +209,9 @@ export function VisualSelectionBubbleMenu({
         variant="ghost"
         size="icon"
         className={cn(
-          'size-7 rounded-lg cursor-pointer transition-colors',
+          'size-6 rounded-xs cursor-pointer transition-colors p-0 flex items-center justify-center',
           activeFormats.underline
-            ? 'bg-primary/15 text-primary shadow-xs'
+            ? 'bg-primary/15 text-primary'
             : 'hover:bg-muted text-foreground/80 hover:text-foreground'
         )}
         onClick={() => onFormat('underline')}
@@ -226,9 +226,9 @@ export function VisualSelectionBubbleMenu({
         variant="ghost"
         size="icon"
         className={cn(
-          'size-7 rounded-lg cursor-pointer transition-colors',
+          'size-6 rounded-xs cursor-pointer transition-colors p-0 flex items-center justify-center',
           activeFormats.strike
-            ? 'bg-primary/15 text-primary shadow-xs'
+            ? 'bg-primary/15 text-primary'
             : 'hover:bg-muted text-foreground/80 hover:text-foreground'
         )}
         onClick={() => onFormat('strike')}
@@ -243,9 +243,9 @@ export function VisualSelectionBubbleMenu({
         variant="ghost"
         size="icon"
         className={cn(
-          'size-7 rounded-lg cursor-pointer transition-colors font-mono',
+          'size-6 rounded-xs cursor-pointer transition-colors font-mono p-0 flex items-center justify-center',
           activeFormats.code
-            ? 'bg-primary/15 text-primary shadow-xs'
+            ? 'bg-primary/15 text-primary'
             : 'hover:bg-muted text-foreground/80 hover:text-foreground'
         )}
         onClick={() => onFormat('code')}
@@ -255,46 +255,46 @@ export function VisualSelectionBubbleMenu({
         <Code2 className="size-3.5" />
       </Button>
 
-      <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />
+      <div className="w-px h-3.5 bg-border mx-0.5 shrink-0" />
 
       {/* ── LaTeX Academic Fast Actions ── */}
       <Button
         type="button"
         variant="ghost"
         size="icon"
-        className="size-7 rounded-lg cursor-pointer hover:bg-muted text-foreground/80 hover:text-primary transition-colors"
+        className="size-6 rounded-xs cursor-pointer hover:bg-muted text-foreground/80 hover:text-foreground transition-colors p-0 flex items-center justify-center"
         onClick={onConvertToMath}
         title="Convert selection to Math formula ($...$)"
         aria-label="Convert to math formula"
       >
-        <Sigma className="size-3.5 text-primary" />
+        <Sigma className="size-3.5 text-foreground" />
       </Button>
 
       <Button
         type="button"
         variant="ghost"
         size="icon"
-        className="size-7 rounded-lg cursor-pointer hover:bg-muted text-foreground/80 hover:text-primary transition-colors"
+        className="size-6 rounded-xs cursor-pointer hover:bg-muted text-foreground/80 hover:text-foreground transition-colors p-0 flex items-center justify-center"
         onClick={onConvertToCitation}
         title="Insert Citation (\cite{...})"
         aria-label="Insert citation"
       >
-        <BookOpen className="size-3.5 text-amber-500" />
+        <BookOpen className="size-3.5 text-foreground" />
       </Button>
 
       {onSyncToPdf && (
         <>
-          <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />
+          <div className="w-px h-3.5 bg-border mx-0.5 shrink-0" />
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="size-7 rounded-lg cursor-pointer hover:bg-muted text-foreground/80 hover:text-primary transition-colors"
+            className="size-6 rounded-xs cursor-pointer hover:bg-muted text-foreground/80 hover:text-foreground transition-colors p-0 flex items-center justify-center"
             onClick={onSyncToPdf}
             title="View in PDF (SyncTeX) (Mod-Alt-j)"
             aria-label="View in PDF (SyncTeX)"
           >
-            <ArrowRightToLine className="size-3.5 text-primary" />
+            <ArrowRightToLine className="size-3.5 text-foreground" />
           </Button>
         </>
       )}

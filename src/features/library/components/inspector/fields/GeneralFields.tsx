@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { Item } from '@/features/library/types/library.types';
+import type { TypeConversionPreview } from '../../data';
 import { SchemaItemTypeDefinition, ALL_ITEM_TYPES_FLAT } from '../../../types';
 import {
   DropdownMenu,
@@ -28,17 +29,17 @@ export interface GeneralFieldsProps {
     itemId: string;
     targetType: string;
     retainUnmappedInExtra?: boolean;
-  }) => Promise<any>;
+  }) => Promise<TypeConversionPreview>;
   convertAsync: (params: {
     itemId: string;
     targetType: string;
     expectedVersion?: number;
     retainUnmappedInExtra?: boolean;
     silent?: boolean;
-  }) => Promise<any>;
+  }) => Promise<unknown>;
 }
 
-function cleanValue(val?: any): string {
+function cleanValue(val?: unknown): string {
   if (val === null || val === undefined) return '';
   return String(val).trim();
 }
@@ -56,7 +57,7 @@ export function GeneralFields({
 }: GeneralFieldsProps) {
   const [isConversionDialogOpen, setIsConversionDialogOpen] = useState(false);
   const [targetConversionType, setTargetConversionType] = useState<string>('');
-  const [previewData, setPreviewData] = useState<any>(null);
+  const [previewData, setPreviewData] = useState<TypeConversionPreview | null>(null);
 
   const effectiveItemTypes =
     selectableItemTypes && selectableItemTypes.length > 0
@@ -171,7 +172,7 @@ export function GeneralFields({
           targetType={targetConversionType}
           scopeId={scopeId}
           initialPreview={previewData}
-          onSuccess={(updatedPaper: any) => {
+          onSuccess={(updatedPaper: Item) => {
             onUpdatePaper?.(updatedPaper);
           }}
         />

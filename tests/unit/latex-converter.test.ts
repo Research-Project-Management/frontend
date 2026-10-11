@@ -167,6 +167,36 @@ Here is inline math $x \\in \\mathbb{R}$ and an equation:
       expect(restored).toContain('\\end{equation}');
     });
 
+    it('should preserve align and bracket environments without corrupting into equation', () => {
+      const rawAlign = `
+\\begin{align}
+  a &= b + c \\\\
+  d &= e + f
+\\end{align}
+      `.trim();
+
+      const htmlAlign = latexToHtml(rawAlign);
+      expect(htmlAlign).toContain('data-env="align"');
+
+      const restoredAlign = htmlToLatex(htmlAlign);
+      expect(restoredAlign).toContain('\\begin{align}');
+      expect(restoredAlign).toContain('a &= b + c');
+      expect(restoredAlign).toContain('\\end{align}');
+      expect(restoredAlign).not.toContain('\\begin{equation}');
+
+      const rawBracket = `
+\\[
+  E = mc^2
+\\]
+      `.trim();
+      const htmlBracket = latexToHtml(rawBracket);
+      expect(htmlBracket).toContain('data-env="bracket"');
+      const restoredBracket = htmlToLatex(htmlBracket);
+      expect(restoredBracket).toContain('\\[');
+      expect(restoredBracket).toContain('E = mc^2');
+      expect(restoredBracket).toContain('\\]');
+    });
+
     it('should preserve full manuscript preamble and postamble', () => {
       const manuscript = `
 \\documentclass{article}
@@ -214,6 +244,46 @@ Some text here.
       expect(html).toContain('data-line="2"'); // paragraph
       expect(html).toContain('data-line="3"'); // equation
       expect(html).toContain('data-line="6"'); // figure
+    });
+
+    it('should preserve TeX display math $$ ... $$ without syntax inversion', () => {
+      const raw = `
+$$
+  E = mc^2
+$$
+      `.trim();
+
+      const html = latexToHtml(raw);
+      expect(html).toContain('data-env="dollars"');
+
+      const restored = htmlToLatex(html);
+      expect(restored).toContain('$$');
+      expect(restored).toContain('E = mc^2');
+    });
+
+    it('should preserve mathematical inequalities in text without HTML tag erasure', () => {
+      const raw = 'For all indices, where a < b and c > d holds true.';
+
+      const html = latexToHtml(raw);
+      expect(html).toContain('&lt;');
+      expect(html).toContain('&gt;');
+
+      const restored = htmlToLatex(html);
+      expect(restored).toContain('a < b and c > d');
+    });
+
+    it('should preserve url, href, and footnote tokens with 100% round-trip fidelity', () => {
+      const raw = 'Visit \\url{https://arxiv.org} or \\href{https://example.com}{Example} with footnote\\footnote{See Appendix A}.';
+
+      const html = latexToHtml(raw);
+      expect(html).toContain('data-url="https://arxiv.org"');
+      expect(html).toContain('data-href-url="https://example.com"');
+      expect(html).toContain('data-footnote="See Appendix A"');
+
+      const restored = htmlToLatex(html);
+      expect(restored).toContain('\\url{https://arxiv.org}');
+      expect(restored).toContain('\\href{https://example.com}{Example}');
+      expect(restored).toContain('\\footnote{See Appendix A}');
     });
   });
 });

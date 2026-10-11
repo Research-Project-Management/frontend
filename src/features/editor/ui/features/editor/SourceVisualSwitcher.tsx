@@ -31,7 +31,7 @@ export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
         title="Source mode (LaTeX code) (Ctrl+Shift+V)"
         aria-label="Source mode"
         className={cn(
-          'h-5 px-2.5 flex items-center justify-center text-xs font-medium rounded-[4px] transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
+          'h-5 px-2.5 flex items-center justify-center text-xs font-medium rounded-sm transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
           editorMode === 'code'
             ? 'bg-background text-foreground shadow-2xs font-semibold'
             : 'text-muted-foreground hover:text-foreground'
@@ -47,7 +47,7 @@ export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
         title="Visual mode (Ctrl+Shift+V)"
         aria-label="Visual mode"
         className={cn(
-          'h-5 px-2.5 flex items-center justify-center text-xs font-medium rounded-[4px] transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
+          'h-5 px-2.5 flex items-center justify-center text-xs font-medium rounded-sm transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
           editorMode === 'visual'
             ? 'bg-background text-foreground shadow-2xs font-semibold'
             : 'text-muted-foreground hover:text-foreground'

@@ -28,6 +28,7 @@ import { Topbar } from '@/features/editor/ui/shell/Topbar';
 import { reviewCoordinator } from '@/features/editor/coordinators/review.coordinator';
 import { jumpToEditorLine } from '@/features/editor/ui/features/sidebar/review/utils/review.util';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
+import { suggestionService, commentService } from '@/features/editor/sdk';
 import type { PageSuggestion } from '@/features/editor/domain/types';
 
 // Mock next/navigation
@@ -77,6 +78,10 @@ function renderWithClient(ui: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  queryClient.setQueryData(['page-suggestions', 'doc-456', undefined], [...mockSuggestions]);
+  queryClient.setQueryData(['page-suggestions', 'doc-456'], [...mockSuggestions]);
+  queryClient.setQueryData(['page-comments', 'doc-456', undefined], [...mockComments]);
+  queryClient.setQueryData(['page-comments', 'doc-456'], [...mockComments]);
   return render(
     <QueryClientProvider client={queryClient}>
       <TooltipProvider delayDuration={0}>
@@ -89,6 +94,8 @@ function renderWithClient(ui: React.ReactElement) {
 describe('Track Changes & Review Panel (Overleaf Parity)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(suggestionService, 'getSuggestions').mockImplementation(async () => [...mockSuggestions]);
+    vi.spyOn(commentService, 'getComments').mockImplementation(async () => [...mockComments]);
     document.body.removeAttribute('data-scroll-locked');
     document.body.style.pointerEvents = '';
     document.querySelectorAll('[aria-hidden]').forEach((el) => {
@@ -97,7 +104,7 @@ describe('Track Changes & Review Panel (Overleaf Parity)', () => {
 
     useLayoutStore.getState().resetLayout();
     useDocumentCollaborationStore.getState().clearPendingComment();
-    usePageStore.setState({ activePageId: 'doc-456', projectId: 'proj-123' });
+    usePageStore.setState({ activePageId: 'doc-456', projectId: 'proj-123', currentPage: null });
 
     mockComments.length = 0;
     mockSuggestions.length = 0;
@@ -160,7 +167,8 @@ describe('Track Changes & Review Panel (Overleaf Parity)', () => {
           status: 'pending',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          author: { id: 'u1', name: 'Alice' },
+          authorId: 'u1',
+          author: { id: 'u1', name: 'Alice', email: 'alice@example.com' },
         },
         {
           id: 'sug-2',
@@ -172,7 +180,8 @@ describe('Track Changes & Review Panel (Overleaf Parity)', () => {
           status: 'accepted',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          author: { id: 'u2', name: 'Bob' },
+          authorId: 'u2',
+          author: { id: 'u2', name: 'Bob', email: 'bob@example.com' },
         }
       );
 
@@ -216,7 +225,8 @@ describe('Track Changes & Review Panel (Overleaf Parity)', () => {
         status: 'pending',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        author: { id: 'u1', name: 'Alice' },
+        authorId: 'u1',
+        author: { id: 'u1', name: 'Alice', email: 'alice@example.com' },
       });
 
       renderWithClient(<ActivityBar />);
@@ -416,6 +426,7 @@ describe('Track Changes & Review Panel (Overleaf Parity)', () => {
       reviewCoordinator.navigateToLine(88);
 
       expect(jumpToLineMock).toHaveBeenCalledWith(88, 'synctex');
+      setActiveEditorEngine(null);
     });
   });
 });

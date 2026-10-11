@@ -89,7 +89,6 @@ import {
   useRemoveRelationMutation,
 } from "../../hooks/use-relation";
 import { useArchiveItem, useRestoreItem } from "../../hooks/use-archive";
-import { useCreateTemplateMutation } from "../../hooks/use-template";
 import {
   useSubscribeItemMutation,
   useUnsubscribeItemMutation,
@@ -277,7 +276,6 @@ export function DetailModal({
   const removeRelationMutation = useRemoveRelationMutation();
   const archiveItemMutation = useArchiveItem();
   const restoreItemMutation = useRestoreItem();
-  const createTemplateMutation = useCreateTemplateMutation();
   const subscribeMutation = useSubscribeItemMutation();
   const unsubscribeMutation = useUnsubscribeItemMutation();
 
@@ -332,22 +330,6 @@ export function DetailModal({
   const handleRestoreItem = async () => {
     if (!workItemId) return;
     await restoreItemMutation.mutateAsync(workItemId);
-  };
-
-  const handleSaveAsTemplate = async () => {
-    if (!currentProjectId || !title.trim()) return;
-    await createTemplateMutation.mutateAsync({
-      projectId: currentProjectId,
-      data: {
-        name: `${title.trim()} (Template)`,
-        description: description.trim() || undefined,
-        title: title.trim(),
-        content: description.trim() || undefined,
-        priority: priority !== 'none' ? priority : undefined,
-        labels: labels.length > 0 ? labels : undefined,
-        defaultColumnId: columnId,
-      },
-    });
   };
 
   const handleConvertSubItem = async (sub: any, sIdx: number) => {
@@ -550,7 +532,9 @@ export function DetailModal({
 
     const timer = setTimeout(() => {
       autosaveSignatureRef.current = payloadSnapshot;
-      safeSave(currentPayload);
+      // Exclude relations and attachments from field autosave for existing items to prevent race conditions with dedicated mutations
+      const { relations: _relations, attachments: _attachments, ...fieldPayload } = currentPayload;
+      safeSave(fieldPayload);
     }, 400);
 
     return () => clearTimeout(timer);
@@ -973,7 +957,7 @@ export function DetailModal({
                   />
                   <span className="truncate">{col.title}</span>
                 </div>
-                {isCurrent && <Check className="size-3.5 shrink-0 text-primary" />}
+                {isCurrent && <Check className="size-3.5 shrink-0 text-foreground" />}
               </DropdownMenuItem>
             );
           })}
@@ -1024,7 +1008,7 @@ export function DetailModal({
             <Button
               variant="ghost"
               size="icon"
-              className="size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+              className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               onClick={handleClose}
               title={isSidePeek ? "Close side drawer (Esc)" : "Close (Esc)"}
             >
@@ -1039,7 +1023,7 @@ export function DetailModal({
             <Button
               variant="ghost"
               size="icon"
-              className="size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+              className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               onClick={() => setViewMode(isFullScreen ? 'side_peek' : 'full_screen')}
               title={isFullScreen ? "Exit full screen" : "Full screen"}
             >
@@ -1055,8 +1039,8 @@ export function DetailModal({
               variant="ghost"
               size="icon"
               className={cn(
-                "size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring",
-                isSidePeek && "text-foreground bg-muted/60"
+                "size-7 rounded-md text-foreground hover:bg-muted cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring",
+                isSidePeek && "bg-muted"
               )}
               onClick={() => setViewMode(isSidePeek ? 'modal' : 'side_peek')}
               title={isSidePeek ? "Switch to center modal" : "Switch to side drawer"}
@@ -1071,7 +1055,7 @@ export function DetailModal({
               <button
                 type="button"
                 onClick={handleCopyIdentifier}
-                className="font-mono text-xs font-medium text-muted-foreground hover:text-foreground px-2 py-0.5 rounded-md border border-border bg-background hover:bg-muted transition-colors cursor-pointer flex items-center gap-1 shrink-0 truncate max-w-[140px] relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+                className="font-mono text-xs font-medium text-foreground px-2 py-0.5 rounded-md border border-border bg-background hover:bg-muted transition-colors cursor-pointer flex items-center gap-1 shrink-0 truncate max-w-[140px] relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
                 title="Click to copy identifier"
               >
                 <span>{card.identifier}</span>
@@ -1079,7 +1063,7 @@ export function DetailModal({
             )}
 
             {isArchived && (
-              <span className="px-1.5 py-0.5 rounded-md text-10 font-medium bg-warning/10 text-warning border border-warning/20 shrink-0">
+              <span className="px-1.5 py-0.5 rounded-md text-10 font-medium bg-muted text-foreground border border-border shrink-0">
                 Archived
               </span>
             )}
@@ -1093,13 +1077,13 @@ export function DetailModal({
                 variant="ghost"
                 size="sm"
                 onClick={handleToggleSubscribe}
-                className="h-8 px-2.5 text-12 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer flex items-center gap-1.5 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+                className="h-8 px-2.5 text-12 text-foreground hover:bg-muted cursor-pointer flex items-center gap-1.5 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
                 title={isSubscribed ? "Unsubscribe from notifications" : "Subscribe to notifications"}
               >
                 {isSubscribed ? (
-                  <BellOff className="size-3.5 text-primary shrink-0" />
+                  <BellOff className="size-3.5 text-foreground shrink-0" />
                 ) : (
-                  <Bell className="size-3.5 shrink-0" />
+                  <Bell className="size-3.5 shrink-0 text-foreground" />
                 )}
                 <span className="hidden md:inline text-11">
                   {isSubscribed ? "Subscribed" : "Subscribe"}
@@ -1112,11 +1096,11 @@ export function DetailModal({
               variant="ghost"
               size="icon"
               onClick={handleCopyGitBranch}
-              className="size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+              className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               title={copiedGit ? "Copied branch!" : "Copy git branch name"}
               aria-label="Copy git branch name"
             >
-              {copiedGit ? <Check className="size-3.5 text-success shrink-0" /> : <GitBranch className="size-3.5 shrink-0" />}
+              {copiedGit ? <Check className="size-3.5 text-foreground shrink-0" /> : <GitBranch className="size-3.5 shrink-0" />}
             </Button>
 
             {/* Copy Link */}
@@ -1124,11 +1108,11 @@ export function DetailModal({
               variant="ghost"
               size="icon"
               onClick={handleCopyLink}
-              className="size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+              className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               title={copiedLink ? "Copied link!" : "Copy link to work item"}
               aria-label="Copy link to work item"
             >
-              {copiedLink ? <Check className="size-3.5 text-success shrink-0" /> : <Link2 className="size-3.5 shrink-0" />}
+              {copiedLink ? <Check className="size-3.5 text-foreground shrink-0" /> : <Link2 className="size-3.5 shrink-0" />}
             </Button>
 
             {/* More actions dropdown */}
@@ -1137,7 +1121,7 @@ export function DetailModal({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer outline-none shrink-0 relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+                  className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer outline-none shrink-0 relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
                   aria-label="More actions"
                 >
                   <MoreHorizontal className="size-3.5 shrink-0" />
@@ -1168,12 +1152,6 @@ export function DetailModal({
                     )}
                   </DropdownMenuItem>
                 )}
-                {!isReadOnly && (
-                  <DropdownMenuItem onClick={handleSaveAsTemplate} className="rounded-md py-1.5 text-xs text-foreground cursor-pointer">
-                    <Bookmark className="mr-2 size-3.5 shrink-0 text-foreground" />
-                    <span>Save as template</span>
-                  </DropdownMenuItem>
-                )}
                 {currentUserId && (
                   <DropdownMenuItem
                     onClick={isCurrentUserAssignee ? handleLeaveItem : handleJoinItem}
@@ -1190,9 +1168,9 @@ export function DetailModal({
                 {!isReadOnly && onDelete && (
                   <DropdownMenuItem
                     onClick={onDelete}
-                    className="rounded-md py-1.5 text-xs text-destructive focus:bg-destructive focus:text-destructive-foreground cursor-pointer"
+                    className="rounded-md py-1.5 text-xs text-foreground hover:bg-muted cursor-pointer"
                   >
-                    <Trash2 className="mr-2 size-3.5 shrink-0" />
+                    <Trash2 className="mr-2 size-3.5 shrink-0 text-foreground" />
                     <span>Delete work item</span>
                   </DropdownMenuItem>
                 )}
@@ -1205,7 +1183,7 @@ export function DetailModal({
                 variant="ghost"
                 size="icon"
                 onClick={handleClose}
-                className="size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden"
+                className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden"
               >
                 <X className="size-4 shrink-0" />
               </Button>
@@ -1331,7 +1309,7 @@ export function DetailModal({
                       onClick={() => fileInputRef.current?.click()}
                       className={cn(
                         'border border-dashed rounded-md p-3 text-center cursor-pointer transition-colors',
-                        dragActive ? 'border-primary bg-muted' : 'border-border hover:bg-muted'
+                        dragActive ? 'border-foreground bg-muted' : 'border-border hover:bg-muted'
                       )}
                     >
                       <Paperclip className="mx-auto h-5 w-5 shrink-0 text-foreground mb-1" />
@@ -1378,7 +1356,7 @@ export function DetailModal({
                             assigneeId: updated[0] ?? null,
                           });
                         }}
-                        className="hover:text-destructive cursor-pointer ml-0.5 relative before:absolute before:-inset-2 md:before:hidden"
+                        className="text-foreground hover:bg-muted rounded-sm cursor-pointer ml-0.5 relative before:absolute before:-inset-2 md:before:hidden"
                         aria-label="Remove assignee"
                       >
                         <X className="size-3 shrink-0" />
@@ -1413,7 +1391,7 @@ export function DetailModal({
 
                 {(startDate || dueDate) && (
                   <div className="flex items-center gap-1.5 bg-muted/60 rounded-md px-2 py-0.5 text-11 font-medium text-foreground border border-border">
-                    <Clock className="size-3.5 shrink-0 text-muted-foreground" />
+                    <Clock className="size-3.5 shrink-0 text-foreground" />
                     <span>
                       {startDate && ItemHelpers.formatDate(startDate)}
                       {startDate && dueDate ? ' - ' : ''}
@@ -1431,7 +1409,7 @@ export function DetailModal({
                             dueDate: null,
                           });
                         }}
-                        className="hover:text-destructive cursor-pointer ml-0.5 relative before:absolute before:-inset-2 md:before:hidden"
+                        className="text-foreground hover:bg-muted rounded-sm cursor-pointer ml-0.5 relative before:absolute before:-inset-2 md:before:hidden"
                         aria-label="Remove dates"
                       >
                         <X className="size-3 shrink-0" />
@@ -1501,7 +1479,7 @@ export function DetailModal({
                   const inputEl = document.getElementById('sub-item-quick-input');
                   if (inputEl) inputEl.focus();
                 }}
-                className="h-8 px-2.5 text-12 font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer flex items-center gap-1.5 relative before:absolute before:-inset-1 md:before:hidden"
+                className="h-8 px-2.5 text-12 font-medium text-foreground hover:bg-muted cursor-pointer flex items-center gap-1.5 relative before:absolute before:-inset-1 md:before:hidden"
               >
                 <Plus className="size-3.5 shrink-0" />
                 <span>Add sub-work item</span>
@@ -1511,7 +1489,7 @@ export function DetailModal({
                 variant="ghost"
                 size="sm"
                 onClick={() => setOpenAttachmentPopover(true)}
-                className="h-8 px-2.5 text-12 font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer flex items-center gap-1.5 relative before:absolute before:-inset-1 md:before:hidden"
+                className="h-8 px-2.5 text-12 font-medium text-foreground hover:bg-muted cursor-pointer flex items-center gap-1.5 relative before:absolute before:-inset-1 md:before:hidden"
               >
                 <Paperclip className="size-3.5 shrink-0" />
                 <span>Attach file</span>
@@ -1527,13 +1505,13 @@ export function DetailModal({
                 className="w-full flex items-center justify-between px-4 py-2.5 bg-muted/40 hover:bg-muted/70 transition-colors text-left cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <Layers className="size-4 shrink-0 text-muted-foreground" />
+                  <Layers className="size-4 shrink-0 text-foreground" />
                   <span className="text-xs font-semibold text-foreground tracking-tight">Properties</span>
                 </div>
                 {showProperties ? (
-                  <ChevronUp className="size-4 text-muted-foreground shrink-0" />
+                  <ChevronUp className="size-4 text-foreground shrink-0" />
                 ) : (
-                  <ChevronDown className="size-4 text-muted-foreground shrink-0" />
+                  <ChevronDown className="size-4 text-foreground shrink-0" />
                 )}
               </button>
 
@@ -1545,7 +1523,7 @@ export function DetailModal({
                     <button
                       type="button"
                       onClick={() => setShowDetails((prev) => !prev)}
-                      className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                      className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:underline transition-colors cursor-pointer"
                     >
                       {showDetails ? <ChevronDown className="size-3.5 shrink-0" /> : <ChevronRight className="size-3.5 shrink-0" />}
                       <span>Details</span>
@@ -1555,7 +1533,7 @@ export function DetailModal({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-2">
                         {/* Parent Item */}
                         <div className="flex items-center justify-between text-xs py-1">
-                          <span className="text-muted-foreground">Parent</span>
+                          <span className="text-foreground">Parent</span>
                           <ParentItemPopover
                             open={openParentPopover}
                             onOpenChange={setOpenParentPopover}
@@ -1572,7 +1550,7 @@ export function DetailModal({
 
                         {/* Labels Selector */}
                         <div className="flex items-center justify-between text-xs py-1">
-                          <span className="text-muted-foreground">Labels</span>
+                          <span className="text-foreground">Labels</span>
                           <LabelPopover
                             open={openLabelPopover}
                             onOpenChange={setOpenLabelPopover}
@@ -1595,7 +1573,7 @@ export function DetailModal({
                     <button
                       type="button"
                       onClick={() => setShowProjectStructure((prev) => !prev)}
-                      className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                      className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:underline transition-colors cursor-pointer"
                     >
                       {showProjectStructure ? <ChevronDown className="size-3.5 shrink-0" /> : <ChevronRight className="size-3.5 shrink-0" />}
                       <span>Project structure</span>
@@ -1605,7 +1583,7 @@ export function DetailModal({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-2">
                         {/* Module Info */}
                         <div className="flex items-center justify-between text-xs py-1">
-                          <span className="text-muted-foreground">Modules</span>
+                          <span className="text-foreground">Modules</span>
                           <span className="text-xs font-medium text-foreground truncate max-w-[140px]">
                             {(card as any)?.module?.name || (card as any)?.moduleName || 'Core Workflow'}
                           </span>
@@ -1615,7 +1593,7 @@ export function DetailModal({
                   </div>
 
                   {/* Plane Metadata Timestamps Section */}
-                  <div className="pt-3 space-y-1.5 text-xs pl-2 text-muted-foreground">
+                  <div className="pt-3 space-y-1.5 text-xs pl-2 text-foreground">
                     <div className="flex items-center justify-between py-0.5">
                       <span>Created by</span>
                       <span className="font-medium text-foreground">{authorName}</span>
@@ -1638,7 +1616,7 @@ export function DetailModal({
                     {completedAtFormatted && (
                       <div className="flex items-center justify-between py-0.5">
                         <span>Completed on</span>
-                        <span className="text-foreground font-medium text-success">
+                        <span className="text-foreground font-medium">
                           {completedAtFormatted}
                         </span>
                       </div>
@@ -1652,13 +1630,13 @@ export function DetailModal({
             <div className="space-y-2.5 pt-1">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-foreground tracking-tight flex items-center gap-2">
-                  <GitBranch className="size-4 shrink-0 text-muted-foreground" />
+                  <GitBranch className="size-4 shrink-0 text-foreground" />
                   <span>
                     Sub-items ({subItems.filter((s: any) => s.completed || s.stateGroup === 'completed' || s.state?.group === 'completed' || s.columnId === 'done').length}/{subItems.length})
                   </span>
                 </label>
                 {subItems.length > 0 && (
-                  <span className="text-xs font-semibold text-muted-foreground tabular-nums">
+                  <span className="text-xs font-semibold text-foreground tabular-nums">
                     {progressRollup}% done
                   </span>
                 )}
@@ -1668,7 +1646,7 @@ export function DetailModal({
               {subItems.length > 0 && (
                 <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-success rounded-full transition-all duration-300"
+                    className="h-full bg-foreground rounded-full transition-all duration-300"
                     style={{ width: `${progressRollup}%` }}
                   />
                 </div>
@@ -1704,7 +1682,7 @@ export function DetailModal({
                             aria-label={`Mark sub-item ${sub.title || 'untitled'} as ${isSubDone ? 'incomplete' : 'complete'}`}
                             className={cn(
                               'size-4 rounded-md border flex items-center justify-center transition-colors cursor-pointer relative before:absolute before:-inset-2.5 md:before:hidden',
-                              isSubDone ? 'bg-success border-success text-success-foreground' : 'border-border hover:border-primary'
+                              isSubDone ? 'bg-foreground border-foreground text-background' : 'border-border hover:border-foreground'
                             )}
                           >
                             {isSubDone && <Check className="size-3 shrink-0" />}
@@ -1719,7 +1697,7 @@ export function DetailModal({
                             <button
                               type="button"
                               onClick={() => handleConvertSubItem(sub, sIdx)}
-                              className="hover:text-primary p-1 text-muted-foreground cursor-pointer transition-colors rounded-md hover:bg-muted relative before:absolute before:-inset-2 md:before:hidden"
+                              className="p-1 text-foreground cursor-pointer transition-colors rounded-md hover:bg-muted relative before:absolute before:-inset-2 md:before:hidden"
                               title="Convert to independent work item"
                               aria-label="Convert to independent work item"
                             >
@@ -1734,7 +1712,7 @@ export function DetailModal({
                                   deleteSubItemMutation.mutate({ id: sub.id });
                                 }
                               }}
-                              className="hover:text-destructive p-1 text-muted-foreground cursor-pointer transition-colors rounded-md hover:bg-muted relative before:absolute before:-inset-2 md:before:hidden"
+                              className="p-1 text-foreground cursor-pointer transition-colors rounded-md hover:bg-muted relative before:absolute before:-inset-2 md:before:hidden"
                               title="Delete sub-item"
                               aria-label="Delete sub-item"
                             >

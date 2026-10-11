@@ -11,9 +11,9 @@ import React from 'react';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from "@/shared/components/ui";
 import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import { Bot, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 
-export function EditMenu() {
+export function EditMenu({ value = 'edit' }: { value?: string } = {}) {
   const { engine } = useEditorInstance();
 
   const handleUndo = () => editorCommandBus.dispatch({ type: 'editor:undo' });
@@ -23,11 +23,10 @@ export function EditMenu() {
     editorCommandBus.dispatch({ type: 'editor:find', open: true });
     engine?.focus();
   };
-  const handleAutoFix = () => editorCommandBus.dispatch({ type: 'editor:autofix' });
   const handleLintPage = () => editorCommandBus.dispatch({ type: 'editor:lint-project' });
 
   return (
-    <MenubarMenu>
+    <MenubarMenu value={value}>
       <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary select-none transition-colors">
         Edit
       </MenubarTrigger>
@@ -50,11 +49,6 @@ export function EditMenu() {
           <MenubarShortcut>Ctrl A</MenubarShortcut>
         </MenubarItem>
         <MenubarSeparator />
-        <MenubarItem onClick={handleAutoFix} className="cursor-pointer">
-          <Bot className="size-3.5 mr-2 text-foreground shrink-0" />
-          <span className="whitespace-nowrap">Auto-Fix Page Syntax</span>
-          <MenubarShortcut>Alt Shift F</MenubarShortcut>
-        </MenubarItem>
         <MenubarItem onClick={handleLintPage} className="cursor-pointer">
           <ShieldCheck className="size-3.5 mr-2 text-foreground shrink-0" />
           <span className="whitespace-nowrap">Check Page Syntax</span>

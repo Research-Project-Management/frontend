@@ -69,7 +69,7 @@ interface CalendarCardProps {
   isReadOnly?: boolean;
 }
 
-function CalendarCard({ card }: CalendarCardProps) {
+const CalendarCard = memo(function CalendarCard({ card }: CalendarCardProps) {
   const priorityConfig = PRIORITY_CONFIG[card.priority || 'none'];
   const columnColor = resolveStateColor(card.columnId);
 
@@ -112,7 +112,7 @@ function CalendarCard({ card }: CalendarCardProps) {
       </div>
     </div>
   );
-}
+});
 
 type CalendarViewProps = {
   items?: Item[];
@@ -159,7 +159,7 @@ function createCalendarDueDate(dateKey: string) {
   return `${dateKey}T00:00:00.000Z`;
 }
 
-export function CalendarView({
+export const CalendarView = memo(function CalendarView({
   items: propItems = [],
   columns,
   projectId,
@@ -287,7 +287,7 @@ export function CalendarView({
       ? `${format(calendarDays[0], "d MMM")} - ${format(calendarDays[calendarDays.length - 1], "d MMM yyyy")}`
       : format(currentMonth, "MMMM yyyy");
 
-  const dayCellMinHeight = layoutMode === "week" ? 750 : 150;
+  const dayCellMinHeight = layoutMode === "week" ? 750 : 85;
 
   const handleOpenQuickAdd = useCallback((dateKey: string) => {
     setQuickAddDateKey(dateKey);
@@ -489,14 +489,14 @@ export function CalendarView({
               {WEEK_DAY_LABELS.map((label) => (
                 <div
                   key={label}
-                  className="h-8 px-3 flex items-center justify-end text-11 font-medium text-muted-foreground [&:not(:nth-child(7n))]:border-r border-border select-none"
+                  className="h-8 px-3 flex items-center justify-end text-11 font-semibold text-foreground [&:not(:nth-child(7n))]:border-r border-border select-none"
                 >
                   {label}
                 </div>
               ))}
             </div>
 
-            {/* Weeks with Multi-day Spanning Bars */}
+            {/* Weeks with Multi-day Spanning Bars and Consistent Top Date Header */}
             {calendarWeeks.map((weekDays) => {
               const weekStartKey = format(weekDays[0], DATE_KEY_FORMAT);
               const weekEndKey = format(weekDays[6], DATE_KEY_FORMAT);
@@ -521,25 +521,126 @@ export function CalendarView({
                   };
                 });
 
+              // Greedy Lane Packing for multi-day bars
+              const sortedSpanning = [...weekSpanningItems].sort((a, b) => {
+                if (a.startIndex !== b.startIndex) return a.startIndex - b.startIndex;
+                return b.span - a.span;
+              });
+
+              const lanes: boolean[][] = [];
+              const packedSpanningItems = sortedSpanning.map((spanItem) => {
+                const start = spanItem.startIndex;
+                const end = spanItem.startIndex + spanItem.span - 1;
+
+                let assignedLane = -1;
+                for (let l = 0; l < lanes.length; l++) {
+                  let conflict = false;
+                  for (let dayIdx = start; dayIdx <= end; dayIdx++) {
+                    if (lanes[l][dayIdx]) {
+                      conflict = true;
+                      break;
+                    }
+                  }
+                  if (!conflict) {
+                    assignedLane = l;
+                    break;
+                  }
+                }
+
+                if (assignedLane === -1) {
+                  assignedLane = lanes.length;
+                  lanes.push(new Array(7).fill(false));
+                }
+
+                for (let dayIdx = start; dayIdx <= end; dayIdx++) {
+                  lanes[assignedLane][dayIdx] = true;
+                }
+
+                return {
+                  ...spanItem,
+                  lane: assignedLane,
+                };
+              });
+              const totalLanes = Math.max(1, lanes.length);
+
               return (
-                <div key={weekStartKey} className="border-b border-border/40">
-                  {/* Multi-day Spanning Bars */}
-                  {weekSpanningItems.length > 0 && (
-                    <div className="grid grid-cols-7 pt-1 pb-0.5 px-0.5 bg-muted/20 border-b border-border/20">
-                      {weekSpanningItems.map(
-                        ({ item, startIndex, span, isContinuedFromPrev, isContinuedToNext }) => (
-                          <CalendarSpanningBar
-                            key={`${item.id}-${weekStartKey}`}
-                            item={item}
-                            startIndex={startIndex}
-                            span={span}
-                            isContinuedFromPrev={isContinuedFromPrev}
-                            isContinuedToNext={isContinuedToNext}
-                            onOpenCardDetail={onOpenCardDetail}
-                            isReadOnly={isReadOnly}
+                <div key={weekStartKey} className="border-b border-border">
+                  {/* Consistent 7-Column Date Header Row */}
+                  <div className="grid grid-cols-7 border-b border-border bg-background">
+                    {weekDays.map((day) => {
+                      const isThisToday = isToday(day);
+                      const isCurrentMonth =
+                        layoutMode === "week"
+                          ? isSameWeek(day, currentMonth, { weekStartsOn: 1 })
+                          : isSameMonth(day, currentMonth);
+                      const isFirstDayOfMonth = day.getDate() === 1;
+
+                      return (
+                        <div
+                          key={day.toISOString()}
+                          className={cn(
+                            "h-7 px-2.5 flex items-center justify-between text-right select-none [&:not(:nth-child(7n))]:border-r border-border",
+                            !isCurrentMonth ? "bg-muted/30 text-muted-foreground" : "bg-background text-foreground"
+                          )}
+                        >
+                          <span className="text-11 font-medium text-foreground">
+                            {isFirstDayOfMonth ? format(day, "MMM d") : ""}
+                          </span>
+                          {isThisToday ? (
+                            <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary text-11 font-mono font-medium text-primary-foreground tabular-nums ml-auto">
+                              {format(day, "d")}
+                            </span>
+                          ) : (
+                            <span
+                              className={cn(
+                                "text-11 font-mono font-medium leading-none tabular-nums ml-auto",
+                                !isCurrentMonth ? "text-muted-foreground" : "text-foreground"
+                              )}
+                            >
+                              {format(day, "d")}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Multi-day Spanning Bars Area with Continuous Vertical Gridlines */}
+                  {packedSpanningItems.length > 0 && (
+                    <div className="relative border-b border-border bg-background">
+                      <div className="absolute inset-0 grid grid-cols-7 pointer-events-none">
+                        {weekDays.map((day, i) => (
+                          <div
+                            key={i}
+                            className={cn(
+                              "[&:not(:nth-child(7n))]:border-r border-border",
+                              !isSameMonth(day, currentMonth) && layoutMode === "month" && "bg-muted/30"
+                            )}
                           />
-                        )
-                      )}
+                        ))}
+                      </div>
+                      <div
+                        className="relative grid grid-cols-7 gap-y-1 py-1 px-0.5"
+                        style={{
+                          gridTemplateRows: `repeat(${totalLanes}, minmax(24px, auto))`,
+                        }}
+                      >
+                        {packedSpanningItems.map(
+                          ({ item, startIndex, span, lane, isContinuedFromPrev, isContinuedToNext }) => (
+                            <CalendarSpanningBar
+                              key={`${item.id}-${weekStartKey}`}
+                              item={item}
+                              startIndex={startIndex}
+                              span={span}
+                              lane={lane}
+                              isContinuedFromPrev={isContinuedFromPrev}
+                              isContinuedToNext={isContinuedToNext}
+                              onOpenCardDetail={onOpenCardDetail}
+                              isReadOnly={isReadOnly}
+                            />
+                          )
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -775,7 +876,7 @@ export function CalendarView({
       )}
     </DndContext>
   );
-}
+});
 
 const CalendarDayCell = memo(({
   dateKey,
@@ -811,36 +912,18 @@ const CalendarDayCell = memo(({
       ref={setNodeRef}
       style={{ minHeight: dayCellMinHeight }}
       className={cn(
-        "group flex flex-col transition-colors border-b [&:not(:nth-child(7n))]:border-r border-border",
+        "group flex flex-col transition-colors border-b [&:not(:nth-child(7n))]:border-r border-border p-1.5 min-h-0",
         !isCurrentMonth
-          ? "bg-muted/40 text-muted-foreground"
+          ? "bg-muted/30 text-muted-foreground"
           : "bg-background text-foreground",
         isOver && "bg-muted/60 ring-1 ring-inset ring-ring"
       )}
     >
-      {/* Day number header row - perfectly positioned top right */}
-      <div className="flex items-center justify-end px-3 pt-2 pb-1 text-right select-none">
-        {isThisToday ? (
-          <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary text-11 font-mono font-medium text-primary-foreground tabular-nums">
-            {format(day, "d")}
-          </span>
-        ) : (
-          <span
-            className={cn(
-              "text-11 font-mono font-medium leading-none tabular-nums",
-              !isCurrentMonth ? "text-muted-foreground" : "text-foreground"
-            )}
-          >
-            {format(day, "d")}
-          </span>
-        )}
-      </div>
-
-      <div className="flex-1 flex flex-col px-2 pb-2 min-h-0">
+      <div className="flex-1 flex flex-col min-h-0">
         <div
           className={cn(
-            "space-y-1.5 overflow-y-auto custom-scrollbar flex-1 min-h-[1px]",
-            layoutMode === "week" ? "max-h-175" : "max-h-48"
+            "space-y-1 overflow-y-auto custom-scrollbar flex-1 min-h-0",
+            layoutMode === "week" ? "max-h-175" : "max-h-36"
           )}
         >
           {dayItems.map((item: any) => (
@@ -867,18 +950,18 @@ const CalendarDayCell = memo(({
                 type="button"
                 onClick={() => handleOpenAddItemMenu(dateKey)}
                 className={cn(
-                  dayItems.length > 0 ? "mt-1.5" : "mt-0",
-                  "flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-11 font-medium text-foreground transition-colors hover:bg-muted cursor-pointer",
+                  dayItems.length > 0 ? "mt-1" : "mt-0",
+                  "flex h-6 w-full items-center gap-1.5 rounded-md px-1.5 text-11 font-medium text-foreground transition-colors hover:bg-muted cursor-pointer",
                   "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto"
                 )}
               >
-                <Plus className="size-3.5 shrink-0" strokeWidth={1.75} />
+                <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.75} />
                 <span>Add work item</span>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="start"
-              sideOffset={6}
+              sideOffset={4}
               onCloseAutoFocus={(e) => e.preventDefault()}
               className="w-44 rounded-md border border-border bg-popover p-1 text-xs shadow-overlay"
             >
@@ -901,7 +984,7 @@ const CalendarDayCell = memo(({
         )}
 
         {isQuickAdding && (
-          <div className="mt-2 flex flex-col gap-2">
+          <div className="mt-1 flex flex-col gap-1.5">
             <div className="relative flex w-full items-center rounded-md border border-border bg-background focus-within:border-ring">
               <input
                 type="text"
@@ -920,7 +1003,7 @@ const CalendarDayCell = memo(({
                   }
                 }}
                 placeholder="Title..."
-                className="h-7 min-w-0 flex-1 bg-transparent px-2 text-12 text-foreground outline-none placeholder:text-foreground/70 disabled:cursor-not-allowed"
+                className="h-6.5 min-w-0 flex-1 bg-transparent px-2 text-11 text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
                 disabled={isAddingCard}
               />
             </div>
@@ -928,7 +1011,7 @@ const CalendarDayCell = memo(({
               <Button
                 type="button"
                 size="sm"
-                className="h-7 px-2.5 text-11 font-medium bg-primary hover:bg-primary-hover text-primary-foreground rounded-md cursor-pointer shadow-none"
+                className="h-6 px-2 text-11 font-medium bg-primary hover:bg-primary-hover text-primary-foreground rounded-md cursor-pointer shadow-none"
                 onClick={onQuickAddSubmit}
                 disabled={!quickAddTitle.trim() || columns.length === 0 || isAddingCard}
               >
@@ -938,7 +1021,7 @@ const CalendarDayCell = memo(({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-11 font-medium rounded-md hover:bg-muted cursor-pointer"
+                className="h-6 px-2 text-11 font-medium rounded-md hover:bg-muted cursor-pointer text-foreground"
                 onClick={onCloseQuickAdd}
               >
                 Cancel
@@ -955,6 +1038,7 @@ interface CalendarSpanningBarProps {
   item: Item;
   startIndex: number;
   span: number;
+  lane?: number;
   isContinuedFromPrev: boolean;
   isContinuedToNext: boolean;
   onOpenCardDetail: (item: Item) => void;
@@ -965,6 +1049,7 @@ const CalendarSpanningBar = memo(function CalendarSpanningBar({
   item,
   startIndex,
   span,
+  lane,
   isContinuedFromPrev,
   isContinuedToNext,
   onOpenCardDetail,
@@ -986,6 +1071,7 @@ const CalendarSpanningBar = memo(function CalendarSpanningBar({
   const style: React.CSSProperties = {
     gridColumnStart: startIndex + 1,
     gridColumnEnd: `span ${span}`,
+    gridRowStart: lane != null ? lane + 1 : undefined,
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.3 : 1,
   };
@@ -1032,10 +1118,10 @@ const CalendarSpanningBar = memo(function CalendarSpanningBar({
             }}
           >
             {isContinuedFromPrev && (
-              <ChevronLeft className="size-3 text-muted-foreground shrink-0 -ml-1" />
+              <ChevronLeft className="size-3 text-foreground shrink-0 -ml-1" />
             )}
             {item.identifier && (
-              <span className="font-mono text-10 text-muted-foreground shrink-0 font-semibold">
+              <span className="font-mono text-10 text-foreground shrink-0 font-semibold">
                 {item.identifier}
               </span>
             )}
@@ -1043,7 +1129,7 @@ const CalendarSpanningBar = memo(function CalendarSpanningBar({
               {item.title}
             </span>
             {isContinuedToNext && (
-              <ChevronRight className="size-3 text-muted-foreground shrink-0 -mr-1" />
+              <ChevronRight className="size-3 text-foreground shrink-0 -mr-1" />
             )}
           </button>
         </PopoverTrigger>

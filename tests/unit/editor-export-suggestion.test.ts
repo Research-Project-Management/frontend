@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import JSZip from 'jszip';
-import { exportProjectAsZip, exportArxivSubmissionZip } from '@/features/editor/coordinators/services/archive-export.service';
 import {
+  exportProjectAsZip,
+  exportArxivSubmissionZip,
   exportDocumentAsWord,
   exportDocumentAsMarkdown,
   exportDocumentAsHtml,
-} from '@/features/editor/coordinators/services/document-download.service';
-import { documentService, fileService } from '@/features/editor/coordinators/services/core.service';
-import { StorageService } from '@/features/editor/coordinators/services/storage.service';
-import { exportService } from '@/features/editor/coordinators/services/export.service';
+} from '@/features/editor/sdk/archive';
+import { documentService, fileService, exportService } from '@/features/editor/sdk';
+import { StorageService } from '@/features/editor/sdk';
 
 describe('Export Pipeline & Inline Suggestion Unit Tests', () => {
   beforeEach(() => {

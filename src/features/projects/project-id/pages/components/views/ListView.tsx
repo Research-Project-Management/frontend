@@ -31,7 +31,7 @@ interface ListViewProps {
   onEdit?: (page: Page) => void;
 }
 
-export function ListView({ pages, onEdit }: ListViewProps) {
+export const ListView = React.memo(function ListView({ pages, onEdit }: ListViewProps) {
   const router = useRouter();
   const [sortColumn, setSortColumn] = useState<'title' | 'author' | 'updatedAt' | 'status'>('updatedAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -356,6 +356,6 @@ export function ListView({ pages, onEdit }: ListViewProps) {
       </table>
     </div>
   );
-}
+});
 
 export default ListView;

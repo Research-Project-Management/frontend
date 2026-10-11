@@ -55,6 +55,7 @@ export interface CommentReply {
   author: CommentAuthor;
   content: string;
   createdAt: string;
+  userId?: string;
 }
 
 export interface PageComment {
@@ -62,6 +63,9 @@ export interface PageComment {
   page: string;
   projectPageId: string;
   author: CommentAuthor;
+  authorId?: string;
+  createdById?: string;
+  userId?: string;
   content: string;
   line: number | null;
   lineEnd?: number | null;

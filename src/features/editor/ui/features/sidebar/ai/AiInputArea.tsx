@@ -334,7 +334,7 @@ export function AiInputArea({
                   >
                     <span
                       className={cn(
-                        'pointer-events-none inline-block size-3 rounded-full bg-white transform ring-0 transition duration-200 ease-in-out',
+                        'pointer-events-none inline-block size-3 rounded-full bg-background transform ring-0 transition duration-200 ease-in-out',
                         webSearchEnabled ? 'translate-x-3' : 'translate-x-0'
                       )}
                     />

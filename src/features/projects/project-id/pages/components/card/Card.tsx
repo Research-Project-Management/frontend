@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   FileText,
@@ -56,7 +56,7 @@ function extractSnippet(content?: any): string | null {
   return cleaned.length > 0 ? (cleaned.length > 110 ? cleaned.slice(0, 110) + '…' : cleaned) : null;
 }
 
-export function Card({ page, onEdit }: CardProps) {
+export const Card = React.memo(function Card({ page, onEdit }: CardProps) {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { deletePage, duplicatePage } = usePageActions();
@@ -73,7 +73,10 @@ export function Card({ page, onEdit }: CardProps) {
   const fileQuery = mainFileStr ? `?file=${mainFileStr}` : '';
   const linkHref = `/projects/${projId}/pages/${page.id}${fileQuery}`;
   const authorName = page.author?.name;
-  const snippet = page.description || extractSnippet(page.content);
+  const snippet = useMemo(
+    () => page.description || extractSnippet(page.content),
+    [page.description, page.content]
+  );
   const status = page.status || 'published';
   const labels = (page.labels as any[]) || [];
 
@@ -300,6 +303,6 @@ export function Card({ page, onEdit }: CardProps) {
       </div>
     </div>
   );
-}
+});
 
 export default Card;

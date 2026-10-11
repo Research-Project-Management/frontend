@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 import React, { memo } from 'react';
 import { AlertCircle, AlertTriangle } from 'lucide-react';
-import type { CitationValidationDto } from '@/features/editor/coordinators/services/manuscript.service';
+import type { CitationValidationDto } from '@/features/editor/sdk';
 
 interface CitationValidationBannerProps {
   validation: CitationValidationDto | null | undefined;

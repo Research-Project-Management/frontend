@@ -26,20 +26,19 @@ import React, {
 } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Loader2 } from 'lucide-react';
-import { LatexCompilerEngine } from '@/features/editor/coordinators/services/latex-compiler-engine.service';
 import type { SyncTeXMap } from '@/features/editor/domain';
 import { compilerCoordinator } from '@/features/editor/coordinators/compiler.coordinator';
 import { useIntersectionObserver } from "@/shared/hooks";
 import { logger, cn } from "@/shared/lib/utils";
 import { PlaneErrorState, PlaneEmptyState } from '@/shared/components/ui';
+import { useViewerStore } from '@/features/editor/store/viewer.store';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
+import { setupPdfWorker } from '@/shared/lib/pdfjs-worker';
 
-// Official React-PDF standard: configure workerSrc directly in the module where <Document> is rendered
-if (typeof window !== 'undefined' && pdfjs?.GlobalWorkerOptions) {
-  pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-}
+// Ensure PDF.js worker is registered with absolute origin URL
+setupPdfWorker();
 
 // ── Optimized PDF Page with IntersectionObserver ──────────────────────────────
 
@@ -96,7 +95,7 @@ export const PdfSyncTeXHighlightBox = React.memo(function PdfSyncTeXHighlightBox
         {/* Left Accent Indicator / Baseline Pin (Overleaf Parity) */}
         <div
           data-testid="synctex-pdf-accent-bar"
-          className="absolute -left-2 top-1/2 -translate-y-1/2 w-1.5 h-4/5 max-h-5 rounded-full bg-amber-500 dark:bg-amber-400 shadow-sm"
+          className="absolute -left-2 top-1/2 -translate-y-1/2 w-1.5 h-4/5 max-h-5 rounded-full bg-warning shadow-sm"
         />
       </div>
     );
@@ -142,6 +141,7 @@ interface OptimizedPDFPageProps {
   clickIndicator?: SynctexHighlightState | null;
   invertColors?: boolean;
   isSpreadView?: boolean;
+  onRenderTextLayer?: () => void;
 }
 
 const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
@@ -155,6 +155,7 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
   clickIndicator,
   invertColors = false,
   isSpreadView = false,
+  onRenderTextLayer,
 }: OptimizedPDFPageProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -199,11 +200,31 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
     }
   };
 
+  useEffect(() => {
+    return () => {
+      // 1. Clean up stale DOM node reference from parent registry
+      delete pageElemRefs.current[pageNum];
+
+      // 2. Explicitly release GPU canvas pixel buffers
+      if (containerRef.current) {
+        const canvases = containerRef.current.querySelectorAll('canvas');
+        canvases.forEach((canvas) => {
+          canvas.width = 0;
+          canvas.height = 0;
+        });
+      }
+    };
+  }, [pageNum, pageElemRefs]);
+
   return (
     <div
       ref={(el) => {
         containerRef.current = el;
-        pageElemRefs.current[pageNum] = el;
+        if (el) {
+          pageElemRefs.current[pageNum] = el;
+        } else {
+          delete pageElemRefs.current[pageNum];
+        }
       }}
       onClickCapture={handleClickCapture}
       onDoubleClickCapture={handleDoubleClick}
@@ -237,6 +258,7 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
                 });
               });
             }
+            onRenderTextLayer?.();
           }}
           devicePixelRatio={typeof window !== 'undefined' ? Math.min(2, Math.max(1, window.devicePixelRatio || 1)) : 1}
           loading={
@@ -282,7 +304,7 @@ export interface SurfaceProps {
   autoFit?: boolean;
   containerWidth?: number;
   scrollMode?: boolean;
-  pageNumber: number;
+  pageNumber?: number;
   numPages: number;
   compileStatus: string;
   onPageNumberChange?: (page: number) => void;
@@ -299,6 +321,7 @@ export interface SurfaceProps {
   invertColors?: boolean;
   isSpreadView?: boolean;
   onScroll?: (info: { page: number; y: number; fraction: number }) => void;
+  onRenderTextLayer?: () => void;
 }
 
 export type PdfSurfaceProps = SurfaceProps;
@@ -322,9 +345,13 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
     invertColors = false,
     isSpreadView = false,
     onScroll,
+    onRenderTextLayer,
   },
   ref,
 ) {
+  // Guarantee workerSrc is initialized before <Document> mounts
+  setupPdfWorker();
+
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const pageElemRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const approxHeightRef = useRef<number>(0);
@@ -333,9 +360,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
   const [docLoadError, setDocLoadError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && pdfjs?.GlobalWorkerOptions) {
-      pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-    }
+    setupPdfWorker();
   }, []);
 
   const documentOptions = useMemo(
@@ -346,9 +371,12 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
     [],
   );
 
+  const scrollRafRef = useRef<number | null>(null);
+
   useEffect(() => {
     return () => {
       if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+      if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current);
     };
   }, []);
 
@@ -433,27 +461,32 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
 
   const handleContainerScroll = useCallback(() => {
     if (!onScroll) return;
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    const containerTop = container.scrollTop;
-    const containerHeight = container.clientHeight;
-    const scrollFocus = containerTop + containerHeight / 4;
+    if (scrollRafRef.current !== null) return;
 
-    for (let p = 1; p <= numPages; p++) {
-      const el = pageElemRefs.current[p];
-      if (el) {
-        const elTop = el.offsetTop;
-        const elHeight = el.offsetHeight;
-        if (scrollFocus >= elTop && scrollFocus <= elTop + elHeight) {
-          const relativeY = scrollFocus - elTop;
-          const effectiveScale = el.offsetWidth > 0 ? el.offsetWidth / 595 : (scale > 0 ? scale : 1);
-          const ptY = relativeY / effectiveScale;
-          const fraction = elHeight > 0 ? relativeY / elHeight : 0;
-          onScroll({ page: p, y: ptY, fraction });
-          break;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      const container = scrollContainerRef.current;
+      if (!container) return;
+      const containerTop = container.scrollTop;
+      const containerHeight = container.clientHeight;
+      const scrollFocus = containerTop + containerHeight / 4;
+
+      for (let p = 1; p <= numPages; p++) {
+        const el = pageElemRefs.current[p];
+        if (el) {
+          const elTop = el.offsetTop;
+          const elHeight = el.offsetHeight;
+          if (scrollFocus >= elTop && scrollFocus <= elTop + elHeight) {
+            const relativeY = scrollFocus - elTop;
+            const effectiveScale = el.offsetWidth > 0 ? el.offsetWidth / 595 : (scale > 0 ? scale : 1);
+            const ptY = relativeY / effectiveScale;
+            const fraction = elHeight > 0 ? relativeY / elHeight : 0;
+            onScroll({ page: p, y: ptY, fraction });
+            break;
+          }
         }
       }
-    }
+    });
   }, [onScroll, numPages, scale]);
 
   const handleDocumentLoadSuccess = useCallback((pdf: any) => {
@@ -492,10 +525,13 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
       triggerClickIndicator(pageNum, pixelX, pixelY, undefined, undefined, 'backward');
     }
     if (!onJumpToSource) return;
-    const effectiveMap = synctexMap || compilerCoordinator.getSynctexMap();
-    const resolved = effectiveMap
-      ? LatexCompilerEngine.resolveReverse(clickFraction, pageNum, effectiveMap, ptX, ptY)
-      : null;
+    const resolved = compilerCoordinator.resolveReverse(
+      clickFraction,
+      pageNum,
+      ptX,
+      ptY,
+      synctexMap,
+    );
     onJumpToSource(
       resolved?.sourcePath ?? null,
       resolved?.line ?? 1,
@@ -537,6 +573,8 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
 
   const currentContainerWidth =
     containerWidthState || containerWidth || scrollContainerRef.current?.clientWidth || 600;
+
+  const effectivePageNumber = pageNumber ?? useViewerStore.getState().pageNumber ?? 1;
 
   return (
     <div
@@ -598,6 +636,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
                         approxHeightRef={approxHeightRef}
                         onDoubleClickPage={handleDoubleClickPage}
                         clickIndicator={clickIndicator}
+                        onRenderTextLayer={onRenderTextLayer}
                       />
                     ))}
                   </div>
@@ -620,6 +659,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
                     approxHeightRef={approxHeightRef}
                     onDoubleClickPage={handleDoubleClickPage}
                     clickIndicator={clickIndicator}
+                    onRenderTextLayer={onRenderTextLayer}
                   />
                 ))}
               </div>
@@ -627,7 +667,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
           ) : (
             <div
               ref={(el) => {
-                pageElemRefs.current[pageNumber] = el;
+                pageElemRefs.current[effectivePageNumber] = el;
               }}
               onDoubleClickCapture={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
@@ -638,7 +678,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
                 const effectiveScale = rect.width > 0 ? rect.width / 595 : (scale > 0 ? scale : 1);
                 const ptX = Math.round(clickX / effectiveScale);
                 const ptY = Math.round(clickY / effectiveScale);
-                handleDoubleClickPage(pageNumber, clickFraction, ptX, ptY, clickX, clickY);
+                handleDoubleClickPage(effectivePageNumber, clickFraction, ptX, ptY, clickX, clickY);
               }}
               className={cn(
                 "bg-canvas dark:bg-card relative flex items-center justify-center cursor-text transition-[filter] duration-200 shrink-0"
@@ -646,14 +686,14 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
               style={invertColors ? { filter: 'invert(0.9) hue-rotate(180deg) contrast(1.25)' } : undefined}
             >
               <Page
-                pageNumber={pageNumber}
+                pageNumber={effectivePageNumber}
                 width={autoFit ? currentContainerWidth : undefined}
                 scale={autoFit ? undefined : scale}
                 className=""
                 renderTextLayer
                 renderAnnotationLayer
                 onRenderTextLayerSuccess={() => {
-                  const el = pageElemRefs.current[pageNumber];
+                  const el = pageElemRefs.current[effectivePageNumber];
                   if (el) {
                     const textLayers = el.querySelectorAll('.textLayer, .react-pdf__Page__textContent');
                     textLayers.forEach((tl) => {
@@ -664,10 +704,11 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
                       });
                     });
                   }
+                  onRenderTextLayer?.();
                 }}
                 devicePixelRatio={typeof window !== 'undefined' ? Math.min(2, Math.max(1, window.devicePixelRatio || 1)) : 1}
               />
-              {clickIndicator && clickIndicator.page === pageNumber && (
+              {clickIndicator && clickIndicator.page === effectivePageNumber && (
                 <PdfSyncTeXHighlightBox
                   indicator={clickIndicator}
                   pageWidth={autoFit ? currentContainerWidth : Math.round(595 * scale)}

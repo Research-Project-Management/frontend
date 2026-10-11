@@ -14,6 +14,5 @@ export * from './use-label';
 export * from './use-property';
 export * from './use-realtime';
 export * from './use-relation';
-export * from './use-template';
 export * from './use-topbar';
 export * from './use-view';

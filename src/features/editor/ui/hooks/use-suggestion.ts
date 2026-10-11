@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * use-suggestion.ts
@@ -9,7 +9,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { SuggestionStatus, PageSuggestion } from '../../domain/types';
-import { suggestionService, type CreateSuggestionPayload } from '../../coordinators/services/suggestion.service';
+import { suggestionService, type CreateSuggestionPayload } from '@/features/editor/sdk';
 import { toast } from 'sonner';
 
 export const suggestionKeys = {

@@ -20,14 +20,24 @@ const nextConfig: NextConfig = {
     '127.0.0.1',
   ],
 
+  transpilePackages: ['yjs', 'y-protocols', 'y-codemirror.next'],
+
   turbopack: {
     resolveAlias: {
       'pdfjs-dist': 'pdfjs-dist/legacy/build/pdf.mjs',
+      yjs: 'yjs/dist/yjs.mjs',
+      'y-codemirror.next': 'y-codemirror.next/src/index.js',
     },
     resolveExtensions: ['.tsx', '.ts', '.jsx', '.js', '.json', '.mjs'],
   },
 
   webpack: (config, { isServer }) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      yjs$: 'yjs/dist/yjs.mjs',
+      'y-codemirror.next$': 'y-codemirror.next/src/index.js',
+    };
+
     if (!isServer) {
       config.resolve.alias = {
         ...config.resolve.alias,
@@ -69,18 +79,41 @@ const nextConfig: NextConfig = {
       '@tanstack/react-query',
       'recharts',
       'katex',
+      'cmdk',
       '@dnd-kit/core',
       '@dnd-kit/sortable',
       '@dnd-kit/utilities',
+      '@radix-ui/react-accordion',
+      '@radix-ui/react-alert-dialog',
+      '@radix-ui/react-aspect-ratio',
+      '@radix-ui/react-checkbox',
+      '@radix-ui/react-collapsible',
+      '@radix-ui/react-context-menu',
       '@radix-ui/react-dialog',
       '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-hover-card',
+      '@radix-ui/react-label',
+      '@radix-ui/react-menubar',
+      '@radix-ui/react-navigation-menu',
       '@radix-ui/react-popover',
-      '@radix-ui/react-select',
-      '@radix-ui/react-tooltip',
-      '@radix-ui/react-tabs',
+      '@radix-ui/react-progress',
+      '@radix-ui/react-radio-group',
       '@radix-ui/react-scroll-area',
-      '@radix-ui/react-context-menu',
-      '@radix-ui/react-alert-dialog',
+      '@radix-ui/react-select',
+      '@radix-ui/react-separator',
+      '@radix-ui/react-slider',
+      '@radix-ui/react-slot',
+      '@radix-ui/react-switch',
+      '@radix-ui/react-tabs',
+      '@radix-ui/react-toggle',
+      '@radix-ui/react-toggle-group',
+      '@radix-ui/react-tooltip',
+      '@tanstack/react-virtual',
+      'vaul',
+      'embla-carousel-react',
+      'react-day-picker',
+      'zustand',
+      'dompurify',
     ],
   },
 
@@ -241,6 +274,14 @@ const nextConfig: NextConfig = {
       {
         source: '/notifications/:path*',
         destination: `${backendUrl}/notifications/:path*`,
+      },
+      {
+        source: '/:path*/pdf.worker.mjs',
+        destination: '/pdf.worker.mjs',
+      },
+      {
+        source: '/:path*/pdf.worker.min.mjs',
+        destination: '/pdf.worker.min.mjs',
       },
     ];
   },

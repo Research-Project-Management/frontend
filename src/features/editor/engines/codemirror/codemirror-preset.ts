@@ -26,13 +26,24 @@ import {
   history,
   historyKeymap,
   toggleComment,
+  addCursorAbove,
+  addCursorBelow,
 } from '@codemirror/commands';
-import { foldGutter, foldKeymap, bracketMatching } from '@codemirror/language';
+import {
+  foldGutter,
+  foldKeymap,
+  foldCode,
+  unfoldCode,
+  foldAll,
+  unfoldAll,
+  bracketMatching,
+} from '@codemirror/language';
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
-import { search, searchKeymap, gotoLine } from '@codemirror/search';
-import { vim } from '@replit/codemirror-vim';
+import { search, searchKeymap, gotoLine, selectNextOccurrence } from '@codemirror/search';
+import { vim, Vim } from '@replit/codemirror-vim';
 import { latexLanguage, lineHighlightField, synctexHighlightTheme } from '../extensions/latex-language';
 import { createLatexAutocompleteExtension } from '../extensions/latex-autocomplete';
+import { createLatexSmartPasteExtension } from '../extensions/latex-smart-paste';
 import { createLatexLinterExtension } from '../extensions/latex-linter';
 import { latexMathHoverTooltip } from '../extensions/latex-math-preview';
 import { latexCitationHoverTooltip } from '../extensions/latex-citation-hover';
@@ -41,6 +52,8 @@ import { createLatexFoldExtension } from '../extensions/latex-folding';
 import { createLatexErrorLensExtension } from '../extensions/latex-error-lens';
 import { createLatexSpellingExtension } from '../extensions/latex-spelling';
 import { editorCommandBus } from '../../coordinators/command-bus';
+import { useDocumentCollaborationStore, useLayoutStore, useSettingsStore } from '../../store';
+import { getThemeExtension } from './editor-themes';
 
 export const editorBaseTheme = EditorView.theme({
   '&': {
@@ -48,27 +61,48 @@ export const editorBaseTheme = EditorView.theme({
   },
   '.cm-scroller': {
     overflow: 'auto',
-    fontFamily: 'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
   },
   '.cm-content': {
     padding: '0 0 32px 0',
   },
   '.cm-line': {
     padding: '3px 0',
-    lineHeight: '1.54',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     padding: '3px 0',
-    backgroundColor: 'var(--editor-active-line, #e2f2ff)',
-  },
-  '&.cm-editor .cm-activeLineGutter, .cm-activeLineGutter': {
-    backgroundColor: 'var(--editor-active-line, #e2f2ff)',
   },
   '.cm-gutters': {
     borderRight: '1px solid var(--border)',
     backgroundColor: 'transparent',
   },
 });
+
+export function createTypographyExtension(
+  fontSize: number = 14,
+  fontFamily?: string,
+  lineHeight?: number
+): Extension {
+  const fontStack =
+    fontFamily && fontFamily.trim().length > 0
+      ? `"${fontFamily}", var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`
+      : 'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+
+  return EditorView.theme({
+    '&': {
+      fontSize: `${fontSize}px`,
+    },
+    '.cm-scroller': {
+      fontFamily: fontStack,
+    },
+    '.cm-content, .cm-gutter': {
+      fontSize: `${fontSize}px`,
+      lineHeight: lineHeight ? `${lineHeight}` : '1.54',
+    },
+    '.cm-line': {
+      lineHeight: lineHeight ? `${lineHeight}` : '1.54',
+    },
+  });
+}
 
 export interface CodeMirrorPresetOptions {
   lineNumbers?: boolean;
@@ -85,8 +119,18 @@ export interface CodeMirrorPresetOptions {
   enableFolding?: boolean;
   enableErrorLens?: boolean;
   enableSpellCheck?: boolean;
+  enableSmartPaste?: boolean;
   projectId?: string;
   spellCheckLanguage?: string;
+  editorTheme?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  lineHeight?: number;
+}
+
+// Expose Vim for custom vimrc / user keybindings (Overleaf parity)
+if (typeof window !== 'undefined') {
+  (window as any).CodeMirrorVim = { Vim };
 }
 
 /**
@@ -108,10 +152,23 @@ export const editorCompartments = {
   folding: new Compartment(),
   errorLens: new Compartment(),
   spellCheck: new Compartment(),
+  smartPaste: new Compartment(),
+  theme: new Compartment(),
+  typography: new Compartment(),
 };
 
-import { wrapFormatting, handleAutoCloseEnvironment } from './latex-formatting.util';
-export { wrapFormatting, handleAutoCloseEnvironment };
+import {
+  wrapFormatting,
+  handleAutoCloseEnvironment,
+  handleAutoCloseMath,
+  handleBackspaceBetweenMath,
+} from './latex-formatting.util';
+export {
+  wrapFormatting,
+  handleAutoCloseEnvironment,
+  handleAutoCloseMath,
+  handleBackspaceBetweenMath,
+};
 
 /**
  * Generates an immutable Extension[] array for CodeMirror 6 EditorState creation.
@@ -132,16 +189,22 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
     enableFolding = true,
     enableErrorLens = false,
     enableSpellCheck = true,
+    enableSmartPaste = true,
     projectId,
     spellCheckLanguage = 'en_US',
+    editorTheme = 'auto',
+    fontSize = 14,
+    fontFamily,
+    lineHeight,
   } = options;
 
   const extensions: Extension[] = [
     // 0. Base Editor Layout & Typography Theme
     editorBaseTheme,
 
-    // 1. Core Document Editing & History
+    // 1. Core Document Editing, Multi-Cursor & History
     history(),
+    EditorState.allowMultipleSelections.of(true),
     search({ top: false }),
     rectangularSelection(),
     crosshairCursor(),
@@ -157,7 +220,7 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
       {
         key: 'Mod-Enter',
         run: () => {
-          editorCommandBus.dispatch({ type: 'compiler:trigger', reason: 'shortcut' } as any);
+          editorCommandBus.dispatch({ type: 'compiler:trigger', reason: 'shortcut' });
           return true;
         },
       },
@@ -178,6 +241,38 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
         run: (view) => handleAutoCloseEnvironment(view),
       },
       {
+        key: '$',
+        run: (view) => handleAutoCloseMath(view),
+      },
+      {
+        key: 'Backspace',
+        run: (view) => handleBackspaceBetweenMath(view),
+      },
+      // Overleaf Table / Matrix Wizard Parity (Ctrl+Shift+T)
+      {
+        key: 'Mod-Shift-t',
+        run: () => {
+          editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'table-wizard' });
+          return true;
+        },
+      },
+      // Overleaf Source/Visual Mode Switcher Parity (Ctrl+Shift+V)
+      {
+        key: 'Mod-Shift-v',
+        run: () => {
+          useSettingsStore.getState().toggleEditorMode();
+          return true;
+        },
+      },
+      // Overleaf Word Count Parity (Ctrl+Shift+W)
+      {
+        key: 'Mod-Shift-w',
+        run: () => {
+          editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'word-count' });
+          return true;
+        },
+      },
+      {
         key: 'F8',
         run: () => {
           editorCommandBus.dispatch({ type: 'navigation:next-error' });
@@ -193,14 +288,74 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
       },
       {
         key: 'Mod-Shift-f',
-        run: () => {
-          editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Search' });
+        run: (view) => {
+          const { from, to } = view.state.selection.main;
+          const selectedText = from < to ? view.state.sliceDoc(from, to) : undefined;
+          useLayoutStore.getState().setSidebarLeftOpen(true);
+          useLayoutStore.getState().setActiveSidebarTab('search');
+          editorCommandBus.dispatch({
+            type: 'sidebar:open-panel',
+            panel: 'Search',
+            query: selectedText,
+          });
           return true;
         },
       },
+      // Overleaf Parity: Mod-Shift-h (Ctrl+Shift+H / Cmd+Shift+H) to open Project Replace
+      {
+        key: 'Mod-Shift-h',
+        run: (view) => {
+          const { from, to } = view.state.selection.main;
+          const selectedText = from < to ? view.state.sliceDoc(from, to) : undefined;
+          useLayoutStore.getState().setSidebarLeftOpen(true);
+          useLayoutStore.getState().setActiveSidebarTab('search');
+          editorCommandBus.dispatch({
+            type: 'sidebar:open-panel',
+            panel: 'Search',
+            query: selectedText,
+            showReplace: true,
+          });
+          return true;
+        },
+      },
+      // Overleaf Parity: Mod-Alt-m (Ctrl+Alt+M / Cmd+Opt+M) to Add Comment on selection or line
+      {
+        key: 'Mod-Alt-m',
+        run: (view) => {
+          const { from, to } = view.state.selection.main;
+          const selectedText = view.state.sliceDoc(from, to);
+          const startLine = view.state.doc.lineAt(from).number;
+          const endLine = view.state.doc.lineAt(to).number;
+
+          useDocumentCollaborationStore.getState().setPendingComment({
+            startLine,
+            endLine,
+            selectedText: selectedText || '',
+          });
+
+          useLayoutStore.getState().setSidebarLeftOpen(true);
+          useLayoutStore.getState().setActiveSidebarTab('review');
+          editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
+          return true;
+        },
+      },
+      // Backward-compatible alias: Mod-Alt-c
       {
         key: 'Mod-Alt-c',
-        run: () => {
+        run: (view) => {
+          const { from, to } = view.state.selection.main;
+          const selectedText = view.state.sliceDoc(from, to);
+          const startLine = view.state.doc.lineAt(from).number;
+          const endLine = view.state.doc.lineAt(to).number;
+
+          useDocumentCollaborationStore.getState().setPendingComment({
+            startLine,
+            endLine,
+            selectedText: selectedText || '',
+          });
+
+          useLayoutStore.getState().setSidebarLeftOpen(true);
+          useLayoutStore.getState().setActiveSidebarTab('review');
           editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
           return true;
         },
@@ -208,6 +363,11 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
       { key: 'Mod-/', run: toggleComment },
       { key: 'Mod-Shift-l', run: gotoLine },
       { key: 'Mod-g', run: gotoLine },
+      // Overleaf Code Folding Parity
+      { key: 'Mod-Alt-[', run: foldCode },
+      { key: 'Mod-Alt-]', run: unfoldCode },
+      { key: 'Mod-Alt-Shift-[', run: foldAll },
+      { key: 'Mod-Alt-Shift-]', run: unfoldAll },
       {
         key: 'Mod-Shift-k',
         run: () => {
@@ -240,6 +400,29 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
           });
           return true;
         },
+      },
+
+      // Overleaf Multi-cursor Parity: Select Next Occurrence (Mod-d) and Add Cursor Above/Below
+      {
+        key: 'Mod-d',
+        run: selectNextOccurrence,
+        preventDefault: true,
+      },
+      {
+        key: 'Alt-Shift-ArrowUp',
+        run: addCursorAbove,
+      },
+      {
+        key: 'Alt-Shift-ArrowDown',
+        run: addCursorBelow,
+      },
+      {
+        key: 'Ctrl-Alt-ArrowUp',
+        run: addCursorAbove,
+      },
+      {
+        key: 'Ctrl-Alt-ArrowDown',
+        run: addCursorBelow,
       },
 
       // Priority 2: Standard Editor & Language Keymaps
@@ -289,12 +472,36 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
         ? createLatexSpellingExtension({ projectId, language: spellCheckLanguage, enabled: true })
         : []
     ),
+    editorCompartments.smartPaste.of(
+      enableSmartPaste ? createLatexSmartPasteExtension({ projectId, enableSmartPaste: true }) : []
+    ),
+    editorCompartments.theme.of(getThemeExtension(editorTheme)),
+    editorCompartments.typography.of(createTypographyExtension(fontSize, fontFamily, lineHeight)),
   ];
 
   return extensions;
 }
 
 // ── Compartment Reconfiguration Helpers (0ms Runtime Mutations) ───────────────
+
+export function reconfigureTheme(view: EditorView, themeId: string): void {
+  view.dispatch({
+    effects: editorCompartments.theme.reconfigure(getThemeExtension(themeId)),
+  });
+}
+
+export function reconfigureTypography(
+  view: EditorView,
+  fontSize: number,
+  fontFamily?: string,
+  lineHeight?: number
+): void {
+  view.dispatch({
+    effects: editorCompartments.typography.reconfigure(
+      createTypographyExtension(fontSize, fontFamily, lineHeight)
+    ),
+  });
+}
 
 export function reconfigureSpellCheck(
   view: EditorView,
@@ -344,3 +551,12 @@ export function reconfigureReadOnly(view: EditorView, readOnly: boolean): void {
     effects: editorCompartments.readOnly.reconfigure(EditorState.readOnly.of(readOnly)),
   });
 }
+
+export function reconfigureSmartPaste(view: EditorView, enabled: boolean, projectId?: string): void {
+  view.dispatch({
+    effects: editorCompartments.smartPaste.reconfigure(
+      enabled ? createLatexSmartPasteExtension({ projectId, enableSmartPaste: true }) : []
+    ),
+  });
+}
+

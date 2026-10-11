@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Star, Folder, CheckSquare, Square, Loader2, Upload, FolderPlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { resolveFileUrl } from "@/shared/lib/file-client";
@@ -13,7 +13,7 @@ import { useStorageSelectionStore } from '../../store/use-selection-store';
 import { createFolderDropHandlers } from '../../utils/drag-drop.util';
 import StorageEmptyState from '../layout/StorageEmptyState';
 
-function GridFileIconItem({ item }: { item: StorageItem }) {
+const GridFileIconItem = React.memo(function GridFileIconItem({ item }: { item: StorageItem }) {
   const [hasError, setHasError] = useState(false);
   const fileType = getFileType(item);
   const imageUrl = !hasError
@@ -39,9 +39,9 @@ function GridFileIconItem({ item }: { item: StorageItem }) {
       {getFileIcon(fileType, 12)}
     </div>
   );
-}
+});
 
-export default function GridView({
+export const GridView = React.memo(function GridView({
   items,
   onToggleStar,
   onDelete,
@@ -69,10 +69,9 @@ export default function GridView({
     selectRange,
   } = useStorageSelectionStore();
 
-  const allItemIds = items.map((i) => i.id);
-
-  const folders = items.filter((i) => i.isFolder);
-  const files = items.filter((i) => !i.isFolder);
+  const allItemIds = useMemo(() => items.map((i) => i.id), [items]);
+  const folders = useMemo(() => items.filter((i) => i.isFolder), [items]);
+  const files = useMemo(() => items.filter((i) => !i.isFolder), [items]);
 
   if (items.length === 0) {
     return <StorageEmptyState isTrash={isTrash} isReadOnly={isReadOnly} />;
@@ -342,4 +341,7 @@ export default function GridView({
       </div>
     </div>
   );
-}
+});
+
+export default GridView;
+

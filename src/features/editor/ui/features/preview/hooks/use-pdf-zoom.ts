@@ -10,7 +10,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { editorCommandBus } from '../../../../coordinators/command-bus';
 import { useCompileStore } from '../../../../store/compiler.store';
-import { useViewerStore } from '../../../../store/viewer.store';
+import { useViewerStore, type PdfFitMode } from '../../../../store/viewer.store';
 
 export interface UsePdfZoomOptions {
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -27,12 +27,15 @@ export function usePdfZoom({
   const setScale = useViewerStore((s) => s.setScale);
   const autoFit = useViewerStore((s) => s.autoFit);
   const setAutoFit = useViewerStore((s) => s.setAutoFit);
+  const fitMode = useViewerStore((s) => s.fitMode);
+  const setFitMode = useViewerStore((s) => s.setFitMode);
   const zoomIn = useViewerStore((s) => s.zoomIn);
   const zoomOut = useViewerStore((s) => s.zoomOut);
   const resetZoom = useViewerStore((s) => s.resetZoom);
   const [containerWidth, setContainerWidth] = useState(600);
+  const [containerHeight, setContainerHeight] = useState(800);
 
-  // ResizeObserver on the container to dynamically compute available width
+  // ResizeObserver on the container to dynamically compute available width & height
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -44,28 +47,63 @@ export function usePdfZoom({
       rafId = requestAnimationFrame(() => {
         for (const entry of entries) {
           const w = Math.round(entry.contentRect.width);
+          const h = Math.round(entry.contentRect.height);
           if (w > 0) {
             setContainerWidth((prevWidth) => (Math.abs(prevWidth - w) < 4 ? prevWidth : w));
             isInitial = false;
+          }
+          if (h > 0) {
+            setContainerHeight((prevHeight) => (Math.abs(prevHeight - h) < 4 ? prevHeight : h));
           }
         }
       });
     });
 
     observer.observe(el);
+
+    // Ctrl + Mouse Wheel / Pinch-to-zoom support (Overleaf Parity)
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        if (e.deltaY < 0) {
+          zoomIn();
+        } else if (e.deltaY > 0) {
+          zoomOut();
+        }
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
       observer.unobserve(el);
+      el.removeEventListener('wheel', handleWheel);
     };
-  }, [containerRef, pdfUrl]);
+  }, [containerRef, pdfUrl, zoomIn, zoomOut]);
 
-  // Ideal scale to fit full page width comfortably inside the viewport
+  // Ideal scale to fit page width / height / auto comfortably inside the viewport
   const fittedScale = useMemo(() => {
-    const available = containerWidth;
+    const availableWidth = containerWidth;
+    const availableHeight = containerHeight;
     const targetWidth = pdfSpreadView ? 595 * 2 + 16 : 595;
-    const s = available / targetWidth;
-    return Math.max(0.3, Math.min(s, 2.5));
-  }, [containerWidth, pdfSpreadView]);
+    const targetHeight = 842; // standard A4 pt height
+
+    const widthScale = availableWidth / targetWidth;
+    const heightScale = availableHeight > 50 ? (availableHeight - 48) / targetHeight : widthScale;
+
+    let s: number;
+    if (fitMode === 'height') {
+      s = heightScale;
+    } else if (fitMode === 'auto') {
+      s = Math.min(widthScale, 1.25);
+    } else {
+      // default 'width'
+      s = widthScale;
+    }
+
+    return Math.max(0.25, Math.min(s, 3.5));
+  }, [containerWidth, containerHeight, pdfSpreadView, fitMode]);
 
   // Auto-fit when new compile finishes
   useEffect(() => {
@@ -74,13 +112,13 @@ export function usePdfZoom({
         setAutoFit(true);
       }
     });
-  }, []);
+  }, [setAutoFit]);
 
   useEffect(() => {
     if (pdfUrl) {
       setAutoFit(true);
     }
-  }, [pdfUrl]);
+  }, [pdfUrl, setAutoFit]);
 
   useEffect(() => {
     if (autoFit) {
@@ -106,21 +144,30 @@ export function usePdfZoom({
     if (next) setScale(fittedScale);
   }, [autoFit, setAutoFit, setScale, fittedScale]);
 
-  const handleSetScale = useCallback((s: number) => {
-    setScale(s);
-  }, [setScale]);
+  const handleSetFitMode = useCallback(
+    (mode: PdfFitMode) => {
+      setFitMode(mode);
+      setAutoFit(true);
+    },
+    [setFitMode, setAutoFit],
+  );
+
+  const handleSetScale = useCallback(
+    (s: number) => {
+      setScale(s);
+    },
+    [setScale],
+  );
 
   // Listen to global zoom shortcut events
   useEffect(() => {
     const unsubZoomIn = editorCommandBus.subscribe('viewer:zoom-in', handleZoomIn);
     const unsubZoomOut = editorCommandBus.subscribe('viewer:zoom-out', handleZoomOut);
     const unsubFitWidth = editorCommandBus.subscribe('viewer:fit-width', () => {
-      setAutoFit(true);
-      setScale(fittedScale);
+      handleSetFitMode('width');
     });
     const unsubFitHeight = editorCommandBus.subscribe('viewer:fit-height', () => {
-      setAutoFit(false);
-      setScale(0.85);
+      handleSetFitMode('height');
     });
     return () => {
       unsubZoomIn();
@@ -128,7 +175,7 @@ export function usePdfZoom({
       unsubFitWidth();
       unsubFitHeight();
     };
-  }, [fittedScale, handleZoomIn, handleZoomOut]);
+  }, [handleZoomIn, handleZoomOut, handleSetFitMode]);
 
   const showZoomGroup = containerWidth >= 500;
   const showUtilityGroup = containerWidth >= 720;
@@ -138,14 +185,18 @@ export function usePdfZoom({
     setScale,
     autoFit,
     setAutoFit,
+    fitMode,
+    setFitMode,
     fittedScale,
     containerWidth,
+    containerHeight,
     showZoomGroup,
     showUtilityGroup,
     handleZoomIn,
     handleZoomOut,
     handleResetZoom,
     handleToggleAutoFit,
+    handleSetFitMode,
     handleSetScale,
   };
 }

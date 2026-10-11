@@ -32,6 +32,14 @@ export function IntegrationsHub() {
     ? integrations.find((i) => i.provider === selectedProvider)
     : null;
 
+  const handleConfigure = React.useCallback((clickedItem: any) => {
+    setSelectedProvider(clickedItem.provider);
+  }, []);
+
+  const handleBack = React.useCallback(() => {
+    setSelectedProvider(null);
+  }, []);
+
   return (
     <PageLayout>
       <PageHeader title="Integrations" icon={Blocks} />
@@ -40,7 +48,7 @@ export function IntegrationsHub() {
         <PageContent maxWidth="full" noPadding>
           <IntegrationDetailView
             item={selectedItem}
-            onBack={() => setSelectedProvider(null)}
+            onBack={handleBack}
             onConnect={connect}
             onDisconnect={disconnect}
             isConnecting={isConnecting}
@@ -65,7 +73,7 @@ export function IntegrationsHub() {
                   <IntegrationCard
                     key={item.provider}
                     item={item}
-                    onConfigure={(clickedItem) => setSelectedProvider(clickedItem.provider)}
+                    onConfigure={handleConfigure}
                   />
                 ))}
               </div>

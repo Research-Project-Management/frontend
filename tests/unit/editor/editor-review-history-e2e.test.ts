@@ -1,4 +1,4 @@
-/**
+﻿/**
  * editor-review-history-e2e.test.ts
  *
  * Comprehensive End-to-End Suite for Track Changes, Review Mode,
@@ -19,11 +19,9 @@ import {
   trackChangesDecorationsField,
 } from '@/features/editor/engines/extensions/track-changes.extension';
 import { reviewCoordinator } from '@/features/editor/coordinators/review.coordinator';
-import { suggestionService } from '@/features/editor/coordinators/services/suggestion.service';
-import { historyService } from '@/features/editor/coordinators/services/history.service';
-import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
+import { manuscriptService, suggestionService, historyService } from '@/features/editor/sdk';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
-import type { TrackChangeDto, CommentThreadDto } from '@/features/editor/coordinators/services/manuscript.service';
+import type { TrackChangeDto, CommentThreadDto } from '@/features/editor/sdk';
 import type { ProjectVersionListItem, ProjectDiffResponse } from '@/features/editor/domain/types/history.types';
 
 describe('Track Changes, Review Mode & Version History Subsystem', () => {
@@ -246,6 +244,8 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
           suggestedText: 'New text',
           status: 'pending' as const,
           createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          authorId: 'a1',
           author: { id: 'a1', name: 'Author 1' },
           fromLine: 2,
           fromColumn: 1,

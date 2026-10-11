@@ -38,7 +38,7 @@ export function VisualProtectedEditorModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="bg-card border shadow-2xl rounded-xl p-5 w-full max-w-2xl space-y-4">
+      <div className="bg-card border border-border shadow-overlay rounded-lg p-5 w-full max-w-2xl space-y-4">
         <div className="flex items-center justify-between pb-2 border-b">
           <div className="flex items-center gap-2">
             <Code2 className="size-4 text-primary" />

@@ -7,18 +7,15 @@ import {
 } from '@/features/library/data';
 import * as api from '@/shared/lib/api';
 
-vi.mock('@/shared/lib/api', () => ({
-  apiGet: vi.fn(),
-  apiPost: vi.fn(),
-  apiPatch: vi.fn(),
-  apiPut: vi.fn(),
-  apiDelete: vi.fn(),
-  getAuthToken: vi.fn().mockReturnValue('mock-token'),
-}));
-
 describe('Library Module — Client Zero-Trust & Sanitization', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    vi.spyOn(api, 'apiGet').mockImplementation(vi.fn() as any);
+    vi.spyOn(api, 'apiPost').mockImplementation(vi.fn() as any);
+    vi.spyOn(api, 'apiPatch').mockImplementation(vi.fn() as any);
+    vi.spyOn(api, 'apiPut').mockImplementation(vi.fn() as any);
+    vi.spyOn(api, 'apiDelete').mockImplementation(vi.fn() as any);
+    vi.spyOn(api, 'getAuthToken').mockReturnValue('mock-token');
   });
 
   describe('sanitizeItemPayload (Client Boundary Filter)', () => {

@@ -94,7 +94,7 @@ function ThinkingBlock({ content, isOpen }: { content: string; isOpen: boolean }
   );
 }
 
-function MessageBubble({
+const MessageBubble = React.memo(function MessageBubble({
   message,
   isLast,
 }: {
@@ -165,7 +165,7 @@ function MessageBubble({
       )}
     </div>
   );
-}
+});
 
 const SUGGESTIONS = [
   {
@@ -190,7 +190,7 @@ const SUGGESTIONS = [
   },
 ];
 
-export function CompanionMessages({
+export const CompanionMessages = React.memo(function CompanionMessages({
   messages,
   streamContent,
   isStreaming,
@@ -288,4 +288,4 @@ export function CompanionMessages({
       )}
     </div>
   );
-}
+});

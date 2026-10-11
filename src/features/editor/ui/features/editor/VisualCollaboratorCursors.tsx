@@ -92,6 +92,7 @@ export function VisualCollaboratorCursors({
 
   const [cursorPositions, setCursorPositions] = useState<ComputedCursorPosition[]>([]);
   const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
+  const [now, setNow] = useState<number>(() => Date.now());
 
   // Filter collaborators that are online and belong to this file (or have no specific file assigned)
   const relevantCollaborators = useMemo(() => {
@@ -103,6 +104,15 @@ export function VisualCollaboratorCursors({
       return Boolean(c.cursor && c.cursor.line > 0);
     });
   }, [activeCollaborators, currentUserId, fileId, filePath]);
+
+  // Periodic heartbeat timer to auto-fade inactive collaborator name tags after 3s
+  useEffect(() => {
+    if (relevantCollaborators.length === 0) return;
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [relevantCollaborators.length]);
 
   const updatePositions = useCallback(() => {
     const contentEl = contentRef.current;
@@ -245,14 +255,14 @@ export function VisualCollaboratorCursors({
 
   // Recalculate on scroll, resize, and DOM changes
   useEffect(() => {
+    updatePositions();
+
     let animFrameId: number;
 
     const scheduleUpdate = () => {
       cancelAnimationFrame(animFrameId);
       animFrameId = requestAnimationFrame(updatePositions);
     };
-
-    scheduleUpdate();
 
     const containerEl = containerRef.current;
     if (containerEl) {
@@ -297,6 +307,9 @@ export function VisualCollaboratorCursors({
         if (!visible) return null;
         const color = collaborator.color || getCollaboratorColor(collaborator.id);
         const isHovered = hoveredUserId === collaborator.id;
+        const isInactive = Boolean(
+          collaborator.lastActiveAt && now - collaborator.lastActiveAt >= 3000
+        );
 
         return (
           <React.Fragment key={collaborator.id}>
@@ -304,6 +317,7 @@ export function VisualCollaboratorCursors({
             {selectionRects.map((rect, idx) => (
               <div
                 key={`sel-${collaborator.id}-${idx}`}
+                data-testid={`collaborator-selection-${collaborator.id}`}
                 className="absolute rounded-xs pointer-events-none transition-all duration-75"
                 style={{
                   left: `${rect.x}px`,
@@ -318,7 +332,7 @@ export function VisualCollaboratorCursors({
 
             {/* ── Caret Line & Name Tag ── */}
             <div
-              className="absolute pointer-events-none transition-all duration-100 ease-out"
+              className="absolute pointer-events-none transition-all duration-120 cubic-bezier(0.2, 0, 0, 1)"
               style={{
                 left: `${x}px`,
                 top: `${y}px`,
@@ -328,7 +342,8 @@ export function VisualCollaboratorCursors({
             >
               {/* Vertical Caret Bar */}
               <div
-                className="w-[2px] h-full rounded-full"
+                data-testid={`collaborator-caret-bar-${collaborator.id}`}
+                className="w-[2px] h-full rounded-full transition-colors duration-150"
                 style={{ backgroundColor: color }}
               />
 
@@ -340,13 +355,18 @@ export function VisualCollaboratorCursors({
 
               {/* Name Tag Flag */}
               <div
+                data-testid={`collaborator-flag-${collaborator.id}`}
                 onMouseEnter={() => setHoveredUserId(collaborator.id)}
                 onMouseLeave={() => setHoveredUserId(null)}
                 className={cn(
                   'absolute -top-6 left-0 px-1.5 py-0.5 rounded text-[10px] font-sans font-medium text-white shadow-md',
-                  'flex items-center gap-1 select-none pointer-events-auto cursor-default whitespace-nowrap z-40',
-                  'transition-all duration-150',
-                  isHovered ? 'scale-105 opacity-100 shadow-lg' : 'opacity-90'
+                  'flex items-center gap-1 select-none whitespace-nowrap z-40',
+                  'transition-all duration-200 cubic-bezier(0.16, 1, 0.3, 1)',
+                  isHovered
+                    ? 'scale-105 opacity-100 shadow-lg translate-y-0 pointer-events-auto cursor-default'
+                    : isInactive
+                      ? 'opacity-0 translate-y-1 pointer-events-none'
+                      : 'opacity-95 translate-y-0 pointer-events-auto cursor-default'
                 )}
                 style={{ backgroundColor: color }}
               >

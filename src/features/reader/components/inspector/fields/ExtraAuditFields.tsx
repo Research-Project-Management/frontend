@@ -131,7 +131,7 @@ export function ExtraAuditFields({
         </div>
       )}
 
-      {/* Metadata Provenance Sources (arXiv, GROBID, CrossRef) */}
+      {/* Metadata Provenance Sources (arXiv, MeXtract, CrossRef) */}
       {sources.length > 0 && (
         <div className="grid grid-cols-[80px_1fr] gap-1.5 items-start py-0.5 w-full min-w-0">
           <span

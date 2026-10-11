@@ -36,11 +36,13 @@ import FormatMenu from './topbar/format/FormatMenu';
 import LayoutSwitcher from './topbar/view/LayoutSwitcher';
 import ProjectTitleDropdown from './topbar/ProjectTitleDropdown';
 import CollaboratorAvatarStack from './topbar/CollaboratorAvatarStack';
+import EditingModeDropdown from './topbar/EditingModeDropdown';
 
 import { editorCommandBus } from '../../coordinators/command-bus';
 import { sessionCoordinator } from '../../coordinators/session.coordinator';
 import { useSettingsStore, useCompileStore, usePageStore } from '../../store';
 import { usePageActions } from '../hooks/use-core';
+import { extractProjectId } from '@/features/editor/domain/types';
 
 const TemplateGalleryModal = dynamic(
   () => import('../modals/TemplateGalleryModal'),
@@ -56,13 +58,11 @@ const QuickOpenModal = dynamic(
 );
 
 export function Topbar() {
-  const params = useParams<{ projectId?: string; pageId?: string }>();
-  const currentPage = usePageStore((s) => s.currentPage);
-  const effectiveProjectId =
-    params?.projectId ||
-    (typeof (currentPage as any)?.projectId === 'string'
-      ? (currentPage as any).projectId
-      : (currentPage as any)?.projectId?.id);
+  const params = useParams<{ projectId?: string }>();
+  const storeProjectId = usePageStore(
+    (s) => s.projectId || extractProjectId(s.currentPage) || '',
+  );
+  const effectiveProjectId = params?.projectId || storeProjectId;
   const homeHref = effectiveProjectId
     ? `/projects/${effectiveProjectId}/pages`
     : '/projects';
@@ -106,8 +106,18 @@ export function Topbar() {
         return;
       }
 
-      // Ctrl+/ or Cmd+/ or F1 -> Keyboard shortcuts cheat sheet
+      // Ctrl+/ or Cmd+/ or F1 -> Keyboard shortcuts cheat sheet (only when editor is NOT focused)
       if ((modKey && e.key === '/') || (e.key === 'F1' && !e.shiftKey && !e.altKey)) {
+        const activeEl = typeof document !== 'undefined' ? document.activeElement : null;
+        const isEditorFocused =
+          activeEl?.classList.contains('cm-content') ||
+          Boolean(activeEl?.closest('.cm-editor') || activeEl?.closest('.ProseMirror'));
+
+        if (modKey && e.key === '/' && isEditorFocused) {
+          // Allow CodeMirror / Visual Editor to execute toggleComment
+          return;
+        }
+
         e.preventDefault();
         setIsShortcutsOpen((prev) => !prev);
         return;
@@ -121,15 +131,36 @@ export function Topbar() {
       }
     };
 
+    const unsubOpen = editorCommandBus.subscribe('dialog:open', (cmd) => {
+      if (cmd.dialog === 'quick-open') {
+        setIsQuickOpenOpen(true);
+      } else if (cmd.dialog === 'shortcuts') {
+        setIsShortcutsOpen(true);
+      }
+    });
+
+    const unsubClose = editorCommandBus.subscribe('dialog:close', (cmd) => {
+      if (!cmd.dialog || cmd.dialog === 'quick-open') {
+        setIsQuickOpenOpen(false);
+      }
+      if (!cmd.dialog || cmd.dialog === 'shortcuts') {
+        setIsShortcutsOpen(false);
+      }
+    });
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      unsubOpen();
+      unsubClose();
+    };
   }, []);
 
   return (
     <TooltipProvider delayDuration={150}>
       <nav
         aria-label="Editor toolbar"
-        className="relative flex h-11 items-center justify-between gap-2 px-3 py-1 bg-sidebar border-b border-border shrink-0 z-10 select-none"
+        className="relative flex h-10 items-center justify-between gap-2 px-2.5 py-0.5 bg-sidebar border-b border-border shrink-0 z-10 select-none"
       >
         {/* ── Left: Logo (Back to project / Home), Main Menubar ── */}
         <div className="flex items-center min-w-0 shrink-0 gap-1">
@@ -150,15 +181,15 @@ export function Topbar() {
               <Link
                 href={homeHref}
                 aria-label="Back to Pages"
-                className="group relative flex size-8 items-center justify-center rounded-md hover:bg-sidebar-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 cursor-pointer"
+                className="group relative flex size-7 items-center justify-center rounded-md hover:bg-sidebar-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 cursor-pointer"
               >
                 <img
                   src="/Flux.svg"
-                  className="size-5 shrink-0 transition-opacity duration-150 group-hover:opacity-0"
+                  className="size-4.5 shrink-0 transition-opacity duration-150 group-hover:opacity-0"
                   alt="Flux"
                 />
                 <Home
-                  className="size-4 shrink-0 text-foreground transition-opacity duration-150 absolute opacity-0 group-hover:opacity-100"
+                  className="size-3.5 shrink-0 text-foreground transition-opacity duration-150 absolute opacity-0 group-hover:opacity-100"
                   strokeWidth={1.75}
                 />
               </Link>
@@ -168,7 +199,7 @@ export function Topbar() {
             </TooltipContent>
           </Tooltip>
 
-          <Menubar className="h-8 border-none bg-transparent p-0 gap-0.5 shadow-none hidden sm:flex">
+          <Menubar className="h-7 border-none bg-transparent p-0 gap-0.5 shadow-none hidden sm:flex text-12">
             {/* Sub-menu Tabs */}
             <FileMenu />
             <EditMenu />
@@ -183,7 +214,7 @@ export function Topbar() {
           <ProjectTitleDropdown />
         </div>
 
-        {/* ── Right: Save Status, Share, Review, History, Layout Switcher ── */}
+        {/* ── Right: Save Status, Collaborators, History, Layout Switcher ── */}
         <div className="flex items-center gap-1.5 shrink-0">
           {/* Save Status Indicator: only show when actively saving */}
           {isSaving && (
@@ -200,6 +231,9 @@ export function Topbar() {
 
           {/* Collaborator Presence Avatar Stack (Real-time Overleaf Parity) */}
           <CollaboratorAvatarStack />
+
+          {/* Editing Mode Dropdown (Overleaf Parity: Editing vs Reviewing) */}
+          <EditingModeDropdown />
 
           {/* History Button */}
           <Tooltip>

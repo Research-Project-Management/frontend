@@ -274,26 +274,26 @@ const inlineDiffKeymap = keymap.of([
 
 const inlineDiffTheme = EditorView.baseTheme({
   '.cm-diff-removed-range': {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    color: '#ef4444',
+    backgroundColor: 'hsl(var(--destructive) / 0.15)',
+    color: 'var(--destructive)',
     textDecoration: 'line-through',
-    textDecorationColor: '#ef4444',
+    textDecorationColor: 'var(--destructive)',
   },
 
   '.cm-inline-diff-widget': {
     margin: '6px 0',
     borderRadius: '6px',
-    border: '1px solid rgba(139, 92, 246, 0.4)',
+    border: '1px solid hsl(var(--ai) / 0.35)',
     backgroundColor: 'var(--card, #18181b)',
-    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(139, 92, 246, 0.15)',
+    boxShadow: 'var(--shadow-overlay)',
     overflow: 'hidden',
     fontSize: '12px',
     fontFamily: 'var(--font-mono, ui-monospace, monospace)',
-    animation: 'cmDiffFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+    animation: 'cmDiffFadeIn 0.15s ease-out',
   },
 
   '@keyframes cmDiffFadeIn': {
-    '0%': { opacity: '0', transform: 'translateY(-4px)' },
+    '0%': { opacity: '0', transform: 'translateY(-2px)' },
     '100%': { opacity: '1', transform: 'translateY(0)' },
   },
 
@@ -302,8 +302,8 @@ const inlineDiffTheme = EditorView.baseTheme({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '6px 10px',
-    backgroundColor: 'rgba(139, 92, 246, 0.08)',
-    borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+    backgroundColor: 'hsl(var(--ai) / 0.08)',
+    borderBottom: '1px solid hsl(var(--ai) / 0.2)',
   },
 
   '.cm-inline-diff-title': {
@@ -311,13 +311,13 @@ const inlineDiffTheme = EditorView.baseTheme({
     alignItems: 'center',
     gap: '6px',
     fontWeight: '600',
-    color: '#a78bfa',
+    color: 'var(--ai)',
     fontSize: '11px',
     letterSpacing: '0.02em',
   },
 
   '.cm-inline-diff-icon': {
-    color: '#8b5cf6',
+    color: 'var(--ai)',
   },
 
   '.cm-inline-diff-actions': {
@@ -336,7 +336,6 @@ const inlineDiffTheme = EditorView.baseTheme({
     fontWeight: '500',
     cursor: 'pointer',
     border: '1px solid transparent',
-    transition: 'all 0.15s ease',
   },
 
   '.cm-diff-btn kbd': {
@@ -348,36 +347,36 @@ const inlineDiffTheme = EditorView.baseTheme({
   },
 
   '.cm-diff-btn-accept': {
-    backgroundColor: '#10b981',
-    color: '#ffffff',
-    borderColor: '#059669',
+    backgroundColor: 'var(--success, #10b981)',
+    color: 'var(--success-foreground, #ffffff)',
+    borderColor: 'var(--success, #10b981)',
   },
   '.cm-diff-btn-accept:hover': {
-    backgroundColor: '#059669',
+    opacity: '0.9',
   },
 
   '.cm-diff-btn-reject': {
     backgroundColor: 'transparent',
-    color: '#a1a1aa',
-    borderColor: '#3f3f46',
+    color: 'var(--muted-foreground)',
+    borderColor: 'var(--border)',
   },
   '.cm-diff-btn-reject:hover': {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    color: '#ef4444',
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'hsl(var(--destructive) / 0.15)',
+    color: 'var(--destructive)',
+    borderColor: 'hsl(var(--destructive) / 0.3)',
   },
 
   '.cm-inline-diff-body': {
     padding: '8px 12px',
-    backgroundColor: 'rgba(16, 185, 129, 0.06)',
-    borderLeft: '3px solid #10b981',
+    backgroundColor: 'hsl(var(--success) / 0.06)',
+    borderLeft: '1px solid var(--success, #10b981)',
   },
 
   '.cm-inline-diff-code': {
     margin: '0',
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-all',
-    color: '#34d399',
+    color: 'var(--success)',
     fontSize: '12px',
     lineHeight: '1.5',
   },

@@ -48,11 +48,11 @@ export function LibrarySidebar() {
 
   const activeScope = useLibrarySidebarStore((s) => s.activeScope);
   const setActiveScope = useLibrarySidebarStore((s) => s.setActiveScope);
-  const isOpen = useLibrarySidebarStore((s) => s.isOpen);
-  const setIsOpen = useLibrarySidebarStore((s) => s.setIsOpen);
-  const width = useLibrarySidebarStore((s) => s.width);
-  const setWidth = useLibrarySidebarStore((s) => s.setWidth);
-  const toggle = useLibrarySidebarStore((s) => s.toggle);
+  const isSidebarOpen = useLibrarySidebarStore((s) => s.isSidebarOpen);
+  const setSidebarOpen = useLibrarySidebarStore((s) => s.setSidebarOpen);
+  const sidebarWidth = useLibrarySidebarStore((s) => s.sidebarWidth);
+  const setSidebarWidth = useLibrarySidebarStore((s) => s.setSidebarWidth);
+  const toggleSidebar = useLibrarySidebarStore((s) => s.toggleSidebar);
   const openModal = useLibrarySidebarStore((s) => s.openModal);
   const effectiveScopeId = activeScope.type === 'project' ? activeScope.id : 'user';
 
@@ -65,16 +65,16 @@ export function LibrarySidebar() {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      setIsOpen(false);
+      setSidebarOpen(false);
     }
-  }, [setIsOpen]);
+  }, [setSidebarOpen]);
 
   const [isLibraryExpanded, setIsLibraryExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [renamingSavedSearchId, setRenamingSavedSearchId] = useState<string | null>(null);
   const [renameSavedSearchValue, setRenameSavedSearchValue] = useState('');
 
-  const { isDragging, handleMouseDown } = useSidebarResize(width, setWidth);
+  const { isDragging, handleMouseDown } = useSidebarResize(sidebarWidth, setSidebarWidth);
 
   const basePath = '/library';
   const currentFilter = searchParams.get('filter');
@@ -217,11 +217,11 @@ export function LibrarySidebar() {
 
   const handleMobileLinkClick = () => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      setIsOpen(false);
+      setSidebarOpen(false);
     }
   };
 
-  if (!isOpen) {
+  if (!isSidebarOpen) {
     return null;
   }
 
@@ -236,7 +236,7 @@ export function LibrarySidebar() {
             canManageCollections={canManageCollections}
             onOpenCreateRoot={handlers.openCreateRoot}
             onOpenCreateSavedSearch={() => openModal('CREATE_SAVED_SEARCH')}
-            onToggleCollapse={toggle}
+            onToggleCollapse={toggleSidebar}
           />
 
           {/* Navigation Links */}
@@ -430,8 +430,8 @@ export function LibrarySidebar() {
 
         {/* Drag Handle for Resizing */}
         <SidebarResizer
-          width={width}
-          setWidth={setWidth}
+          width={sidebarWidth}
+          setWidth={setSidebarWidth}
           isDragging={isDragging}
           onMouseDown={handleMouseDown}
         />
@@ -470,13 +470,13 @@ export function LibrarySidebar() {
               {/* Mobile Backdrop Overlay */}
               <div
                 className="fixed inset-0 z-40 bg-black/30"
-                onClick={() => setIsOpen(false)}
+                onClick={() => setSidebarOpen(false)}
                 aria-hidden="true"
               />
               <aside
                 aria-label="Library navigation and collections"
                 style={{
-                  width: `${width}px`,
+                  width: `${sidebarWidth}px`,
                   minWidth: '200px',
                   maxWidth: '400px',
                 }}
@@ -496,7 +496,7 @@ export function LibrarySidebar() {
           <aside
             aria-label="Library navigation and collections"
             style={{
-              width: `${width}px`,
+              width: `${sidebarWidth}px`,
               minWidth: '200px',
               maxWidth: '400px',
             }}

@@ -112,7 +112,8 @@ export default function CitationPickerModal({
     async (entry: BibEntry) => {
       if (!projectId) return;
 
-      const bibFiles = (projectFiles as any[]).filter((f) => {
+      const files = Array.isArray(projectFiles) ? projectFiles : [];
+      const bibFiles = files.filter((f: { title?: string; name?: string }) => {
         const title = (f.title || f.name || '').toLowerCase();
         return title.endsWith('.bib');
       });
@@ -128,7 +129,7 @@ export default function CitationPickerModal({
       if (matchedLibItem) {
         bibCode = formatItemToBibtex(matchedLibItem);
       } else {
-        bibCode = formatBibEntryToBibtex(entry as any);
+        bibCode = formatBibEntryToBibtex(entry);
       }
 
       if (!bibCode) return;
@@ -337,7 +338,7 @@ function CitationItemRow({
               @{entry.key}
             </span>
             {entry.isRetracted && (
-              <span className="text-[10px] font-bold text-destructive bg-destructive/15 border border-destructive/30 px-1.5 py-0.5 rounded flex items-center gap-1">
+              <span className="text-[10px] font-semibold text-destructive bg-destructive/15 border border-destructive/30 px-1.5 py-0.5 rounded flex items-center gap-1">
                 🚨 Thu hồi
               </span>
             )}

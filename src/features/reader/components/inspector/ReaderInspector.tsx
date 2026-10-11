@@ -186,7 +186,15 @@ export interface LibraryInspectorProps {
  * Modern, high-performance, modular right-side document inspector.
  * Replaces the previous 1,300-line monolithic Panel.tsx.
  */
-export function LibraryInspector({
+export function LibraryInspector(props: LibraryInspectorProps) {
+  const isInspectorOpen = useReaderSidebarStore((s) => s.isInspectorOpen);
+  if (!isInspectorOpen) {
+    return null;
+  }
+  return <ReaderInspectorContent {...props} />;
+}
+
+function ReaderInspectorContent({
   item: propItem,
   paper: propPaper,
   scopeId,
@@ -415,10 +423,6 @@ export function LibraryInspector({
       }
     });
   };
-
-  if (!isInspectorOpen) {
-    return null;
-  }
 
   const inspectorContent = (
     <>

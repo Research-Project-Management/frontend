@@ -44,6 +44,7 @@ export interface SuggestionAuthor {
 export interface PageSuggestion {
   id: string;
   pageId: string;
+  projectId?: string | null;
   projectPageId?: string | null;
   authorId: string;
   author: SuggestionAuthor;

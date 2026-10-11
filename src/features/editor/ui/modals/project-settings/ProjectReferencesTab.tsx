@@ -85,7 +85,7 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
     <div className="space-y-6">
       {/* Overview Info Header */}
       <div className="p-3.5 rounded-lg border border-border/70 bg-muted/30 text-xs text-muted-foreground leading-relaxed flex items-start gap-2.5">
-        <Blocks className="size-4 text-primary shrink-0 mt-0.5" />
+        <Blocks className="size-4 text-foreground shrink-0 mt-0.5" />
         <div>
           Synchronize remote citation libraries into this LaTeX manuscript. Synced references are saved directly to a <code>.bib</code> file in your project files tree.
         </div>

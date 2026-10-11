@@ -134,13 +134,13 @@ export const SideBySideDiffViewer = React.memo(function SideBySideDiffViewer({
       <div className="grid grid-cols-2 bg-muted/70 border-b text-xs font-mono select-none divide-x divide-border shrink-0">
         <div className="flex items-center justify-between px-3 py-1.5 font-medium text-foreground">
           <div className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-rose-500/70" />
+            <span className="size-2 rounded-full bg-destructive/70" />
             <span className="font-semibold">Base: v{baseVersion}</span>
           </div>
         </div>
         <div className="flex items-center justify-between px-3 py-1.5 font-medium text-foreground">
           <div className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-emerald-500/70" />
+            <span className="size-2 rounded-full bg-success/70" />
             <span className="font-semibold">Target: v{targetVersion}</span>
           </div>
         </div>
@@ -213,7 +213,7 @@ export const SideBySideDiffViewer = React.memo(function SideBySideDiffViewer({
                       <div
                         className={cn(
                           'flex items-start px-2 py-0.5 min-h-[22px]',
-                          isOldDeleted && 'bg-rose-500/10 text-rose-950 dark:text-rose-200 border-l-2 border-rose-500',
+                          isOldDeleted && 'bg-destructive/10 text-destructive border-l border-destructive',
                           !hasOld && 'bg-muted/20 select-none'
                         )}
                       >
@@ -222,7 +222,7 @@ export const SideBySideDiffViewer = React.memo(function SideBySideDiffViewer({
                             <span className="w-8 select-none text-[10px] text-muted-foreground/60 text-right pr-2 shrink-0">
                               {row.oldLine!.oldLineNumber || ''}
                             </span>
-                            <span className="w-4 select-none shrink-0 font-bold text-rose-600 dark:text-rose-400">
+                            <span className="w-4 select-none shrink-0 font-semibold text-destructive">
                               {isOldDeleted ? '-' : ' '}
                             </span>
                             <div className="flex-1 whitespace-pre-wrap break-all">
@@ -234,7 +234,7 @@ export const SideBySideDiffViewer = React.memo(function SideBySideDiffViewer({
                                       key={wIdx}
                                       className={cn(
                                         w.type === 'deleted' &&
-                                          'bg-rose-500/30 text-rose-950 dark:text-rose-100 font-semibold px-0.5 rounded'
+                                          'bg-destructive/20 text-destructive font-semibold px-0.5 rounded'
                                       )}
                                     >
                                       {w.text}
@@ -254,7 +254,7 @@ export const SideBySideDiffViewer = React.memo(function SideBySideDiffViewer({
                       <div
                         className={cn(
                           'flex items-start px-2 py-0.5 min-h-[22px]',
-                          isNewAdded && 'bg-emerald-500/10 text-emerald-950 dark:text-emerald-200 border-l-2 border-emerald-500',
+                          isNewAdded && 'bg-success/10 text-success border-l border-success',
                           !hasNew && 'bg-muted/20 select-none'
                         )}
                       >
@@ -263,7 +263,7 @@ export const SideBySideDiffViewer = React.memo(function SideBySideDiffViewer({
                             <span className="w-8 select-none text-[10px] text-muted-foreground/60 text-right pr-2 shrink-0">
                               {row.newLine!.newLineNumber || ''}
                             </span>
-                            <span className="w-4 select-none shrink-0 font-bold text-emerald-600 dark:text-emerald-400">
+                            <span className="w-4 select-none shrink-0 font-semibold text-success">
                               {isNewAdded ? '+' : ' '}
                             </span>
                             <div className="flex-1 whitespace-pre-wrap break-all">
@@ -275,7 +275,7 @@ export const SideBySideDiffViewer = React.memo(function SideBySideDiffViewer({
                                       key={wIdx}
                                       className={cn(
                                         w.type === 'added' &&
-                                          'bg-emerald-500/30 text-emerald-950 dark:text-emerald-100 font-semibold px-0.5 rounded'
+                                          'bg-success/20 text-success font-semibold px-0.5 rounded'
                                       )}
                                     >
                                       {w.text}

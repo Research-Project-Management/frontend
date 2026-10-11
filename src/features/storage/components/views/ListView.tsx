@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Star,
   Folder,
@@ -39,7 +39,7 @@ import {
 import { useStorageSelectionStore } from '../../store/use-selection-store';
 import { createFolderDropHandlers } from '../../utils/drag-drop.util';
 
-function FileIconItem({ item }: { item: StorageItem }) {
+const FileIconItem = React.memo(function FileIconItem({ item }: { item: StorageItem }) {
   const [hasError, setHasError] = useState(false);
   const fileType = getFileType(item);
   const imageUrl = !hasError
@@ -69,7 +69,7 @@ function FileIconItem({ item }: { item: StorageItem }) {
       )}
     </div>
   );
-}
+});
 
 export type StorageViewProps = {
   items: StorageItem[];
@@ -105,7 +105,7 @@ type ItemActionsProps = {
   alwaysVisible?: boolean;
 };
 
-export function ItemActions({
+export const ItemActions = React.memo(function ItemActions({
   item,
   onToggleStar,
   onDelete,
@@ -335,9 +335,9 @@ export function ItemActions({
       />
     </div>
   );
-}
+});
 
-export default function ListView({
+export const ListView = React.memo(function ListView({
   items,
   onToggleStar,
   onDelete,
@@ -369,7 +369,7 @@ export default function ListView({
     isAllSelected,
   } = useStorageSelectionStore();
 
-  const allItemIds = items.map((i) => i.id);
+  const allItemIds = useMemo(() => items.map((i) => i.id), [items]);
   const allSelected = isAllSelected(allItemIds);
   const hasSomeSelected = selectedIds.length > 0 && !allSelected;
 
@@ -625,4 +625,7 @@ export default function ListView({
       )}
     </div>
   );
-}
+});
+
+export default ListView;
+

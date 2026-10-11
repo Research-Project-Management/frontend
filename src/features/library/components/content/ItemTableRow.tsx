@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import {
   Paperclip,
   StickyNote,
@@ -18,7 +18,6 @@ import { cn } from '@/shared/lib/utils';
 import {
   useIsItemSelected,
   useIsActiveItem,
-  useIsInspectorOpen,
 } from '../../store/selectors';
 import { useLibraryUIStore } from '../../store/library-ui.store';
 import { ItemContextMenu } from './ItemContextMenu';
@@ -40,6 +39,7 @@ export interface ItemTableRowProps {
   onPurge?: (id: string) => void;
   onMoveToCollection?: (itemId: string, collectionId: string) => void;
   onDetachFromCollection?: (id: string) => void;
+  onOpenItem?: (id: string) => void;
   isLast?: boolean;
 }
 
@@ -65,16 +65,9 @@ export const ItemTableRow = React.memo(function ItemTableRow({
   onPurge,
   onMoveToCollection,
   onDetachFromCollection,
+  onOpenItem,
 }: ItemTableRowProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const currentQuery = searchParams.get('q');
-  const currentProjectId = searchParams.get('projectId');
-  const queryParts = [
-    currentProjectId ? `projectId=${encodeURIComponent(currentProjectId)}` : '',
-    currentQuery ? `q=${encodeURIComponent(currentQuery)}` : '',
-  ].filter(Boolean);
-  const qParam = queryParts.length ? `?${queryParts.join('&')}` : '';
 
   // Granular Selectors - 60 FPS Re-render Barrier (True O(1))
   const isSelected = useIsItemSelected(item.id);
@@ -154,6 +147,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
       onPurge={!isProcessing && onPurge ? handlePurgeContextMenu : undefined}
       onMoveToCollection={!isProcessing && onMoveToCollection ? handleMoveToCollection : undefined}
       onDetachFromCollection={!isProcessing && onDetachFromCollection ? () => onDetachFromCollection(item.id) : undefined}
+      onOpenItem={onOpenItem}
     >
       <tr
         draggable={!isProcessing}
@@ -182,7 +176,11 @@ export const ItemTableRow = React.memo(function ItemTableRow({
               });
               return;
             }
-            router.push(`/library/papers/${item.id}${qParam}`);
+            if (onOpenItem) {
+              onOpenItem(item.id);
+            } else {
+              router.push(`/library/papers/${item.id}`);
+            }
           } else {
             toast.info('Restore this reference to open in reader', {
               id: 'trash-restore-prompt',

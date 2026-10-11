@@ -23,7 +23,7 @@ export interface DeleteModalProps {
   onCancel: () => void;
 }
 
-export default function DeleteModal({
+const DeleteModal = React.memo(function DeleteModal({
   open,
   title = "Delete sticky",
   description = "Are you sure you want to delete this sticky? This action cannot be undone.",
@@ -33,6 +33,8 @@ export default function DeleteModal({
   onConfirm,
   onCancel,
 }: DeleteModalProps) {
+  if (!open) return null;
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
       <DialogContent
@@ -79,4 +81,6 @@ export default function DeleteModal({
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+export default DeleteModal;

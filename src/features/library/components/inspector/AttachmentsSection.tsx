@@ -33,7 +33,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/shared/components/ui";
-import { getPaperFileUrl } from '../../domain';
+import { getItemFileUrl, getPaperFileUrl } from '../../domain';
 import { usePdf } from '../../hooks/use-pdf';
 import {
   useAttachments,
@@ -268,7 +268,7 @@ export default function AttachmentsSection({
         linkMode: 'imported_file',
         attachmentType: 'supplementary',
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to attach file:', err);
     } finally {
       setIsUploadingFile(false);
@@ -294,21 +294,23 @@ export default function AttachmentsSection({
         linkMode: 'linked_url',
         attachmentType: 'other',
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to attach link:', err);
     }
   };
 
+  type AttachmentLike = ItemAttachment & { type?: string; name?: string; fileUrl?: string };
+
   const rawAttachments = paper.attachments || paper.files || EMPTY_ATTACHMENTS;
-  const paperUrl = getPaperFileUrl(paper);
+  const paperUrl = getItemFileUrl(paper);
 
   const paperFilename = paper.filename;
   const openAccessPdfUrl = paper.openAccessPdfUrl;
 
   const primaryAttachment = useMemo(() => {
     return (
-      rawAttachments.find(
-        (att: any) =>
+      (rawAttachments as AttachmentLike[]).find(
+        (att) =>
           att.attachmentType === 'primary_pdf' ||
           att.type === 'primary_pdf' ||
           (paperFilename && (att.filename === paperFilename || att.name === paperFilename)),
@@ -317,13 +319,13 @@ export default function AttachmentsSection({
   }, [rawAttachments, paperFilename]);
 
   const otherAttachments = useMemo(() => {
-    const list = rawAttachments.filter((att: ItemAttachment | any) => {
+    const list: AttachmentLike[] = (rawAttachments as AttachmentLike[]).filter((att) => {
       if (att.attachmentType === 'primary_pdf' || att.type === 'primary_pdf') return false;
       if (paperFilename && (att.filename === paperFilename || att.name === paperFilename)) return false;
       return true;
     });
 
-    if (openAccessPdfUrl && openAccessPdfUrl !== paperUrl && !list.some((a: any) => (a.url === openAccessPdfUrl || a.fileUrl === openAccessPdfUrl))) {
+    if (openAccessPdfUrl && openAccessPdfUrl !== paperUrl && !list.some((a) => (a.url === openAccessPdfUrl || a.fileUrl === openAccessPdfUrl))) {
       list.push({
         id: 'open-access-pdf',
         filename: 'Open Access Full Text.pdf',
@@ -339,8 +341,8 @@ export default function AttachmentsSection({
   }, [rawAttachments, paperFilename, openAccessPdfUrl, paperUrl]);
 
   const hasSnapshot = useMemo(() => {
-    return rawAttachments.some(
-      (att: any) =>
+    return (rawAttachments as AttachmentLike[]).some(
+      (att) =>
         att.linkMode === 'imported_url' ||
         att.attachmentType === 'snapshot' ||
         att.attachmentType === 'web_snapshot' ||
@@ -572,7 +574,7 @@ export default function AttachmentsSection({
         ) : null}
 
         {/* Other Attachments */}
-        {otherAttachments.map((att: any) => {
+        {otherAttachments.map((att) => {
           const downloadUrl = att.fileUrl || att.url;
           const isSnapshot =
             att.attachmentType === 'web_snapshot' ||

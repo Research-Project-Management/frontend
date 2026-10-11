@@ -15,9 +15,10 @@ import { usePageStore } from '../store/editor.store';
 import { useLayoutStore } from '../store/layout.store';
 import { diagnosticsCoordinator, type IndexedDiagnosticItem } from './diagnostics.coordinator';
 import { sessionCoordinator } from './session.coordinator';
-import * as aiErrorAssistModule from '@/features/editor/coordinators/services/ai-error-assist.service';
+import { manuscriptService } from '@/features/editor/sdk';
 import { lruDocumentCache } from '../domain/document/lru-document-cache';
 import type { DiffProposal } from '../domain/types/ports/editor-engine.port';
+import { heuristicLatexErrorFix } from '../domain/latex/ai-error-assist';
 import { toast } from 'sonner';
 
 export interface AiContextPayload {
@@ -92,7 +93,7 @@ export class AiCoordinatorRegistry {
    */
   public gatherContext(): AiContextPayload {
     const pageStore = usePageStore.getState();
-    const activeDoc = pageStore.activeFilePage || pageStore.currentPage;
+    const activeDoc = pageStore.getActiveDocument();
     const fileName = activeDoc?.title || 'main.tex';
     const content = getActiveEditorContent() || (activeDoc?.content as string) || '';
 
@@ -141,9 +142,9 @@ export class AiCoordinatorRegistry {
    */
   public async autoFixCurrentFile(): Promise<boolean> {
     const pageStore = usePageStore.getState();
-    const activeDoc = pageStore.activeFilePage || pageStore.currentPage;
+    const activeDoc = pageStore.getActiveDocument();
     const fileId = activeDoc?.id || 'main.tex';
-    const filePath = (activeDoc as any)?.path || activeDoc?.title || fileId;
+    const filePath = activeDoc?.path || activeDoc?.title || fileId;
 
     const diags = diagnosticsCoordinator.getDiagnosticsForFile(filePath);
     const firstIssue = diags.find((d) => d.severity === 'error') || diags[0];
@@ -162,7 +163,7 @@ export class AiCoordinatorRegistry {
    */
   public async autoFixDiagnostic(diagnostic: IndexedDiagnosticItem): Promise<boolean> {
     const pageStore = usePageStore.getState();
-    const activeDoc = pageStore.activeFilePage || pageStore.currentPage;
+    const activeDoc = pageStore.getActiveDocument();
     const fileId = activeDoc?.id || 'main.tex';
     const fileName = activeDoc?.title || fileId;
 
@@ -176,13 +177,34 @@ export class AiCoordinatorRegistry {
     const endContext = Math.min(lines.length, errLine + 2);
     const surroundingCode = lines.slice(startContext - 1, endContext).join('\n');
 
+    // 1. Instant 0ms precomputed fix (if already resolved by heuristic rule)
+    if (diagnostic.fixedSnippet) {
+      editorCommandBus.dispatch({
+        type: 'navigation:jump-to-line',
+        filePath: fileName,
+        fileId,
+        line: diagnostic.line,
+        highlight: 'error',
+      });
+
+      const success = this.proposeDiff(fileId, diagnostic.fixedSnippet, {
+        line: diagnostic.line,
+        title: `Quick-Fix: ${diagnostic.suggestion || diagnostic.message}`,
+      });
+      if (success) {
+        toast.success(`Quick-Fix ready for line ${diagnostic.line} — Press Tab to Accept, Esc to Reject`, {
+          duration: 6000,
+        });
+        return true;
+      }
+    }
+
     const toastId = typeof toast.loading === 'function'
-      ? toast.loading(`AI is analyzing fix for line ${diagnostic.line}...`)
+      ? toast.loading(`Analyzing fix for line ${diagnostic.line}...`)
       : null;
 
     try {
-      const aiAssistService = await import('@/features/editor/coordinators/services/ai-error-assist.service');
-      const fixResult = await aiAssistService.suggestLatexFix({
+      const fixResult = await manuscriptService.ai.suggestLatexFix({
         errorMessage: diagnostic.message,
         errorLine: diagnostic.line,
         errorFile: fileName,
@@ -217,19 +239,49 @@ export class AiCoordinatorRegistry {
           });
         }
         return success;
-      } else {
-        toast.error('AI could not generate an automatic fix. Opening AI Assistant...');
-        this.openAiForError(diagnostic);
-        return false;
       }
     } catch {
-      if (toastId && typeof toast.dismiss === 'function') {
-        toast.dismiss(toastId);
-      }
-      toast.error('Failed to generate AI fix. Opening AI Assistant...');
-      this.openAiForError(diagnostic);
-      return false;
+      // Remote call failed or offline — fall through to heuristic rule
     }
+
+    if (toastId && typeof toast.dismiss === 'function') {
+      toast.dismiss(toastId);
+    }
+
+    // 2. Offline Heuristic Fallback rule
+    const fallbackFix = heuristicLatexErrorFix({
+      errorMessage: diagnostic.message,
+      errorLine: diagnostic.line,
+      errorFile: fileName,
+      detail: diagnostic.context,
+      surroundingCode,
+    });
+
+    if (fallbackFix && fallbackFix.fixedSnippet) {
+      editorCommandBus.dispatch({
+        type: 'navigation:jump-to-line',
+        filePath: fileName,
+        fileId,
+        line: diagnostic.line,
+        highlight: 'error',
+      });
+
+      const success = this.proposeDiff(fileId, fallbackFix.fixedSnippet, {
+        line: fallbackFix.startLine || diagnostic.line,
+        endLine: fallbackFix.endLine,
+        title: `Quick-Fix: ${fallbackFix.explanation || diagnostic.message}`,
+      });
+      if (success) {
+        toast.success(`Quick-Fix ready for line ${diagnostic.line} — Press Tab to Accept, Esc to Reject`, {
+          duration: 6000,
+        });
+        return true;
+      }
+    }
+
+    toast.error('Could not generate an automated fix. Opening AI Assistant...');
+    this.openAiForError(diagnostic);
+    return false;
   }
 
   /**

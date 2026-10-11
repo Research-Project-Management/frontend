@@ -14,7 +14,6 @@ import {
 import { cn } from "@/shared/lib/utils";
 
 import { useStorageUIStore, buildStorageUrl, type StorageSection } from '../../store/storage-ui.store';
-import StorageQuotaWidget from './StorageQuotaWidget';
 
 export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
   const id = useId();
@@ -89,11 +88,6 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
             })}
           </nav>
         </LayoutGroup>
-      </div>
-
-      {/* Quota widget for Desktop */}
-      <div className="max-md:hidden pt-4">
-        <StorageQuotaWidget />
       </div>
     </aside>
   );

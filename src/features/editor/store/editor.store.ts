@@ -31,9 +31,15 @@ export interface DocumentEditorState {
   setSelectedAsset: (asset: AssetInfo | null) => void;
   setTexFiles: (files: string[]) => void;
   resetPageState: () => void;
+
+  // ── Canonical Manuscript & LaTeX Accessors (Overleaf Parity) ────────────
+  getActiveDocument: () => Page | PageFile | null;
+  getActiveDocumentId: () => string | null;
+  getActiveDocumentTitle: () => string;
+  setActiveDocument: (doc: Page | PageFile | null) => void;
 }
 
-export const useDocumentEditorStore = create<DocumentEditorState>((set) => ({
+export const useDocumentEditorStore = create<DocumentEditorState>((set, get) => ({
   currentPage: null,
   projectId: '',
   parentPageId: null,
@@ -68,7 +74,22 @@ export const useDocumentEditorStore = create<DocumentEditorState>((set) => ({
       selectedAsset: null,
       texFiles: [],
     }),
+
+  // ── Canonical Manuscript Accessor Implementations ───────────────────────
+  getActiveDocument: () => get().activeFilePage || get().currentPage,
+  getActiveDocumentId: () => (get().activeFilePage || get().currentPage)?.id || null,
+  getActiveDocumentTitle: () => (get().activeFilePage || get().currentPage)?.title || 'main.tex',
+  setActiveDocument: (doc) => {
+    set({
+      activeFilePage: doc,
+      activePageId: doc?.id || null,
+      currentPage: doc,
+    });
+  },
 }));
+
+// Canonical modern store export
+export const useManuscriptStore = useDocumentEditorStore;
 
 // Aliases for seamless backward compatibility
 export const usePageStore = useDocumentEditorStore;

@@ -15,6 +15,6 @@ export * from './navigation.coordinator';
 export * from './keybinding.coordinator';
 export * from './ai.coordinator';
 export * from './review.coordinator';
+export * from './compilation-pipeline';
 
-export * from './services';
 export * from './channels/popout-channel';

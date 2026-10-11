@@ -4,29 +4,34 @@ import { render, screen, fireEvent, act, renderHook } from '@testing-library/rea
 import { useSynchronizedScroll } from '@/features/editor/ui/features/preview/hooks/use-synchronized-scroll';
 import { PdfToolbar } from '@/features/editor/ui/features/preview/PdfToolbar';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import { LatexCompilerEngine } from '@/features/editor/coordinators/services/latex-compiler-engine.service';
+import { useLayoutStore } from '@/features/editor/store/layout.store';
+import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
+import { LatexCompilerEngine } from '@/features/editor/coordinators/compilation-pipeline';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import type { SurfaceHandle } from '@/features/editor/ui/features/preview/PdfSurface';
 import type { SyncTeXMap } from '@/features/editor/domain';
 
 describe('Split-View Synchronized Dual Scrolling (Overleaf Parity)', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
     useSettingsStore.setState({ syncScroll: true });
   });
 
   afterEach(() => {
-    act(() => {
-      vi.runOnlyPendingTimers();
-    });
     vi.useRealTimers();
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    setActiveEditorEngine(null);
   });
 
   describe('1. useSynchronizedScroll Hook', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
     const mockSyncMap: SyncTeXMap = {
-      version: '1',
       unit: 1,
       tagToPath: new Map([[1, 'main.tex']]),
       pathToTag: new Map([['main.tex', 1]]),
@@ -51,6 +56,7 @@ describe('Split-View Synchronized Dual Scrolling (Overleaf Parity)', () => {
         scrollToPage: vi.fn(),
         scrollToCoords: mockScrollToCoords,
         highlightTarget: vi.fn(),
+        getContainer: vi.fn().mockReturnValue(document.createElement('div')),
       };
       const pdfSurfaceRef = { current: mockSurfaceHandle };
       const synctexMapRef = { current: mockSyncMap };
@@ -125,6 +131,7 @@ describe('Split-View Synchronized Dual Scrolling (Overleaf Parity)', () => {
         scrollToPage: vi.fn(),
         scrollToCoords: mockScrollToCoords,
         highlightTarget: vi.fn(),
+        getContainer: vi.fn().mockReturnValue(document.createElement('div')),
       };
       const pdfSurfaceRef = { current: mockSurfaceHandle };
       const synctexMapRef = { current: mockSyncMap };
@@ -190,6 +197,7 @@ describe('Split-View Synchronized Dual Scrolling (Overleaf Parity)', () => {
         scrollToPage: vi.fn(),
         scrollToCoords: mockScrollToCoords,
         highlightTarget: vi.fn(),
+        getContainer: vi.fn().mockReturnValue(document.createElement('div')),
       };
       const pdfSurfaceRef = { current: mockSurfaceHandle };
       const synctexMapRef = { current: mockSyncMap };
@@ -245,6 +253,7 @@ describe('Split-View Synchronized Dual Scrolling (Overleaf Parity)', () => {
         scrollToPage: vi.fn(),
         scrollToCoords: mockScrollToCoords,
         highlightTarget: vi.fn(),
+        getContainer: vi.fn().mockReturnValue(document.createElement('div')),
       };
       const pdfSurfaceRef = { current: mockSurfaceHandle };
       const synctexMapRef = { current: mockSyncMap };
@@ -284,6 +293,94 @@ describe('Split-View Synchronized Dual Scrolling (Overleaf Parity)', () => {
         (call) => call[0].type === 'editor:scroll-to-line',
       );
       expect(editorScrollDispatches).toHaveLength(0);
+    });
+
+    it('performs proportional scrolling fallback from Editor to Viewer when SyncTeX mapping is missing', () => {
+      const mockScrollToCoords = vi.fn();
+      const mockSurfaceHandle: SurfaceHandle = {
+        scrollToPage: vi.fn(),
+        scrollToCoords: mockScrollToCoords,
+        highlightTarget: vi.fn(),
+        getContainer: vi.fn().mockReturnValue(document.createElement('div')),
+      };
+      const pdfSurfaceRef = { current: mockSurfaceHandle };
+      // Empty / missing SyncTeX map
+      const synctexMapRef = { current: null };
+
+      renderHook(() =>
+        useSynchronizedScroll({
+          enabled: true,
+          pdfSurfaceRef,
+          synctexMapRef,
+          numPages: 4,
+          scale: 1,
+          autoFit: false,
+          activeFilePath: 'main.tex',
+        }),
+      );
+
+      // Editor scrolled to line 50 of 100 (fraction = 0.5)
+      act(() => {
+        editorCommandBus.dispatch({
+          type: 'sync:editor-scrolled',
+          line: 50,
+          totalLines: 100,
+          fraction: 0.5,
+        });
+      });
+
+      // Target page should be 2, target coordinate should be pageFraction * 842
+      expect(mockScrollToCoords).toHaveBeenCalledWith(
+        expect.any(Number),
+        expect.any(Number),
+        'auto',
+      );
+    });
+
+    it('performs proportional scrolling fallback from Viewer to Editor when SyncTeX mapping is missing', () => {
+      const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
+      const pdfSurfaceRef = { current: null };
+      const synctexMapRef = { current: null };
+
+      setActiveEditorEngine({
+        getLineCount: () => 200,
+        getContent: () => '',
+      });
+
+      const { result } = renderHook(() =>
+        useSynchronizedScroll({
+          enabled: true,
+          pdfSurfaceRef,
+          synctexMapRef,
+          numPages: 4,
+          scale: 1,
+          autoFit: false,
+          activeFilePath: 'main.tex',
+        }),
+      );
+
+      // Viewer scrolled to 50% of the document (fraction = 0.5)
+      act(() => {
+        result.current.handleViewerScroll({
+          page: 2,
+          y: 200,
+          fraction: 0.5,
+        });
+        vi.advanceTimersByTime(50);
+      });
+
+      // Editor should receive scroll-to-line at ~100 (half of 200)
+      const editorScrollDispatches = dispatchSpy.mock.calls.filter(
+        (call) => call[0].type === 'editor:scroll-to-line',
+      );
+      expect(editorScrollDispatches).toHaveLength(1);
+      expect(editorScrollDispatches[0][0]).toEqual(
+        expect.objectContaining({
+          type: 'editor:scroll-to-line',
+          line: expect.any(Number),
+          smooth: true,
+        }),
+      );
     });
   });
 
@@ -375,6 +472,30 @@ describe('Split-View Synchronized Dual Scrolling (Overleaf Parity)', () => {
         useSettingsStore.getState().setSyncScroll(false);
       });
       expect(useSettingsStore.getState().syncScroll).toBe(false);
+    });
+  });
+
+  describe('4. Proportional Split-View Resizing & Double-Click Reset (Overleaf Parity)', () => {
+    it('manages splitRatio within safe bounds [0.15, 0.85] and resets to 0.5 (50/50)', () => {
+      // Default is 0.5 (50/50 split)
+      useLayoutStore.getState().setSplitRatio(0.5);
+      expect(useLayoutStore.getState().splitRatio).toBe(0.5);
+
+      // User drags splitter to 70%
+      useLayoutStore.getState().setSplitRatio(0.7);
+      expect(useLayoutStore.getState().splitRatio).toBe(0.7);
+
+      // Clamp lower bound to 0.15
+      useLayoutStore.getState().setSplitRatio(0.05);
+      expect(useLayoutStore.getState().splitRatio).toBe(0.15);
+
+      // Clamp upper bound to 0.85
+      useLayoutStore.getState().setSplitRatio(0.95);
+      expect(useLayoutStore.getState().splitRatio).toBe(0.85);
+
+      // Overleaf Parity: Double-clicking center splitter snaps back to 50/50 (0.5)
+      useLayoutStore.getState().setSplitRatio(0.5);
+      expect(useLayoutStore.getState().splitRatio).toBe(0.5);
     });
   });
 });

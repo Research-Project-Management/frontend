@@ -15,17 +15,18 @@
  * - Dispatches typed progress events on IEditorCommandBus (compiler:started, compiler:progress, compiler:finished).
  */
 
-import { LatexCompilerEngine } from './services/latex-compiler-engine.service';
+import { LatexCompilerEngine } from './compilation-pipeline';
 import type { SyncTeXMap } from '@/features/editor/domain';
 import { latexDagEngine } from '../domain/latex/latex-dag-engine';
 import { lruDocumentCache } from '../domain/document/lru-document-cache';
-import { CompilationSnapshotProvider } from '../domain/document/compilation-snapshot';
+import { CompilationSnapshotProvider } from './compilation-snapshot.coordinator';
 import { diagnosticsCoordinator } from './diagnostics.coordinator';
 import { sessionCoordinator } from './session.coordinator';
 import { editorCommandBus } from './command-bus';
-import { useCompileStore, usePageStore, useSettingsStore } from '../store';
+import { useCompileStore, usePageStore, useSettingsStore, useConnectivityStore } from '../store';
 import { getActiveEditorContent, getActiveEditorEngine, getActivePdfViewer } from './command-bus';
-import type { CompileError } from '../domain/types/compiler.types';
+import type { CompileError, CompileStatus } from '../domain/types/compiler.types';
+import { extractProjectId, extractDocumentContentString } from '../domain/types/core.types';
 
 export interface CompileOptions {
   forceClean?: boolean;
@@ -64,7 +65,7 @@ export class CompilerCoordinatorRegistry {
 
     editorCommandBus.subscribe('compiler:trigger', (cmd) => {
       void this.compile({
-        forceClean: cmd.forceSync,
+        forceClean: cmd.forceClean ?? cmd.forceSync,
         draft: cmd.draft,
         reason: 'shortcut',
       });
@@ -80,7 +81,7 @@ export class CompilerCoordinatorRegistry {
         targetLine = engine?.getCursorPosition?.()?.line ?? 1;
       }
       if (targetLine !== undefined) {
-        const activeDoc = usePageStore.getState().activeFilePage || usePageStore.getState().currentPage;
+        const activeDoc = usePageStore.getState().getActiveDocument();
         const activeTitle = activeDoc?.title;
         const target = this.resolveForward(targetLine, activeTitle);
         if (target !== null) {
@@ -94,8 +95,8 @@ export class CompilerCoordinatorRegistry {
     });
 
     editorCommandBus.subscribe('compiler:progress', (cmd) => {
-      if (cmd.status) {
-        useCompileStore.getState().setCompileStatus(cmd.status as any);
+      if (cmd.status && ['idle', 'flushing', 'compiling', 'syncing', 'success', 'error', 'aborted'].includes(cmd.status)) {
+        useCompileStore.getState().setCompileStatus(cmd.status as CompileStatus);
       }
       if (cmd.logs && cmd.logs.length > 0) {
         useCompileStore.getState().setCompileLog(cmd.logs.join('\n'));
@@ -103,12 +104,12 @@ export class CompilerCoordinatorRegistry {
     });
 
     editorCommandBus.subscribe('compiler:finished', (cmd) => {
-      useCompileStore.getState().setCompileStatus(cmd.success ? 'idle' : 'error');
+      useCompileStore.getState().setCompileStatus(cmd.success || cmd.aborted ? 'idle' : 'error');
     });
   }
 
   public getIsCompiling(): boolean {
-    return this.isCompiling;
+    return this.isCompiling || useCompileStore.getState().compileStatus === 'compiling';
   }
 
   public getSynctexMap(): SyncTeXMap | null {
@@ -128,16 +129,32 @@ export class CompilerCoordinatorRegistry {
     const settingsStore = useSettingsStore.getState();
     const compileStore = useCompileStore.getState();
 
-    const currentPage = pageStore.currentPage;
-    const activeFilePage = pageStore.activeFilePage;
-    const rootPageId = (currentPage as any)?.id || pageStore.projectId || null;
+    const activeDoc = pageStore.getActiveDocument();
+    const rootPageId = activeDoc?.id || pageStore.projectId || null;
 
     if (!rootPageId) {
       return false;
     }
 
+    // 0. Guard against offline compilation: queue compile for reconnection and protect drafts
+    const isOnline =
+      useConnectivityStore.getState().isOnline &&
+      (typeof navigator === 'undefined' || navigator.onLine);
+
+    if (!isOnline) {
+      useConnectivityStore.getState().setOfflinePendingCompile(true);
+      sessionCoordinator.flushPendingDrafts();
+      compileStore.setCompileStatus('idle');
+      compileStore.setCompileLog(
+        '[Offline Mode] Bạn đang ngoại tuyến. Các thay đổi đã được lưu an toàn vào bộ nhớ máy (IndexedDB).\n' +
+        'Quá trình biên dịch đã được xếp hàng và sẽ tự động bắt đầu ngay khi kết nối mạng được khôi phục.'
+      );
+      editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
+      return false;
+    }
+
     // 1. Guard against overlapping compilations: cancel previous in-flight job and queue next
-    if (this.isCompiling) {
+    if (this.isCompiling || compileStore.compileStatus === 'compiling') {
       compileStore.setPendingCompile(true);
       LatexCompilerEngine.cancelInFlightCompile();
       return false;
@@ -151,22 +168,18 @@ export class CompilerCoordinatorRegistry {
     editorCommandBus.dispatch({ type: 'compiler:started' });
     compileStore.setCompileStatus('compiling');
 
-    const effectiveActiveFileId = activeFilePage?.id || rootPageId;
-    const activeTitle = activeFilePage?.title || (currentPage as any)?.title || 'main.tex';
-    const currentVal = getActiveEditorContent() || (currentPage as any)?.content || '';
-
+    const effectiveActiveFileId = activeDoc?.id || rootPageId;
+    const activeTitle = pageStore.getActiveDocumentTitle();
+    const currentVal = getActiveEditorContent() || extractDocumentContentString(activeDoc?.content);
     // 4. Update LaTeX DAG with all active in-memory buffers
     const allModels = lruDocumentCache.getAllModels();
     for (const m of allModels) {
       latexDagEngine.updateFileNode(m.fileId, m.filePath || m.fileId, m.content);
     }
-    if (currentPage && (currentPage as any).content) {
-      const cTitle = (currentPage as any).title || 'main.tex';
-      const cContent =
-        typeof (currentPage as any).content === 'string'
-          ? (currentPage as any).content
-          : (currentPage as any).content?.source || '';
-      latexDagEngine.updateFileNode((currentPage as any).id, cTitle, cContent);
+    if (activeDoc && activeDoc.content) {
+      const cTitle = activeDoc.title || 'main.tex';
+      const cContent = extractDocumentContentString(activeDoc.content);
+      latexDagEngine.updateFileNode(activeDoc.id, cTitle, cContent);
     }
     if (effectiveActiveFileId) {
       latexDagEngine.updateFileNode(effectiveActiveFileId, activeTitle, currentVal);
@@ -191,14 +204,11 @@ export class CompilerCoordinatorRegistry {
       console.warn('[CompilerCoordinator] Circular include dependency detected in LaTeX project DAG');
     }
 
-    const effectiveProjectId =
-      typeof currentPage?.projectId === 'object'
-        ? (currentPage.projectId as any)?.id
-        : currentPage?.projectId || pageStore.projectId || '';
+    const effectiveProjectId = extractProjectId(activeDoc) || pageStore.projectId || '';
 
     // 6. Create an atomic in-memory snapshot across open tabs & editor buffer (0ms latency)
     const snapshot = CompilationSnapshotProvider.createSnapshot({
-      rootFileId: inferred.rootFileId || (currentPage as any)?.id || pageStore.projectId,
+      rootFileId: inferred.rootFileId || activeDoc?.id || pageStore.projectId,
       resolvedMainFile,
     });
 
@@ -243,14 +253,25 @@ export class CompilerCoordinatorRegistry {
         compileStore.setCompileStatus('done');
         compileStore.setLastCompiledAt(res.compiledAt);
 
+        // Asynchronously update synctexMap when non-blocking parser resolves
+        if (res.synctexPromise) {
+          res.synctexPromise.then((map) => {
+            if (map) {
+              this.synctexMap = map;
+              editorCommandBus.dispatch({ type: 'synctex:map-updated', map });
+            }
+          });
+        }
+
+        const sanitizeDash = (s?: string) => (s ? s.replace(/[\u2014\u2013]/g, '-') : '');
         const nonErrorDiagnostics: CompileError[] =
           res.diagnostics && res.diagnostics.length > 0
             ? res.diagnostics
                 .filter((d) => d.severity !== 'error')
                 .map((d) => ({
                   line: d.line,
-                  message: d.message,
-                  context: d.context || '',
+                  message: sanitizeDash(d.message),
+                  context: sanitizeDash(d.context || ''),
                   file: d.file,
                   severity: d.severity,
                   code: d.code,
@@ -292,12 +313,14 @@ export class CompilerCoordinatorRegistry {
         compileStore.setCompileStatus('error');
         compileStore.setCompileLog(res.logs);
 
+        const sanitizeDash = (s?: string) => (s ? s.replace(/[\u2014\u2013]/g, '-') : '');
+
         const formattedErrors: CompileError[] =
           res.diagnostics && res.diagnostics.length > 0
             ? res.diagnostics.map((d) => ({
                 line: d.line,
-                message: d.message,
-                context: d.context || '',
+                message: sanitizeDash(d.message),
+                context: sanitizeDash(d.context || ''),
                 file: d.file,
                 severity: d.severity,
                 code: d.code,
@@ -305,8 +328,8 @@ export class CompilerCoordinatorRegistry {
               }))
             : (res.errors || []).map((err) => ({
                 line: err.line,
-                message: err.message,
-                context: err.context,
+                message: sanitizeDash(err.message),
+                context: sanitizeDash(err.context),
                 file: err.file,
                 severity: err.severity,
                 code: err.code,
@@ -332,11 +355,30 @@ export class CompilerCoordinatorRegistry {
         return false;
       }
     } catch (err) {
-      compileStore.setCompileStatus('error');
-      editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: false });
+      const isNetworkError =
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        (err instanceof Error && /network|fetch|failed to fetch|offline/i.test(err.message));
+
+      if (isNetworkError) {
+        useConnectivityStore.getState().recordOffline();
+        useConnectivityStore.getState().setOfflinePendingCompile(true);
+        sessionCoordinator.flushPendingDrafts();
+        compileStore.setCompileStatus('idle');
+        compileStore.setCompileLog(
+          '[Offline Mode] Mất kết nối mạng trong quá trình gửi yêu cầu biên dịch.\n' +
+          'Bản nháp đã được lưu cục bộ và sẽ tự động biên dịch lại khi có mạng.'
+        );
+        editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
+      } else {
+        compileStore.setCompileStatus('error');
+        editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: false });
+      }
       return false;
     } finally {
       this.isCompiling = false;
+      if (useCompileStore.getState().compileStatus === 'compiling') {
+        useCompileStore.getState().setCompileStatus('idle');
+      }
     }
   }
 
@@ -364,26 +406,50 @@ export class CompilerCoordinatorRegistry {
   public resolveForwardDetail(
     line: number,
     activeTitle?: string,
-    maxPages?: number
+    maxPages?: number,
+    synctexMapOverride?: SyncTeXMap | null,
   ): SyncTeXForwardDetail | null {
-    return LatexCompilerEngine.resolveForwardDetail(line, this.synctexMap, activeTitle, maxPages);
+    const map = synctexMapOverride !== undefined ? synctexMapOverride : this.synctexMap;
+    return LatexCompilerEngine.resolveForwardDetail(line, map, activeTitle, maxPages);
   }
 
   public resolveForward(
     line: number,
     activeTitle?: string,
-    maxPages?: number
+    maxPages?: number,
+    synctexMapOverride?: SyncTeXMap | null,
   ): number | null {
-    return LatexCompilerEngine.resolveForward(line, this.synctexMap, activeTitle, maxPages);
+    const map = synctexMapOverride !== undefined ? synctexMapOverride : this.synctexMap;
+    return LatexCompilerEngine.resolveForward(line, map, activeTitle, maxPages);
   }
 
   public resolveReverse(
     clickFraction: number,
     pageNum: number,
     ptX?: number,
-    ptY?: number
+    ptY?: number,
+    synctexMapOverride?: SyncTeXMap | null,
   ): SyncTeXReverseDetail | null {
-    return LatexCompilerEngine.resolveReverse(clickFraction, pageNum, this.synctexMap, ptX, ptY);
+    const map = synctexMapOverride !== undefined ? synctexMapOverride : this.synctexMap;
+    return LatexCompilerEngine.resolveReverse(clickFraction, pageNum, map, ptX, ptY);
+  }
+
+  public async resolveReverseRemote(
+    projectId: string,
+    pageNum: number,
+    x: number,
+    y: number,
+  ): Promise<{ sourcePath: string | null; line: number } | null> {
+    return LatexCompilerEngine.resolveReverseRemote(projectId, pageNum, x, y);
+  }
+
+  public async resolveForwardRemote(
+    projectId: string,
+    file: string,
+    line: number,
+    column: number = 0,
+  ) {
+    return LatexCompilerEngine.resolveForwardRemote(projectId, file, line, column);
   }
 }
 

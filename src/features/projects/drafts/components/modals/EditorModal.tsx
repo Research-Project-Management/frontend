@@ -38,9 +38,9 @@ import {
   MediumPriorityBoxIcon,
   LowPriorityBoxIcon,
   NonePriorityBoxIcon,
-} from '@/features/projects/project-id/work-items/components/modals/Popovers';
+  type WorkItemPriority,
+} from '@/features/projects/project-id/work-items';
 import type { WorkItemDraft } from '../../types/draft.types';
-import type { WorkItemPriority } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export interface EditorModalProps {
   isOpen: boolean;

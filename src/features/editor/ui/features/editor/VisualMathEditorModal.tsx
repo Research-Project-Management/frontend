@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Sigma, Check, X, Trash2, Eye, Sparkles } from 'lucide-react';
+import { Sigma, Check, X, Trash2, Eye, Sparkles, Grid3X3 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { renderMathHtml } from '@/features/editor/domain/latex/latex-converter';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { VisualMathSymbolPalette } from './VisualMathSymbolPalette';
 
 export interface ActiveMathEditorState {
@@ -42,26 +43,33 @@ export function VisualMathEditorModal({
     return renderMathHtml(currentMath, activeMath?.isDisplay ?? false);
   }, [currentMath, activeMath?.isDisplay]);
 
-  const handleInsertSymbol = useCallback(
-    (symbolSnippet: string) => {
-      const input = mathInputRef.current;
-      if (input) {
-        const start = input.selectionStart ?? input.value.length;
-        const end = input.selectionEnd ?? input.value.length;
-        const next = currentMath.substring(0, start) + symbolSnippet + currentMath.substring(end);
-        setCurrentMath(next);
+  const handleInsertSymbol = useCallback((symbolSnippet: string) => {
+    const input = mathInputRef.current;
+    if (input) {
+      const val = input.value;
+      const start = input.selectionStart ?? val.length;
+      const end = input.selectionEnd ?? val.length;
+      const next = val.substring(0, start) + symbolSnippet + val.substring(end);
+      setCurrentMath(next);
 
-        setTimeout(() => {
-          input.focus();
-          const newPos = start + symbolSnippet.length;
-          input.setSelectionRange(newPos, newPos);
-        }, 0);
-      } else {
-        setCurrentMath((prev) => (prev ? `${prev} ${symbolSnippet}` : symbolSnippet));
+      setTimeout(() => {
+        input.focus();
+        const newPos = start + symbolSnippet.length;
+        input.setSelectionRange(newPos, newPos);
+      }, 0);
+    } else {
+      setCurrentMath((prev) => (prev ? `${prev} ${symbolSnippet}` : symbolSnippet));
+    }
+  }, []);
+
+  // Allow external wizards (such as Matrix Wizard) to insert code directly into math formula
+  useEffect(() => {
+    return editorCommandBus.subscribe('editor:insert-text', (cmd) => {
+      if (cmd.text) {
+        handleInsertSymbol(cmd.text);
       }
-    },
-    [currentMath]
-  );
+    });
+  }, [handleInsertSymbol]);
 
   if (!activeMath) return null;
 
@@ -78,7 +86,7 @@ export function VisualMathEditorModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="bg-card border shadow-2xl rounded-xl p-5 w-full max-w-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-card border border-border shadow-overlay rounded-lg p-5 w-full max-w-2xl space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-2 border-b">
           <div className="flex items-center gap-2">
             <Sigma className="size-4 text-primary" />
@@ -87,6 +95,20 @@ export function VisualMathEditorModal({
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'matrix-wizard' });
+              }}
+              className="h-7 px-2 text-xs gap-1.5 cursor-pointer font-medium"
+              title="Open Table & Matrix Wizard"
+              aria-label="Open Matrix Wizard"
+            >
+              <Grid3X3 className="size-3.5 text-primary" />
+              <span>Matrix Wizard</span>
+            </Button>
             <Button
               type="button"
               variant={showSymbolPalette ? 'secondary' : 'ghost'}

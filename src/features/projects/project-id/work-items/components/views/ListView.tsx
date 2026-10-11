@@ -79,15 +79,15 @@ import { CoreService } from '../../services/core.service';
 
 const PRIORITY_THEME_CLASSES: Record<string, string> = {
   urgent:
-    'text-destructive bg-destructive/10 border-destructive/30 hover:bg-destructive/20 shadow-none font-normal',
+    'text-foreground bg-muted/40 border-border hover:bg-muted shadow-none font-normal',
   high:
-    'text-warning bg-warning/10 border-warning/30 hover:bg-warning/20 shadow-none font-normal',
+    'text-foreground bg-muted/30 border-border hover:bg-muted shadow-none font-normal',
   medium:
-    'text-foreground bg-muted border-border hover:bg-muted/80 shadow-none font-normal',
+    'text-foreground bg-muted/20 border-border hover:bg-muted shadow-none font-normal',
   low:
-    'text-muted-foreground bg-muted/40 border-border/70 hover:bg-muted shadow-none font-normal',
+    'text-foreground bg-muted/10 border-border hover:bg-muted shadow-none font-normal',
   none:
-    'text-muted-foreground/60 bg-transparent hover:bg-muted/50 border-border/40 shadow-none font-normal',
+    'text-foreground bg-transparent hover:bg-muted/50 border-border/40 shadow-none font-normal',
 };
 
 function formatDueDate(dateStr?: string | null): string {
@@ -160,7 +160,7 @@ export interface ItemRowProps {
   onToggleExpandChildren?: (itemId: string) => void;
 }
 
-export const ItemRow = ({
+export const ItemRow = memo(function ItemRow({
   item,
   columns,
   projectStates,
@@ -181,7 +181,7 @@ export const ItemRow = ({
   isReadOnly = false,
   isChildrenExpanded = false,
   onToggleExpandChildren,
-}: ItemRowProps) => {
+}: ItemRowProps) {
   // Popover state triggers for inline editing
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [assigneeOpen, setAssigneeOpen] = useState(false);
@@ -312,7 +312,7 @@ export const ItemRow = ({
       className={cn(
         'group/row relative h-8 pl-7 sm:pl-8 pr-3 sm:pr-4 flex items-center justify-between border-b border-border/60 bg-background hover:bg-muted/40 select-none text-13 transition-colors duration-0',
         isDragging && 'opacity-50 bg-muted',
-        isSelected && 'bg-primary/10 ring-1 ring-inset ring-primary/30 font-medium',
+        isSelected && 'bg-muted ring-1 ring-inset ring-border font-medium',
         item.completed && 'opacity-75',
       )}
     >
@@ -401,7 +401,7 @@ export const ItemRow = ({
             }
           }}
           className={cn(
-            'font-normal truncate cursor-pointer text-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:underline',
+            'font-normal truncate cursor-pointer text-foreground hover:underline transition-colors focus-visible:outline-none focus-visible:underline',
             isCancelled && 'text-muted-foreground line-through',
             item.completed && !isCancelled && 'text-muted-foreground',
             !item.title?.trim() && 'italic text-muted-foreground',
@@ -520,9 +520,9 @@ export const ItemRow = ({
                   ? cn(
                       'h-6 px-2.5 text-11 font-normal rounded-md border transition-colors shadow-none',
                       isOverdue
-                        ? 'border-destructive bg-destructive/10 text-destructive hover:bg-destructive/20 font-medium'
+                        ? 'border-border bg-muted/60 text-foreground hover:bg-muted font-medium'
                         : isDueToday
-                          ? 'border-warning/30 bg-warning/10 text-warning hover:bg-warning/20 font-medium'
+                          ? 'border-border bg-muted/40 text-foreground hover:bg-muted font-medium'
                           : 'border-border bg-background hover:bg-muted text-foreground',
                     )
                   : 'size-6 p-0 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 [&>span]:hidden',
@@ -678,7 +678,7 @@ export const ItemRow = ({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="relative size-6 text-foreground hover:text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shrink-0 shadow-none focus-visible:ring-1 focus-visible:ring-ring flex items-center justify-center before:absolute before:-inset-2 md:before:hidden"
+                className="relative size-6 text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shrink-0 shadow-none focus-visible:ring-1 focus-visible:ring-ring flex items-center justify-center before:absolute before:-inset-2 md:before:hidden"
                 aria-label="More options"
               >
                 <MoreHorizontal className="size-3.5 shrink-0" />
@@ -725,7 +725,7 @@ export const ItemRow = ({
 
               <DropdownMenuItem
                 onClick={() => onDeleteCard(item)}
-                className="cursor-pointer gap-2 py-1.5 rounded-md text-destructive focus:text-destructive-foreground focus:bg-destructive"
+                className="cursor-pointer gap-2 py-1.5 rounded-md text-foreground focus:bg-muted"
               >
                 <Trash2 className="size-3.5 shrink-0" />
                 <span>Delete</span>
@@ -736,7 +736,7 @@ export const ItemRow = ({
       </div>
     </div>
   );
-};
+});
 
 // ── 4. Child Item Components (Hierarchical Nested Tree) ─────────────────────────
 
@@ -808,8 +808,8 @@ const ChildItemRow = ({
           className={cn(
             'size-3.5 rounded-sm border flex items-center justify-center transition-colors cursor-pointer shrink-0',
             isDone
-              ? 'bg-success border-success text-success-foreground'
-              : 'border-border hover:border-primary'
+              ? 'bg-foreground border-foreground text-background'
+              : 'border-border hover:border-foreground'
           )}
         >
           {isDone && <Check className="size-2.5 shrink-0 stroke-[3]" />}
@@ -848,7 +848,7 @@ const ChildItemRow = ({
             }
           }}
           className={cn(
-            'truncate cursor-pointer hover:text-primary transition-colors text-12 font-normal',
+            'truncate cursor-pointer hover:underline transition-colors text-12 font-normal',
             isCancelled ? 'line-through text-muted-foreground' : isDone ? 'text-muted-foreground' : 'text-foreground'
           )}
           title={childItem.title}
@@ -911,7 +911,7 @@ const ChildItemRow = ({
               onDeleteChildItem(parentItem, childItem.id, index);
             }}
             aria-label="Delete sub-item"
-            className="opacity-0 group-hover/sub:opacity-100 size-5 rounded-md flex items-center justify-center text-foreground hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer"
+            className="opacity-0 group-hover/sub:opacity-100 size-5 rounded-md flex items-center justify-center text-foreground hover:bg-muted transition-all cursor-pointer"
           >
             <Trash2 className="size-3 shrink-0" />
           </button>
@@ -976,7 +976,7 @@ const ChildItemQuickAdd = ({
         <button
           type="button"
           onClick={() => setIsAdding(true)}
-          className="flex items-center gap-1.5 text-11 text-foreground hover:text-foreground transition-colors cursor-pointer -ml-5"
+          className="flex items-center gap-1.5 text-11 text-foreground hover:bg-muted px-1.5 py-0.5 rounded transition-colors cursor-pointer -ml-5"
         >
           <Plus className="size-3" />
           <span>Add sub-item</span>
@@ -1530,15 +1530,23 @@ export function ListView({
       });
 
       if (childItem.id && !childItem.id.startsWith('sub_')) {
-        try {
-          await CoreService.update({
-            id: childItem.id,
+        if (onUpdateItem) {
+          onUpdateItem(childItem.id, {
             ...(data.title !== undefined && { title: data.title }),
             ...(data.columnId !== undefined && { columnId: data.columnId }),
             ...(data.completed !== undefined && { completed: data.completed }),
           });
-        } catch {
-          // Handled
+        } else {
+          try {
+            await CoreService.update({
+              id: childItem.id,
+              ...(data.title !== undefined && { title: data.title }),
+              ...(data.columnId !== undefined && { columnId: data.columnId }),
+              ...(data.completed !== undefined && { completed: data.completed }),
+            });
+          } catch {
+            // Handled
+          }
         }
       }
     },
@@ -1558,14 +1566,18 @@ export function ListView({
       });
 
       if (childItemId && !childItemId.startsWith('sub_')) {
-        try {
-          await CoreService.delete(childItemId);
-        } catch {
-          // Handled
+        if (onDeleteCard) {
+          onDeleteCard(childItemId);
+        } else {
+          try {
+            await CoreService.delete(childItemId);
+          } catch {
+            // Handled
+          }
         }
       }
     },
-    [onUpdateItem]
+    [onUpdateItem, onDeleteCard]
   );
 
   const handleAddChildItem = useCallback(

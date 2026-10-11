@@ -21,6 +21,7 @@ export * from './extensions/latex-folding';
 export * from './extensions/latex-error-lens';
 export * from './extensions/latex-spelling';
 export * from './extensions/track-changes.extension';
+export * from './extensions/latex-smart-paste';
 export * from './codemirror/latex-formatting.util';
 
 // 3. Real-time Collaboration Engine (Yjs CRDT & Persistence)

@@ -28,7 +28,7 @@ ENV NEXT_PUBLIC_SIGNALING_SERVER=$NEXT_PUBLIC_SIGNALING_SERVER
 ENV INTERNAL_API_URL=$INTERNAL_API_URL
 ENV SKIP_BUILD_STRICT=true
 ENV STANDALONE=true
-ENV NODE_OPTIONS="--max-old-space-size=2048"
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 COPY . .
 COPY --from=deps /app/node_modules ./node_modules
 RUN pnpm run build

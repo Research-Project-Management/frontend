@@ -19,7 +19,6 @@ import {
 import { Form } from "@/shared/components/ui/form";
 import {
   Loader2,
-  Bookmark,
   Plus,
 } from 'lucide-react';
 import { useParams } from 'next/navigation';
@@ -47,10 +46,6 @@ import {
   DEFAULT_STATES,
 } from '../../utils/work-item.utils';
 import { useLabelsQuery } from '../../hooks/use-label';
-import {
-  useTemplatesQuery,
-  useCreateTemplateMutation,
-} from '../../hooks/use-template';
 import { useWatch } from 'react-hook-form';
 import {
   useItemForm,
@@ -269,39 +264,6 @@ export function CreateModal({
   const [openStartDatePopover, setOpenStartDatePopover] = useState(false);
   const [openDueDatePopover, setOpenDueDatePopover] = useState(false);
   const [openParentPopover, setOpenParentPopover] = useState(false);
-  const [openTemplatesPopover, setOpenTemplatesPopover] = useState(false);
-
-  // Templates Hooks
-  const { data: projectTemplates = [] } = useTemplatesQuery(currentProjectId);
-  const createTemplateMutation = useCreateTemplateMutation();
-
-  const handleApplyTemplate = (tmpl: any) => {
-    if (tmpl.title) setValue('title', tmpl.title, { shouldDirty: true });
-    if (tmpl.content || tmpl.description) setValue('description', tmpl.content || tmpl.description, { shouldDirty: true });
-    if (tmpl.priority) setPriority(tmpl.priority);
-    if (tmpl.defaultColumnId) setColumnId(tmpl.defaultColumnId);
-    if (tmpl.labels && Array.isArray(tmpl.labels)) setLabels(tmpl.labels);
-    setOpenTemplatesPopover(false);
-  };
-
-  const handleSaveAsTemplateFromModal = async () => {
-    if (!title.trim()) {
-      return;
-    }
-    await createTemplateMutation.mutateAsync({
-      projectId: currentProjectId,
-      data: {
-        name: `${title.trim()} (Template)`,
-        description: description.trim() || undefined,
-        title: title.trim(),
-        content: description.trim() || undefined,
-        priority: priority !== 'none' ? priority : undefined,
-        labels: labels.length > 0 ? labels : undefined,
-        defaultColumnId: columnId,
-      },
-    });
-    setOpenTemplatesPopover(false);
-  };
 
   const titleInputRef = useRef<HTMLInputElement>(null);
   const prevOpenRef = useRef(false);
@@ -763,58 +725,6 @@ export function CreateModal({
               items={effectiveAvailableItems}
               actionBtnClass={pillBtnClass}
             />
-
-            {/* 10. Templates */}
-            <Popover open={openTemplatesPopover} onOpenChange={setOpenTemplatesPopover}>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className={cn(
-                    pillBtnClass,
-                    openTemplatesPopover && 'border-ring bg-muted font-medium'
-                  )}
-                >
-                  <Bookmark className="size-3 shrink-0 text-foreground" />
-                  <span>Templates {projectTemplates.length > 0 ? `(${projectTemplates.length})` : ''}</span>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-64 p-1.5 rounded-md border border-border bg-popover shadow-overlay z-100 flex flex-col space-y-1">
-                <div className="flex items-center justify-between px-2 py-1 border-b border-border mb-1">
-                  <span className="text-11 font-semibold text-foreground">Work Item Templates</span>
-                </div>
-                <div className="max-h-48 overflow-y-auto space-y-0.5">
-                  {projectTemplates.length === 0 ? (
-                    <p className="text-xs text-muted-foreground py-2 text-center">No saved templates</p>
-                  ) : (
-                    projectTemplates.map((t: any) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => handleApplyTemplate(t)}
-                        className="w-full flex flex-col items-start px-2 py-1.5 rounded-md text-xs hover:bg-muted text-left transition-colors cursor-pointer"
-                      >
-                        <span className="font-medium text-foreground truncate w-full">{t.name}</span>
-                        {t.description && (
-                          <span className="text-10 text-muted-foreground truncate w-full">{t.description}</span>
-                        )}
-                      </button>
-                    ))
-                  )}
-                </div>
-                {title.trim() && (
-                  <div className="pt-1 border-t border-border">
-                    <button
-                      type="button"
-                      onClick={handleSaveAsTemplateFromModal}
-                      className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium text-foreground hover:bg-muted text-left transition-colors cursor-pointer"
-                    >
-                      <Plus className="size-3 shrink-0" />
-                      <span>Save as template</span>
-                    </button>
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
           </div>
 
           {/* Attach Center Section */}
@@ -874,7 +784,7 @@ export function CreateModal({
               size="sm"
               disabled={isSubmitting}
               onClick={handleSubmit}
-              className="h-8 text-13 px-4 font-medium cursor-pointer rounded-md bg-primary text-primary-foreground hover:bg-primary-hover flex items-center gap-1.5 shadow-none select-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-8 text-13 px-4 font-medium cursor-pointer rounded-md bg-foreground text-background hover:bg-foreground/90 flex items-center gap-1.5 shadow-none select-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               {isSubmitting && <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none shrink-0" />}
               <span>{isSubmitting ? 'Creating...' : 'Create work item'}</span>

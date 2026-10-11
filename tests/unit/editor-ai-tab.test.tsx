@@ -43,11 +43,7 @@ describe('AiTab Synchronized Design System Tests', () => {
 
     expect(screen.getByText('AI Assistant')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /new chat/i })).toBeInTheDocument();
-
-    const closeBtn = screen.getByRole('button', { name: /close ai panel/i });
-    expect(closeBtn).toBeInTheDocument();
-    fireEvent.click(closeBtn);
-    expect(handleClose).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: /close ai panel/i })).not.toBeInTheDocument();
   });
 
   it('renders CompanionHero with 3D AI Orb', async () => {
@@ -69,7 +65,7 @@ describe('AiTab Synchronized Design System Tests', () => {
     expect(screen.getByText('BibTeX Suggestions')).toBeInTheDocument();
   });
 
-  it('renders synchronized bottom input card with Send button and disclaimer', async () => {
+  it('renders synchronized bottom input card with Send button without disclaimer', async () => {
     render(<AiTab />);
 
     const textarea = await screen.findByPlaceholderText(/Ask AI about paper, LaTeX syntax/i);
@@ -77,7 +73,7 @@ describe('AiTab Synchronized Design System Tests', () => {
 
     expect(screen.getByRole('button', { name: /send message/i })).toBeInTheDocument();
     expect(
-      screen.getByText(/Flux AI can make mistakes, please double-check responses/i)
-    ).toBeInTheDocument();
+      screen.queryByText(/Flux AI can make mistakes, please double-check responses/i)
+    ).not.toBeInTheDocument();
   });
 });

@@ -6,6 +6,13 @@ import type {
   QueryViewInput,
 } from '../types/view.types';
 
+export type {
+  WorkItemViewItem,
+  CreateViewInput,
+  UpdateViewInput,
+  QueryViewInput,
+};
+
 export const ViewService = {
   getViews: async (
     projectId: string,
@@ -89,5 +96,13 @@ export const ViewService = {
       `/api/projects/${projectId}/views/${viewId}/favorite`,
       {},
     );
+  },
+
+  favorite: async (projectId: string, viewId: string): Promise<void> => {
+    await apiPost(`/api/projects/${projectId}/views/${viewId}/favorite`, {});
+  },
+
+  unfavorite: async (projectId: string, viewId: string): Promise<void> => {
+    await apiDelete(`/api/projects/${projectId}/views/${viewId}/favorite`);
   },
 };

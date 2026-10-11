@@ -142,7 +142,7 @@ export function DisplayPopover({
           <button
             type="button"
             onClick={() => setPropertiesOpen(!propertiesOpen)}
-            className="flex w-full items-center justify-between px-1 py-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+            className="flex w-full items-center justify-between px-1 py-1 text-12 font-medium text-foreground hover:bg-muted/50 transition-colors cursor-pointer select-none rounded"
           >
             <span>Display properties</span>
             {propertiesOpen ? (
@@ -166,7 +166,7 @@ export function DisplayPopover({
                       "px-2.5 py-1 text-12 font-medium rounded-md border transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1 md:before:hidden",
                       isSelected
                         ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border/70 bg-background text-foreground/80 hover:text-foreground hover:bg-muted"
+                        : "border-border/70 bg-background text-foreground hover:bg-muted"
                     )}
                   >
                     {item.label}
@@ -184,7 +184,7 @@ export function DisplayPopover({
           <button
             type="button"
             onClick={() => setGroupByOpen(!groupByOpen)}
-            className="flex w-full items-center justify-between px-1 py-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
+            className="flex w-full items-center justify-between px-1 py-1 text-12 font-medium text-foreground hover:bg-muted/50 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
           >
             <span>Group by</span>
             {groupByOpen ? (
@@ -209,7 +209,7 @@ export function DisplayPopover({
                       "flex w-full items-center gap-2.5 py-1.5 px-2 rounded-md text-12 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                       isSelected
                         ? "text-foreground font-medium"
-                        : "text-foreground/80 hover:text-foreground hover:bg-muted/40"
+                        : "text-foreground hover:bg-muted/40"
                     )}
                   >
                     <div
@@ -217,7 +217,7 @@ export function DisplayPopover({
                         "size-4 rounded-full border flex items-center justify-center shrink-0 transition-colors",
                         isSelected
                           ? "border-primary bg-background"
-                          : "border-muted-foreground/40 bg-background"
+                          : "border-foreground/30 bg-background"
                       )}
                     >
                       {isSelected && <div className="size-2 rounded-full bg-primary" />}
@@ -238,7 +238,7 @@ export function DisplayPopover({
             <button
               type="button"
               onClick={() => setOrderByOpen(!orderByOpen)}
-              className="flex items-center gap-1 hover:text-foreground/80 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
+              className="flex items-center gap-1 hover:bg-muted/50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1"
             >
               <span>Order by</span>
               {orderByOpen ? (
@@ -277,7 +277,7 @@ export function DisplayPopover({
                       "flex w-full items-center gap-2.5 py-1.5 px-2 rounded-md text-12 transition-colors cursor-pointer select-none",
                       isSelected
                         ? "text-foreground font-medium"
-                        : "text-foreground/80 hover:text-foreground hover:bg-muted/40"
+                        : "text-foreground hover:bg-muted/40"
                     )}
                   >
                     <div
@@ -285,7 +285,7 @@ export function DisplayPopover({
                         "size-4 rounded-full border flex items-center justify-center shrink-0 transition-colors",
                         isSelected
                           ? "border-primary bg-background"
-                          : "border-muted-foreground/40 bg-background"
+                          : "border-foreground/30 bg-background"
                       )}
                     >
                       {isSelected && <div className="size-2 rounded-full bg-primary" />}
@@ -302,7 +302,7 @@ export function DisplayPopover({
 
         {/* 4. Sub-work items and Empty groups checkboxes */}
         <div className="space-y-1 pt-0.5 select-none">
-          <label className="flex items-center gap-2.5 text-12 text-foreground cursor-pointer select-none py-1 px-1 rounded-md hover:text-foreground/90 transition-colors">
+          <label className="flex items-center gap-2.5 text-12 text-foreground cursor-pointer select-none py-1 px-1 rounded-md hover:bg-muted/40 transition-colors">
             <Checkbox
               checked={isChildWorkItemsShown}
               onCheckedChange={handleShowChildWorkItemsToggle}
@@ -311,7 +311,7 @@ export function DisplayPopover({
             <span className="font-normal">Show sub-work items</span>
           </label>
 
-          <label className="flex items-center gap-2.5 text-12 text-foreground cursor-pointer select-none py-1 px-1 rounded-md hover:text-foreground/90 transition-colors">
+          <label className="flex items-center gap-2.5 text-12 text-foreground cursor-pointer select-none py-1 px-1 rounded-md hover:bg-muted/40 transition-colors">
             <Checkbox
               checked={showEmptyGroups}
               onCheckedChange={handleShowEmptyGroupsToggle}

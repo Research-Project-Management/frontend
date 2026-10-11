@@ -156,13 +156,13 @@ export function LibraryTopbar({
 }: TopbarProps) {
   const onImportFromUser = propOnImportFromUser || onImportFromPersonal;
   const {
-    isOpen,
-    toggle,
+    isSidebarOpen,
+    toggleSidebar,
     isInspectorOpen,
     toggleInspector,
     activeScope,
   } = useLibrarySidebarStore();
-  const handleToggleSidebar = onToggleSidebar || toggle;
+  const handleToggleSidebar = onToggleSidebar || toggleSidebar;
   const { canEditItem } = useLibraryPermissions();
   const isEffectiveCanEdit = canEdit && canEditItem;
   const activeItemId = useLibraryViewStore((s) => s.activeItemId);
@@ -232,7 +232,7 @@ export function LibraryTopbar({
     >
       {/* Left Section: Breadcrumbs / Title */}
       <div className="flex items-center gap-2.5 min-w-0 shrink-0 mr-2">
-        {showSidebarToggle && !isOpen && (
+        {showSidebarToggle && !isSidebarOpen && (
           <div className="flex items-center gap-1.5 -ml-1 mr-0.5">
             <Tooltip delayDuration={700}>
               <TooltipTrigger asChild>

@@ -121,15 +121,15 @@ export function ExpandColumnIcon({ className }: { className?: string }) {
 
 const PRIORITY_THEME_CLASSES: Record<string, string> = {
   urgent:
-    'text-destructive bg-destructive/10 border-destructive/30 hover:bg-destructive/20 shadow-none font-normal',
+    'text-foreground bg-muted/40 border-border hover:bg-muted shadow-none font-normal',
   high:
-    'text-warning bg-warning/10 border-warning/30 hover:bg-warning/20 shadow-none font-normal',
+    'text-foreground bg-muted/30 border-border hover:bg-muted shadow-none font-normal',
   medium:
-    'text-foreground bg-muted border-border hover:bg-muted/80 shadow-none font-normal',
+    'text-foreground bg-muted/20 border-border hover:bg-muted shadow-none font-normal',
   low:
-    'text-muted-foreground bg-muted/40 border-border/70 hover:bg-muted shadow-none font-normal',
+    'text-foreground bg-muted/10 border-border hover:bg-muted shadow-none font-normal',
   none:
-    'text-muted-foreground/60 bg-transparent hover:bg-muted/50 border-border/40 shadow-none font-normal',
+    'text-foreground bg-transparent hover:bg-muted/50 border-border/40 shadow-none font-normal',
 };
 
 function formatDateDisplay(dateStr?: string | null): string {
@@ -160,7 +160,7 @@ export interface CardProps {
   onToggleSelect?: (itemId: string) => void;
 }
 
-export function CardUI({
+export const CardUI = React.memo(function CardUI({
   card,
   columns = [],
   projectStates,
@@ -346,7 +346,7 @@ export function CardUI({
         >
           {/* Identifier */}
           {(card.identifier || card.sequenceNumber) && (displayOptions?.properties?.id !== false) && (
-            <span className="font-mono text-11 font-medium text-muted-foreground uppercase tracking-tight shrink-0 tabular-nums">
+            <span className="font-mono text-11 font-medium text-muted-foreground tracking-tight shrink-0 tabular-nums">
               {card.identifier || `ISSUE-${card.sequenceNumber}`}
             </span>
           )}
@@ -364,7 +364,7 @@ export function CardUI({
                   variant="ghost"
                   size="icon"
                   aria-label={`Options for ${card.title}`}
-                  className="relative size-5.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors rounded-sm flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
+                  className="relative size-5.5 text-foreground hover:bg-muted transition-colors rounded-sm flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
                 >
                   <MoreHorizontal className="size-3.5 shrink-0" />
                 </Button>
@@ -394,7 +394,7 @@ export function CardUI({
                 {onDelete && (
                   <DropdownMenuItem
                     onClick={remove}
-                    className="text-destructive focus:text-destructive rounded-md cursor-pointer"
+                    className="text-foreground focus:bg-muted rounded-md cursor-pointer"
                   >
                     <Trash2 className="mr-2 size-3.5 shrink-0" />
                     Delete
@@ -457,7 +457,7 @@ export function CardUI({
                 actionBtnClass={cn(
                   'h-5 px-1.5 text-10 font-mono tabular-nums font-normal rounded-sm border flex items-center justify-center transition-colors cursor-pointer gap-1 shrink-0',
                   isOverdue
-                    ? 'text-destructive border-destructive/40 bg-destructive/5 hover:bg-destructive/10'
+                    ? 'border-border bg-muted/60 text-foreground hover:bg-muted'
                     : 'border-border bg-muted/20 text-foreground hover:bg-muted'
                 )}
               />
@@ -569,7 +569,7 @@ export function CardUI({
                     dueDate: payload.dueDate,
                   });
                 }}
-                actionBtnClass="size-5 p-0 rounded-sm border border-border/60 bg-transparent hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer shrink-0 [&>span]:hidden"
+                actionBtnClass="size-5 p-0 rounded-sm border border-border/60 bg-transparent hover:bg-muted text-foreground flex items-center justify-center transition-colors cursor-pointer shrink-0 [&>span]:hidden"
               />
             </div>
           )}
@@ -587,7 +587,7 @@ export function CardUI({
                   onUpdateItem?.(card.id, { labels: next });
                 }}
                 iconOnly
-                actionBtnClass="size-5 p-0 rounded-sm border border-border/60 bg-transparent hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer shrink-0 [&>span]:hidden"
+                actionBtnClass="size-5 p-0 rounded-sm border border-border/60 bg-transparent hover:bg-muted text-foreground flex items-center justify-center transition-colors cursor-pointer shrink-0 [&>span]:hidden"
               />
             </div>
           )}
@@ -628,10 +628,10 @@ export function CardUI({
               <button
                 type="button"
                 onClick={() => setMemberOpen(true)}
-                className="relative size-5 rounded-md border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer transition-colors sm:opacity-0 sm:group-hover:opacity-100 before:absolute before:-inset-1 md:before:hidden"
+                className="relative size-5 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center cursor-pointer transition-colors sm:opacity-0 sm:group-hover:opacity-100 before:absolute before:-inset-1 md:before:hidden"
                 title="Assign member"
               >
-                <User className="size-3" />
+                <User className="size-3 shrink-0" />
               </button>
             ) : null}
 
@@ -648,9 +648,9 @@ export function CardUI({
       </div>
     </div>
   );
-}
+});
 
-export function Card(props: CardProps) {
+export const Card = React.memo(function Card(props: CardProps) {
   const { card } = props;
   const {
     attributes,
@@ -678,7 +678,7 @@ export function Card(props: CardProps) {
       <CardUI {...props} isDragging={isDragging} />
     </div>
   );
-}
+});
 
 // ── Column Component ────────────────────────────────────────────────────────
 
@@ -695,7 +695,7 @@ export interface ColumnProps extends BaseWorkItemViewProps, Partial<WorkItemCard
   onUpdateItem?: (itemId: string, data: any) => void;
 }
 
-export function Column({
+export const Column = React.memo(function Column({
   column,
   cards,
   columns = [],
@@ -798,7 +798,7 @@ export function Column({
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 text-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-background/80 transition-colors relative before:absolute before:-inset-2 md:before:hidden"
+            className="size-7 text-foreground cursor-pointer rounded-md hover:bg-background/80 transition-colors relative before:absolute before:-inset-2 md:before:hidden"
             onClick={() => setIsCollapsed(false)}
             title="Expand column"
           >
@@ -809,7 +809,7 @@ export function Column({
             <Button
               variant="ghost"
               size="icon"
-              className="size-7 text-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-background/80 transition-colors relative before:absolute before:-inset-2 md:before:hidden"
+              className="size-7 text-foreground cursor-pointer rounded-md hover:bg-background/80 transition-colors relative before:absolute before:-inset-2 md:before:hidden"
               onClick={() => {
                 setIsCollapsed(false);
                 setIsQuickAdding(true);
@@ -855,7 +855,7 @@ export function Column({
           <Button
             variant="ghost"
             size="icon"
-            className="size-6 text-foreground hover:text-foreground cursor-pointer transition-colors rounded-md relative before:absolute before:-inset-2 md:before:hidden"
+            className="size-6 text-foreground hover:bg-muted cursor-pointer transition-colors rounded-md relative before:absolute before:-inset-2 md:before:hidden"
             onClick={() => setIsCollapsed(true)}
             title="Collapse column"
           >
@@ -866,7 +866,7 @@ export function Column({
             <Button
               variant="ghost"
               size="icon"
-              className="size-6 text-foreground hover:text-foreground cursor-pointer transition-colors rounded-md relative before:absolute before:-inset-2 md:before:hidden"
+              className="size-6 text-foreground hover:bg-muted cursor-pointer transition-colors rounded-md relative before:absolute before:-inset-2 md:before:hidden"
               onClick={() => setIsQuickAdding(true)}
               title="Add work item"
             >
@@ -899,7 +899,7 @@ export function Column({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-6 text-11 px-2 text-foreground hover:text-foreground rounded-md"
+                className="h-6 text-11 px-2 text-foreground hover:bg-muted rounded-md"
                 onClick={() => setIsQuickAdding(false)}
               >
                 Cancel
@@ -946,7 +946,7 @@ export function Column({
           <button
             type="button"
             onClick={() => setIsQuickAdding(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-13 text-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-muted/60 transition-colors w-full text-left font-normal"
+            className="flex items-center gap-1.5 px-3 py-2 text-13 text-foreground hover:bg-muted/60 cursor-pointer rounded-md transition-colors w-full text-left font-normal"
           >
             <Plus className="size-3.5 shrink-0" />
             <span>New work item</span>
@@ -955,7 +955,7 @@ export function Column({
       </div>
     </div>
   );
-}
+});
 
 // ── BoardView Component ─────────────────────────────────────────────────────
 
@@ -1074,7 +1074,7 @@ export function BoardView({
           id: lbl,
           title: meta?.name || lbl,
           color: meta?.color || GROUP_DEFAULT_COLORS.label,
-          icon: <Tag className="size-3.5 text-ai shrink-0" />,
+          icon: <Tag className="size-3.5 text-foreground shrink-0" />,
         };
       });
       defs = [

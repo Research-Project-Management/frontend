@@ -26,8 +26,8 @@ import type { Page, PageFile } from '@/features/editor/domain/types';
 export interface UseProjectTitleActionsOptions {
   effectiveProjectId: string;
   displayTitle: string;
-  currentPage?: any;
-  activeFilePage?: any;
+  currentPage?: Page | PageFile | null;
+  activeFilePage?: Page | PageFile | null;
   getContent: () => string;
   pdfUrl?: string | null;
   fallbackRootId?: string;
@@ -141,7 +141,7 @@ export function useProjectTitleActions({
         if (effectiveProjectId) {
           const res = (await duplicateProjectMutation.mutateAsync({
             projectId: effectiveProjectId,
-          })) as any;
+          })) as { project?: { id?: string }; data?: { project?: { id?: string } }; id?: string } | null;
 
           const newProjId = res?.project?.id || res?.data?.project?.id || res?.id;
           if (newProjId) {

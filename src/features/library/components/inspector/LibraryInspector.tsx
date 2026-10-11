@@ -15,7 +15,7 @@ import {
   useUpdateLibraryItemMutation,
   useCollections,
   useRelations,
-  itemKeys,
+  libraryKeys,
 } from '../../data';
 import { normalizeTags } from '../../domain';
 
@@ -171,12 +171,15 @@ function InspectorSection({
 
 export interface LibraryInspectorProps {
   item?: Item | null;
+  /** @deprecated Use item instead */
   paper?: Item | null;
   collection?: Collection | null;
   scopeId?: string;
   projectId?: string;
   canEdit?: boolean;
   onClose?: () => void;
+  onSelectItem?: (itemId: string) => void;
+  /** @deprecated Use onSelectItem instead */
   onSelectPaper?: (paperId: string) => void;
   pendingNoteText?: string;
   onClearPendingText?: () => void;
@@ -188,13 +191,22 @@ export interface LibraryInspectorProps {
  * Modern, high-performance, modular right-side document inspector.
  * Replaces the previous 1,300-line monolithic Panel.tsx.
  */
-export function LibraryInspector({
+export function LibraryInspector(props: LibraryInspectorProps) {
+  const isInspectorOpen = useLibrarySidebarStore((s) => s.isInspectorOpen);
+  if (!isInspectorOpen) {
+    return null;
+  }
+  return <LibraryInspectorContent {...props} />;
+}
+
+function LibraryInspectorContent({
   item: propItem,
   paper: propPaper,
   scopeId,
   projectId,
   canEdit = true,
   onClose: propOnClose,
+  onSelectItem,
   onSelectPaper,
   pendingNoteText,
   onClearPendingText,
@@ -209,7 +221,7 @@ export function LibraryInspector({
 
   const activeItemId = useLibraryViewStore((s) => s.activeItemId);
   const selectOnly = useLibraryViewStore((s) => s.selectOnly);
-  const handleSelectPaper = onSelectPaper || selectOnly;
+  const handleSelectPaper = onSelectItem || onSelectPaper || selectOnly;
   const openModal = useLibraryModalStore((s) => s.openModal);
   const { width, isDragging, handleMouseDown, setWidth, resetWidth } = useInspectorResize();
 
@@ -244,11 +256,11 @@ export function LibraryInspector({
   // without triggering an unneeded network fetch of the entire library
   const cachedListItem = useMemo(() => {
     if (!queryItemId) return null;
-    const directCached = queryClient.getQueryData<any>(itemKeys.byId(targetScope, queryItemId));
+    const directCached = queryClient.getQueryData<any>(libraryKeys.item(targetScope, queryItemId));
     const resolvedDirect = directCached?.item ?? directCached;
     if (resolvedDirect && resolvedDirect.id === queryItemId) return resolvedDirect as Item;
 
-    const queries = queryClient.getQueriesData<any>({ queryKey: itemKeys.all(targetScope).slice(0, 3) });
+    const queries = queryClient.getQueriesData<any>({ queryKey: [...libraryKeys.all, 'items', targetScope] });
     for (const [_, data] of queries) {
       if (Array.isArray(data?.items)) {
         const found = data.items.find((it: Item) => it.id === queryItemId);
@@ -372,7 +384,7 @@ export function LibraryInspector({
   );
   const hasAbstract = Boolean(
     effectiveItem?.abstract ||
-    (effectiveItem as any)?.abstractNote
+    effectiveItem?.abstractNote
   );
   const hasNotes = noteCount > 0 || isAddingNote;
   const hasTags = tagsList.length > 0 || isAddingTag;
@@ -413,10 +425,6 @@ export function LibraryInspector({
       }
     });
   };
-
-  if (!isInspectorOpen) {
-    return null;
-  }
 
   const inspectorContent = (
     <>
@@ -472,8 +480,8 @@ export function LibraryInspector({
                     canEdit={effectiveCanEdit}
                   >
                     <AbstractSection
-                      paper={effectiveItem}
-                      onUpdatePaper={handleUpdatePaper}
+                      item={effectiveItem}
+                      onUpdateItem={handleUpdatePaper}
                       canEdit={effectiveCanEdit}
                       hideHeader
                     />
@@ -523,7 +531,7 @@ export function LibraryInspector({
                     canEdit={effectiveCanEdit}
                   >
                     <NotesSection
-                      paper={effectiveItem}
+                      item={effectiveItem}
                       scopeId={targetScope}
                       hideHeader
                       forceAdding={isAddingNote || Boolean(pendingNoteText)}

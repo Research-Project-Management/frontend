@@ -192,7 +192,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
     <div className="space-y-6">
       {/* Overview Info Header */}
       <div className="p-3.5 rounded-lg border border-border/70 bg-muted/30 text-xs text-muted-foreground leading-relaxed flex items-start gap-2.5">
-        <GitBranch className="size-4 text-primary shrink-0 mt-0.5" />
+        <GitBranch className="size-4 text-foreground shrink-0 mt-0.5" />
         <div>
           Synchronize this project with GitHub. Commits are tracked in the remote repository tree, allowing seamless collaboration across Overleaf, Git, and Flux.
         </div>
@@ -213,14 +213,14 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                     href={`https://github.com/${linkedRepo.repoFullName}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1 truncate"
+                    className="text-xs font-semibold text-foreground hover:underline transition-colors flex items-center gap-1 truncate"
                   >
                     <span>{linkedRepo.repoFullName}</span>
                     <ExternalLink className="size-3 text-current shrink-0" />
                   </a>
                   <Badge
                     variant="outline"
-                    className="font-mono text-10 px-1.5 py-0 h-4 bg-primary/10 text-primary border-primary/20"
+                    className="font-mono text-10 px-1.5 py-0 h-4 bg-muted text-foreground border-border"
                   >
                     {linkedRepo.branch || 'main'}
                   </Badge>
@@ -251,7 +251,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
             >
               <div>
                 <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                  <Upload className="size-3.5 text-primary" />
+                  <Upload className="size-3.5 text-foreground" />
                   <span>Push to GitHub</span>
                 </div>
                 <p className="text-11 text-muted-foreground mt-1">
@@ -288,7 +288,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
             <div className="p-4 rounded-md border border-border bg-card flex flex-col justify-between space-y-3">
               <div>
                 <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                  <Download className="size-3.5 text-primary" />
+                  <Download className="size-3.5 text-foreground" />
                   <span>Pull from GitHub</span>
                 </div>
                 <p className="text-11 text-muted-foreground mt-1">
@@ -325,7 +325,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
               variant="ghost"
               size="sm"
               onClick={() => setIsCreatingNew(!isCreatingNew)}
-              className="text-xs h-7 px-2 text-primary cursor-pointer"
+              className="text-xs h-7 px-2 text-foreground/80 hover:text-foreground hover:bg-muted cursor-pointer"
             >
               {isCreatingNew ? 'Select Existing Repository' : 'Create New Repository Instead'}
             </Button>

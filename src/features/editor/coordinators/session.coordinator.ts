@@ -12,19 +12,23 @@
  * - Provides window beforeunload protection against accidental data loss.
  */
 
-import { lruDocumentCache, type DocumentModelState } from '../domain/document/lru-document-cache';
+import {
+  documentStore,
+  lruDocumentCache,
+  draftStorageService,
+  type DocumentModelState,
+  type DraftSnapshot,
+  type ProjectFileSnapshot,
+  type OfflineMutation,
+} from '../domain/document';
 import { latexSymbolsIndex } from '../domain/latex/latex-symbols-index';
 import { latexDagEngine } from '../domain/latex/latex-dag-engine';
-import { manuscriptService } from './services/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk';
 import { useCompileStore, usePageStore, useSettingsStore, useConnectivityStore } from '../store';
 import { editorCommandBus } from './command-bus';
 import { visibilityCoordinator } from './visibility.coordinator';
-import {
-  draftStorageService,
-  type DraftSnapshot,
-} from './services/draft-storage.service';
 
-export type { DraftSnapshot };
+export type { DraftSnapshot, ProjectFileSnapshot, OfflineMutation };
 
 export interface FlushResult {
   fileId: string;
@@ -49,9 +53,12 @@ const DEFAULT_AUTOCOMPILE_DELAY = 1500; // ms (Overleaf parity)
 
 export class SessionCoordinatorRegistry {
   private readonly saveTimers = new Map<string, NodeJS.Timeout>();
+  private readonly draftTimers = new Map<string, NodeJS.Timeout>();
+  private readonly pendingDrafts = new Map<string, { content: string; projectId?: string }>();
   private compileTimer: NodeJS.Timeout | null = null;
   private lastCompiledContentMap = new Map<string, string>();
   private isFlushingAll = false;
+  private isReplayingMutations = false;
   private beforeUnloadInitialized = false;
 
   constructor() {
@@ -60,14 +67,87 @@ export class SessionCoordinatorRegistry {
     this.initOnlineListener();
   }
 
+  private resolveEffectiveProjectId(modelProjectId?: string): string {
+    return modelProjectId || usePageStore.getState().projectId || 'workspace-local';
+  }
+
+  public async handleOnline(): Promise<void> {
+    useConnectivityStore.getState().recordOnline();
+    await this.replayPendingMutations();
+    await this.flushAllPending();
+    if (useConnectivityStore.getState().offlinePendingCompile) {
+      useConnectivityStore.getState().setOfflinePendingCompile(false);
+      editorCommandBus.dispatch({ type: 'compiler:trigger', draft: true });
+    }
+  }
+
+  /**
+   * Replays queued offline mutations sequentially in FIFO order upon network reconnection.
+   * Ensures conflict-free sync with backend without loss of edits made while offline.
+   */
+  public async replayPendingMutations(): Promise<{ total: number; succeeded: number; failed: number }> {
+    if (this.isReplayingMutations) {
+      return { total: 0, succeeded: 0, failed: 0 };
+    }
+    this.isReplayingMutations = true;
+
+    const pending = await draftStorageService.getPendingMutations();
+    if (pending.length === 0) {
+      this.isReplayingMutations = false;
+      return { total: 0, succeeded: 0, failed: 0 };
+    }
+
+    let succeeded = 0;
+    let failed = 0;
+
+    for (const mutation of pending) {
+      if (!mutation.id) continue;
+
+      await draftStorageService.updateMutationStatus(mutation.id, 'processing');
+
+      try {
+        if (mutation.type === 'update_content') {
+          const contentToSave = mutation.payload?.content ?? '';
+          useConnectivityStore.getState().incrementPending();
+          await manuscriptService.docs.updateContent(mutation.fileId, contentToSave);
+          lruDocumentCache.markClean(mutation.fileId);
+          useCompileStore.getState().clearDirty(mutation.fileId);
+          await draftStorageService.clearDraft(mutation.fileId);
+          useConnectivityStore.getState().decrementPending();
+        }
+
+        await draftStorageService.removeMutation(mutation.id);
+        succeeded++;
+      } catch (err) {
+        useConnectivityStore.getState().decrementPending();
+        failed++;
+        const errMsg = err instanceof Error ? err.message : String(err);
+        await draftStorageService.updateMutationStatus(mutation.id, 'failed', errMsg);
+        console.error(`[SessionCoordinator] Failed to replay mutation ${mutation.id} for file ${mutation.fileId}:`, err);
+      }
+    }
+
+    if (succeeded > 0) {
+      useConnectivityStore.getState().setLastSavedAt(new Date());
+      useConnectivityStore.getState().setSyncStatus('synced');
+    }
+
+    this.isReplayingMutations = false;
+    return { total: pending.length, succeeded, failed };
+  }
+
+  public handleOffline(): void {
+    useConnectivityStore.getState().recordOffline();
+    this.flushPendingDrafts();
+  }
+
   private initOnlineListener(): void {
     if (typeof window === 'undefined') return;
     window.addEventListener('online', () => {
-      useConnectivityStore.getState().setIsOnline(true);
-      void this.flushAllPending();
+      void this.handleOnline();
     });
     window.addEventListener('offline', () => {
-      useConnectivityStore.getState().setIsOnline(false);
+      this.handleOffline();
     });
   }
 
@@ -77,6 +157,11 @@ export class SessionCoordinatorRegistry {
       const model = lruDocumentCache.getModel(cmd.docId);
       if (!model?.isDirty) {
         lruDocumentCache.updateContent(cmd.docId, cmd.content, false);
+        const filePath = model?.filePath || cmd.docId;
+        latexSymbolsIndex.indexFile(cmd.docId, filePath, cmd.content);
+        if (/\\(?:documentclass|input|include|subfile|import|bibliography|addbibresource)/.test(cmd.content)) {
+          latexDagEngine.parseAndRegister(filePath, cmd.content, cmd.docId);
+        }
       }
     });
   }
@@ -98,6 +183,7 @@ export class SessionCoordinatorRegistry {
       if (dirtyModels.length > 0) {
         e.preventDefault();
         e.returnValue = '';
+        this.flushPendingDrafts();
         void this.flushAllPending();
         return '';
       }
@@ -117,21 +203,32 @@ export class SessionCoordinatorRegistry {
       isRealtimeActive?: boolean;
       customAutoSaveDelay?: number;
       skipAutoCompile?: boolean;
+      hasStructuralChange?: boolean;
+      origin?: 'local' | 'remote';
     }
   ): void {
     const isRealtime = options?.isRealtimeActive ?? false;
+    const isRemote = options?.origin === 'remote';
 
-    // 1. In-memory hot RAM update (0ms latency)
-    lruDocumentCache.updateContent(fileId, content, true);
+    // 1. In-memory hot RAM update (0ms latency). If remote, keep local dirty flag clean
+    lruDocumentCache.updateContent(fileId, content, !isRemote);
 
     // 1b. Incrementally update Cross-file LaTeX symbols (Offloaded to Web Worker)
     const currentModel = lruDocumentCache.getModel(fileId);
     const filePath = currentModel?.filePath || fileId;
     latexSymbolsIndex.indexFile(fileId, filePath, content);
 
-    // Fast guard: only re-parse DAG graph if file contains structural include/class directives
-    if (/\\(?:documentclass|input|include|subfile|import|bibliography|addbibresource)/.test(content)) {
+    // Fast guard: only re-parse DAG graph if file contains structural include/class directives.
+    // If hasStructuralChange is explicitly false, skip O(N) regex and DAG re-scan completely.
+    const shouldCheckDag = options?.hasStructuralChange ?? true;
+    if (shouldCheckDag && /\\(?:documentclass|input|include|subfile|import|bibliography|addbibresource)/.test(content)) {
       latexDagEngine.parseAndRegister(filePath, content);
+    }
+
+    if (isRemote) {
+      // Remote changes are already persisted and broadcasted by remote peer;
+      // Do not mark local dirty or schedule redundant local draft / autosave.
+      return;
     }
 
     // 2. Mark dirty in compile store for immediate incremental compilation inclusion
@@ -164,6 +261,29 @@ export class SessionCoordinatorRegistry {
       return true;
     }
 
+    const isOnline =
+      useConnectivityStore.getState().isOnline &&
+      (typeof navigator === 'undefined' || navigator.onLine);
+    if (!isOnline) {
+      useConnectivityStore.getState().setSyncStatus('offline');
+      this.saveDraftSnapshot(fileId, model.content, model.projectId);
+      void draftStorageService.saveProjectFileSnapshot({
+        id: fileId,
+        projectId: this.resolveEffectiveProjectId(model.projectId),
+        title: model.filePath || fileId,
+        content: model.content,
+        filePath: model.filePath,
+        updatedAt: Date.now(),
+      });
+      void draftStorageService.enqueueMutation({
+        fileId,
+        projectId: model.projectId,
+        type: 'update_content',
+        payload: { content: model.content, filePath: model.filePath },
+      });
+      return false;
+    }
+
     try {
       useConnectivityStore.getState().incrementPending();
       await manuscriptService.docs.updateContent(fileId, model.content);
@@ -175,7 +295,29 @@ export class SessionCoordinatorRegistry {
       return true;
     } catch (err) {
       useConnectivityStore.getState().decrementPending();
-      useConnectivityStore.getState().setSyncStatus('error');
+      const isNetworkError =
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        (err instanceof Error && /network|fetch|failed to fetch|offline/i.test(err.message));
+      if (isNetworkError) {
+        useConnectivityStore.getState().recordOffline();
+        this.saveDraftSnapshot(fileId, model.content, model.projectId);
+        void draftStorageService.saveProjectFileSnapshot({
+          id: fileId,
+          projectId: this.resolveEffectiveProjectId(model.projectId),
+          title: model.filePath || fileId,
+          content: model.content,
+          filePath: model.filePath,
+          updatedAt: Date.now(),
+        });
+        void draftStorageService.enqueueMutation({
+          fileId,
+          projectId: model.projectId,
+          type: 'update_content',
+          payload: { content: model.content, filePath: model.filePath },
+        });
+      } else {
+        useConnectivityStore.getState().setSyncStatus('error');
+      }
       console.error(`[SessionCoordinator] Failed to flush file ${fileId}:`, err);
       return false;
     }
@@ -191,8 +333,36 @@ export class SessionCoordinatorRegistry {
       clearTimeout(timer);
     }
     this.saveTimers.clear();
+    this.flushPendingDrafts();
 
     const dirtyModels = lruDocumentCache.getDirtyModels();
+    const isOnline =
+      useConnectivityStore.getState().isOnline &&
+      (typeof navigator === 'undefined' || navigator.onLine);
+
+    if (!isOnline) {
+      useConnectivityStore.getState().setSyncStatus('offline');
+      for (const model of dirtyModels) {
+        this.saveDraftSnapshot(model.fileId, model.content, model.projectId);
+        void draftStorageService.saveProjectFileSnapshot({
+          id: model.fileId,
+          projectId: this.resolveEffectiveProjectId(model.projectId),
+          title: model.filePath || model.fileId,
+          content: model.content,
+          filePath: model.filePath,
+          updatedAt: Date.now(),
+        });
+        void draftStorageService.enqueueMutation({
+          fileId: model.fileId,
+          projectId: model.projectId,
+          type: 'update_content',
+          payload: { content: model.content, filePath: model.filePath },
+        });
+      }
+      this.isFlushingAll = false;
+      return { total: dirtyModels.length, succeeded: 0, failed: 0, results: [] };
+    }
+
     const results: FlushResult[] = [];
     let succeeded = 0;
     let failed = 0;
@@ -210,7 +380,29 @@ export class SessionCoordinatorRegistry {
         results.push({ fileId: model.fileId, success: true });
       } catch (err) {
         useConnectivityStore.getState().decrementPending();
-        useConnectivityStore.getState().setSyncStatus('error');
+        const isNetworkError =
+          (typeof navigator !== 'undefined' && !navigator.onLine) ||
+          (err instanceof Error && /network|fetch|failed to fetch|offline/i.test(err.message));
+        if (isNetworkError) {
+          useConnectivityStore.getState().recordOffline();
+          this.saveDraftSnapshot(model.fileId, model.content, model.projectId);
+          void draftStorageService.saveProjectFileSnapshot({
+            id: model.fileId,
+            projectId: this.resolveEffectiveProjectId(model.projectId),
+            title: model.filePath || model.fileId,
+            content: model.content,
+            filePath: model.filePath,
+            updatedAt: Date.now(),
+          });
+          void draftStorageService.enqueueMutation({
+            fileId: model.fileId,
+            projectId: model.projectId,
+            type: 'update_content',
+            payload: { content: model.content, filePath: model.filePath },
+          });
+        } else {
+          useConnectivityStore.getState().setSyncStatus('error');
+        }
         failed++;
         results.push({ fileId: model.fileId, success: false, error: err });
         console.error(`[SessionCoordinator] Error flushing file ${model.fileId}:`, err);
@@ -223,57 +415,71 @@ export class SessionCoordinatorRegistry {
     return { total: dirtyModels.length, succeeded, failed, results };
   }
 
+  public flushPendingDrafts(): void {
+    for (const [fileId, pending] of this.pendingDrafts.entries()) {
+      const timer = this.draftTimers.get(fileId);
+      if (timer) {
+        clearTimeout(timer);
+        this.draftTimers.delete(fileId);
+      }
+      documentStore.saveDraft(
+        fileId,
+        pending.content,
+        this.resolveEffectiveProjectId(pending.projectId)
+      ).catch(() => {});
+    }
+    this.pendingDrafts.clear();
+  }
+
   public saveDraftSnapshot(fileId: string, content: string, projectId?: string): void {
-    draftStorageService.saveDraft(
-      fileId,
-      content,
-      projectId || 'anonymous'
-    ).catch(() => {});
+    // 1. Immediately update in-memory cache for synchronous 0ms lookup
+    draftStorageService.saveMemoryDraft(fileId, content, projectId);
+
+    const existingTimer = this.draftTimers.get(fileId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      this.draftTimers.delete(fileId);
+    }
+
+    // 2. Debounce disk persistence (LocalStorage / IndexedDB) by 600ms to eliminate typing stutter
+    this.pendingDrafts.set(fileId, { content, projectId });
+    const timer = setTimeout(() => {
+      this.draftTimers.delete(fileId);
+      const pending = this.pendingDrafts.get(fileId);
+      if (pending) {
+        this.pendingDrafts.delete(fileId);
+        documentStore.saveDraft(
+          fileId,
+          pending.content,
+          this.resolveEffectiveProjectId(pending.projectId)
+        ).catch(() => {});
+      }
+    }, 600);
+    this.draftTimers.set(fileId, timer);
   }
 
   public clearDraftSnapshot(fileId: string): void {
-    draftStorageService.clearDraft(fileId).catch(() => {});
+    const timer = this.draftTimers.get(fileId);
+    if (timer) {
+      clearTimeout(timer);
+      this.draftTimers.delete(fileId);
+    }
+    this.pendingDrafts.delete(fileId);
+    documentStore.clearDraft(fileId).catch(() => {});
   }
 
   public checkDraftRecovery(
     fileId: string,
     serverContent: string
   ): { hasRecoverableDraft: boolean; draft?: DraftSnapshot } {
-    const memoryModel = lruDocumentCache.getModel(fileId);
-    if (memoryModel && memoryModel.isDirty && memoryModel.content !== serverContent) {
-      return {
-        hasRecoverableDraft: true,
-        draft: {
-          fileId,
-          content: memoryModel.content,
-          savedAt: memoryModel.lastActiveAt,
-          projectId: memoryModel.projectId || '',
-          title: memoryModel.filePath,
-        },
-      };
-    }
-    return { hasRecoverableDraft: false };
+    return documentStore.checkDraftRecovery(fileId, serverContent);
   }
 
   public async checkDraftRecoveryAsync(
     fileId: string,
     serverContent: string
   ): Promise<{ hasRecoverableDraft: boolean; draft?: DraftSnapshot }> {
-    const memoryCheck = this.checkDraftRecovery(fileId, serverContent);
-    if (memoryCheck.hasRecoverableDraft) return memoryCheck;
-
-    try {
-      const persistedDraft = await draftStorageService.getDraft(fileId);
-      if (
-        persistedDraft &&
-        persistedDraft.content &&
-        persistedDraft.content !== serverContent
-      ) {
-        return { hasRecoverableDraft: true, draft: persistedDraft };
-      }
-    } catch {}
-
-    return { hasRecoverableDraft: false };
+    return documentStore.checkDraftRecoveryAsync(fileId, serverContent);
   }
 
   public switchTab(fromFileId: string | null, toFileId: string): void {
@@ -281,6 +487,7 @@ export class SessionCoordinatorRegistry {
       const fromModel = lruDocumentCache.getModel(fromFileId);
       if (fromModel && fromModel.isDirty) {
         this.saveDraftSnapshot(fromFileId, fromModel.content, fromModel.projectId);
+        this.flushPendingDrafts();
       }
     }
     lruDocumentCache.setActiveFileId(toFileId);

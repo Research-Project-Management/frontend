@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Folder, ChevronRight } from 'lucide-react';
@@ -24,7 +24,7 @@ export interface CollectionNodeProps extends CollectionActionHandlers {
   canManageCollections?: boolean;
 }
 
-export function CollectionNode({
+export const CollectionNode = memo(function CollectionNode({
   node,
   depth,
   basePath,
@@ -246,4 +246,5 @@ export function CollectionNode({
       )}
     </div>
   );
-}
+});
+

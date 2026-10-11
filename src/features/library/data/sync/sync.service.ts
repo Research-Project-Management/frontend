@@ -1,4 +1,4 @@
-import { apiGet } from '@/shared/lib/api';
+import * as api from "@/shared/lib/api";
 import { isProjectScope } from '../../domain';
 
 export interface SyncVersionResponse {
@@ -59,10 +59,10 @@ function getSyncUrl(scopeId?: string, suffix = ''): string {
 
 export const SyncService = {
   getVersion: (scopeId?: string) =>
-    apiGet<SyncVersionResponse>(getSyncUrl(scopeId, 'version')),
+    api.apiGet<SyncVersionResponse>(getSyncUrl(scopeId, 'version')),
 
   getChanges: (scopeId?: string, params?: SyncQueryParams) =>
-    apiGet<SyncChangesResponse>(getSyncUrl(scopeId, 'changes'), {
+    api.apiGet<SyncChangesResponse>(getSyncUrl(scopeId, 'changes'), {
       params: {
         since: params?.since ?? '0',
         limit: params?.limit ?? 100,
@@ -70,7 +70,7 @@ export const SyncService = {
     }),
 
   getTombstones: (scopeId?: string, params?: SyncQueryParams) =>
-    apiGet<SyncTombstonesResponse>(getSyncUrl(scopeId, 'tombstones'), {
+    api.apiGet<SyncTombstonesResponse>(getSyncUrl(scopeId, 'tombstones'), {
       params: {
         ...(params?.since !== undefined ? { since: params.since } : {}),
         limit: params?.limit ?? 100,

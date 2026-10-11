@@ -29,11 +29,16 @@ export type DialogName =
   | 'new-file'
   | 'new-folder'
   | 'rename-symbol'
+  | 'rename-citation'
   | 'suggest-edit'
   | 'deleted-files'
   | 'add-files'
   | 'template-gallery'
-  | 'history';
+  | 'history'
+  | 'quick-open'
+  | 'shortcuts'
+  | 'github-sync'
+  | 'project-settings';
 
 export type EditorCommand =
   | { type: 'editor:jump-to-line'; line: number; highlight?: 'error' | 'synctex' }
@@ -51,6 +56,7 @@ export type EditorCommand =
   | { type: 'editor:rename-citekey'; oldKey: string; newKey: string }
   | { type: 'editor:open-suggestion-widget'; suggestionId: string; x?: number; y?: number }
   | { type: 'editor:suggest-fix'; error: { message: string; line?: number; file?: string; context?: string } }
+  | { type: 'editor:error-stepped'; errorIndex?: number; file?: string; line?: number; message?: string }
   | { type: 'editor:visual-command'; command: string; level?: 1 | 2 | 3; rows?: number; cols?: number; withHeaderRow?: boolean; contentHtml?: string }
   | { type: 'editor:review-event'; pageId: string; event: string; payload?: any }
   | { type: 'collab:presence-update'; collaborators: any[] }
@@ -72,7 +78,7 @@ export type EditorCommand =
         };
       };
     }
-  | { type: 'compiler:trigger'; forceSync?: boolean; draft?: boolean }
+  | { type: 'compiler:trigger'; forceSync?: boolean; draft?: boolean; forceClean?: boolean; reason?: string }
   | { type: 'compiler:started' }
   | { type: 'compiler:progress'; status?: string; logs?: string[] }
   | { type: 'compiler:finished'; success: boolean; aborted?: boolean }
@@ -80,20 +86,24 @@ export type EditorCommand =
   | { type: 'viewer:jump-to-line'; line: number }
   | { type: 'viewer:scroll-to-coords'; page: number; y: number; x?: number; behavior?: ScrollBehavior }
   | { type: 'editor:scroll-to-line'; line: number; smooth?: boolean }
-  | { type: 'sync:editor-scrolled'; line: number }
+  | { type: 'sync:editor-scrolled'; line: number; totalLines?: number; fraction?: number }
   | { type: 'sync:viewer-scrolled'; page: number; y: number; fraction?: number }
   | { type: 'viewer:zoom-in' }
   | { type: 'viewer:zoom-out' }
   | { type: 'viewer:fit-width' }
   | { type: 'viewer:fit-height' }
+  | { type: 'viewer:find'; query?: string; open?: boolean; caseSensitive?: boolean; wholeWord?: boolean; regex?: boolean }
+  | { type: 'viewer:find-next' }
+  | { type: 'viewer:find-prev' }
   | { type: 'sidebar:toggle-panel'; panel: SidebarPanelName }
-  | { type: 'sidebar:open-panel'; panel: SidebarPanelName; query?: string; commentId?: string; suggestionId?: string }
+  | { type: 'sidebar:open-panel'; panel: SidebarPanelName; query?: string; showReplace?: boolean; commentId?: string; suggestionId?: string }
   | { type: 'sidebar:open-ai-panel'; initialPrompt?: string; selectedText?: string }
   | { type: 'sidebar:toggle-ai-panel' }
   | { type: 'dialog:open'; dialog: DialogName; payload?: any }
   | { type: 'dialog:close'; dialog?: DialogName }
   | { type: 'synctex:forward'; line?: number; column?: number }
   | { type: 'synctex:backward'; page?: number; x?: number; y?: number }
+  | { type: 'synctex:map-updated'; map: any }
   | { type: 'document:content-updated'; docId: string; content: string }
   | { type: 'document:conflict'; docId: string; remoteContent: string; localContent: string }
   | { type: 'filetree:updated'; payload?: any }
@@ -101,6 +111,8 @@ export type EditorCommand =
   | { type: 'workspace:create-file'; name: string; folderId?: string | null; content?: string }
   | { type: 'workspace:rename-file'; fileId: string; oldPath: string; newPath: string }
   | { type: 'workspace:delete-file'; fileId: string; filePath?: string }
+  | { type: 'workspace:restore-file'; fileId: string; projectId?: string }
+  | { type: 'workspace:set-main-file'; fileId: string; projectId?: string }
   | { type: 'workspace:move-file'; fileId: string; targetFolderId: string | null }
   | { type: 'navigation:open-tab'; fileId: string; title: string; path?: string }
   | { type: 'navigation:close-tab'; fileId: string }

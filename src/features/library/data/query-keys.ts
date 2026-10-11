@@ -79,8 +79,7 @@ export const libraryKeys = {
 };
 
 /**
- * Backward-compatible itemKeys alias mapped directly to libraryKeys
- * Prevents cache divergence across legacy hooks and modern workspace queries.
+ * Typed item key query helpers mapped directly to canonical libraryKeys
  */
 export const itemKeys = {
   all: (scopeId?: string) => ['library', 'items', scopeId || 'user'] as const,

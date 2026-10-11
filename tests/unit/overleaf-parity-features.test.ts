@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+﻿import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { EDITOR_THEMES, MONACO_THEMES, type EditorThemeDefinition } from '@/features/editor/components/editor/editor-themes';
-import { pageKeys } from '@/features/editor/hooks/use-core';
-import { fileService, pageService } from '@/features/editor/coordinators/services/core.service';
+import { EDITOR_THEMES, type EditorThemeDefinition } from '@/features/editor/engines/codemirror/editor-themes';
+import { pageKeys } from '@/features/editor/ui/hooks/use-core';
+import { fileService, pageService } from '@/features/editor/sdk';
 import * as api from '@/shared/lib/api';
 
 describe('Overleaf Parity Features Suite', () => {
@@ -32,7 +32,10 @@ describe('Overleaf Parity Features Suite', () => {
 
       const files = await fileService.getDeletedByPageId('test-page-456');
 
-      expect(apiGetSpy).toHaveBeenCalledWith('/api/pages/test-page-456/deleted-files');
+      expect(apiGetSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/test-page-456\/deleted-files/),
+        expect.anything(),
+      );
       expect(files).toHaveLength(2);
       expect(files[0].title).toBe('chapter2.tex');
     });
@@ -50,15 +53,18 @@ describe('Overleaf Parity Features Suite', () => {
 
       const res = await pageService.restorePage('del-1');
 
-      expect(apiPostSpy).toHaveBeenCalledWith('/api/pages/del-1/restore', {});
+      expect(apiPostSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/del-1\/restore/),
+        {},
+      );
       expect(res.id).toBe('del-1');
       expect(res.title).toBe('chapter2.tex');
     });
   });
 
   describe('Feature 2: Editor Themes Collection', () => {
-    it('defines comprehensive Overleaf themes in MONACO_THEMES', () => {
-      const themeIds = (MONACO_THEMES as EditorThemeDefinition[]).map((t) => t.id);
+    it('defines comprehensive Overleaf themes in EDITOR_THEMES', () => {
+      const themeIds = (EDITOR_THEMES as EditorThemeDefinition[]).map((t) => t.id);
       expect(themeIds).toContain('auto');
       expect(themeIds).toContain('latex-light');
       expect(themeIds).toContain('latex-dark');

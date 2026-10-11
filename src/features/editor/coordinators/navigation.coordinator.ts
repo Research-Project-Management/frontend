@@ -13,11 +13,13 @@
 
 import { useTabsStore, type EditorTab } from '../store/tabs.store';
 import { usePageStore } from '../store/editor.store';
+import { useCompileStore } from '../store/compiler.store';
 import { lruDocumentCache } from '../domain/document/lru-document-cache';
 import { diagnosticsCoordinator } from './diagnostics.coordinator';
 import { editorCommandBus } from './command-bus';
 import { sessionCoordinator } from './session.coordinator';
 import { getActiveEditorInstance } from './command-bus';
+import { toast } from 'sonner';
 
 export interface OpenDocumentOptions {
   fileId: string;
@@ -31,9 +33,18 @@ export interface OpenDocumentOptions {
 
 export class NavigationCoordinatorRegistry {
   private initialized = false;
+  private lastDiagnosticIndex: number = -1;
+  private lastDiagnosticLine: number | null = null;
+  private lastDiagnosticFile: string | null = null;
 
   constructor() {
     this.initCommandSubscriptions();
+  }
+
+  public resetDiagnosticState(): void {
+    this.lastDiagnosticIndex = -1;
+    this.lastDiagnosticLine = null;
+    this.lastDiagnosticFile = null;
   }
 
   private initCommandSubscriptions(): void {
@@ -79,7 +90,7 @@ export class NavigationCoordinatorRegistry {
     const tabsStore = useTabsStore.getState();
     const pageStore = usePageStore.getState();
 
-    const currentActiveId = pageStore.activeFilePage?.id || pageStore.currentPage?.id;
+    const currentActiveId = pageStore.getActiveDocumentId();
 
     // 1. If switching to a different file, preserve current buffer in LRU cache
     if (currentActiveId && currentActiveId !== fileId) {
@@ -95,12 +106,15 @@ export class NavigationCoordinatorRegistry {
 
     // 3. Set active in pageStore
     const existingModel = lruDocumentCache.getModel(fileId);
+    const rootPageId = pageStore.currentPage?.id || pageStore.projectId || fileId;
     pageStore.setActiveFilePage({
       id: fileId,
       title,
+      path: optPath || title,
       content: existingModel?.content || '',
-      parentId: null,
-    } as any);
+      pageId: rootPageId,
+      projectId: pageStore.projectId,
+    });
 
     // 3b. Synchronize shallow URL history (0ms latency, zero page refresh)
     if (typeof window !== 'undefined') {
@@ -187,7 +201,7 @@ export class NavigationCoordinatorRegistry {
   }): void {
     const { fileId, filePath, line, highlight = 'synctex' } = options;
     const pageStore = usePageStore.getState();
-    const activePage = pageStore.activeFilePage || pageStore.currentPage;
+    const activePage = pageStore.getActiveDocument();
 
     // Resolve target fileId & title if filePath was provided
     let resolvedFileId = fileId;
@@ -238,53 +252,186 @@ export class NavigationCoordinatorRegistry {
   }
 
   /**
-   * Jumps to the next diagnostic error in the active file
+   * Aggregates diagnostics of given severity across the entire project (Overleaf Parity).
+   * Falls back to compileStore errors if coordinator index has not been populated.
+   */
+  private getProjectDiagnostics(severity: 'error' | 'warning' = 'error'): Array<{
+    file: string;
+    line: number;
+    message: string;
+  }> {
+    const all = diagnosticsCoordinator.getAllDiagnostics().filter((d) => d.severity === severity);
+    if (all.length > 0) {
+      return all.map((d) => ({
+        file: d.file || d.normalizedPath || 'main.tex',
+        line: d.line,
+        message: d.message,
+      }));
+    }
+
+    const compileErrors = useCompileStore.getState().compileErrors || [];
+    return compileErrors
+      .filter((e) => (e.severity || 'error') === severity && e.line !== null && e.line !== undefined)
+      .map((e) => ({
+        file: e.file || 'main.tex',
+        line: e.line!,
+        message: e.message,
+      }));
+  }
+
+  /**
+   * Jumps to the next diagnostic error across the project (Overleaf Parity: F8).
+   * Citation: overleaf.com/learn/how-to/Debugging_LaTeX_errors_with_Overleaf#Navigating_errors
    */
   public jumpToNextDiagnostic(severity: 'error' | 'warning' = 'error'): void {
-    const activePage = usePageStore.getState().activeFilePage;
-    if (!activePage) return;
+    const list = this.getProjectDiagnostics(severity);
+    if (list.length === 0) {
+      if (severity === 'error') {
+        const warnings = this.getProjectDiagnostics('warning');
+        if (warnings.length > 0) {
+          this.jumpToNextDiagnostic('warning');
+          return;
+        }
+      }
+      toast.info('Không có lỗi biên dịch nào trong dự án');
+      return;
+    }
 
-    const fileDiagnostics = diagnosticsCoordinator.getDiagnosticsForFile(activePage.title || activePage.id);
-    const filtered = fileDiagnostics.filter((d) => d.severity === severity);
-    if (filtered.length === 0) return;
-
+    const activePage = usePageStore.getState().getActiveDocument();
+    const currentFile = activePage?.title || activePage?.path || activePage?.id || '';
     const engine = getActiveEditorInstance();
     const currentCursor = engine?.getCursorPosition();
-    const currentLine = currentCursor?.line ?? 1;
+    const isCurrentFileSameAsLast =
+      this.lastDiagnosticFile === currentFile ||
+      currentFile.endsWith(`/${this.lastDiagnosticFile}`) ||
+      (this.lastDiagnosticFile ? this.lastDiagnosticFile.endsWith(`/${currentFile}`) : false);
+    const currentLine =
+      currentCursor?.line ??
+      (isCurrentFileSameAsLast && this.lastDiagnosticLine !== null ? this.lastDiagnosticLine : 0);
 
-    // Find first diagnostic below current line
-    const next = filtered.find((d) => d.line > currentLine) || filtered[0];
-    if (next) {
+    // 1. First, search forward in current file below current line
+    let targetIndex = list.findIndex(
+      (d) => (d.file === currentFile || currentFile.endsWith(`/${d.file}`) || d.file.endsWith(`/${currentFile}`)) && d.line > currentLine
+    );
+
+    // 2. If not found in current file after cursor, find the next item in project array
+    if (targetIndex === -1) {
+      const lastSameFileIndex = list.map(
+        (d) => d.file === currentFile || currentFile.endsWith(`/${d.file}`) || d.file.endsWith(`/${currentFile}`)
+      ).lastIndexOf(true);
+
+      if (lastSameFileIndex !== -1) {
+        targetIndex = (lastSameFileIndex + 1) % list.length;
+      } else {
+        targetIndex = 0; // wrap around to first
+      }
+    }
+
+    const target = list[targetIndex];
+    if (target) {
+      this.lastDiagnosticIndex = targetIndex;
+      this.lastDiagnosticLine = target.line;
+      this.lastDiagnosticFile = target.file;
+
       this.jumpToLine({
-        fileId: activePage.id,
-        line: next.line,
+        filePath: target.file,
+        line: target.line,
         highlight: 'error',
+      });
+
+      toast.info(
+        `Lỗi ${targetIndex + 1}/${list.length}: ${target.message}${
+          target.file ? ` (${target.file}:${target.line})` : ` (dòng ${target.line})`
+        }`
+      );
+
+      editorCommandBus.dispatch({
+        type: 'editor:error-stepped',
+        errorIndex: targetIndex,
+        file: target.file,
+        line: target.line,
+        message: target.message,
       });
     }
   }
 
   /**
-   * Jumps to the previous diagnostic error in the active file
+   * Jumps to the previous diagnostic error across the project (Overleaf Parity: Shift+F8).
+   * Citation: overleaf.com/learn/how-to/Debugging_LaTeX_errors_with_Overleaf#Navigating_errors
    */
   public jumpToPrevDiagnostic(severity: 'error' | 'warning' = 'error'): void {
-    const activePage = usePageStore.getState().activeFilePage;
-    if (!activePage) return;
+    const list = this.getProjectDiagnostics(severity);
+    if (list.length === 0) {
+      if (severity === 'error') {
+        const warnings = this.getProjectDiagnostics('warning');
+        if (warnings.length > 0) {
+          this.jumpToPrevDiagnostic('warning');
+          return;
+        }
+      }
+      toast.info('Không có lỗi biên dịch nào trong dự án');
+      return;
+    }
 
-    const fileDiagnostics = diagnosticsCoordinator.getDiagnosticsForFile(activePage.title || activePage.id);
-    const filtered = fileDiagnostics.filter((d) => d.severity === severity);
-    if (filtered.length === 0) return;
-
+    const activePage = usePageStore.getState().getActiveDocument();
+    const currentFile = activePage?.title || activePage?.path || activePage?.id || '';
     const engine = getActiveEditorInstance();
     const currentCursor = engine?.getCursorPosition();
-    const currentLine = currentCursor?.line ?? 1;
+    const isCurrentFileSameAsLast =
+      this.lastDiagnosticFile === currentFile ||
+      currentFile.endsWith(`/${this.lastDiagnosticFile}`) ||
+      (this.lastDiagnosticFile ? this.lastDiagnosticFile.endsWith(`/${currentFile}`) : false);
+    const currentLine =
+      currentCursor?.line ??
+      (isCurrentFileSameAsLast && this.lastDiagnosticLine !== null ? this.lastDiagnosticLine : 999999);
 
-    // Find last diagnostic above current line
-    const prev = [...filtered].reverse().find((d) => d.line < currentLine) || filtered[filtered.length - 1];
-    if (prev) {
+    // 1. Search backward in current file above current line
+    let targetIndex = -1;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const d = list[i];
+      const isSameFile = d.file === currentFile || currentFile.endsWith(`/${d.file}`) || d.file.endsWith(`/${currentFile}`);
+      if (isSameFile && d.line < currentLine) {
+        targetIndex = i;
+        break;
+      }
+    }
+
+    // 2. If not found in current file before cursor, step to previous item before this file in the project
+    if (targetIndex === -1) {
+      const firstSameFileIndex = list.findIndex(
+        (d) => d.file === currentFile || currentFile.endsWith(`/${d.file}`) || d.file.endsWith(`/${currentFile}`)
+      );
+      if (firstSameFileIndex !== -1) {
+        targetIndex = (firstSameFileIndex - 1 + list.length) % list.length;
+      } else {
+        targetIndex = list.length - 1; // wrap around to last
+      }
+    }
+
+    const target = list[targetIndex];
+    if (target) {
+      this.lastDiagnosticIndex = targetIndex;
+      this.lastDiagnosticLine = target.line;
+      this.lastDiagnosticFile = target.file;
+
       this.jumpToLine({
-        fileId: activePage.id,
-        line: prev.line,
+        filePath: target.file,
+        line: target.line,
         highlight: 'error',
+      });
+
+      toast.info(
+        `Lỗi ${targetIndex + 1}/${list.length}: ${target.message}${
+          target.file ? ` (${target.file}:${target.line})` : ` (dòng ${target.line})`
+        }`
+      );
+
+      editorCommandBus.dispatch({
+        type: 'editor:error-stepped',
+        errorIndex: targetIndex,
+        file: target.file,
+        line: target.line,
+        message: target.message,
       });
     }
   }

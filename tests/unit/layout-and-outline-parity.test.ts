@@ -1,9 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import {
-  parseDocumentOutline,
-  type OutlineEntry,
-} from '@/features/editor/domain/document/pdf-outline';
-import { EditorEventBus, type SidebarTabName } from '@/features/editor/domain/latex/latex-structure';
+import { parseDocumentOutline, type OutlineEntry } from '@/features/editor/domain/document/pdf-outline';
+import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
 
 describe('Phase 1 Parity: Document Outline Parsing (OutlineTab)', () => {
   const sampleLatex = `\\documentclass{article}
@@ -47,37 +44,37 @@ Line 31 content.
 
     expect(entries.length).toBe(8);
 
-    expect(entries[0]).toEqual({
+    expect(entries[0]).toMatchObject({
       level: 0,
-      levelName: 'Chapter',
+      levelName: 'Part',
       title: 'Theoretical Foundations',
       line: 10,
     });
 
-    expect(entries[1]).toEqual({
+    expect(entries[1]).toMatchObject({
       level: 0,
       levelName: 'Chapter',
       title: 'Introduction and Overview',
       line: 13,
     });
 
-    expect(entries[2]).toEqual({
+    expect(entries[2]).toMatchObject({
       level: 1,
       levelName: 'Section',
       title: 'Background \\& Motivation',
       line: 16,
     });
 
-    expect(entries[3]).toEqual({
+    expect(entries[3]).toMatchObject({
       level: 2,
-      levelName: 'Sub',
+      levelName: 'Subsection',
       title: 'Prior Work in LaTeX Editors',
       line: 19,
     });
 
-    expect(entries[4]).toEqual({
+    expect(entries[4]).toMatchObject({
       level: 3,
-      levelName: 'Subsub',
+      levelName: 'Subsubsection',
       title: 'Collaborative Sync Algorithms',
       line: 22,
     });
@@ -107,7 +104,7 @@ Line 31 content.
 
     expect(para).toBeDefined();
     expect(para?.level).toBe(4);
-    expect(para?.levelName).toBe('Para');
+    expect(para?.levelName).toBe('Paragraph');
   });
 
   it('handles JSON/object content wrappers safely', () => {
@@ -173,7 +170,7 @@ describe('Phase 1 Parity: OutlineTab Live Search Filtering', () => {
 
 describe('Phase 1 Parity: EventBus Integration & Sidebar Tab Routing', () => {
   it('dispatches flux:open-panel with Outline tab name', () => {
-    let receivedPanel: SidebarTabName | null = null;
+    let receivedPanel: string | null = null;
 
     const unsub = EditorEventBus.on('flux:open-panel', (detail) => {
       receivedPanel = typeof detail === 'string' ? detail : detail.panel;

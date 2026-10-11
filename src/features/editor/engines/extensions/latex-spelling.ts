@@ -31,7 +31,8 @@ import {
   hoverTooltip,
   type Tooltip,
 } from '@codemirror/view';
-import { spellingService, type MisspelledWord } from '../../coordinators/services/spelling.service';
+import { manuscriptService, type MisspelledWord } from '@/features/editor/sdk';
+const spellingService = manuscriptService.spelling;
 import { toast } from 'sonner';
 
 // ── State Effects ─────────────────────────────────────────────────────────────
@@ -56,6 +57,7 @@ const sessionIgnoredWords = new Set<string>([
 ]);
 
 const wordValidityCache = new Map<string, boolean>();
+const wordSuggestionsCache = new Map<string, string[]>();
 
 // ── LaTeX Word Filter & Tokenizer ─────────────────────────────────────────────
 
@@ -178,11 +180,13 @@ export const spellingStateField = StateField.define<DecorationSet>({
       } else if (effect.is(addIgnoredWordEffect)) {
         sessionIgnoredWords.add(effect.value.toLowerCase());
         wordValidityCache.set(effect.value.toLowerCase(), true);
+        wordSuggestionsCache.delete(effect.value.toLowerCase());
         // Filter out decorations for the now-ignored word
         const newBuilder = new RangeSetBuilder<Decoration>();
         const iter = errors.iter();
         while (iter.value !== null) {
-          const wordAttr = (iter.value.spec as any).attributes?.['data-spell-word'];
+          const spec = iter.value.spec as { attributes?: Record<string, string> };
+          const wordAttr = spec.attributes?.['data-spell-word'];
           if (wordAttr && wordAttr.toLowerCase() !== effect.value.toLowerCase()) {
             newBuilder.add(iter.from, iter.to, iter.value);
           }
@@ -209,8 +213,9 @@ export function createSpellingHoverTooltip(projectId?: string): Extension {
     let targetRange: { from: number; to: number; word: string; suggestions: string[] } | null = null;
 
     decorations.between(pos, pos, (from, to, value) => {
-      const word = (value.spec as any)?.attributes?.['data-spell-word'];
-      const rawSug = (value.spec as any)?.attributes?.['data-spell-suggestions'];
+      const spec = value.spec as { attributes?: Record<string, string> };
+      const word = spec.attributes?.['data-spell-word'];
+      const rawSug = spec.attributes?.['data-spell-suggestions'];
       if (word && pos >= from && pos <= to) {
         targetRange = {
           from,
@@ -222,9 +227,10 @@ export function createSpellingHoverTooltip(projectId?: string): Extension {
       }
     });
 
-    if (!targetRange) return null;
+    const activeRange = targetRange as { from: number; to: number; word: string; suggestions: string[] } | null;
+    if (!activeRange) return null;
 
-    const { from, to, word, suggestions } = targetRange;
+    const { from, to, word, suggestions } = activeRange;
 
     return {
       pos: from,
@@ -351,6 +357,30 @@ export function createSpellingViewPlugin(options: LatexSpellingOptions = {}) {
 
       constructor(readonly view: EditorView) {
         if (enabled) {
+          // Pre-hydrate project and user custom dictionaries into session caches
+          if (projectId) {
+            void spellingService.getProjectDictionary(projectId).then((dictWords) => {
+              if (Array.isArray(dictWords)) {
+                dictWords.forEach((w) => {
+                  const lower = w.toLowerCase();
+                  sessionIgnoredWords.add(lower);
+                  wordValidityCache.set(lower, true);
+                  wordSuggestionsCache.delete(lower);
+                });
+              }
+            }).catch(() => {});
+          }
+          void spellingService.getUserDictionary().then((dictWords) => {
+            if (Array.isArray(dictWords)) {
+              dictWords.forEach((w) => {
+                const lower = w.toLowerCase();
+                sessionIgnoredWords.add(lower);
+                wordValidityCache.set(lower, true);
+                wordSuggestionsCache.delete(lower);
+              });
+            }
+          }).catch(() => {});
+
           this.scheduleCheck(view, 600);
         }
       }
@@ -392,16 +422,31 @@ export function createSpellingViewPlugin(options: LatexSpellingOptions = {}) {
           return;
         }
 
-        // Filter out words that are already verified or session-ignored
-        const candidates = words.filter(({ word }) => {
+        // Identify candidate words that have not been checked yet
+        const unverifiedWords = words.filter(({ word }) => {
           const lower = word.toLowerCase();
           if (sessionIgnoredWords.has(lower)) return false;
-          if (wordValidityCache.get(lower) === true) return false;
-          return true;
+          return !wordValidityCache.has(lower);
         });
 
-        if (candidates.length === 0) {
-          view.dispatch({ effects: clearSpellErrorsEffect.of() });
+        // Fast-path: If all words in the document are already in cache, evaluate locally in 0ms!
+        if (unverifiedWords.length === 0) {
+          const spellRanges: SpellErrorRange[] = [];
+          for (const item of words) {
+            const lower = item.word.toLowerCase();
+            if (wordValidityCache.get(lower) === false && !sessionIgnoredWords.has(lower)) {
+              spellRanges.push({
+                from: item.from,
+                to: item.to,
+                word: item.word,
+                suggestions: wordSuggestionsCache.get(lower) || [],
+              });
+            }
+          }
+
+          view.dispatch({
+            effects: spellRanges.length > 0 ? setSpellErrorsEffect.of(spellRanges) : clearSpellErrorsEffect.of(),
+          });
           return;
         }
 
@@ -409,7 +454,7 @@ export function createSpellingViewPlugin(options: LatexSpellingOptions = {}) {
           this.abortController?.abort();
           this.abortController = new AbortController();
 
-          // Call backend spelling service
+          // Call backend spelling service for unverified text
           const targetProj = projectId || 'default';
           const report = await spellingService.checkSpelling(targetProj, {
             text,
@@ -420,12 +465,14 @@ export function createSpellingViewPlugin(options: LatexSpellingOptions = {}) {
 
           const errorMap = new Map<string, string[]>();
           report.errors.forEach((err) => {
-            errorMap.set(err.word.toLowerCase(), err.suggestions || []);
-            wordValidityCache.set(err.word.toLowerCase(), false);
+            const lower = err.word.toLowerCase();
+            errorMap.set(lower, err.suggestions || []);
+            wordSuggestionsCache.set(lower, err.suggestions || []);
+            wordValidityCache.set(lower, false);
           });
 
-          // Mark checked words that had no errors as valid in cache
-          candidates.forEach(({ word }) => {
+          // Mark checked unverified words that had no errors as valid in cache
+          unverifiedWords.forEach(({ word }) => {
             const lower = word.toLowerCase();
             if (!errorMap.has(lower)) {
               wordValidityCache.set(lower, true);
@@ -435,18 +482,18 @@ export function createSpellingViewPlugin(options: LatexSpellingOptions = {}) {
           const spellRanges: SpellErrorRange[] = [];
           for (const item of words) {
             const lower = item.word.toLowerCase();
-            if (errorMap.has(lower) && !sessionIgnoredWords.has(lower)) {
+            if (wordValidityCache.get(lower) === false && !sessionIgnoredWords.has(lower)) {
               spellRanges.push({
                 from: item.from,
                 to: item.to,
                 word: item.word,
-                suggestions: errorMap.get(lower) || [],
+                suggestions: wordSuggestionsCache.get(lower) || [],
               });
             }
           }
 
           view.dispatch({
-            effects: setSpellErrorsEffect.of(spellRanges),
+            effects: spellRanges.length > 0 ? setSpellErrorsEffect.of(spellRanges) : clearSpellErrorsEffect.of(),
           });
         } catch {
           // Graceful fallback on network glitch
@@ -454,6 +501,164 @@ export function createSpellingViewPlugin(options: LatexSpellingOptions = {}) {
       }
     },
   );
+}
+
+// ── Context Menu: Right-Click Quick Fixes & Add to Dictionary (Overleaf Parity) ──
+
+export function createSpellingContextMenu(projectId?: string): Extension {
+  let activeMenuEl: HTMLDivElement | null = null;
+
+  const removeMenu = () => {
+    if (activeMenuEl) {
+      activeMenuEl.remove();
+      activeMenuEl = null;
+    }
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('click', removeMenu, { capture: true });
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') removeMenu();
+    });
+  }
+
+  return EditorView.domEventHandlers({
+    contextmenu(e, view) {
+      removeMenu();
+
+      const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
+      if (pos === null) return false;
+
+      const decorations = view.state.field(spellingStateField, false);
+      if (!decorations) return false;
+
+      let targetRange: { from: number; to: number; word: string; suggestions: string[] } | null = null;
+
+      decorations.between(pos, pos, (from, to, value) => {
+        const spec = value.spec as { attributes?: Record<string, string> };
+        const word = spec.attributes?.['data-spell-word'];
+        const rawSug = spec.attributes?.['data-spell-suggestions'];
+        if (word && pos >= from && pos <= to) {
+          targetRange = {
+            from,
+            to,
+            word,
+            suggestions: rawSug ? rawSug.split(',').filter(Boolean) : [],
+          };
+          return false;
+        }
+      });
+
+      const activeRange = targetRange as { from: number; to: number; word: string; suggestions: string[] } | null;
+      if (!activeRange) return false;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const { from, to, word, suggestions } = activeRange;
+
+      const menu = document.createElement('div');
+      menu.className =
+        'fixed p-2 rounded-lg border border-border bg-popover text-popover-foreground shadow-lg text-xs font-sans select-none space-y-1.5 min-w-48 max-w-64 z-[9999] animate-in fade-in-50 zoom-in-95';
+      menu.style.left = `${Math.min(e.clientX, window.innerWidth - 220)}px`;
+      menu.style.top = `${Math.min(e.clientY, window.innerHeight - 200)}px`;
+
+      // Header
+      const header = document.createElement('div');
+      header.className =
+        'px-1.5 py-0.5 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground border-b border-border/60 pb-1.5';
+      header.innerHTML = `
+        <span class="size-1.5 rounded-full bg-destructive shrink-0"></span>
+        <span>Spelling: <code class="font-mono text-destructive font-semibold">${word}</code></span>
+      `;
+      menu.appendChild(header);
+
+      // Suggestions
+      if (suggestions.length > 0) {
+        const sugContainer = document.createElement('div');
+        sugContainer.className = 'space-y-0.5 py-0.5';
+
+        suggestions.slice(0, 4).forEach((sug) => {
+          const item = document.createElement('button');
+          item.type = 'button';
+          item.className =
+            'w-full text-left px-2 py-1 rounded text-xs font-mono text-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer flex items-center justify-between';
+          item.innerHTML = `<span>${sug}</span><span class="text-[10px] text-muted-foreground">Replace</span>`;
+          item.onclick = (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            view.dispatch({
+              changes: { from, to, insert: sug },
+              userEvent: 'input.complete.spelling',
+            });
+            toast.success(`Replaced "${word}" with "${sug}"`);
+            removeMenu();
+            view.focus();
+          };
+          sugContainer.appendChild(item);
+        });
+        menu.appendChild(sugContainer);
+      }
+
+      // Actions Divider & Buttons
+      const actions = document.createElement('div');
+      actions.className = 'pt-1 border-t border-border/60 space-y-0.5';
+
+      // 1. Add to Dictionary (Overleaf Parity)
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className =
+        'w-full text-left px-2 py-1 rounded text-xs font-medium text-primary hover:bg-primary/10 transition-colors cursor-pointer flex items-center gap-1.5';
+      addBtn.innerHTML = `
+        <svg class="size-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        <span>Add to project dictionary</span>
+      `;
+      addBtn.onclick = async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        view.dispatch({
+          effects: addIgnoredWordEffect.of(word),
+        });
+        removeMenu();
+        view.focus();
+        if (projectId) {
+          try {
+            await spellingService.learnProjectWord(projectId, word);
+            toast.success(`Added "${word}" to project dictionary`);
+          } catch {
+            toast.success(`Learned "${word}" in project`);
+          }
+        } else {
+          toast.success(`Learned "${word}" in session`);
+        }
+      };
+      actions.appendChild(addBtn);
+
+      // 2. Ignore Word in session
+      const ignoreBtn = document.createElement('button');
+      ignoreBtn.type = 'button';
+      ignoreBtn.className =
+        'w-full text-left px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer';
+      ignoreBtn.textContent = 'Ignore in this document';
+      ignoreBtn.onclick = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        view.dispatch({
+          effects: addIgnoredWordEffect.of(word),
+        });
+        toast.success(`Ignored "${word}" in session`);
+        removeMenu();
+        view.focus();
+      };
+      actions.appendChild(ignoreBtn);
+
+      menu.appendChild(actions);
+
+      document.body.appendChild(menu);
+      activeMenuEl = menu;
+      return true;
+    },
+  });
 }
 
 // ── Typography & Theme ────────────────────────────────────────────────────────
@@ -478,6 +683,7 @@ export function createLatexSpellingExtension(options: LatexSpellingOptions = {})
     spellingStateField,
     spellingTheme,
     createSpellingHoverTooltip(options.projectId),
+    createSpellingContextMenu(options.projectId),
     createSpellingViewPlugin(options),
   ];
 }

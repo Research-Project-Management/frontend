@@ -65,13 +65,19 @@ export function WorkbenchShell({
     e.preventDefault();
     const startX = e.clientX;
     const startWidth = sidebarLeftWidth;
+    let rafId: number | null = null;
 
     const onMouseMove = (moveEvent: MouseEvent) => {
-      const delta = moveEvent.clientX - startX;
-      setSidebarLeftWidth(startWidth + delta);
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        const delta = moveEvent.clientX - startX;
+        setSidebarLeftWidth(startWidth + delta);
+      });
     };
 
     const onMouseUp = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
@@ -88,14 +94,20 @@ export function WorkbenchShell({
 
     const rect = container.getBoundingClientRect();
     const totalWidth = rect.width;
+    let rafId: number | null = null;
 
     const onMouseMove = (moveEvent: MouseEvent) => {
-      const relativeX = moveEvent.clientX - rect.left;
-      const ratio = relativeX / totalWidth;
-      setSplitRatio(ratio);
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        const relativeX = moveEvent.clientX - rect.left;
+        const ratio = relativeX / totalWidth;
+        setSplitRatio(ratio);
+      });
     };
 
     const onMouseUp = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
@@ -109,13 +121,19 @@ export function WorkbenchShell({
     e.preventDefault();
     const startY = e.clientY;
     const startHeight = bottomPanelHeight;
+    let rafId: number | null = null;
 
     const onMouseMove = (moveEvent: MouseEvent) => {
-      const delta = startY - moveEvent.clientY;
-      setBottomPanelHeight(startHeight + delta);
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        const delta = startY - moveEvent.clientY;
+        setBottomPanelHeight(startHeight + delta);
+      });
     };
 
     const onMouseUp = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
@@ -130,7 +148,7 @@ export function WorkbenchShell({
       {topBar && <header className="shrink-0 z-30">{topBar}</header>}
 
       {/* ── Core Workspace (Horizontal Shell Area) ────────────────────────── */}
-      <main className="flex-1 flex relative min-h-0">
+      <main className="flex-1 flex relative min-h-0 overflow-hidden">
         {/* ── Slot 2: Far-Left Activity Bar (Icon Strip) ──────────────────── */}
         {activityBar && (
           <div className="h-full shrink-0 z-20">
@@ -156,7 +174,7 @@ export function WorkbenchShell({
         )}
 
         {/* ── Center Work Area: Editor, Preview, and Bottom Panel ──────────── */}
-        <div ref={containerRef} className="flex-1 flex flex-col h-full min-w-0 min-h-0">
+        <div ref={containerRef} className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
           <div className="flex-1 flex min-h-0 min-w-0">
             {/* ── Slot 4: Center Editor Area ────────────────────────────────── */}
             <section
@@ -171,6 +189,7 @@ export function WorkbenchShell({
               <ResizeHandle
                 onMouseDown={handleCenterSplitResize}
                 onTouchStart={() => {}}
+                onDoubleClick={() => setSplitRatio(0.5)}
                 label="Resize editor and preview panes"
               />
             )}
@@ -208,7 +227,7 @@ export function WorkbenchShell({
 
       {/* ── Slot 8: Global Status Bar ─────────────────────────────────────── */}
       {statusBarOpen && statusBar && (
-        <footer className="shrink-0 z-30">{statusBar}</footer>
+        <div className="shrink-0 z-30">{statusBar}</div>
       )}
     </div>
   );

@@ -74,7 +74,7 @@ export const RenameCitationModal: React.FC<RenameCitationModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[440px] text-foreground bg-background border border-border shadow-2xl p-6">
+      <DialogContent className="sm:max-w-[440px] text-foreground bg-background border border-border shadow-overlay p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold flex items-center gap-2">

@@ -101,12 +101,12 @@ export function StateGroupCancelledIcon({ className }: { className?: string }) {
 // ── Submenu Priority Icons ──────────────────────────────────────────────────
 
 export function PriorityUrgentIcon({ className }: { className?: string }) {
-  return <AlertCircle className={cn('size-3.5 text-destructive shrink-0 stroke-[1.75]', className)} />;
+  return <AlertCircle className={cn('size-3.5 text-foreground shrink-0 stroke-[1.75]', className)} />;
 }
 
 export function PriorityHighIcon({ className }: { className?: string }) {
   return (
-    <svg className={cn('size-3.5 text-warning shrink-0', className)} viewBox="0 0 24 24" fill="currentColor">
+    <svg className={cn('size-3.5 text-foreground shrink-0', className)} viewBox="0 0 24 24" fill="currentColor">
       <rect x="4" y="14" width="3.5" height="6" rx="1" />
       <rect x="10.25" y="9" width="3.5" height="11" rx="1" />
       <rect x="16.5" y="4" width="3.5" height="16" rx="1" />
@@ -116,7 +116,7 @@ export function PriorityHighIcon({ className }: { className?: string }) {
 
 export function PriorityMediumIcon({ className }: { className?: string }) {
   return (
-    <svg className={cn('size-3.5 text-warning shrink-0', className)} viewBox="0 0 24 24" fill="currentColor">
+    <svg className={cn('size-3.5 text-foreground shrink-0', className)} viewBox="0 0 24 24" fill="currentColor">
       <rect x="4" y="14" width="3.5" height="6" rx="1" />
       <rect x="10.25" y="9" width="3.5" height="11" rx="1" />
       <rect x="16.5" y="4" width="3.5" height="16" rx="1" className="opacity-20" />
@@ -126,7 +126,7 @@ export function PriorityMediumIcon({ className }: { className?: string }) {
 
 export function PriorityLowIcon({ className }: { className?: string }) {
   return (
-    <svg className={cn('size-3.5 text-primary shrink-0', className)} viewBox="0 0 24 24" fill="currentColor">
+    <svg className={cn('size-3.5 text-foreground shrink-0', className)} viewBox="0 0 24 24" fill="currentColor">
       <rect x="4" y="14" width="3.5" height="6" rx="1" />
       <rect x="10.25" y="9" width="3.5" height="11" rx="1" className="opacity-20" />
       <rect x="16.5" y="4" width="3.5" height="16" rx="1" className="opacity-20" />
@@ -390,7 +390,7 @@ export function FilterDropdown({
               <ItemsIcon className="size-4 shrink-0 text-foreground" />
               <span>Work items</span>
               {(filters?.work_items.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
+                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-60 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-64 overflow-y-auto">
@@ -430,7 +430,7 @@ export function FilterDropdown({
                         )}
                         <span className="truncate">{item.title}</span>
                       </div>
-                      {isSelected && <Check className="size-3.5 text-primary shrink-0 ml-2" />}
+                      {isSelected && <Check className="size-3.5 text-foreground shrink-0 ml-2" />}
                     </DropdownMenuItem>
                   );
                 })}
@@ -445,7 +445,7 @@ export function FilterDropdown({
               <ParentBranchIcon className="size-4 shrink-0 text-foreground" />
               <span>Parent</span>
               {(filters?.parent.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
+                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-60 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-64 overflow-y-auto">
@@ -466,7 +466,7 @@ export function FilterDropdown({
                   <span>None (Root items)</span>
                 </div>
                 {isItemActive('parent', '__none__') && (
-                  <Check className="size-3.5 text-primary shrink-0 ml-2" />
+                  <Check className="size-3.5 text-foreground shrink-0 ml-2" />
                 )}
               </DropdownMenuItem>
               {items
@@ -499,7 +499,7 @@ export function FilterDropdown({
                         )}
                         <span className="truncate">{item.title}</span>
                       </div>
-                      {isSelected && <Check className="size-3.5 text-primary shrink-0 ml-2" />}
+                      {isSelected && <Check className="size-3.5 text-foreground shrink-0 ml-2" />}
                     </DropdownMenuItem>
                   );
                 })}
@@ -514,7 +514,7 @@ export function FilterDropdown({
               <ConcentricCirclesIcon className="size-4 shrink-0 text-foreground" />
               <span>State</span>
               {(filters?.state.length ?? selectedColumnIds.length) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
+                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-64 overflow-y-auto">
@@ -551,7 +551,7 @@ export function FilterDropdown({
                         />
                         <span className="truncate">{col.title}</span>
                       </div>
-                      {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
+                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
                     </DropdownMenuItem>
                   );
                 })}
@@ -566,7 +566,7 @@ export function FilterDropdown({
               <ConcentricCirclesIcon className="size-4 shrink-0 text-foreground" />
               <span>State Group</span>
               {(filters?.state_group.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
+                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
@@ -605,7 +605,7 @@ export function FilterDropdown({
                         <IconComp className="size-3.5 shrink-0" />
                         <span>{item.label}</span>
                       </div>
-                      {active && <Check className="size-3.5 text-primary shrink-0" />}
+                      {active && <Check className="size-3.5 text-foreground shrink-0" />}
                     </DropdownMenuItem>
                   );
                 })}
@@ -620,7 +620,7 @@ export function FilterDropdown({
               <Users className="size-4 shrink-0 text-foreground" />
               <span>Assignees</span>
               {(filters?.assignees.length ?? selectedAssigneeIds.length) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
+                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-60 overflow-y-auto">
@@ -642,7 +642,7 @@ export function FilterDropdown({
                 </div>
                 {(isItemActive('assignees', '__unassigned__') ||
                   isItemActive('assignees', 'unassigned')) && (
-                  <Check className="size-3.5 text-primary shrink-0" />
+                  <Check className="size-3.5 text-foreground shrink-0" />
                 )}
               </DropdownMenuItem>
 
@@ -678,7 +678,7 @@ export function FilterDropdown({
                         )}
                         <span className="truncate">{user.name}</span>
                       </div>
-                      {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
+                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
                     </DropdownMenuItem>
                   );
                 })}
@@ -693,7 +693,7 @@ export function FilterDropdown({
               <User className="size-4 shrink-0 text-foreground" />
               <span>Subscribers</span>
               {(filters?.subscribers?.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
+                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-60 overflow-y-auto">
@@ -734,7 +734,7 @@ export function FilterDropdown({
                         )}
                         <span className="truncate">{user.name}</span>
                       </div>
-                      {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
+                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
                     </DropdownMenuItem>
                   );
                 })}
@@ -749,7 +749,7 @@ export function FilterDropdown({
               <PrioritySignalBarsIcon className="size-4 shrink-0 text-foreground" />
               <span>Priority</span>
               {(filters?.priority.length ?? selectedPriorities.length) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
+                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-52 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
@@ -788,7 +788,7 @@ export function FilterDropdown({
                         <IconComp className="size-3.5 shrink-0" />
                         <span>{p.label}</span>
                       </div>
-                      {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
+                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
                     </DropdownMenuItem>
                   );
                 })}
@@ -803,7 +803,7 @@ export function FilterDropdown({
               <AtSign className="size-4 shrink-0 text-foreground" />
               <span>Mentions</span>
               {(filters?.mentions.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
+                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-56 overflow-y-auto">
@@ -821,7 +821,7 @@ export function FilterDropdown({
 
                 if (filteredMembers.length === 0) {
                   return (
-                    <div className="px-3 py-2 text-12 text-muted-foreground text-center">
+                    <div className="px-3 py-2 text-12 text-foreground/60 text-center">
                       No members found
                     </div>
                   );
@@ -853,7 +853,7 @@ export function FilterDropdown({
                         )}
                         <span className="truncate">{user.name}</span>
                       </div>
-                      {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
+                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
                     </DropdownMenuItem>
                   );
                 });
@@ -869,7 +869,7 @@ export function FilterDropdown({
               <Tag className="size-4 shrink-0 text-foreground" />
               <span>Label</span>
               {(filters?.labels.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
+                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-52 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-56 overflow-y-auto">
@@ -902,7 +902,7 @@ export function FilterDropdown({
                         />
                         <span className="truncate">{label.name}</span>
                       </div>
-                      {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
+                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
                     </DropdownMenuItem>
                   );
                 })}
@@ -916,7 +916,7 @@ export function FilterDropdown({
               <Paperclip className="size-4 shrink-0 text-foreground" />
               <span>Attach</span>
               {(filters?.attach.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
+                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
@@ -955,7 +955,7 @@ export function FilterDropdown({
                         <IconComp className="size-3.5 shrink-0 text-foreground" />
                         <span>{item.label}</span>
                       </div>
-                      {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
+                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
                     </DropdownMenuItem>
                   );
                 })}
@@ -970,7 +970,7 @@ export function FilterDropdown({
               <CalendarClock className="size-4 shrink-0 text-foreground" />
               <span>Start date</span>
               {(filters?.start_date.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
+                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
@@ -1005,7 +1005,7 @@ export function FilterDropdown({
                       className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
                     >
                       <span>{d.label}</span>
-                      {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
+                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
                     </DropdownMenuItem>
                   );
                 })}
@@ -1020,7 +1020,7 @@ export function FilterDropdown({
               <Calendar className="size-4 shrink-0 text-foreground" />
               <span>Due date</span>
               {(filters?.due_date.length ?? (dueDateFilter !== 'all' ? 1 : 0)) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
+                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-52 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
@@ -1056,7 +1056,7 @@ export function FilterDropdown({
                       className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
                     >
                       <span>{opt.label}</span>
-                      {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
+                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
                     </DropdownMenuItem>
                   );
                 })}
@@ -1071,7 +1071,7 @@ export function FilterDropdown({
               <Calendar className="size-4 shrink-0 text-foreground" />
               <span>Created at</span>
               {(filters?.created_at.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
+                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
@@ -1099,7 +1099,7 @@ export function FilterDropdown({
                       className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
                     >
                       <span>{d}</span>
-                      {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
+                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
                     </DropdownMenuItem>
                   );
                 })}
@@ -1114,7 +1114,7 @@ export function FilterDropdown({
               <Calendar className="size-4 shrink-0 text-foreground" />
               <span>Updated at</span>
               {(filters?.updated_at.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
+                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
@@ -1142,7 +1142,7 @@ export function FilterDropdown({
                       className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
                     >
                       <span>{d}</span>
-                      {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
+                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
                     </DropdownMenuItem>
                   );
                 })}
@@ -1157,7 +1157,7 @@ export function FilterDropdown({
               <UserCircle className="size-4 shrink-0 text-foreground" />
               <span>Created by</span>
               {(filters?.created_by.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
+                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-56 overflow-y-auto">
@@ -1175,7 +1175,7 @@ export function FilterDropdown({
 
                 if (filteredMembers.length === 0) {
                   return (
-                    <div className="px-3 py-2 text-12 text-muted-foreground text-center">
+                    <div className="px-3 py-2 text-12 text-foreground/60 text-center">
                       No members found
                     </div>
                   );
@@ -1207,7 +1207,7 @@ export function FilterDropdown({
                         )}
                         <span className="truncate">{user.name}</span>
                       </div>
-                      {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
+                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
                     </DropdownMenuItem>
                   );
                 });

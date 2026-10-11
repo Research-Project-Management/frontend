@@ -26,6 +26,7 @@ import {
   AlignJustify,
   Loader2,
   Sparkles,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -40,8 +41,8 @@ import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 
-import { historyService, historyKeys } from '../../coordinators/services/history.service';
-import { manuscriptService } from '../../coordinators/services/manuscript.service';
+import { manuscriptService, historyService, historyKeys, exportVersionAsZip } from '@/features/editor/sdk';
+import { extractProjectId } from '@/features/editor/domain/types';
 import { editorCommandBus } from '../../coordinators/command-bus';
 import { usePageStore } from '../../store';
 import type {
@@ -84,9 +85,7 @@ export default function ProjectHistoryModal({
   const effectiveProjectId =
     propProjectId ||
     params?.projectId ||
-    (typeof (currentPage as any)?.projectId === 'string'
-      ? (currentPage as any).projectId
-      : (currentPage as any)?.projectId?.id) ||
+    extractProjectId(currentPage) ||
     '';
 
   // UI State
@@ -273,12 +272,12 @@ export default function ProjectHistoryModal({
           : fileData.content ?? (fileData.lines ? fileData.lines.join('\n') : '');
 
       // 2. Resolve document ID for active file
-      let docId = typeof fileData === 'object' && fileData !== null ? (fileData as any).docId : undefined;
+      let docId = typeof fileData === 'object' && fileData !== null ? (fileData as { docId?: string }).docId : undefined;
       if (!docId) {
         if (
           currentPage &&
           (currentPage.title === activeFilePath ||
-            (currentPage as any).name === activeFilePath ||
+            (currentPage as { name?: string }).name === activeFilePath ||
             currentPage.id === activeFilePath)
         ) {
           docId = currentPage.id;
@@ -364,6 +363,26 @@ export default function ProjectHistoryModal({
     }
   };
 
+  const [isDownloadingZip, setIsDownloadingZip] = useState(false);
+
+  const handleDownloadVersionZip = async () => {
+    if (!effectiveProjectId || !selectedTargetVersion) return;
+    setIsDownloadingZip(true);
+    try {
+      const projectTitle = currentPage?.title || 'project';
+      await exportVersionAsZip({
+        projectId: effectiveProjectId,
+        version: selectedTargetVersion,
+        projectTitle,
+      });
+      toast.success(`Tải về thành công file ZIP cho phiên bản v${selectedTargetVersion}`);
+    } catch (err: any) {
+      toast.error(`Không thể tải ZIP phiên bản: ${err?.message || 'Lỗi không xác định'}`);
+    } finally {
+      setIsDownloadingZip(false);
+    }
+  };
+
   const handleSelectVersion = (version: number) => {
     setSelectedTargetVersion(version);
     const foundIdx = versions.findIndex((v) => v.version === version);
@@ -377,7 +396,7 @@ export default function ProjectHistoryModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-6xl w-[95vw] h-[88vh] max-h-[950px] flex flex-col p-0 gap-0 overflow-hidden bg-background border rounded-xl shadow-2xl"
+        className="max-w-6xl w-[95vw] h-[88vh] max-h-[950px] flex flex-col p-0 gap-0 overflow-hidden bg-background border border-border rounded-lg shadow-overlay"
         showCloseButton={false}
       >
         <DialogTitle className="sr-only">Project Version History</DialogTitle>
@@ -409,10 +428,10 @@ export default function ProjectHistoryModal({
           {/* Center: Diff Stats */}
           {diffData && (
             <div className="hidden sm:flex items-center gap-2">
-              <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+              <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-success bg-success/10 rounded-full border border-success/20">
                 {`+${diffData.totalAdditions}`}
               </span>
-              <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-rose-600 dark:text-rose-400 bg-rose-500/10 rounded-full border border-rose-500/20">
+              <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-destructive bg-destructive/10 rounded-full border border-destructive/20">
                 {`-${diffData.totalDeletions}`}
               </span>
               <span className="text-xs text-muted-foreground">
@@ -465,6 +484,25 @@ export default function ProjectHistoryModal({
               <Plus className="size-3.5" />
               <span className="hidden sm:inline">Snapshot</span>
             </Button>
+
+            {/* Download this version as ZIP (Overleaf Parity) */}
+            {selectedTargetVersion && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadVersionZip}
+                disabled={isDownloadingZip}
+                className="h-8 gap-1.5 text-xs cursor-pointer"
+                title={`Download Version ${selectedTargetVersion} as ZIP archive`}
+              >
+                {isDownloadingZip ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Download className="size-3.5" />
+                )}
+                <span className="hidden sm:inline">Download ZIP</span>
+              </Button>
+            )}
 
             {/* Restore this version */}
             {selectedTargetVersion && (

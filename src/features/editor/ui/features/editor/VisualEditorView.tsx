@@ -80,6 +80,7 @@ export function VisualEditorView({
   const contentRef = useRef<HTMLDivElement>(null);
   const originalLatexRef = useRef<string>(value);
   const debounceTimerRef = useRef<any>(null);
+  const latestHtmlRef = useRef<string>('');
 
   // Math editor floating modal state
   const [activeMath, setActiveMath] = useState<ActiveMathEditorState | null>(null);
@@ -102,25 +103,43 @@ export function VisualEditorView({
     if (currentDerivedLatex.trim() !== value.trim()) {
       const newHtml = latexToHtml(value);
       contentRef.current.innerHTML = newHtml;
+      latestHtmlRef.current = newHtml;
+    } else {
+      latestHtmlRef.current = currentHtml;
     }
   }, [value]);
 
   // Two-way sync: read HTML, convert back to LaTeX, and call onChange
   const syncHtmlToLatex = useCallback(() => {
-    if (!contentRef.current || readOnly) return;
-    const html = contentRef.current.innerHTML;
+    if (readOnly) return;
+    const html = contentRef.current ? contentRef.current.innerHTML : latestHtmlRef.current;
+    if (html === null || html === undefined) return;
     const nextLatex = htmlToLatex(html, originalLatexRef.current);
     originalLatexRef.current = nextLatex;
     onChange?.(nextLatex);
   }, [onChange, readOnly]);
 
   const handleInput = useCallback(() => {
+    if (contentRef.current) {
+      latestHtmlRef.current = contentRef.current.innerHTML;
+    }
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
     debounceTimerRef.current = setTimeout(() => {
       syncHtmlToLatex();
     }, 250);
+  }, [syncHtmlToLatex]);
+
+  // Immediate unmount flush to guarantee zero data loss when toggling to Source mode
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+      syncHtmlToLatex();
+    };
   }, [syncHtmlToLatex]);
 
   // ── Table Matrix Operations Hook ──────────────────────────────────────────
@@ -304,11 +323,11 @@ export function VisualEditorView({
       executeVisualCommand(cmd);
     });
 
-    const unsubEvent = EditorEventBus.on('flux:visual-command', (cmd) => {
+    const unsubEvent = EditorEventBus.on('flux:visual-command', (cmd: any) => {
       executeVisualCommand(cmd);
     });
 
-    const unsubCite = EditorEventBus.on('flux:insert-citation', (payload) => {
+    const unsubCite = EditorEventBus.on('flux:insert-citation', (payload: any) => {
       if (payload?.bibKey) {
         const chipHtml = `<span class="latex-citation-chip font-mono text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded inline-block cursor-pointer" data-cite="${payload.bibKey}">[@${payload.bibKey}]</span>&nbsp;`;
         document.execCommand('insertHTML', false, chipHtml);
@@ -507,7 +526,7 @@ export function VisualEditorView({
   return (
     <div
       ref={containerRef}
-      className="relative flex-1 h-full w-full overflow-y-auto bg-background text-foreground select-text font-serif"
+      className="relative flex-1 h-full w-full overflow-y-auto bg-canvas text-foreground select-text font-serif"
     >
       {/* ── Real-Time Collaborator Cursors & Selection Overlays (Overleaf Parity) ── */}
       <VisualCollaboratorCursors
@@ -527,7 +546,25 @@ export function VisualEditorView({
           suppressContentEditableWarning
           onInput={handleInput}
           onClick={handleClick}
-          onDoubleClick={handleDoubleClick}
+          onDoubleClick={(e) => {
+            const target = e.target as HTMLElement;
+            const mathEl = target.closest('.latex-math-block, .latex-math-inline') as HTMLElement | null;
+            if (mathEl && contentRef.current?.contains(mathEl)) {
+              e.preventDefault();
+              e.stopPropagation();
+              const rawEnc = mathEl.getAttribute('data-math') || '';
+              const rawMath = decodeURIComponent(rawEnc);
+              const isDisplay = mathEl.classList.contains('latex-math-block');
+              setActiveMath({
+                element: mathEl,
+                isDisplay,
+                initialMath: rawMath,
+                currentMath: rawMath,
+              });
+              return;
+            }
+            handleDoubleClick(e);
+          }}
           onKeyDown={handleKeyDown}
           onKeyUp={handleSlashKeyUp}
           onMouseUp={() => {
@@ -538,20 +575,20 @@ export function VisualEditorView({
           className={cn(
             'visual-editor-surface outline-none prose prose-neutral dark:prose-invert max-w-none',
             'focus:ring-0 leading-relaxed font-serif text-[15px]',
-            '[&_h1]:text-2xl [&_h1]:font-bold [&_h1]:font-sans [&_h1]:mt-8 [&_h1]:mb-4 [&_h1]:border-b [&_h1]:pb-2',
+            '[&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:font-sans [&_h1]:mt-8 [&_h1]:mb-4 [&_h1]:border-b [&_h1]:pb-2',
             '[&_h2]:text-xl [&_h2]:font-semibold [&_h2]:font-sans [&_h2]:mt-6 [&_h2]:mb-3',
             '[&_h3]:text-lg [&_h3]:font-medium [&_h3]:font-sans [&_h3]:mt-4 [&_h3]:mb-2',
             '[&_p]:my-3.5 [&_p]:leading-7',
             '[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-3',
             '[&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-3',
             '[&_li]:my-1',
-            '[&_blockquote]:border-l-4 [&_blockquote]:border-primary/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:my-4',
+            '[&_blockquote]:border-l-2 [&_blockquote]:border-primary/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:my-4',
             '[&_table]:w-full [&_table]:border-collapse [&_table]:my-4 [&_table]:border [&_table]:border-border',
             '[&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted/40 [&_th]:font-semibold [&_th]:text-left',
             '[&_td]:border [&_td]:border-border [&_td]:p-2',
             '[&_.latex-citation-chip]:hover:bg-primary/20 [&_.latex-citation-chip]:cursor-pointer [&_.latex-citation-chip]:transition-colors',
-            '[&_.latex-math-block]:hover:ring-1 [&_.latex-math-block]:hover:ring-primary/40 [&_.latex-math-block]:transition-all',
-            '[&_.latex-math-inline]:hover:ring-1 [&_.latex-math-inline]:hover:ring-primary/40 [&_.latex-math-inline]:transition-all'
+            '[&_.latex-math-block]:hover:ring-1 [&_.latex-math-block]:hover:ring-primary/40',
+            '[&_.latex-math-inline]:hover:ring-1 [&_.latex-math-inline]:hover:ring-primary/40'
           )}
         />
       </div>

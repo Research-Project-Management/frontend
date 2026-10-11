@@ -76,11 +76,11 @@ export const MergeDiffEditor = React.memo(function MergeDiffEditor({
     <div className="flex flex-col h-full w-full overflow-hidden border rounded-md bg-background">
       <div className="flex items-center justify-between px-3 py-1.5 bg-muted/60 border-b text-xs font-mono text-muted-foreground select-none">
         <div className="flex items-center gap-1.5 font-medium text-foreground">
-          <span className="size-2 rounded-full bg-rose-500/70" />
+          <span className="size-2 rounded-full bg-destructive/70" />
           <span>Base: {baseLabel}</span>
         </div>
         <div className="flex items-center gap-1.5 font-medium text-foreground">
-          <span className="size-2 rounded-full bg-emerald-500/70" />
+          <span className="size-2 rounded-full bg-success/70" />
           <span>Target: {targetLabel}</span>
         </div>
       </div>

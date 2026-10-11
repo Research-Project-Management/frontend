@@ -1,12 +1,11 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+﻿import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   downloadAuxFileUrl,
   downloadAllArtifactsZipUrl,
   compileService,
-} from '@/features/editor/coordinators/services/compiler.service';
-import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
-import { parseLatexLog } from '@/features/editor/components/viewer/Logs';
-import { createPdfBlobAndUrl } from '@/features/editor/coordinators/services/latex-compiler-engine.service';
+} from '@/features/editor/sdk';
+import { parseLatexLog } from '@/features/editor/domain/latex/latex-structure';
+import { createPdfBlobAndUrl } from '@/features/editor/domain/document';
 
 describe('Phase 2: Compiler & Artifacts Overleaf Parity', () => {
   beforeEach(() => {
@@ -39,7 +38,7 @@ describe('Phase 2: Compiler & Artifacts Overleaf Parity', () => {
 
   describe('Compiler Payload & Configuration Parity', () => {
     it('supports 240,000ms timeout, draft mode, and stop_on_first_error in payload typing', () => {
-      const payload: Parameters<typeof manuscriptService.compiler.compile>[0] = {
+      const payload: Parameters<typeof compileService.compileLatex>[0] = {
         main_file: 'main.tex',
         engine: 'pdflatex',
         draft: true,
@@ -75,12 +74,12 @@ Underfull \\vbox (badness 10000) has occurred while \\output is active
       expect(parsed.warnings.length).toBeGreaterThan(0);
       expect(parsed.badBoxes.length).toBeGreaterThan(0);
 
-      const hasUndefined = parsed.errors.some((e) =>
+      const hasUndefined = parsed.errors.some((e: any) =>
         e.message.includes('Undefined control sequence') || e.detail?.includes('invalidcommand')
       );
       expect(hasUndefined).toBe(true);
 
-      const hasCitationWarning = parsed.warnings.some((w) =>
+      const hasCitationWarning = parsed.warnings.some((w: any) =>
         w.message.includes('Citation')
       );
       expect(hasCitationWarning).toBe(true);

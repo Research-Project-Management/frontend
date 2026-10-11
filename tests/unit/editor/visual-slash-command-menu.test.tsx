@@ -68,11 +68,12 @@ describe('VisualSlashCommandMenu Component', () => {
 
   it('calls onSelect when an item is clicked', () => {
     const handleSelect = vi.fn();
-    render(
+    const { container } = render(
       <VisualSlashCommandMenu {...defaultProps} onSelect={handleSelect} />
     );
 
-    const tableItem = screen.getByRole('menuitem', { name: /Table/i });
+    const tableItem = container.querySelector('button[data-command-id="table"]') as HTMLElement;
+    expect(tableItem).toBeInTheDocument();
     fireEvent.click(tableItem);
 
     expect(handleSelect).toHaveBeenCalledTimes(1);
@@ -192,7 +193,9 @@ describe('VisualEditorView Slash Command Integration', () => {
     });
 
     // Click Table menuitem
-    const tableItem = screen.getByRole('menuitem', { name: /Table/i });
+    const slashMenu = screen.getByRole('menu', { name: /Slash Commands/i });
+    const tableItem = slashMenu.querySelector('button[data-command-id="table"]') as HTMLElement;
+    expect(tableItem).toBeInTheDocument();
     fireEvent.click(tableItem);
 
     // insertHTML called with <table> HTML

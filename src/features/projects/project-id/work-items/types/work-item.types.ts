@@ -244,22 +244,22 @@ export const RELATION_TYPE_CONFIG: Record<
   blocks: {
     label: "Blocks",
     description: "This issue blocks the other issue",
-    badgeColor: "text-destructive bg-destructive/10 border-destructive/20",
+    badgeColor: "text-foreground bg-muted border-border",
   },
   blocked_by: {
     label: "Blocked by",
     description: "This issue is blocked by the other issue",
-    badgeColor: "text-warning bg-warning/10 border-warning/20",
+    badgeColor: "text-foreground bg-muted border-border",
   },
   relates_to: {
     label: "Relates to",
     description: "This issue is related to the other issue",
-    badgeColor: "text-primary bg-primary/10 border-primary/20",
+    badgeColor: "text-foreground bg-muted border-border",
   },
   duplicate_of: {
     label: "Duplicate of",
     description: "This issue is a duplicate of the other issue",
-    badgeColor: "text-muted-foreground bg-muted border-border",
+    badgeColor: "text-foreground bg-muted border-border",
   },
 };
 

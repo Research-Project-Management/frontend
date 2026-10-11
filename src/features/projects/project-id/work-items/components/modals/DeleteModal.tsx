@@ -35,7 +35,7 @@ export function DeleteModal({
           <DialogTitle className="text-16 font-semibold text-foreground">
             Delete work item
           </DialogTitle>
-          <DialogDescription className="text-13 text-muted-foreground">
+          <DialogDescription className="text-13 text-foreground/70">
             Are you sure you want to delete &quot;{item?.title || 'this work item'}&quot;? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>

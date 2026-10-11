@@ -530,7 +530,7 @@ export function WorkItemPage({
 
   // ── Handlers & Actions ────────────────────────────────────────────────────
 
-  const handleOpenAddDialog = (
+  const handleOpenAddDialog = useCallback((
     columnId: string,
     title?: string,
     dueDateOrSwimlane?: string | { subGroupBy?: string; laneId?: string },
@@ -591,13 +591,13 @@ export function WorkItemPage({
         priority: targetPriority,
       },
     });
-  };
+  }, [columns, effectiveGroupBy, projectState.isSaving, projectActions, projectId]);
 
-  const handleOpenEditDialog = (card: Item) => {
+  const handleOpenEditDialog = useCallback((card: Item) => {
     setModal({ type: 'detail', card });
-  };
+  }, []);
 
-  const handleMoveCard = (
+  const handleMoveCard = useCallback((
     workItemId: string,
     newColumnId: string,
     laneData?: { subGroupBy?: string; laneId?: string }
@@ -661,9 +661,9 @@ export function WorkItemPage({
         projectId,
       });
     }
-  };
+  }, [effectiveGroupBy, projectActions, projectId]);
 
-  const handleReorderCard = (workItemId: string, newColumnId: string, rank: number) => {
+  const handleReorderCard = useCallback((workItemId: string, newColumnId: string, rank: number) => {
     if (!workItemId) return;
 
     if (effectiveGroupBy === 'priority') {
@@ -704,9 +704,9 @@ export function WorkItemPage({
       rank,
       projectId,
     });
-  };
+  }, [effectiveGroupBy, projectActions, projectId]);
 
-  const handleCreateItem = async (formData: ItemMutationInput & { createMore?: boolean }) => {
+  const handleCreateItem = useCallback(async (formData: ItemMutationInput & { createMore?: boolean }) => {
     if (!formData.title?.trim()) {
       return;
     }
@@ -737,9 +737,9 @@ export function WorkItemPage({
     } catch {
       // Error is handled by mutation hook
     }
-  };
+  }, [columns, projectId, projectActions, closeModal]);
 
-  const handleSaveCard = async (formData: ItemMutationInput) => {
+  const handleSaveCard = useCallback(async (formData: ItemMutationInput) => {
     if (modal.type !== 'detail' || !modal.card.id) return;
     if (!formData.title?.trim()) {
       return;
@@ -751,34 +751,34 @@ export function WorkItemPage({
       projectId,
       id: modal.card.id,
       workItemId: modal.card.id,
-      };
+    };
 
     try {
       await projectActions.updateWorkItem(payload);
     } catch {
       // Error is handled by mutation hook
     }
-  };
+  }, [modal, projectId, projectActions]);
 
-  const handleDeleteCard = () => {
+  const handleDeleteCard = useCallback(() => {
     if (modal.type === 'detail' && modal.card.id) {
       setModal({ type: 'delete', item: modal.card });
     }
-  };
+  }, [modal]);
 
-  const handleItemDeleteConfirm = () => {
+  const handleItemDeleteConfirm = useCallback(() => {
     if (modal.type === 'delete' && modal.item?.id) {
       projectActions.deleteItem({ id: modal.item.id, projectId }).then(() => {
         closeModal();
       });
     }
-  };
+  }, [modal, projectActions, projectId, closeModal]);
 
-  const handleDuplicateCard = (card: Item) => {
+  const handleDuplicateCard = useCallback((card: Item) => {
     projectActions.duplicateWorkItem({ projectId, workItemId: card.id, id: card.id });
-  };
+  }, [projectActions, projectId]);
 
-  const handleJoinCard = (card: Item) => {
+  const handleJoinCard = useCallback((card: Item) => {
     if (!currentUser?.id) return;
     const currentAssigneeId = ItemHelpers.resolveAssigneeId(card);
     if (currentAssigneeId === currentUser.id) return;
@@ -789,9 +789,9 @@ export function WorkItemPage({
       projectId,
       assigneeId: currentUser.id,
     });
-  };
+  }, [currentUser?.id, projectActions, projectId]);
 
-  const handleLeaveCard = (card: Item) => {
+  const handleLeaveCard = useCallback((card: Item) => {
     if (!currentUser?.id) return;
     const currentAssigneeId = ItemHelpers.resolveAssigneeId(card);
     if (currentAssigneeId !== currentUser.id) return;
@@ -802,16 +802,16 @@ export function WorkItemPage({
       projectId,
       assigneeId: null,
     });
-  };
+  }, [currentUser?.id, projectActions, projectId]);
 
-  const handleAssignExistingItemsToDate = (
+  const handleAssignExistingItemsToDate = useCallback((
     itemIds: string[],
     dueDate: string,
     quiet = false,
     startDate?: string | null,
   ) => {
     projectActions.assignWorkItemsToDate(itemIds, dueDate, quiet, startDate);
-  };
+  }, [projectActions]);
 
   const handleQuickUpdateItem = useCallback(
     (itemId: string, data: any) => {
@@ -892,9 +892,9 @@ export function WorkItemPage({
 
       {/* Archived Notice Banner */}
       {showArchived && (
-        <div className="flex items-center justify-between px-4 py-2 bg-warning/10 border-b border-warning/20 text-xs text-warning shrink-0 animate-in fade-in duration-150">
+        <div className="flex items-center justify-between px-4 py-2 bg-muted/60 border-b border-border text-xs text-foreground shrink-0 animate-in fade-in duration-150">
           <div className="flex items-center gap-2">
-            <Archive className="size-4 shrink-0 text-warning" />
+            <Archive className="size-4 shrink-0 text-foreground" />
             <span>
               <span className="font-semibold">Archived Mode:</span> You are viewing archived work items. They are excluded from active boards and views.
             </span>
@@ -903,7 +903,7 @@ export function WorkItemPage({
             size="sm"
             variant="ghost"
             onClick={() => setShowArchived(false)}
-            className="h-6 px-2 text-xs font-medium hover:bg-warning/20 text-warning relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+            className="h-6 px-2 text-xs font-medium hover:bg-muted text-foreground relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             Back to active items
           </Button>
@@ -912,13 +912,13 @@ export function WorkItemPage({
 
       {/* Active Saved View Notice Banner */}
       {!showArchived && activeViewId && (
-        <div className="flex items-center justify-between px-4 py-1.5 bg-primary/5 border-b border-primary/15 text-xs text-foreground shrink-0 animate-in fade-in duration-150">
+        <div className="flex items-center justify-between px-4 py-1.5 bg-muted/40 border-b border-border text-xs text-foreground shrink-0 animate-in fade-in duration-150">
           <div className="flex items-center gap-2 min-w-0">
-            <SlidersHorizontal className="size-3.5 shrink-0 text-primary" />
+            <SlidersHorizontal className="size-3.5 shrink-0 text-foreground" />
             <span className="truncate">
               Viewing view: <span className="font-semibold text-foreground">{savedViews?.find((v) => v.id === activeViewId)?.name || 'Custom View'}</span>
             </span>
-            <span className="text-10 font-mono capitalize px-1.5 py-0.5 rounded-md bg-muted text-foreground font-medium">
+            <span className="text-11 font-mono capitalize px-1.5 py-0.5 rounded-md bg-muted text-foreground font-medium">
               {viewMode}
             </span>
           </div>
@@ -968,7 +968,7 @@ export function WorkItemPage({
             <h3 className="text-lg font-semibold text-foreground mb-1">
               No archived work items
             </h3>
-            <p className="text-sm text-muted-foreground max-w-sm mb-6">
+            <p className="text-sm text-foreground/70 max-w-sm mb-6">
               When work items are archived, they will appear here safely stored away from active views.
             </p>
             <Button
@@ -1193,7 +1193,7 @@ export function WorkItemPage({
             <DialogTitle className="text-16 font-semibold text-foreground">
               Save Current View
             </DialogTitle>
-            <DialogDescription className="text-13 text-muted-foreground">
+            <DialogDescription className="text-13 text-foreground/70">
               Save your current layout and filter criteria as a reusable view.
             </DialogDescription>
           </DialogHeader>
@@ -1234,7 +1234,7 @@ export function WorkItemPage({
                 type="submit"
                 size="sm"
                 disabled={!newViewName.trim() || isSavingCurrentView}
-                className="h-8 px-4 text-13 font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary-hover shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+                className="h-8 px-4 text-13 font-medium rounded-md bg-foreground text-background hover:bg-foreground/90 shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               >
                 {isSavingCurrentView ? 'Saving...' : 'Save View'}
               </Button>

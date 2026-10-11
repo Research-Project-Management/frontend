@@ -1,4 +1,4 @@
-import { apiGet } from "@/shared/lib/api";
+import * as api from "@/shared/lib/api";
 import type { SearchResponse } from "../../types";
 import { isProjectScope } from '../../domain';
 
@@ -39,7 +39,7 @@ export async function searchLibrary(
     ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/search`
     : `/api/v1/library/search`;
 
-  return apiGet<SearchResponse>(basePath, {
+  return api.apiGet<SearchResponse>(basePath, {
     params: queryParams,
   });
 }
@@ -62,7 +62,7 @@ export async function searchAttachmentAnchors(
     ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/search/attachments/${encodeURIComponent(attachmentId)}/anchors`
     : `/api/v1/library/search/attachments/${encodeURIComponent(attachmentId)}/anchors`;
 
-  return apiGet<PageAnchorMatch[]>(basePath, { params });
+  return api.apiGet<PageAnchorMatch[]>(basePath, { params });
 }
 
 export const SearchService = {

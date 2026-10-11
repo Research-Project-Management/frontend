@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiDelete } from "@/shared/lib/api";
+import * as api from "@/shared/lib/api";
 import {
   type UnifiedIngestionPayload,
   type UnifiedIngestionResponse,
@@ -33,7 +33,7 @@ export const IngestionService = {
       ...toSubmission(validatedPayload),
       ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
     };
-    const res = await apiPost<any>(
+    const res = await api.apiPost<any>(
       `/api/v1/library/ingestion/submit`,
       submission,
       { timeout: 30000 },
@@ -54,7 +54,7 @@ export const IngestionService = {
    * Safe URL Capture and Metadata Preview
    */
   captureUrl: async (_scopeId: string | undefined, url: string): Promise<UrlCapturePreviewResponse> => {
-    const res = await apiPost<any>(
+    const res = await api.apiPost<any>(
       `/api/v1/library/ingestion/capture-url`,
       { url },
     );
@@ -79,7 +79,7 @@ export const IngestionService = {
       collectionId?: string;
     },
   ) =>
-    apiPost<{ id: string; title: string; doi?: string; year?: number; citationKey?: string }>(
+    api.apiPost<{ id: string; title: string; doi?: string; year?: number; citationKey?: string }>(
       `/api/v1/library/ingestion/confirm-url`,
       {
         ...payload,
@@ -114,7 +114,7 @@ export const IngestionService = {
     const resolvedValue = value ?? identifierValue;
     const resolvedContent = content ?? rawRecord;
     const resolvedFormat = format ?? recordFormat;
-    return apiPost<{
+    return api.apiPost<{
       success: boolean;
       data: {
         runId: string;
@@ -143,7 +143,7 @@ export const IngestionService = {
    * Retry a failed ingestion run
    */
   retryRun: async (_scopeId: string | undefined, runId: string) =>
-    apiPost<{
+    api.apiPost<{
       success: boolean;
       data: {
         runId: string;
@@ -160,7 +160,7 @@ export const IngestionService = {
    * Query IngestionRun status
    */
   getRunStatus: async (_scopeId: string | undefined, runId: string): Promise<IngestionRunSnapshotResponse> => {
-    const res = await apiGet<any>(
+    const res = await api.apiGet<any>(
       `/api/v1/library/ingestion/status/${encodeURIComponent(runId)}`,
     );
     const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
@@ -175,7 +175,7 @@ export const IngestionService = {
    * Query real-time granular progress for batch/single ingestion runs
    */
   getRunProgress: async (_scopeId: string | undefined, runId: string): Promise<IngestionProgressResponse> => {
-    const res = await apiGet<any>(
+    const res = await api.apiGet<any>(
       `/api/v1/library/ingestion/status/${encodeURIComponent(runId)}/progress`,
     );
     const data = res && typeof res === 'object' && 'data' in res ? res.data : res;
@@ -306,7 +306,7 @@ export const QualityService = {
     const scopeParam = isProjectScope(scopeId)
       ? `?projectId=${encodeURIComponent(scopeId!)}`
       : '';
-    const res = await apiGet<any>(
+    const res = await api.apiGet<any>(
       `/api/v1/library/curation/duplicates${scopeParam}`,
     );
 
@@ -347,7 +347,7 @@ export const QualityService = {
     const scopeParam = isProjectScope(scopeId)
       ? `?projectId=${encodeURIComponent(scopeId!)}`
       : '';
-    const res = await apiPost<any>(
+    const res = await api.apiPost<any>(
       `/api/v1/library/curation/merge${scopeParam}`,
       {
         primaryItemId: masterPaperId,
@@ -382,7 +382,7 @@ export const QualityService = {
   getIntegrityReport: async (
     scopeId?: string,
   ): Promise<LibraryIntegrityReport> => {
-    const res = await apiGet<any>(
+    const res = await api.apiGet<any>(
       `/api/v1/library/curation/integrity`,
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     );
@@ -394,19 +394,19 @@ export const QualityService = {
 
 export const RetractionService = {
   getRetractedItems: (scopeId?: string) =>
-    apiGet<Item[]>(
+    api.apiGet<Item[]>(
       `/api/v1/library/retraction/items`,
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
   getStats: (scopeId?: string) =>
-    apiGet<RetractionStats>(
+    api.apiGet<RetractionStats>(
       `/api/v1/library/retraction/stats`,
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
   checkItem: (scopeId: string | undefined, itemId: string) =>
-    apiPost<{
+    api.apiPost<{
       itemId: string;
       isRetracted: boolean;
       status?: 'retracted' | 'clean' | 'unknown';
@@ -419,21 +419,21 @@ export const RetractionService = {
     ),
 
   checkLibrary: (scopeId: string | undefined, itemIds?: string[]) =>
-    apiPost<{ scanned: number; newlyRetracted: number }>(
+    api.apiPost<{ scanned: number; newlyRetracted: number }>(
       `/api/v1/library/retraction/check-all`,
       { itemIds },
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
   flagItem: (scopeId: string | undefined, itemId: string, data: FlagRetractionInput) =>
-    apiPost<Item>(
+    api.apiPost<Item>(
       `/api/v1/library/retraction/items/${encodeURIComponent(itemId)}/flag`,
       data,
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
   unflagItem: (scopeId: string | undefined, itemId: string) =>
-    apiDelete<Item>(
+    api.apiDelete<Item>(
       `/api/v1/library/retraction/items/${encodeURIComponent(itemId)}/flag`,
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),

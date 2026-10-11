@@ -21,7 +21,7 @@ export interface DockOutputTabProps {
   onTriggerCompile: () => void;
 }
 
-export function DockOutputTab({
+export const DockOutputTab = React.memo(function DockOutputTab({
   parsedLogLines,
   compileLog,
   showLogErrorsOnly,
@@ -50,7 +50,7 @@ export function DockOutputTab({
               className={cn(
                 'flex items-start hover:bg-muted/30 group py-0.5 rounded-xs transition-colors',
                 item.type === 'error' &&
-                  'bg-destructive/10 text-destructive font-semibold border-l-2 border-destructive px-1.5'
+                  'bg-destructive/10 text-destructive font-semibold border-l border-destructive px-1.5'
               )}
             >
               {/* Gutter Line Number */}
@@ -80,7 +80,7 @@ export function DockOutputTab({
                             key={pIdx}
                             type="button"
                             onClick={() => onJumpToLine(item.jumpLine)}
-                            className="inline-flex items-center text-primary font-bold underline decoration-dotted hover:text-primary-hover cursor-pointer px-1 py-0.2 rounded hover:bg-primary/10 transition-colors"
+                            className="inline-flex items-center text-primary font-semibold underline decoration-dotted hover:text-primary-hover cursor-pointer px-1 py-0.2 rounded hover:bg-primary/10 transition-colors"
                             title={`Jump to line ${item.jumpLine} in editor`}
                           >
                             {part}
@@ -150,4 +150,5 @@ export function DockOutputTab({
       )}
     </div>
   );
-}
+});
+

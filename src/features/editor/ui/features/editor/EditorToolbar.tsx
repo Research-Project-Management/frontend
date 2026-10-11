@@ -24,7 +24,6 @@ import {
   BookOpen,
   Sigma,
   Table as TableIcon,
-  ArrowRightToLine,
   MessageSquarePlus,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
@@ -34,7 +33,6 @@ import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
 import { useSettingsStore } from '../../../store/settings.store';
 import { useDocumentCollaborationStore } from '../../../store/collaboration.store';
 import { useLayoutStore } from '../../../store/layout.store';
-import { SourceVisualSwitcher } from './SourceVisualSwitcher';
 import { cn } from '@/shared/lib/utils';
 
 export interface EditorToolbarProps {
@@ -166,7 +164,7 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
                 size="sm"
                 disabled={readOnly}
                 onClick={() => handleInsert(action)}
-                className="size-7 p-0 text-text-muted hover:text-text-primary hover:bg-muted rounded cursor-pointer"
+                className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 aria-label={action.label}
               >
                 <Icon className="size-3.5" />
@@ -187,7 +185,7 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
             size="sm"
             disabled={readOnly}
             onClick={handleAddComment}
-            className="size-7 p-0 text-text-muted hover:text-text-primary hover:bg-muted rounded cursor-pointer"
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             aria-label="Add Comment (Ctrl+Alt+M)"
           >
             <MessageSquarePlus className="size-3.5" />
@@ -198,40 +196,6 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
           <span className="ml-1.5 opacity-60">(Mod-Alt-m)</span>
         </TooltipContent>
       </Tooltip>
-
-      <div className="h-4 w-px bg-border/60 mx-1 shrink-0" />
-
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={readOnly}
-            onClick={() => {
-              const engine = getActiveEditorEngine();
-              const pos = engine?.getCursorPosition?.();
-              editorCommandBus.dispatch({
-                type: 'synctex:forward',
-                line: pos?.line ?? 1,
-                column: pos?.column ?? 1,
-              });
-            }}
-            className="size-7 p-0 text-text-muted hover:text-text-primary hover:bg-muted rounded cursor-pointer"
-            aria-label="View in PDF (SyncTeX)"
-          >
-            <ArrowRightToLine className="size-3.5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs">
-          <span>View in PDF (SyncTeX)</span>
-          <span className="ml-1.5 opacity-60">(Mod-Alt-j)</span>
-        </TooltipContent>
-      </Tooltip>
-
-      {/* ── Right side: Source / Visual Switcher ── */}
-      <div className="ml-auto flex items-center shrink-0 pl-2">
-        <SourceVisualSwitcher />
-      </div>
     </div>
   );
 }

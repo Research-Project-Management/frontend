@@ -116,7 +116,8 @@ export default function RelatedSection({
       }
       if (Array.isArray(it.collections)) {
         for (const c of it.collections) {
-          const cid = typeof c === 'string' ? c : (c as any)?.id;
+          const colObj = typeof c === 'object' && c !== null ? (c as { id?: string; collectionId?: string; collection?: { id?: string } }) : null;
+          const cid = typeof c === 'string' ? c : colObj?.collectionId || colObj?.id || colObj?.collection?.id;
           if (cid) counts[cid] = (counts[cid] || 0) + 1;
         }
       }

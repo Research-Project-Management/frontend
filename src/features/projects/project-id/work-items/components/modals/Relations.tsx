@@ -126,7 +126,7 @@ export const Relations: React.FC<RelationsProps> = ({
                           className={cn(
                             'px-2 py-1.5 rounded-md text-11 font-medium text-left border transition-all cursor-pointer relative before:absolute before:-inset-1 md:before:hidden',
                             isSelected
-                              ? 'bg-muted border-primary text-primary font-semibold'
+                              ? 'bg-muted border-foreground text-foreground font-semibold'
                               : 'border-border hover:bg-muted text-foreground'
                           )}
                         >
@@ -152,7 +152,7 @@ export const Relations: React.FC<RelationsProps> = ({
 
                   <div className="max-h-40 overflow-y-auto divide-y divide-border rounded-md border border-border mt-1 bg-background">
                     {selectableItems.length === 0 ? (
-                      <div className="p-2.5 text-center text-11 text-muted-foreground italic">
+                      <div className="p-2.5 text-center text-11 text-foreground/70 italic">
                         No matching work items available
                       </div>
                     ) : (
@@ -165,7 +165,7 @@ export const Relations: React.FC<RelationsProps> = ({
                             onClick={() => setSelectedTargetItem(t)}
                             className={cn(
                               'w-full flex items-center justify-between px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer hover:bg-muted',
-                              isChosen && 'bg-primary/10 text-primary font-medium'
+                              isChosen && 'bg-muted text-foreground font-semibold'
                             )}
                           >
                             <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -176,7 +176,7 @@ export const Relations: React.FC<RelationsProps> = ({
                               )}
                               <span className="truncate text-foreground text-xs">{t.title}</span>
                             </div>
-                            {isChosen && <Check className="size-3.5 text-primary shrink-0 ml-2" />}
+                            {isChosen && <Check className="size-3.5 text-foreground shrink-0 ml-2" />}
                           </button>
                         );
                       })
@@ -197,7 +197,7 @@ export const Relations: React.FC<RelationsProps> = ({
                   <Button
                     type="submit"
                     size="sm"
-                    className="h-8 text-13 font-medium px-3 rounded-md shadow-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+                    className="h-8 text-13 font-medium px-3 rounded-md shadow-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-foreground text-background hover:bg-foreground/90"
                     disabled={!selectedTargetItem}
                   >
                     Add Relation
@@ -210,8 +210,8 @@ export const Relations: React.FC<RelationsProps> = ({
       </div>
 
       {isBlocked && (
-        <div className="flex items-center gap-2 p-2.5 rounded-md bg-warning/10 border border-warning/20 text-warning text-xs">
-          <ShieldAlert className="size-4 shrink-0" />
+        <div className="flex items-center gap-2 p-2.5 rounded-md bg-muted border border-border text-foreground text-xs">
+          <ShieldAlert className="size-4 shrink-0 text-foreground" />
           <span>
             This issue is <span className="font-semibold">blocked</span> by {blockedByRelations.length} pending work item(s).
           </span>
@@ -219,7 +219,7 @@ export const Relations: React.FC<RelationsProps> = ({
       )}
 
       {relations.length === 0 ? (
-        <div className="text-xs text-muted-foreground py-2 italic">
+        <div className="text-xs text-foreground/70 py-2 italic">
           No issue relations or blockers defined.
         </div>
       ) : (
@@ -252,11 +252,11 @@ export const Relations: React.FC<RelationsProps> = ({
                   <button
                     type="button"
                     onClick={() => onRemoveRelation(rel.id, rel.targetId || rel.targetWorkItemId)}
-                    className="opacity-0 group-hover:opacity-100 hover:text-destructive p-1 text-foreground cursor-pointer transition-opacity rounded-md relative before:absolute before:-inset-2 md:before:hidden"
+                    className="opacity-0 group-hover:opacity-100 hover:bg-muted p-1 text-foreground cursor-pointer transition-all rounded-md relative before:absolute before:-inset-2 md:before:hidden"
                     title="Remove relation"
                     aria-label="Remove relation"
                   >
-                    <X className="size-3.5 shrink-0" />
+                    <X className="size-3.5 shrink-0 text-foreground" />
                   </button>
                 )}
               </div>

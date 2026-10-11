@@ -6,21 +6,16 @@ import {
   type NotificationDigest,
   type NotificationBundle,
 } from '@/features/editor/domain/collaboration/notification-digest';
-import { notificationBundlerService } from '@/features/editor/coordinators/services/notification-bundler.service';
-import { notificationBundlerKeys } from '@/features/editor/hooks/use-notification-bundler';
+import { notificationBundlerService } from '@/features/editor/sdk';
+import { notificationBundlerKeys } from '@/features/editor/ui/hooks/use-notification-bundler';
 import * as api from '@/shared/lib/api';
-
-vi.mock('@/shared/lib/api', () => ({
-  apiGet: vi.fn(),
-  apiPost: vi.fn(),
-  apiPut: vi.fn(),
-  apiPatch: vi.fn(),
-  apiDelete: vi.fn(),
-}));
 
 describe('Notification Bundling (10-Minute Digest - Overleaf Parity)', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    vi.spyOn(api, 'apiGet').mockImplementation(vi.fn() as any);
+    vi.spyOn(api, 'apiPost').mockImplementation(vi.fn() as any);
+    vi.spyOn(api, 'apiPut').mockImplementation(vi.fn() as any);
   });
 
   describe('Countdown and Text Formatting Helpers', () => {

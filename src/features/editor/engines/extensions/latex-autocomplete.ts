@@ -23,6 +23,7 @@ import {
   snippet,
 } from '@codemirror/autocomplete';
 import { latexSymbolsIndex, type BibEntry, type LabelEntry } from '../../domain/latex/latex-symbols-index';
+import { useDocumentEditorStore } from '../../store/editor.store';
 import { isVietnameseAuthorName, formatShortAuthor } from '@/features/editor/domain/citation/citation-formatter';
 
 import {
@@ -42,10 +43,15 @@ export {
 // ── 5. Helper Functions ──────────────────────────────────────────────────────
 
 
+const citationInfoCache = new WeakMap<BibEntry, string>();
+const shortAuthorCache = new WeakMap<BibEntry, string>();
+
 /**
- * Formats rich multiline tooltip documentation for a BibTeX entry
+ * Formats rich multiline tooltip documentation for a BibTeX entry (cached per entry)
  */
 function formatCitationInfo(entry: BibEntry): string {
+  const cached = citationInfoCache.get(entry);
+  if (cached) return cached;
   const lines: string[] = [];
   if (entry.title) lines.push(`📚 ${entry.title}`);
   if (entry.author) {
@@ -60,7 +66,47 @@ function formatCitationInfo(entry: BibEntry): string {
   if (metaParts.length > 0) lines.push(metaParts.join('  •  '));
   if (entry.doi) lines.push(`🔗 DOI: ${entry.doi}`);
   if (entry.sourceFile) lines.push(`📁 Nguồn: ${entry.sourceFile}`);
-  return lines.join('\n');
+  const formatted = lines.join('\n');
+  citationInfoCache.set(entry, formatted);
+  return formatted;
+}
+
+function getCachedShortAuthor(entry: BibEntry): string {
+  const cached = shortAuthorCache.get(entry);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const authorStr = formatShortAuthor(entry.author);
+  shortAuthorCache.set(entry, authorStr);
+  return authorStr;
+}
+
+/**
+ * Returns all candidate image files in the project for \includegraphics autocompletion
+ */
+function getProjectImageFiles(query: string): string[] {
+  const images = new Set<string>(latexSymbolsIndex.getImageFiles(query));
+
+  try {
+    const hierarchy = useDocumentEditorStore.getState().fileHierarchy;
+    if (hierarchy && Array.isArray(hierarchy)) {
+      const walk = (nodes: any[]) => {
+        for (const node of nodes) {
+          if (node.title && /\.(png|jpe?g|pdf|eps|svg|gif|webp)$/i.test(node.title)) {
+            images.add(node.title);
+          }
+          if (node.children && Array.isArray(node.children)) {
+            walk(node.children);
+          }
+        }
+      };
+      walk(hierarchy);
+    }
+  } catch {}
+
+  const q = query.toLowerCase();
+  const list = Array.from(images);
+  return q ? list.filter((img) => img.toLowerCase().includes(q)) : list;
 }
 
 /**
@@ -269,7 +315,7 @@ export function latexAutocompleteSource(context: CompletionContext): CompletionR
       to,
       options: citations.map((entry) => {
         const typeStr = (entry.type || 'bib').toUpperCase();
-        const authorStr = formatShortAuthor(entry.author);
+        const authorStr = getCachedShortAuthor(entry);
         const yearStr = entry.year ? `(${entry.year})` : '';
         const detailSuffix = [authorStr, yearStr].filter(Boolean).join(' ');
 
@@ -353,6 +399,27 @@ export function latexAutocompleteSource(context: CompletionContext): CompletionR
         detail: 'LaTeX / Project File',
         apply: file.replace(/\.tex$/, ''),
         boost: 100,
+      })),
+      validFor: /^[^}\s]*$/,
+    };
+  }
+
+  // ── G2. Image Inclusions (\includegraphics[...]{...} - Overleaf 1:1 Parity) ──
+  const imageMatch = context.matchBefore(/\\includegraphics\*?(?:\s*\[[^\]]*\])?\s*\{[^}]*/);
+  if (imageMatch) {
+    const lastBrace = imageMatch.text.lastIndexOf('{');
+    const from = imageMatch.from + lastBrace + 1;
+    const query = imageMatch.text.slice(lastBrace + 1).trim();
+    const imageFiles = getProjectImageFiles(query);
+
+    return {
+      from,
+      options: imageFiles.map((file) => ({
+        label: file,
+        type: 'file',
+        detail: 'Project Graphic',
+        apply: file,
+        boost: 110,
       })),
       validFor: /^[^}\s]*$/,
     };

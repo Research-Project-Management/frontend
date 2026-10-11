@@ -357,7 +357,7 @@ export function convertLatexFigureToHtml(figureBlock: string, line?: number): st
   const figureInner = [
     `<div class="latex-figure-badge flex items-center justify-between pb-2 mb-3 border-b border-border/40 text-xs text-muted-foreground">`,
     `  <span class="flex items-center gap-1.5 font-medium text-foreground/80">`,
-    `    <span class="text-primary font-bold">🖼️ Figure</span>`,
+    `    <span class="text-primary font-semibold">🖼️ Figure</span>`,
     `    <span class="font-mono text-xs opacity-75">${escapeHtml(filename)}</span>`,
     `  </span>`,
     `  <div class="flex items-center gap-2">`,
@@ -369,13 +369,13 @@ export function convertLatexFigureToHtml(figureBlock: string, line?: number): st
     `</div>`,
     `<figcaption class="mt-3 text-center text-xs text-muted-foreground flex flex-col items-center gap-1 font-sans">`,
     `  <div class="font-medium text-foreground">`,
-    `    <span class="font-bold text-primary mr-1">Figure:</span>`,
+    `    <span class="font-semibold text-primary mr-1">Figure:</span>`,
     `    <span class="latex-figure-caption-text">${escapeHtml(caption || 'No caption')}</span>`,
     `  </div>`,
     `</figcaption>`,
   ].join('\n');
 
-  return `\n\n<figure class="latex-figure-wrapper my-6 p-4 border border-border/80 rounded-xl bg-card/60 backdrop-blur-xs transition-all hover:border-primary/50 hover:shadow-md cursor-pointer select-none group"${lineAttr} data-src="${encodeURIComponent(src)}" data-width="${encodeURIComponent(widthSpec)}" data-caption="${encodeURIComponent(caption)}" data-label="${encodeURIComponent(label)}" data-placement="${encodeURIComponent(placement)}" data-centering="${isCentering ? 'true' : 'false'}" data-starred="${isStarred ? 'true' : 'false'}">\n${figureInner}\n</figure>\n\n`;
+  return `\n\n<figure class="latex-figure-wrapper my-6 p-4 border border-border rounded-lg bg-card/60 backdrop-blur-xs hover:border-primary/50 cursor-pointer select-none group"${lineAttr} data-src="${encodeURIComponent(src)}" data-width="${encodeURIComponent(widthSpec)}" data-caption="${encodeURIComponent(caption)}" data-label="${encodeURIComponent(label)}" data-placement="${encodeURIComponent(placement)}" data-centering="${isCentering ? 'true' : 'false'}" data-starred="${isStarred ? 'true' : 'false'}">\n${figureInner}\n</figure>\n\n`;
 }
 
 /**
@@ -408,7 +408,9 @@ export function latexToHtml(latex: string): string {
   let searchCursor = 0;
 
   const { body } = extractLatexBodyAndPreamble(latex);
-  let text = body;
+  const LT_TOKEN = '___FLUX_LT_TOKEN___';
+  const GT_TOKEN = '___FLUX_GT_TOKEN___';
+  let text = body.replace(/</g, LT_TOKEN).replace(/>/g, GT_TOKEN);
 
   // 1a. Convert LaTeX tables & tabular environments into rich editable HTML <table>
   text = text.replace(/(\\begin\{table\*?\}(?:\[[^\]]*\])?[\s\S]*?\\end\{table\*?\})/g, (match) => {
@@ -454,33 +456,42 @@ export function latexToHtml(latex: string): string {
   }
 
   // 2. Math Display Environments: \begin{equation}...\end{equation}, \begin{align}...\end{align}, \[...\]
-  text = text.replace(/(\\begin\{equation\*?\}([\s\S]*?)\\end\{equation\*?\})/g, (match, _, math) => {
+  text = text.replace(/(\\begin\{(equation\*?)\}([\s\S]*?)\\end\{\2\})/g, (match, _, env, math) => {
     const { line, nextSearchIndex } = findSourceLine(latex, lineOffsets, match, searchCursor);
     searchCursor = nextSearchIndex;
     const cleanMath = math.trim();
     const rendered = renderMathHtml(cleanMath, true);
-    return `\n\n<div class="latex-math-block my-3 p-2 text-center bg-muted/10 rounded cursor-pointer" data-line="${line}" data-math="${encodeURIComponent(cleanMath)}">${rendered}</div>\n\n`;
+    return `\n\n<div class="latex-math-block my-3 p-2 text-center bg-muted/10 rounded cursor-pointer" data-line="${line}" data-env="${env}" data-math="${encodeURIComponent(cleanMath)}">${rendered}</div>\n\n`;
   });
 
-  text = text.replace(/(\\begin\{align\*?\}([\s\S]*?)\\end\{align\*?\})/g, (match, _, math) => {
+  text = text.replace(/(\\begin\{(align\*?|gather\*?|multline\*?|flalign\*?)\}([\s\S]*?)\\end\{\2\})/g, (match, _, env, math) => {
     const { line, nextSearchIndex } = findSourceLine(latex, lineOffsets, match, searchCursor);
     searchCursor = nextSearchIndex;
     const cleanMath = math.trim();
     const rendered = renderMathHtml(cleanMath, true);
-    return `\n\n<div class="latex-math-block my-3 p-2 text-center bg-muted/10 rounded cursor-pointer" data-line="${line}" data-math="${encodeURIComponent(cleanMath)}">${rendered}</div>\n\n`;
+    return `\n\n<div class="latex-math-block my-3 p-2 text-center bg-muted/10 rounded cursor-pointer" data-line="${line}" data-env="${env}" data-math="${encodeURIComponent(cleanMath)}">${rendered}</div>\n\n`;
   });
 
   text = text.replace(/(\\\[([\s\S]*?)\\\])/g, (match, _, math) => {
     const { line, nextSearchIndex } = findSourceLine(latex, lineOffsets, match, searchCursor);
     searchCursor = nextSearchIndex;
-    const cleanMath = math.trim();
+    const cleanMath = math.trim().replaceAll(LT_TOKEN, '<').replaceAll(GT_TOKEN, '>');
     const rendered = renderMathHtml(cleanMath, true);
-    return `\n\n<div class="latex-math-block my-3 p-2 text-center bg-muted/10 rounded cursor-pointer" data-line="${line}" data-math="${encodeURIComponent(cleanMath)}">${rendered}</div>\n\n`;
+    return `\n\n<div class="latex-math-block my-3 p-2 text-center bg-muted/10 rounded cursor-pointer" data-line="${line}" data-env="bracket" data-math="${encodeURIComponent(cleanMath)}">${rendered}</div>\n\n`;
+  });
+
+  // 2b. TeX Display Math: $$ ... $$
+  text = text.replace(/(\$\$([\s\S]*?)\$\$)/g, (match, _, math) => {
+    const { line, nextSearchIndex } = findSourceLine(latex, lineOffsets, match, searchCursor);
+    searchCursor = nextSearchIndex;
+    const cleanMath = math.trim().replaceAll(LT_TOKEN, '<').replaceAll(GT_TOKEN, '>');
+    const rendered = renderMathHtml(cleanMath, true);
+    return `\n\n<div class="latex-math-block my-3 p-2 text-center bg-muted/10 rounded cursor-pointer" data-line="${line}" data-env="dollars" data-math="${encodeURIComponent(cleanMath)}">${rendered}</div>\n\n`;
   });
 
   // 3. Inline Math: $...$ (preserving escaped dollars)
   text = text.replace(/(?<!\\)\$([^\$\n]+?)\$/g, (_, math) => {
-    const cleanMath = math.trim();
+    const cleanMath = math.trim().replaceAll(LT_TOKEN, '<').replaceAll(GT_TOKEN, '>');
     const rendered = renderMathHtml(cleanMath, false);
     return `<span class="latex-math-inline inline-block px-1 py-0.5 bg-muted/20 rounded cursor-pointer" data-math="${encodeURIComponent(cleanMath)}">${rendered}</span>`;
   });
@@ -529,9 +540,12 @@ export function latexToHtml(latex: string): string {
   text = text.replace(/\\texttt\{([^}]+)\}/g, '<code>$1</code>');
   text = text.replace(/\\sout\{([^}]+)\}/g, '<s>$1</s>');
 
-  // 8. Citations & References
+  // 8. Citations, References, URLs & Footnotes
   text = text.replace(/\\cite\{([^}]+)\}/g, '<span class="latex-citation-chip font-mono text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded inline-block" data-cite="$1">[@$1]</span>');
   text = text.replace(/\\ref\{([^}]+)\}/g, '<span class="latex-ref-chip font-mono text-xs bg-muted px-1.5 py-0.5 rounded inline-block" data-ref="$1">[$1]</span>');
+  text = text.replace(/\\url\{([^}]+)\}/g, '<span class="latex-url-token font-mono text-xs text-primary underline" data-url="$1">$1</span>');
+  text = text.replace(/\\href\{([^}]+)\}\{([^}]+)\}/g, '<a href="$1" class="latex-href-token text-primary underline" data-href-url="$1" data-href-text="$2">$2</a>');
+  text = text.replace(/\\footnote\{([^}]+)\}/g, '<sup class="latex-footnote-token text-xs text-muted-foreground px-1 bg-muted rounded cursor-help" data-footnote="$1">[$1]</sup>');
 
   // 9. Lists
   text = text.replace(/(\\begin\{itemize\}([\s\S]*?)\\end\{itemize\})/g, (match, _, inner) => {
@@ -573,7 +587,8 @@ export function latexToHtml(latex: string): string {
       return `<p data-line="${line}">${block.replace(/\n/g, '<br/>')}</p>`;
     });
 
-  return paragraphs.join('\n');
+  const htmlResult = paragraphs.join('\n');
+  return htmlResult.replaceAll(LT_TOKEN, '&lt;').replaceAll(GT_TOKEN, '&gt;');
 }
 
 /**
@@ -600,10 +615,20 @@ export function htmlToLatex(html: string, originalLatex?: string): string {
     return `\\label{${decodeURIComponent(enc)}}`;
   });
 
-  // 4. Math blocks & inlines (extract from data-math attributes)
-  text = text.replace(/<div[^>]*data-math="([^"]+)"[^>]*>[\s\S]*?<\/div>/gi, (_, enc) => {
+  // 4. Math blocks & inlines (extract from data-math attributes with environment fidelity)
+  text = text.replace(/<div([^>]*)data-math="([^"]+)"([^>]*)>[\s\S]*?<\/div>/gi, (_, before, enc, after) => {
     const decoded = decodeURIComponent(enc);
-    return `\n\\begin{equation}\n  ${decoded}\n\\end{equation}\n`;
+    const allAttrs = `${before} ${after}`;
+    const envMatch = allAttrs.match(/data-env="([^"]+)"/);
+    const env = envMatch ? envMatch[1] : 'equation';
+
+    if (env === 'bracket' || env === 'displaymath') {
+      return `\n\\[\n  ${decoded}\n\\]\n`;
+    }
+    if (env === 'dollars') {
+      return `\n$$\n  ${decoded}\n$$\n`;
+    }
+    return `\n\\begin{${env}}\n  ${decoded}\n\\end{${env}}\n`;
   });
 
   text = text.replace(/<span[^>]*data-math="([^"]+)"[^>]*>[\s\S]*?<\/span>/gi, (_, enc) => {
@@ -611,9 +636,12 @@ export function htmlToLatex(html: string, originalLatex?: string): string {
     return `$${decoded}$`;
   });
 
-  // 5. Citations & References
+  // 5. Citations, References, URLs & Footnotes
   text = text.replace(/<span[^>]*data-cite="([^"]+)"[^>]*>[\s\S]*?<\/span>/gi, '\\cite{$1}');
   text = text.replace(/<span[^>]*data-ref="([^"]+)"[^>]*>[\s\S]*?<\/span>/gi, '\\ref{$1}');
+  text = text.replace(/<span[^>]*data-url="([^"]+)"[^>]*>[\s\S]*?<\/span>/gi, '\\url{$1}');
+  text = text.replace(/<a[^>]*data-href-url="([^"]+)"[^>]*data-href-text="([^"]+)"[^>]*>[\s\S]*?<\/a>/gi, '\\href{$1}{$2}');
+  text = text.replace(/<sup[^>]*data-footnote="([^"]+)"[^>]*>[\s\S]*?<\/sup>/gi, '\\footnote{$1}');
 
   // 6. Sectioning
   text = text.replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, '\n\\section{$1}\n');

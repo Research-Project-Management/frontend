@@ -36,27 +36,27 @@ const STATUS_OPTIONS: {
     label: 'On Track',
     description: 'Progressing as planned, no blockers',
     icon: CheckCircle2,
-    activeColor: 'border-success bg-success/10 text-success ring-1 ring-success',
-    badgeBg: 'bg-success/15 text-success',
-    textColor: 'text-success',
+    activeColor: 'border-foreground bg-muted text-foreground ring-1 ring-border',
+    badgeBg: 'bg-muted text-foreground',
+    textColor: 'text-foreground',
   },
   {
     value: 'at_risk',
     label: 'At Risk',
     description: 'Potential delays or emerging blockers',
     icon: AlertTriangle,
-    activeColor: 'border-warning bg-warning/10 text-warning ring-1 ring-warning',
-    badgeBg: 'bg-warning/15 text-warning',
-    textColor: 'text-warning',
+    activeColor: 'border-foreground bg-muted text-foreground ring-1 ring-border',
+    badgeBg: 'bg-muted text-foreground',
+    textColor: 'text-foreground',
   },
   {
     value: 'off_track',
     label: 'Off Track',
     description: 'Major blockers or critical delays',
     icon: AlertOctagon,
-    activeColor: 'border-destructive bg-destructive/10 text-destructive ring-1 ring-destructive',
-    badgeBg: 'bg-destructive/15 text-destructive',
-    textColor: 'text-destructive',
+    activeColor: 'border-foreground bg-muted text-foreground ring-1 ring-border',
+    badgeBg: 'bg-muted text-foreground',
+    textColor: 'text-foreground',
   },
 ];
 
@@ -98,8 +98,8 @@ export function AddStatusUpdateModal({
       <DialogContent className="sm:max-w-[500px] shadow-raised-200">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle className="text-16 font-semibold">Post Project Status Update</DialogTitle>
-            <DialogDescription className="text-13 text-muted-foreground">
+            <DialogTitle className="text-16 font-semibold text-foreground">Post Project Status Update</DialogTitle>
+            <DialogDescription className="text-13 text-foreground/70">
               Inform stakeholders and team members about current project health, highlights, and risks.
             </DialogDescription>
           </DialogHeader>
@@ -121,10 +121,10 @@ export function AddStatusUpdateModal({
                       className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer select-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
                         isSelected
                           ? opt.activeColor
-                          : 'border-border/60 bg-muted/30 hover:bg-muted/60 text-muted-foreground'
+                          : 'border-border/60 bg-muted/20 hover:bg-muted text-foreground/70'
                       }`}
                     >
-                      <Icon className={`size-5 mb-1.5 ${isSelected ? opt.textColor : 'text-muted-foreground'}`} />
+                      <Icon className="size-5 mb-1.5 text-foreground" />
                       <span className="text-xs font-semibold">{opt.label}</span>
                       <span className="text-10 leading-tight opacity-75 mt-0.5 line-clamp-2">
                         {opt.value === 'on_track' ? 'On schedule' : opt.value === 'at_risk' ? 'Has risks' : 'Delayed'}
@@ -149,7 +149,7 @@ export function AddStatusUpdateModal({
                 className="min-h-[110px] text-13 resize-none focus-visible:ring-1 focus-visible:ring-ring"
                 maxLength={2000}
               />
-              <div className="flex justify-end text-10 text-muted-foreground">
+              <div className="flex justify-end text-10 text-foreground/70">
                 {message.length} / 2000
               </div>
             </div>
@@ -162,7 +162,7 @@ export function AddStatusUpdateModal({
               size="sm"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
-              className="h-8 px-3 text-12 font-medium cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-8 px-3 text-12 font-medium text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               Cancel
             </Button>
@@ -170,7 +170,7 @@ export function AddStatusUpdateModal({
               type="submit"
               size="sm"
               disabled={isSubmitting || !message.trim()}
-              className="h-8 px-3 text-12 font-medium gap-1.5 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-8 px-3 text-12 font-medium gap-1.5 bg-foreground text-background hover:bg-foreground/90 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               {isSubmitting ? (
                 <>

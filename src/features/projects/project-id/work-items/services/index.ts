@@ -9,7 +9,6 @@ export * from './assignment.service';
 export * from './attachment.service';
 export * from './comment.service';
 export * from './relation.service';
-export * from './template.service';
 export * from './archive.service';
 export * from './history.service';
 export * from './label.service';

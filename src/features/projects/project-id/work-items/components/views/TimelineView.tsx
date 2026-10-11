@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react';
 import { Maximize2, Minimize2, Plus } from 'lucide-react';
 import { StatusIcon } from '@/shared/components/icons';
 import { cn } from "@/shared/lib/utils";
@@ -564,7 +564,7 @@ interface TimelineTopControlsProps {
   onToggleFullscreen: () => void;
 }
 
-function TimelineTopControls({
+const TimelineTopControls = memo(function TimelineTopControls({
   totalCount,
   zoom,
   onZoomChange,
@@ -581,7 +581,7 @@ function TimelineTopControls({
   return (
     <div className="flex items-center justify-end gap-3 px-4 py-2 border-b border-border bg-background select-none shrink-0">
       {/* 1. Work items Count */}
-      <span className="text-xs text-muted-foreground font-normal tabular-nums">
+      <span className="text-xs text-foreground font-normal tabular-nums">
         {totalCount} {totalCount === 1 ? 'Work item' : 'Work items'}
       </span>
 
@@ -632,7 +632,7 @@ function TimelineTopControls({
       </button>
     </div>
   );
-}
+});
 
 // ============================================================================
 // SIDEBAR (FROZEN WORK ITEMS LIST)
@@ -648,7 +648,7 @@ interface TimelineSidebarProps {
   onScroll?: (event: React.UIEvent<HTMLDivElement>) => void;
 }
 
-function TimelineSidebar({
+const TimelineSidebar = memo(function TimelineSidebar({
   items,
   columns,
   onEditCard,
@@ -704,10 +704,10 @@ function TimelineSidebar({
             >
               {/* Left: Identifier + Title */}
               <div className="flex items-center gap-2 min-w-0 flex-1 pr-3">
-                <span className="font-mono text-11 text-muted-foreground font-medium shrink-0 min-w-[48px] tabular-nums">
+                <span className="font-mono text-11 text-foreground font-medium shrink-0 min-w-[48px] tabular-nums">
                   {identifier}
                 </span>
-                <span className="truncate text-xs text-foreground font-normal group-hover:text-primary transition-colors">
+                <span className="truncate text-xs text-foreground font-normal group-hover:underline transition-colors">
                   {item.title}
                 </span>
               </div>
@@ -715,7 +715,7 @@ function TimelineSidebar({
               {/* Right: Duration (Blank when no dates, clean string when set) */}
               <div className="shrink-0 text-right">
                 {duration.label ? (
-                  <span className="font-mono text-11 text-muted-foreground font-normal tabular-nums">
+                  <span className="font-mono text-11 text-foreground font-normal tabular-nums">
                     {duration.label}
                   </span>
                 ) : null}
@@ -743,7 +743,7 @@ function TimelineSidebar({
       )}
     </div>
   );
-}
+});
 
 // ============================================================================
 // TIMELINE GANTT BAR
@@ -764,7 +764,7 @@ interface TimelineBarProps {
   isReadOnly?: boolean;
 }
 
-function TimelineBar({
+const TimelineBar = memo(function TimelineBar({
   item,
   barData,
   zoom,
@@ -884,9 +884,9 @@ function TimelineBar({
       }}
       className={cn(
         'absolute z-10 rounded-md flex items-center px-2 text-white select-none transition-all outline-none',
-        dragging ? 'opacity-90 ring-2 ring-primary cursor-grabbing' : 'cursor-pointer hover:brightness-105',
-        isConnectTarget && 'ring-2 ring-primary ring-offset-2 scale-[1.02] shadow-md',
-        isConnecting && 'ring-2 ring-primary opacity-80'
+        dragging ? 'opacity-90 ring-2 ring-foreground cursor-grabbing' : 'cursor-pointer hover:brightness-105',
+        isConnectTarget && 'ring-2 ring-foreground ring-offset-2 scale-[1.02] shadow-md',
+        isConnecting && 'ring-2 ring-foreground opacity-80'
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -910,11 +910,11 @@ function TimelineBar({
             onStartConnect(item.id, 'start', visualLeft, rowIndex * ROW_HEIGHT + ROW_HEIGHT / 2);
           }}
           className={cn(
-            'absolute -left-2 top-1/2 -translate-y-1/2 size-3.5 rounded-full bg-primary ring-2 ring-background cursor-crosshair z-30 transition-all hover:scale-125 flex items-center justify-center',
+            'absolute -left-2 top-1/2 -translate-y-1/2 size-3.5 rounded-full bg-foreground ring-2 ring-background cursor-crosshair z-30 transition-all hover:scale-125 flex items-center justify-center',
             isHovered || isConnecting ? 'opacity-100' : 'opacity-0 pointer-events-none'
           )}
         >
-          <div className="size-1.5 rounded-full bg-primary-foreground" />
+          <div className="size-1.5 rounded-full bg-background" />
         </div>
       )}
 
@@ -970,16 +970,16 @@ function TimelineBar({
             onStartConnect(item.id, 'end', visualLeft + visualWidth, rowIndex * ROW_HEIGHT + ROW_HEIGHT / 2);
           }}
           className={cn(
-            'absolute -right-2 top-1/2 -translate-y-1/2 size-3.5 rounded-full bg-primary ring-2 ring-background cursor-crosshair z-30 transition-all hover:scale-125 flex items-center justify-center',
+            'absolute -right-2 top-1/2 -translate-y-1/2 size-3.5 rounded-full bg-foreground ring-2 ring-background cursor-crosshair z-30 transition-all hover:scale-125 flex items-center justify-center',
             isHovered || isConnecting ? 'opacity-100' : 'opacity-0 pointer-events-none'
           )}
         >
-          <div className="size-1.5 rounded-full bg-primary-foreground" />
+          <div className="size-1.5 rounded-full bg-background" />
         </div>
       )}
     </div>
   );
-}
+});
 
 // ============================================================================
 // DEPENDENCY SVG OVERLAY
@@ -991,7 +991,7 @@ interface DependencyOverlayProps {
   totalHeight: number;
 }
 
-function DependencyOverlay({ lines, totalWidth, totalHeight }: DependencyOverlayProps) {
+const DependencyOverlay = memo(function DependencyOverlay({ lines, totalWidth, totalHeight }: DependencyOverlayProps) {
   if (lines.length === 0) return null;
   const ELBOW_OFFSET = 12;
 
@@ -1012,7 +1012,7 @@ function DependencyOverlay({ lines, totalWidth, totalHeight }: DependencyOverlay
           refY="3"
           orient="auto"
         >
-          <path d="M0,0 L0,6 L6,3 z" fill="var(--primary)" />
+          <path d="M0,0 L0,6 L6,3 z" fill="var(--foreground)" />
         </marker>
         <marker
           id="dep-arrow-violated"
@@ -1022,13 +1022,13 @@ function DependencyOverlay({ lines, totalWidth, totalHeight }: DependencyOverlay
           refY="3"
           orient="auto"
         >
-          <path d="M0,0 L0,6 L6,3 z" fill="var(--destructive)" />
+          <path d="M0,0 L0,6 L6,3 z" fill="var(--foreground)" />
         </marker>
       </defs>
 
       {lines.map((line, idx) => {
         const { fromX, fromY, toX, toY, violated } = line;
-        const stroke = violated ? 'var(--destructive)' : 'var(--primary)';
+        const stroke = 'var(--foreground)';
         const markerId = violated ? 'dep-arrow-violated' : 'dep-arrow-normal';
 
         let d: string;
@@ -1059,7 +1059,7 @@ function DependencyOverlay({ lines, totalWidth, totalHeight }: DependencyOverlay
       })}
     </svg>
   );
-}
+});
 
 // ============================================================================
 // TIMELINE CANVAS
@@ -1079,7 +1079,7 @@ interface TimelineCanvasProps {
   onScroll?: (event: React.UIEvent<HTMLDivElement>) => void;
 }
 
-function TimelineCanvas({
+const TimelineCanvas = memo(function TimelineCanvas({
   items,
   columns: stateColumns,
   timelineColumns,
@@ -1256,7 +1256,7 @@ function TimelineCanvas({
           style={{ height: `${HEADER_HEIGHT}px` }}
         >
           {/* Tier 1 Header (30px) */}
-          <div className="flex h-[30px] border-b border-border text-xs text-muted-foreground overflow-hidden">
+          <div className="flex h-[30px] border-b border-border text-xs text-foreground overflow-hidden">
             {tier1Groups.map((group) => (
               <div
                 key={group.id}
@@ -1268,13 +1268,13 @@ function TimelineCanvas({
                     {group.label}
                   </span>
                   {group.isCurrent && (
-                    <span className="bg-primary text-primary-foreground text-11 font-medium px-1.5 py-0.5 rounded-md shrink-0">
+                    <span className="bg-foreground text-background text-11 font-medium px-1.5 py-0.5 rounded-md shrink-0">
                       Current
                     </span>
                   )}
                 </div>
                 {group.subLabel && (
-                  <span className="text-11 text-muted-foreground font-normal shrink-0">
+                  <span className="text-11 text-foreground/70 font-normal shrink-0">
                     {group.subLabel}
                   </span>
                 )}
@@ -1297,10 +1297,10 @@ function TimelineCanvas({
                   >
                     {col.isCurrent ? (
                       <div className="flex items-center">
-                        <span className="bg-primary text-primary-foreground font-medium text-xs rounded-md px-1 min-w-[20px] h-[18px] inline-flex items-center justify-center mr-1">
+                        <span className="bg-foreground text-background font-medium text-xs rounded-md px-1 min-w-[20px] h-[18px] inline-flex items-center justify-center mr-1">
                           {col.primaryLabel}
                         </span>
-                        <span className="text-primary font-medium text-xs">
+                        <span className="text-foreground font-semibold text-xs">
                           {col.secondaryLabel}
                         </span>
                       </div>
@@ -1326,13 +1326,13 @@ function TimelineCanvas({
                     <span
                       className={cn(
                         'text-xs font-normal',
-                        col.isCurrent ? 'text-primary font-semibold' : 'text-foreground'
+                        col.isCurrent ? 'text-foreground font-semibold' : 'text-foreground'
                       )}
                     >
                       {col.primaryLabel}
                     </span>
                     {col.isCurrent ? (
-                      <span className="bg-primary text-primary-foreground font-medium text-xs px-1.5 py-0.5 rounded-md">
+                      <span className="bg-foreground text-background font-medium text-xs px-1.5 py-0.5 rounded-md">
                         {col.secondaryLabel}
                       </span>
                     ) : (
@@ -1352,7 +1352,7 @@ function TimelineCanvas({
                   className="shrink-0 px-2 flex items-center justify-center border-r border-border text-xs transition-colors"
                 >
                   {col.isCurrent ? (
-                    <span className="bg-primary text-primary-foreground font-medium text-xs px-2 py-0.5 rounded-md">
+                    <span className="bg-foreground text-background font-medium text-xs px-2 py-0.5 rounded-md">
                       {col.primaryLabel}
                     </span>
                   ) : (
@@ -1382,12 +1382,12 @@ function TimelineCanvas({
             ))}
           </div>
 
-          {/* Full-height Soft Blue Highlight Column for Today / Current */}
+          {/* Full-height Soft Highlight Column for Today / Current */}
           {currentCol && (
             <div
               aria-hidden="true"
               style={{ left: `${currentColLeft}px`, width: `${currentColWidth}px` }}
-              className="absolute top-0 bottom-0 bg-primary/10 dark:bg-primary/15 border-x border-primary/25 pointer-events-none z-0"
+              className="absolute top-0 bottom-0 bg-muted/40 border-x border-border pointer-events-none z-0"
             />
           )}
 
@@ -1416,14 +1416,14 @@ function TimelineCanvas({
                   refY="4"
                   orient="auto"
                 >
-                  <path d="M0,1 L8,4 L0,7 z" fill="var(--primary)" />
+                  <path d="M0,1 L8,4 L0,7 z" fill="var(--foreground)" />
                 </marker>
               </defs>
               <circle
                 cx={activeDrag.startX}
                 cy={activeDrag.startY}
                 r="4"
-                fill="var(--primary)"
+                fill="var(--foreground)"
               />
               <path
                 d={`M ${activeDrag.startX} ${activeDrag.startY} C ${
@@ -1432,7 +1432,7 @@ function TimelineCanvas({
                   activeDrag.startX + (activeDrag.currentX - activeDrag.startX) / 2
                 } ${activeDrag.currentY}, ${activeDrag.currentX} ${activeDrag.currentY}`}
                 fill="none"
-                stroke="var(--primary)"
+                stroke="var(--foreground)"
                 strokeWidth="2.5"
                 strokeDasharray="5 3"
                 markerEnd="url(#live-arrow)"
@@ -1441,8 +1441,8 @@ function TimelineCanvas({
                 cx={activeDrag.currentX}
                 cy={activeDrag.currentY}
                 r="5"
-                fill={activeDrag.hoveredItemId ? 'var(--primary)' : 'none'}
-                stroke="var(--primary)"
+                fill={activeDrag.hoveredItemId ? 'var(--foreground)' : 'none'}
+                stroke="var(--foreground)"
                 strokeWidth="2"
               />
             </svg>
@@ -1461,7 +1461,7 @@ function TimelineCanvas({
                   style={{ height: `${ROW_HEIGHT}px` }}
                   className={cn(
                     'border-b border-border/60 relative flex items-center group/row hover:bg-muted/30 transition-colors',
-                    isConnectTarget && 'bg-primary/10 ring-1 ring-inset ring-primary'
+                    isConnectTarget && 'bg-muted ring-1 ring-inset ring-border'
                   )}
                 >
                   {barData.hasDates ? (
@@ -1487,7 +1487,7 @@ function TimelineCanvas({
                           key={`empty-cell-${item.id}-${col.id}`}
                           style={{ width: `${col.width}px` }}
                           onClick={() => handleEmptyCellClick(item, col)}
-                          className="h-full cursor-pointer hover:bg-primary/5 transition-colors"
+                          className="h-full cursor-pointer hover:bg-muted/40 transition-colors"
                           title="Click to schedule dates"
                         />
                       ))}
@@ -1501,13 +1501,13 @@ function TimelineCanvas({
       </div>
     </div>
   );
-}
+});
 
 // ============================================================================
 // MAIN TIMELINE VIEW COMPONENT
 // ============================================================================
 
-export function TimelineView({
+export const TimelineView = memo(function TimelineView({
   items = [],
   columns,
   onAddCard,
@@ -1661,6 +1661,6 @@ export function TimelineView({
       </div>
     </div>
   );
-}
+});
 
 export default TimelineView;

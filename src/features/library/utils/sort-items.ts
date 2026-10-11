@@ -24,9 +24,9 @@ const SORT_FIELD_ALIASES: Partial<Record<string, (item: Item) => unknown>> = {
   dateDeleted: (item) => item.deletedAt,
   deletedAt: (item) => item.deletedAt,
   publication: (item) =>
-    item.publicationTitle || (item as any).journal || (item as any).publisher,
+    item.publicationTitle || item.journal || item.publisher,
   publicationTitle: (item) =>
-    item.publicationTitle || (item as any).journal || (item as any).publisher,
+    item.publicationTitle || item.journal || item.publisher,
 };
 
 function getValue(item: Item, column: string): unknown {

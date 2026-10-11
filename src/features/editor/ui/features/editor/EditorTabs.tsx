@@ -22,6 +22,7 @@ import { cn } from "@/shared/lib/utils";
 import { useTabsStore, type EditorTab } from '../../../store/tabs.store';
 import { sessionCoordinator } from '../../../coordinators/session.coordinator';
 import { editorCommandBus } from '../../../coordinators/command-bus';
+import { SourceVisualSwitcher } from './SourceVisualSwitcher';
 
 // ── Single Tab Item (Overleaf 1:1) ───────────────────────────────────────────
 
@@ -29,12 +30,13 @@ interface TabItemProps {
   tab: EditorTab;
   isActive: boolean;
   rootPageId: string;
+  canClose?: boolean;
   onActivate: (id: string) => void;
   onCloseTab: (id: string) => void;
 }
 
-const TabItem = React.memo(function TabItem({ tab, isActive, rootPageId, onActivate, onCloseTab }: TabItemProps) {
-  const isRoot = tab.id === rootPageId || tab.id === `${rootPageId}-main` || Boolean((tab as any).isRoot);
+const TabItem = React.memo(function TabItem({ tab, isActive, rootPageId, canClose = true, onActivate, onCloseTab }: TabItemProps) {
+  const isRoot = tab.id === rootPageId || tab.id === `${rootPageId}-main` || Boolean(tab.isRoot);
 
   const handleActivate = useCallback(() => {
     onActivate(tab.id);
@@ -48,14 +50,14 @@ const TabItem = React.memo(function TabItem({ tab, isActive, rootPageId, onActiv
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       handleActivate();
-    } else if (e.key === 'Delete' || (e.key === 'w' && (e.ctrlKey || e.metaKey))) {
+    } else if (canClose && (e.key === 'Delete' || (e.key === 'w' && (e.ctrlKey || e.metaKey)))) {
       e.preventDefault();
       handleClose();
     }
   };
 
   const handleAuxClick = (e: React.MouseEvent) => {
-    if (e.button === 1) {
+    if (canClose && e.button === 1) {
       e.preventDefault();
       handleClose();
     }
@@ -73,36 +75,38 @@ const TabItem = React.memo(function TabItem({ tab, isActive, rootPageId, onActiv
       onAuxClick={handleAuxClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        'group/tab relative flex items-center gap-1.5 h-full px-3 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
-        'border-r border-border/60 min-w-0 max-w-[200px] shrink-0 transition-colors motion-reduce:transition-none text-12',
+        'group/tab relative flex items-center gap-1.5 h-6.5 px-2 rounded-xs cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
+        'min-w-0 max-w-[180px] shrink-0 transition-colors motion-reduce:transition-none text-12 border border-transparent',
         isActive
-          ? 'bg-canvas text-foreground font-medium relative z-10 -mb-px border-b border-b-canvas before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-primary'
-          : 'bg-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground',
+          ? 'bg-canvas text-foreground font-medium shadow-2xs border-border/70 relative z-10'
+          : 'bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground',
       )}
     >
       {/* File Document Icon - Clean project style */}
       <FileText className="size-3.5 shrink-0 text-foreground" />
 
       {/* Title */}
-      <span className="text-xs font-mono truncate leading-normal min-w-0">{tab.title}</span>
+      <span className="text-12 font-mono truncate leading-normal min-w-0">{tab.title}</span>
 
-      {/* Close button (visible on hover across all tabs, and when focused via keyboard) */}
-      <button
-        type="button"
-        aria-label={`Close file ${tab.title}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          handleClose();
-        }}
-        onAuxClick={(e) => e.preventDefault()}
-        className={cn(
-          "ml-auto shrink-0 relative flex items-center justify-center rounded-xs transition-opacity motion-reduce:transition-none outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer hover:bg-muted text-foreground",
-          "size-4 after:absolute after:-inset-1.5 after:content-['']",
-          "opacity-0 group-hover/tab:opacity-70 group-hover/tab:hover:opacity-100 group-focus-within/tab:opacity-70 focus-visible:opacity-100",
-        )}
-      >
-        <X className="size-3 shrink-0" />
-      </button>
+      {/* Close button (only shown when canClose is true) */}
+      {canClose && (
+        <button
+          type="button"
+          aria-label={`Close file ${tab.title}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleClose();
+          }}
+          onAuxClick={(e) => e.preventDefault()}
+          className={cn(
+            "ml-auto shrink-0 relative flex items-center justify-center rounded-xs transition-opacity motion-reduce:transition-none outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer hover:bg-muted text-foreground",
+            "size-3.5 after:absolute after:-inset-1.5 after:content-['']",
+            "opacity-0 group-hover/tab:opacity-70 group-hover/tab:hover:opacity-100 group-focus-within/tab:opacity-70 focus-visible:opacity-100",
+          )}
+        >
+          <X className="size-3 shrink-0" />
+        </button>
+      )}
     </div>
   );
 });
@@ -150,6 +154,13 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles }: TabsPro
             : t.title;
         result.push({ ...t, title: normalizedTitle });
       }
+    }
+    // Overleaf parity: root document entrypoint is always present if rootPageId exists
+    if (result.length === 0 && rootPageId) {
+      result.push({
+        id: rootPageId,
+        title: 'main.tex',
+      });
     }
     return result;
   }, [rawTabs, rootPageId, availableFiles]);
@@ -241,7 +252,7 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles }: TabsPro
   if (tabs.length === 0) return null;
 
   return (
-    <div className="flex items-stretch h-9 bg-muted/20 select-none border-b border-border w-full">
+    <div className="flex items-center h-9 bg-surface select-none border-b border-border w-full px-2">
       {/* ── File tabs ── */}
       <LayoutGroup id={`tab-bar-${rootPageId}`}>
         <div
@@ -250,7 +261,7 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles }: TabsPro
           aria-label="Open document tabs"
           onKeyDown={handleTabListKeyDown}
           onWheel={handleWheel}
-          className="flex h-full overflow-x-auto shrink min-w-0 scrollbar-none items-stretch"
+          className="flex h-full overflow-x-auto shrink min-w-0 scrollbar-none items-center gap-1"
         >
           {tabs.map((tab) => (
             <TabItem
@@ -258,12 +269,18 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles }: TabsPro
               tab={tab}
               isActive={tab.id === resolvedActiveTabId}
               rootPageId={rootPageId}
+              canClose={tabs.length > 1 && !(tab.id === rootPageId || tab.id === `${rootPageId}-main` || Boolean(tab.isRoot))}
               onActivate={handleTabActivate}
               onCloseTab={handleTabClose}
             />
           ))}
         </div>
       </LayoutGroup>
+
+      {/* ── Right side: Source / Visual Switcher (Overleaf Parity) ── */}
+      <div className="ml-auto flex items-center shrink-0 pl-2">
+        <SourceVisualSwitcher />
+      </div>
     </div>
   );
 }

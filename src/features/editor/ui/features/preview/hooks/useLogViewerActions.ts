@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * useLogViewerActions.ts
@@ -15,12 +15,12 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 import type { LogEntry } from '@/features/editor/domain/types';
-import type { AiErrorFixResult } from '@/features/editor/coordinators/services/ai-error-assist.service';
+import type { AiErrorFixResult } from '@/features/editor/sdk';
 import {
+  manuscriptService,
   downloadAuxFileUrl,
   downloadAllArtifactsZipUrl,
-} from '@/features/editor/coordinators/services/compiler.service';
-import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
+} from '@/features/editor/sdk';
 import { aiCoordinator } from '@/features/editor/coordinators/ai.coordinator';
 import { usePageStore } from '@/features/editor/store';
 

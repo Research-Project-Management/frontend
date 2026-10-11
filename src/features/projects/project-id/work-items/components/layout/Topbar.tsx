@@ -212,8 +212,8 @@ export function Topbar({
 
         {showArchived && (
           <>
-            <ChevronRight className="size-3.5 text-muted-foreground/40 shrink-0 mx-0.5" strokeWidth={1.75} />
-            <span className="text-13 font-medium text-warning shrink-0">
+            <ChevronRight className="size-3.5 text-foreground/40 shrink-0 mx-0.5" strokeWidth={1.75} />
+            <span className="text-13 font-medium text-foreground shrink-0">
               Archived
             </span>
           </>
@@ -242,7 +242,7 @@ export function Topbar({
                       onClick={() => onViewChange(v.id)}
                       className={cn(
                         'relative size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden',
-                        isSelected ? 'text-foreground' : 'text-foreground/70 hover:text-foreground hover:bg-background/40',
+                        isSelected ? 'text-foreground' : 'text-foreground hover:bg-background/40',
                       )}
                       aria-label={v.label}
                     >

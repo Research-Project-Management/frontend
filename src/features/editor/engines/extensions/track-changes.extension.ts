@@ -149,7 +149,7 @@ export const trackChangesStateField = StateField.define<TrackChangesConfig>({
               id: c.id,
               pageId: c.docId || c.pageId || '',
               projectPageId: c.docId || c.pageId || '',
-              page: null as any,
+              page: c.docId || c.pageId || '',
               projectId: c.projectId || '',
               author: { id: c.authorId || '', name: c.authorName || 'Collaborator' },
               authorId: c.authorId || '',
@@ -220,8 +220,9 @@ function buildDecorations(state: EditorView['state']): DecorationSet {
   );
 
   for (const s of pendingSuggestions) {
-    const rawFrom = (s as any).fromIndex ?? (s as any).fromOffset;
-    const rawTo = (s as any).toIndex ?? (s as any).toOffset;
+    const cand = s as typeof s & { fromIndex?: number; fromOffset?: number; toIndex?: number; toOffset?: number };
+    const rawFrom = cand.fromIndex ?? cand.fromOffset;
+    const rawTo = cand.toIndex ?? cand.toOffset;
     const from = getSafeOffset(doc, s.fromLine, s.fromColumn, rawFrom);
     let to = getSafeOffset(doc, s.toLine, s.toColumn, rawTo);
 
@@ -342,7 +343,7 @@ class CommentGutterMarker extends GutterMarker {
     el.className = 'cm-review-gutter-marker';
     el.title = `${this.count} comment${this.count > 1 ? 's' : ''} on line ${this.line} (click to view)`;
     el.innerHTML = `
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" class="text-amber-500">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" class="text-warning">
         <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
       </svg>
       ${this.count > 1 ? `<span class="cm-review-gutter-count">${this.count}</span>` : ''}
@@ -377,11 +378,12 @@ export const trackChangesGutter = gutter({
     // Group open comments by line number
     const lineMap = new Map<number, PageComment[]>();
     for (const c of config.comments) {
-      const isOpen = c.status === 'open' || (c as any).resolved === false;
+      const isOpen = c.status === 'open' || !(c as any).resolved;
       if (isOpen) {
         let lineNum = c.line;
-        if (!lineNum && typeof (c as any).fromIndex === 'number' && doc.length > 0) {
-          lineNum = doc.lineAt(Math.min((c as any).fromIndex, doc.length)).number;
+        const fromIndex = (c as typeof c & { fromIndex?: number }).fromIndex;
+        if (!lineNum && typeof fromIndex === 'number' && doc.length > 0) {
+          lineNum = doc.lineAt(Math.min(fromIndex, doc.length)).number;
         }
         if (lineNum) {
           const safeLine = Math.max(1, Math.min(lineNum, doc.lines));
@@ -431,14 +433,14 @@ export const trackChangesHoverTooltip = hoverTooltip((view, pos) => {
 
           const author = s.author?.name || 'Collaborator';
           const typeLabel = s.type === 'insert' ? 'Added' : s.type === 'delete' ? 'Deleted' : 'Changed';
-          const typeBadgeColor = s.type === 'insert' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400';
+          const typeBadgeColor = s.type === 'insert' ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive';
 
           dom.innerHTML = `
             <div class="flex items-center justify-between gap-3 pb-1 mb-1.5 border-b border-border/40 text-xs">
               <div class="flex items-center gap-1.5 font-medium">
-                <span class="w-2 h-2 rounded-full ${s.type === 'insert' ? 'bg-emerald-400' : 'bg-rose-400'}"></span>
+                <span class="w-2 h-2 rounded-full ${s.type === 'insert' ? 'bg-success' : 'bg-destructive'}"></span>
                 <span class="truncate max-w-[120px]">${author}</span>
-                <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${typeBadgeColor}">${typeLabel}</span>
+                <span class="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded ${typeBadgeColor}">${typeLabel}</span>
               </div>
             </div>
             <div class="flex items-center gap-2 pt-0.5">
@@ -534,9 +536,9 @@ const trackChangesTheme = EditorView.baseTheme({
     top: '-3px',
     right: '-3px',
     fontSize: '8px',
-    fontWeight: 'bold',
-    backgroundColor: '#f59e0b',
-    color: '#000',
+    fontWeight: '600',
+    backgroundColor: 'var(--warning, #f59e0b)',
+    color: 'var(--warning-foreground, #000)',
     borderRadius: '999px',
     padding: '0 3px',
     lineHeight: '10px',
@@ -547,7 +549,7 @@ const trackChangesTheme = EditorView.baseTheme({
     border: '1px solid var(--border, rgba(255,255,255,0.1))',
     borderRadius: '6px',
     padding: '6px 8px',
-    boxShadow: '0 4px 14px 0 rgba(0,0,0,0.4)',
+    boxShadow: 'var(--shadow-overlay, 0 4px 14px 0 rgba(0,0,0,0.4))',
     fontSize: '11px',
     zIndex: 999,
   },
@@ -564,17 +566,17 @@ const trackChangesTheme = EditorView.baseTheme({
     transition: 'background-color 0.15s ease',
   },
   '.cm-track-btn-accept': {
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
-    color: '#4ade80',
+    backgroundColor: 'hsl(var(--success) / 0.2)',
+    color: 'var(--success, #4ade80)',
     '&:hover': {
-      backgroundColor: 'rgba(34, 197, 94, 0.35)',
+      backgroundColor: 'hsl(var(--success) / 0.35)',
     },
   },
   '.cm-track-btn-reject': {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-    color: '#f87171',
+    backgroundColor: 'hsl(var(--destructive) / 0.2)',
+    color: 'var(--destructive, #f87171)',
     '&:hover': {
-      backgroundColor: 'rgba(239, 68, 68, 0.35)',
+      backgroundColor: 'hsl(var(--destructive) / 0.35)',
     },
   },
 });

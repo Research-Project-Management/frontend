@@ -54,3 +54,62 @@ export function handleAutoCloseEnvironment(view: EditorView): boolean {
   }
   return false;
 }
+
+/**
+ * Automatically handles LaTeX inline math ($...$) typing (Overleaf parity).
+ * - If text is selected: wraps selection in $...$
+ * - If cursor is immediately before a '$': skips past it without inserting duplicate
+ * - Otherwise: inserts '$$' and places cursor between them
+ */
+export function handleAutoCloseMath(view: EditorView): boolean {
+  const { from, to } = view.state.selection.main;
+  if (from !== to) {
+    const selected = view.state.sliceDoc(from, to);
+    view.dispatch({
+      changes: { from, to, insert: `$${selected}$` },
+      selection: { anchor: to + 2 },
+      userEvent: 'input.format.math',
+    });
+    return true;
+  }
+
+  // Check character immediately following cursor
+  const nextChar = view.state.sliceDoc(from, from + 1);
+  if (nextChar === '$') {
+    // Skip over the existing closing '$'
+    view.dispatch({
+      selection: { anchor: from + 1 },
+      userEvent: 'select',
+    });
+    return true;
+  }
+
+  // Insert pair '$$' and place cursor inside
+  view.dispatch({
+    changes: { from, to, insert: '$$' },
+    selection: { anchor: from + 1 },
+    userEvent: 'input.complete.math',
+  });
+  return true;
+}
+
+/**
+ * Handles Backspace when cursor is directly between a '$' and '$' (Overleaf parity).
+ * Deletes both '$' characters simultaneously.
+ */
+export function handleBackspaceBetweenMath(view: EditorView): boolean {
+  const { from, to } = view.state.selection.main;
+  if (from === to && from > 0) {
+    const prevChar = view.state.sliceDoc(from - 1, from);
+    const nextChar = view.state.sliceDoc(from, from + 1);
+    if (prevChar === '$' && nextChar === '$') {
+      view.dispatch({
+        changes: { from: from - 1, to: from + 1, insert: '' },
+        selection: { anchor: from - 1 },
+        userEvent: 'delete.backward',
+      });
+      return true;
+    }
+  }
+  return false;
+}

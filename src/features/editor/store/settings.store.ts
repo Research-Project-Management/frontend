@@ -29,6 +29,13 @@ export type EditorTheme =
 export type KeybindingMode = 'standard' | 'vim' | 'emacs';
 export type TrackChangesViewMode = 'changes' | 'clean' | 'original';
 export type EditorSidebarTab = 'Files' | 'Search' | 'Citations' | 'Review' | 'Chat' | 'AI';
+export type SettingsTab =
+  | 'editor'
+  | 'compiler'
+  | 'references'
+  | 'github'
+  | 'appearance'
+  | 'notifications';
 
 export interface DocumentSettingsState {
   engine: CompilerEngine;
@@ -42,6 +49,7 @@ export interface DocumentSettingsState {
   useCache: boolean;
   stopOnFirstError: boolean;
   settingsPanelOpen: boolean;
+  settingsActiveTab: SettingsTab;
   mainFile: string;
   fontSize: number;
   wordWrap: boolean;
@@ -70,14 +78,14 @@ export interface DocumentSettingsState {
   showBreadcrumbs: boolean;
   showEquationPreview: boolean;
   pdfSpreadView: boolean;
-  syncScroll: boolean;
   isLocked: boolean;
+  syncScroll: boolean;
 
+  setSyncScroll: (syncScroll: boolean) => void;
+  toggleSyncScroll: () => void;
   setShowBreadcrumbs: (showBreadcrumbs: boolean) => void;
   toggleShowBreadcrumbs: () => void;
   setIsLocked: (isLocked: boolean) => void;
-  setSyncScroll: (syncScroll: boolean) => void;
-  toggleSyncScroll: () => void;
   setAutoComplete: (autoComplete: boolean) => void;
   setNonBlinkingCursor: (nonBlinkingCursor: boolean) => void;
   setPreviewEditorTabs: (previewEditorTabs: boolean) => void;
@@ -97,6 +105,8 @@ export interface DocumentSettingsState {
   toggleStopOnFirstError: () => void;
   setSettingsPanelOpen: (open: boolean) => void;
   toggleSettingsPanel: () => void;
+  setSettingsActiveTab: (tab: SettingsTab) => void;
+  openSettingsModal: (tab?: SettingsTab) => void;
   setActiveSidebarPanel: (
     panel:
       | EditorSidebarTab
@@ -149,11 +159,13 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       editorTheme: 'auto',
       pdfSpreadView: false,
       isLocked: false,
+      syncScroll: true,
       keybinding: 'standard',
       sidebarWidth: 320,
       editorFlex: 0.5,
       useCache: true,
       settingsPanelOpen: false,
+      settingsActiveTab: 'editor',
       mainFile: 'main.tex',
       fontSize: 15,
       wordWrap: true,
@@ -195,9 +207,17 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       setStopOnFirstError: (stopOnFirstError) => set({ stopOnFirstError }),
       toggleStopOnFirstError: () =>
         set((s) => ({ stopOnFirstError: !s.stopOnFirstError })),
+      setSyncScroll: (syncScroll) => set({ syncScroll }),
+      toggleSyncScroll: () => set((s) => ({ syncScroll: !s.syncScroll })),
       setSettingsPanelOpen: (settingsPanelOpen) => set({ settingsPanelOpen }),
       toggleSettingsPanel: () =>
         set((s) => ({ settingsPanelOpen: !s.settingsPanelOpen })),
+      setSettingsActiveTab: (settingsActiveTab) => set({ settingsActiveTab }),
+      openSettingsModal: (tab) =>
+        set((s) => ({
+          settingsPanelOpen: true,
+          settingsActiveTab: tab || s.settingsActiveTab || 'editor',
+        })),
       setActiveSidebarPanel: (panelOrFn) =>
         set((s) => ({
           activeSidebarPanel:
@@ -254,9 +274,6 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       toggleShowEquationPreview: () => set((s) => ({ showEquationPreview: !s.showEquationPreview })),
       setPdfSpreadView: (pdfSpreadView) => set({ pdfSpreadView }),
       togglePdfSpreadView: () => set((s) => ({ pdfSpreadView: !s.pdfSpreadView })),
-      syncScroll: true,
-      setSyncScroll: (syncScroll) => set({ syncScroll }),
-      toggleSyncScroll: () => set((s) => ({ syncScroll: !s.syncScroll })),
       setAutoComplete: (autoComplete) => set({ autoComplete }),
       setNonBlinkingCursor: (nonBlinkingCursor) => set({ nonBlinkingCursor }),
       setPreviewEditorTabs: (previewEditorTabs) => set({ previewEditorTabs }),
@@ -279,7 +296,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       },
       partialize: (state) => {
         // Don't persist transient UI state or auto-compile (always on by default)
-        const { settingsPanelOpen, autoCompile, isHistoryOpen, isTemplateModalOpen, activeSidebarPanel, isLocked, ...rest } = state;
+        const { settingsPanelOpen, settingsActiveTab, autoCompile, isHistoryOpen, isTemplateModalOpen, activeSidebarPanel, isLocked, ...rest } = state;
         return rest;
       },
     },

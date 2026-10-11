@@ -8,9 +8,8 @@
  */
 
 import { useCallback, useEffect } from 'react';
-import { usePageStore } from '../../../../store';
+import { usePageStore, useViewerStore } from '../../../../store';
 import { useTabsStore, type EditorTab } from '../../../../store/tabs.store';
-import { LatexCompilerEngine } from '@/features/editor/coordinators/services/latex-compiler-engine.service';
 import type { SyncTeXMap } from '@/features/editor/domain';
 import { editorCommandBus, getActiveEditorEngine } from '../../../../coordinators/command-bus';
 import { navigationCoordinator } from '../../../../coordinators/navigation.coordinator';
@@ -25,8 +24,8 @@ export interface UseViewerSyncTeXOptions {
   autoFit?: boolean;
   containerWidth?: number;
   numPages: number;
-  pageNumber: number;
-  setPageNumber: (p: number | ((prev: number) => number)) => void;
+  pageNumber?: number;
+  setPageNumber?: (p: number | ((prev: number) => number)) => void;
   pdfSurfaceRef: React.RefObject<SurfaceHandle | null>;
   synctexMapRef: React.MutableRefObject<SyncTeXMap | null>;
   pageFiles: any[];
@@ -55,15 +54,39 @@ export function useViewerSyncTeX({
       const bareName = cleanName.split('/').pop() || cleanName;
       const bareNoExt = bareName.replace(/\.(tex|bib|sty|cls)$/i, '');
 
-      // 1. Match root document (main.tex) from currentPage
+      // 1. Exact child file path match in pageFiles (prioritize subfiles first)
+      const exactChild = pageFiles.find((p: any) => {
+        const pPathLower = (p.path || p.title || '').replace(/\\/g, '/').toLowerCase();
+        return (
+          pPathLower === cleanName ||
+          pPathLower.replace(/\.(tex|bib|sty|cls)$/i, '') === baseNoExt ||
+          cleanName.endsWith('/' + pPathLower) ||
+          pPathLower.endsWith('/' + cleanName)
+        );
+      });
+      if (exactChild) return exactChild;
+
+      // 2. Match LRU Document in-memory cache by path
+      const cached = lruDocumentCache.findByPath(cleanName);
+      if (cached) {
+        return {
+          id: cached.fileId,
+          title: cached.filePath,
+          path: cached.filePath,
+        };
+      }
+
+      // 3. Match root document (main.tex) from currentPage
       const currentPage = usePageStore.getState().currentPage;
       if (currentPage) {
         const rootTitle = (currentPage.title || 'main.tex').replace(/\\/g, '/').toLowerCase();
+        const rootBase = rootTitle.split('/').pop() || rootTitle;
         if (
           rootTitle === cleanName ||
           rootTitle.replace(/\.(tex|bib|sty|cls)$/i, '') === baseNoExt ||
-          rootTitle === bareName ||
-          rootTitle.replace(/\.(tex|bib|sty|cls)$/i, '') === bareNoExt
+          cleanName.endsWith('/' + rootTitle) ||
+          (!cleanName.includes('/') &&
+            (bareName === rootBase || bareNoExt === rootBase.replace(/\.(tex|bib|sty|cls)$/i, '')))
         ) {
           return {
             id: currentPage.id,
@@ -73,42 +96,15 @@ export function useViewerSyncTeX({
         }
       }
 
-      // 2. Match project child files
-      const match = pageFiles.find((p: any) => {
+      // 4. Fallback to child files by bare filename
+      const bareMatch = pageFiles.find((p: any) => {
         const titleLower = (p.title || '').replace(/\\/g, '/').toLowerCase();
-        const pPathLower = (p.path || '').replace(/\\/g, '/').toLowerCase();
         const pBare = titleLower.split('/').pop() || titleLower;
-        return (
-          titleLower === cleanName ||
-          titleLower.replace(/\.(tex|bib|sty|cls)$/i, '') === baseNoExt ||
-          pBare === bareName ||
-          pBare.replace(/\.(tex|bib|sty|cls)$/i, '') === bareNoExt ||
-          (pPathLower && (pPathLower.endsWith(cleanName) || pPathLower.endsWith(bareName))) ||
-          (pPathLower && cleanName.endsWith(pPathLower)) ||
-          cleanName.endsWith(titleLower) ||
-          cleanName.endsWith('/' + titleLower) ||
-          cleanName.endsWith('/' + pBare)
-        );
+        return pBare === bareName || pBare.replace(/\.(tex|bib|sty|cls)$/i, '') === bareNoExt;
       });
-      if (match) return match;
+      if (bareMatch) return bareMatch;
 
-      // 3. Match LRU Document in-memory cache
-      const cached =
-        lruDocumentCache.findByPath(cleanName) ||
-        lruDocumentCache.findByPath(bareName) ||
-        lruDocumentCache.getAllModels().find((m) => {
-          const mLower = m.filePath.replace(/\\/g, '/').toLowerCase();
-          return cleanName.endsWith(mLower) || mLower.endsWith(cleanName) || cleanName.endsWith('/' + mLower);
-        });
-      if (cached) {
-        return {
-          id: cached.fileId,
-          title: cached.filePath,
-          path: cached.filePath,
-        };
-      }
-
-      // 4. Match open tabs in useTabsStore
+      // 5. Match open tabs in useTabsStore
       const tabsByProject = useTabsStore.getState().tabsByProject;
       const allTabs = Object.values(tabsByProject).flat();
       const matchingTab = allTabs.find((t: EditorTab) => {
@@ -143,10 +139,10 @@ export function useViewerSyncTeX({
       let targetLine = line;
 
       // Remote fallback: if local map had no target or line <= 1, query backend SyncTeX processor
-      const rootId = pageId || projectId;
+      const rootId = projectId || pageId;
       if ((!targetPath || targetLine <= 1) && rootId && pageNum && x !== undefined && y !== undefined) {
         try {
-          const remoteRes = await LatexCompilerEngine.resolveReverseRemote(
+          const remoteRes = await compilerCoordinator.resolveReverseRemote(
             rootId,
             pageNum,
             x,
@@ -198,7 +194,8 @@ export function useViewerSyncTeX({
   const handleJumpToPage = useCallback(
     (targetPage: number) => {
       const p = Math.max(1, Math.min(targetPage, numPages || 1));
-      setPageNumber(p);
+      const updatePage = setPageNumber ?? useViewerStore.getState().setPageNumber;
+      updatePage(p);
       pdfSurfaceRef.current?.scrollToPage(p);
     },
     [numPages, setPageNumber, pdfSurfaceRef],
@@ -215,11 +212,11 @@ export function useViewerSyncTeX({
   // SyncTeX forward sync (Code cursor -> PDF highlight)
   useEffect(() => {
     const handleForwardSync = async (line?: number) => {
-      const targetLine: number = line ?? getActiveEditorEngine()?.getCursorPosition?.()?.line ?? 1;
+      const targetLine: number = Math.max(1, line ?? getActiveEditorEngine()?.getCursorPosition?.()?.line ?? 1);
 
-      const rootId = pageId || projectId;
+      const rootId = projectId || pageId;
       if (!rootId) return;
-      const filename = activeFilePage?.title || 'main.tex';
+      const filename = (activeFilePage as any)?.path || activeFilePage?.title || 'main.tex';
 
       const effectiveScale =
         autoFit && containerWidth && containerWidth > 0
@@ -227,7 +224,7 @@ export function useViewerSyncTeX({
           : (scale > 0 ? scale : 1);
 
       // 1. Try Backend Single Source of Truth
-      const remoteRes = await LatexCompilerEngine.resolveForwardRemote(
+      const remoteRes = await compilerCoordinator.resolveForwardRemote(
         rootId,
         filename,
         targetLine,
@@ -241,11 +238,11 @@ export function useViewerSyncTeX({
 
       if (!targetPage) {
         const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
-        const localDetail = LatexCompilerEngine.resolveForwardDetail(
+        const localDetail = compilerCoordinator.resolveForwardDetail(
           targetLine,
-          effectiveMap,
-          activeFilePage?.title,
+          filename,
           numPages || 1,
+          effectiveMap,
         );
         if (localDetail) {
           targetPage = localDetail.page;
@@ -260,16 +257,17 @@ export function useViewerSyncTeX({
 
       if (!targetPage) {
         const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
-        targetPage = LatexCompilerEngine.resolveForward(
+        targetPage = compilerCoordinator.resolveForward(
           targetLine,
-          effectiveMap,
-          activeFilePage?.title,
+          filename,
           numPages || 1,
+          effectiveMap,
         );
       }
 
       if (targetPage) {
-        setPageNumber(targetPage);
+        const updatePage = setPageNumber ?? useViewerStore.getState().setPageNumber;
+        updatePage(targetPage);
         if (targetX !== undefined && targetY !== undefined) {
           pdfSurfaceRef.current?.highlightTarget?.(targetPage, targetX, targetY, targetW, targetH);
         } else {
@@ -297,17 +295,21 @@ export function useViewerSyncTeX({
   // SyncTeX reverse search event listener
   useEffect(() => {
     const handleReverse = async (customPage?: number, customX?: number, customY?: number) => {
-      const p = customPage || pageNumber || 1;
+      const p = customPage || pageNumber || useViewerStore.getState().pageNumber || 1;
       const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
-      let resolved = effectiveMap
-        ? LatexCompilerEngine.resolveReverse(0.25, p, effectiveMap, customX, customY)
-        : null;
+      let resolved = compilerCoordinator.resolveReverse(
+        0.25,
+        p,
+        customX,
+        customY,
+        effectiveMap,
+      );
 
       if (!resolved || !resolved.line) {
-        const rootId = pageId || projectId;
+        const rootId = projectId || pageId;
         if (rootId && customX !== undefined && customY !== undefined) {
           try {
-            const remoteRes = await LatexCompilerEngine.resolveReverseRemote(
+            const remoteRes = await compilerCoordinator.resolveReverseRemote(
               rootId,
               p,
               customX,
@@ -322,8 +324,6 @@ export function useViewerSyncTeX({
 
       if (resolved?.line) {
         void handleJumpToSource(resolved.sourcePath, resolved.line, p, customX, customY);
-      } else {
-        void handleJumpToSource(null, 1, p, 200, 200);
       }
     };
 
@@ -334,7 +334,7 @@ export function useViewerSyncTeX({
     return () => {
       unsubCmd();
     };
-  }, [pageNumber, handleJumpToSource, synctexMapRef, pageId, projectId]);
+  }, [handleJumpToSource, synctexMapRef, pageId, projectId]);
 
   return {
     handleJumpToSource,

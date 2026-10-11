@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   ChevronRight,
   CheckSquare,
@@ -86,14 +86,14 @@ export function YourWorkItemList({
   const [groupBy, setGroupBy] = useState<'state' | 'project'>('state');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
-  const toggleExpand = (id: string) => {
+  const toggleExpand = useCallback((id: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  };
+  }, []);
 
   // Filter items by search query
   const filteredWorkItems = useMemo(() => {
@@ -428,7 +428,7 @@ interface WorkItemRowProps {
   showStateBadge: boolean;
 }
 
-function WorkItemRow({
+const WorkItemRow = React.memo(function WorkItemRow({
   item,
   onWorkItemClick,
   workItemProjectMap,
@@ -607,7 +607,7 @@ function WorkItemRow({
       </div>
     </div>
   );
-}
+});
 
 export default YourWorkItemList;
 

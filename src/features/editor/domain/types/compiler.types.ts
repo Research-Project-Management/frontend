@@ -72,11 +72,13 @@ export interface CompileError {
   line: number | null;
   message: string;
   /** Raw surrounding lines from the log for context */
-  context: string;
+  context?: string;
   file?: string;
   severity?: 'error' | 'warning' | 'info';
   code?: string;
   suggestion?: string;
+  fixedSnippet?: string;
+  originalSnippet?: string;
 }
 
 export interface CompileResult {

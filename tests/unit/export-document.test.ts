@@ -2,12 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   exportDocumentSchema,
   documentExportFormatSchema,
-} from '@/features/editor/schemas/export.schema';
-import { exportService } from '@/features/editor/coordinators/services/export.service';
+} from '@/features/editor/domain/types/export.types';
+import { exportService } from '@/features/editor/sdk';
 import {
   exportDocumentAsWord,
   exportDocumentAsMarkdown,
-} from '@/features/editor/coordinators/services/document-download.service';
+} from '@/features/editor/sdk/archive';
 
 describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
   beforeEach(() => {

@@ -166,7 +166,7 @@ export function CollectionPickerPopover({
         name: trimmed,
         parentId: null,
       });
-      const createdId = (res as any)?.collection?.id || (res as any)?.id;
+      const createdId = (res as { collection?: { id: string }; id?: string })?.collection?.id || (res as { id?: string })?.id;
       if (createdId) {
         const nextIds = [...Array.from(assignedCollectionIdsSet), createdId];
         updatePaper(
@@ -181,9 +181,9 @@ export function CollectionPickerPopover({
         toast.success(`Created & added to "${trimmed}"`, { id: 'col-assign' });
         setSearchQuery('');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error('Failed to create collection', {
-        description: err?.message || 'Please try again.',
+        description: err instanceof Error ? err.message : 'Please try again.',
         id: 'col-assign',
       });
     } finally {
@@ -353,7 +353,7 @@ export default function CollectionsSection({
     if (!isProject) return null;
     const cleanId = effectiveScope.replace(/^project:/, '');
     return (
-      projects.find((p: any) => p.id === cleanId || p.id === paper?.projectId) || null
+      projects.find((p) => p.id === cleanId || p.id === paper?.projectId) || null
     );
   }, [isProject, effectiveScope, paper?.projectId, projects]);
 

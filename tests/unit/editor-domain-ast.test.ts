@@ -88,11 +88,16 @@ Some background text here.
     const structure = parseLatexStructure(sampleLatex);
     const richCtx: RichEditorContext = {
       filename: 'main.tex',
+      fileContent: sampleLatex,
       totalLines: 26,
       selectedText: 'E = mc^2',
       hasSelection: true,
       startLine: 12,
       endLine: 12,
+      startCol: 1,
+      endCol: 9,
+      selectedLineCount: 1,
+      selectedCharCount: 8,
       selectedWordCount: 3,
       contextBefore: '\\begin{equation}',
       contextAfter: '\\end{equation}',

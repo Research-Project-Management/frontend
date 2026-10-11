@@ -18,15 +18,17 @@ import {
   ChevronRight,
   FileCode2,
   Loader2,
+  Replace,
 } from "lucide-react";
 import { Input } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { usePageStore, useTabsStore, useSearchStore } from "@/features/editor/store";
 import { filesQuery } from "@/features/editor/ui/hooks/use-core";
 import { useDebounce } from "@/shared/hooks";
-import { documentSearchService } from "@/features/editor/coordinators/services/search.service";
+import { documentSearchService } from "@/features/editor/sdk";
 import { useEditorInstance } from "@/features/editor/ui/hooks/use-editor-instance";
 import { editorCommandBus } from "@/features/editor/coordinators/command-bus";
+import { extractProjectId } from "@/features/editor/domain/types";
 import { PlaneEmptyState, PlaneErrorState } from "@/shared/components/ui";
 import { SidebarPanelHeader } from "../SidebarPanelHeader";
 
@@ -57,8 +59,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   const openTab = useTabsStore((s) => s.openTab);
 
   const rootPageId = params?.pageId || params?.projectId || currentPage?.id || "";
-  const rawProjectId = params?.projectId || storeProjectId || currentPage?.projectId || params?.pageId || currentPage?.id || "";
-  const rootProjectId = typeof rawProjectId === "string" ? rawProjectId : (rawProjectId as any)?.id || "";
+  const rootProjectId = params?.projectId || storeProjectId || extractProjectId(currentPage) || params?.pageId || currentPage?.id || "";
   const activeFileId = searchParams.get("file") ?? activeFilePage?.id ?? currentPage?.id;
 
   const {
@@ -88,6 +89,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
     isReplacingAll,
     handleReplaceAllCurrentFile,
     handleReplaceAllEverywhere,
+    handleReplaceSingleMatch,
   } = useProjectSearchActions({
     engine,
     effectiveQuery,
@@ -113,8 +115,13 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   // Listen for sidebar:open-panel events with prefilled query
   useEffect(() => {
     const unsub = editorCommandBus.subscribe("sidebar:open-panel", (cmd) => {
-      if (cmd.panel === "Search" && cmd.query !== undefined) {
-        setQuery(cmd.query);
+      if (cmd.panel === "Search") {
+        if (cmd.query !== undefined) {
+          setQuery(cmd.query);
+        }
+        if (cmd.showReplace !== undefined) {
+          setShowReplace(cmd.showReplace);
+        }
         setTimeout(() => {
           searchInputRef.current?.focus();
           searchInputRef.current?.select();
@@ -122,7 +129,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
       }
     });
     return unsub;
-  }, []);
+  }, [setQuery, setShowReplace]);
 
   // Fetch all text files in project
   const { data: projectFiles = [] } = useQuery({
@@ -335,54 +342,73 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
           ) : null}
         </div>
 
-        {/* Row 2: Search Options (Aa, [.*], W) */}
-        <div className="flex items-center gap-2 pt-0.5">
-          <button
-            type="button"
-            onClick={() => setCaseSensitive(!caseSensitive)}
-            title="Match Case"
-            aria-label="Match Case"
-            aria-pressed={caseSensitive}
-            className={cn(
-              "size-7 rounded-md text-xs font-medium transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary",
-              caseSensitive
-                ? "bg-muted text-foreground font-semibold"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
-            )}
-          >
-            Aa
-          </button>
+        {/* Row 2: Search Options (Aa, [.*], W) and Replace Toggle */}
+        <div className="flex items-center justify-between pt-0.5">
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setCaseSensitive(!caseSensitive)}
+              title="Match Case (Aa)"
+              aria-label="Match Case"
+              aria-pressed={caseSensitive}
+              className={cn(
+                "size-7 rounded-md text-xs font-medium transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                caseSensitive
+                  ? "bg-muted text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
+              )}
+            >
+              Aa
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setUseRegex(!useRegex)}
+              title="Regular Expression ([.*])"
+              aria-label="Regular Expression"
+              aria-pressed={useRegex}
+              className={cn(
+                "size-7 rounded-md text-xs font-mono transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                useRegex
+                  ? "bg-muted text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
+              )}
+            >
+              [.*]
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setWholeWord(!wholeWord)}
+              title="Whole Word (W)"
+              aria-label="Whole Word"
+              aria-pressed={wholeWord}
+              className={cn(
+                "size-7 rounded-md text-xs font-semibold transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                wholeWord
+                  ? "bg-muted text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
+              )}
+            >
+              W
+            </button>
+          </div>
 
           <button
             type="button"
-            onClick={() => setUseRegex(!useRegex)}
-            title="Regular Expression"
-            aria-label="Regular Expression"
-            aria-pressed={useRegex}
+            onClick={() => setShowReplace(!showReplace)}
+            title={showReplace ? "Hide Replace" : "Show Replace (Ctrl+Shift+H)"}
+            aria-label="Toggle Replace"
+            aria-pressed={showReplace}
             className={cn(
-              "size-7 rounded-md text-xs font-mono transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary",
-              useRegex
-                ? "bg-muted text-foreground font-semibold"
+              "h-7 px-2 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary",
+              showReplace
+                ? "bg-primary/10 text-primary font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
             )}
           >
-            [.*]
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setWholeWord(!wholeWord)}
-            title="Whole Word"
-            aria-label="Whole Word"
-            aria-pressed={wholeWord}
-            className={cn(
-              "size-7 rounded-md text-xs font-semibold transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary",
-              wholeWord
-                ? "bg-muted text-foreground font-semibold"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
-            )}
-          >
-            W
+            <Replace className="size-3.5 shrink-0" />
+            <span>Replace</span>
           </button>
         </div>
 
@@ -480,7 +506,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                       {!isCollapsed && (
                         <ul className="divide-y divide-border/15 bg-muted/5">
                           {file.matches.map((match, idx) => (
-                            <li key={idx}>
+                            <li key={idx} className="group relative flex items-center justify-between">
                               <button
                                 type="button"
                                 onClick={() =>
@@ -492,7 +518,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                                     match.matchEnd,
                                   )
                                 }
-                                className="flex w-full cursor-pointer items-start gap-2.5 px-3 py-1.5 pl-7 text-left text-xs transition-colors hover:bg-primary/5 outline-none focus-visible:bg-muted"
+                                className="flex flex-1 min-w-0 cursor-pointer items-start gap-2.5 px-3 py-1.5 pl-7 text-left text-xs transition-colors hover:bg-primary/5 outline-none focus-visible:bg-muted"
                               >
                                 <span className="text-muted-foreground/70 w-7 text-right shrink-0 font-mono text-11 pt-0.5">
                                   {match.line}
@@ -505,6 +531,28 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                                   {match.text.slice(match.matchEnd)}
                                 </span>
                               </button>
+
+                              {/* Single Match Replace Button (Overleaf Parity) */}
+                              {showReplace && file.isCurrent && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleReplaceSingleMatch(
+                                      file.fileId,
+                                      match.line,
+                                      match.matchStart,
+                                      match.matchEnd,
+                                    );
+                                  }}
+                                  title="Replace this occurrence"
+                                  aria-label={`Replace match on line ${match.line}`}
+                                  className="mr-2 h-6 px-1.5 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-muted text-muted-foreground hover:text-foreground text-10 font-medium transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                                >
+                                  <Replace className="size-3 shrink-0" />
+                                  <span>Replace</span>
+                                </button>
+                              )}
                             </li>
                           ))}
                         </ul>

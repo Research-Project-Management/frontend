@@ -12,8 +12,7 @@
 import { useEffect, useMemo, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
-import { pageService, fileService } from '../../coordinators/services/core.service';
-import { manuscriptService } from '../../coordinators/services/manuscript.service';
+import { manuscriptService, pageService, fileService } from '@/features/editor/sdk';
 import { workspaceCoordinator } from '../../coordinators/workspace.coordinator';
 import { usePageStore, useTabsStore, useSettingsStore } from '../../store';
 import { toast } from 'sonner';
@@ -74,8 +73,17 @@ export function useActiveDocument() {
     draftId?: string;
   }>();
 
-  const pageId = rawPageId || draftId || '';
+  const directPageId = rawPageId || draftId || '';
   const projectId = rawProjectId || undefined;
+
+  // Canonical Overleaf project route resolution: when visiting /projects/:projectId directly
+  const { data: projectDocs = [], isLoading: projectDocsLoading } = useQuery({
+    queryKey: ['projects', projectId, 'docs'],
+    queryFn: () => manuscriptService.docs.getProjectDocs(projectId!),
+    enabled: !!projectId && !directPageId,
+  });
+
+  const pageId = directPageId || projectDocs[0]?.id || '';
 
   const searchParams = useSearchParams();
   const fileId = searchParams.get('file');
@@ -90,7 +98,7 @@ export function useActiveDocument() {
     enabled: !!pageId,
   });
 
-  const parentPage = serverPage || null;
+  const parentPage = serverPage || (projectDocs.length > 0 ? projectDocs[0] : null);
   const childFiles = serverFiles || [];
 
   const mainId =
@@ -275,6 +283,7 @@ export function useActiveDocument() {
   const displayPage = isAssetTab ? null : activePage;
 
   const isDocumentLoading =
+    (Boolean(projectId && !directPageId) && projectDocsLoading) ||
     (parentLoading && !parentPage) ||
     (Boolean(activeFileId) && (fileLoading || !activeFileDoc));
 
@@ -373,15 +382,12 @@ export function usePageActions() {
   const restorePageMutation = useMutation({
     mutationFn: async (pageId: string) => {
       if (isLocked) throw new Error('Document is locked');
-      return await manuscriptService.docs.restore(pageId);
+      return await workspaceCoordinator.restoreFile(pageId);
     },
-    onSuccess: () => {
+    onSuccess: (_, pageId) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
-      }
-      toast.success('File restored');
+      queryClient.invalidateQueries({ queryKey: pageKeys.deletedFiles(pageId) });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to restore file';
@@ -436,18 +442,17 @@ export function useFileActions() {
   });
 
   const setMainFileMutation = useMutation({
-    mutationFn: async ({ pageId, fileId, projectId }: { pageId: string; fileId: string; projectId?: string }) => {
+    mutationFn: async (params: string | { pageId: string; fileId: string; projectId?: string }) => {
       if (isLocked) throw new Error('Document is locked');
-      return await fileService.setMain({ pageId, fileId, projectId });
+      const fileId = typeof params === 'string' ? params : params.fileId;
+      const projId = typeof params === 'string' ? undefined : (params.projectId || params.pageId);
+      return await workspaceCoordinator.setMainFile(fileId, projId);
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: pageKeys.detail(variables.pageId) });
-      queryClient.invalidateQueries({ queryKey: pageKeys.files(variables.pageId) });
+      const targetPageId = typeof variables === 'string' ? variables : variables.pageId;
+      queryClient.invalidateQueries({ queryKey: pageKeys.detail(targetPageId) });
+      queryClient.invalidateQueries({ queryKey: pageKeys.files(targetPageId) });
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
-      }
-      toast.success('Set as main document');
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to set main document';

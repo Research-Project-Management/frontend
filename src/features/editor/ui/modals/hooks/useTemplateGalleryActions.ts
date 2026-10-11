@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * useTemplateGalleryActions.ts
@@ -11,7 +11,7 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk';
 
 export interface UseTemplateGalleryActionsOptions {
   selectedTemplate: any;

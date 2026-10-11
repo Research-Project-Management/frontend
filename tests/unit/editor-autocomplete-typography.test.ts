@@ -255,4 +255,57 @@ describe('Editor Autocompletion & Typography (Overleaf Parity)', () => {
       expect(state.selection.ranges.length).toBe(2);
     });
   });
+
+  describe('7. Dynamic Theme & Typography Reconfiguration (Zero Downtime)', () => {
+    it('should create preset with custom theme and typography and allow dynamic reconfiguration', async () => {
+      const { EditorView } = await import('@codemirror/view');
+      const {
+        createCodeMirrorPreset,
+        reconfigureTheme,
+        reconfigureTypography,
+      } = await import('@/features/editor/engines/codemirror/codemirror-preset');
+      const { EDITOR_THEMES, getThemeExtension } = await import(
+        '@/features/editor/engines/codemirror/editor-themes'
+      );
+
+      // Verify all themes resolve to valid extensions
+      expect(EDITOR_THEMES.length).toBeGreaterThanOrEqual(10);
+      for (const t of EDITOR_THEMES) {
+        const ext = getThemeExtension(t.id);
+        expect(ext).toBeDefined();
+      }
+
+      const preset = createCodeMirrorPreset({
+        editorTheme: 'dracula',
+        fontSize: 16,
+        fontFamily: 'Fira Code',
+        lineHeight: 1.6,
+      });
+
+      const parent = document.createElement('div');
+      const view = new EditorView({
+        state: EditorState.create({
+          doc: 'Hello LaTeX World',
+          extensions: preset,
+        }),
+        parent,
+      });
+
+      expect(view.state.doc.toString()).toBe('Hello LaTeX World');
+
+      // Live reconfigure theme to monokai and then solarized-dark
+      expect(() => {
+        reconfigureTheme(view, 'monokai');
+        reconfigureTheme(view, 'solarized-dark');
+      }).not.toThrow();
+
+      // Live reconfigure typography
+      expect(() => {
+        reconfigureTypography(view, 18, 'JetBrains Mono', 1.7);
+      }).not.toThrow();
+
+      expect(view.state.doc.toString()).toBe('Hello LaTeX World');
+      view.destroy();
+    });
+  });
 });

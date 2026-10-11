@@ -127,7 +127,10 @@ export function getActiveEditorEngine(): any {
 }
 
 export function getActiveEditorContent(): string {
-  return activeEngineInstance?.getContent() ?? '';
+  if (typeof activeEngineInstance?.getContent === 'function') {
+    return activeEngineInstance.getContent();
+  }
+  return '';
 }
 
 export function setActivePdfViewer(viewer: any): void {

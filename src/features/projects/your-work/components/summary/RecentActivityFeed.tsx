@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ActivityFeedList } from '../shared/ActivityFeedList';
 
 export interface RecentActivityFeedProps {
@@ -11,14 +11,17 @@ export interface RecentActivityFeedProps {
   workItemProjectMap?: Record<string, { id: string; name: string }>;
 }
 
-export function RecentActivityFeed({
+export const RecentActivityFeed = React.memo<RecentActivityFeedProps>(function RecentActivityFeed({
   activities = [],
   isLoading = false,
   limit = 5,
   onWorkItemClick,
   workItemProjectMap = {},
 }: RecentActivityFeedProps) {
-  const displayItems = Array.isArray(activities) && limit > 0 ? activities.slice(0, limit) : (Array.isArray(activities) ? activities : []);
+  const displayItems = useMemo(
+    () => (Array.isArray(activities) && limit > 0 ? activities.slice(0, limit) : (Array.isArray(activities) ? activities : [])),
+    [activities, limit]
+  );
 
   return (
     <div>
@@ -34,6 +37,6 @@ export function RecentActivityFeed({
       />
     </div>
   );
-}
+});
 
 export default RecentActivityFeed;

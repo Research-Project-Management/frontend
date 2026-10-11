@@ -115,7 +115,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           <button
             type="button"
             onClick={onClearSelection}
-            className="hover:text-foreground text-foreground/80 hover:bg-muted p-0.5 rounded-md cursor-pointer transition-colors relative before:absolute before:-inset-1 md:before:hidden"
+            className="text-foreground hover:bg-muted p-0.5 rounded-md cursor-pointer transition-colors relative before:absolute before:-inset-1 md:before:hidden"
             title="Clear selection"
             aria-label="Clear selection"
           >
@@ -178,9 +178,9 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 <DropdownMenuItem
                   key={pKey}
                   onClick={() => onUpdatePriority(pKey)}
-                  className="text-12 cursor-pointer flex items-center gap-2 py-1.5 rounded-md"
+                  className="text-12 cursor-pointer flex items-center gap-2 py-1.5 rounded-md text-foreground"
                 >
-                  <Icon className={cn('size-3.5 shrink-0', cfg.color)} />
+                  <Icon className="size-3.5 shrink-0 text-foreground" />
                   <span>{cfg.label}</span>
                 </DropdownMenuItem>
               );
@@ -336,7 +336,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
             size="sm"
             disabled={isUpdating}
             onClick={() => setRestoreDialogOpen(true)}
-            className="h-8 text-12 font-medium text-warning hover:bg-muted flex items-center gap-1.5 px-2.5 rounded-md cursor-pointer shrink-0 relative before:absolute before:-inset-1 md:before:hidden"
+            className="h-8 text-12 font-medium text-foreground hover:bg-muted flex items-center gap-1.5 px-2.5 rounded-md cursor-pointer shrink-0 relative before:absolute before:-inset-1 md:before:hidden"
             title="Restore selected work items"
           >
             <RotateCcw className="size-3.5 shrink-0" />
@@ -365,7 +365,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           size="sm"
           disabled={isUpdating}
           onClick={() => setDeleteDialogOpen(true)}
-          className="h-8 text-12 font-medium text-destructive hover:bg-destructive/10 flex items-center gap-1.5 px-2.5 rounded-md cursor-pointer shrink-0 relative before:absolute before:-inset-1 md:before:hidden"
+          className="h-8 text-12 font-medium text-foreground hover:bg-muted flex items-center gap-1.5 px-2.5 rounded-md cursor-pointer shrink-0 relative before:absolute before:-inset-1 md:before:hidden"
           title="Delete selected work items"
         >
           <Trash2 className="size-3.5 shrink-0" />
@@ -380,7 +380,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
             <DialogTitle className="text-16 font-semibold text-foreground">
               Restore {count} Work Items?
             </DialogTitle>
-            <DialogDescription className="text-13 text-muted-foreground mt-1.5 leading-normal">
+            <DialogDescription className="text-13 text-foreground/70 mt-1.5 leading-normal">
               These {count} work items will be restored to your active board and list views.
             </DialogDescription>
           </DialogHeader>
@@ -417,7 +417,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
             <DialogTitle className="text-16 font-semibold text-foreground">
               Archive {count} Work Items?
             </DialogTitle>
-            <DialogDescription className="text-13 text-muted-foreground mt-1.5 leading-normal">
+            <DialogDescription className="text-13 text-foreground/70 mt-1.5 leading-normal">
               These {count} work items will be safely archived and hidden from active views. You can view or restore them at any time.
             </DialogDescription>
           </DialogHeader>
@@ -454,7 +454,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
             <DialogTitle className="text-16 font-semibold text-foreground">
               Delete {count} Work Items?
             </DialogTitle>
-            <DialogDescription className="text-13 text-muted-foreground mt-1.5 leading-normal">
+            <DialogDescription className="text-13 text-foreground/70 mt-1.5 leading-normal">
               Are you sure you want to delete these {count} work items? This action will move them to trash.
             </DialogDescription>
           </DialogHeader>

@@ -15,8 +15,9 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { StorageService, type EditorStorageItem } from '../../coordinators/services/storage.service';
+import { StorageService, type EditorStorageItem } from '@/features/editor/sdk';
 import { usePageStore } from '../../store';
+import { workspaceCoordinator } from '../../coordinators/workspace.coordinator';
 
 export function useResolvedProjectId(
   pageIdOrProjectId?: string | null,
@@ -162,14 +163,24 @@ export function useEditorStorageMutations(
       fileId?: string;
       newName?: string;
       name?: string;
+      oldName?: string;
     }): Promise<any> => {
       const id = args.itemId || args.fileId || '';
       const name = args.newName || args.name || '';
+      const old = args.oldName || '';
+      try {
+        const ok = await workspaceCoordinator.renameItem({
+          itemId: id,
+          oldName: old,
+          newName: name,
+          projectId: effectiveProjectId,
+        });
+        if (ok) return { success: true };
+      } catch {}
       return await StorageService.renameItem(id, name, effectiveProjectId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      toast.success('Renamed successfully');
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to rename item';
@@ -179,11 +190,14 @@ export function useEditorStorageMutations(
 
   const deleteMutation = useMutation({
     mutationFn: async (itemId: string): Promise<any> => {
+      try {
+        const ok = await workspaceCoordinator.deleteFile(itemId, effectiveProjectId);
+        if (ok) return { success: true };
+      } catch {}
       return await StorageService.permanentlyDeleteItem(itemId, effectiveProjectId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      toast.success('File deleted');
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to delete file';
@@ -195,11 +209,18 @@ export function useEditorStorageMutations(
     mutationFn: async (args: { itemId?: string; targetFolderId?: string | null } | string): Promise<any> => {
       const itemId = typeof args === 'string' ? args : (args.itemId || '');
       const targetFolderId = typeof args === 'string' ? null : (args.targetFolderId ?? null);
+      try {
+        const ok = await workspaceCoordinator.moveItem({
+          itemId,
+          targetFolderId,
+          projectId: effectiveProjectId,
+        });
+        if (ok) return { success: true };
+      } catch {}
       return await StorageService.moveItem(itemId, targetFolderId, effectiveProjectId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      toast.success('Moved successfully');
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to move item';

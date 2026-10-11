@@ -153,18 +153,31 @@ export function ProjectsPage() {
     return sortProjects(searched, sortBy);
   }, [activeProjects, activeFilter, popoverFilter, selectedTagId, searchQuery, sortBy, user]);
 
-  const handleArchiveProject = (projectId: string) => {
+  const handleArchiveProject = React.useCallback((projectId: string) => {
     archiveProjectMutation.mutate({ projectId });
-  };
+  }, [archiveProjectMutation]);
 
-  const handleCopyLink = (projectId: string, e: React.MouseEvent) => {
+  const handleManageTags = React.useCallback((p: Project) => {
+    setTagModalProject(p);
+    setIsTagModalOpen(true);
+  }, []);
+
+  const handleCloseTagModal = React.useCallback(() => {
+    setIsTagModalOpen(false);
+    setTagModalProject(null);
+  }, []);
+
+  const handleCreateSuccess = React.useCallback(() => setIsCreateOpen(false), []);
+  const handleUploadZipSuccess = React.useCallback(() => setIsUploadZipOpen(false), []);
+
+  const handleCopyLink = React.useCallback((projectId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (typeof window !== 'undefined') {
       const url = `${window.location.origin}/projects/${projectId}/work-items`;
       navigator.clipboard.writeText(url);
     }
-  };
+  }, []);
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
@@ -361,10 +374,7 @@ export function ProjectsPage() {
                 key={project.id}
                 project={project}
                 onArchive={handleArchiveProject}
-                onManageTags={(p) => {
-                  setTagModalProject(p);
-                  setIsTagModalOpen(true);
-                }}
+                onManageTags={handleManageTags}
               />
             ))}
           </div>
@@ -618,28 +628,31 @@ export function ProjectsPage() {
       </div>
 
       {/* Create Project Modal */}
-      <CreateProjectModal
-        open={isCreateOpen}
-        onOpenChange={setIsCreateOpen}
-        onSuccess={() => setIsCreateOpen(false)}
-      />
+      {isCreateOpen && (
+        <CreateProjectModal
+          open={isCreateOpen}
+          onOpenChange={setIsCreateOpen}
+          onSuccess={handleCreateSuccess}
+        />
+      )}
 
       {/* Upload Project ZIP Modal (Overleaf Parity) */}
-      <UploadProjectZipModal
-        open={isUploadZipOpen}
-        onOpenChange={setIsUploadZipOpen}
-        onSuccess={() => setIsUploadZipOpen(false)}
-      />
+      {isUploadZipOpen && (
+        <UploadProjectZipModal
+          open={isUploadZipOpen}
+          onOpenChange={setIsUploadZipOpen}
+          onSuccess={handleUploadZipSuccess}
+        />
+      )}
 
       {/* Manage Project Tags & Folders Modal (Overleaf Parity) */}
-      <ManageProjectTagsModal
-        project={tagModalProject}
-        isOpen={isTagModalOpen}
-        onClose={() => {
-          setIsTagModalOpen(false);
-          setTagModalProject(null);
-        }}
-      />
+      {isTagModalOpen && (
+        <ManageProjectTagsModal
+          project={tagModalProject}
+          isOpen={isTagModalOpen}
+          onClose={handleCloseTagModal}
+        />
+      )}
     </div>
   );
 }

@@ -101,7 +101,7 @@ export function VisualFigureToolbar({
       role="toolbar"
       aria-label="Figure Floating Toolbar"
       className={cn(
-        'fixed z-50 flex flex-col items-start bg-card/95 backdrop-blur-md border border-border/80 shadow-2xl rounded-xl p-1.5 transition-all text-xs text-foreground select-none',
+        'fixed z-50 flex flex-col items-start bg-popover/95 backdrop-blur-md border border-border shadow-overlay rounded-md p-1.5 text-xs text-foreground select-none',
         'animate-in fade-in zoom-in-95 duration-150'
       )}
       style={{
@@ -147,7 +147,7 @@ export function VisualFigureToolbar({
                 className={cn(
                   'h-7 px-1.5 text-[11px] font-mono rounded-lg cursor-pointer transition-colors',
                   isActive
-                    ? 'bg-primary/15 text-primary font-bold shadow-xs'
+                    ? 'bg-primary/15 text-primary font-semibold shadow-xs'
                     : 'hover:bg-muted text-muted-foreground hover:text-foreground'
                 )}
                 onClick={() => onChangeWidth(preset.spec)}
@@ -188,7 +188,7 @@ export function VisualFigureToolbar({
             className={cn(
               'size-7 rounded-lg cursor-pointer transition-colors',
               isStarred
-                ? 'bg-primary/15 text-primary font-bold'
+                ? 'bg-primary/15 text-primary font-semibold'
                 : 'hover:bg-muted text-muted-foreground hover:text-foreground'
             )}
             onClick={onToggleStarred}

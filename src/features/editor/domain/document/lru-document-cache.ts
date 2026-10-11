@@ -7,7 +7,8 @@
  * Automatically flushes dirty documents to Tier 2 Persistent Storage (IndexedDB) upon eviction.
  */
 
-import { draftStorageService } from '@/features/editor/coordinators/services/draft-storage.service';
+import { draftStorageService, type IDraftStorageSink } from './draft-storage';
+export type { IDraftStorageSink };
 
 export interface DocumentCursorSelection {
   anchor: number;
@@ -61,6 +62,18 @@ export class LRUDocumentCache {
   private activeFileId: string | null = null;
   private readonly listeners = new Set<ModelChangeListener>();
   private readonly evictionListeners = new Set<ModelEvictionListener>();
+  private persistenceSink: IDraftStorageSink | null = draftStorageService;
+
+  constructor(persistenceSink: IDraftStorageSink | null = draftStorageService) {
+    this.persistenceSink = persistenceSink;
+  }
+
+  /**
+   * Configures the backing multi-tier persistence sink (seam for draft storage).
+   */
+  public setPersistenceSink(sink: IDraftStorageSink | null): void {
+    this.persistenceSink = sink;
+  }
 
   /**
    * Designates the currently active editor file so it is protected from eviction.
@@ -171,6 +184,10 @@ export class LRUDocumentCache {
 
   /**
    * Hydrates a model from Tier 2 Storage (IndexedDB) if it was evicted from RAM.
+   * Checks:
+   * 1. Active uncommitted draft snapshot
+   * 2. Cached project file snapshot
+   * 3. Fallback content
    */
   public async hydrateModelAsync(
     fileId: string,
@@ -181,17 +198,30 @@ export class LRUDocumentCache {
     const existing = this.getModel(fileId);
     if (existing) return existing;
 
-    try {
-      const draft = await draftStorageService.getDraft(fileId);
-      if (draft && typeof draft.content === 'string') {
-        return this.registerModel(fileId, {
-          content: draft.content,
-          filePath: filePath || fileId,
-          projectId,
-        });
+    if (this.persistenceSink) {
+      try {
+        const draft = await this.persistenceSink.getDraft(fileId);
+        if (draft && typeof draft.content === 'string') {
+          return this.registerModel(fileId, {
+            content: draft.content,
+            filePath: filePath || draft.title || fileId,
+            projectId: projectId || draft.projectId,
+          });
+        }
+
+        if (this.persistenceSink.getProjectFileSnapshot) {
+          const snapshot = await this.persistenceSink.getProjectFileSnapshot(fileId);
+          if (snapshot && typeof snapshot.content === 'string') {
+            return this.registerModel(fileId, {
+              content: snapshot.content,
+              filePath: filePath || snapshot.filePath || snapshot.title || fileId,
+              projectId: projectId || snapshot.projectId,
+            });
+          }
+        }
+      } catch {
+        // Fallback
       }
-    } catch {
-      // Fallback
     }
 
     return this.registerModel(fileId, {
@@ -213,13 +243,25 @@ export class LRUDocumentCache {
    */
   public findByPath(targetPath: string): DocumentModelState | undefined {
     if (!targetPath) return undefined;
-    const cleanTarget = targetPath.replace(/^\.?\//, '').trim().toLowerCase();
+    const cleanTarget = targetPath.replace(/\\/g, '/').replace(/^\.?\//, '').trim().toLowerCase();
+    const bareTarget = cleanTarget.split('/').pop() || cleanTarget;
+    const cleanTargetNoExt = cleanTarget.replace(/\.(tex|bib|sty|cls)$/i, '');
+    const bareTargetNoExt = bareTarget.replace(/\.(tex|bib|sty|cls)$/i, '');
+
     for (const model of this.models.values()) {
-      const cleanPath = (model.filePath || model.fileId).replace(/^\.?\//, '').trim().toLowerCase();
+      const cleanPath = (model.filePath || model.fileId).replace(/\\/g, '/').replace(/^\.?\//, '').trim().toLowerCase();
+      const barePath = cleanPath.split('/').pop() || cleanPath;
+      const cleanPathNoExt = cleanPath.replace(/\.(tex|bib|sty|cls)$/i, '');
+      const barePathNoExt = barePath.replace(/\.(tex|bib|sty|cls)$/i, '');
+
       if (
         cleanPath === cleanTarget ||
+        cleanPath === cleanTargetNoExt ||
+        cleanPathNoExt === cleanTargetNoExt ||
         cleanPath.endsWith(`/${cleanTarget}`) ||
-        cleanTarget.endsWith(`/${cleanPath}`)
+        cleanTarget.endsWith(`/${cleanPath}`) ||
+        barePath === bareTarget ||
+        barePathNoExt === bareTargetNoExt
       ) {
         return model;
       }
@@ -407,11 +449,11 @@ export class LRUDocumentCache {
     const { fileId } = node;
     const model = this.models.get(fileId);
 
-    if (model?.isDirty) {
-      draftStorageService.saveDraft(
+    if (model?.isDirty && this.persistenceSink) {
+      this.persistenceSink.saveDraft(
         fileId,
         model.content,
-        model.projectId || 'anonymous',
+        model.projectId || 'workspace-local',
         model.filePath
       ).catch(() => {});
     }

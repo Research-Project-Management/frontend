@@ -13,6 +13,7 @@
 
 import type { CompileError } from '../domain/types/compiler.types';
 import { normalizeLatexPath } from '../domain/latex/latex-dag-engine';
+import { heuristicLatexErrorFix } from '../domain/latex/ai-error-assist';
 
 export interface IndexedDiagnosticItem {
   id: string;
@@ -25,6 +26,9 @@ export interface IndexedDiagnosticItem {
   context?: string;
   code?: string;
   suggestion?: string;
+  fixedSnippet?: string;
+  originalSnippet?: string;
+  confidence?: 'high' | 'medium' | 'low';
   source: 'LaTeX Compiler' | 'LaTeX Linter' | 'Retracted Citation' | 'System';
 }
 
@@ -86,6 +90,25 @@ export class DiagnosticsCoordinatorRegistry {
       const rawFile = err.file ? err.file.trim() : '';
       const canonicalKey = rawFile ? this.resolveCanonicalKey(rawFile) : normDefault;
 
+      const heuristic = !err.suggestion
+        ? heuristicLatexErrorFix({
+            errorMessage: err.message,
+            errorLine: err.line ?? 1,
+            errorFile: err.file || defaultFile,
+            detail: err.context,
+          })
+        : null;
+
+      const suggestion = err.suggestion || heuristic?.explanation;
+      const fixedSnippet = err.fixedSnippet || heuristic?.fixedSnippet;
+      const originalSnippet = err.originalSnippet || heuristic?.originalSnippet;
+      const confidence = heuristic?.confidence;
+
+      // In-place enrichment for store consumers
+      err.suggestion = suggestion;
+      err.fixedSnippet = fixedSnippet;
+      err.originalSnippet = originalSnippet;
+
       const item: IndexedDiagnosticItem = {
         id: `comp-${i}-${err.line ?? 0}`,
         file: err.file || defaultFile,
@@ -96,7 +119,10 @@ export class DiagnosticsCoordinatorRegistry {
         severity: err.severity === 'warning' ? 'warning' : 'error',
         context: err.context,
         code: err.code,
-        suggestion: err.suggestion,
+        suggestion,
+        fixedSnippet,
+        originalSnippet,
+        confidence,
         source: 'LaTeX Compiler',
       };
 
@@ -232,6 +258,27 @@ export class DiagnosticsCoordinatorRegistry {
     }
 
     return { errorCount, warningCount, infoCount, total };
+  }
+
+  public getAllDiagnostics(): IndexedDiagnosticItem[] {
+    const all: IndexedDiagnosticItem[] = [];
+    for (const list of this.fileIndex.values()) {
+      all.push(...list);
+    }
+    all.push(...this.unmappedDiagnostics);
+    return all.sort((a, b) => {
+      const fileA = a.file || a.normalizedPath || '';
+      const fileB = b.file || b.normalizedPath || '';
+      const fileCompare = fileA.localeCompare(fileB);
+      if (fileCompare !== 0) return fileCompare;
+      return a.line - b.line || (a.column ?? 0) - (b.column ?? 0);
+    });
+  }
+
+  public getDiagnosticsCount(severity?: 'error' | 'warning' | 'info'): number {
+    const all = this.getAllDiagnostics();
+    if (!severity) return all.length;
+    return all.filter((d) => d.severity === severity).length;
   }
 
   public subscribe(callback: (fileKey?: string) => void): () => void {

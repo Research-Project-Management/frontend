@@ -6,13 +6,17 @@ import { Textarea, Button } from "@/shared/components/ui";
 import { normalizeNotes, type NormalizedNote } from '../../domain';
 import { useNotes } from '../../data';
 import { cn } from "@/shared/lib/utils";
-import type { Paper } from '@/features/library/types/library.types';
+import type { Item } from '@/features/library/types/library.types';
 
 export interface NotesSectionProps {
-  paper: Paper;
+  item?: Item;
+  /** @deprecated Use item instead */
+  paper?: Item;
   scopeId?: string;
   projectId?: string;
-  onUpdatePaper?: (data: Partial<Paper>) => void;
+  onUpdateItem?: (data: Partial<Item>) => void;
+  /** @deprecated Use onUpdateItem instead */
+  onUpdatePaper?: (data: Partial<Item>) => void;
   onAddNote?: (content: string) => void;
   onDeleteNote?: (noteId: string, noteContent?: string) => void;
   onRequestDelete?: (note: { id: string; content: string }) => void;
@@ -36,7 +40,8 @@ export function NoteIcon({ className = 'size-3.5' }: { className?: string }) {
 }
 
 export default function NotesSection({
-  paper,
+  item: propItem,
+  paper: propPaper,
   scopeId,
   projectId,
   onAddNote,
@@ -51,6 +56,8 @@ export default function NotesSection({
   onClearPendingText,
   onNavigateToAnnotation,
 }: NotesSectionProps) {
+  const paper = propItem || propPaper;
+  if (!paper) return null;
   const paperId = paper.id;
   const activeScopeId = scopeId || projectId || paper?.projectId || 'user';
   const [isAdding, setIsAdding] = useState(false);

@@ -42,7 +42,7 @@ export interface OutlineTabProps {
   onClose?: () => void;
 }
 
-const LEVEL_BADGES: Record<SectionLevel, { label: string; className: string }> = {
+const LEVEL_BADGES: Record<string, { label: string; className: string }> = {
   part: { label: 'Part', className: 'bg-primary/20 text-primary border-primary/40' },
   chapter: { label: 'Ch', className: 'bg-primary/15 text-primary border-primary/30' },
   section: { label: 'Sec', className: 'bg-success/15 text-success border-success/30' },
@@ -50,38 +50,53 @@ const LEVEL_BADGES: Record<SectionLevel, { label: string; className: string }> =
   subsubsection: { label: 'Sub3', className: 'bg-muted text-muted-foreground border-border' },
   paragraph: { label: '¶', className: 'bg-muted text-muted-foreground border-border' },
   subparagraph: { label: '§', className: 'bg-muted text-muted-foreground border-border' },
+  figure: { label: 'Fig', className: 'bg-warning/15 text-warning border-warning/30' },
+  table: { label: 'Tab', className: 'bg-primary/15 text-primary border-primary/30' },
+  slide: { label: 'Slide', className: 'bg-ai/15 text-ai border-ai/30' },
+  appendix: { label: 'App', className: 'bg-warning/15 text-warning border-warning/30' },
+  abstract: { label: 'Abs', className: 'bg-success/15 text-success border-success/30' },
 };
 
 export function OutlineTab({ onClose }: OutlineTabProps) {
   const currentPage = usePageStore((s) => s.currentPage);
   const activeFilePage = usePageStore((s) => s.activeFilePage);
   const activeDoc = activeFilePage || currentPage;
-  const filePath = (activeDoc as any)?.path || activeDoc?.title || 'main.tex';
+  const filePath = (activeDoc && 'path' in activeDoc && typeof activeDoc.path === 'string' ? activeDoc.path : activeDoc?.title) || 'main.tex';
   const fileId = activeDoc?.id || '';
 
   const { engine } = useEditorInstance();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [scope, setScope] = useState<'project' | 'file'>('project');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'sections' | 'figures-tables'>('all');
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
   const [cursorLine, setCursorLine] = useState<number>(1);
   const [treeVersion, setTreeVersion] = useState(0);
 
-  // 1. Fetch current outline tree & flat list
-  const rawTree = useMemo(() => {
+  // 1. Fetch current outline tree & flat list (Project vs Current File scope)
+  const { rawTree, flatItems } = useMemo(() => {
     void treeVersion;
+    if (scope === 'project') {
+      const projTree = latexSymbolsIndex.getProjectOutline();
+      const projFlat = latexSymbolsIndex.getProjectFlatOutline();
+      if (projTree.length > 0) {
+        return { rawTree: projTree, flatItems: projFlat };
+      }
+    }
+    // Fallback to active file
     const byPath = latexSymbolsIndex.getOutline(filePath);
-    if (byPath.length > 0) return byPath;
-    if (fileId) return latexSymbolsIndex.getOutline(fileId);
-    return [];
-  }, [filePath, fileId, treeVersion]);
-
-  const flatItems = useMemo(() => {
-    void treeVersion;
-    const byPath = latexSymbolsIndex.getFlatOutline(filePath);
-    if (byPath.length > 0) return byPath;
-    if (fileId) return latexSymbolsIndex.getFlatOutline(fileId);
-    return [];
-  }, [filePath, fileId, treeVersion]);
+    const flatByPath = latexSymbolsIndex.getFlatOutline(filePath);
+    if (byPath.length > 0) {
+      return { rawTree: byPath, flatItems: flatByPath };
+    }
+    if (fileId) {
+      return {
+        rawTree: latexSymbolsIndex.getOutline(fileId),
+        flatItems: latexSymbolsIndex.getFlatOutline(fileId),
+      };
+    }
+    return { rawTree: [], flatItems: [] };
+  }, [filePath, fileId, treeVersion, scope]);
 
   // 2. Subscribe to background worker updates
   useEffect(() => {
@@ -108,23 +123,33 @@ export function OutlineTab({ onClose }: OutlineTabProps) {
     let currentActive: OutlineItem | null = null;
 
     for (let i = 0; i < flatItems.length; i++) {
-      if (cursorLine >= flatItems[i].line) {
-        currentActive = flatItems[i];
+      const it = flatItems[i];
+      // Only highlight items matching current active file
+      if (it.sourceFile && filePath && !it.sourceFile.endsWith(filePath.split('/').pop() || '')) {
+        continue;
+      }
+      if (cursorLine >= it.line) {
+        currentActive = it;
       } else {
         break;
       }
     }
 
     return currentActive?.id || null;
-  }, [flatItems, cursorLine]);
+  }, [flatItems, cursorLine, filePath]);
 
-  // 5. Jump to section in CodeMirror 6
+  // 5. Jump to section with cross-file and SyncTeX PDF forward navigation
   const handleJumpToSection = useCallback(
-    (line: number) => {
+    (targetFile: string, line: number) => {
       editorCommandBus.dispatch({
-        type: 'editor:jump-to-line',
+        type: 'navigation:jump-to-line',
+        filePath: targetFile,
         line,
         highlight: 'synctex',
+      });
+      editorCommandBus.dispatch({
+        type: 'synctex:forward',
+        line,
       });
       engine?.focus();
     },
@@ -163,28 +188,45 @@ export function OutlineTab({ onClose }: OutlineTabProps) {
     setCollapsedNodes(new Set());
   }, []);
 
-  // 7. Filter outline by search query
+  // 7. Filter outline by search query & category
   const filteredTree = useMemo(() => {
-    if (!searchQuery.trim()) return rawTree;
     const q = searchQuery.toLowerCase().trim();
+
+    const matchesCategory = (type: SectionLevel) => {
+      if (categoryFilter === 'sections') {
+        return type !== 'figure' && type !== 'table';
+      }
+      if (categoryFilter === 'figures-tables') {
+        return type === 'figure' || type === 'table';
+      }
+      return true;
+    };
 
     const filterNodes = (nodes: OutlineNode[]): OutlineNode[] => {
       const result: OutlineNode[] = [];
       for (const node of nodes) {
-        const matchesSelf = node.title.toLowerCase().includes(q);
+        const matchesCat = matchesCategory(node.type);
+        const matchesQuery =
+          !q ||
+          node.title.toLowerCase().includes(q) ||
+          (node.sourceFile && node.sourceFile.toLowerCase().includes(q));
         const filteredChildren = node.children ? filterNodes(node.children) : [];
-        if (matchesSelf || filteredChildren.length > 0) {
+
+        if (matchesCat && matchesQuery) {
           result.push({
             ...node,
             children: filteredChildren,
           });
+        } else if (filteredChildren.length > 0) {
+          // Promote matching descendants if parent is filtered out by category or query
+          result.push(...filteredChildren);
         }
       }
       return result;
     };
 
     return filterNodes(rawTree);
-  }, [rawTree, searchQuery]);
+  }, [rawTree, searchQuery, categoryFilter]);
 
   // Recursive tree node renderer
   const renderOutlineNode = (node: OutlineNode, depth = 0) => {
@@ -192,17 +234,20 @@ export function OutlineTab({ onClose }: OutlineTabProps) {
     const isCollapsed = collapsedNodes.has(node.id);
     const isActive = activeSectionId === node.id;
     const badge = LEVEL_BADGES[node.type] || LEVEL_BADGES.section;
+    const nodeFileBase = node.sourceFile ? node.sourceFile.split('/').pop() : '';
+    const activeFileBase = filePath.split('/').pop();
+    const isOtherFile = Boolean(nodeFileBase && nodeFileBase !== activeFileBase);
 
     return (
       <div key={node.id} className="flex flex-col select-none">
         <div
           role="button"
           tabIndex={0}
-          onClick={() => handleJumpToSection(node.line)}
+          onClick={() => handleJumpToSection(node.sourceFile || filePath, node.line)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              handleJumpToSection(node.line);
+              handleJumpToSection(node.sourceFile || filePath, node.line);
             }
           }}
           className={cn(
@@ -254,10 +299,22 @@ export function OutlineTab({ onClose }: OutlineTabProps) {
             </span>
           </div>
 
-          {/* Line number chip */}
-          <span className="text-11 font-mono text-muted-foreground/60 shrink-0 group-hover:text-muted-foreground transition-colors ml-1">
-            L{node.line}
-          </span>
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Subfile origin tag if from an included file */}
+            {isOtherFile && (
+              <span
+                title={`Defined in ${node.sourceFile}`}
+                className="text-[10px] font-mono text-muted-foreground/70 px-1 py-0.2 rounded bg-muted/60 max-w-[80px] truncate"
+              >
+                {nodeFileBase}
+              </span>
+            )}
+
+            {/* Line number chip */}
+            <span className="text-11 font-mono text-muted-foreground/60 shrink-0 group-hover:text-muted-foreground transition-colors ml-0.5">
+              L{node.line}
+            </span>
+          </div>
         </div>
 
         {/* Child Subsections */}
@@ -314,13 +371,13 @@ export function OutlineTab({ onClose }: OutlineTabProps) {
       </SidebarPanelHeader>
 
       {/* ── Search Input ── */}
-      <div className="p-2 border-b border-border shrink-0">
+      <div className="p-2 shrink-0">
         <div className="relative flex items-center">
           <Search className="absolute left-2.5 size-3.5 text-muted-foreground pointer-events-none" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Filter sections..."
+            placeholder="Filter sections & figures..."
             className="h-7 pl-8 pr-7 text-12 bg-muted/30 focus-visible:bg-background"
           />
           {searchQuery && (
@@ -333,6 +390,79 @@ export function OutlineTab({ onClose }: OutlineTabProps) {
               <X className="size-3" />
             </button>
           )}
+        </div>
+      </div>
+
+      {/* ── Scope Switcher & Category Filters (Overleaf Parity) ── */}
+      <div className="px-2 pb-2 pt-0 border-b border-border flex items-center justify-between gap-1 shrink-0">
+        {/* Scope: Project vs Current File */}
+        <div className="inline-flex rounded-md p-0.5 bg-muted/50 border border-border/60 text-[11px]">
+          <button
+            type="button"
+            onClick={() => setScope('project')}
+            className={cn(
+              'px-2 py-0.5 rounded font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+              scope === 'project'
+                ? 'bg-background text-foreground shadow-xs font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+            aria-label="Project-wide outline"
+          >
+            Project
+          </button>
+          <button
+            type="button"
+            onClick={() => setScope('file')}
+            className={cn(
+              'px-2 py-0.5 rounded font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+              scope === 'file'
+                ? 'bg-background text-foreground shadow-xs font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+            aria-label="Current file outline only"
+          >
+            File
+          </button>
+        </div>
+
+        {/* Category: All / Sections / Figures & Tables */}
+        <div className="inline-flex rounded-md p-0.5 bg-muted/50 border border-border/60 text-[10px]">
+          <button
+            type="button"
+            onClick={() => setCategoryFilter('all')}
+            className={cn(
+              'px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+              categoryFilter === 'all'
+                ? 'bg-background text-foreground shadow-xs font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => setCategoryFilter('sections')}
+            className={cn(
+              'px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+              categoryFilter === 'sections'
+                ? 'bg-background text-foreground shadow-xs font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            Sec
+          </button>
+          <button
+            type="button"
+            onClick={() => setCategoryFilter('figures-tables')}
+            className={cn(
+              'px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+              categoryFilter === 'figures-tables'
+                ? 'bg-background text-foreground shadow-xs font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            Fig/Tab
+          </button>
         </div>
       </div>
 

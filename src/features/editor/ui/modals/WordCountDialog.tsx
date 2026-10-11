@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * WordCountDialog.tsx
@@ -33,7 +33,7 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { fetchWordCount, type WordCountResponse } from '@/features/editor/coordinators/services/compiler.service';
+import { fetchWordCount, type WordCountResponse } from '@/features/editor/sdk';
 
 export interface TeXcountStats {
   wordsInText: number;

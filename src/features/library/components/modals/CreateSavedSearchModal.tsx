@@ -653,29 +653,35 @@ export function CreateSavedSearchModal({
     if (open) {
       if (savedSearch) {
         setName(savedSearch.name || '');
-        const conj =
-          savedSearch.conjunction ||
-          (savedSearch.conditions as any)?.conjunction ||
-          'AND';
+        const condObj =
+          typeof savedSearch.conditions === 'object' && savedSearch.conditions !== null
+            ? (savedSearch.conditions as {
+                conjunction?: string;
+                scopeOptions?: {
+                  searchSubcollections?: boolean;
+                  showOnlyTopLevel?: boolean;
+                  includeParentsAndChildren?: boolean;
+                };
+                conditions?: Array<{ field?: string; operator?: string; value?: unknown }>;
+              })
+            : null;
+        const conj = savedSearch.conjunction || condObj?.conjunction || 'AND';
         setConjunction(conj === 'OR' ? 'OR' : 'AND');
         setSortBy(savedSearch.sortBy || 'dateAdded');
         setSortOrder(savedSearch.sortOrder || 'desc');
 
-        const scopeOpts =
-          savedSearch.scopeOptions ||
-          (savedSearch.conditions as any)?.scopeOptions ||
-          {};
+        const scopeOpts = savedSearch.scopeOptions || condObj?.scopeOptions || {};
         setSearchSubcollections(scopeOpts.searchSubcollections !== false);
         setShowOnlyTopLevel(Boolean(scopeOpts.showOnlyTopLevel));
         setIncludeParentAndChild(scopeOpts.includeParentsAndChildren !== false);
 
-        const rawConds = (savedSearch.conditions as any)?.conditions;
+        const rawConds = condObj?.conditions;
         if (Array.isArray(rawConds) && rawConds.length > 0) {
           setConditions(
-            rawConds.map((c: any, idx: number) => ({
+            rawConds.map((c, idx: number) => ({
               id: `row-${idx}-${Date.now()}`,
-              field: c.field || 'title',
-              operator: c.operator || 'contains',
+              field: (c.field || 'title') as SearchFieldKey,
+              operator: (c.operator || 'contains') as ConditionOperator,
               value: c.value !== undefined && c.value !== null ? String(c.value) : '',
             })),
           );

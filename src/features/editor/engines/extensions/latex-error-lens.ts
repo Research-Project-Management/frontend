@@ -246,14 +246,14 @@ export const errorLensTheme = EditorView.baseTheme({
     transition: 'opacity 0.2s ease, transform 0.2s ease',
   },
   '.cm-error-lens-error': {
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    color: '#ef4444',
-    border: '1px solid rgba(239, 68, 68, 0.25)',
+    backgroundColor: 'hsl(var(--destructive) / 0.12)',
+    color: 'var(--destructive)',
+    border: '1px solid hsl(var(--destructive) / 0.25)',
   },
   '.cm-error-lens-warning': {
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
-    color: '#d97706',
-    border: '1px solid rgba(245, 158, 11, 0.25)',
+    backgroundColor: 'hsl(var(--warning) / 0.12)',
+    color: 'var(--warning)',
+    border: '1px solid hsl(var(--warning) / 0.25)',
   },
   '.cm-error-lens-icon': {
     display: 'inline-flex',
@@ -276,17 +276,12 @@ export const errorLensTheme = EditorView.baseTheme({
     fontWeight: '600',
     border: 'none',
     cursor: 'pointer',
-    transition: 'all 0.15s ease',
   },
   '.cm-error-lens-btn-fix': {
-    backgroundColor: 'rgba(239, 68, 68, 0.18)',
+    backgroundColor: 'hsl(var(--destructive) / 0.18)',
     color: 'inherit',
     '&:hover': {
-      backgroundColor: 'rgba(239, 68, 68, 0.32)',
-      transform: 'scale(1.02)',
-    },
-    '&:active': {
-      transform: 'scale(0.98)',
+      backgroundColor: 'hsl(var(--destructive) / 0.32)',
     },
   },
   '.cm-error-lens-btn-chat': {
@@ -296,17 +291,17 @@ export const errorLensTheme = EditorView.baseTheme({
     padding: '1.5px 4px',
     '&:hover': {
       opacity: '1',
-      backgroundColor: 'rgba(239, 68, 68, 0.2)',
+      backgroundColor: 'hsl(var(--destructive) / 0.2)',
     },
   },
   // Line highlighting
   '.cm-error-lens-line-error': {
-    backgroundColor: 'rgba(239, 68, 68, 0.05) !important',
-    borderLeft: '2px solid #ef4444 !important',
+    backgroundColor: 'hsl(var(--destructive) / 0.05) !important',
+    borderLeft: '2px solid var(--destructive) !important',
   },
   '.cm-error-lens-line-warning': {
-    backgroundColor: 'rgba(245, 158, 11, 0.05) !important',
-    borderLeft: '2px solid #f59e0b !important',
+    backgroundColor: 'hsl(var(--warning) / 0.05) !important',
+    borderLeft: '2px solid var(--warning) !important',
   },
 });
 

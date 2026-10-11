@@ -16,11 +16,9 @@ import React from 'react';
 import dynamic from 'next/dynamic';
 import {
   FileText,
-  ListTree,
   Search,
   BookMarked,
   MessageSquareText,
-  MessageSquare,
   Bot,
   Settings,
 } from 'lucide-react';
@@ -34,7 +32,6 @@ import { cn } from '@/shared/lib/utils';
 import { useLayoutStore, type ActivityBarTab } from '../../store/layout.store';
 import { useSettingsStore } from '../../store/settings.store';
 import { usePageStore } from '../../store/editor.store';
-import { useDocumentCollaborationStore } from '../../store/collaboration.store';
 import { useReviewPendingCount } from '../features/sidebar/review/hooks/useReviewPendingCount';
 
 const StickyDock = dynamic(() => import('@/features/shell/components/StickyDock'), {
@@ -50,11 +47,9 @@ interface ActivityItem {
 
 const PRIMARY_ACTIVITIES: ActivityItem[] = [
   { id: 'files', label: 'Files Explorer', icon: FileText, shortcut: 'Ctrl+Shift+E' },
-  { id: 'outline', label: 'Document Outline', icon: ListTree, shortcut: 'Ctrl+Shift+O' },
   { id: 'search', label: 'Search in Project', icon: Search, shortcut: 'Ctrl+Shift+F' },
   { id: 'citations', label: 'Citations & BibTeX', icon: BookMarked },
   { id: 'review', label: 'Review & Comments', icon: MessageSquareText },
-  { id: 'chat', label: 'Team Chat', icon: MessageSquare },
   { id: 'ai', label: 'AI Research Assistant', icon: Bot },
 ];
 
@@ -67,7 +62,6 @@ export function ActivityBar() {
 
   const toggleSettingsPanel = useSettingsStore((s) => s.toggleSettingsPanel);
   const settingsPanelOpen = useSettingsStore((s) => s.settingsPanelOpen);
-  const unreadChatCount = useDocumentCollaborationStore((s) => s.unreadChatCount);
   const pageId = usePageStore((s) => s.activePageId || s.currentPage?.id);
   const { totalPendingCount } = useReviewPendingCount(pageId);
 
@@ -82,10 +76,10 @@ export function ActivityBar() {
           {PRIMARY_ACTIVITIES.map((item) => {
             const isActive = sidebarLeftOpen && activeSidebarTab === item.id;
             const Icon = item.icon;
-            const isChat = item.id === 'chat';
             const isReview = item.id === 'review';
-            const showBadge = (isChat && unreadChatCount > 0) || (isReview && totalPendingCount > 0);
-            const badgeCount = isChat ? unreadChatCount : totalPendingCount;
+            const isAi = item.id === 'ai';
+            const showBadge = isReview && totalPendingCount > 0;
+            const badgeCount = totalPendingCount;
 
             const handleClick = () => {
               selectActivityTab(item.id);
@@ -111,7 +105,13 @@ export function ActivityBar() {
                     {isActive && (
                       <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-primary" />
                     )}
-                    <Icon className="size-4.5 shrink-0" strokeWidth={1.8} />
+                    <Icon
+                      className={cn(
+                        'size-4.5 shrink-0',
+                        isAi && 'text-ai'
+                      )}
+                      strokeWidth={1.8}
+                    />
 
                     {/* Unread / Pending badge */}
                     {showBadge && (

@@ -85,7 +85,7 @@ export function CompilerLogsFilterTabs({
         <span
           className={cn(
             'px-1.5 py-0.5 rounded-full text-xs font-mono font-semibold',
-            warningsCount > 0 ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300' : 'bg-muted text-foreground/80 font-medium'
+            warningsCount > 0 ? 'bg-warning/15 text-warning border border-warning/20' : 'bg-muted text-foreground/80 font-medium'
           )}
         >
           {warningsCount}

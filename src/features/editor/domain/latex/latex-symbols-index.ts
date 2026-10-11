@@ -24,11 +24,10 @@ import {
   type OutlineNode,
   type SectionLevel,
   type SymbolSnapshot,
+  type SymbolsWorkerMessageIn,
+  type SymbolsWorkerMessageOut,
 } from './latex-symbols-core';
-import type {
-  SymbolsWorkerMessageIn,
-  SymbolsWorkerMessageOut,
-} from '@/features/editor/engines/workers/latex-symbols.worker';
+import { PrefixTrie, LatexSymbolCatalog } from './prefix-trie';
 import { isItemRetracted, getRetractionInfo } from '@/features/library';
 
 export type {
@@ -52,6 +51,7 @@ export class LatexSymbolsIndex {
   private libraryCitations: BibEntry[] = [];
   private retractedByDoi = new Map<string, { reason?: string; nature?: string; noticeUrl?: string; title?: string }>();
   private retractedByKey = new Map<string, { reason?: string; nature?: string; noticeUrl?: string; title?: string }>();
+  private catalog = new LatexSymbolCatalog<BibEntry, LabelEntry, CommandEntry, EnvironmentEntry>();
 
   private snapshot: SymbolSnapshot = {
     citations: [],
@@ -69,7 +69,12 @@ export class LatexSymbolsIndex {
   }
 
   private initWorker(): void {
-    if (typeof window === 'undefined') return;
+    if (
+      typeof window === 'undefined' ||
+      typeof Worker === 'undefined' ||
+      process.env.NODE_ENV === 'test'
+    )
+      return;
 
     try {
       this.worker = new Worker(
@@ -89,6 +94,7 @@ export class LatexSymbolsIndex {
           } else {
             this.snapshot = snapshot;
           }
+          this.rebuildCatalog(this.snapshot);
           this.notifyListeners();
         }
       };
@@ -143,6 +149,7 @@ export class LatexSymbolsIndex {
       // In-process fallback
       this.fallbackCore.indexFile(fileId, filePath, content);
       this.snapshot = this.fallbackCore.exportSnapshot();
+      this.rebuildCatalog(this.snapshot);
       this.notifyListeners();
     }
   }
@@ -167,6 +174,7 @@ export class LatexSymbolsIndex {
     } else {
       this.fallbackCore.removeFile(fileId, filePath);
       this.snapshot = this.fallbackCore.exportSnapshot();
+      this.rebuildCatalog(this.snapshot);
       this.notifyListeners();
     }
   }
@@ -182,6 +190,7 @@ export class LatexSymbolsIndex {
     this.libraryCitations = [];
     this.retractedByDoi.clear();
     this.retractedByKey.clear();
+    this.catalog.clear();
 
     if (this.worker && !this.isWorkerFailed) {
       this.worker.postMessage({
@@ -191,7 +200,84 @@ export class LatexSymbolsIndex {
     } else {
       this.fallbackCore.clear();
       this.snapshot = this.fallbackCore.exportSnapshot();
+      this.rebuildCatalog(this.snapshot);
       this.notifyListeners();
+    }
+  }
+
+  /**
+   * Rebuilds the high-performance Prefix Trie and Inverted Index from the latest snapshot.
+   * Enables O(K) lookup time for citations, labels, commands, and environments.
+   */
+  private rebuildCatalog(snapshot: SymbolSnapshot): void {
+    this.catalog.clear();
+
+    // 1. Index Citations
+    const citations = snapshot.citations || [];
+    for (const entry of citations) {
+      if (!entry.key) continue;
+
+      // Index exact citation key
+      this.catalog.citationKeyTrie.insert(entry.key, entry);
+
+      // Index publication year
+      if (entry.year) {
+        this.catalog.citationTokenTrie.insert(entry.year, entry);
+      }
+
+      // Helper to index word suffixes and individual tokens for instant O(K) search
+      const indexWordSuffixes = (text: string) => {
+        const clean = text.trim();
+        if (!clean) return;
+        const words = clean.split(/\s+/).filter(Boolean);
+        for (let i = 0; i < words.length; i++) {
+          const suffix = words.slice(i).join(' ');
+          this.catalog.citationTokenTrie.insertNormalized(suffix, entry);
+
+          const singleWord = words[i].replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+          if (singleWord.length > 1 && singleWord !== suffix) {
+            this.catalog.citationTokenTrie.insertNormalized(singleWord, entry);
+          }
+        }
+      };
+
+      if (entry.author) {
+        indexWordSuffixes(entry.author);
+      }
+      if (entry.title) {
+        indexWordSuffixes(entry.title);
+      }
+      if (entry.journal) {
+        indexWordSuffixes(entry.journal);
+      }
+    }
+
+    // 2. Index Labels (both full label and suffix after colon)
+    const labels = snapshot.labels || [];
+    for (const label of labels) {
+      if (!label.name) continue;
+      this.catalog.labelTrie.insert(label.name, label);
+      const colonIdx = label.name.indexOf(':');
+      if (colonIdx > 0 && colonIdx < label.name.length - 1) {
+        this.catalog.labelTrie.insert(label.name.substring(colonIdx + 1), label);
+      }
+    }
+
+    // 3. Index Commands
+    const commands = snapshot.commands || [];
+    for (const cmd of commands) {
+      if (!cmd.name) continue;
+      this.catalog.commandTrie.insert(cmd.name, cmd);
+      if (cmd.name.startsWith('\\')) {
+        this.catalog.commandTrie.insert(cmd.name.substring(1), cmd);
+      }
+    }
+
+    // 4. Index Environments
+    const envs = snapshot.environments || [];
+    for (const env of envs) {
+      if (!env.name) continue;
+      this.catalog.environmentTrie.insert(env.name, env);
     }
   }
 
@@ -204,31 +290,62 @@ export class LatexSymbolsIndex {
 
   /**
    * Instant 0ms synchronous lookup for BibTeX & Workspace Library citations
-   * Includes Vietnamese diacritic-insensitive fuzzy matching
+   * Accelerated by O(K) Prefix Trie & Token Inverted Index with Vietnamese diacritic-insensitive matching.
    */
-  public getCitations(query = ''): BibEntry[] {
-    const q = query.trim().toLowerCase();
+  public getCitations(query = '', limit = 50): BibEntry[] {
+    const q = query.trim();
     if (!q) return this.snapshot.citations;
 
-    const normQ = LatexSymbolsIndexCore.stripVietnameseDiacritics(q);
+    const normQ = PrefixTrie.normalize(q);
 
+    // 1. O(K) lookup in Citation Key Trie
+    const keyHits = this.catalog.citationKeyTrie.findPrefix(normQ, { limit });
+
+    // 2. O(K) lookup in Token / Suffix Inverted Index
+    const tokenHits = this.catalog.citationTokenTrie.findPrefix(normQ, { limit });
+
+    // Merge and deduplicate results
+    const seen = new Set<string>();
+    const results: BibEntry[] = [];
+
+    for (const item of keyHits) {
+      if (!seen.has(item.key.toLowerCase())) {
+        seen.add(item.key.toLowerCase());
+        results.push(item);
+        if (results.length >= limit) return results;
+      }
+    }
+
+    for (const item of tokenHits) {
+      if (!seen.has(item.key.toLowerCase())) {
+        seen.add(item.key.toLowerCase());
+        results.push(item);
+        if (results.length >= limit) return results;
+      }
+    }
+
+    if (results.length > 0) {
+      return results;
+    }
+
+    // Graceful fallback to linear scan in case of complex non-prefix multi-token patterns
     return this.snapshot.citations.filter((entry) => {
-      if (entry.key.toLowerCase().includes(q)) return true;
-      if (entry.year && entry.year.includes(q)) return true;
+      if (entry.key.toLowerCase().includes(normQ)) return true;
+      if (entry.year && entry.year.includes(normQ)) return true;
       if (entry.author) {
-        if (entry.author.toLowerCase().includes(q)) return true;
-        if (LatexSymbolsIndexCore.stripVietnameseDiacritics(entry.author).includes(normQ)) return true;
+        if (entry.author.toLowerCase().includes(normQ)) return true;
+        if (PrefixTrie.normalize(entry.author).includes(normQ)) return true;
       }
       if (entry.title) {
-        if (entry.title.toLowerCase().includes(q)) return true;
-        if (LatexSymbolsIndexCore.stripVietnameseDiacritics(entry.title).includes(normQ)) return true;
+        if (entry.title.toLowerCase().includes(normQ)) return true;
+        if (PrefixTrie.normalize(entry.title).includes(normQ)) return true;
       }
       if (entry.journal) {
-        if (entry.journal.toLowerCase().includes(q)) return true;
-        if (LatexSymbolsIndexCore.stripVietnameseDiacritics(entry.journal).includes(normQ)) return true;
+        if (entry.journal.toLowerCase().includes(normQ)) return true;
+        if (PrefixTrie.normalize(entry.journal).includes(normQ)) return true;
       }
       return false;
-    });
+    }).slice(0, limit);
   }
 
   /**
@@ -237,7 +354,12 @@ export class LatexSymbolsIndex {
   public getCitationByKey(key: string): BibEntry | undefined {
     if (!key) return undefined;
     const cleanKey = key.trim().toLowerCase();
-    const entry = this.snapshot.citations.find((e) => e.key.toLowerCase() === cleanKey);
+
+    // Fast O(K) Trie exact match with array fallback
+    let entry = this.catalog.citationKeyTrie.findExact(cleanKey);
+    if (!entry) {
+      entry = this.snapshot.citations.find((e) => e.key.toLowerCase() === cleanKey);
+    }
     if (!entry) return undefined;
 
     // Check if retraction info needs to be dynamically merged from DOI or Key match
@@ -356,32 +478,51 @@ export class LatexSymbolsIndex {
         citations: [...this.snapshot.citations, ...additions],
         version: this.snapshot.version + 1,
       };
+      this.rebuildCatalog(this.snapshot);
       this.notifyListeners();
+    } else {
+      this.rebuildCatalog(this.snapshot);
     }
   }
 
   /**
    * Instant 0ms synchronous lookup for LaTeX labels
    */
-  public getLabels(query = ''): LabelEntry[] {
-    const q = query.toLowerCase();
+  public getLabels(query = '', limit = 50): LabelEntry[] {
+    const q = query.trim().toLowerCase();
     if (!q) return this.snapshot.labels;
 
-    return this.snapshot.labels.filter((entry) => entry.name.toLowerCase().includes(q));
+    const hits = this.catalog.labelTrie.findPrefix(q, { limit });
+    if (hits.length > 0) return hits;
+
+    return this.snapshot.labels.filter((entry) => entry.name.toLowerCase().includes(q)).slice(0, limit);
   }
 
   /**
    * Instant 0ms synchronous lookup for custom project commands
    */
-  public getCommands(): CommandEntry[] {
-    return this.snapshot.commands;
+  public getCommands(query = '', limit = 50): CommandEntry[] {
+    const q = query.trim().toLowerCase();
+    if (!q) return this.snapshot.commands;
+
+    const hits = this.catalog.commandTrie.findPrefix(q, { limit });
+    if (hits.length > 0) return hits;
+
+    return this.snapshot.commands.filter((cmd) => cmd.name.toLowerCase().includes(q)).slice(0, limit);
   }
 
   /**
    * Instant 0ms synchronous lookup for custom project environments (\newenvironment, \newtheorem)
    */
-  public getEnvironments(): EnvironmentEntry[] {
-    return this.snapshot.environments || [];
+  public getEnvironments(query = '', limit = 50): EnvironmentEntry[] {
+    const envs = this.snapshot.environments || [];
+    const q = query.trim().toLowerCase();
+    if (!q) return envs;
+
+    const hits = this.catalog.environmentTrie.findPrefix(q, { limit });
+    if (hits.length > 0) return hits;
+
+    return envs.filter((env) => env.name.toLowerCase().includes(q)).slice(0, limit);
   }
 
   /**
@@ -392,6 +533,17 @@ export class LatexSymbolsIndex {
     if (!q) return this.snapshot.includeFiles;
 
     return this.snapshot.includeFiles.filter((path) => path.toLowerCase().includes(q));
+  }
+
+  /**
+   * Instant 0ms synchronous lookup for project image files (\includegraphics autocompletion)
+   */
+  public getImageFiles(query = ''): string[] {
+    const q = query.toLowerCase();
+    const images = this.snapshot.imageFiles || [];
+    if (!q) return images;
+
+    return images.filter((path) => path.toLowerCase().includes(q));
   }
 
   /**
@@ -408,6 +560,20 @@ export class LatexSymbolsIndex {
   public getFlatOutline(fileIdOrPath: string): OutlineItem[] {
     const norm = fileIdOrPath.replace(/\\/g, '/');
     return this.snapshot.flatOutlineByFile[norm] || this.snapshot.flatOutlineByFile[fileIdOrPath] || [];
+  }
+
+  /**
+   * Returns project-wide hierarchical outline tree (aggregating included subfiles)
+   */
+  public getProjectOutline(): OutlineNode[] {
+    return this.snapshot.projectOutline || [];
+  }
+
+  /**
+   * Returns project-wide flat list of outline sections
+   */
+  public getProjectFlatOutline(): OutlineItem[] {
+    return this.snapshot.projectFlatOutline || [];
   }
 
   /**

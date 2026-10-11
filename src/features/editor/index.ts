@@ -10,9 +10,6 @@ export { WorkbenchShell } from './ui/shell/WorkbenchShell';
 export { ModernWorkbenchLayout } from './ui/shell/ModernWorkbenchLayout';
 export { Topbar } from './ui/shell/Topbar';
 export { ActivityBar } from './ui/shell/ActivityBar';
-export { StatusBar } from './ui/shell/StatusBar';
-export { default as StandaloneViewerPage } from './ui/shell/StandaloneViewerPage';
-export { default as ClientStandaloneViewer } from './ui/shell/ClientStandaloneViewer';
 
 export { EditorArea } from './ui/features/editor/EditorArea';
 export { CodeMirrorView } from './ui/features/editor/CodeMirrorView';
@@ -35,8 +32,11 @@ export * from './ui/hooks';
 // Layer 4: State & Stores
 export * from './store';
 
-// Layer 3: Coordinators Spine & Infrastructure Services
+// Layer 3: Coordinators Spine
 export * from './coordinators';
+
+// SDK: Canonical Backend API Client & Realtime
+export * from './sdk';
 
 // Layer 2: Runtime Engines & Presets
 export * from './engines';
@@ -45,9 +45,10 @@ export * from './engines';
 export * from './domain';
 
 // Explicit re-exports to resolve TS2308 ambiguity
-export { historyKeys } from './coordinators';
+export { historyKeys } from './sdk';
 export type { DiffChunk, SyncTeXMap, SyncTeXNode } from './domain';
 export { runLatexLinter } from './engines';
 export type { LaTeXEngine } from './domain';
-export { forEachLine, parseSyncTeX, resolvePageForLine } from './domain';
+export { forEachLine, parseSyncTeX, resolvePageForLine, extractDoiFromText, parsePdfDate } from './domain';
+export { LatexCompilerEngine, createPdfBlobAndUrl } from './coordinators';
 

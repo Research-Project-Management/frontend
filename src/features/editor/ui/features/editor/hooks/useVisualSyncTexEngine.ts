@@ -220,10 +220,17 @@ export function useVisualSyncTexEngine({
   );
 
   // Double-click on any element in Visual Editor surface jumps to PDF (Overleaf Parity)
+  // Excludes interactive math nodes, citation chips, and toolbar elements so double-click opens their editors
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target.closest('input, textarea, button, [role="toolbar"], .latex-figure-badge')) return;
+      if (
+        target.closest(
+          'input, textarea, button, [role="toolbar"], .latex-figure-badge, .latex-math-block, .latex-math-inline, .latex-citation-chip, .latex-ref-chip'
+        )
+      ) {
+        return;
+      }
       triggerForwardSync(target);
     },
     [triggerForwardSync]

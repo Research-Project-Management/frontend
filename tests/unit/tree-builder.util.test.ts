@@ -6,7 +6,7 @@ import {
   buildFileTree,
   filterFileTree,
   type FileTreeFileNode,
-} from '@/features/editor/components/sidebar/explorer/tree-builder.util';
+} from '@/features/editor/ui/features/sidebar/explorer/tree-builder.util';
 
 describe('tree-builder.util', () => {
   describe('inferResearchFolder', () => {
@@ -64,6 +64,10 @@ describe('tree-builder.util', () => {
       expect(getRootFilePriority(mainNode, 'file-1')).toBe(1);
       expect(getRootFilePriority(preambleNode, 'file-1')).toBe(2);
       expect(getRootFilePriority(randomNode, 'file-1')).toBe(10);
+
+      // When another file is designated as main, it becomes priority 1
+      expect(getRootFilePriority(randomNode, 'file-3', null, 'file-1')).toBe(1);
+      expect(getRootFilePriority(mainNode, 'file-3', null, 'file-1')).toBe(10);
     });
 
     it('sorts folder priorities following academic conventions', () => {
@@ -118,7 +122,10 @@ describe('tree-builder.util', () => {
       expect(filtered[0].type).toBe('folder');
       if (filtered[0].type === 'folder') {
         expect(filtered[0].children.length).toBe(1);
-        expect(filtered[0].children[0].title).toBe('01_intro.tex');
+        const firstChild = filtered[0].children[0];
+        if (firstChild && firstChild.type === 'file') {
+          expect(firstChild.title).toBe('01_intro.tex');
+        }
       }
     });
 

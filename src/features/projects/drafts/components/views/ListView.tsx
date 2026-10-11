@@ -12,13 +12,13 @@ export interface ListViewProps {
   onDelete: (draft: WorkItemDraft) => void;
 }
 
-export const ListView: React.FC<ListViewProps> = ({
+export const ListView = React.memo<ListViewProps>(function ListView({
   drafts,
   onEdit,
   onDuplicate,
   onMoveToProject,
   onDelete,
-}) => {
+}) {
   return (
     <div className="flex flex-col border-b border-border divide-y divide-border">
       {drafts.map((draft) => (
@@ -33,6 +33,6 @@ export const ListView: React.FC<ListViewProps> = ({
       ))}
     </div>
   );
-};
+});
 
 export default ListView;

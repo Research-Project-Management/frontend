@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * useAddFilesActions.ts
@@ -11,7 +11,7 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { manuscriptService } from '@/features/editor/coordinators/services/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk';
 import { pageKeys } from '@/features/editor/ui/hooks/use-core';
 
 export interface UseAddFilesActionsOptions {

@@ -34,6 +34,7 @@ import { useProject } from '@/features/projects/shell/hooks/use-project';
 import {
   projectRenameSchema,
   type ProjectRenameInput,
+  extractProjectId,
 } from '@/features/editor/domain/types';
 import { useProjectTitleActions } from './useProjectTitleActions';
 
@@ -45,9 +46,7 @@ export function ProjectTitleDropdown() {
 
   const effectiveProjectId =
     params?.projectId ||
-    (typeof (currentPage as any)?.projectId === 'string'
-      ? (currentPage as any).projectId
-      : (currentPage as any)?.projectId?.id) ||
+    extractProjectId(currentPage) ||
     storeProjectId ||
     '';
 
@@ -57,7 +56,6 @@ export function ProjectTitleDropdown() {
 
   const displayTitle =
     project?.name ||
-    (currentPage as any)?.project?.name ||
     currentPage?.title ||
     'Untitled Project';
 
@@ -69,7 +67,7 @@ export function ProjectTitleDropdown() {
   const { isSubmittingAction, handleApplyRename } = useProjectTitleActions({
     effectiveProjectId,
     displayTitle,
-    currentPage: currentPage as any,
+    currentPage,
     activeFilePage,
     getContent,
     fallbackRootId: params?.pageId,

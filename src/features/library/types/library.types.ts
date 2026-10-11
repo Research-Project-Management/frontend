@@ -12,8 +12,6 @@ declare const __brand: unique symbol;
 export type Brand<T, B> = T & { readonly [__brand]: B };
 
 export type ItemId = Brand<string, 'ItemId'>;
-/** @deprecated Use ItemId */
-export type PaperId = ItemId;
 export type CollectionId = Brand<string, 'CollectionId'>;
 export type NoteId = Brand<string, 'NoteId'>;
 export type ScopeId = Brand<string, 'ScopeId'>;

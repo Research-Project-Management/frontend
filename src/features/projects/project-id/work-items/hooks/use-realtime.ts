@@ -51,6 +51,7 @@ export function useRealtimeWorkItems({
 
               const targetId = payload?.workItemId || payload?.entityId;
               if (targetId) {
+                queryClient.invalidateQueries({ queryKey: ['comments', targetId] });
                 queryClient.invalidateQueries({ queryKey: ['work-item-comments', targetId] });
                 queryClient.invalidateQueries({ queryKey: ['work-item-activity', targetId] });
               }

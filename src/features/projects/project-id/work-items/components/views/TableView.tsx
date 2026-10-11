@@ -540,7 +540,7 @@ export function TableGroupHeader({
 
 // ── 8. Table Row Item ────────────────────────────────────────────────────────
 
-export function TableRowItem({
+export const TableRowItem = React.memo(function TableRowItem({
   item,
   columns,
   projectStates,
@@ -699,7 +699,7 @@ export function TableRowItem({
       aria-label={`Work item: ${item.title}`}
       className={cn(
         'group/row flex items-center h-8 border-b border-border/60 hover:bg-muted/40 transition-colors duration-0 cursor-pointer text-xs select-none w-full relative outline-none focus-visible:ring-1 focus-visible:ring-ring',
-        isSelected && 'bg-primary/10 ring-1 ring-inset ring-primary/30 font-medium'
+        isSelected && 'bg-muted ring-1 ring-inset ring-border font-medium'
       )}
     >
       {/* ── 1. Checkbox + Identifier + Title Column ────────────────────────── */}
@@ -725,7 +725,7 @@ export function TableRowItem({
             onCheckedChange={() => onToggleSelect(item.id)}
             aria-label={isSelected ? `Deselect ${item.title}` : `Select ${item.title}`}
             className={cn(
-              'size-3.5 rounded-sm border-border data-[state=checked]:border-primary transition-opacity',
+              'size-3.5 rounded-sm border-border data-[state=checked]:border-foreground transition-opacity',
               !isSelected && 'sm:opacity-0 sm:group-hover/row:opacity-100'
             )}
           />
@@ -737,7 +737,7 @@ export function TableRowItem({
             type="button"
             onClick={handleCopyIdentifier}
             title="Click to copy identifier"
-            className="text-11 font-mono text-muted-foreground hover:text-foreground px-1 py-0.5 rounded-sm mr-2 shrink-0 transition-colors tabular-nums cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+            className="text-11 font-mono text-foreground hover:underline px-1 py-0.5 rounded-sm mr-2 shrink-0 transition-colors tabular-nums cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             {item.identifier}
           </button>
@@ -746,10 +746,10 @@ export function TableRowItem({
         {/* Sub-item Indicator */}
         {childCount > 0 && (
           <div
-            className="flex items-center gap-1 text-11 font-mono text-muted-foreground mr-1.5 shrink-0 tabular-nums"
+            className="flex items-center gap-1 text-11 font-mono text-foreground mr-1.5 shrink-0 tabular-nums"
             title={`${childCount} sub-items`}
           >
-            <Layers className="size-3 text-muted-foreground" />
+            <Layers className="size-3 text-foreground" />
             <span>{childCount}</span>
           </div>
         )}
@@ -961,12 +961,12 @@ export function TableRowItem({
                     label={formattedDue || 'Due date'}
                     isReadOnly={isReadOnly}
                     actionBtnClass={cn(
-                      'h-7 px-2 text-11 font-mono tabular-nums border-0 shadow-none justify-start w-full cursor-pointer',
+                      'h-7 px-2 text-11 font-mono tabular-nums border-0 shadow-none justify-start w-full cursor-pointer text-foreground hover:bg-muted/80',
                       formattedDue
                         ? isOverdue
-                          ? 'text-destructive bg-destructive/10 hover:bg-destructive/20 font-medium'
-                          : 'bg-transparent hover:bg-muted/80 text-foreground'
-                        : 'bg-transparent text-foreground hover:bg-muted/80'
+                          ? 'bg-muted/60 font-medium'
+                          : 'bg-transparent'
+                        : 'bg-transparent'
                     )}
                   />
                 </div>
@@ -1008,13 +1008,13 @@ export function TableRowItem({
                           );
                         })}
                         {item.labels.length > 2 && (
-                          <span className="text-11 font-mono text-muted-foreground tabular-nums">
+                          <span className="text-11 font-mono text-foreground tabular-nums">
                             +{item.labels.length - 2}
                           </span>
                         )}
                       </div>
                     ) : (
-                      <span className="text-muted-foreground hover:text-foreground">-</span>
+                      <span className="text-foreground">-</span>
                     )}
                   </button>
 
@@ -1061,7 +1061,7 @@ export function TableRowItem({
 
               {/* CREATED ON CELL */}
               {p.key === 'createdOn' && (
-                <span className="text-11 font-mono text-muted-foreground px-2 truncate tabular-nums">
+                <span className="text-11 font-mono text-foreground px-2 truncate tabular-nums">
                   {formattedCreated || '-'}
                 </span>
               )}
@@ -1075,7 +1075,7 @@ export function TableRowItem({
 
               {/* UPDATED ON CELL */}
               {p.key === 'updatedOn' && (
-                <span className="text-11 font-mono text-muted-foreground px-2 truncate tabular-nums">
+                <span className="text-11 font-mono text-foreground px-2 truncate tabular-nums">
                   {formattedUpdated || '-'}
                 </span>
               )}
@@ -1085,7 +1085,7 @@ export function TableRowItem({
                 <button
                   type="button"
                   onClick={() => onEditCard(item)}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-md text-11 font-mono tabular-nums text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md text-11 font-mono tabular-nums text-foreground hover:bg-muted/80 transition-colors"
                 >
                   <Paperclip className="size-3.5 shrink-0" />
                   <span>{attachmentsCount > 0 ? attachmentsCount : '-'}</span>
@@ -1097,7 +1097,7 @@ export function TableRowItem({
                 <button
                   type="button"
                   onClick={() => onEditCard(item)}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-md text-11 font-mono tabular-nums text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md text-11 font-mono tabular-nums text-foreground hover:bg-muted/80 transition-colors"
                 >
                   <Layers className="size-3.5 shrink-0" />
                   <span>{childCount > 0 ? `${childCount} sub-items` : '-'}</span>
@@ -1106,7 +1106,7 @@ export function TableRowItem({
 
               {/* LINK CELL */}
               {p.key === 'link' && (
-                <span className="text-11 font-mono text-muted-foreground px-2 truncate tabular-nums">-</span>
+                <span className="text-11 font-mono text-foreground px-2 truncate tabular-nums">-</span>
               )}
             </div>
           );
@@ -1118,7 +1118,7 @@ export function TableRowItem({
         <button
           type="button"
           onClick={handleCopyLink}
-          className="p-1 rounded-md text-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+          className="p-1 rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           title="Copy link"
         >
           <Link2 className="size-3.5" />
@@ -1132,7 +1132,7 @@ export function TableRowItem({
                 e.stopPropagation();
                 onEditCard(item);
               }}
-              className="p-1 rounded-md text-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+              className="p-1 rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               title="Edit work item"
             >
               <Pencil className="size-3.5" />
@@ -1144,7 +1144,7 @@ export function TableRowItem({
                 e.stopPropagation();
                 onDuplicateCard(item);
               }}
-              className="p-1 rounded-md text-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+              className="p-1 rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               title="Duplicate"
             >
               <Copy className="size-3.5" />
@@ -1156,7 +1156,7 @@ export function TableRowItem({
                 e.stopPropagation();
                 onDeleteCard(item);
               }}
-              className="p-1 rounded-md text-destructive/80 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+              className="p-1 rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               title="Delete"
             >
               <Trash2 className="size-3.5" />
@@ -1166,7 +1166,7 @@ export function TableRowItem({
       </div>
     </div>
   );
-}
+});
 
 // ── 9. Table Inline Quick Add Row ────────────────────────────────────────────
 
@@ -1233,9 +1233,9 @@ export function TableInlineAddRow({
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex items-center h-8 px-3 border-b border-primary/50 bg-background transition-colors gap-2"
+      className="flex items-center h-8 px-3 border-b border-border bg-background transition-colors gap-2"
     >
-      <Plus className="size-3.5 text-primary shrink-0" />
+      <Plus className="size-3.5 text-foreground shrink-0" />
       <input
         ref={inputRef}
         type="text"
@@ -1618,7 +1618,7 @@ export function TableView({
                 <FileText className="size-5 text-foreground" />
               </div>
               <h4 className="text-16 font-semibold text-foreground mb-1">No work items found</h4>
-              <p className="text-13 text-muted-foreground mb-4">
+              <p className="text-13 text-foreground/70 mb-4">
                 There are no items matching the current view filters.
               </p>
               {!isReadOnly && (

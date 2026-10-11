@@ -2,8 +2,9 @@
  * pdf-outline.util.ts
  *
  * Utilities for extracting and resolving document outlines/bookmarks from PDF.js instances
- * with fallback support for LaTeX section scanning and SyncTeX page resolution.
  */
+
+import { resolvePageForLine, type SyncTeXMap } from './synctex-index';
 
 export interface PdfOutlineItem {
   id: string;
@@ -89,6 +90,20 @@ export interface OutlineEntry {
   levelName: string;
   title: string;
   line: number;
+  type?:
+    | 'part'
+    | 'chapter'
+    | 'section'
+    | 'subsection'
+    | 'subsubsection'
+    | 'paragraph'
+    | 'subparagraph'
+    | 'figure'
+    | 'table'
+    | 'slide'
+    | 'appendix'
+    | 'abstract';
+  sourceFile?: string;
 }
 
 export const OUTLINE_INDENT = [0, 8, 18, 28, 38, 48, 58];
@@ -101,16 +116,18 @@ const SECTION_COMMANDS = [
   { cmd: 'subsubsection', level: 3, levelName: 'Subsubsection' },
   { cmd: 'paragraph', level: 4, levelName: 'Paragraph' },
   { cmd: 'subparagraph', level: 5, levelName: 'Subparagraph' },
-];
+] as const;
 
 /**
  * Strips LaTeX formatting commands, math delims, and labels from section titles.
  */
 export function cleanLatexTitle(raw: string): string {
   let s = (raw || '').trim();
-  // Remove \label{...} and \index{...}
+  // Remove \label{...}, \index{...}, \cite{...}, and footnotes
   s = s.replace(/\\label\{[^{}]*\}/g, '');
   s = s.replace(/\\index\{[^{}]*\}/g, '');
+  s = s.replace(/\\(?:cite[a-zA-Z]*|citep|citet)(?:\[[^\]]*\])*\{[^{}]*\}/g, '');
+  s = s.replace(/\\(?:footnote|thanks)\{[^{}]*\}/g, '');
   // Unnest formatting commands like \textbf{...}, \textit{...}, \emph{...}
   let prev = '';
   do {
@@ -168,7 +185,7 @@ export function extractBracedArgument(
 /**
  * Core scanner for LaTeX documents. Parses headings, Beamer slides, appendices, and abstracts.
  */
-export function parseLatexHeadings(content: unknown): OutlineEntry[] {
+export function parseLatexHeadings(content: unknown, sourceFile?: string): OutlineEntry[] {
   let str = '';
   if (typeof content === 'string') {
     str = content;
@@ -182,6 +199,8 @@ export function parseLatexHeadings(content: unknown): OutlineEntry[] {
   const entries: OutlineEntry[] = [];
   const lines = str.split('\n');
   let currentFrameEntry: OutlineEntry | null = null;
+  let inFigure = false;
+  let inTable = false;
 
   for (let idx = 0; idx < lines.length; idx++) {
     const fullLine = lines[idx];
@@ -198,6 +217,45 @@ export function parseLatexHeadings(content: unknown): OutlineEntry[] {
     const cleanLine = commentIdx >= 0 ? fullLine.slice(0, commentIdx) : fullLine;
     const trimmed = cleanLine.trim();
     if (!trimmed.includes('\\')) continue;
+
+    // Environment tracking for Figures & Tables (Overleaf Parity)
+    if (/\\begin\s*\{\s*figure\*?\s*\}/.test(trimmed)) {
+      inFigure = true;
+      inTable = false;
+    } else if (/\\end\s*\{\s*figure\*?\s*\}/.test(trimmed)) {
+      inFigure = false;
+    } else if (/\\begin\s*\{\s*table\*?\s*\}/.test(trimmed)) {
+      inTable = true;
+      inFigure = false;
+    } else if (/\\end\s*\{\s*table\*?\s*\}/.test(trimmed)) {
+      inTable = false;
+    }
+
+    // 0. Figure / Table Caption Extraction (Overleaf Parity)
+    if (inFigure || inTable) {
+      const captionMatch = trimmed.match(/\\caption\s*(?:\[[^\]]*\])?(.*)/);
+      if (captionMatch) {
+        let accumulated = captionMatch[1];
+        let offset = 0;
+        while (!extractBracedArgument(accumulated) && (idx + offset + 1) < lines.length && offset < 5) {
+          offset++;
+          accumulated += ' ' + lines[idx + offset].trim();
+        }
+        const arg = extractBracedArgument(accumulated);
+        if (arg && arg.value.trim()) {
+          const clean = cleanLatexTitle(arg.value);
+          entries.push({
+            level: 3,
+            levelName: inFigure ? 'Figure' : 'Table',
+            title: `${inFigure ? 'Fig: ' : 'Tab: '}${clean}`,
+            line: lineNum,
+            type: inFigure ? 'figure' : 'table',
+            sourceFile,
+          });
+        }
+        continue;
+      }
+    }
 
     // 1. Beamer frame begin: \begin{frame}...
     const frameMatch = trimmed.match(/\\begin\s*\{\s*frame\s*\}(.*)/);
@@ -220,6 +278,8 @@ export function parseLatexHeadings(content: unknown): OutlineEntry[] {
         levelName: 'Slide',
         title: slideTitle,
         line: lineNum,
+        type: 'slide',
+        sourceFile,
       };
       entries.push(entry);
       currentFrameEntry = entry;
@@ -246,6 +306,8 @@ export function parseLatexHeadings(content: unknown): OutlineEntry[] {
             levelName: 'Slide',
             title,
             line: lineNum,
+            type: 'slide',
+            sourceFile,
           };
           entries.push(entry);
           currentFrameEntry = entry;
@@ -278,6 +340,8 @@ export function parseLatexHeadings(content: unknown): OutlineEntry[] {
             levelName,
             title: cleanLatexTitle(arg.value),
             line: lineNum,
+            type: cmd,
+            sourceFile,
           });
           matchedCommand = true;
           break;
@@ -293,6 +357,8 @@ export function parseLatexHeadings(content: unknown): OutlineEntry[] {
         levelName: 'Appendix',
         title: 'Appendix',
         line: lineNum,
+        type: 'appendix',
+        sourceFile,
       });
       continue;
     }
@@ -304,6 +370,8 @@ export function parseLatexHeadings(content: unknown): OutlineEntry[] {
         levelName: 'Abstract',
         title: 'Abstract',
         line: lineNum,
+        type: 'abstract',
+        sourceFile,
       });
       continue;
     }
@@ -319,7 +387,7 @@ export function parseLatexHeadings(content: unknown): OutlineEntry[] {
 export function extractOutlineFromContent(
   latexContent: string,
   numPages = 1,
-  synctexMap?: Record<number, number> | null,
+  synctexMap?: SyncTeXMap | Record<number, number> | null,
 ): PdfOutlineItem[] {
   if (!latexContent || typeof latexContent !== 'string') return [];
 
@@ -328,10 +396,16 @@ export function extractOutlineFromContent(
   const totalPages = Math.max(1, numPages);
 
   return rawEntries.map((entry, index) => {
-    let page = 1;
-    if (synctexMap && synctexMap[entry.line]) {
-      page = synctexMap[entry.line];
-    } else {
+    let page: number | null = null;
+    if (synctexMap) {
+      if ('lineToPage' in synctexMap) {
+        page = resolvePageForLine(synctexMap, entry.line);
+      } else if (entry.line in synctexMap) {
+        page = (synctexMap as Record<number, number>)[entry.line] ?? null;
+      }
+    }
+
+    if (page === null || page === undefined) {
       page = Math.min(totalPages, Math.max(1, Math.ceil((entry.line / totalLines) * totalPages)));
     }
 
@@ -347,7 +421,7 @@ export function extractOutlineFromContent(
 /**
  * Parses LaTeX content into outline entries for the File Outline accordion.
  */
-export function parseDocumentOutline(content: unknown): OutlineEntry[] {
-  return parseLatexHeadings(content);
+export function parseDocumentOutline(content: unknown, sourceFile?: string): OutlineEntry[] {
+  return parseLatexHeadings(content, sourceFile);
 }
 

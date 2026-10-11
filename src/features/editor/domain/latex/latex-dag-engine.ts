@@ -22,6 +22,7 @@ export interface LatexDependencyNode {
   path: string; // e.g. "main.tex", "chapters/intro.tex"
   title: string;
   hasDocumentClass: boolean;
+  hasBeginDocument?: boolean;
   isSubfile: boolean;
   subfileParentPath: string | null;
   includes: string[]; // List of target normalized paths included by this file
@@ -120,9 +121,18 @@ export function stripLatexComments(source: string): string {
     const line = lines[i];
     let commentIdx = -1;
     for (let c = 0; c < line.length; c++) {
-      if (line[c] === '%' && (c === 0 || line[c - 1] !== '\\')) {
-        commentIdx = c;
-        break;
+      if (line[c] === '%') {
+        // Count consecutive backslashes preceding % to distinguish \% from \\%
+        let backslashCount = 0;
+        let b = c - 1;
+        while (b >= 0 && line.charCodeAt(b) === 92 /* '\' */) {
+          backslashCount++;
+          b--;
+        }
+        if (backslashCount % 2 === 0) {
+          commentIdx = c;
+          break;
+        }
       }
     }
     result.push(commentIdx >= 0 ? line.slice(0, commentIdx) : line);
@@ -140,6 +150,7 @@ export function parseLatexDirectives(
   currentFilePath?: string,
 ): {
   hasDocumentClass: boolean;
+  hasBeginDocument: boolean;
   isSubfile: boolean;
   subfileParentPath: string | null;
   includedFiles: string[];
@@ -152,7 +163,7 @@ export function parseLatexDirectives(
   const baseDir = lastSlash >= 0 ? normCurrent.slice(0, lastSlash) : '';
 
   // 1. Check \documentclass
-  const docClassMatch = cleanSource.match(/\\documentclass(?:\[([^\]]*)\])?\{([^}]+)\}/);
+  const docClassMatch = cleanSource.match(/\\documentclass\s*(?:\[([^\]]*)\])?\s*\{([^}]+)\}/);
   let hasDocumentClass = false;
   let isSubfile = false;
   let subfileParentPath: string | null = null;
@@ -169,39 +180,46 @@ export function parseLatexDirectives(
     }
   }
 
+  // Check \begin{document}
+  const hasBeginDocument = /\\begin\s*\{document\}/.test(cleanSource);
+
   const includedFilesSet = new Set<string>();
 
-  // 2. \input{...} and \include{...}
-  const inputIncludeRegex = /\\(?:input|include)\{([^}]+)\}/g;
-  let m: RegExpExecArray | null;
-  while ((m = inputIncludeRegex.exec(cleanSource)) !== null) {
-    const rawTarget = m[1]?.trim();
-    if (rawTarget) {
-      const rootPath = normalizeLatexPath(rawTarget);
-      includedFilesSet.add(rootPath);
-      if (baseDir) {
-        const relPath = resolveRelativeLatexPath(baseDir, rawTarget);
-        if (relPath) includedFilesSet.add(relPath);
-      }
+  const registerTarget = (rawTarget: string) => {
+    if (!rawTarget) return;
+    const rootPath = normalizeLatexPath(rawTarget);
+    if (rootPath) includedFilesSet.add(rootPath);
+    if (baseDir) {
+      const relPath = resolveRelativeLatexPath(baseDir, rawTarget);
+      if (relPath) includedFilesSet.add(relPath);
     }
+  };
+
+  // 2. \input{...} and \include{...} with optional whitespace before '{'
+  const bracedInputIncludeRegex = /\\(?:input|include)\s*\{([^}]+)\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = bracedInputIncludeRegex.exec(cleanSource)) !== null) {
+    const rawTarget = m[1]?.trim();
+    if (rawTarget) registerTarget(rawTarget);
+  }
+
+  // 2b. TeX primitive braceless \input filename (e.g. \input macro.tex or \input preamble)
+  // Must be separated by whitespace, not starting with \ or { or %
+  const bracelessInputRegex = /(?<!\\)\\input\s+([^\s%\\{}]+)/g;
+  while ((m = bracelessInputRegex.exec(cleanSource)) !== null) {
+    const rawTarget = m[1]?.trim();
+    if (rawTarget) registerTarget(rawTarget);
   }
 
   // 3. \subfile{...}
-  const subfileRegex = /\\subfile\{([^}]+)\}/g;
+  const subfileRegex = /\\subfile\s*\{([^}]+)\}/g;
   while ((m = subfileRegex.exec(cleanSource)) !== null) {
     const rawTarget = m[1]?.trim();
-    if (rawTarget) {
-      const rootPath = normalizeLatexPath(rawTarget);
-      includedFilesSet.add(rootPath);
-      if (baseDir) {
-        const relPath = resolveRelativeLatexPath(baseDir, rawTarget);
-        if (relPath) includedFilesSet.add(relPath);
-      }
-    }
+    if (rawTarget) registerTarget(rawTarget);
   }
 
   // 4. \import{path}{filename} or \subimport{path}{filename}
-  const importRegex = /\\(?:sub)?import\{([^}]+)\}\{([^}]+)\}/g;
+  const importRegex = /\\(?:sub)?import\s*\{([^}]+)\}\s*\{([^}]+)\}/g;
   while ((m = importRegex.exec(cleanSource)) !== null) {
     const dir = m[1]?.trim() || '';
     const file = m[2]?.trim() || '';
@@ -212,7 +230,7 @@ export function parseLatexDirectives(
   }
 
   // 5. \inputminted{lang}{filename}
-  const mintedRegex = /\\inputminted(?:\[[^\]]*\])?\{[^}]+\}\{([^}]+)\}/g;
+  const mintedRegex = /\\inputminted\s*(?:\[[^\]]*\])?\s*\{[^}]+\}\s*\{([^}]+)\}/g;
   while ((m = mintedRegex.exec(cleanSource)) !== null) {
     const rawTarget = m[1]?.trim();
     if (rawTarget) {
@@ -221,7 +239,7 @@ export function parseLatexDirectives(
   }
 
   // 6. \bibliography{file1,file2} (comma-separated, .bib extension)
-  const bibRegex = /\\bibliography\{([^}]+)\}/g;
+  const bibRegex = /\\bibliography\s*\{([^}]+)\}/g;
   while ((m = bibRegex.exec(cleanSource)) !== null) {
     const rawTarget = m[1]?.trim();
     if (rawTarget) {
@@ -237,7 +255,7 @@ export function parseLatexDirectives(
   }
 
   // 7. \addbibresource[options]{file.bib}
-  const biblatexRegex = /\\addbibresource(?:\[[^\]]*\])?\{([^}]+)\}/g;
+  const biblatexRegex = /\\addbibresource\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}/g;
   while ((m = biblatexRegex.exec(cleanSource)) !== null) {
     const rawTarget = m[1]?.trim();
     if (rawTarget) {
@@ -250,7 +268,7 @@ export function parseLatexDirectives(
   }
 
   // 8. \includepdf[options]{file.pdf}
-  const includePdfRegex = /\\includepdf(?:\[[^\]]*\])?\{([^}]+)\}/g;
+  const includePdfRegex = /\\includepdf\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}/g;
   while ((m = includePdfRegex.exec(cleanSource)) !== null) {
     const rawTarget = m[1]?.trim();
     if (rawTarget) {
@@ -264,6 +282,7 @@ export function parseLatexDirectives(
 
   return {
     hasDocumentClass,
+    hasBeginDocument,
     isSubfile,
     subfileParentPath,
     includedFiles: Array.from(includedFilesSet),
@@ -315,6 +334,7 @@ export class LatexDagEngine {
       path: normalizedPath,
       title: filePath,
       hasDocumentClass: parsed.hasDocumentClass,
+      hasBeginDocument: parsed.hasBeginDocument,
       isSubfile: parsed.isSubfile,
       subfileParentPath: parsed.subfileParentPath,
       includes: parsed.includedFiles,
@@ -516,6 +536,7 @@ export class LatexDagEngine {
     const normalizedActive = activeFileIdOrPath ? this.resolveNormalizedPath(activeFileIdOrPath) : null;
     const activeNode = normalizedActive ? this.nodes.get(normalizedActive) : null;
 
+    // Active standalone check: file has \documentclass and in-degree 0 (not a subfile)
     if (activeNode && activeNode.hasDocumentClass && !activeNode.isSubfile && activeNode.inDegree === 0) {
       return {
         rootPath: activeNode.path,
@@ -525,17 +546,15 @@ export class LatexDagEngine {
       };
     }
 
-    if (activeNode && activeNode.isSubfile && activeNode.subfileParentPath) {
-      const parentNorm = normalizeLatexPath(activeNode.subfileParentPath);
-      const resolvedParent = this.resolveNormalizedPath(parentNorm) || parentNorm;
-      if (this.nodes.has(resolvedParent)) {
-        return {
-          rootPath: resolvedParent,
-          rootFileId: this.pathToIdMap.get(resolvedParent),
-          inferredBy: 'subfile',
-          hasCycleWarning,
-        };
-      }
+    // Subfiles standalone compile: when a file has \documentclass[...]{subfiles}
+    // and is compiled directly as the active document, resolve the file itself as root
+    if (activeNode && activeNode.isSubfile) {
+      return {
+        rootPath: activeNode.path,
+        rootFileId: activeNode.id,
+        inferredBy: 'subfile',
+        hasCycleWarning,
+      };
     }
 
     if (normalizedActive) {
@@ -544,13 +563,19 @@ export class LatexDagEngine {
 
       for (const ancPath of ancestors) {
         const node = this.nodes.get(ancPath);
-        if (node && node.hasDocumentClass) {
+        if (node && (node.hasDocumentClass || node.hasBeginDocument)) {
           rootAncestors.push(node);
         }
       }
 
       if (rootAncestors.length > 0) {
-        rootAncestors.sort((a, b) => a.inDegree - b.inDegree || b.outDegree - a.outDegree);
+        rootAncestors.sort((a, b) => {
+          const aIsPreamble = /preamble|macros?\.tex|settings\.tex|setup\.tex|config\.tex/i.test(a.path);
+          const bIsPreamble = /preamble|macros?\.tex|settings\.tex|setup\.tex|config\.tex/i.test(b.path);
+          const aScore = (a.hasBeginDocument ? 100 : 0) - (aIsPreamble ? 150 : 0) - a.inDegree * 10 + a.outDegree * 2;
+          const bScore = (b.hasBeginDocument ? 100 : 0) - (bIsPreamble ? 150 : 0) - b.inDegree * 10 + b.outDegree * 2;
+          return bScore - aScore;
+        });
         const bestAncestor = rootAncestors[0];
         return {
           rootPath: bestAncestor.path,
@@ -564,11 +589,20 @@ export class LatexDagEngine {
     const candidates: Array<{ node: LatexDependencyNode; score: number }> = [];
 
     for (const [path, node] of this.nodes) {
-      if (node.hasDocumentClass) {
+      const baseName = path.toLowerCase();
+      const isPreambleFile = /preamble|macros?\.tex|settings\.tex|setup\.tex|config\.tex/i.test(baseName);
+
+      const isCandidate =
+        node.hasDocumentClass ||
+        node.hasBeginDocument ||
+        (node.inDegree === 0 && node.outDegree > 0);
+
+      if (isCandidate && !node.isSubfile) {
         let score = 50;
         if (node.inDegree === 0) score += 30;
+        if (node.hasBeginDocument) score += 80;
+        if (node.hasDocumentClass) score += 40;
 
-        const baseName = path.toLowerCase();
         if (baseName === 'main.tex') {
           score += 100;
         } else if (
@@ -586,6 +620,13 @@ export class LatexDagEngine {
         }
 
         score += node.outDegree * 2;
+
+        // Preamble guard: heavily penalize preamble/macros/setup files that lack \begin{document} or are included
+        if (isPreambleFile) {
+          if (!node.hasBeginDocument || node.inDegree > 0) {
+            score -= 150;
+          }
+        }
 
         candidates.push({ node, score });
       }
@@ -616,7 +657,10 @@ export class LatexDagEngine {
     const rootCandidates: string[] = [];
 
     for (const [path, node] of this.nodes) {
-      if (node.hasDocumentClass && node.inDegree === 0) {
+      const baseName = path.toLowerCase();
+      const isPreamble = /preamble|macros?\.tex|settings\.tex|setup\.tex|config\.tex/i.test(baseName);
+      const isLikelyRoot = (node.hasDocumentClass || node.hasBeginDocument) && !node.isSubfile;
+      if (isLikelyRoot && node.inDegree === 0 && !isPreamble) {
         rootCandidates.push(path);
       }
     }

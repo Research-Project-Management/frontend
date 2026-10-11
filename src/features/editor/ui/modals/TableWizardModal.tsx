@@ -28,7 +28,12 @@ import {
   Variable,
   Layers,
   HelpCircle,
+  Sparkles,
+  Loader2,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { API_BASE_URL } from '@/config/env';
+import { getAuthToken } from '@/shared/lib/api';
 import {
   Dialog,
   DialogContent,
@@ -49,7 +54,12 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { useTableMatrixWizard } from './hooks/useTableMatrixWizard';
-import { type MatrixType, type TableAlignment } from '@/features/editor/domain/latex/table-matrix';
+import {
+  type MatrixType,
+  type TableAlignment,
+  type TableStyle,
+  type MatrixWrapper,
+} from '@/features/editor/domain/latex/table-matrix';
 import katex from 'katex';
 
 export interface TableWizardModalProps {
@@ -105,6 +115,7 @@ export function TableWizardModal({
     addTableColumn,
     removeTableColumn,
     importPastedData,
+    importRawText,
     generatedTableLatex,
 
     // Matrix state & actions
@@ -136,6 +147,63 @@ export function TableWizardModal({
     initialTab,
     initialLatex,
   });
+
+  // AI Table Generator State & Actions (Overleaf Parity)
+  const [aiPrompt, setAiPrompt] = React.useState('');
+  const [isAiGenerating, setIsAiGenerating] = React.useState(false);
+
+  const handleGenerateAiTable = React.useCallback(async () => {
+    if (!aiPrompt.trim() || isAiGenerating) return;
+    setIsAiGenerating(true);
+    try {
+      const token = getAuthToken();
+      const systemPrompt = `You are an expert academic LaTeX assistant. Generate a clean LaTeX tabular or TSV table according to the user request.
+Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and ending with \\end{tabular} or TSV data with tabs and newlines. Do not wrap in markdown quotes or add conversational preamble.`;
+
+      const response = await fetch(`${API_BASE_URL}/api/ai/chat/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          query: `Create an academic table based on: ${aiPrompt}`,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: aiPrompt },
+          ],
+          model: 'fast',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('AI table generation request failed');
+      }
+
+      const json = (await response.json()) as {
+        data?: { content?: string; message?: string };
+        content?: string;
+        message?: string;
+      } | null;
+      const rawText = json?.data?.content || json?.data?.message || json?.content || json?.message || '';
+      const clean = rawText.replace(/```latex\n?|```tsv\n?|```\n?/g, '').trim();
+
+      const success = importRawText(clean);
+      if (success) {
+        toast.success('Table generated with AI and loaded into visual editor!');
+        setAiPrompt('');
+      } else {
+        setPastedText(clean);
+        importPastedData();
+        toast.success('Table generated with AI and imported!');
+        setAiPrompt('');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to generate table with AI');
+    } finally {
+      setIsAiGenerating(false);
+    }
+  }, [aiPrompt, isAiGenerating, importRawText, importPastedData, setPastedText]);
 
   // Render live KaTeX preview for matrix
   const renderedMatrixHtml = useMemo(() => {
@@ -217,7 +285,7 @@ export function TableWizardModal({
                 <span className="text-xs font-semibold text-foreground">
                   Grid:
                 </span>
-                <span className="text-xs font-mono font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
+                <span className="text-xs font-mono font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
                   {tableRows} rows × {tableCols} cols
                 </span>
                 <div className="flex items-center gap-1 ml-2">
@@ -247,15 +315,15 @@ export function TableWizardModal({
               <div className="flex items-center gap-2">
                 <span className="text-11 font-medium text-muted-foreground">Style:</span>
                 <div className="flex items-center gap-1">
-                  {[
+                  {([
                     { id: 'booktabs', label: 'Booktabs (Academic)' },
                     { id: 'bordered', label: 'Bordered (\\hline)' },
                     { id: 'minimal', label: 'Minimal' },
-                  ].map((s) => (
+                  ] as const).map((s) => (
                     <button
                       key={s.id}
                       type="button"
-                      onClick={() => setTableStyle(s.id as any)}
+                      onClick={() => setTableStyle(s.id)}
                       className={cn(
                         'h-6 px-2 text-11 font-medium rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                         tableStyle === s.id
@@ -310,7 +378,7 @@ export function TableWizardModal({
                             <button
                               type="button"
                               onClick={() => toggleColumnAlignment(cIdx)}
-                              className="px-1.5 py-0.5 text-10 font-mono font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded cursor-pointer transition-colors"
+                              className="px-1.5 py-0.5 text-10 font-mono font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded cursor-pointer transition-colors"
                               title={`Click to cycle alignment: currently [${tableAlignments[cIdx]?.toUpperCase() || 'C'}]`}
                             >
                               [{tableAlignments[cIdx]?.toUpperCase() || 'C'}]
@@ -387,6 +455,45 @@ export function TableWizardModal({
                   </tbody>
                 </table>
               </div>
+            </div>
+
+            {/* Overleaf Parity: AI Table Generator */}
+            <div className="p-2.5 bg-primary/5 border border-primary/25 rounded-md space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-11 font-semibold text-primary flex items-center gap-1.5">
+                  <Sparkles className="size-3.5" />
+                  AI Table Generator (Overleaf Parity)
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleGenerateAiTable}
+                    disabled={isAiGenerating || !aiPrompt.trim()}
+                    className="h-6 text-10 px-2.5 bg-primary text-primary-foreground font-semibold cursor-pointer gap-1 hover:bg-primary/90"
+                  >
+                    {isAiGenerating ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="size-3" />
+                    )}
+                    <span>{isAiGenerating ? 'Generating...' : 'Generate Table'}</span>
+                  </Button>
+                </div>
+              </div>
+              <textarea
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    handleGenerateAiTable();
+                  }
+                }}
+                placeholder="Describe your table or paste raw unformatted text (e.g. 'Compare ResNet, ViT, Mamba on ImageNet with Accuracy, Params, and Latency'). Press Ctrl+Enter to generate..."
+                rows={2}
+                className="w-full p-2 text-xs rounded border border-border bg-background resize-none outline-none focus:ring-1 focus:ring-primary"
+              />
             </div>
 
             {/* Table Metadata & Import Panel */}
@@ -577,20 +684,20 @@ export function TableWizardModal({
               <div className="ml-auto flex items-center gap-2">
                 <span className="text-11 font-medium text-muted-foreground">Wrap:</span>
                 <div className="flex items-center gap-1">
-                  {[
+                  {([
                     { id: 'display', label: '\\[ \\]' },
                     { id: 'inline', label: '$ $' },
                     { id: 'equation', label: '\\begin{eq}' },
                     { id: 'raw', label: 'raw' },
-                  ].map((w) => (
+                  ] as const).map((w) => (
                     <button
                       key={w.id}
                       type="button"
-                      onClick={() => setMatrixWrapper(w.id as any)}
+                      onClick={() => setMatrixWrapper(w.id)}
                       className={cn(
                         'h-6 px-1.5 text-10 font-mono rounded border transition-colors cursor-pointer',
                         matrixWrapper === w.id
-                          ? 'bg-primary text-primary-foreground border-primary font-bold'
+                          ? 'bg-primary text-primary-foreground border-primary font-semibold'
                           : 'bg-background border-border text-foreground hover:bg-muted'
                       )}
                     >

@@ -151,11 +151,12 @@ export const review = {
   batchResolveChanges: async (
     projectId: string,
     docId: string,
-    action: 'accept_all' | 'reject_all',
+    action: 'accept_all' | 'reject_all' | 'accept_selected' | 'reject_selected',
+    changeIds?: string[],
   ): Promise<any> => {
     return await apiPost<any>(
       `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes/batch`,
-      { action },
+      { action, changeIds },
     );
   },
 

@@ -73,4 +73,24 @@ export const suggestions = {
       {},
     );
   },
+
+  acceptSelectedSuggestions: async (
+    docId: string,
+    suggestionIds: string[],
+  ): Promise<{ ok: boolean; acceptedCount: number; page?: any }> => {
+    return await apiPost<{ ok: boolean; acceptedCount: number; page?: any }>(
+      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/accept-all`,
+      { suggestionIds },
+    );
+  },
+
+  rejectSelectedSuggestions: async (
+    docId: string,
+    suggestionIds: string[],
+  ): Promise<{ ok: boolean; rejectedCount: number }> => {
+    return await apiPost<{ ok: boolean; rejectedCount: number }>(
+      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/reject-all`,
+      { suggestionIds },
+    );
+  },
 };

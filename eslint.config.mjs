@@ -30,6 +30,9 @@ const eslintConfig = [
         },
       },
     },
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
     plugins: {
       'react-hooks': reactHooks,
     },
@@ -52,18 +55,22 @@ const eslintConfig = [
     },
   },
   {
-    name: 'enforce-library-public-boundary',
+    name: 'enforce-no-barrel-imports',
     files: ['src/**/*.{ts,tsx}'],
-    ignores: ['src/features/library/**'],
     rules: {
       'no-restricted-imports': [
         'error',
         {
-          patterns: [
+          paths: [
             {
-              group: ['@/features/library/**', '@/features/library/*'],
+              name: '@/shared/components/ui',
               message:
-                'Direct imports from library internals are forbidden. Import from the Public API (@/features/library) instead.',
+                'Direct file imports required (e.g. @/shared/components/ui/button). Barrel imports are forbidden.',
+            },
+            {
+              name: '@/shared/components/layout',
+              message:
+                'Direct file imports required (e.g. @/shared/components/layout/PageHeader). Barrel imports are forbidden.',
             },
           ],
         },

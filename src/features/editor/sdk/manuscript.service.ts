@@ -212,6 +212,10 @@ export const suggestionService = {
     manuscriptService.suggestions.acceptAllSuggestions(docId),
   rejectAllSuggestions: (docId: string) =>
     manuscriptService.suggestions.rejectAllSuggestions(docId),
+  acceptSelectedSuggestions: (docId: string, suggestionIds: string[]) =>
+    manuscriptService.suggestions.acceptSelectedSuggestions(docId, suggestionIds),
+  rejectSelectedSuggestions: (docId: string, suggestionIds: string[]) =>
+    manuscriptService.suggestions.rejectSelectedSuggestions(docId, suggestionIds),
 };
 export const DocumentSuggestionService = suggestionService;
 

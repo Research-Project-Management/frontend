@@ -1,4 +1,4 @@
-﻿/**
+/**
  * review.coordinator.ts
  *
  * Headless Review & Track Changes Coordinator (Coordinators Layer).
@@ -198,6 +198,48 @@ export class ReviewCoordinatorRegistry {
       return true;
     } catch (err: any) {
       toast.error(err?.message || 'Failed to reject all changes');
+      return false;
+    }
+  }
+
+  /**
+   * Bulk accepts selected pending changes in a document.
+   */
+  public async acceptSelected(pageId: string, suggestionIds: string[]): Promise<boolean> {
+    if (!suggestionIds || suggestionIds.length === 0) return true;
+    try {
+      await suggestionService.acceptSelectedSuggestions(pageId, suggestionIds);
+      toast.success(`${suggestionIds.length} changes accepted`);
+      editorCommandBus.dispatch({
+        type: 'editor:review-event',
+        pageId,
+        event: 'suggestion:accepted-selected',
+        payload: { suggestionIds },
+      });
+      return true;
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to accept selected changes');
+      return false;
+    }
+  }
+
+  /**
+   * Bulk rejects selected pending changes in a document.
+   */
+  public async rejectSelected(pageId: string, suggestionIds: string[]): Promise<boolean> {
+    if (!suggestionIds || suggestionIds.length === 0) return true;
+    try {
+      await suggestionService.rejectSelectedSuggestions(pageId, suggestionIds);
+      toast.success(`${suggestionIds.length} changes rejected`);
+      editorCommandBus.dispatch({
+        type: 'editor:review-event',
+        pageId,
+        event: 'suggestion:rejected-selected',
+        payload: { suggestionIds },
+      });
+      return true;
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to reject selected changes');
       return false;
     }
   }

@@ -362,13 +362,13 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
             disabled={readOnly}
             onClick={() => handleInlineFormat('bold')}
             className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-            aria-label="Bold (\textbf)"
+            aria-label="Bold"
           >
             <Bold className="size-3.5" />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">
-          <span>Bold (\textbf)</span>
+          <span>Bold</span>
           <span className="ml-1.5 opacity-60">(Mod-b)</span>
         </TooltipContent>
       </Tooltip>
@@ -381,13 +381,13 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
             disabled={readOnly}
             onClick={() => handleInlineFormat('italic')}
             className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-            aria-label="Italic (\textit)"
+            aria-label="Italic"
           >
             <Italic className="size-3.5" />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">
-          <span>Italic (\textit)</span>
+          <span>Italic</span>
           <span className="ml-1.5 opacity-60">(Mod-i)</span>
         </TooltipContent>
       </Tooltip>
@@ -400,13 +400,13 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
             disabled={readOnly}
             onClick={() => handleInlineFormat('underline')}
             className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-            aria-label="Underline (\underline)"
+            aria-label="Underline"
           >
             <Underline className="size-3.5" />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">
-          <span>Underline (\underline)</span>
+          <span>Underline</span>
           <span className="ml-1.5 opacity-60">(Mod-u)</span>
         </TooltipContent>
       </Tooltip>
@@ -428,7 +428,7 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">
-          <span>Math formula ($...$)</span>
+          <span>Math formula</span>
         </TooltipContent>
       </Tooltip>
 
@@ -440,13 +440,13 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
             disabled={readOnly}
             onClick={handleInsertSymbol}
             className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-            aria-label="Insert symbol (Ω)"
+            aria-label="Insert symbol"
           >
             <OmegaIcon />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">
-          <span>Insert symbol (Ω)</span>
+          <span>Insert symbol</span>
         </TooltipContent>
       </Tooltip>
 
@@ -501,7 +501,7 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">
-          <span>Insert link (\href)</span>
+          <span>Insert link</span>
           <span className="ml-1.5 opacity-60">(Mod-k)</span>
         </TooltipContent>
       </Tooltip>
@@ -514,13 +514,13 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
             disabled={readOnly}
             onClick={handleInsertCitation}
             className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-            aria-label="Cite reference (\cite)"
+            aria-label="Cite reference"
           >
             <BookOpen className="size-3.5" />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">
-          <span>Cite reference (\cite)</span>
+          <span>Cite reference</span>
           <span className="ml-1.5 opacity-60">(Mod-Shift-k)</span>
         </TooltipContent>
       </Tooltip>
@@ -590,13 +590,13 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
             disabled={readOnly}
             onClick={() => handleInsertEnvironment('code')}
             className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-            aria-label="Code / Verbatim"
+            aria-label="Code block"
           >
             <Code className="size-3.5" />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">
-          <span>Code / Verbatim</span>
+          <span>Code block</span>
         </TooltipContent>
       </Tooltip>
 

@@ -10,7 +10,7 @@ import type { DiagnosticReportDto, AutoFixResultDto, ErrorExplanationDto } from 
 
 export const diagnostics = {
   parseLog: async (logText: string, engine = 'pdflatex'): Promise<DiagnosticReportDto> => {
-    if (!logText || !logText.trim()) {
+    if (!logText || !logText.trim() || logText.includes('signal is aborted') || logText.includes('Compilation superseded')) {
       return {
         id: `report-${Date.now()}`,
         isSuccess: true,
@@ -22,7 +22,7 @@ export const diagnostics = {
         items: [],
       };
     }
-    const MAX_LOG_SIZE = 5 * 1024 * 1024;
+    const MAX_LOG_SIZE = 256 * 1024; // 256KB max to stay well within proxy body limits
     const payload =
       logText.length > MAX_LOG_SIZE
         ? logText.slice(logText.length - MAX_LOG_SIZE)

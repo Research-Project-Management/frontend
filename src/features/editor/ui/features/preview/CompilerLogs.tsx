@@ -86,7 +86,7 @@ export function CompilerLogs({
   const [enrichedReport, setEnrichedReport] = useState<DiagnosticReportDto | null>(null);
 
   useEffect(() => {
-    if (!log || !log.trim()) {
+    if (!log || !log.trim() || log.toLowerCase().includes('aborted')) {
       setEnrichedReport(null);
       return;
     }
@@ -375,7 +375,7 @@ export function CompilerLogs({
       />
 
       {/* ── Main Body ── */}
-      {compileStatus === 'error' && parsed.errors.length === 0 ? (
+      {compileStatus === 'error' && parsed.errors.length === 0 && !log?.toLowerCase().includes('aborted') ? (
         <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center bg-transparent">
           <PlaneErrorState
             title="Compilation failed"
@@ -425,8 +425,8 @@ export function CompilerLogs({
                   type="button"
                   onClick={handleDownloadRawLog}
                   className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 rounded hover:bg-muted transition-colors cursor-pointer"
-                  title="Download output.log"
-                  aria-label="Download output.log"
+                  title="Download raw log (output.log)"
+                  aria-label="Download raw log"
                 >
                   <Download className="size-3" />
                   <span>Download .log</span>
@@ -546,7 +546,6 @@ export function CompilerLogs({
         outputFiles={outputFiles}
         onDownloadFile={handleDownloadOutputFile}
         onDownloadAll={downloadAllArtifacts}
-        onDownloadRawLog={handleDownloadRawLog}
       />
     </div>
   );

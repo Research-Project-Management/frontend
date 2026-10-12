@@ -26,25 +26,8 @@ export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
       <button
         type="button"
         role="radio"
-        aria-checked={editorMode === 'code'}
-        onClick={() => setEditorMode('code')}
-        title="Source mode (LaTeX code) (Ctrl+Shift+V)"
-        aria-label="Source mode"
-        className={cn(
-          'h-5.5 px-2.5 flex items-center justify-center text-[11.5px] font-medium rounded-[4px] transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
-          editorMode === 'code'
-            ? 'bg-canvas text-foreground shadow-2xs font-semibold'
-            : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
-        )}
-      >
-        Source
-      </button>
-      <button
-        type="button"
-        role="radio"
         aria-checked={editorMode === 'visual'}
         onClick={() => setEditorMode('visual')}
-        title="Visual mode (Ctrl+Shift+V)"
         aria-label="Visual mode"
         className={cn(
           'h-5.5 px-2.5 flex items-center justify-center text-[11.5px] font-medium rounded-[4px] transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
@@ -54,6 +37,21 @@ export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
         )}
       >
         Visual Editor
+      </button>
+      <button
+        type="button"
+        role="radio"
+        aria-checked={editorMode === 'code'}
+        onClick={() => setEditorMode('code')}
+        aria-label="Source mode"
+        className={cn(
+          'h-5.5 px-2.5 flex items-center justify-center text-[11.5px] font-medium rounded-[4px] transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+          editorMode === 'code'
+            ? 'bg-canvas text-foreground shadow-2xs font-semibold'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+        )}
+      >
+        Source
       </button>
     </div>
   );

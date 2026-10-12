@@ -368,7 +368,13 @@ export class CompilerCoordinatorRegistry {
 
         return true;
       } else {
-        if (res.error === 'Compilation superseded' || res.error === 'Compilation stopped') {
+        const isAborted =
+          res.error === 'Compilation superseded' ||
+          res.error === 'Compilation stopped' ||
+          res.error?.toLowerCase().includes('aborted') ||
+          res.logs?.toLowerCase().includes('signal is aborted');
+
+        if (isAborted) {
           compileStore.setCompileStatus('idle');
           editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
           if (compileStore.pendingCompile) {

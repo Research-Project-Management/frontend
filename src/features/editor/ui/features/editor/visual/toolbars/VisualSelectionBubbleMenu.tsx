@@ -181,7 +181,6 @@ export function VisualSelectionBubbleMenu({
             : 'hover:bg-muted text-foreground/80 hover:text-foreground'
         )}
         onClick={() => onFormat('bold')}
-        title="Bold (\textbf) - Ctrl+B"
         aria-label="Format bold"
       >
         <Bold className="size-3.5" />
@@ -198,7 +197,6 @@ export function VisualSelectionBubbleMenu({
             : 'hover:bg-muted text-foreground/80 hover:text-foreground'
         )}
         onClick={() => onFormat('italic')}
-        title="Italic (\textit) - Ctrl+I"
         aria-label="Format italic"
       >
         <Italic className="size-3.5" />
@@ -215,7 +213,6 @@ export function VisualSelectionBubbleMenu({
             : 'hover:bg-muted text-foreground/80 hover:text-foreground'
         )}
         onClick={() => onFormat('underline')}
-        title="Underline (\underline) - Ctrl+U"
         aria-label="Format underline"
       >
         <Underline className="size-3.5" />
@@ -232,7 +229,6 @@ export function VisualSelectionBubbleMenu({
             : 'hover:bg-muted text-foreground/80 hover:text-foreground'
         )}
         onClick={() => onFormat('strike')}
-        title="Strikethrough (\sout)"
         aria-label="Format strikethrough"
       >
         <Strikethrough className="size-3.5" />
@@ -249,7 +245,6 @@ export function VisualSelectionBubbleMenu({
             : 'hover:bg-muted text-foreground/80 hover:text-foreground'
         )}
         onClick={() => onFormat('code')}
-        title="Inline Code (\texttt)"
         aria-label="Format inline code"
       >
         <Code2 className="size-3.5" />
@@ -264,7 +259,6 @@ export function VisualSelectionBubbleMenu({
         size="icon"
         className="size-6 rounded-xs cursor-pointer hover:bg-muted text-foreground/80 hover:text-foreground transition-colors p-0 flex items-center justify-center"
         onClick={onConvertToMath}
-        title="Convert selection to Math formula ($...$)"
         aria-label="Convert to math formula"
       >
         <Sigma className="size-3.5 text-foreground" />
@@ -276,7 +270,6 @@ export function VisualSelectionBubbleMenu({
         size="icon"
         className="size-6 rounded-xs cursor-pointer hover:bg-muted text-foreground/80 hover:text-foreground transition-colors p-0 flex items-center justify-center"
         onClick={onConvertToCitation}
-        title="Insert Citation (\cite{...})"
         aria-label="Insert citation"
       >
         <BookOpen className="size-3.5 text-foreground" />
@@ -291,7 +284,6 @@ export function VisualSelectionBubbleMenu({
             size="icon"
             className="size-6 rounded-xs cursor-pointer hover:bg-muted text-foreground/80 hover:text-foreground transition-colors p-0 flex items-center justify-center"
             onClick={onSyncToPdf}
-            title="View in PDF (SyncTeX) (Mod-Alt-j)"
             aria-label="View in PDF (SyncTeX)"
           >
             <ArrowRightToLine className="size-3.5 text-foreground" />

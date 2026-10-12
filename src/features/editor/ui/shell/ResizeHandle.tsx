@@ -85,11 +85,11 @@ export function ResizeHandle({
       onDoubleClick={onDoubleClick}
       onKeyDown={onKeyDown}
       className={cn(
-        'group relative shrink-0 outline-none select-none z-20 flex overflow-hidden',
+        'group relative shrink-0 outline-none select-none z-20 flex overflow-hidden transition-all duration-150',
         isHorizontal
-          ? 'h-[6px] w-full cursor-row-resize flex-row items-center justify-center bg-[#ededed] hover:bg-[#e4e4e4] border-y border-[#dedede] dark:bg-[#202023] dark:hover:bg-[#28282c] dark:border-[#2d2d31] transition-colors'
-          : 'w-[8px] h-full cursor-col-resize flex-col items-center bg-[#ededed] hover:bg-[#e4e4e4] border-x border-[#dedede] dark:bg-[#202023] dark:hover:bg-[#28282c] dark:border-[#2d2d31] transition-colors',
-        isDragging && 'bg-primary/20 border-primary/40',
+          ? 'h-[6px] w-full cursor-row-resize flex-row items-center justify-center bg-sidebar border-y border-border'
+          : 'w-[8px] h-full cursor-col-resize flex-col items-center bg-sidebar border-x border-border',
+        isDragging && 'bg-muted border-border',
         className,
       )}
     >
@@ -100,12 +100,11 @@ export function ResizeHandle({
           onClick={handleToggleClick}
           onMouseDown={(e) => e.stopPropagation()}
           aria-label={isCollapsed ? 'Expand panel' : 'Collapse panel'}
-          title={isCollapsed ? 'Expand panel' : 'Collapse panel'}
           className={cn(
-            'absolute z-30 flex items-center justify-center cursor-pointer transition-colors outline-none p-0',
+            'absolute z-30 flex items-center justify-center cursor-pointer outline-none p-0 transition-all duration-150',
             'w-full h-14 rounded-none',
-            'bg-[#d5d7db] hover:bg-[#c6c9cf] active:bg-[#b8bcc5] text-foreground',
-            'dark:bg-[#343842] dark:hover:bg-[#404552] dark:active:bg-[#2c3038]',
+            'bg-muted-foreground/20 text-muted-foreground',
+            'hover:bg-muted-foreground/35 hover:text-foreground active:scale-95',
             'top-[38%] -translate-y-1/2 left-0 right-0',
           )}
         >
@@ -120,10 +119,10 @@ export function ResizeHandle({
       {/* ── 4 Square Grip Dots: strictly inside groove, rounded-none ── */}
       {showGripDots && !isHorizontal && (
         <div className="absolute top-[65%] -translate-y-1/2 left-0 right-0 flex flex-col items-center gap-[3px] pointer-events-none select-none">
-          <span className="w-[2px] h-[2px] rounded-none bg-muted-foreground/40 group-hover:bg-muted-foreground/80 transition-colors" />
-          <span className="w-[2px] h-[2px] rounded-none bg-muted-foreground/40 group-hover:bg-muted-foreground/80 transition-colors" />
-          <span className="w-[2px] h-[2px] rounded-none bg-muted-foreground/40 group-hover:bg-muted-foreground/80 transition-colors" />
-          <span className="w-[2px] h-[2px] rounded-none bg-muted-foreground/40 group-hover:bg-muted-foreground/80 transition-colors" />
+          <span className="w-[2px] h-[2px] rounded-none bg-muted-foreground/40" />
+          <span className="w-[2px] h-[2px] rounded-none bg-muted-foreground/40" />
+          <span className="w-[2px] h-[2px] rounded-none bg-muted-foreground/40" />
+          <span className="w-[2px] h-[2px] rounded-none bg-muted-foreground/40" />
         </div>
       )}
 

@@ -355,7 +355,12 @@ export async function apiFetch<T>(
     try {
       response = await rawFetch(path, normalizedMethod, body, options);
     } catch (err: unknown) {
-      if ((err as Error)?.name === 'AbortError') {
+      const isAborted =
+        (err as Error)?.name === 'AbortError' ||
+        (err as Error)?.message?.toLowerCase().includes('aborted') ||
+        Boolean(options?.signal?.aborted);
+
+      if (isAborted) {
         throw err;
       }
       const apiError = isApiError(err)

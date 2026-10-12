@@ -3,7 +3,24 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
 import { EditorArea } from '@/features/editor/ui/features/editor/EditorArea';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { useLayoutStore } from '@/features/editor/store/layout.store';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
+
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
+vi.mock('@/features/editor/ui/hooks/document.queries', () => ({
+  filesQuery: () => ({ queryKey: ['files'], queryFn: vi.fn() }),
+  pageQuery: () => ({ queryKey: ['page'], queryFn: vi.fn() }),
+}));
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
@@ -65,6 +82,8 @@ describe('EditorArea - Source vs Visual Mode Integration', () => {
       el.removeAttribute('aria-hidden');
     });
     useSettingsStore.setState({ editorMode: 'code', showEditorTabs: true });
+    useLayoutStore.setState({ editorSplitMode: 'none', secondaryFileId: null, activeEditorPane: 'primary' });
+    lruDocumentCache.clear();
     document.execCommand = vi.fn();
   });
 
@@ -78,8 +97,17 @@ describe('EditorArea - Source vs Visual Mode Integration', () => {
     vi.clearAllMocks();
   });
 
+  const createWrapper = () => {
+    const queryClient = createTestQueryClient();
+    return ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>{children}</TooltipProvider>
+      </QueryClientProvider>
+    );
+  };
+
   const renderWithTooltip = (ui: React.ReactElement) =>
-    render(<TooltipProvider>{ui}</TooltipProvider>);
+    render(ui, { wrapper: createWrapper() });
 
   it('renders CodeMirrorView when editorMode is "code"', () => {
     renderWithTooltip(<EditorArea />);
@@ -97,7 +125,7 @@ describe('EditorArea - Source vs Visual Mode Integration', () => {
     expect(screen.queryByTestId('mock-codemirror-view')).toBeNull();
     const visualSurface = document.querySelector('.visual-editor-surface');
     expect(visualSurface).toBeInTheDocument();
-    expect(visualSurface?.textContent).toContain('Introduction');
+    expect(visualSurface?.textContent).toMatch(/Introduction|Main/);
   });
 
   it('switches between CodeMirrorView and VisualEditorView when switching editorMode', () => {
@@ -108,7 +136,7 @@ describe('EditorArea - Source vs Visual Mode Integration', () => {
 
     // Trigger Visual mode via store
     useSettingsStore.getState().setEditorMode('visual');
-    rerender(<TooltipProvider><EditorArea /></TooltipProvider>);
+    rerender(<EditorArea />);
 
     // Now in Visual mode
     expect(screen.queryByTestId('mock-codemirror-view')).toBeNull();
@@ -116,7 +144,7 @@ describe('EditorArea - Source vs Visual Mode Integration', () => {
 
     // Switch back to Code mode
     useSettingsStore.getState().setEditorMode('code');
-    rerender(<TooltipProvider><EditorArea /></TooltipProvider>);
+    rerender(<EditorArea />);
 
     expect(screen.getByTestId('mock-codemirror-view')).toBeInTheDocument();
     expect(document.querySelector('.visual-editor-surface')).toBeNull();

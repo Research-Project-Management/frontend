@@ -128,7 +128,6 @@ export function VisualFigureToolbar({
             setShowImagePicker((prev) => !prev);
             setShowMetadataForm(false);
           }}
-          title="Click to change image asset"
           role="button"
           aria-label={`Image asset: ${filename}`}
         >
@@ -140,7 +139,7 @@ export function VisualFigureToolbar({
         <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />
 
         {/* Width Scaling Presets */}
-        <div className="flex items-center gap-0.5" title="Figure Width Scaling">
+        <div className="flex items-center gap-0.5">
           {WIDTH_PRESETS.map((preset) => {
             const isActive = Boolean(width && (width.includes(preset.spec.replace('\\', '')) || width === preset.spec));
             return (
@@ -156,7 +155,6 @@ export function VisualFigureToolbar({
                     : 'hover:bg-muted text-muted-foreground hover:text-foreground'
                 )}
                 onClick={() => onChangeWidth(preset.spec)}
-                title={`Scale to ${preset.label} (${preset.spec})`}
                 aria-label={`Width ${preset.label}`}
               >
                 {preset.label}
@@ -237,7 +235,6 @@ export function VisualFigureToolbar({
             setShowMetadataForm((prev) => !prev);
             setShowImagePicker(false);
           }}
-          title="Edit Caption & Label (\caption, \label)"
           aria-label="Edit figure caption and label"
         >
           <Settings2 className="size-3.5" />
@@ -263,7 +260,6 @@ export function VisualFigureToolbar({
           size="icon"
           className="size-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer ml-auto"
           onClick={onClose}
-          title="Close Toolbar"
           aria-label="Close toolbar"
         >
           <X className="size-3.5" />

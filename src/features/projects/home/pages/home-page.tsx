@@ -63,11 +63,13 @@ import {
 export default function HomePage() {
   const { user, isLoading: isUserLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
+  const [now, setNow] = useState<Date>(() => new Date());
   const [config, setConfig] = useState<SectionConfig[]>(defaultSectionConfig);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    setNow(new Date());
     setConfig(loadSectionConfig());
   }, []);
 
@@ -90,8 +92,7 @@ export default function HomePage() {
   );
 
   const fullName = fixMojibake(user?.name);
-  const greeting = useMemo(() => getGreeting(), []);
-  const now = useMemo(() => new Date(), []);
+  const greeting = useMemo(() => getGreeting(now.getHours()), [now]);
 
   return (
     <div className="h-full flex flex-col overflow-clip">
@@ -112,7 +113,7 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-10 flex flex-col gap-10">
           {/* Greeting Section */}
           <div className="flex flex-col items-center justify-center text-center space-y-2 mt-6 mb-8">
-            {isUserLoading ? (
+            {!mounted || isUserLoading ? (
               <div className="flex flex-col items-center gap-3">
                 <Skeleton className="h-10 w-64 rounded-full motion-reduce:animate-none" />
                 <Skeleton className="h-5 w-40 rounded-full motion-reduce:animate-none" />
@@ -127,7 +128,7 @@ export default function HomePage() {
                     {greeting.icon}
                   </span>
                   <span className="font-mono text-11 text-muted-foreground" suppressHydrationWarning>
-                    {mounted ? format(now, "EEEE, MMMM do, h:mm a") : ""}
+                    {format(now, "EEEE, MMMM do, h:mm a")}
                   </span>
                 </div>
               </>

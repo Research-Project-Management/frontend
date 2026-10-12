@@ -243,7 +243,7 @@ export const WorkItemHelpers = {
     return Array.from(
       new Set(
         list
-          .map((item) => (typeof item === 'string' ? item : (item.name || item.id || '')))
+          .map((item) => (typeof item === 'string' ? item : (item.id || item.name || '')))
           .filter(Boolean),
       ),
     );

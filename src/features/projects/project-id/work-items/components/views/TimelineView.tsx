@@ -1642,7 +1642,7 @@ export const TimelineView = memo(function TimelineView({
 
               {/* Sidebar Resize Splitter */}
               <div
-                className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-primary/50 group-hover/sidebar-header:bg-border/60 transition-colors z-50"
+                className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize z-50"
                 onMouseDown={handleSidebarResizeMouseDown}
                 title="Drag to resize sidebar width"
               />
@@ -1766,7 +1766,7 @@ export const TimelineView = memo(function TimelineView({
           </div>
 
           {/* Grid Canvas Body */}
-          <div className="relative flex-1 min-h-[calc(100vh-140px)]">
+          <div className="relative flex-1 min-h-[calc(100vh-140px)] flex flex-col justify-between">
             {/* Background Grid Lines & Today Marker across the entire canvas */}
             <div
               style={{ left: `${sidebarWidth}px`, width: `${totalTimelineWidth}px` }}
@@ -2022,32 +2022,34 @@ export const TimelineView = memo(function TimelineView({
                 );
               })}
 
-              {/* Pinned Bottom "+ New work item" Row */}
-              {!isReadOnly && (
-                <div
-                  style={{ height: `${ROW_HEIGHT}px` }}
-                  className="flex items-center border-b border-border/40 hover:bg-muted/30 transition-colors w-full"
-                >
-                  <div
-                    style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, left: 0 }}
-                    className="sticky left-0 z-20 flex items-center h-full px-3 bg-background border-r border-border shadow-[1px_0_0_0_var(--border)]"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => onAddCard(defaultColId)}
-                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer w-full text-left outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    >
-                      <Plus className="size-3.5 shrink-0" />
-                      <span>New work item</span>
-                    </button>
-                  </div>
-                  <div
-                    style={{ width: `${totalTimelineWidth}px` }}
-                    className="h-full shrink-0"
-                  />
-                </div>
-              )}
             </div>
+
+            {/* Pinned Bottom "+ New work item" Row (Official Plane Parity) */}
+            {!isReadOnly && (
+              <div
+                style={{ height: `${ROW_HEIGHT}px` }}
+                onClick={() => onAddCard(defaultColId)}
+                className="sticky bottom-0 z-30 flex items-center border-t border-border bg-background/95 backdrop-blur-xs hover:bg-muted/40 transition-colors w-full cursor-pointer select-none group/add-bottom shrink-0"
+              >
+                <div
+                  style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, left: 0 }}
+                  className="sticky left-0 z-30 flex items-center h-full px-3"
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddCard(defaultColId);
+                    }}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover/add-bottom:text-foreground font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <Plus className="size-3.5 shrink-0" />
+                    <span>New work item</span>
+                  </button>
+                </div>
+                <div className="flex-1 h-full" />
+              </div>
+            )}
           </div>
         </div>
       </div>

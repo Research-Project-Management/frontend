@@ -212,7 +212,31 @@ export const LatexCompilerEngine = {
     };
 
     try {
+      if (currentSignal.aborted) {
+        logger.debug('[LatexCompilerEngine] Compile request was aborted before execution.');
+        return {
+          success: false,
+          error: 'Compilation superseded',
+          logs: '',
+          errors: [],
+          flushedFileIds: [],
+          flushErrors: [],
+        };
+      }
+
       const data = await compileLatex(payload, currentSignal);
+
+      if (currentSignal.aborted || data?.error?.toLowerCase().includes('aborted')) {
+        logger.debug('[LatexCompilerEngine] Compile request aborted or superseded.');
+        return {
+          success: false,
+          error: 'Compilation superseded',
+          logs: '',
+          errors: [],
+          flushedFileIds: [],
+          flushErrors: [],
+        };
+      }
 
       // Overleaf parity: Support data.pdf as base64 string, direct URL, or from Overleaf outputFiles
       const rawPdf =
@@ -287,7 +311,12 @@ export const LatexCompilerEngine = {
         flushErrors,
       };
     } catch (err: unknown) {
-      if ((err as { name?: string })?.name === 'AbortError' || currentSignal.aborted) {
+      const isAborted =
+        (err as { name?: string })?.name === 'AbortError' ||
+        (err as Error)?.message?.toLowerCase().includes('aborted') ||
+        currentSignal.aborted;
+
+      if (isAborted) {
         logger.debug('[LatexCompilerEngine] Previous compile request aborted in favor of newer request.');
         return {
           success: false,

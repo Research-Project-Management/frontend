@@ -124,7 +124,7 @@ export function VisualTableToolbar({
         <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />
 
         {/* Row Operations */}
-        <div className="flex items-center gap-0.5" title="Row Operations">
+        <div className="flex items-center gap-0.5">
           <Button
             type="button"
             variant="ghost"
@@ -163,7 +163,7 @@ export function VisualTableToolbar({
         <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />
 
         {/* Column Operations */}
-        <div className="flex items-center gap-0.5" title="Column Operations">
+        <div className="flex items-center gap-0.5">
           <Button
             type="button"
             variant="ghost"
@@ -202,7 +202,7 @@ export function VisualTableToolbar({
         <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />
 
         {/* Alignment Controls */}
-        <div className="flex items-center gap-0.5" title="Column Alignment">
+        <div className="flex items-center gap-0.5">
           <Button
             type="button"
             variant={columnAlignment === 'left' ? 'secondary' : 'ghost'}
@@ -264,7 +264,6 @@ export function VisualTableToolbar({
               size="icon"
               className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer"
               onClick={onMergeCells}
-              title="Merge / Split Cells (colSpan)"
               aria-label="Merge cells"
             >
               <Combine className="size-3.5" />
@@ -278,7 +277,6 @@ export function VisualTableToolbar({
               size="icon"
               className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer"
               onClick={onToggleBorder}
-              title="Toggle Border Style (booktabs / bordered / minimal)"
               aria-label="Toggle table borders"
             >
               <Grid className="size-3.5" />
@@ -292,7 +290,6 @@ export function VisualTableToolbar({
               size="icon"
               className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer"
               onClick={() => onToggleColumnWidth('stretch')}
-              title="Toggle Column Width (Auto / Stretch / Fixed)"
               aria-label="Toggle column width"
             >
               <Maximize2 className="size-3.5" />
@@ -318,7 +315,6 @@ export function VisualTableToolbar({
             setLabelInput(label);
             setIsEditingMeta((prev) => !prev);
           }}
-          title="Edit Caption & Label"
           aria-label="Toggle caption and label editor"
         >
           <Settings2 className="size-3.5" />
@@ -347,7 +343,6 @@ export function VisualTableToolbar({
           size="icon"
           className="size-7 hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer ml-1"
           onClick={onClose}
-          title="Close Toolbar"
           aria-label="Close table toolbar"
         >
           <X className="size-3.5" />

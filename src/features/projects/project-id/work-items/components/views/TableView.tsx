@@ -383,7 +383,7 @@ export function TableHeaderRow({
 
         {/* Resize Handle */}
         <div
-          className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-primary/50 group-hover/header:bg-border/60 transition-colors z-20"
+          className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize z-20"
           onMouseDown={(e) => handleResizeMouseDown('title', e)}
           onClick={(e) => e.stopPropagation()}
         />
@@ -431,7 +431,7 @@ export function TableHeaderRow({
 
               {/* Resize Handle */}
               <div
-                className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-primary/50 group-hover/col:bg-border/60 transition-colors z-20"
+                className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize z-20"
                 onMouseDown={(e) => handleResizeMouseDown(p.key, e)}
                 onClick={(e) => e.stopPropagation()}
               />
@@ -1232,17 +1232,28 @@ export function TableInlineAddRow({
 
   if (!isAdding) {
     return (
-      <div role="row" className="flex items-center h-8 border-b border-border/40 hover:bg-muted/30 transition-colors w-full">
-        <div className="sticky left-0 flex items-center h-full">
+      <div
+        role="row"
+        onClick={() => setIsAdding(true)}
+        className="sticky bottom-0 z-20 flex items-center h-9 border-t border-border bg-background/95 backdrop-blur-xs hover:bg-muted/40 transition-colors w-full cursor-pointer select-none group/table-add-bottom shrink-0"
+      >
+        <div
+          className="sticky left-0 flex items-center h-full px-3 text-xs text-muted-foreground group-hover/table-add-bottom:text-foreground font-medium transition-colors"
+          style={{ width: `${titleWidth}px`, minWidth: `${titleWidth}px` }}
+        >
           <button
             type="button"
-            onClick={() => setIsAdding(true)}
-            className="flex items-center gap-2 h-full px-3 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer text-left outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsAdding(true);
+            }}
+            className="flex items-center gap-2 h-full text-xs text-muted-foreground group-hover/table-add-bottom:text-foreground font-medium transition-colors cursor-pointer text-left outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
-            <Plus className="size-3.5 text-muted-foreground shrink-0" />
+            <Plus className="size-3.5 shrink-0" />
             <span>New work item</span>
           </button>
         </div>
+        <div className="flex-1 h-full" />
       </div>
     );
   }
@@ -1251,10 +1262,10 @@ export function TableInlineAddRow({
     <form
       role="row"
       onSubmit={handleSubmit}
-      className="flex items-center h-8 border-b border-border bg-background transition-colors w-full"
+      className="sticky bottom-0 z-20 flex items-center h-9 border-t border-b border-border bg-background transition-colors w-full shrink-0"
     >
       <div
-        className="sticky left-0 flex items-center gap-2 h-full px-3 bg-background z-10 shadow-[1px_0_0_0_var(--border)]"
+        className="sticky left-0 flex items-center gap-2 h-full px-3 bg-background z-10"
         style={{ width: `${titleWidth}px`, minWidth: `${titleWidth}px` }}
       >
         <Plus className="size-3.5 text-muted-foreground shrink-0" />
@@ -1291,6 +1302,7 @@ export function TableInlineAddRow({
           </Button>
         </div>
       </div>
+      <div className="flex-1 h-full bg-background" />
     </form>
   );
 }
@@ -1790,147 +1802,145 @@ export function TableView({
   return (
     <div className="flex flex-col flex-1 w-full overflow-hidden bg-background">
       <div className="flex-1 overflow-auto">
-        <div role="table" aria-label="Work items table" className="min-w-max">
-          {/* Main Sticky Header */}
-          <div role="rowgroup">
-            <TableHeaderRow
-              visibleProperties={visibleProperties}
-              columnWidths={columnWidths}
-              onResizeColumn={handleResizeColumn}
-              onToggleProperty={handleToggleProperty}
-              onResetProperties={handleResetProperties}
-              isAllSelected={isAllSelected}
-              isSomeSelected={isSomeSelected}
-              onToggleSelectAll={handleSelectAll}
-              sortField={sortField}
-              sortOrder={sortOrder}
-              onSort={handleSort}
-              totalItemsCount={items.length}
-            />
+        <div role="table" aria-label="Work items table" className="min-w-max min-h-full flex flex-col justify-between">
+          <div className="flex-1 flex flex-col">
+            {/* Main Sticky Header */}
+            <div role="rowgroup">
+              <TableHeaderRow
+                visibleProperties={visibleProperties}
+                columnWidths={columnWidths}
+                onResizeColumn={handleResizeColumn}
+                onToggleProperty={handleToggleProperty}
+                onResetProperties={handleResetProperties}
+                isAllSelected={isAllSelected}
+                isSomeSelected={isSomeSelected}
+                onToggleSelectAll={handleSelectAll}
+                sortField={sortField}
+                sortOrder={sortOrder}
+                onSort={handleSort}
+                totalItemsCount={items.length}
+              />
+            </div>
+
+            {/* Zero items state */}
+            {items.length === 0 && (
+              <div className="py-20 flex flex-col items-center justify-center text-center">
+                <div className="size-10 rounded-md bg-muted flex items-center justify-center mb-3">
+                  <FileText className="size-5 text-foreground" />
+                </div>
+                <h4 className="text-16 font-semibold text-foreground mb-1">No work items found</h4>
+                <p className="text-13 text-muted-foreground mb-4">
+                  There are no items matching the current view filters.
+                </p>
+                {!isReadOnly && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onAddCard(defaultColId)}
+                    className="gap-1.5 text-xs rounded-md focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <Plus className="size-3.5" />
+                    <span>Create work item</span>
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Grouped Mode */}
+            {isGrouped && items.length > 0 && (
+              <div role="rowgroup" className="flex flex-col">
+                {groups.map((group) => {
+                  if (group.items.length === 0 && !displayOptions?.showEmptyGroups) {
+                    return null;
+                  }
+                  const isExpanded = !collapsedGroupKeys.has(group.key);
+
+                  return (
+                    <div key={group.key} className="flex flex-col">
+                      <TableGroupHeader
+                        title={group.title}
+                        color={group.color}
+                        icon={group.icon}
+                        count={group.items.length}
+                        isExpanded={isExpanded}
+                        onToggle={() => toggleGroupCollapse(group.key)}
+                      />
+
+                      {isExpanded && (
+                        <div className="flex flex-col">
+                          {buildTreeRows(group.items).map(
+                            ({ item, isSubItem, hasChildren, isChildrenExpanded }) => (
+                              <TableRowItem
+                                key={item.id}
+                                item={item}
+                                columns={columns}
+                                projectStates={projectStates || columns}
+                                visibleProperties={visibleProperties}
+                                columnWidths={columnWidths}
+                                isSelected={selectedIds.includes(item.id)}
+                                onToggleSelect={handleToggleSelect}
+                                onEditCard={onEditCard}
+                                onDeleteCard={onDeleteCard}
+                                onDuplicateCard={onDuplicateCard}
+                                onUpdateCard={onUpdateCard}
+                                members={members}
+                                projectId={projectId}
+                                isReadOnly={isReadOnly}
+                                isSubItem={isSubItem}
+                                hasChildren={hasChildren}
+                                isChildrenExpanded={isChildrenExpanded}
+                                onToggleExpandChildren={toggleExpandChildren}
+                              />
+                            )
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Flat Mode */}
+            {!isGrouped && items.length > 0 && (
+              <div role="rowgroup" className="flex flex-col">
+                {flatTreeRows.map(
+                  ({ item, isSubItem, hasChildren, isChildrenExpanded }) => (
+                    <TableRowItem
+                      key={item.id}
+                      item={item}
+                      columns={columns}
+                      projectStates={projectStates || columns}
+                      visibleProperties={visibleProperties}
+                      columnWidths={columnWidths}
+                      isSelected={selectedIds.includes(item.id)}
+                      onToggleSelect={handleToggleSelect}
+                      onEditCard={onEditCard}
+                      onDeleteCard={onDeleteCard}
+                      onDuplicateCard={onDuplicateCard}
+                      onUpdateCard={onUpdateCard}
+                      members={members}
+                      projectId={projectId}
+                      isReadOnly={isReadOnly}
+                      isSubItem={isSubItem}
+                      hasChildren={hasChildren}
+                      isChildrenExpanded={isChildrenExpanded}
+                      onToggleExpandChildren={toggleExpandChildren}
+                    />
+                  )
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Zero items state */}
-          {items.length === 0 && (
-            <div className="py-20 flex flex-col items-center justify-center text-center">
-              <div className="size-10 rounded-md bg-muted flex items-center justify-center mb-3">
-                <FileText className="size-5 text-foreground" />
-              </div>
-              <h4 className="text-16 font-semibold text-foreground mb-1">No work items found</h4>
-              <p className="text-13 text-muted-foreground mb-4">
-                There are no items matching the current view filters.
-              </p>
-              {!isReadOnly && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onAddCard(defaultColId)}
-                  className="gap-1.5 text-xs rounded-md focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <Plus className="size-3.5" />
-                  <span>Create work item</span>
-                </Button>
-              )}
-            </div>
-          )}
-
-          {/* Grouped Mode */}
-          {isGrouped && items.length > 0 && (
-            <div role="rowgroup" className="flex flex-col">
-              {groups.map((group) => {
-                if (group.items.length === 0 && !displayOptions?.showEmptyGroups) {
-                  return null;
-                }
-                const isExpanded = !collapsedGroupKeys.has(group.key);
-
-                return (
-                  <div key={group.key} className="flex flex-col">
-                    <TableGroupHeader
-                      title={group.title}
-                      color={group.color}
-                      icon={group.icon}
-                      count={group.items.length}
-                      isExpanded={isExpanded}
-                      onToggle={() => toggleGroupCollapse(group.key)}
-                    />
-
-                    {isExpanded && (
-                      <div className="flex flex-col">
-                        {buildTreeRows(group.items).map(
-                          ({ item, isSubItem, hasChildren, isChildrenExpanded }) => (
-                            <TableRowItem
-                              key={item.id}
-                              item={item}
-                              columns={columns}
-                              projectStates={projectStates || columns}
-                              visibleProperties={visibleProperties}
-                              columnWidths={columnWidths}
-                              isSelected={selectedIds.includes(item.id)}
-                              onToggleSelect={handleToggleSelect}
-                              onEditCard={onEditCard}
-                              onDeleteCard={onDeleteCard}
-                              onDuplicateCard={onDuplicateCard}
-                              onUpdateCard={onUpdateCard}
-                              members={members}
-                              projectId={projectId}
-                              isReadOnly={isReadOnly}
-                              isSubItem={isSubItem}
-                              hasChildren={hasChildren}
-                              isChildrenExpanded={isChildrenExpanded}
-                              onToggleExpandChildren={toggleExpandChildren}
-                            />
-                          )
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              <TableInlineAddRow
-                targetColumnId={defaultColId}
-                titleWidth={columnWidths.title || 360}
-                onAddCard={onAddCard}
-                isReadOnly={isReadOnly}
-              />
-            </div>
-          )}
-
-          {/* Flat Mode */}
-          {!isGrouped && items.length > 0 && (
-            <div role="rowgroup" className="flex flex-col">
-              {flatTreeRows.map(
-                ({ item, isSubItem, hasChildren, isChildrenExpanded }) => (
-                  <TableRowItem
-                    key={item.id}
-                    item={item}
-                    columns={columns}
-                    projectStates={projectStates || columns}
-                    visibleProperties={visibleProperties}
-                    columnWidths={columnWidths}
-                    isSelected={selectedIds.includes(item.id)}
-                    onToggleSelect={handleToggleSelect}
-                    onEditCard={onEditCard}
-                    onDeleteCard={onDeleteCard}
-                    onDuplicateCard={onDuplicateCard}
-                    onUpdateCard={onUpdateCard}
-                    members={members}
-                    projectId={projectId}
-                    isReadOnly={isReadOnly}
-                    isSubItem={isSubItem}
-                    hasChildren={hasChildren}
-                    isChildrenExpanded={isChildrenExpanded}
-                    onToggleExpandChildren={toggleExpandChildren}
-                  />
-                )
-              )}
-
-              <TableInlineAddRow
-                targetColumnId={defaultColId}
-                titleWidth={columnWidths.title || 360}
-                onAddCard={onAddCard}
-                isReadOnly={isReadOnly}
-              />
-            </div>
+          {/* Pinned Bottom "+ New work item" Row (Official Plane Parity) */}
+          {items.length > 0 && !isReadOnly && (
+            <TableInlineAddRow
+              targetColumnId={defaultColId}
+              titleWidth={columnWidths.title || 360}
+              onAddCard={onAddCard}
+              isReadOnly={isReadOnly}
+            />
           )}
         </div>
       </div>

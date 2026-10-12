@@ -268,16 +268,35 @@ function extractCellLatex(cellInner: string): string {
   return decoded;
 }
 
-/** Extracts the table rows (header flag + LaTeX cells) from table HTML. */
-function extractTableRows(inner: string): Array<{ isHeader: boolean; cells: string[] }> {
-  const rows: Array<{ isHeader: boolean; cells: string[] }> = [];
+export interface ExtractedTableCell {
+  text: string;
+  colSpan?: number;
+  rowSpan?: number;
+  align?: string;
+}
+
+/** Extracts the table rows (header flag + LaTeX cells with spans) from table HTML. */
+function extractTableRows(inner: string): Array<{ isHeader: boolean; cells: ExtractedTableCell[] }> {
+  const rows: Array<{ isHeader: boolean; cells: ExtractedTableCell[] }> = [];
   const trMatches = inner.match(/<tr(?:\s[^>]*)?>[\s\S]*?<\/tr>/gi) || [];
   for (const tr of trMatches) {
     const isHeader = /<th[\s>]/i.test(tr);
-    const cells: string[] = [];
-    const cellRe = /<(th|td)(?:\s[^>]*)?>([\s\S]*?)<\/\1>/gi;
+    const cells: ExtractedTableCell[] = [];
+    const cellRe = /<(th|td)(\s[^>]*)?>([\s\S]*?)<\/\1>/gi;
     let c: RegExpExecArray | null;
-    while ((c = cellRe.exec(tr)) !== null) cells.push(extractCellLatex(c[2]));
+    while ((c = cellRe.exec(tr)) !== null) {
+      const attrs = c[2] || '';
+      const text = extractCellLatex(c[3]);
+      const csMatch = attrs.match(/colspan="?(\d+)"?/i);
+      const rsMatch = attrs.match(/rowspan="?(\d+)"?/i);
+      const alignMatch = attrs.match(/data-align="?([^"\s>]+)"?/i);
+      cells.push({
+        text,
+        colSpan: csMatch ? parseInt(csMatch[1], 10) : undefined,
+        rowSpan: rsMatch ? parseInt(rsMatch[1], 10) : undefined,
+        align: alignMatch ? alignMatch[1] : undefined,
+      });
+    }
     if (cells.length > 0) rows.push({ isHeader, cells });
   }
   return rows;
@@ -295,9 +314,15 @@ const TABLE_ATTR_KEYS = [
 ];
 
 /** Deterministic signature of the table attributes and cell contents, used to detect user edits. */
-function tableSignature(attrs: string, rows: Array<{ isHeader: boolean; cells: string[] }>): string {
+function tableSignature(attrs: string, rows: Array<{ isHeader: boolean; cells: ExtractedTableCell[] }>): string {
   const meta = TABLE_ATTR_KEYS.map((k) => getAttr(attrs, k) ?? '').join('\u0001');
-  const cells = rows.map((r) => (r.isHeader ? 'H' : 'B') + r.cells.join('\u0001')).join('\u0002');
+  const cells = rows
+    .map(
+      (r) =>
+        (r.isHeader ? 'H' : 'B') +
+        r.cells.map((c) => `${c.colSpan || 1}:${c.rowSpan || 1}:${c.text}`).join('\u0001')
+    )
+    .join('\u0002');
   return `${meta}\u0003${cells}`;
 }
 
@@ -337,7 +362,7 @@ export function convertLatexTableToHtml(tableBlock: string, line?: number): stri
   const rawBody = tabularMatch[2];
 
   // Structures we cannot edit safely as a simple grid -> caller keeps raw.
-  if (/\\(?:multicolumn|multirow)\b|\\begin\{|(?<!\\)%/.test(rawBody)) return '';
+  if (/\\begin\{|(?<!\\)%/.test(rawBody)) return '';
   if ((tableBlock.match(/\\begin\{tabular/g) || []).length !== 1) return '';
 
   const envMatch = tableBlock.match(/^\s*\\begin\{(table\*?)\}(?:\[([^\]]*)\])?/);
@@ -365,12 +390,46 @@ export function convertLatexTableToHtml(tableBlock: string, line?: number): stri
   for (const rawRowUntrimmed of rawRows) {
     const cleanRow = rawRowUntrimmed.replace(TABLE_RULE_RE, '').trim();
     if (!cleanRow) continue;
-    const cells = cleanRow.split(/(?<!\\)&/).map((c) => convertLatexCellContentToHtml(c));
+    const rawCells = cleanRow.split(/(?<!\\)&/);
+    const cellHtmls: string[] = [];
+
+    for (const rawCell of rawCells) {
+      let trimmed = rawCell.trim();
+      let colSpan = 1;
+      let rowSpan = 1;
+      let align = '';
+
+      // Check \multicolumn{n}{align}{content}
+      const multiColMatch = trimmed.match(/^\\multicolumn\{(\d+)\}\{([^}]*)\}\{([\s\S]*)\}$/);
+      if (multiColMatch) {
+        colSpan = parseInt(multiColMatch[1], 10) || 1;
+        align = multiColMatch[2].trim();
+        trimmed = multiColMatch[3].trim();
+      }
+
+      // Check \multirow{n}{width}{content}
+      const multiRowMatch = trimmed.match(/^\\multirow\{(\d+)\}\{([^}]*)\}\{([\s\S]*)\}$/);
+      if (multiRowMatch) {
+        rowSpan = parseInt(multiRowMatch[1], 10) || 1;
+        trimmed = multiRowMatch[3].trim();
+      }
+
+      const cellContent = convertLatexCellContentToHtml(trimmed);
+      const spanAttrs = [
+        colSpan > 1 ? ` colspan="${colSpan}"` : '',
+        rowSpan > 1 ? ` rowspan="${rowSpan}"` : '',
+        align ? ` data-align="${escapeHtml(align)}"` : '',
+      ].join('');
+
+      const tag = isHeader ? 'th' : 'td';
+      cellHtmls.push(`<${tag}${spanAttrs}><p>${cellContent}</p></${tag}>`);
+    }
+
     if (isHeader) {
-      headerRowsHtml.push(`<tr>${cells.map((c) => `<th><p>${c}</p></th>`).join('')}</tr>`);
+      headerRowsHtml.push(`<tr>${cellHtmls.join('')}</tr>`);
       isHeader = false;
     } else {
-      bodyRowsHtml.push(`<tr>${cells.map((c) => `<td><p>${c}</p></td>`).join('')}</tr>`);
+      bodyRowsHtml.push(`<tr>${cellHtmls.join('')}</tr>`);
     }
   }
 
@@ -413,7 +472,10 @@ function htmlTableToLatex(attrs: string, inner: string): string {
   const rules = getAttr(attrs, 'data-rules') ?? 'booktabs';
   const captionPos = getAttr(attrs, 'data-caption-pos') ?? 'top';
 
-  const maxCols = rows.reduce((n, r) => Math.max(n, r.cells.length), 0);
+  const maxCols = rows.reduce((n, r) => {
+    const rowSpanCount = r.cells.reduce((sum, c) => sum + (c.colSpan || 1), 0);
+    return Math.max(n, rowSpanCount);
+  }, 0);
   let alignSpec = getDecodedAttr(attrs, 'data-align') ?? '';
   if (!alignSpec || countAlignColumns(alignSpec) !== maxCols) {
     const bar = alignSpec.includes('|');
@@ -441,9 +503,26 @@ function htmlTableToLatex(attrs: string, inner: string): string {
 
   let headerRuleDone = false;
   for (const row of rows) {
-    const padded = [...row.cells];
-    while (padded.length < maxCols) padded.push('');
-    lines.push(`${ind}  ${padded.join(' & ')} \\\\`);
+    const cellStrings: string[] = [];
+    let currentCols = 0;
+    for (const cell of row.cells) {
+      const cs = cell.colSpan || 1;
+      const rs = cell.rowSpan || 1;
+      let text = cell.text;
+      if (rs > 1) {
+        text = `\\multirow{${rs}}{*}{${text}}`;
+      }
+      if (cs > 1) {
+        text = `\\multicolumn{${cs}}{${cell.align || 'c'}}{${text}}`;
+      }
+      cellStrings.push(text);
+      currentCols += cs;
+    }
+    while (currentCols < maxCols) {
+      cellStrings.push('');
+      currentCols++;
+    }
+    lines.push(`${ind}  ${cellStrings.join(' & ')} \\\\`);
     if (row.isHeader && !headerRuleDone) {
       if (rules === 'booktabs') lines.push(`${ind}  \\midrule`);
       if (rules === 'hline') lines.push(`${ind}  \\hline`);

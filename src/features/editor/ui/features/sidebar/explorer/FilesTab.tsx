@@ -41,6 +41,7 @@ import {
 import { usePageStore } from '@/features/editor/store/editor.store';
 import { useTabsStore } from '@/features/editor/store/tabs.store';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { useLayoutStore } from '@/features/editor/store/layout.store';
 import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
 import {
   pageQuery,
@@ -352,6 +353,12 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
   const handleFileClick = useCallback(
     (fileId: string, title: string) => {
+      const layoutStore = useLayoutStore.getState();
+      if (layoutStore.editorSplitMode !== 'none' && layoutStore.activeEditorPane === 'secondary') {
+        layoutStore.setSecondaryFileId(fileId);
+        return;
+      }
+
       const isTargetMain =
         fileId === pageId ||
         fileId === parentPageId ||

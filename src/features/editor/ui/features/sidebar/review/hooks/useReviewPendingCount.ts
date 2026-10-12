@@ -20,12 +20,12 @@ export function useReviewPendingCount(pageId?: string | null): ReviewPendingCoun
 
   const pendingSuggestionsCount = useMemo(
     () => (Array.isArray(suggestions) ? suggestions.filter((s) => s.status === 'pending').length : 0),
-    [suggestions]
+    [suggestions, suggestions?.length]
   );
 
   const openCommentsCount = useMemo(
     () => (Array.isArray(comments) ? comments.filter((c) => c.status === 'open').length : 0),
-    [comments]
+    [comments, comments?.length]
   );
 
   return {

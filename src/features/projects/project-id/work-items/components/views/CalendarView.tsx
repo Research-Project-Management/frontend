@@ -386,8 +386,8 @@ export const CalendarView = memo(function CalendarView({
       onDragEnd={handleDragEnd}
     >
       <div className="flex flex-col flex-1 w-full h-full overflow-hidden bg-background">
-        {/* Full-Bleed Calendar Header Toolbar (No bottom border dividing from content) */}
-        <div className="h-11 px-4 flex items-center justify-between bg-background shrink-0 select-none">
+        {/* Calendar Header Toolbar */}
+        <div className="h-11 px-4 flex items-center justify-between bg-background border-b border-border shrink-0 select-none">
           <div className="flex items-center gap-1.5">
             <Button
               variant="ghost"
@@ -471,12 +471,12 @@ export const CalendarView = memo(function CalendarView({
         {/* Scrollable Calendar Grid (Unified 7-Column Grid with sleek custom scrollbar) */}
         <div className="flex-1 overflow-auto vertical-scrollbar custom-scrollbar">
           <div className="min-h-full min-w-[560px] bg-background">
-            {/* Week Day Labels (Row 1 of Grid) */}
-            <div className="grid grid-cols-7 bg-muted/40">
+            {/* Week Day Labels (Row 1 of Grid - Sticky header) */}
+            <div className="grid grid-cols-7 bg-muted/50 dark:bg-muted/20 border-b border-border sticky top-0 z-20 backdrop-blur-sm">
               {WEEK_DAY_LABELS.map((label) => (
                 <div
                   key={label}
-                  className="h-8 px-3 flex items-center justify-end text-11 font-semibold text-foreground [&:not(:nth-child(7n))]:border-r border-border select-none"
+                  className="h-8 px-3 flex items-center justify-end text-11 font-semibold text-muted-foreground [&:not(:nth-child(7n))]:border-r border-border select-none"
                 >
                   {label}
                 </div>
@@ -485,15 +485,16 @@ export const CalendarView = memo(function CalendarView({
 
             {/* Weeks with Multi-day Spanning Bars and Consistent Top Date Header */}
             {calendarWeeks.map((weekDays) => {
-              const weekStartKey = format(weekDays[0], DATE_KEY_FORMAT);
-              const weekEndKey = format(weekDays[6], DATE_KEY_FORMAT);
+              const weekDayKeys = weekDays.map((d) => format(d, DATE_KEY_FORMAT));
+              const weekStartKey = weekDayKeys[0];
+              const weekEndKey = weekDayKeys[6];
 
               const weekSpanningItems = multiDayItems
                 .filter((t) => t.startKey <= weekEndKey && t.dueKey >= weekStartKey)
                 .map((t) => {
-                  const sIdx = weekDays.findIndex((d) => format(d, DATE_KEY_FORMAT) === t.startKey);
+                  const sIdx = weekDayKeys.indexOf(t.startKey);
                   const startIndex = sIdx === -1 ? 0 : sIdx;
-                  const eIdx = weekDays.findIndex((d) => format(d, DATE_KEY_FORMAT) === t.dueKey);
+                  const eIdx = weekDayKeys.indexOf(t.dueKey);
                   const endIndex = eIdx === -1 ? 6 : Math.min(6, eIdx);
                   const span = Math.max(1, endIndex - startIndex + 1);
                   const isContinuedFromPrev = t.startKey < weekStartKey;
@@ -508,10 +509,15 @@ export const CalendarView = memo(function CalendarView({
                   };
                 });
 
-              // Greedy Lane Packing for multi-day bars
+              // Deterministic Lane Packing: prioritize earliest absolute start date to keep continuous lanes across weeks
               const sortedSpanning = [...weekSpanningItems].sort((a, b) => {
-                if (a.startIndex !== b.startIndex) return a.startIndex - b.startIndex;
-                return b.span - a.span;
+                if (a.item.startKey !== b.item.startKey) {
+                  return a.item.startKey.localeCompare(b.item.startKey);
+                }
+                if (a.item.dueKey !== b.item.dueKey) {
+                  return b.item.dueKey.localeCompare(a.item.dueKey);
+                }
+                return a.item.id.localeCompare(b.item.id);
               });
 
               const lanes: boolean[][] = [];
@@ -555,6 +561,7 @@ export const CalendarView = memo(function CalendarView({
                   {/* Consistent 7-Column Date Header Row */}
                   <div className="grid grid-cols-7 border-b border-border bg-background">
                     {weekDays.map((day) => {
+                      const dayKey = format(day, DATE_KEY_FORMAT);
                       const isThisToday = isToday(day);
                       const isCurrentMonth =
                         layoutMode === "week"
@@ -564,23 +571,30 @@ export const CalendarView = memo(function CalendarView({
 
                       return (
                         <div
-                          key={day.toISOString()}
+                          key={dayKey}
                           className={cn(
-                            "h-7 px-2.5 flex items-center justify-between text-right select-none [&:not(:nth-child(7n))]:border-r border-border",
+                            "h-7 px-2.5 flex items-center justify-end gap-1.5 select-none [&:not(:nth-child(7n))]:border-r border-border",
                             !isCurrentMonth ? "bg-muted/30 text-muted-foreground" : "bg-background text-foreground"
                           )}
                         >
-                          <span className="text-11 font-medium text-foreground">
-                            {isFirstDayOfMonth ? format(day, "MMM d") : ""}
-                          </span>
+                          {isFirstDayOfMonth && (
+                            <span
+                              className={cn(
+                                "text-11 font-medium",
+                                !isCurrentMonth ? "text-muted-foreground" : "text-foreground"
+                              )}
+                            >
+                              {format(day, "MMM")}
+                            </span>
+                          )}
                           {isThisToday ? (
-                            <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary text-11 font-mono font-medium text-primary-foreground tabular-nums ml-auto">
+                            <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary text-11 font-mono font-medium text-primary-foreground tabular-nums">
                               {format(day, "d")}
                             </span>
                           ) : (
                             <span
                               className={cn(
-                                "text-11 font-mono font-medium leading-none tabular-nums ml-auto",
+                                "text-11 font-mono font-medium leading-none tabular-nums",
                                 !isCurrentMonth ? "text-muted-foreground" : "text-foreground"
                               )}
                             >
@@ -899,7 +913,7 @@ const CalendarDayCell = memo(({
       ref={setNodeRef}
       style={{ minHeight: dayCellMinHeight }}
       className={cn(
-        "group flex flex-col transition-colors border-b [&:not(:nth-child(7n))]:border-r border-border p-1.5 min-h-0",
+        "group flex flex-col transition-colors [&:not(:nth-child(7n))]:border-r border-border p-1.5 min-h-0",
         !isCurrentMonth
           ? "bg-muted/30 text-muted-foreground"
           : "bg-background text-foreground",

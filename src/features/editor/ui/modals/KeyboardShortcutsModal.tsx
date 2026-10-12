@@ -282,6 +282,13 @@ export const SHORTCUT_LIST: ShortcutItem[] = [
     keys: ['Ctrl', 'Shift', 'V'],
     description: 'Switch between Code and Visual editor',
   },
+  {
+    id: 'toggle-split-editor',
+    label: 'Split Editor / Close Split',
+    category: 'Layout',
+    keys: ['Ctrl', '\\'],
+    description: 'Chia đôi khung soạn thảo song song (Split Panes)',
+  },
 ];
 
 interface KeyboardShortcutsModalProps {

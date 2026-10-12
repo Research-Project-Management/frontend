@@ -22,6 +22,12 @@ export const compiler = {
     if (!body.timeout_ms) {
       body.timeout_ms = 120000;
     }
+    if (effectiveSignal?.aborted) {
+      const abortErr = new Error('Compilation superseded');
+      abortErr.name = 'AbortError';
+      throw abortErr;
+    }
+
     try {
       const targetProjectId = body.project_id || body.projectId;
       if (targetProjectId) {
@@ -33,6 +39,17 @@ export const compiler = {
         timeout: 120000,
       });
     } catch (err: unknown) {
+      const isAborted =
+        Boolean(effectiveSignal?.aborted) ||
+        (err as { name?: string })?.name === 'AbortError' ||
+        (err as Error)?.message?.toLowerCase().includes('aborted');
+
+      if (isAborted) {
+        const abortErr = (err as Error) || new Error('Compilation superseded');
+        abortErr.name = 'AbortError';
+        throw abortErr;
+      }
+
       return {
         success: false,
         pdf: '',

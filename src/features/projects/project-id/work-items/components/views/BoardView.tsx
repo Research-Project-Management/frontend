@@ -806,7 +806,7 @@ export const Column = React.memo(function Column({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex flex-col w-[320px] shrink-0 h-full min-h-[350px] rounded-md bg-muted/40 dark:bg-muted/15 border border-border/50 transition-colors',
+        'flex flex-col w-[320px] shrink-0 h-full min-h-[350px] rounded-md bg-muted/40 dark:bg-muted/15 border border-border/50 transition-colors overflow-hidden',
         isOver && 'bg-muted/60'
       )}
     >
@@ -1161,7 +1161,10 @@ export function BoardView({
   };
 
   return (
-    <div className="flex-1 h-full overflow-x-auto overflow-y-auto p-2 sm:p-2.5 min-w-0 bg-background kanban-scrollbar select-none">
+    <div className={cn(
+      "flex-1 h-full overflow-x-auto p-2 sm:p-2.5 min-w-0 bg-background kanban-scrollbar select-none",
+      isSwimlanesActive ? "overflow-y-auto" : "overflow-y-hidden"
+    )}>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -1265,7 +1268,7 @@ export function BoardView({
             })}
           </div>
         ) : (
-          <div className="flex h-full items-stretch gap-3 min-w-max pb-2">
+          <div className="flex h-full items-stretch gap-3 min-w-max">
             {visibleColumns.map((col) => {
               const colId = resolveColumnId(col);
               const columnCards = (itemsByColumnId ? itemsByColumnId.get(colId) : itemsByColumn.get(colId)) || [];

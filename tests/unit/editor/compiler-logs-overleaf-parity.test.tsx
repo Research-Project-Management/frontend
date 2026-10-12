@@ -269,7 +269,7 @@ No pages of output.`;
       />
     );
 
-    const downloadBtn = screen.getByRole('button', { name: /download raw log/i });
+    const downloadBtn = screen.getByRole('button', { name: /download.*log/i });
     expect(downloadBtn).toBeInTheDocument();
 
     fireEvent.click(downloadBtn);

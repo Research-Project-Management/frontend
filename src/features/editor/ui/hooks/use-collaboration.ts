@@ -25,7 +25,7 @@ import {
   type YjsSocketIOProvider,
   type ConnectionStatus,
 } from '@/features/editor/sdk';
-import { getCachedUser } from '@/features/auth';
+import { getCachedUser } from '@/features/auth/services/auth.service';
 
 export type { CollaboratorPresenceInfo };
 

@@ -14,8 +14,16 @@
  */
 
 import React from 'react';
-import { Columns2, ArrowLeftRight, X, FileCode2 } from 'lucide-react';
+import { Columns2, ArrowLeftRight, X, FileCode2, ChevronDown, Check } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
 import dynamic from 'next/dynamic';
 import Tabs from './EditorTabs';
@@ -39,6 +47,13 @@ import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import type { Page, PageFile } from '@/features/editor/domain/types';
 import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
 
+export interface EditorPaneFileItem {
+  id: string;
+  title?: string;
+  filename?: string;
+  name?: string;
+}
+
 export interface EditorPaneProps {
   paneId: 'primary' | 'secondary';
   file?: Page | PageFile | AssetInfo | null;
@@ -46,7 +61,7 @@ export interface EditorPaneProps {
   rootPageId?: string;
   isActivePane: boolean;
   isSplitActive: boolean;
-  availableFiles?: PageFile[];
+  availableFiles?: EditorPaneFileItem[];
   onFocusPane?: () => void;
   onSplitRight?: () => void;
   onCloseSplit?: () => void;
@@ -129,10 +144,50 @@ export function EditorPane({
           <div className="flex items-center gap-2 min-w-0">
             <SourceVisualSwitcher />
             <div className="h-4 w-px bg-border/60 mx-0.5 shrink-0" />
-            <FileCode2 className="size-3.5 text-primary shrink-0" />
-            <span className="text-xs font-medium text-foreground truncate max-w-[160px]">
-              {fileName}
-            </span>
+
+            {/* Document Switcher Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 px-2 py-1 -ml-1 rounded-sm hover:bg-muted text-xs font-medium text-foreground truncate max-w-[200px] outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer group"
+                  aria-label="Chuyển đổi tệp"
+                >
+                  <FileCode2 className="size-3.5 text-primary shrink-0" />
+                  <span className="truncate">{fileName}</span>
+                  <ChevronDown className="size-3 text-muted-foreground shrink-0 opacity-60 group-hover:opacity-100 transition-opacity" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56 max-h-72 overflow-y-auto z-50">
+                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Tệp trong dự án</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {availableFiles.length === 0 ? (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">Không có tệp nào khác</div>
+                ) : (
+                  availableFiles.map((f) => {
+                    const title = f.title || f.filename || f.name || f.id;
+                    const isCurrent = f.id === fileId;
+                    return (
+                      <DropdownMenuItem
+                        key={f.id}
+                        onClick={() => onSelectFile?.(f.id)}
+                        className={cn(
+                          'flex items-center justify-between gap-2 text-xs cursor-pointer',
+                          isCurrent && 'font-semibold text-primary'
+                        )}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <FileCode2 className="size-3.5 shrink-0 text-muted-foreground" />
+                          <span className="truncate">{title}</span>
+                        </div>
+                        {isCurrent && <Check className="size-3.5 shrink-0 text-primary" />}
+                      </DropdownMenuItem>
+                    );
+                  })
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {cachedModel?.isDirty && (
               <span className="size-1.5 rounded-full bg-primary shrink-0" title="Unsaved changes" />
             )}
@@ -176,7 +231,7 @@ export function EditorPane({
         <Tabs
           rootPageId={rootPageId || projectId}
           activeFileId={fileId}
-          availableFiles={availableFiles}
+          availableFiles={availableFiles as { id: string; title: string }[] | undefined}
           rightSlot={
             onSplitRight ? (
               <Button
@@ -243,6 +298,7 @@ export function EditorPane({
             <div className="flex-1 min-h-0 min-w-0 w-full h-full overflow-hidden">
               {editorMode === 'visual' ? (
                 <VisualEditorView
+                  key={fileId}
                   fileId={fileId}
                   filePath={fileName}
                   value={rawContent}
@@ -257,6 +313,7 @@ export function EditorPane({
               ) : (
                 <EditorContextMenu>
                   <CodeMirrorView
+                    key={fileId}
                     fileId={fileId}
                     filePath={fileName}
                     value={rawContent}

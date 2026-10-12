@@ -8,7 +8,7 @@
  *
  * Features:
  * - Version Timeline: View all revisions or labelled snapshots, search by note/label/author.
- * - Side-by-Side & Unified Diff: Powered by @codemirror/merge and Myers diff tokenization.
+ * - Side-by-Side & Unified Diff: Powered by Myers diff tokenization.
  * - Label Management: Tag milestone snapshots with custom labels, delete labels.
  * - 1-Click Rollback / Restore: Safely revert project files to any historical version.
  * - Manual Snapshot Checkpoints: Create on-demand named snapshots of the project.
@@ -31,12 +31,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';

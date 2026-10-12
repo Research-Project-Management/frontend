@@ -106,4 +106,22 @@ for sorting lists.
     expect(words).toContain('was');
     expect(words).toContain('today');
   });
+
+  it('correctly extracts Vietnamese words with tone marks and Latin Extended characters', () => {
+    const text = 'Nghiên cứu về trí tuệ nhân tạo và xử lý ngôn ngữ tự nhiên.';
+    const words = extractLatexWords(text).map((w) => w.word);
+    expect(words).toContain('Nghiên');
+    expect(words).toContain('cứu');
+    expect(words).toContain('về');
+    expect(words).toContain('trí');
+    expect(words).toContain('tuệ');
+    expect(words).toContain('nhân');
+    expect(words).toContain('tạo');
+    expect(words).toContain('xử');
+    expect(words).toContain('lý');
+    expect(words).toContain('ngôn');
+    expect(words).toContain('ngữ');
+    expect(words).toContain('tự');
+    expect(words).toContain('nhiên');
+  });
 });

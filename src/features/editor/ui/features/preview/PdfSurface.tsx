@@ -229,7 +229,6 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
       }}
       onClickCapture={handleClickCapture}
       onDoubleClickCapture={handleDoubleClick}
-      title="Double-click or Ctrl/Cmd+Click to jump to LaTeX source (SyncTeX)"
       className={cn(
         "bg-canvas dark:bg-card relative flex items-center justify-center cursor-text transition-all shrink-0",
         isSpreadView ? "my-0" : "border-b border-border/60 last:border-b-0"

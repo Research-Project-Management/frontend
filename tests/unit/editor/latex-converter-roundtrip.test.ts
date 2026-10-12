@@ -167,11 +167,12 @@ Math $a<b$ % note
       expect(out).toContain('\\end{table*}');
     });
 
-    it('keeps tables with \\multicolumn / \\multirow / longtable as protected raw blocks', () => {
+    it('supports tables with \\multicolumn / \\multirow as visual tables and keeps longtable as protected raw block', () => {
       const mc = '\\begin{table}[h]\n\\begin{tabular}{lc}\n\\multicolumn{2}{c}{Span} \\\\\nx & y \\\\\n\\end{tabular}\n\\end{table}';
-      expect(latexToHtml(mc)).toContain('latex-protected-block');
+      expect(latexToHtml(mc)).toContain('colspan="2"');
       expect(roundTrip(mc)).toBe(mc);
       const lt = '\\begin{longtable}{ll}\na & b \\\\\n\\end{longtable}';
+      expect(latexToHtml(lt)).toContain('latex-protected-block');
       expect(roundTrip(lt)).toBe(lt);
     });
   });

@@ -14,8 +14,10 @@ import {
   Copy,
   Link2,
   RefreshCw,
+  Columns2,
 } from 'lucide-react';
 import type { LinkedFileDto } from '@/features/editor/sdk';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -138,6 +140,14 @@ export const TexFileRow = React.memo(function TexFileRow({
     [file, onDownload],
   );
 
+  const rowRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (isActive && rowRef.current) {
+      rowRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [isActive]);
+
   if (isRenaming) {
     return (
       <div
@@ -156,14 +166,6 @@ export const TexFileRow = React.memo(function TexFileRow({
       </div>
     );
   }
-
-  const rowRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    if (isActive && rowRef.current) {
-      rowRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    }
-  }, [isActive]);
 
   const rowContent = (
     <div
@@ -270,6 +272,16 @@ export const TexFileRow = React.memo(function TexFileRow({
           </DropdownMenuItem>
         )}
         <DropdownMenuItem
+          onClick={(e) => {
+            e.stopPropagation();
+            editorCommandBus.dispatch({ type: 'editor:open-to-side', fileId: file.id });
+          }}
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+        >
+          <Columns2 className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+          <span>Open to the Side</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
           onClick={handleCopyInput}
           className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
         >
@@ -347,6 +359,16 @@ export const TexFileRow = React.memo(function TexFileRow({
             <span>Current Main Document</span>
           </ContextMenuItem>
         )}
+        <ContextMenuItem
+          onClick={(e) => {
+            e.stopPropagation();
+            editorCommandBus.dispatch({ type: 'editor:open-to-side', fileId: file.id });
+          }}
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+        >
+          <Columns2 className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+          <span>Open to the Side</span>
+        </ContextMenuItem>
         <ContextMenuItem
           onClick={handleCopyInput}
           className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"

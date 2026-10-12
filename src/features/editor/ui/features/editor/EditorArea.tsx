@@ -136,11 +136,31 @@ export function EditorArea() {
 
   const secondaryFile = React.useMemo(() => {
     if (secondaryFileId) {
+      if (parentPage && parentPage.id === secondaryFileId) return parentPage;
       const found = childFiles.find((f) => f.id === secondaryFileId);
       if (found) return found;
     }
-    return childFiles.find((f) => f.id !== displayPage?.id) ?? displayPage ?? null;
-  }, [secondaryFileId, childFiles, displayPage]);
+    return childFiles.find((f) => f.id !== displayPage?.id) ?? parentPage ?? displayPage ?? null;
+  }, [secondaryFileId, childFiles, parentPage, displayPage]);
+
+  const allSelectableFiles = React.useMemo(() => {
+    const list: Array<{ id: string; title?: string; filename?: string; name?: string }> = [];
+    if (parentPage) {
+      list.push({
+        id: parentPage.id,
+        title: parentPage.title || 'main.tex',
+      });
+    }
+    for (const cf of childFiles) {
+      if (!parentPage || cf.id !== parentPage.id) {
+        list.push({
+          id: cf.id,
+          title: cf.title || ('name' in cf ? (cf as { name?: string }).name : cf.id),
+        });
+      }
+    }
+    return list;
+  }, [parentPage, childFiles]);
 
   const handleOpenDefault = React.useCallback(() => {
     if (pageId) {
@@ -276,6 +296,23 @@ export function EditorArea() {
             /mac/i.test((navigator as { userAgentData?: { platform?: string } }).userAgentData!.platform!)));
       const modKey = isMac ? e.metaKey : e.ctrlKey;
 
+      if (modKey && (e.key === '\\' || e.code === 'Backslash')) {
+        e.preventDefault();
+        const currentMode = useLayoutStore.getState().editorSplitMode;
+        if (currentMode === 'none') {
+          const otherFile = childFiles.find((f) => f.id !== displayPage?.id);
+          const targetId = otherFile?.id || parentPage?.id || displayPage?.id;
+          if (targetId) {
+            setSecondaryFileId(targetId);
+          }
+          setEditorSplitMode('vertical');
+          setActiveEditorPane('secondary');
+        } else {
+          editorCommandBus.dispatch({ type: 'editor:close-split' });
+        }
+        return;
+      }
+
       if (modKey && e.shiftKey && (e.key === 'V' || e.key === 'v')) {
         e.preventDefault();
         useSettingsStore.getState().toggleEditorMode();
@@ -380,9 +417,14 @@ export function EditorArea() {
                 rootPageId={pageId}
                 isActivePane={activeEditorPane === 'primary'}
                 isSplitActive={true}
-                availableFiles={childFiles}
+                availableFiles={allSelectableFiles}
                 onFocusPane={() => setActiveEditorPane('primary')}
-                onCloseSplit={() => editorCommandBus.dispatch({ type: 'editor:close-split' })}
+                onCloseSplit={() => {
+                  if (secondaryFile?.id) {
+                    selectFile(secondaryFile.id);
+                  }
+                  editorCommandBus.dispatch({ type: 'editor:close-split' });
+                }}
                 onSwapPanes={() => editorCommandBus.dispatch({ type: 'editor:swap-panes' })}
                 onSelectFile={(selectedId) => selectFile(selectedId)}
               />
@@ -402,7 +444,7 @@ export function EditorArea() {
                 rootPageId={pageId}
                 isActivePane={activeEditorPane === 'secondary'}
                 isSplitActive={true}
-                availableFiles={childFiles}
+                availableFiles={allSelectableFiles}
                 onFocusPane={() => setActiveEditorPane('secondary')}
                 onCloseSplit={() => editorCommandBus.dispatch({ type: 'editor:close-split' })}
                 onSwapPanes={() => editorCommandBus.dispatch({ type: 'editor:swap-panes' })}
@@ -420,15 +462,16 @@ export function EditorArea() {
             rootPageId={pageId}
             isActivePane={true}
             isSplitActive={false}
-            availableFiles={childFiles}
+            availableFiles={allSelectableFiles}
             onFocusPane={() => setActiveEditorPane('primary')}
             onSplitRight={() => {
               const otherFile = childFiles.find((f) => f.id !== displayPage?.id);
-              const targetId = otherFile?.id || displayPage?.id;
+              const targetId = otherFile?.id || parentPage?.id || displayPage?.id;
               if (targetId) {
                 setSecondaryFileId(targetId);
               }
               setEditorSplitMode('vertical');
+              setActiveEditorPane('secondary');
             }}
             onSelectFile={(selectedId) => selectFile(selectedId)}
           />

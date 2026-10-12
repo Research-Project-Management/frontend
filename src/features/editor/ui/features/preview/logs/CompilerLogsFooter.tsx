@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Trash2, ChevronUp, FileText } from 'lucide-react';
+import { Trash2, ChevronUp } from 'lucide-react';
 import {
   Popover,
   PopoverTrigger,
@@ -14,7 +14,6 @@ export interface CompilerLogsFooterProps {
   outputFiles: string[];
   onDownloadFile: (fileName: string) => void;
   onDownloadAll: () => void;
-  onDownloadRawLog?: () => void;
 }
 
 export function CompilerLogsFooter({
@@ -22,14 +21,13 @@ export function CompilerLogsFooter({
   outputFiles,
   onDownloadFile,
   onDownloadAll,
-  onDownloadRawLog,
 }: CompilerLogsFooterProps) {
   const [isOtherFilesOpen, setIsOtherFilesOpen] = useState(false);
 
   return (
     <footer className="h-10 px-3 border-t border-border bg-surface flex items-center justify-between shrink-0 select-none font-sans">
-      {/* Left: Clear cached files & raw log download buttons */}
-      <div className="flex items-center gap-2">
+      {/* Left: Clear cached files button */}
+      <div>
         <button
           type="button"
           onClick={onClearCacheAndCompile}
@@ -39,19 +37,6 @@ export function CompilerLogsFooter({
           <Trash2 className="size-3.5 shrink-0" />
           <span>Clear cached files</span>
         </button>
-
-        {onDownloadRawLog && (
-          <button
-            type="button"
-            onClick={onDownloadRawLog}
-            aria-label="Download raw log"
-            className="h-7 px-2.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary border border-border/60"
-            title="Download full raw compile output.log"
-          >
-            <FileText className="size-3.5 shrink-0" />
-            <span>Download raw log</span>
-          </button>
-        )}
       </div>
 
       {/* Right: Other logs and files Popover */}

@@ -128,8 +128,8 @@ export function extractLatexWords(text: string): Array<{ word: string; from: num
     }
   }
 
-  // 6. Tokenize remaining natural language words
-  const wordRegex = /\b[a-zA-Z]{2,}(?:'[a-zA-Z]+)?\b/g;
+  // 6. Tokenize remaining natural language words (Unicode-aware for multi-language & Vietnamese)
+  const wordRegex = /[\p{L}]{2,}(?:['’][\p{L}]+)?/gu;
   while ((m = wordRegex.exec(text)) !== null) {
     const from = m.index;
     const to = from + m[0].length;

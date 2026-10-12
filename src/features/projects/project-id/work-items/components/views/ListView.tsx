@@ -318,19 +318,11 @@ export const ItemRow = memo(function ItemRow({
         item.completed && 'opacity-75',
       )}
     >
-      {/* Gutter: Drag Grip handle + Selection Checkbox */}
+      {/* Gutter: Selection Checkbox + Drag Grip handle */}
       <div
         className="absolute left-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 z-10"
         onClick={(e) => e.stopPropagation()}
       >
-        {!isReadOnly && (
-          <div
-            className="size-3.5 flex items-center justify-center cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-foreground opacity-0 group-hover/row:opacity-100 transition-opacity"
-            title="Drag to reorder"
-          >
-            <GripVertical className="size-3 shrink-0" />
-          </div>
-        )}
         <div className="size-4 flex items-center justify-center cursor-pointer before:absolute before:-inset-2.5 md:before:hidden">
           <Checkbox
             checked={isSelected}
@@ -344,6 +336,14 @@ export const ItemRow = memo(function ItemRow({
             )}
           />
         </div>
+        {!isReadOnly && (
+          <div
+            className="size-3.5 flex items-center justify-center cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-foreground opacity-0 group-hover/row:opacity-100 transition-opacity"
+            title="Drag to reorder"
+          >
+            <GripVertical className="size-3 shrink-0" />
+          </div>
+        )}
       </div>
 
       {/* Left: Identifier & Title */}
@@ -1235,13 +1235,13 @@ const ListViewGroup = ({
             onToggleExpand(group.key);
           }
         }}
-        className="group/header relative h-9 pl-9 pr-3 sm:pr-4 flex items-center justify-between border-b border-border bg-muted/30 hover:bg-muted/60 dark:bg-muted/15 dark:hover:bg-muted/30 select-none cursor-pointer transition-colors duration-0 focus-visible:outline-none"
+        className="group/header relative h-9 pl-6 pr-3 sm:pr-4 flex items-center justify-between border-b border-border bg-muted/30 hover:bg-muted/60 dark:bg-muted/15 dark:hover:bg-muted/30 select-none cursor-pointer transition-colors duration-0 focus-visible:outline-none"
       >
-        {/* Group Multi-select Checkbox (Aligned with item checkboxes at left-[22px]) */}
+        {/* Group Multi-select Checkbox (Aligned with item checkboxes at left-1.5) */}
         <div
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
-          className="absolute left-[22px] top-1/2 -translate-y-1/2 size-4 flex items-center justify-center z-10"
+          className="absolute left-1.5 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center z-10"
         >
           <GroupCheckbox
             checked={isAllGroupSelected}
@@ -1340,7 +1340,7 @@ const ListViewGroup = ({
           {!isReadOnly && (
             <div>
               {isAdding ? (
-                <div className="border-b border-border bg-background pl-9 pr-3 sm:pr-4 py-2">
+                <div className="border-b border-border bg-background pl-6 pr-3 sm:pr-4 py-2">
                   <div className="h-9 flex items-center gap-2.5">
                     <Plus className="size-3.5 shrink-0 text-muted-foreground" />
                     {projectPrefix && (
@@ -1381,7 +1381,7 @@ const ListViewGroup = ({
                 <button
                   type="button"
                   onClick={() => setQuickAddKey(group.key)}
-                  className="h-9 pl-9 pr-3 sm:pr-4 w-full flex items-center gap-2.5 text-13 text-muted-foreground hover:text-foreground hover:bg-muted/40 cursor-pointer border-b border-border/60 text-left font-normal transition-colors duration-0 focus-visible:outline-none"
+                  className="h-9 pl-6 pr-3 sm:pr-4 w-full flex items-center gap-2.5 text-13 text-muted-foreground hover:text-foreground hover:bg-muted/40 cursor-pointer border-b border-border/60 text-left font-normal transition-colors duration-0 focus-visible:outline-none"
                 >
                   <Plus className="size-3.5 shrink-0" />
                   <span>New work item</span>
@@ -1821,7 +1821,7 @@ export function ListView({
             {!isReadOnly && (
               <div>
                 {quickAddKey === '__flat__' ? (
-                  <div className="border-b border-border bg-background pl-9 pr-3 sm:pr-4 py-2">
+                  <div className="border-b border-border bg-background pl-6 pr-3 sm:pr-4 py-2">
                     <div className="h-9 flex items-center gap-2.5">
                       <Plus className="size-3.5 shrink-0 text-muted-foreground" />
                       {projectPrefix && (
@@ -1860,7 +1860,7 @@ export function ListView({
                   <button
                     type="button"
                     onClick={() => setQuickAddKey('__flat__')}
-                    className="h-9 pl-9 pr-3 sm:pr-4 w-full flex items-center gap-2.5 text-13 text-muted-foreground hover:text-foreground hover:bg-muted/40 cursor-pointer border-b border-border/60 text-left font-normal transition-colors duration-0 focus-visible:outline-none"
+                    className="h-9 pl-6 pr-3 sm:pr-4 w-full flex items-center gap-2.5 text-13 text-muted-foreground hover:text-foreground hover:bg-muted/40 cursor-pointer border-b border-border/60 text-left font-normal transition-colors duration-0 focus-visible:outline-none"
                   >
                     <Plus className="size-3.5 shrink-0" />
                     <span>New work item</span>

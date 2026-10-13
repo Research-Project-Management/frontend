@@ -19,9 +19,9 @@ import {
   trackChangesDecorationsField,
 } from '@/features/editor/engines/extensions/track-changes.extension';
 import { reviewCoordinator } from '@/features/editor/coordinators/review.coordinator';
-import { manuscriptService, suggestionService, historyService } from '@/features/editor/sdk';
+import { manuscriptService, suggestionService, historyService } from '@/features/editor/sdk/manuscript.service';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
-import type { TrackChangeDto, CommentThreadDto } from '@/features/editor/sdk';
+import type { TrackChangeDto, CommentThreadDto } from '@/features/editor/sdk/manuscript/types';
 import type { ProjectVersionListItem, ProjectDiffResponse } from '@/features/editor/domain/types/history.types';
 
 describe('Track Changes, Review Mode & Version History Subsystem', () => {

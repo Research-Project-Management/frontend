@@ -9,7 +9,7 @@ import {
   releaseYjsProvider,
   getOffsetFromRowCol,
   getRowColFromOffset,
-} from '@/features/editor/sdk';
+} from '@/features/editor/sdk/manuscript.service';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { yCollab } from 'y-codemirror.next';

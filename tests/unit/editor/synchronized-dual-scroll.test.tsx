@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React, { createRef } from 'react';
 import { render, screen, fireEvent, act, renderHook } from '@testing-library/react';
-import { useSynchronizedScroll } from '@/features/editor/ui/features/preview/hooks/use-synchronized-scroll';
-import { PdfToolbar } from '@/features/editor/ui/features/preview/PdfToolbar';
+import { useSynchronizedScroll } from '@/features/editor/ui/preview/hooks/useSynchronizedScroll';
+import { PdfToolbar } from '@/features/editor/ui/preview/PdfToolbar';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { useLayoutStore } from '@/features/editor/store/layout.store';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
 import { LatexCompilerEngine } from '@/features/editor/coordinators/compilation-pipeline';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
-import type { SurfaceHandle } from '@/features/editor/ui/features/preview/PdfSurface';
+import type { SurfaceHandle } from '@/features/editor/ui/preview/PdfSurface';
 import type { SyncTeXMap } from '@/features/editor/domain/pdf/synctex-index';
 
 describe('Split-View Synchronized Dual Scrolling (Overleaf Parity)', () => {

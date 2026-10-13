@@ -1,6 +1,6 @@
 ﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as api from '@/shared/lib/api';
-import { manuscriptService } from '@/features/editor/sdk';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 const spellingService = manuscriptService.spelling;
 
 describe('Spelling & Custom Dictionary (Overleaf Parity)', () => {

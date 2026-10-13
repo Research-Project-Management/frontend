@@ -34,10 +34,9 @@ export interface ReorderStateItem {
 
 export const StateService = {
   getStates: async (projectId: string): Promise<WorkItemState[]> => {
-    const res = await apiGet<{ states?: WorkItemState[]; columns?: WorkItemState[] }>(
-      `/api/projects/${projectId}/states`,
-    );
-    return res.states || res.columns || [];
+    const res = await apiGet<any>(`/api/projects/${projectId}/states`);
+    if (Array.isArray(res)) return res as WorkItemState[];
+    return res?.states || res?.columns || [];
   },
 
   getStateCounts: async (projectId: string): Promise<Record<string, number>> => {

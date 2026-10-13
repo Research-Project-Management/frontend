@@ -38,7 +38,9 @@ export type DialogName =
   | 'quick-open'
   | 'shortcuts'
   | 'github-sync'
-  | 'project-settings';
+  | 'project-settings'
+  | 'diagram-canvas'
+  | 'tikz-canvas';
 
 export interface EditorDiagnosticItem {
   id: string;
@@ -58,7 +60,7 @@ export interface EditorDiagnosticItem {
 }
 
 export type EditorCommand =
-  | { type: 'editor:jump-to-line'; line: number; highlight?: 'error' | 'synctex' }
+  | { type: 'editor:jump-to-line'; line: number; highlight?: 'error' | 'synctex'; column?: number; length?: number }
   | { type: 'editor:set-content'; content: string }
   | { type: 'editor:insert-text'; text: string }
   | { type: 'editor:wrap-selection'; prefix: string; suffix: string; placeholder?: string }
@@ -125,7 +127,7 @@ export type EditorCommand =
   | { type: 'sidebar:toggle-ai-panel' }
   | { type: 'dialog:open'; dialog: DialogName; payload?: any }
   | { type: 'dialog:close'; dialog?: DialogName }
-  | { type: 'synctex:forward'; line?: number; column?: number }
+  | { type: 'synctex:forward'; line?: number; column?: number; filePath?: string; fileId?: string }
   | { type: 'synctex:backward'; page?: number; x?: number; y?: number }
   | { type: 'synctex:map-updated'; map: any }
   | { type: 'document:content-updated'; docId: string; content: string }
@@ -162,6 +164,7 @@ export type EditorCommand =
   | { type: 'review:accept-suggestion'; suggestionId: string }
   | { type: 'review:reject-suggestion'; suggestionId: string }
   | { type: 'review:create-comment'; line?: number; selectedText?: string }
+  | { type: 'history:open'; initialVersion?: number; projectId?: string; baseVersion?: number; targetVersion?: number }
   | { type: 'history:open-modal'; initialVersion?: number; projectId?: string; baseVersion?: number; targetVersion?: number };
 
 export type CommandHandler<T extends EditorCommand = EditorCommand, R = unknown> = (command: T) => R | Promise<R>;

@@ -9,10 +9,14 @@
 
 import dynamic from 'next/dynamic';
 import React from 'react';
+import EditorSkeleton from './EditorSkeleton';
 
 const EditorPage = dynamic(
   () => import('./EditorPage'),
-  { ssr: false },
+  {
+    ssr: false,
+    loading: () => <EditorSkeleton />,
+  },
 );
 
 export default function ClientEditor() {

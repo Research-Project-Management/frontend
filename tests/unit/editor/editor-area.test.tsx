@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
-import { EditorArea } from '@/features/editor/ui/features/editor/EditorArea';
+import { EditorArea } from '@/features/editor/ui/editor/EditorArea';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { useLayoutStore } from '@/features/editor/store/layout.store';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
@@ -31,7 +31,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock useActiveDocument to supply test manuscript document
-vi.mock('@/features/editor/ui/hooks/use-active-document', () => ({
+vi.mock('@/features/editor/ui/hooks/useActiveDocument', () => ({
   useActiveDocument: () => ({
     isLoading: false,
     activePage: {
@@ -55,7 +55,7 @@ vi.mock('@/features/editor/ui/hooks/use-active-document', () => ({
 }));
 
 // Mock CodeMirrorView to identify it easily in tests
-vi.mock('@/features/editor/ui/features/editor/CodeMirrorView', () => ({
+vi.mock('@/features/editor/ui/editor/CodeMirrorView', () => ({
   CodeMirrorView: (props: any) => (
     <div data-testid="mock-codemirror-view" data-file-id={props.fileId}>
       <span>CodeMirror Engine Mock</span>
@@ -65,7 +65,7 @@ vi.mock('@/features/editor/ui/features/editor/CodeMirrorView', () => ({
 }));
 
 // Mock VisualEditorView to prevent TipTap/DOM measurement issues in JSDOM
-vi.mock('@/features/editor/ui/features/editor/VisualEditorView', () => ({
+vi.mock('@/features/editor/ui/editor/VisualEditorView', () => ({
   VisualEditorView: (props: { fileId?: string }) => (
     <div data-testid="mock-visual-view" data-file-id={props.fileId} className="visual-editor-surface">
       <span>Visual Engine Mock</span>
@@ -114,39 +114,37 @@ describe('EditorArea - Source vs Visual Mode Integration', () => {
 
     expect(screen.getByTestId('mock-codemirror-view')).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /Visual/i })).toBeInTheDocument();
-    expect(document.querySelector('.visual-editor-surface')).toBeNull();
   });
 
-  it('renders VisualEditorView when editorMode is "visual"', () => {
+  it('preserves CodeMirrorView and applies Visual mode when editorMode is "visual"', () => {
     useSettingsStore.setState({ editorMode: 'visual' });
 
     renderWithTooltip(<EditorArea />);
 
-    expect(screen.queryByTestId('mock-codemirror-view')).toBeNull();
-    const visualSurface = document.querySelector('.visual-editor-surface');
-    expect(visualSurface).toBeInTheDocument();
-    expect(visualSurface?.textContent).toMatch(/Introduction|Main/);
+    expect(screen.getByTestId('mock-codemirror-view')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Visual/i })).toBeChecked();
   });
 
-  it('switches between CodeMirrorView and VisualEditorView when switching editorMode', () => {
+  it('switches between Code and Visual modes seamlessly without unmounting CodeMirror', () => {
     const { rerender } = renderWithTooltip(<EditorArea />);
 
-    // Initially in Code mode
+    // Initially in Code/Source mode
     expect(screen.getByTestId('mock-codemirror-view')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Source/i })).toBeChecked();
 
     // Trigger Visual mode via store
     useSettingsStore.getState().setEditorMode('visual');
     rerender(<EditorArea />);
 
-    // Now in Visual mode
-    expect(screen.queryByTestId('mock-codemirror-view')).toBeNull();
-    expect(document.querySelector('.visual-editor-surface')).toBeInTheDocument();
+    // In Visual mode, CodeMirror remains mounted (0ms latency, zero AST loss)
+    expect(screen.getByTestId('mock-codemirror-view')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Visual/i })).toBeChecked();
 
-    // Switch back to Code mode
+    // Switch back to Code/Source mode
     useSettingsStore.getState().setEditorMode('code');
     rerender(<EditorArea />);
 
     expect(screen.getByTestId('mock-codemirror-view')).toBeInTheDocument();
-    expect(document.querySelector('.visual-editor-surface')).toBeNull();
+    expect(screen.getByRole('radio', { name: /Source/i })).toBeChecked();
   });
 });

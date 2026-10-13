@@ -4,7 +4,7 @@ import {
   type SyncTeXMap,
 } from '@/features/editor/domain/pdf/synctex-index';
 import { LatexCompilerEngine } from '@/features/editor/coordinators/compilation-pipeline';
-import { synctexService } from '@/features/editor/sdk';
+import { synctexService } from '@/features/editor/sdk/manuscript.service';
 
 describe('Forward SyncTeX (Code Cursor -> PDF Highlight & Bounding Box)', () => {
   beforeEach(() => {

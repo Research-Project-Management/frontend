@@ -2,9 +2,11 @@
  * tabs.store.ts
  *
  * Store for multi-file tab navigation within projects.
+ * Backwards-compatible facade over the consolidated useWorkspaceStore (State Layer).
+ * Location: `frontend/src/features/editor/store/tabs.store.ts`
  */
 
-import { create } from 'zustand';
+import { useWorkspaceStore } from './workspace.store';
 import { useDocumentEditorStore as usePageStore } from './editor.store';
 
 export interface EditorTab {
@@ -37,22 +39,8 @@ export interface DocumentTabsState {
   clearAll: () => void;
 }
 
-function isMainDocTab(tab: { id?: string; title?: string }, projectId: string): boolean {
-  if (!tab) return false;
-  const lowerTitle = tab.title?.toLowerCase() ?? '';
-  return (
-    tab.id === projectId ||
-    tab.id === `${projectId}-main` ||
-    lowerTitle === 'main.tex'
-  );
-}
-
-export const useDocumentTabsStore = create<DocumentTabsState>()((set, get) => ({
-  tabsByProject: {},
-  activeByProject: {},
-  secondaryActiveByProject: {},
-
-  openTab(projectIdOrTab, maybeTab) {
+const stableTabsActions = {
+  openTab: (projectIdOrTab: string | EditorTab, maybeTab?: EditorTab) => {
     let projectId: string;
     let tab: EditorTab;
     if (typeof projectIdOrTab === 'object' && projectIdOrTab !== null) {
@@ -63,60 +51,22 @@ export const useDocumentTabsStore = create<DocumentTabsState>()((set, get) => ({
       tab = maybeTab!;
     }
     if (!tab) return;
-
-    set((state) => {
-      const existing = state.tabsByProject[projectId] ?? [];
-      const isIncomingMain = isMainDocTab(tab, projectId);
-
-      // Check if tab already exists: matching ID, or both represent root main.tex, or matching file title
-      const existingIndex = existing.findIndex((t) => {
-        if (t.id === tab.id) return true;
-        if (isIncomingMain && isMainDocTab(t, projectId)) return true;
-        if (t.title.toLowerCase() === tab.title.toLowerCase()) return true;
-        return false;
-      });
-
-      let updatedTabs: EditorTab[];
-      if (existingIndex !== -1) {
-        // Tab exists: update in place, preserving existing id if incoming is an alias
-        updatedTabs = existing.map((t, idx) =>
-          idx === existingIndex
-            ? { ...t, ...tab, id: isIncomingMain && t.id.endsWith('-main') ? t.id : tab.id }
-            : t
-        );
-      } else {
-        updatedTabs = [...existing, tab];
-      }
-
-      // Purge any duplicates that may exist in the project tab list
-      const seen = new Set<string>();
-      const dedupedTabs: EditorTab[] = [];
-      for (const t of updatedTabs) {
-        const key = isMainDocTab(t, projectId) ? '__main__' : (t.id || t.title.toLowerCase());
-        if (!seen.has(key)) {
-          seen.add(key);
-          dedupedTabs.push(t);
-        }
-      }
-
-      return {
-        tabsByProject: {
-          ...state.tabsByProject,
-          [projectId]: dedupedTabs,
-        },
-        activeByProject: {
-          ...state.activeByProject,
-          [projectId]: tab.id,
-        },
-      };
+    useWorkspaceStore.getState().openTab(projectId, {
+      id: tab.id,
+      title: tab.title,
+      path: tab.path ?? tab.id,
+      isDirty: Boolean(tab.isDirty),
+      isPinned: false,
     });
   },
-
-  closeTab(projectIdOrTabId, maybeTabId, maybeRouter) {
+  closeTab: (
+    projectIdOrTabId: string,
+    maybeTabId?: string | ((pageId: string | null) => void),
+    maybeRouter?: (pageId: string | null) => void,
+  ) => {
     let projectId: string;
     let tabId: string;
     let router: ((pageId: string | null) => void) | undefined;
-
     if (typeof maybeTabId === 'function' || maybeTabId === undefined) {
       tabId = projectIdOrTabId;
       projectId = usePageStore.getState().projectId || usePageStore.getState().currentPage?.id || 'default';
@@ -126,113 +76,64 @@ export const useDocumentTabsStore = create<DocumentTabsState>()((set, get) => ({
       tabId = maybeTabId;
       router = maybeRouter;
     }
-
-    const state = get();
-    const currentTabs = state.tabsByProject[projectId] ?? [];
-    const isClosingMain = isMainDocTab({ id: tabId }, projectId);
-
-    const idx = currentTabs.findIndex(
-      (t) => t.id === tabId || (isClosingMain && isMainDocTab(t, projectId)),
-    );
-    if (idx === -1) return;
-
-    const remaining = currentTabs.filter(
-      (t) => t.id !== tabId && (!isClosingMain || !isMainDocTab(t, projectId)),
-    );
-    let nextActive: string | null = null;
-
-    const currentActive = state.activeByProject[projectId];
-    const wasActive =
-      currentActive === tabId ||
-      (isClosingMain && currentActive && isMainDocTab({ id: currentActive }, projectId));
-
-    if (wasActive) {
-      if (remaining.length > 0) {
-        const nextIdx = Math.min(idx, remaining.length - 1);
-        nextActive = remaining[nextIdx].id;
-      }
-      if (router) {
-        router(nextActive);
-      }
-    } else {
-      nextActive = currentActive ?? null;
+    useWorkspaceStore.getState().closeTab(projectId, tabId, router);
+  },
+  setActive: (projectId: string, tabId: string) => useWorkspaceStore.getState().setActiveTab(projectId, tabId),
+  setSecondaryActive: (projectId: string, tabId: string | null) => useWorkspaceStore.getState().setSecondaryActiveTab(projectId, tabId),
+  getTabs: (projectId: string) => (useWorkspaceStore.getState().tabsByProject[projectId] ?? []) as unknown as EditorTab[],
+  getActive: (projectId: string) => useWorkspaceStore.getState().activeByProject[projectId] ?? null,
+  getSecondaryActive: (projectId: string) => useWorkspaceStore.getState().secondaryActiveByProject[projectId] ?? null,
+  closeAllForProject: (projectId: string) => useWorkspaceStore.getState().closeAllTabsForProject(projectId),
+  updateTabTitle: (projectId: string, tabId: string, title: string) => useWorkspaceStore.getState().updateTabTitle(projectId, tabId, title),
+  clearAll: () => {
+    const ws = useWorkspaceStore.getState();
+    for (const pid of Object.keys(ws.tabsByProject)) {
+      ws.closeAllTabsForProject(pid);
     }
-
-    set({
-      tabsByProject: {
-        ...state.tabsByProject,
-        [projectId]: remaining,
-      },
-      activeByProject: {
-        ...state.activeByProject,
-        [projectId]: nextActive,
-      },
-    });
   },
+};
 
-  setActive(projectId, tabId) {
-    set((state) => ({
-      activeByProject: {
-        ...state.activeByProject,
-        [projectId]: tabId,
-      },
-    }));
-  },
+export const useDocumentTabsStore = (<T,>(selector?: (state: DocumentTabsState) => T): T => {
+  return useWorkspaceStore((ws) => {
+    if (selector) {
+      // If the selector requests one of the stable actions, return it directly to guarantee reference equality
+      const actionKey = selector.toString();
+      if (actionKey.includes('.closeTab')) return stableTabsActions.closeTab as unknown as T;
+      if (actionKey.includes('.openTab')) return stableTabsActions.openTab as unknown as T;
+      if (actionKey.includes('.setActive')) return stableTabsActions.setActive as unknown as T;
+      if (actionKey.includes('.setSecondaryActive')) return stableTabsActions.setSecondaryActive as unknown as T;
 
-  setSecondaryActive(projectId, tabId) {
-    set((state) => ({
-      secondaryActiveByProject: {
-        ...state.secondaryActiveByProject,
-        [projectId]: tabId,
-      },
-    }));
-  },
-
-  getTabs(projectId) {
-    return get().tabsByProject[projectId] ?? [];
-  },
-
-  getActive(projectId) {
-    return get().activeByProject[projectId] ?? null;
-  },
-
-  getSecondaryActive(projectId) {
-    return get().secondaryActiveByProject[projectId] ?? null;
-  },
-
-  closeAllForProject(projectId) {
-    set((state) => {
-      const { [projectId]: _tabs, ...remainingTabs } = state.tabsByProject;
-      const { [projectId]: _active, ...remainingActive } = state.activeByProject;
-      const { [projectId]: _secActive, ...remainingSecActive } = state.secondaryActiveByProject;
-      return {
-        tabsByProject: remainingTabs,
-        activeByProject: remainingActive,
-        secondaryActiveByProject: remainingSecActive,
+      const proxyState: DocumentTabsState = {
+        tabsByProject: ws.tabsByProject as unknown as Record<string, EditorTab[]>,
+        activeByProject: ws.activeByProject,
+        secondaryActiveByProject: ws.secondaryActiveByProject,
+        ...stableTabsActions,
       };
-    });
-  },
+      return selector(proxyState);
+    }
+    return {
+      tabsByProject: ws.tabsByProject as unknown as Record<string, EditorTab[]>,
+      activeByProject: ws.activeByProject,
+      secondaryActiveByProject: ws.secondaryActiveByProject,
+      ...stableTabsActions,
+    } as unknown as T;
+  });
+}) as {
+  <T>(selector?: (state: DocumentTabsState) => T): T;
+  getState: () => DocumentTabsState;
+};
 
-  updateTabTitle(projectId, tabId, title) {
-    set((state) => {
-      const currentTabs = state.tabsByProject[projectId] ?? [];
-      return {
-        tabsByProject: {
-          ...state.tabsByProject,
-          [projectId]: currentTabs.map((t) =>
-            t.id === tabId ? { ...t, title } : t,
-          ),
-        },
-      };
-    });
-  },
+useDocumentTabsStore.getState = () => {
+  const ws = useWorkspaceStore.getState();
+  return {
+    tabsByProject: ws.tabsByProject as unknown as Record<string, EditorTab[]>,
+    activeByProject: ws.activeByProject,
+    secondaryActiveByProject: ws.secondaryActiveByProject,
+    ...stableTabsActions,
+  };
+};
 
-  clearAll() {
-    set({ tabsByProject: {}, activeByProject: {}, secondaryActiveByProject: {} });
-  },
-}));
-
-// Aliases for seamless backward compatibility
+// Backward compatibility aliases
 export const useTabsStore = useDocumentTabsStore;
 export const useEditorTabsStore = useDocumentTabsStore;
 export type TabsState = DocumentTabsState;

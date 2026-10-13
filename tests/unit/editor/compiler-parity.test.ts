@@ -3,7 +3,7 @@ import {
   downloadAuxFileUrl,
   downloadAllArtifactsZipUrl,
   compileService,
-} from '@/features/editor/sdk';
+} from '@/features/editor/sdk/manuscript.service';
 import { parseLatexLog } from '@/features/editor/domain/latex/latex-structure';
 import { createPdfBlobAndUrl } from '@/features/editor/domain/pdf/pdf-resolver';
 

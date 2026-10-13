@@ -92,6 +92,8 @@ export function getHashColor(str: string): string {
   return AUTHOR_COLORS[Math.abs(hash) % AUTHOR_COLORS.length];
 }
 
+export const getAuthorColor = getHashColor;
+
 /**
  * Normalize and resolve author info from comment/suggestion and member directory
  */

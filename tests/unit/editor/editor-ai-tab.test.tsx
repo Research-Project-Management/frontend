@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import AiTab from '@/features/editor/ui/features/sidebar/ai/AiTab';
+import AiTab from '@/features/editor/ui/sidebar/ai/AiTab';
 import { usePageStore } from '@/features/editor/store/editor.store';
 
 // Mock next/navigation
@@ -10,7 +10,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock editor context
-vi.mock('@/features/editor/ui/hooks/use-editor-instance', () => ({
+vi.mock('@/features/editor/ui/hooks/useEditorInstance', () => ({
   useEditorInstance: () => ({
     engine: {
       getSelectedText: () => '',

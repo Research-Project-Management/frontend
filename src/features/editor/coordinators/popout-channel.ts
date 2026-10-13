@@ -5,7 +5,7 @@
  * using HTML5 BroadcastChannel and same-realm instance dispatch.
  */
 
-import type { CompileStatus } from '@/features/editor/domain/types';
+import type { CompileStatus } from '@/features/editor/domain/types/compiler.types';
 
 export interface PopoutViewerState {
   pdfUrl: string | null;

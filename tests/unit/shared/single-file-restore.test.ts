@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { usePageStore } from '@/features/editor/store/editor.store';
-import type { CompileLatexPayload } from '@/features/editor/sdk';
+import type { CompileLatexPayload } from '@/features/editor/sdk/manuscript.service';
 import type { CompileExecutionOptions } from '@/features/editor/coordinators/compilation-pipeline';
 
 describe('Single File Restore & Stop on First Error (Overleaf Parity)', () => {

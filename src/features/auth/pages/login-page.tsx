@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useLogin } from '../hooks/use-login';
 import { Button } from '@/shared/components/ui/button';
@@ -61,7 +62,7 @@ const LoginPage = () => {
       <div className='mx-auto w-full max-w-sm flex flex-col gap-5'>
         <div className='flex flex-col items-center gap-3 text-center'>
           <Link className="shrink-0" href='/' aria-label='Flux home'>
-            <img src='/Flux.svg' alt='Flux' className='w-12 h-12' />
+            <Image src='/Flux.svg' alt='Flux' width={48} height={48} priority className='w-12 h-12' />
           </Link>
           <h1 className='text-2xl font-semibold tracking-tight text-foreground'>Sign in to Flux</h1>
         </div>
@@ -160,7 +161,7 @@ const LoginPage = () => {
             onClick={() => handleOAuthLogin('google')}
             className='w-full h-9 gap-2 text-foreground cursor-pointer'
           >
-            <img src='/google.svg' alt='' aria-hidden='true' className='size-4 shrink-0' />
+            <Image src='/google.svg' alt='' aria-hidden='true' width={16} height={16} className='size-4 shrink-0' />
             Google
           </Button>
           <Button

@@ -1,3 +1,4 @@
+import AppLoading from '@/app/(app)/loading';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { WorkItemPage } from '@/features/projects/project-id/work-items/pages/WorkItemPage';
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function ProjectViewDetailRoute() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<AppLoading />}>
       <WorkItemPage />
     </Suspense>
   );

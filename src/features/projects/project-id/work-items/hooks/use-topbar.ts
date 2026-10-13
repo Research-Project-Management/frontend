@@ -30,6 +30,7 @@ import {
 } from '../types/work-item.types';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { ItemHelpers, resolveStateId, inferStateGroup } from '../utils/work-item.utils';
+import { WorkItemFilterEngine } from '../utils/work-item-filter-engine';
 
 export type ViewMode = 'board' | 'list' | 'calendar' | 'table' | 'timeline' | 'split';
 
@@ -45,7 +46,7 @@ const getDisplayOptionsStorageKey = (projId?: string, currentMode?: ViewMode) =>
 };
 
 const getInitialDisplayOptions = (projId?: string, targetMode: ViewMode = 'board'): DisplayOptions => {
-  const defaultGb: GroupByOption = targetMode === 'table' ? 'none' : 'state';
+  const defaultGb: GroupByOption = (targetMode === 'table' || targetMode === 'timeline') ? 'none' : 'state';
   if (typeof window !== 'undefined') {
     try {
       const modeKey = getDisplayOptionsStorageKey(projId, targetMode);
@@ -69,7 +70,7 @@ const getInitialDisplayOptions = (projId?: string, targetMode: ViewMode = 'board
       const legacySaved = localStorage.getItem(legacyKey);
       if (legacySaved) {
         const parsed = JSON.parse(legacySaved) as Record<string, any>;
-        const groupBy = targetMode === 'table' ? 'none' : ((parsed.groupBy && parsed.groupBy !== 'null' ? parsed.groupBy : defaultGb) as GroupByOption);
+        const groupBy = (targetMode === 'table' || targetMode === 'timeline') ? 'none' : ((parsed.groupBy && parsed.groupBy !== 'null' ? parsed.groupBy : defaultGb) as GroupByOption);
         return {
           ...DEFAULT_DISPLAY_OPTIONS,
           ...parsed,
@@ -143,16 +144,8 @@ export function useTopbar({
   // ── User Project Properties Query (Delegated to dedicated useProperty hook) ──
   const { userProperties, updateProperties } = useProperty(projectId);
 
-  // ── View Mode State ───────────────────────────────────────────────────────
-  const [mode, setModeState] = useState<ViewMode>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(ITEMS_VIEW_STORAGE_KEY) as ViewMode;
-        if (saved && VALID_MODES.includes(saved)) return saved;
-      } catch {}
-    }
-    return 'board';
-  });
+  // ── View Mode State (SSR-safe initial default to prevent hydration mismatch) ──
+  const [mode, setModeState] = useState<ViewMode>('board');
 
   const setMode = useCallback((newMode: ViewMode) => {
     setModeState(newMode);
@@ -169,16 +162,20 @@ export function useTopbar({
     }
   }, [projectId, updateProperties]);
 
+  // Client-side hydration sync for saved view mode & display options
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem(ITEMS_VIEW_STORAGE_KEY) as ViewMode;
-        if (saved && VALID_MODES.includes(saved)) {
-          setModeState((prev) => (saved !== prev ? saved : prev));
+        const targetMode = saved && VALID_MODES.includes(saved) ? saved : 'board';
+        if (targetMode !== 'board') {
+          setModeState(targetMode);
         }
+        const modeOptions = getInitialDisplayOptions(projectId, targetMode);
+        setDisplayOptionsState(modeOptions);
       } catch {}
     }
-  }, []);
+  }, [projectId]);
 
   // Sync userProperties into mode and display options on initial load
   useEffect(() => {
@@ -203,9 +200,9 @@ export function useTopbar({
         const rawShowChild = beDisplayFilters?.showChildWorkItems ?? beDisplayFilters?.show_child_work_items;
 
         setDisplayOptionsState((prev: DisplayOptions): DisplayOptions => {
-          const defaultGb: GroupByOption = (savedMode || mode) === 'table' ? 'none' : 'state';
+          const defaultGb: GroupByOption = ((savedMode || mode) === 'table' || (savedMode || mode) === 'timeline') ? 'none' : 'state';
           const nextGroupBy = ((rawGroupBy && rawGroupBy !== 'null' && rawGroupBy !== '')
-            ? (rawGroupBy === 'state' && (savedMode || mode) === 'table' ? 'none' : rawGroupBy)
+            ? (rawGroupBy === 'state' && ((savedMode || mode) === 'table' || (savedMode || mode) === 'timeline') ? 'none' : rawGroupBy)
             : (prev.groupBy || defaultGb)) as GroupByOption;
           let nextSubGroupBy = ((rawSubGroupBy && rawSubGroupBy !== 'null' && rawSubGroupBy !== '') ? rawSubGroupBy : (prev.subGroupBy || 'none')) as SubGroupByOption;
           if (nextSubGroupBy === nextGroupBy) {
@@ -250,16 +247,10 @@ export function useTopbar({
   // ── Display Options State ─────────────────────────────────────────────────
   const storageKey = useMemo(() => getDisplayOptionsStorageKey(projectId, mode), [projectId, mode]);
 
-  const [displayOptions, setDisplayOptionsState] = useState<DisplayOptions>(() => {
-    let currentMode: ViewMode = 'board';
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(ITEMS_VIEW_STORAGE_KEY) as ViewMode;
-        if (saved && VALID_MODES.includes(saved)) currentMode = saved;
-      } catch {}
-    }
-    return getInitialDisplayOptions(projectId, currentMode);
-  });
+  const [displayOptions, setDisplayOptionsState] = useState<DisplayOptions>(() => ({
+    ...DEFAULT_DISPLAY_OPTIONS,
+    groupBy: 'state',
+  }));
 
   const setDisplayOptions = useCallback((options: DisplayOptions) => {
     setDisplayOptionsState(options);
@@ -419,295 +410,30 @@ export function useTopbar({
     return list;
   }, [items, propUsers, members]);
 
-  // ── Optimized Single-Pass Filtering Engine ───────────────────────────────
+  // ── High-Performance Inverted Index & Bitset Filtering Engine ────────────
+  const filterEngine = useMemo(() => {
+    const rawItems = Array.isArray(items) ? items : [];
+    return new WorkItemFilterEngine(rawItems, columns);
+  }, [items, columns]);
+
   const filteredItems = useMemo(() => {
     const rawItems = Array.isArray(items) ? items : [];
     if (rawItems.length === 0) return [];
 
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let result = filterEngine.executeFilter(filters, '');
 
-    // Pre-computed Sets and Maps for O(1) lookups
-    const hasStateFilter = filters.state.length > 0;
-    const stateSet = new Set(filters.state);
-
-    const hasStateGroupFilter = filters.state_group.length > 0;
-    const stateGroupSet = new Set(filters.state_group);
-    const columnGroupMap = new Map<string, string>();
-    if (hasStateGroupFilter) {
-      for (const col of columns) {
-        const id = resolveStateId(col);
-        if (id) {
-          const group =
-            col?.group && (STATE_GROUPS as readonly string[]).includes(col.group)
-              ? col.group
-              : inferStateGroup(id, col?.title || '');
-          columnGroupMap.set(id, group);
-        }
-      }
-    }
-
-    const hasPriorityFilter = filters.priority.length > 0;
-    const prioritySet = new Set(filters.priority);
-
-    const hasAssigneeFilter = filters.assignees.length > 0;
-    const hasUnassignedFilter =
-      hasAssigneeFilter &&
-      (filters.assignees.includes('__unassigned__') || filters.assignees.includes('unassigned'));
-    const specificAssigneeSet = new Set(
-      filters.assignees.filter((id) => id !== '__unassigned__' && id !== 'unassigned')
-    );
-
-    const hasMentionsFilter = filters.mentions.length > 0;
-
-    const hasCreatedByFilter = filters.created_by.length > 0;
-    const createdBySet = new Set(filters.created_by);
-
-    const hasLabelsFilter = filters.labels.length > 0;
-    const labelSet = new Set(filters.labels);
-
-    const hasAttachFilter = filters.attach.length > 0;
-    const attachSet = new Set(filters.attach);
-
-    const filtersObj = filters as unknown as Record<string, string[] | undefined>;
-    const activeWorkItemFilterIds = [
-      ...(filters.work_items || []),
-      ...(filtersObj.sub_work_items || []),
-      ...(filtersObj.item || []),
-      ...(filtersObj.items || []),
-    ];
-    const hasWorkItemFilter = activeWorkItemFilterIds.length > 0;
-    const workItemSet = new Set(activeWorkItemFilterIds);
-
-    const hasParentFilter = filters.parent.length > 0;
-    const hasNoParent =
-      hasParentFilter &&
-      (filters.parent.includes('__none__') || filters.parent.includes('parent:none'));
-    const parentSet = new Set(
-      filters.parent.filter((id) => id !== '__none__' && id !== 'parent:none')
-    );
-
-    const hasDueDateFilter = filters.due_date.length > 0;
-    const hasStartDateFilter = filters.start_date.length > 0;
-    const hasCreatedAtFilter = filters.created_at.length > 0;
-    const hasUpdatedAtFilter = filters.updated_at.length > 0;
-
-    const hasSubscribersFilter = Boolean(filters.subscribers && filters.subscribers.length > 0);
-    const specificSubscriberSet = new Set(
-      (filters.subscribers || []).filter((id) => id !== '__me__')
-    );
-
-    // Single-pass filter with O(1) checks and early short-circuiting
-    const result = rawItems.filter((item) => {
-      if (!item) return false;
-
-      // 1. State (Column) filter
-      if (hasStateFilter && (!item.columnId || !stateSet.has(item.columnId))) {
-        return false;
-      }
-
-      // 2. State Group filter
-      if (hasStateGroupFilter) {
-        if (!item.columnId) return false;
-        let group = columnGroupMap.get(item.columnId);
-        if (!group) {
-          const col = columns.find((c) => resolveStateId(c) === item.columnId);
-          group =
-            col?.group && (STATE_GROUPS as readonly string[]).includes(col.group)
-              ? col.group
-              : inferStateGroup(item.columnId, col?.title || '');
-          columnGroupMap.set(item.columnId, group);
-        }
-        if (!stateGroupSet.has(group as StateGroup)) {
-          return false;
-        }
-      }
-
-      // 3. Priority filter
-      if (hasPriorityFilter && !prioritySet.has(item.priority || 'none')) {
-        return false;
-      }
-
-      // 4. Assignees filter
-      if (hasAssigneeFilter) {
-        const assigneeUserId = ItemHelpers.resolveAssigneeId(item);
-        if (!assigneeUserId) {
-          if (!hasUnassignedFilter) return false;
-        } else if (!specificAssigneeSet.has(assigneeUserId)) {
-          return false;
-        }
-      }
-
-      // 5. Created by filter
-      if (hasCreatedByFilter) {
-        const author = item.authorId || (item as { createdBy?: string }).createdBy;
-        if (!author || !createdBySet.has(author)) {
-          return false;
-        }
-      }
-
-      // 6. Labels filter
-      if (hasLabelsFilter) {
-        if (!Array.isArray(item.labels) || item.labels.length === 0) return false;
-        const hasMatchingLabel = item.labels.some((labelItem: unknown) => {
-          if (typeof labelItem === 'string') return labelSet.has(labelItem);
-          if (typeof labelItem === 'object' && labelItem !== null) {
-            const lbl = labelItem as { id?: string; name?: string };
-            return (
-              (lbl.id && labelSet.has(lbl.id)) ||
-              (lbl.name && labelSet.has(lbl.name))
-            );
-          }
-          return false;
-        });
-        if (!hasMatchingLabel) return false;
-      }
-
-      // 7. Attachments filter
-      if (hasAttachFilter) {
-        const attachments = item.attachments;
-        const attObj = attachments as { pages?: unknown[]; papers?: unknown[]; files?: unknown[]; links?: unknown[] } | unknown[] | undefined;
-        const isArr = Array.isArray(attObj);
-        const pages = !isArr && Array.isArray(attObj?.pages) ? attObj.pages : [];
-        const papers = !isArr && Array.isArray(attObj?.papers) ? attObj.papers : [];
-        const files = !isArr && Array.isArray(attObj?.files) ? attObj.files : isArr ? attObj : [];
-        const links = !isArr && Array.isArray(attObj?.links) ? attObj.links : [];
-        const hasPages = pages.length > 0;
-        const hasPapers = papers.length > 0;
-        const hasFiles = files.length > 0;
-        const hasLinks = links.length > 0;
-        const hasAny = hasPages || hasPapers || hasFiles || hasLinks;
-
-        let matchAttach = false;
-        if (attachSet.has('has:attach') || attachSet.has('has_attachments')) matchAttach = matchAttach || hasAny;
-        if (attachSet.has('attach:pages') || attachSet.has('pages')) matchAttach = matchAttach || hasPages;
-        if (attachSet.has('attach:papers') || attachSet.has('papers')) matchAttach = matchAttach || hasPapers;
-        if (attachSet.has('attach:files') || attachSet.has('files')) matchAttach = matchAttach || hasFiles;
-        if (attachSet.has('attach:links') || attachSet.has('links')) matchAttach = matchAttach || hasLinks;
-        if (!matchAttach) return false;
-      }
-
-      // 9. Work items filter
-      if (hasWorkItemFilter) {
-        const matchesId = workItemSet.has(item.id);
-        const matchesIdentifier = item.identifier ? workItemSet.has(item.identifier) : false;
-        if (!matchesId && !matchesIdentifier) return false;
-      }
-
-      // 10. Parent filter
-      if (hasParentFilter) {
-        const rawParent =
-          item.parentWorkItemId ||
-          item.parentItemId ||
-          item.parentItem?.id ||
-          item.parentWorkItem?.id;
-        const parentId = typeof rawParent === 'object' && rawParent !== null ? (rawParent as { id?: string }).id : (typeof rawParent === 'string' ? rawParent : undefined);
-        if (!parentId) {
-          if (!hasNoParent) return false;
-        } else if (!parentSet.has(parentId)) {
-          return false;
-        }
-      }
-
-      // 11. Due Date filter
-      if (hasDueDateFilter) {
-        if (!item.dueDate) {
-          if (!filters.due_date.includes('no_date')) return false;
-        } else {
-          const due = new Date(item.dueDate);
-          const matched = filters.due_date.some((option) => {
-            if (option === 'all') return true;
-            if (option === 'overdue') return due < todayStart && !item.completed;
-            if (option === 'today') return due.toDateString() === now.toDateString();
-            if (option === 'this_week') return isSameWeek(due, now, { weekStartsOn: 1 });
-            if (option === 'this_month')
-              return due.getFullYear() === now.getFullYear() && due.getMonth() === now.getMonth();
-            return false;
-          });
-          if (!matched) return false;
-        }
-      }
-
-      // 12. Start Date filter
-      if (hasStartDateFilter) {
-        if (!item.startDate) {
-          if (!filters.start_date.includes('no_date')) return false;
-        } else {
-          const start = new Date(item.startDate);
-          const matched = filters.start_date.some((option) => {
-            if (option === 'today') return start.toDateString() === now.toDateString();
-            if (option === 'this_week') return isSameWeek(start, now, { weekStartsOn: 1 });
-            if (option === 'this_month')
-              return (
-                start.getFullYear() === now.getFullYear() && start.getMonth() === now.getMonth()
-              );
-            return false;
-          });
-          if (!matched) return false;
-        }
-      }
-
-      // 13. Created At filter
-      if (hasCreatedAtFilter) {
-        if (!item.createdAt) return false;
-        const created = new Date(item.createdAt);
-        const matched = filters.created_at.some((option) => {
-          const lower = option.toLowerCase();
-          if (lower === 'today') return created.toDateString() === now.toDateString();
-          if (lower === 'this_week') return isSameWeek(created, now, { weekStartsOn: 1 });
-          if (lower === 'this_month')
-            return (
-              created.getFullYear() === now.getFullYear() &&
-              created.getMonth() === now.getMonth()
-            );
-          if (lower === 'this_year') return created.getFullYear() === now.getFullYear();
-          return false;
-        });
-        if (!matched) return false;
-      }
-
-      // 14. Updated At filter
-      if (hasUpdatedAtFilter) {
-        if (!item.updatedAt) return false;
-        const updated = new Date(item.updatedAt);
-        const matched = filters.updated_at.some((option) => {
-          const lower = option.toLowerCase();
-          if (lower === 'today') return updated.toDateString() === now.toDateString();
-          if (lower === 'this_week') return isSameWeek(updated, now, { weekStartsOn: 1 });
-          if (lower === 'this_month')
-            return (
-              updated.getFullYear() === now.getFullYear() &&
-              updated.getMonth() === now.getMonth()
-            );
-          if (lower === 'this_year') return updated.getFullYear() === now.getFullYear();
-          return false;
-        });
-        if (!matched) return false;
-      }
-
-      // 15. Mentions filter
-      if (hasMentionsFilter) {
+    // Mentions filter (post-filter on filtered candidates)
+    if (filters.mentions && filters.mentions.length > 0) {
+      result = result.filter((item) => {
         const text = `${item.title || ''} ${item.description || ''} ${item.content || ''}`.toLowerCase();
-        const matched = filters.mentions.some((userId) => {
+        return filters.mentions.some((userId) => {
           const user = assignees.find((assignee) => assignee.id === userId);
           if (user?.name && text.includes(`@${user.name.toLowerCase()}`)) return true;
           const assigneeUserId = ItemHelpers.resolveAssigneeId(item);
           return assigneeUserId === userId;
         });
-        if (!matched) return false;
-      }
-
-      // 16. Subscribers filter
-      if (hasSubscribersFilter) {
-        const subs: string[] = Array.isArray(item.subscriberIds)
-          ? item.subscriberIds
-          : [];
-        const matched = subs.some((id) => specificSubscriberSet.has(id));
-        if (!matched) return false;
-      }
-
-      return true;
-    });
+      });
+    }
 
     // 17. Ordering (In-place sort on the single newly allocated filtered array)
     const direction = displayOptions.orderDirection === 'desc' ? -1 : 1;
@@ -748,7 +474,7 @@ export function useTopbar({
     });
 
     return result;
-  }, [items, filters, columns, assignees, displayOptions]);
+  }, [filterEngine, items, filters, assignees, displayOptions]);
 
   // ── Projects Search ───────────────────────────────────────────────────────
   const filteredProjects = useMemo(() => {
@@ -910,31 +636,51 @@ export function useTopbar({
     [projectId, router],
   );
 
-  const state = {
-    viewMode: mode,
-    filters,
-    selectedColumnIds: filters.state,
-    selectedAssigneeIds: filters.assignees,
-    selectedPriorities: filters.priority,
-    dueDateFilter: (filters.due_date[0] as DueDateFilterOption) || 'all',
-    items: filteredItems,
-    filteredItems,
-    assignees,
-    activeColumns: activeCols,
-    activeAssignees: activeUsers,
-    totalActiveFilters: totalFilters,
-    hasActiveFilters: totalFilters > 0,
-    projectSearch: projSearch,
-    filterOpen,
-    displayOpen,
-    analyticsOpen,
-    displayOptions,
-    filteredProjects,
-    currentModule: 'work-items',
-    projectId,
-    savedViews,
-    activeViewId,
-  };
+  const state = useMemo(
+    () => ({
+      viewMode: mode,
+      filters,
+      selectedColumnIds: filters.state,
+      selectedAssigneeIds: filters.assignees,
+      selectedPriorities: filters.priority,
+      dueDateFilter: (filters.due_date[0] as DueDateFilterOption) || 'all',
+      items: filteredItems,
+      filteredItems,
+      assignees,
+      activeColumns: activeCols,
+      activeAssignees: activeUsers,
+      totalActiveFilters: totalFilters,
+      hasActiveFilters: totalFilters > 0,
+      projectSearch: projSearch,
+      filterOpen,
+      displayOpen,
+      analyticsOpen,
+      displayOptions,
+      filteredProjects,
+      currentModule: 'work-items',
+      projectId,
+      savedViews,
+      activeViewId,
+    }),
+    [
+      mode,
+      filters,
+      filteredItems,
+      assignees,
+      activeCols,
+      activeUsers,
+      totalFilters,
+      projSearch,
+      filterOpen,
+      displayOpen,
+      analyticsOpen,
+      displayOptions,
+      filteredProjects,
+      projectId,
+      savedViews,
+      activeViewId,
+    ]
+  );
 
   const actions = useMemo(
     () => ({

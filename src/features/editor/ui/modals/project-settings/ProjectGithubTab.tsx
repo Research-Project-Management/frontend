@@ -21,8 +21,8 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useIntegrations } from '@/features/settings/hooks/use-integrations';
-import { useGithubSync } from '@/features/editor/ui/hooks/use-github-sync';
-import { GitHubIcon } from '@/shared/components/icons';
+import { useGithubSync } from '@/features/editor/ui/hooks/useGithubSync';
+import { GitHubIcon } from '@/shared/components/icons/IntegrationIcons';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { Input } from '@/shared/components/ui/input';
@@ -44,14 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
-import {
-  pushChangesSchema,
-  linkRepoSchema,
-  createRepoSchema,
-  type PushChangesFormValues,
-  type LinkRepoFormValues,
-  type CreateRepoFormValues,
-} from '@/features/editor/domain/types';
+import { pushChangesSchema, linkRepoSchema, createRepoSchema, type PushChangesFormValues, type LinkRepoFormValues, type CreateRepoFormValues } from '@/features/editor/domain/types/forms.types';
 
 interface ProjectGithubTabProps {
   projectId?: string;

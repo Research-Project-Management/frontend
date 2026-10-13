@@ -1,6 +1,6 @@
 ﻿import { describe, it, expect } from 'vitest';
 import { ProjectSchema, ProjectLabelItemSchema } from '@/features/projects/shell/schemas/project.schema';
-import * as coreServiceExports from '@/features/editor/sdk';
+import * as coreServiceExports from '@/features/editor/sdk/manuscript.service';
 
 describe('Option B: Cleanup Verification', () => {
   it('should verify dead aliases PageDocumentService and PageFileService are removed from core.service', () => {

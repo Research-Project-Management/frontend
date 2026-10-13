@@ -172,7 +172,7 @@ export function AnalyticsDrawer({
                       </div>
                       <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-foreground rounded-full"
+                          className="h-full bg-primary rounded-full"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -223,7 +223,7 @@ export function AnalyticsDrawer({
                         </div>
                         <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-foreground rounded-full"
+                            className="h-full bg-primary rounded-full"
                             style={{ width: `${aPct}%` }}
                           />
                         </div>

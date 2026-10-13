@@ -4,7 +4,7 @@ import {
   type SyncTeXMap,
 } from '@/features/editor/domain/pdf/synctex-index';
 import { LatexCompilerEngine } from '@/features/editor/coordinators/compilation-pipeline';
-import { synctexService } from '@/features/editor/sdk';
+import { synctexService } from '@/features/editor/sdk/manuscript.service';
 
 describe('Reverse SyncTeX (PDF Double-Click -> LaTeX Source Jump)', () => {
   beforeEach(() => {

@@ -5,7 +5,7 @@
  */
 
 import { apiGet, apiPost } from '@/shared/lib/api';
-import type { PageSuggestion, SuggestionStatus } from '@/features/editor/domain/types';
+import type { PageSuggestion, SuggestionStatus } from '@/features/editor/domain/types/suggestion.types';
 import { MANUSCRIPTS_API_BASE } from './base';
 import type { CreateSuggestionPayload } from './types';
 

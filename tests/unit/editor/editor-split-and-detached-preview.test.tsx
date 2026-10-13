@@ -4,8 +4,8 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import { EditorArea } from '@/features/editor/ui/features/editor/EditorArea';
-import { PdfToolbar } from '@/features/editor/ui/features/preview/PdfToolbar';
+import { EditorArea } from '@/features/editor/ui/editor/EditorArea';
+import { PdfToolbar } from '@/features/editor/ui/preview/PdfToolbar';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { usePageStore } from '@/features/editor/store/editor.store';
@@ -19,7 +19,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/projects/test-proj',
 }));
 
-vi.mock('@/features/editor/ui/hooks/use-active-document', () => {
+vi.mock('@/features/editor/ui/hooks/useActiveDocument', () => {
   const defaultPage = {
     id: 'doc-main',
     title: 'main.tex',
@@ -49,7 +49,7 @@ vi.mock('@/features/editor/ui/hooks/use-active-document', () => {
 });
 
 // Mock CodeMirrorView to identify which file is rendered in which pane
-vi.mock('@/features/editor/ui/features/editor/CodeMirrorView', () => ({
+vi.mock('@/features/editor/ui/editor/CodeMirrorView', () => ({
   CodeMirrorView: (props: any) => (
     <div
       data-testid="mock-codemirror-view"
@@ -93,6 +93,12 @@ describe('Split Editor Panes & Detached PDF Preview (Overleaf Parity)', () => {
 
   afterEach(() => {
     cleanup();
+    useLayoutStore.setState({
+      editorSplitMode: 'none',
+      secondaryFileId: null,
+      isPdfDetached: false,
+      activeEditorPane: 'primary',
+    });
   });
 
   describe('Split Editor Panes Architecture', () => {

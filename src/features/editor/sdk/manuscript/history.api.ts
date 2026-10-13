@@ -5,7 +5,7 @@
  */
 
 import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
-import type { PageVersion, ProjectEvent } from '@/features/editor/domain/types';
+import type { PageVersion, ProjectEvent } from '@/features/editor/domain/types/history.types';
 import { MANUSCRIPTS_API_BASE } from './base';
 import type {
   ProjectVersionListItem,

@@ -1,3 +1,4 @@
+import AppLoading from '@/app/(app)/loading';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import WorkspaceViewsPage from '@/features/projects/shell/pages/WorkspaceViewsPage';
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function ProjectsViewsRoute() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<AppLoading />}>
       <WorkspaceViewsPage />
     </Suspense>
   );

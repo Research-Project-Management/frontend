@@ -1,3 +1,4 @@
+import AppLoading from '@/app/(app)/loading';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import ChatPage from '@/features/ai/pages/chat-page';
@@ -6,7 +7,7 @@ export const metadata: Metadata = { title: 'AI · Flux' };
 
 export default function AiIndexPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<AppLoading />}>
       <ChatPage />
     </Suspense>
   );

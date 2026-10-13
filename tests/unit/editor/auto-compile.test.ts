@@ -5,7 +5,7 @@ import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
-import { manuscriptService } from '@/features/editor/sdk';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 
 describe('Auto-Compile on Typing with Debounce (Overleaf Parity)', () => {

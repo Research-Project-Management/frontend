@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, memo, useRef, useCallback } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Plus,
   User,
@@ -10,7 +11,6 @@ import {
   UserPlus,
   MoreHorizontal,
   ChevronRight,
-  ChevronDown,
   Check,
   CornerDownRight,
   Link2,
@@ -77,12 +77,14 @@ const PRIORITY_THEME_CLASSES: Record<string, string> = {
   low:
     'text-foreground bg-muted/10 border-border hover:bg-muted shadow-none font-normal',
   none:
-    'text-foreground bg-transparent hover:bg-muted/50 border-border/40 shadow-none font-normal',
+    'text-foreground bg-transparent hover:bg-muted/50 border-border shadow-none font-normal',
 };
 
 function formatDueDate(dateStr?: string | null): string {
   return ItemHelpers.formatDate(dateStr);
 }
+
+const EMPTY_ARRAY: never[] = [];
 
 // ── 2. Group Checkbox Component (Indeterminate & Keyboard Accessible) ──────────
 
@@ -165,7 +167,7 @@ export const ItemRow = memo(function ItemRow({
   onMoveCard,
   onUpdateItem,
   displayOptions,
-  members = [],
+  members = EMPTY_ARRAY,
   currentUserId,
   isDragging = false,
   isReadOnly = false,
@@ -312,9 +314,9 @@ export const ItemRow = memo(function ItemRow({
   return (
     <div
       className={cn(
-        'group/row relative h-9 pl-9 pr-3 sm:pr-4 flex items-center justify-between border-b border-border/60 bg-background hover:bg-muted/40 select-none text-13 transition-colors duration-0',
+        'group/row relative h-9 pl-9 pr-2 sm:pr-2.5 flex items-center justify-between border-b border-border bg-background hover:bg-muted/40 select-none text-13 transition-colors duration-0',
         isDragging && 'opacity-50 bg-muted',
-        isSelected && 'bg-muted ring-1 ring-inset ring-border font-medium',
+        isSelected && 'font-medium',
         item.completed && 'opacity-75',
       )}
     >
@@ -385,7 +387,7 @@ export const ItemRow = memo(function ItemRow({
                     onToggleExpandChildren?.(item.id);
                   }}
                   title={`${completedCount} of ${childList.length} sub-items completed`}
-                  className="font-mono text-10 font-medium text-muted-foreground bg-muted px-1.5 py-0.2 rounded-md tabular-nums shrink-0 cursor-pointer hover:bg-muted/80"
+                  className="font-mono text-11 font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md tabular-nums shrink-0 cursor-pointer hover:bg-muted/80"
                 >
                   {completedCount}/{childList.length}
                 </span>
@@ -413,7 +415,7 @@ export const ItemRow = memo(function ItemRow({
             }
           }}
           className={cn(
-            'font-normal truncate cursor-pointer text-foreground hover:underline transition-colors focus-visible:outline-none focus-visible:underline',
+            'font-normal truncate cursor-pointer text-foreground transition-colors focus-visible:outline-none',
             isCancelled && 'text-muted-foreground line-through',
             item.completed && !isCancelled && 'text-muted-foreground',
             !item.title?.trim() && 'italic text-muted-foreground',
@@ -624,7 +626,7 @@ export const ItemRow = memo(function ItemRow({
           <div className="hidden md:flex items-center gap-1 shrink-0">
             {labelsList.slice(0, 2).map((l: any, i: number) => {
               const labelName = typeof l === 'string' ? l : l.name || l.title || 'label';
-              const labelColor = typeof l === 'object' && l.color ? l.color : '#8b5cf6';
+              const labelColor = typeof l === 'object' && l.color ? l.color : '#8250DF';
               return (
                 <button
                   type="button"
@@ -819,7 +821,7 @@ const ChildItemRow = ({
   }, [childItem.assignee, childItem.assigneeId, members]);
 
   return (
-    <div className="group/sub relative h-7.5 pl-12 sm:pl-14 pr-3 sm:pr-4 flex items-center justify-between hover:bg-muted/50 select-none text-12 transition-colors duration-0 border-b border-border/40">
+    <div className="group/sub relative h-7.5 pl-12 sm:pl-14 pr-2 sm:pr-2.5 flex items-center justify-between hover:bg-muted/50 select-none text-12 transition-colors duration-0 border-b border-border">
       {/* Left Tree Branch & Checkbox & Title */}
       <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
         <CornerDownRight className="size-3 text-foreground shrink-0 -ml-5" />
@@ -878,7 +880,7 @@ const ChildItemRow = ({
             }
           }}
           className={cn(
-            'truncate cursor-pointer hover:underline transition-colors text-12 font-normal',
+            'truncate cursor-pointer transition-colors text-12 font-normal',
             isCancelled ? 'line-through text-muted-foreground' : isDone ? 'text-muted-foreground' : 'text-foreground'
           )}
           title={childItem.title}
@@ -990,7 +992,7 @@ const ChildItemQuickAdd = ({
   };
 
   return (
-    <div className="pl-12 sm:pl-14 pr-3 sm:pr-4 h-8 flex items-center border-b border-border/40 bg-background/50">
+    <div className="pl-12 sm:pl-14 pr-2 sm:pr-2.5 h-8 flex items-center border-b border-border bg-background/50">
       {isAdding ? (
         <div className="flex items-center gap-2 w-full">
           <CornerDownRight className="size-3 text-foreground shrink-0 -ml-5" />
@@ -1158,10 +1160,10 @@ const ListViewGroup = ({
   onMoveCard,
   onUpdateItem,
   displayOptions,
-  members = [],
+  members = EMPTY_ARRAY,
   currentUserId,
   currentUserAvatar,
-  selectedIds = [],
+  selectedIds = EMPTY_ARRAY,
   onToggleSelect,
   onSelectAll,
   isReadOnly = false,
@@ -1196,11 +1198,13 @@ const ListViewGroup = ({
   };
 
   const itemIds = useMemo(() => group.items.map((t) => t.id), [group.items]);
+  const selectedIdsSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const groupItemIdsSet = useMemo(() => new Set(itemIds), [itemIds]);
 
   // Group Selection Checkbox Calculation
   const selectedInGroup = useMemo(() => {
-    return group.items.filter((t) => selectedIds.includes(t.id));
-  }, [group.items, selectedIds]);
+    return group.items.filter((t) => selectedIdsSet.has(t.id));
+  }, [group.items, selectedIdsSet]);
 
   const isAllGroupSelected = group.items.length > 0 && selectedInGroup.length === group.items.length;
   const isGroupIndeterminate = selectedInGroup.length > 0 && !isAllGroupSelected;
@@ -1211,11 +1215,11 @@ const ListViewGroup = ({
 
     if (isAllGroupSelected) {
       // Deselect all in this group
-      const remainingIds = selectedIds.filter((id: string) => !group.items.some((t) => t.id === id));
+      const remainingIds = selectedIds.filter((id: string) => !groupItemIdsSet.has(id));
       onSelectAll(remainingIds);
     } else {
       // Select all in this group
-      const allIds = Array.from(new Set([...selectedIds, ...group.items.map((t) => t.id)]));
+      const allIds = Array.from(new Set([...selectedIds, ...itemIds]));
       onSelectAll(allIds);
     }
   };
@@ -1235,7 +1239,7 @@ const ListViewGroup = ({
             onToggleExpand(group.key);
           }
         }}
-        className="group/header relative h-9 pl-6 pr-3 sm:pr-4 flex items-center justify-between border-b border-border bg-muted/30 hover:bg-muted/60 dark:bg-muted/15 dark:hover:bg-muted/30 select-none cursor-pointer transition-colors duration-0 focus-visible:outline-none"
+        className="group/header relative h-9 pl-6 pr-2 sm:pr-2.5 flex items-center justify-between border-b border-border bg-muted/50 hover:bg-muted/70 select-none cursor-pointer transition-colors duration-0 focus-visible:outline-none"
       >
         {/* Group Multi-select Checkbox (Aligned with item checkboxes at left-1.5) */}
         <div
@@ -1253,12 +1257,6 @@ const ListViewGroup = ({
         </div>
 
         <div className="flex items-center gap-2 min-w-0">
-          <ChevronDown
-            className={cn(
-              'size-3.5 text-muted-foreground shrink-0 transition-transform duration-150',
-              !isExpanded && '-rotate-90'
-            )}
-          />
           {/* State Status Icon */}
           <StatusIcon
             title={group.label}
@@ -1268,12 +1266,12 @@ const ListViewGroup = ({
           />
 
           {/* Group Name */}
-          <span className="text-13 font-medium text-foreground tracking-tight truncate">
+          <span className="text-13 font-semibold text-foreground tracking-tight truncate">
             {group.label}
           </span>
 
           {/* Item Count (Tabular Numbers, mono pill badge) */}
-          <span className="font-mono text-11 text-muted-foreground/80 font-medium tabular-nums ml-1.5 px-1.5 py-0.5 rounded-full bg-muted/60 shrink-0">
+          <span className="font-mono text-11 text-muted-foreground font-medium tabular-nums ml-1 px-1.5 py-0.2 rounded-md bg-background border border-border shrink-0">
             {group.items.length}
           </span>
         </div>
@@ -1291,7 +1289,7 @@ const ListViewGroup = ({
                 if (!isExpanded) onToggleExpand(group.key);
                 setQuickAddKey(group.key);
               }}
-              className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
+              className="size-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
               aria-label={`Add work item to ${group.label}`}
             >
               <Plus className="size-3.5 shrink-0" />
@@ -1312,7 +1310,7 @@ const ListViewGroup = ({
                   columns={columns}
                   projectStates={projectStates}
                   currentColumn={group.column}
-                  isSelected={selectedIds.includes(item.id)}
+                  isSelected={selectedIdsSet.has(item.id)}
                   onToggleSelect={onToggleSelect}
                   onEditCard={onEditCard}
                   onDuplicateCard={onDuplicateCard}
@@ -1340,7 +1338,7 @@ const ListViewGroup = ({
           {!isReadOnly && (
             <div>
               {isAdding ? (
-                <div className="border-b border-border bg-background pl-6 pr-3 sm:pr-4 py-2">
+                <div className="border-b border-border bg-background pl-6 pr-2 sm:pr-2.5 py-2">
                   <div className="h-9 flex items-center gap-2.5">
                     <Plus className="size-3.5 shrink-0 text-muted-foreground" />
                     {projectPrefix && (
@@ -1381,7 +1379,7 @@ const ListViewGroup = ({
                 <button
                   type="button"
                   onClick={() => setQuickAddKey(group.key)}
-                  className="h-9 pl-6 pr-3 sm:pr-4 w-full flex items-center gap-2.5 text-13 text-muted-foreground hover:text-foreground hover:bg-muted/40 cursor-pointer border-b border-border/60 text-left font-normal transition-colors duration-0 focus-visible:outline-none"
+                  className="h-9 pl-6 pr-2 sm:pr-2.5 w-full flex items-center gap-2.5 text-13 text-muted-foreground hover:text-foreground hover:bg-muted/40 cursor-pointer border-b border-border text-left font-normal transition-colors duration-0 focus-visible:outline-none"
                 >
                   <Plus className="size-3.5 shrink-0" />
                   <span>New work item</span>
@@ -1412,7 +1410,7 @@ export interface ListViewProps extends BaseWorkItemViewProps, WorkItemCardHandle
   members?: any[];
 }
 
-export function ListView({
+export const ListView = React.memo(function ListView({
   itemsByColumnId: propItemsByColumnId,
   columns,
   projectStates,
@@ -1428,12 +1426,15 @@ export function ListView({
   onReorderCard,
   onUpdateItem,
   isReadOnly = false,
-  selectedIds = [],
+  selectedIds = EMPTY_ARRAY,
   onToggleSelect,
   onSelectAll,
   displayOptions,
-  members = [],
+  members = EMPTY_ARRAY,
 }: ListViewProps) {
+  // ── Grouping definition (Guaranteed top-of-component scope) ─────────────────
+  const effectiveGroupBy = displayOptions?.groupBy ?? 'state';
+
   // Groups with items are expanded by default (matching Plane.so behavior)
   const itemsByColumnId = useMemo(
     () => propItemsByColumnId || new Map(),
@@ -1568,10 +1569,20 @@ export function ListView({
     return '';
   }, [groups]);
 
-  const effectiveGroupBy = displayOptions?.groupBy ?? 'state';
+  // (effectiveGroupBy defined at top of component)
   const isFlat = effectiveGroupBy === 'none' || (columns.length === 1 && resolveColumnId(columns[0]) === '__all__');
   const flatItems = useMemo(() => groups.flatMap((g) => g.items), [groups]);
   const flatItemIds = useMemo(() => flatItems.map((t) => t.id), [flatItems]);
+
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const isFlatVirtualized = isFlat && flatItems.length > 30;
+  const flatVirtualizer = useVirtualizer({
+    count: flatItems.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 36,
+    overscan: 10,
+    enabled: isFlatVirtualized,
+  });
 
   const [flatQuickTitle, setFlatQuickTitle] = useState('');
   const flatInputRef = useRef<HTMLInputElement | null>(null);
@@ -1774,7 +1785,7 @@ export function ListView({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="w-full flex-1 overflow-y-auto bg-background pb-16">
+      <div ref={scrollContainerRef} className="w-full flex-1 overflow-y-auto interactive-scrollbar bg-background pb-16">
         {groups.length === 0 ? (
           <div className="w-full py-16 flex flex-col items-center justify-center text-center px-4">
             <div className="size-10 rounded-md bg-muted flex items-center justify-center text-foreground mb-3">
@@ -1788,40 +1799,94 @@ export function ListView({
         ) : isFlat ? (
           <div className="w-full">
             <SortableContext items={flatItemIds} strategy={verticalListSortingStrategy}>
-              {flatItems.map((item) => (
-                <SortableItemRow
-                  key={item.id}
-                  item={item}
-                  columns={columns}
-                  projectStates={projectStates}
-                  isSelected={selectedIds.includes(item.id)}
-                  onToggleSelect={onToggleSelect}
-                  onEditCard={onEditCard}
-                  onDuplicateCard={onDuplicateCard}
-                  onJoinCard={onJoinCard}
-                  onLeaveCard={onLeaveCard}
-                  onMoveCard={onMoveCard}
-                  onDeleteCard={onDeleteCard}
-                  onUpdateItem={onUpdateItem}
-                  displayOptions={displayOptions}
-                  members={members}
-                  currentUserId={currentUserId}
-                  currentUserAvatar={currentUserAvatar}
-                  isReadOnly={isReadOnly}
-                  isChildrenExpanded={expandedChildParentIds?.has(item.id)}
-                  onToggleExpandChildren={handleToggleExpandChildren}
-                  onUpdateChildItem={handleUpdateChildItem}
-                  onDeleteChildItem={handleDeleteChildItem}
-                  onAddChildItem={handleAddChildItem}
-                />
-              ))}
+              {isFlatVirtualized ? (
+                <div
+                  style={{
+                    height: `${flatVirtualizer.getTotalSize()}px`,
+                    width: '100%',
+                    position: 'relative',
+                  }}
+                >
+                  {flatVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const item = flatItems[virtualRow.index];
+                    if (!item) return null;
+                    return (
+                      <div
+                        key={item.id}
+                        ref={flatVirtualizer.measureElement}
+                        data-index={virtualRow.index}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          transform: `translateY(${virtualRow.start}px)`,
+                        }}
+                      >
+                        <SortableItemRow
+                          item={item}
+                          columns={columns}
+                          projectStates={projectStates}
+                          isSelected={selectedIds.includes(item.id)}
+                          onToggleSelect={onToggleSelect}
+                          onEditCard={onEditCard}
+                          onDuplicateCard={onDuplicateCard}
+                          onJoinCard={onJoinCard}
+                          onLeaveCard={onLeaveCard}
+                          onMoveCard={onMoveCard}
+                          onDeleteCard={onDeleteCard}
+                          onUpdateItem={onUpdateItem}
+                          displayOptions={displayOptions}
+                          members={members}
+                          currentUserId={currentUserId}
+                          currentUserAvatar={currentUserAvatar}
+                          isReadOnly={isReadOnly}
+                          isChildrenExpanded={expandedChildParentIds?.has(item.id)}
+                          onToggleExpandChildren={handleToggleExpandChildren}
+                          onUpdateChildItem={handleUpdateChildItem}
+                          onDeleteChildItem={handleDeleteChildItem}
+                          onAddChildItem={handleAddChildItem}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                flatItems.map((item) => (
+                  <SortableItemRow
+                    key={item.id}
+                    item={item}
+                    columns={columns}
+                    projectStates={projectStates}
+                    isSelected={selectedIds.includes(item.id)}
+                    onToggleSelect={onToggleSelect}
+                    onEditCard={onEditCard}
+                    onDuplicateCard={onDuplicateCard}
+                    onJoinCard={onJoinCard}
+                    onLeaveCard={onLeaveCard}
+                    onMoveCard={onMoveCard}
+                    onDeleteCard={onDeleteCard}
+                    onUpdateItem={onUpdateItem}
+                    displayOptions={displayOptions}
+                    members={members}
+                    currentUserId={currentUserId}
+                    currentUserAvatar={currentUserAvatar}
+                    isReadOnly={isReadOnly}
+                    isChildrenExpanded={expandedChildParentIds?.has(item.id)}
+                    onToggleExpandChildren={handleToggleExpandChildren}
+                    onUpdateChildItem={handleUpdateChildItem}
+                    onDeleteChildItem={handleDeleteChildItem}
+                    onAddChildItem={handleAddChildItem}
+                  />
+                ))
+              )}
             </SortableContext>
 
             {/* Quick Add at the bottom of the flat list */}
             {!isReadOnly && (
               <div>
                 {quickAddKey === '__flat__' ? (
-                  <div className="border-b border-border bg-background pl-6 pr-3 sm:pr-4 py-2">
+                  <div className="border-b border-border bg-background pl-6 pr-2 sm:pr-2.5 py-2">
                     <div className="h-9 flex items-center gap-2.5">
                       <Plus className="size-3.5 shrink-0 text-muted-foreground" />
                       {projectPrefix && (
@@ -1860,7 +1925,7 @@ export function ListView({
                   <button
                     type="button"
                     onClick={() => setQuickAddKey('__flat__')}
-                    className="h-9 pl-6 pr-3 sm:pr-4 w-full flex items-center gap-2.5 text-13 text-muted-foreground hover:text-foreground hover:bg-muted/40 cursor-pointer border-b border-border/60 text-left font-normal transition-colors duration-0 focus-visible:outline-none"
+                    className="h-9 pl-6 pr-2 sm:pr-2.5 w-full flex items-center gap-2.5 text-13 text-muted-foreground hover:text-foreground hover:bg-muted/40 cursor-pointer border-b border-border text-left font-normal transition-colors duration-0 focus-visible:outline-none"
                   >
                     <Plus className="size-3.5 shrink-0" />
                     <span>New work item</span>
@@ -1933,6 +1998,6 @@ export function ListView({
         )}
     </DndContext>
   );
-}
+});
 
 export default ListView;

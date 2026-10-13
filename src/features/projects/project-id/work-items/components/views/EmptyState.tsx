@@ -281,7 +281,7 @@ export function EmptyState({
         <Button
           onClick={handleCreate}
           size="sm"
-          className="relative h-8 px-4 rounded-md font-medium text-13 bg-foreground text-background hover:bg-foreground/90 transition-colors shadow-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
+          className="relative h-8 px-4 rounded-md font-medium text-13 bg-primary text-primary-foreground hover:bg-primary-hover transition-colors shadow-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
         >
           Create your first work item
         </Button>

@@ -5,7 +5,7 @@ import {
   VisualSelectionBubbleMenu,
   type VisualSelectionBubbleMenuProps,
   type BlockType,
-} from '@/features/editor/ui/features/editor/visual/toolbars/VisualSelectionBubbleMenu';
+} from '@/features/editor/ui/editor/visual/toolbars/VisualSelectionBubbleMenu';
 
 describe('VisualSelectionBubbleMenu Component', () => {
   const defaultProps: VisualSelectionBubbleMenuProps = {

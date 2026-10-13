@@ -6,16 +6,10 @@ import React, { Suspense, useEffect } from 'react';
 
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
+import AppLoading from './loading';
 
-const Topbar = dynamic(
-  () => import('@/features/shell/components/Topbar'),
-  { ssr: true, loading: () => null }
-);
-
-const Sidebar = dynamic(
-  () => import('@/features/shell/components/Sidebar'),
-  { ssr: true, loading: () => null }
-);
+import Topbar from '@/features/shell/components/Topbar';
+import Sidebar from '@/features/shell/components/Sidebar';
 
 import { useAiCompanionStore } from '@/features/ai/store/ai-companion.store';
 
@@ -50,27 +44,16 @@ export default function AppLayout({
     }
   }, [isLoading, user, router, pathname]);
 
-  useEffect(() => {
-    document.documentElement.classList.add('overflow-hidden');
-    document.body.classList.add('overflow-hidden');
-    return () => {
-      document.documentElement.classList.remove('overflow-hidden');
-      document.body.classList.remove('overflow-hidden');
-    };
-  }, []);
-
   // If unauthenticated, prevent rendering app shell and redirect to login
   if (!isLoading && !user) {
     return null;
   }
 
-
-
   if (isPaperReader) {
     return (
       <div className='h-dvh w-full overflow-hidden bg-background' suppressHydrationWarning>
         <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Document Reader">
-          <Suspense fallback={null}>
+          <Suspense fallback={<AppLoading />}>
             {children}
           </Suspense>
         </ErrorBoundary>
@@ -79,21 +62,17 @@ export default function AppLayout({
   }
 
   return (
-    <div className='h-dvh max-h-dvh flex flex-col bg-muted relative' suppressHydrationWarning>
+    <div className='h-dvh max-h-dvh flex flex-col bg-muted relative overflow-hidden' suppressHydrationWarning>
       <ErrorBoundary fallback={null} featureName="Toolbar">
-        <Suspense fallback={null}>
-          <Topbar />
-        </Suspense>
+        <Topbar />
       </ErrorBoundary>
       <div className='flex w-full flex-1 min-h-0 flex-col gap-2 p-2 pt-0 md:flex-row relative'>
         <ErrorBoundary fallback={null} featureName="Sidebar">
-          <Suspense fallback={null}>
-            <Sidebar />
-          </Suspense>
+          <Sidebar />
         </ErrorBoundary>
-        <div className='order-1 flex-1 min-w-0 rounded-md border border-border bg-background md:order-2 flex flex-col relative min-h-0 pb-1'>
+        <div className='order-1 flex-1 min-w-0 rounded-md border border-border bg-background md:order-2 flex flex-col relative min-h-0 overflow-hidden'>
           <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Page Content">
-            <Suspense fallback={null}>
+            <Suspense fallback={<AppLoading />}>
               {children}
             </Suspense>
           </ErrorBoundary>

@@ -285,13 +285,16 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
     }
   }
 
-  jumpToLine(line: number, highlight?: 'error' | 'synctex'): void {
+  jumpToLine(line: number, highlight?: 'error' | 'synctex', column?: number, length?: number): void {
     const totalLines = this.view.state.doc.lines;
     const targetLineNum = Math.max(1, Math.min(line, totalLines));
     const lineObj = this.view.state.doc.line(targetLineNum);
 
+    const fromPos = column !== undefined ? Math.min(lineObj.to, lineObj.from + Math.max(0, column)) : lineObj.from;
+    const toPos = length !== undefined ? Math.min(lineObj.to, fromPos + Math.max(0, length)) : fromPos;
+
     const effects: StateEffect<any>[] = [
-      EditorView.scrollIntoView(lineObj.from, { y: 'center' }),
+      EditorView.scrollIntoView(fromPos, { y: 'center' }),
     ];
 
     if (highlight) {
@@ -306,7 +309,7 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
     }
 
     this.view.dispatch({
-      selection: EditorSelection.cursor(lineObj.from),
+      selection: EditorSelection.single(fromPos, toPos),
       effects,
     });
     this.view.focus();

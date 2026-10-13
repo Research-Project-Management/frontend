@@ -54,6 +54,9 @@ import { createInlineDiffExtension } from '../extensions/inline-diff';
 import { createLatexFoldExtension } from '../extensions/latex-folding';
 import { createLatexErrorLensExtension } from '../extensions/latex-error-lens';
 import { createLatexSpellingExtension } from '../extensions/latex-spelling';
+import { latexVisualHeadings } from '../extensions/latex-visual-headings';
+import { latexVisualMath } from '../extensions/latex-visual-math';
+import { latexVisualCitations } from '../extensions/latex-visual-citations';
 import { editorCommandBus } from '../../coordinators/command-bus';
 import { useDocumentCollaborationStore } from '../../store/collaboration.store';
 import { useLayoutStore } from '../../store/layout.store';
@@ -89,6 +92,58 @@ export const editorBaseTheme = EditorView.theme({
   '.cm-activeLineGutter': {
     color: 'var(--primary, #0969DA)',
     fontWeight: '600',
+  },
+  '.cm-panel.cm-search': {
+    padding: '6px 12px',
+    backgroundColor: 'var(--background)',
+    color: 'var(--foreground)',
+    borderTop: '1px solid var(--border)',
+    fontSize: '12px',
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  '.cm-panel.cm-search input': {
+    backgroundColor: 'var(--background)',
+    color: 'var(--foreground)',
+    border: '1px solid var(--border)',
+    borderRadius: '4px',
+    padding: '2px 8px',
+    fontSize: '12px',
+    outline: 'none',
+  },
+  '.cm-panel.cm-search input:focus': {
+    borderColor: 'var(--primary, #0969DA)',
+  },
+  '.cm-panel.cm-search button': {
+    backgroundColor: 'var(--muted)',
+    color: 'var(--foreground)',
+    border: '1px solid var(--border)',
+    borderRadius: '4px',
+    padding: '2px 8px',
+    fontSize: '11px',
+    cursor: 'pointer',
+    fontWeight: '500',
+  },
+  '.cm-panel.cm-search button:hover': {
+    backgroundColor: 'var(--accent)',
+  },
+  '.cm-panel.cm-search label': {
+    fontSize: '11px',
+    color: 'var(--muted-foreground)',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '3px',
+    cursor: 'pointer',
+  },
+  '.cm-searchMatch': {
+    backgroundColor: 'rgba(255, 213, 0, 0.35)',
+    borderRadius: '2px',
+  },
+  '.cm-searchMatch.cm-searchMatch-selected': {
+    backgroundColor: 'rgba(255, 170, 0, 0.65)',
+    outline: '1px solid #d97706',
   },
 });
 
@@ -159,6 +214,7 @@ export interface CodeMirrorPresetOptions {
   fontSize?: number;
   fontFamily?: string;
   lineHeight?: number;
+  enableVisualMode?: boolean;
 }
 
 declare global {
@@ -195,6 +251,7 @@ export const editorCompartments = {
   smartPaste: new Compartment(),
   theme: new Compartment(),
   typography: new Compartment(),
+  visualMode: new Compartment(),
 };
 
 import {
@@ -244,7 +301,7 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
     enableLinter = true,
     enableInlineDiff = true,
     enableFolding = true,
-    enableErrorLens = false,
+    enableErrorLens = true,
     enableSpellCheck = true,
     enableSmartPaste = true,
     projectId,
@@ -253,6 +310,7 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
     fontSize = 14,
     fontFamily,
     lineHeight,
+    enableVisualMode = false,
   } = options;
 
   const extensions: Extension[] = [
@@ -340,6 +398,15 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
           editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'word-count' });
           return true;
         },
+      },
+      // Overleaf Keyboard Shortcuts Modal (F1)
+      {
+        key: 'F1',
+        run: () => {
+          editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'shortcuts' });
+          return true;
+        },
+        preventDefault: true,
       },
       {
         key: 'F8',
@@ -560,12 +627,31 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
     ),
     editorCompartments.theme.of(getThemeExtension(editorTheme)),
     editorCompartments.typography.of(createTypographyExtension(fontSize, fontFamily, lineHeight)),
+    editorCompartments.visualMode.of(
+      enableVisualMode ? createVisualModeExtensions() : []
+    ),
   ];
 
   return extensions;
 }
 
 // ── Compartment Reconfiguration Helpers (0ms Runtime Mutations) ───────────────
+
+export function createVisualModeExtensions(): Extension[] {
+  return [
+    latexVisualHeadings(),
+    latexVisualMath(),
+    latexVisualCitations(),
+  ];
+}
+
+export function reconfigureVisualMode(view: EditorView, enabled: boolean): void {
+  view.dispatch({
+    effects: editorCompartments.visualMode.reconfigure(
+      enabled ? createVisualModeExtensions() : []
+    ),
+  });
+}
 
 export function reconfigureTheme(view: EditorView, themeId: string): void {
   view.dispatch({
@@ -652,6 +738,14 @@ export function reconfigureSmartPaste(view: EditorView, enabled: boolean, projec
   view.dispatch({
     effects: editorCompartments.smartPaste.reconfigure(
       enabled ? createLatexSmartPasteExtension({ projectId, enableSmartPaste: true }) : []
+    ),
+  });
+}
+
+export function reconfigureErrorLens(view: EditorView, enabled: boolean): void {
+  view.dispatch({
+    effects: editorCompartments.errorLens.reconfigure(
+      enabled ? createLatexErrorLensExtension() : []
     ),
   });
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import React from 'react';
-import CitationPickerModal from '@/features/editor/ui/modals/CitationPickerModal';
+import CitationPickerModal from '@/features/editor/ui/modals/citation-picker/CitationPickerModal';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import {
   editorCommandBus,
@@ -44,7 +44,7 @@ vi.mock('@/features/library/data/catalog/catalog.queries', () => ({
   }),
 }));
 
-vi.mock('@/features/editor/ui/hooks/use-citation', () => ({
+vi.mock('@/features/editor/ui/hooks/useCitation', () => ({
   useEditorCitations: vi.fn().mockReturnValue({
     libraryItems: [
       {

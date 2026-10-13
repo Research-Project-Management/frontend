@@ -63,11 +63,15 @@ export const useBulkArchive = () => {
   return useMutation({
     mutationFn: (vars: { ids?: string[]; itemIds?: string[]; workItemIds?: string[]; projectId?: string }) => {
       const targetIds = vars.ids || vars.itemIds || vars.workItemIds || [];
-      return ArchiveService.bulkArchive(targetIds);
+      return ArchiveService.bulkArchive(targetIds, vars.projectId);
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
       queryClient.invalidateQueries({ queryKey: ['archived-items'] });
+      if (vars.projectId) {
+        queryClient.invalidateQueries({ queryKey: ['work-items', vars.projectId] });
+        queryClient.invalidateQueries({ queryKey: ['archived-items', vars.projectId] });
+      }
       const targetIds = vars.ids || vars.itemIds || vars.workItemIds || [];
       toast.success(`Archived ${targetIds.length} items`, { id: 'work-item-bulk' });
     },
@@ -83,11 +87,15 @@ export const useBulkRestore = () => {
   return useMutation({
     mutationFn: (vars: { ids?: string[]; itemIds?: string[]; workItemIds?: string[]; projectId?: string }) => {
       const targetIds = vars.ids || vars.itemIds || vars.workItemIds || [];
-      return ArchiveService.bulkRestore(targetIds);
+      return ArchiveService.bulkRestore(targetIds, vars.projectId);
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
       queryClient.invalidateQueries({ queryKey: ['archived-items'] });
+      if (vars.projectId) {
+        queryClient.invalidateQueries({ queryKey: ['work-items', vars.projectId] });
+        queryClient.invalidateQueries({ queryKey: ['archived-items', vars.projectId] });
+      }
       const targetIds = vars.ids || vars.itemIds || vars.workItemIds || [];
       toast.success(`Restored ${targetIds.length} items`, { id: 'work-item-bulk' });
     },

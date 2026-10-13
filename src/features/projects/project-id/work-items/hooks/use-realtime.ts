@@ -42,20 +42,25 @@ export function useRealtimeWorkItems({
               clearTimeout(debounceTimerRef.current);
             }
             debounceTimerRef.current = setTimeout(() => {
-              queryClient.invalidateQueries({ queryKey: ['work-items'] });
+              if (typeof document !== 'undefined' && document.hidden) {
+                return;
+              }
+
+              // Invalidate core work items for this project
               queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
-              queryClient.invalidateQueries({ queryKey: ['project-states', projectId] });
-              queryClient.invalidateQueries({ queryKey: ['project-state-counts', projectId] });
-              queryClient.invalidateQueries({ queryKey: ['project-details', projectId] });
-              queryClient.invalidateQueries({ queryKey: ['project-overview', projectId] });
+
+              // Only invalidate state counts if the event is a state/column change
+              if (!payload?.verb || payload.verb.includes('state') || payload.verb.includes('column') || payload.verb.includes('delete') || payload.verb.includes('create')) {
+                queryClient.invalidateQueries({ queryKey: ['project-states', projectId] });
+                queryClient.invalidateQueries({ queryKey: ['project-state-counts', projectId] });
+              }
 
               const targetId = payload?.workItemId || payload?.entityId;
               if (targetId) {
-                queryClient.invalidateQueries({ queryKey: ['comments', targetId] });
                 queryClient.invalidateQueries({ queryKey: ['work-item-comments', targetId] });
                 queryClient.invalidateQueries({ queryKey: ['work-item-activity', targetId] });
               }
-            }, 75);
+            }, 300);
           }
         } catch {
           // ignore non-json messages

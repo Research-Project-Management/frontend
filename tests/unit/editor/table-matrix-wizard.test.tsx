@@ -11,7 +11,7 @@ import {
   sanitizeTableCell,
   unescapeTableCell,
 } from '@/features/editor/domain/latex/table-matrix';
-import { TableWizardModal } from '@/features/editor/ui/modals/TableWizardModal';
+import { TableWizardModal } from '@/features/editor/ui/modals/table-wizard/TableWizardModal';
 import { toast } from 'sonner';
 
 vi.mock('sonner', () => ({

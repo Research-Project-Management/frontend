@@ -227,7 +227,7 @@ export function Topbar({
           <div
             role="tablist"
             aria-label="View modes"
-            className="flex items-center bg-muted/70 p-0.5 rounded-md shrink-0 gap-0.5 h-8 border border-border/40 shadow-none"
+            className="flex items-center bg-muted/70 p-0.5 rounded-md shrink-0 gap-0.5 h-8 border border-border shadow-none"
           >
             {viewOptions.map((v) => {
               const IconComp = v.icon;
@@ -249,7 +249,7 @@ export function Topbar({
                       {isSelected && (
                         <motion.div
                           layoutId="work-items-view-toggle"
-                          className="absolute inset-0 bg-background rounded-md shadow-none border border-border/50"
+                          className="absolute inset-0 bg-background rounded-md shadow-none border border-border"
                           transition={{ type: 'spring', bounce: 0.15, duration: 0.4 }}
                         />
                       )}

@@ -6,10 +6,10 @@ import {
   COLLABORATOR_PALETTE,
   buildCollaboratorCursorCss,
   CollaboratorCursors,
-} from '@/features/editor/ui/features/editor/CollaboratorCursors';
+} from '@/features/editor/ui/editor/CollaboratorCursors';
 import {
   VisualCollaboratorCursors,
-} from '@/features/editor/ui/features/editor/visual/components/VisualCollaboratorCursors';
+} from '@/features/editor/ui/editor/visual/VisualCollaboratorCursors';
 import {
   useDocumentCollaborationStore,
   type CollaboratorPresenceInfo,

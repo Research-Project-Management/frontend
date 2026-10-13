@@ -11,7 +11,7 @@ import type {
   CommandHandler,
   IEditorCommandBus,
 } from '../domain/types/ports/command-bus.port';
-import type { IEditorEngine } from '../domain/types/ports/editor-engine.port';
+import type { IEditorEngine, LatexFormatType } from '../domain/types/ports/editor-engine.port';
 
 class EditorCommandBusImpl implements IEditorCommandBus {
   private handlers = new Map<string, Set<CommandHandler<EditorCommand, unknown>>>();
@@ -147,3 +147,85 @@ export function getActivePdfViewer(): unknown {
 
 export const getActiveEditorInstance = getActiveEditorEngine;
 export const getActiveViewerInstance = getActivePdfViewer;
+
+let defaultBridgesUnsub: Array<() => void> = [];
+
+// Default bridges from Command Bus to Active Engine (Idempotent)
+export function registerDefaultBridges(): void {
+  for (const unsub of defaultBridgesUnsub) {
+    unsub();
+  }
+  defaultBridgesUnsub = [];
+
+  defaultBridgesUnsub.push(
+    editorCommandBus.subscribe('editor:insert-text', (cmd) => {
+      activeEngineInstance?.insertText(cmd.text);
+    }),
+    editorCommandBus.subscribe('editor:focus', () => {
+      activeEngineInstance?.focus();
+    }),
+    editorCommandBus.subscribe('editor:set-content', (cmd) => {
+      activeEngineInstance?.setContent(cmd.content);
+    }),
+    editorCommandBus.subscribe('editor:undo', () => {
+      activeEngineInstance?.undo();
+    }),
+    editorCommandBus.subscribe('editor:redo', () => {
+      activeEngineInstance?.redo();
+    }),
+    editorCommandBus.subscribe('editor:wrap-selection', (cmd) => {
+      activeEngineInstance?.wrapSelection(cmd.prefix, cmd.suffix, cmd.placeholder);
+    }),
+    editorCommandBus.subscribe('editor:format', (cmd) => {
+      activeEngineInstance?.format(cmd.format);
+    }),
+    editorCommandBus.subscribe('editor:jump-to-line', (cmd) => {
+      activeEngineInstance?.jumpToLine(cmd.line, cmd.highlight, cmd.column, cmd.length);
+    }),
+    editorCommandBus.subscribe('editor:scroll-to-line', (cmd) => {
+      activeEngineInstance?.scrollToLine?.(cmd.line, cmd.smooth);
+    }),
+    editorCommandBus.subscribe('editor:find', () => {
+      activeEngineInstance?.openFind();
+    }),
+    editorCommandBus.subscribe('editor:insert-citation', (cmd) => {
+      if (cmd.bibKey) {
+        activeEngineInstance?.insertText(`\\cite{${cmd.bibKey}}`);
+      }
+    }),
+    editorCommandBus.subscribe('editor:visual-command', (cmd) => {
+      if (!activeEngineInstance) return;
+      const formatCommands: Record<string, LatexFormatType> = {
+        bold: 'bold',
+        italic: 'italic',
+        underline: 'underline',
+        strikethrough: 'strikethrough',
+        strike: 'strikethrough',
+        code: 'code',
+        math: 'inlineMath',
+        inlineMath: 'inlineMath',
+        section: 'section',
+        subsection: 'subsection',
+        subsubsection: 'subsubsection',
+        paragraph: 'paragraph',
+        subparagraph: 'subparagraph',
+      };
+
+      if (cmd.command in formatCommands) {
+        activeEngineInstance.format(formatCommands[cmd.command]);
+      } else if (cmd.command === 'bulletList') {
+        activeEngineInstance.insertText('\\begin{itemize}\n  \\item \n\\end{itemize}\n');
+      } else if (cmd.command === 'orderedList') {
+        activeEngineInstance.insertText('\\begin{enumerate}\n  \\item \n\\end{enumerate}\n');
+      } else if (cmd.command === 'codeBlock') {
+        activeEngineInstance.insertText('\\begin{verbatim}\n\n\\end{verbatim}\n');
+      } else if (cmd.contentHtml) {
+        activeEngineInstance.insertText(cmd.contentHtml);
+      }
+    })
+  );
+}
+
+// Initial binding
+registerDefaultBridges();
+

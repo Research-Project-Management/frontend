@@ -9,9 +9,11 @@
 
 import React from 'react';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from '@/shared/components/ui/menubar';
-import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
+import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { ShieldCheck } from 'lucide-react';
+import { useLayoutStore } from '@/features/editor/store/layout.store';
+import { useSearchStore } from '@/features/editor/store/search.store';
 
 export function EditMenu({ value = 'edit' }: { value?: string } = {}) {
   const { engine } = useEditorInstance();
@@ -22,6 +24,18 @@ export function EditMenu({ value = 'edit' }: { value?: string } = {}) {
   const handleFind = () => {
     editorCommandBus.dispatch({ type: 'editor:find', open: true });
     engine?.focus();
+  };
+  const handleFindInProject = () => {
+    useLayoutStore.getState().setSidebarLeftOpen(true);
+    useLayoutStore.getState().setActiveSidebarTab('search');
+    useSearchStore.getState().setShowReplace(false);
+    editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Search' });
+  };
+  const handleReplaceInProject = () => {
+    useLayoutStore.getState().setSidebarLeftOpen(true);
+    useLayoutStore.getState().setActiveSidebarTab('search');
+    useSearchStore.getState().setShowReplace(true);
+    editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Search', showReplace: true });
   };
   const handleLintPage = () => editorCommandBus.dispatch({ type: 'editor:lint-project' });
 
@@ -43,6 +57,14 @@ export function EditMenu({ value = 'edit' }: { value?: string } = {}) {
         <MenubarItem onClick={handleFind} className="cursor-pointer">
           <span className="whitespace-nowrap">Find</span>
           <MenubarShortcut>Ctrl F</MenubarShortcut>
+        </MenubarItem>
+        <MenubarItem onClick={handleFindInProject} className="cursor-pointer">
+          <span className="whitespace-nowrap">Find in project</span>
+          <MenubarShortcut>Ctrl Shift F</MenubarShortcut>
+        </MenubarItem>
+        <MenubarItem onClick={handleReplaceInProject} className="cursor-pointer">
+          <span className="whitespace-nowrap">Replace in project</span>
+          <MenubarShortcut>Ctrl Shift H</MenubarShortcut>
         </MenubarItem>
         <MenubarItem onClick={handleSelectAll} className="cursor-pointer">
           <span className="whitespace-nowrap">Select all</span>

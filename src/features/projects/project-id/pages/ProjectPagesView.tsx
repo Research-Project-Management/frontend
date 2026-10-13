@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { manuscriptService } from '@/features/editor/sdk';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { projectPagesQueryOptions, usePageActions, pageKeys } from './hooks/use-page';
 import { useProjects, useProject } from '@/features/projects/shell/hooks/use-project';
 import { Topbar } from './components/layout/Topbar';

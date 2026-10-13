@@ -3,7 +3,7 @@ import {
   exportDocumentSchema,
   documentExportFormatSchema,
 } from '@/features/editor/domain/types/export.types';
-import { exportService } from '@/features/editor/sdk';
+import { exportService } from '@/features/editor/sdk/manuscript.service';
 import {
   exportDocumentAsWord,
   exportDocumentAsMarkdown,

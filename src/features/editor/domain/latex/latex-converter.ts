@@ -1,3 +1,14 @@
+/**
+ * @deprecated
+ * latex-converter.ts
+ *
+ * LEGACY REGEX CONVERTER (Superseded by CodeMirror 6 Visual Mode extensions).
+ * This module was previously used by the retired contentEditable surface.
+ * Modern visual editing in Flux follows Overleaf's architecture: CodeMirror 6 with
+ * inline decorators and widgets (latex-visual-headings, latex-visual-math, latex-visual-citations),
+ * preserving 100% lossless LaTeX and avoiding regex HTML transformations.
+ */
+
 import katex from 'katex';
 import 'katex/contrib/mhchem';
 

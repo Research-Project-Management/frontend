@@ -171,7 +171,7 @@ export function DisplayPopover({
                         "size-4 rounded-full border flex items-center justify-center shrink-0 transition-colors",
                         isSelected
                           ? "border-primary bg-background"
-                          : "border-foreground/30 bg-background"
+                          : "border-border bg-background"
                       )}
                     >
                       {isSelected && <div className="size-2 rounded-full bg-primary" />}
@@ -184,7 +184,7 @@ export function DisplayPopover({
           )}
         </div>
 
-        <div className="border-t border-border/50" />
+        <div className="border-t border-border" />
 
         {/* 2. Order By */}
         <div>
@@ -239,7 +239,7 @@ export function DisplayPopover({
                         "size-4 rounded-full border flex items-center justify-center shrink-0 transition-colors",
                         isSelected
                           ? "border-primary bg-background"
-                          : "border-foreground/30 bg-background"
+                          : "border-border bg-background"
                       )}
                     >
                       {isSelected && <div className="size-2 rounded-full bg-primary" />}
@@ -252,7 +252,7 @@ export function DisplayPopover({
           )}
         </div>
 
-        <div className="border-t border-border/50" />
+        <div className="border-t border-border" />
 
         {/* 3. Display Properties */}
         <div>
@@ -283,7 +283,7 @@ export function DisplayPopover({
                       "px-2.5 py-1 text-12 font-medium rounded-md border transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1 md:before:hidden",
                       isSelected
                         ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border/70 bg-background text-foreground hover:bg-muted"
+                        : "border-border bg-background text-foreground hover:bg-muted"
                     )}
                   >
                     {item.label}
@@ -294,7 +294,7 @@ export function DisplayPopover({
           )}
         </div>
 
-        <div className="border-t border-border/50" />
+        <div className="border-t border-border" />
 
         {/* 4. Sub-work items and Empty groups checkboxes */}
         <div className="space-y-1 pt-0.5 select-none">

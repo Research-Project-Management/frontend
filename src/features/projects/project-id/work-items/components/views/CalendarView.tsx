@@ -9,6 +9,7 @@ import {
   Search,
   X,
   FolderKanban,
+  Calendar as CalendarIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react';
 import {
@@ -34,7 +35,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import type { Column, Item } from '../../types/work-item.types';
 import { PRIORITY_CONFIG } from '../../types/work-item.types';
-import { resolveStateId, resolveStateColor } from '../../utils/work-item.utils';
+import { resolveStateId, resolveStateColor, formatDate } from '../../utils/work-item.utils';
 import {
   DndContext,
   closestCorners,
@@ -84,6 +85,17 @@ const CalendarCard = memo(function CalendarCard({ card }: CalendarCardProps) {
           <span className="size-2 rounded-full" style={{ backgroundColor: columnColor }} />
           <span className="capitalize">{card.columnId}</span>
         </div>
+
+        {(card.startDate || card.dueDate) && (
+          <div className="flex items-center gap-1 text-10 font-mono text-muted-foreground tabular-nums">
+            <CalendarIcon className="size-3 shrink-0" />
+            <span>
+              {card.startDate && card.dueDate && card.startDate !== card.dueDate
+                ? `${formatDate(card.startDate)} → ${formatDate(card.dueDate)}`
+                : formatDate(card.dueDate || card.startDate)}
+            </span>
+          </div>
+        )}
 
         {card.assignee && (
           <div className="flex items-center gap-1">
@@ -146,8 +158,11 @@ function createCalendarDueDate(dateKey: string) {
   return `${dateKey}T00:00:00.000Z`;
 }
 
+const EMPTY_ARRAY: never[] = [];
+const NOOP = () => {};
+
 export const CalendarView = memo(function CalendarView({
-  items: propItems = [],
+  items: propItems = EMPTY_ARRAY,
   columns,
   projectId,
   onAddCard,
@@ -157,7 +172,7 @@ export const CalendarView = memo(function CalendarView({
   isReadOnly,
 }: CalendarViewProps) {
   const items = propItems;
-  const onAssignExistingItems = propOnAssignExistingItems || (() => {});
+  const onAssignExistingItems = propOnAssignExistingItems || NOOP;
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [layoutMode, setLayoutMode] = useState<CalendarLayoutMode>("month");
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -194,26 +209,22 @@ export const CalendarView = memo(function CalendarView({
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   }, [currentMonth, layoutMode]);
 
-  const { multiDayItems, singleDayItemsByDate } = useMemo(() => {
-    const multiDay: Array<Item & { startKey: string; dueKey: string }> = [];
+  const singleDayItemsByDate = useMemo(() => {
     const singleDay = new Map<string, Item[]>();
 
     items.forEach((item) => {
-      const startKey = getCalendarDateKey(item.startDate);
+      // Linear / Jira modern calendar paradigm: schedule task on its Due Date (or Start Date if no Due Date)
       const dueKey = getCalendarDateKey(item.dueDate);
+      const startKey = getCalendarDateKey(item.startDate);
+      const targetKey = dueKey || startKey;
 
-      if (startKey && dueKey && startKey < dueKey) {
-        multiDay.push({ ...item, startKey, dueKey });
-      } else {
-        const targetKey = dueKey || startKey;
-        if (targetKey) {
-          if (!singleDay.has(targetKey)) singleDay.set(targetKey, []);
-          singleDay.get(targetKey)!.push(item);
-        }
+      if (targetKey) {
+        if (!singleDay.has(targetKey)) singleDay.set(targetKey, []);
+        singleDay.get(targetKey)!.push(item);
       }
     });
 
-    return { multiDayItems: multiDay, singleDayItemsByDate: singleDay };
+    return singleDay;
   }, [items]);
 
   const calendarWeeks = useMemo(() => {
@@ -274,7 +285,7 @@ export const CalendarView = memo(function CalendarView({
       ? `${format(calendarDays[0], "d MMM")} - ${format(calendarDays[calendarDays.length - 1], "d MMM yyyy")}`
       : format(currentMonth, "MMMM yyyy");
 
-  const dayCellMinHeight = layoutMode === "week" ? 750 : 85;
+  const dayCellMinHeight = layoutMode === "week" ? 750 : 92;
 
   const handleOpenQuickAdd = useCallback((dateKey: string) => {
     setQuickAddDateKey(dateKey);
@@ -471,8 +482,8 @@ export const CalendarView = memo(function CalendarView({
         {/* Scrollable Calendar Grid (Unified 7-Column Grid with sleek custom scrollbar) */}
         <div className="flex-1 overflow-auto vertical-scrollbar custom-scrollbar">
           <div className="min-h-full min-w-[560px] bg-background">
-            {/* Week Day Labels (Row 1 of Grid - Sticky header) */}
-            <div className="grid grid-cols-7 bg-muted/50 dark:bg-muted/20 border-b border-border sticky top-0 z-20 backdrop-blur-sm">
+            {/* Week Day Labels (Row 1 of Grid - Sticky header - NO bottom line per design) */}
+            <div className="grid grid-cols-7 bg-muted/50 dark:bg-muted/20 sticky top-0 z-20 backdrop-blur-sm">
               {WEEK_DAY_LABELS.map((label) => (
                 <div
                   key={label}
@@ -483,168 +494,13 @@ export const CalendarView = memo(function CalendarView({
               ))}
             </div>
 
-            {/* Weeks with Multi-day Spanning Bars and Consistent Top Date Header */}
+            {/* Calendar Weeks */}
             {calendarWeeks.map((weekDays) => {
               const weekDayKeys = weekDays.map((d) => format(d, DATE_KEY_FORMAT));
               const weekStartKey = weekDayKeys[0];
-              const weekEndKey = weekDayKeys[6];
-
-              const weekSpanningItems = multiDayItems
-                .filter((t) => t.startKey <= weekEndKey && t.dueKey >= weekStartKey)
-                .map((t) => {
-                  const sIdx = weekDayKeys.indexOf(t.startKey);
-                  const startIndex = sIdx === -1 ? 0 : sIdx;
-                  const eIdx = weekDayKeys.indexOf(t.dueKey);
-                  const endIndex = eIdx === -1 ? 6 : Math.min(6, eIdx);
-                  const span = Math.max(1, endIndex - startIndex + 1);
-                  const isContinuedFromPrev = t.startKey < weekStartKey;
-                  const isContinuedToNext = t.dueKey > weekEndKey;
-
-                  return {
-                    item: t,
-                    startIndex,
-                    span,
-                    isContinuedFromPrev,
-                    isContinuedToNext,
-                  };
-                });
-
-              // Deterministic Lane Packing: prioritize earliest absolute start date to keep continuous lanes across weeks
-              const sortedSpanning = [...weekSpanningItems].sort((a, b) => {
-                if (a.item.startKey !== b.item.startKey) {
-                  return a.item.startKey.localeCompare(b.item.startKey);
-                }
-                if (a.item.dueKey !== b.item.dueKey) {
-                  return b.item.dueKey.localeCompare(a.item.dueKey);
-                }
-                return a.item.id.localeCompare(b.item.id);
-              });
-
-              const lanes: boolean[][] = [];
-              const packedSpanningItems = sortedSpanning.map((spanItem) => {
-                const start = spanItem.startIndex;
-                const end = spanItem.startIndex + spanItem.span - 1;
-
-                let assignedLane = -1;
-                for (let l = 0; l < lanes.length; l++) {
-                  let conflict = false;
-                  for (let dayIdx = start; dayIdx <= end; dayIdx++) {
-                    if (lanes[l][dayIdx]) {
-                      conflict = true;
-                      break;
-                    }
-                  }
-                  if (!conflict) {
-                    assignedLane = l;
-                    break;
-                  }
-                }
-
-                if (assignedLane === -1) {
-                  assignedLane = lanes.length;
-                  lanes.push(new Array(7).fill(false));
-                }
-
-                for (let dayIdx = start; dayIdx <= end; dayIdx++) {
-                  lanes[assignedLane][dayIdx] = true;
-                }
-
-                return {
-                  ...spanItem,
-                  lane: assignedLane,
-                };
-              });
-              const totalLanes = Math.max(1, lanes.length);
 
               return (
                 <div key={weekStartKey} className="border-b border-border">
-                  {/* Consistent 7-Column Date Header Row */}
-                  <div className="grid grid-cols-7 border-b border-border bg-background">
-                    {weekDays.map((day) => {
-                      const dayKey = format(day, DATE_KEY_FORMAT);
-                      const isThisToday = isToday(day);
-                      const isCurrentMonth =
-                        layoutMode === "week"
-                          ? isSameWeek(day, currentMonth, { weekStartsOn: 1 })
-                          : isSameMonth(day, currentMonth);
-                      const isFirstDayOfMonth = day.getDate() === 1;
-
-                      return (
-                        <div
-                          key={dayKey}
-                          className={cn(
-                            "h-7 px-2.5 flex items-center justify-end gap-1.5 select-none [&:not(:nth-child(7n))]:border-r border-border",
-                            !isCurrentMonth ? "bg-muted/30 text-muted-foreground" : "bg-background text-foreground"
-                          )}
-                        >
-                          {isFirstDayOfMonth && (
-                            <span
-                              className={cn(
-                                "text-11 font-medium",
-                                !isCurrentMonth ? "text-muted-foreground" : "text-foreground"
-                              )}
-                            >
-                              {format(day, "MMM")}
-                            </span>
-                          )}
-                          {isThisToday ? (
-                            <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary text-11 font-mono font-medium text-primary-foreground tabular-nums">
-                              {format(day, "d")}
-                            </span>
-                          ) : (
-                            <span
-                              className={cn(
-                                "text-11 font-mono font-medium leading-none tabular-nums",
-                                !isCurrentMonth ? "text-muted-foreground" : "text-foreground"
-                              )}
-                            >
-                              {format(day, "d")}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Multi-day Spanning Bars Area with Continuous Vertical Gridlines */}
-                  {packedSpanningItems.length > 0 && (
-                    <div className="relative border-b border-border bg-background">
-                      <div className="absolute inset-0 grid grid-cols-7 pointer-events-none">
-                        {weekDays.map((day, i) => (
-                          <div
-                            key={i}
-                            className={cn(
-                              "[&:not(:nth-child(7n))]:border-r border-border",
-                              !isSameMonth(day, currentMonth) && layoutMode === "month" && "bg-muted/30"
-                            )}
-                          />
-                        ))}
-                      </div>
-                      <div
-                        className="relative grid grid-cols-7 gap-y-1 py-1 px-0.5"
-                        style={{
-                          gridTemplateRows: `repeat(${totalLanes}, minmax(24px, auto))`,
-                        }}
-                      >
-                        {packedSpanningItems.map(
-                          ({ item, startIndex, span, lane, isContinuedFromPrev, isContinuedToNext }) => (
-                            <CalendarSpanningBar
-                              key={`${item.id}-${weekStartKey}`}
-                              item={item}
-                              startIndex={startIndex}
-                              span={span}
-                              lane={lane}
-                              isContinuedFromPrev={isContinuedFromPrev}
-                              isContinuedToNext={isContinuedToNext}
-                              onOpenCardDetail={onOpenCardDetail}
-                              isReadOnly={isReadOnly}
-                            />
-                          )
-                        )}
-                      </div>
-                    </div>
-                  )}
-
                   {/* Calendar Days in this week */}
                   <div className="grid grid-cols-7">
                     {weekDays.map((day) => {
@@ -904,6 +760,7 @@ const CalendarDayCell = memo(({
   quickAddTitle = '',
 }: any) => {
   const isAddItemMenuOpen = addItemMenuDateKey === dateKey;
+  const isFirstDayOfMonth = day ? day.getDate() === 1 : false;
   const { setNodeRef, isOver } = useDroppable({
     id: dateKey,
   });
@@ -911,20 +768,51 @@ const CalendarDayCell = memo(({
   return (
     <div
       ref={setNodeRef}
-      style={{ minHeight: dayCellMinHeight }}
+      style={layoutMode === "week" ? { minHeight: dayCellMinHeight } : undefined}
       className={cn(
         "group flex flex-col transition-colors [&:not(:nth-child(7n))]:border-r border-border p-1.5 min-h-0",
+        layoutMode === "month" && "aspect-[1.618/1] min-h-[92px]",
         !isCurrentMonth
-          ? "bg-muted/30 text-muted-foreground"
+          ? "bg-muted/50 dark:bg-muted/20 text-muted-foreground"
           : "bg-background text-foreground",
         isOver && "bg-muted/60 ring-1 ring-inset ring-ring"
       )}
     >
+      {/* Date Header directly at top of Day Cell - NO border below */}
+      {day && (
+        <div className="h-6 px-1 flex items-center justify-end gap-1.5 select-none shrink-0 mb-1">
+          {isFirstDayOfMonth && (
+            <span
+              className={cn(
+                "text-11 font-medium",
+                !isCurrentMonth ? "text-muted-foreground" : "text-foreground"
+              )}
+            >
+              {format(day, "MMM")}
+            </span>
+          )}
+          {isThisToday ? (
+            <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary text-11 font-mono font-medium text-primary-foreground tabular-nums">
+              {format(day, "d")}
+            </span>
+          ) : (
+            <span
+              className={cn(
+                "text-11 font-mono font-medium leading-none tabular-nums",
+                !isCurrentMonth ? "text-muted-foreground" : "text-foreground"
+              )}
+            >
+              {format(day, "d")}
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="flex-1 flex flex-col min-h-0">
         <div
           className={cn(
             "space-y-1 overflow-y-auto custom-scrollbar flex-1 min-h-0",
-            layoutMode === "week" ? "max-h-175" : "max-h-36"
+            layoutMode === "week" ? "max-h-175" : "max-h-full"
           )}
         >
           {dayItems.map((item: any) => (
@@ -1035,121 +923,6 @@ const CalendarDayCell = memo(({
   );
 });
 
-interface CalendarSpanningBarProps {
-  item: Item;
-  startIndex: number;
-  span: number;
-  lane?: number;
-  isContinuedFromPrev: boolean;
-  isContinuedToNext: boolean;
-  onOpenCardDetail: (item: Item) => void;
-  isReadOnly?: boolean;
-}
-
-const CalendarSpanningBar = memo(function CalendarSpanningBar({
-  item,
-  startIndex,
-  span,
-  lane,
-  isContinuedFromPrev,
-  isContinuedToNext,
-  onOpenCardDetail,
-  isReadOnly,
-}: CalendarSpanningBarProps) {
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const columnColor = resolveStateColor(item.columnId);
-
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: item.id,
-    disabled: isReadOnly,
-    data: {
-      type: "Item",
-      item,
-    },
-  });
-
-  const style: React.CSSProperties = {
-    gridColumnStart: startIndex + 1,
-    gridColumnEnd: `span ${span}`,
-    gridRowStart: lane != null ? lane + 1 : undefined,
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.3 : 1,
-  };
-
-  const handleMouseEnter = () => {
-    hoverTimerRef.current = setTimeout(() => {
-      setIsPreviewOpen(true);
-    }, 450);
-  };
-
-  const handleMouseLeave = () => {
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current);
-      hoverTimerRef.current = null;
-    }
-    setIsPreviewOpen(false);
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className="my-0.5 px-0.5"
-    >
-      <Popover open={isPreviewOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            onClick={() => onOpenCardDetail(item)}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-            className={cn(
-              "group relative flex w-full items-center gap-1.5 h-6 px-2 text-left text-11 font-medium leading-tight transition-colors cursor-pointer border select-none",
-              isContinuedFromPrev ? "rounded-l-none border-l-0" : "rounded-l-md",
-              isContinuedToNext ? "rounded-r-none border-r-0" : "rounded-r-md",
-              "border-border bg-card hover:bg-muted text-foreground",
-              isDragging && "z-50 opacity-40 border-primary"
-            )}
-            style={{
-              borderLeftColor: isContinuedFromPrev ? undefined : columnColor,
-              borderLeftWidth: isContinuedFromPrev ? undefined : '3px',
-            }}
-          >
-            {isContinuedFromPrev && (
-              <ChevronLeft className="size-3 text-foreground shrink-0 -ml-1" />
-            )}
-            {item.identifier && (
-              <span className="font-mono text-10 text-foreground shrink-0 font-semibold">
-                {item.identifier}
-              </span>
-            )}
-            <span className="min-w-0 flex-1 truncate font-medium">
-              {item.title}
-            </span>
-            {isContinuedToNext && (
-              <ChevronRight className="size-3 text-foreground shrink-0 -mr-1" />
-            )}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          side="bottom"
-          align="start"
-          sideOffset={6}
-          className="w-80 border-none bg-transparent p-0 shadow-none z-50"
-          onOpenAutoFocus={(e: Event) => e.preventDefault()}
-        >
-          <div className="pointer-events-none">
-            <CalendarCard card={item} isReadOnly={isReadOnly} />
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-});
-
 const CalendarItem = memo(({
   item,
   onOpenCardDetail,
@@ -1162,6 +935,10 @@ const CalendarItem = memo(({
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const columnColor = resolveStateColor(item.columnId);
+
+  const startKey = getCalendarDateKey(item.startDate);
+  const dueKey = getCalendarDateKey(item.dueDate);
+  const hasDateRange = Boolean(startKey && dueKey && startKey !== dueKey);
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: item.id,
@@ -1206,17 +983,32 @@ const CalendarItem = memo(({
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             className={cn(
-              "group relative flex w-full items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1 text-left text-12 font-medium leading-tight text-foreground transition-colors hover:bg-muted cursor-pointer",
+              "group relative flex w-full flex-col gap-0.5 rounded-md border border-border bg-card px-2 py-1 text-left text-12 font-medium leading-tight text-foreground transition-colors hover:bg-muted cursor-pointer min-h-7 justify-center",
               isDragging && "z-50 opacity-40 border-primary"
             )}
           >
             <span
-              className="absolute left-0 top-1/2 h-5.5 w-0.5 -translate-y-1/2 rounded-r-full"
+              className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r-full"
               style={{ backgroundColor: columnColor }}
             />
-            <span className="min-w-0 flex-1 truncate transition-colors">
-              {item.title}
-            </span>
+            <div className="flex w-full items-center gap-1.5 min-w-0 pl-1">
+              {item.identifier && (
+                <span className="font-mono text-10 font-semibold text-muted-foreground shrink-0">
+                  {item.identifier}
+                </span>
+              )}
+              <span className="min-w-0 flex-1 truncate transition-colors">
+                {item.title}
+              </span>
+            </div>
+            {hasDateRange && item.startDate && item.dueDate && (
+              <div className="flex items-center gap-1 pl-1 text-10 text-muted-foreground font-mono">
+                <CalendarIcon className="size-2.5 shrink-0" />
+                <span className="truncate">
+                  {formatDate(item.startDate)} → {formatDate(item.dueDate)}
+                </span>
+              </div>
+            )}
           </button>
         </PopoverTrigger>
         <PopoverContent

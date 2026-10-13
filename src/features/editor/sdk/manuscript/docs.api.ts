@@ -5,7 +5,7 @@
  */
 
 import { apiGet, apiPut, apiPost, apiPatch, apiDelete, getAuthToken } from '@/shared/lib/api';
-import type { Page, PageFile } from '@/features/editor/domain/types';
+import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 import { MANUSCRIPTS_API_BASE, getManuscriptsBaseUrl } from './base';
 import type { DocstoreDocDto } from './types';
 

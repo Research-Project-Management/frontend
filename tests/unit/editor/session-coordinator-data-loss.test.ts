@@ -7,7 +7,7 @@ import {
   type DocumentConflict,
 } from '@/features/editor/coordinators/session.coordinator';
 import { useConnectivityStore } from '@/features/editor/store/connectivity.store';
-import { manuscriptService } from '@/features/editor/sdk';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 
 let seq = 0;
 const nextId = (p: string) => `${p}-${Date.now()}-${seq++}`;

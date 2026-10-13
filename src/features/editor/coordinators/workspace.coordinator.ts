@@ -12,7 +12,8 @@
  * - Dispatches typed notifications on `editorCommandBus`.
  */
 
-import { manuscriptService, fileService, type LinkedFileDto } from '@/features/editor/sdk';
+import { manuscriptService, fileService } from '@/features/editor/sdk/manuscript.service';
+import { type LinkedFileDto } from '@/features/editor/sdk/manuscript/types';
 import { lruDocumentCache } from '../domain/document/lru-document-cache';
 import { extractDocumentContentString } from '../domain/types/core.types';
 import { latexDagEngine, normalizeLatexPath } from '../domain/latex/latex-dag-engine';

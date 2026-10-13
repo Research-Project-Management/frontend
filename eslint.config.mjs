@@ -190,6 +190,57 @@ const eslintConfig = [
       ],
     },
   },
+  {
+    name: 'editor-layer-domain-is-pure',
+    files: ['src/features/editor/domain/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '@/features/editor/ui/**',
+                '@/features/editor/store/**',
+                '@/features/editor/coordinators/**',
+                '@/features/editor/sdk',
+                '@/features/editor/sdk/**',
+                '@/features/editor/engines/**',
+                'react',
+              ],
+              message:
+                'domain/ is the pure core: it may not import ui, store, coordinators, sdk, engines or React.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    name: 'editor-layer-engines-depend-on-domain-only',
+    files: ['src/features/editor/engines/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'warn',
+        {
+          patterns: [
+            {
+              group: [
+                '@/features/editor/ui/**',
+                '@/features/editor/store/**',
+                '@/features/editor/coordinators/**',
+                '@/features/editor/sdk',
+                '@/features/editor/sdk/**',
+              ],
+              message:
+                'engines/ (CodeMirror layer) may depend on domain/ only. Inject store/sdk/coordinator access through ports.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;
+

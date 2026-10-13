@@ -15,12 +15,13 @@ import { usePageStore } from '@/features/editor/store/editor.store';
 import { useCompileStore } from '@/features/editor/store/compiler.store';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { useLayoutStore } from '@/features/editor/store/layout.store';
-import { useProjectExport } from '@/features/editor/ui/hooks/use-export';
-import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
+import { useProjectExport } from '@/features/editor/ui/hooks/useExport';
+import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import { Download, FileArchive, FileText, FileCode, Archive } from 'lucide-react';
+import { Download, FileArchive, FileText, FileCode, Archive, Calculator, Settings } from 'lucide-react';
+import { GitHubIcon } from '@/shared/components/icons';
 import { duplicateProjectApi } from '@/features/projects/shell/services/project.service';
-import { extractProjectId } from '@/features/editor/domain/types';
+import { extractProjectId } from '@/features/editor/domain/types/core.types';
 
 export function FileMenu({ value = 'file' }: { value?: string } = {}) {
   const params = useParams<{ pageId?: string; projectId?: string }>();
@@ -30,6 +31,16 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
   const pdfUrl = useCompileStore((s) => s.pdfUrl);
   const setIsTemplateModalOpen = useSettingsStore((s) => s.setIsTemplateModalOpen);
   const [isZipping, setIsZipping] = useState(false);
+
+  const handleGithubSync = () => {
+    useSettingsStore.getState().setSettingsActiveTab('github');
+    useSettingsStore.getState().setSettingsPanelOpen(true);
+    editorCommandBus.dispatch({
+      type: 'dialog:open',
+      dialog: 'project-settings',
+      payload: { view: 'github' },
+    });
+  };
 
   const handleNewFile = () => {
     useLayoutStore.getState().setActiveSidebarTab('files');
@@ -52,6 +63,15 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
   const handleTemplateGallery = () => {
     setIsTemplateModalOpen(true);
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'template-gallery' });
+  };
+
+  const handleWordCount = () => {
+    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'word-count' });
+  };
+
+  const handleProjectSettings = () => {
+    useSettingsStore.getState().setSettingsPanelOpen(true);
+    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'project-settings' });
   };
 
   const {
@@ -184,6 +204,34 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
           className="cursor-pointer"
         >
           <span className="whitespace-nowrap">Template gallery</span>
+        </MenubarItem>
+
+        <MenubarSeparator />
+
+        <MenubarItem
+          onClick={handleWordCount}
+          className="cursor-pointer flex items-center gap-2"
+        >
+          <Calculator className="size-3.5 text-foreground/80 shrink-0" />
+          <span className="whitespace-nowrap">Word count</span>
+        </MenubarItem>
+
+        <MenubarItem
+          onClick={handleProjectSettings}
+          className="cursor-pointer flex items-center gap-2"
+        >
+          <Settings className="size-3.5 text-foreground/80 shrink-0" />
+          <span className="whitespace-nowrap">Project settings</span>
+        </MenubarItem>
+
+        <MenubarSeparator />
+
+        <MenubarItem
+          onClick={handleGithubSync}
+          className="cursor-pointer flex items-center gap-2"
+        >
+          <GitHubIcon className="size-3.5 text-foreground/80 shrink-0" />
+          <span className="whitespace-nowrap">GitHub Sync</span>
         </MenubarItem>
 
         <MenubarSeparator />

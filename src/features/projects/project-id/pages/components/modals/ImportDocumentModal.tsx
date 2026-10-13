@@ -20,7 +20,7 @@ import {
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
-import { manuscriptService } from '@/features/editor/sdk';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { pageKeys } from '../../hooks/use-page';
 
 interface ImportDocumentModalProps {

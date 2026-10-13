@@ -17,7 +17,6 @@ export * from "./IntegrationIcons";
 
 // Icon Picker & Project Avatar (consolidated from icon-picker)
 export { IconPicker, type IconPickerProps } from "./IconPicker";
-export { default } from "./IconPicker";
 export {
   ProjectAvatar,
   type ProjectAvatarProps,

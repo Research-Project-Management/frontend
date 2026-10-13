@@ -37,7 +37,7 @@ import { draftStorageService } from '@/features/editor/domain/document/draft-sto
 import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
 import { useCompileStore } from '@/features/editor/store/compiler.store';
 import { useConnectivityStore } from '@/features/editor/store/connectivity.store';
-import { manuscriptService } from '@/features/editor/sdk';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 
 describe('Editor Real-Time Collaboration & Auto-Save Subsystem', () => {
   describe('1. Mathematical CRDT Convergence & Strong Eventual Consistency (SEC)', () => {

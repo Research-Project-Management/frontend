@@ -8,11 +8,8 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
-import {
-  urlImportModalSchema,
-  type UrlImportModalFormValues,
-} from '@/features/editor/domain/types';
-import { manuscriptService } from '@/features/editor/sdk';
+import { urlImportModalSchema, type UrlImportModalFormValues } from '@/features/editor/domain/types/forms.types';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { pageKeys } from '@/features/editor/ui/hooks/document.queries';
 
 export interface UrlTabPaneProps {

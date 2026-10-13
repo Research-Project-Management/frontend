@@ -29,7 +29,7 @@ import { cn } from '@/shared/lib/utils';
 import { usePageStore } from '@/features/editor/store/editor.store';
 import { useTabsStore } from '@/features/editor/store/tabs.store';
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
-import type { PageFile } from '@/features/editor/domain/types';
+import type { PageFile } from '@/features/editor/domain/types/core.types';
 
 interface QuickOpenModalProps {
   open: boolean;

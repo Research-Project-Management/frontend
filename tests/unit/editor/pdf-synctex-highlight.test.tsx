@@ -6,7 +6,7 @@ import {
   PdfSurface,
   type SurfaceHandle,
   type SynctexHighlightState,
-} from '@/features/editor/ui/features/preview/PdfSurface';
+} from '@/features/editor/ui/preview/PdfSurface';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { LatexCompilerEngine } from '@/features/editor/coordinators/compilation-pipeline';
 import { usePageStore } from '@/features/editor/store/editor.store';

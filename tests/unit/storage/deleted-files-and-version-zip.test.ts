@@ -5,7 +5,7 @@ import {
   documentService,
   versionService,
   StorageService,
-} from '@/features/editor/sdk';
+} from '@/features/editor/sdk/manuscript.service';
 import { pageKeys } from '@/features/editor/ui/hooks/document.queries';
 
 // Mock browser globals for JSZip file download

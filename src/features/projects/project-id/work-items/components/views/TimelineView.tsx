@@ -23,6 +23,13 @@ import { cn } from "@/shared/lib/utils";
 import { toast } from 'sonner';
 import { RelationService } from '../../services/relation.service';
 import { ItemHelpers, resolveColumnId, resolveColumnColor } from '../../utils/work-item.utils';
+import { TableHorizontalScrollbar } from './TableView';
+import {
+  analyzeCriticalPath,
+  wouldCauseCycle,
+  extractNormalizedEdges,
+  getPixelForTimeBinarySearch,
+} from '../../utils/cpm-graph';
 import type {
   Item,
   Column as ColumnType,
@@ -81,6 +88,7 @@ export interface DependencyLine {
   toY: number;
   type: DepLineType;
   violated: boolean;
+  isCritical?: boolean;
 }
 
 export interface TimelineViewProps extends BaseWorkItemViewProps, WorkItemCardHandlers {
@@ -90,7 +98,7 @@ export interface TimelineViewProps extends BaseWorkItemViewProps, WorkItemCardHa
   projectId?: string;
   members?: ProjectMember[];
   onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
-  onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
+  onUpdateCard?: (item: any) => void;
   isReadOnly?: boolean;
 }
 
@@ -98,10 +106,14 @@ export interface TimelineViewProps extends BaseWorkItemViewProps, WorkItemCardHa
 // CONSTANTS & UTILITIES
 // ============================================================================
 
-export const ROW_HEIGHT = 32;
-export const GROUP_HEADER_HEIGHT = 28;
+const EMPTY_ARRAY: never[] = [];
+
+export const ROW_HEIGHT = 36;
+export const BAR_HEIGHT = 22; // Golden ratio: 36 * 0.618 ≈ 22.25px
+export const BAR_TOP = 7; // (ROW_HEIGHT - BAR_HEIGHT) / 2 = 7px
+export const GROUP_HEADER_HEIGHT = 36;
 export const HEADER_HEIGHT = 60;
-export const DEFAULT_SIDEBAR_WIDTH = 320;
+export const DEFAULT_SIDEBAR_WIDTH = 380;
 
 export const COLUMN_WIDTHS: Record<TimelineZoom, number> = {
   week: 48,
@@ -141,6 +153,15 @@ export function parseDateOnly(dateStr?: string | null): Date | null {
   const month = parseInt(parts[1], 10) - 1;
   const day = parseInt(parts[2], 10);
   return new Date(year, month, day, 0, 0, 0, 0);
+}
+
+export function formatTimelineDisplayDate(dateStr?: string | null): string {
+  const d = parseDateOnly(dateStr);
+  if (!d) return '';
+  const month = MONTH_NAMES_SHORT[d.getMonth()];
+  const day = d.getDate();
+  const year = d.getFullYear();
+  return `${month} ${day}, ${year}`;
 }
 
 export function getISOWeekNumber(targetDate: Date): number {
@@ -231,7 +252,7 @@ export function renderPriorityIcon(priority?: Priority, className?: string) {
 export function buildTimelineData(
   zoom: TimelineZoom,
   centerDate: Date = new Date(),
-  items: Item[] = []
+  items: Item[] = EMPTY_ARRAY
 ): {
   columns: TimelineColumn[];
   tier1Groups: TimelineTier1Group[];
@@ -489,29 +510,10 @@ export function getPixelRange(
   const effectiveStart = new Date(Math.max(minTime, Math.min(maxTime, start.getTime())));
   const effectiveDue = new Date(Math.max(minTime, Math.min(maxTime, due.getTime())));
 
-  const getPixelForTime = (time: number, isEnd = false) => {
-    for (let i = 0; i < columns.length; i++) {
-      const col = columns[i];
-      const colStart = col.startDate.getTime();
-      const colEnd = col.endDate.getTime();
-      if (time >= colStart && time <= colEnd) {
-        const span = Math.max(1, colEnd - colStart);
-        const frac = Math.min(1, Math.max(0, (time - colStart) / span));
-        let x = i * col.width + frac * col.width;
-        if (isEnd) {
-          x = Math.max(x, i * col.width + col.width);
-        }
-        return x;
-      }
-    }
-    if (time < minTime) return 0;
-    return columns.length * (columns[0]?.width || COLUMN_WIDTHS[zoom]);
-  };
-
-  const left = getPixelForTime(effectiveStart.getTime(), false);
+  const left = getPixelForTimeBinarySearch(effectiveStart.getTime(), columns, false);
   const dueEndOfDay = new Date(effectiveDue.getTime());
   dueEndOfDay.setHours(23, 59, 59, 999);
-  const right = getPixelForTime(dueEndOfDay.getTime(), true);
+  const right = getPixelForTimeBinarySearch(dueEndOfDay.getTime(), columns, true);
 
   const minWidth = Math.max(24, Math.min(columns[0]?.width || 36, 40));
   const width = Math.max(minWidth, right - left);
@@ -562,10 +564,12 @@ export function mapItemToBar(
 export function computeDependencyLines(
   items: Item[],
   barDataMap: Map<string, TimelineBarData>,
-  rowYMap: Map<string, number>
+  rowYMap: Map<string, number>,
+  criticalEdges?: Set<string>
 ): DependencyLine[] {
   const lines: DependencyLine[] = [];
   const itemMap = new Map<string, Item>(items.map((t) => [t.id, t]));
+  const seenEdges = new Set<string>();
 
   const FS_TYPES = new Set(['blocks', 'blocked_by']);
   const SS_TYPES = new Set(['starts_before', 'starts_after']);
@@ -583,53 +587,99 @@ export function computeDependencyLines(
 
     for (const rel of relations) {
       const relType = rel?.type;
-      const toItemId = rel?.targetWorkItemId || rel?.targetId;
-      if (!relType || !toItemId) continue;
+      const targetId = rel?.targetWorkItemId || rel?.targetId;
+      if (!relType || !targetId || fromItem.id === targetId) continue;
 
-      if (!FS_TYPES.has(relType) && !SS_TYPES.has(relType) && !FF_TYPES.has(relType)) continue;
-
-      const toItem = itemMap.get(toItemId);
-      const toBar = barDataMap.get(toItemId);
-      const toY = rowYMap.get(toItemId);
-      if (!toItem || !toBar || toY === undefined || !toBar.hasDates) continue;
-
+      let predId: string;
+      let succId: string;
       let depType: DepLineType;
+
+      switch (relType) {
+        case 'blocks':
+          predId = fromItem.id;
+          succId = targetId;
+          depType = 'FS';
+          break;
+        case 'blocked_by':
+          predId = targetId;
+          succId = fromItem.id;
+          depType = 'FS';
+          break;
+        case 'starts_before':
+          predId = fromItem.id;
+          succId = targetId;
+          depType = 'SS';
+          break;
+        case 'starts_after':
+          predId = targetId;
+          succId = fromItem.id;
+          depType = 'SS';
+          break;
+        case 'finishes_before':
+          predId = fromItem.id;
+          succId = targetId;
+          depType = 'FF';
+          break;
+        case 'finishes_after':
+          predId = targetId;
+          succId = fromItem.id;
+          depType = 'FF';
+          break;
+        default:
+          continue;
+      }
+
+      const edgeKey = `${predId}->${succId}:${depType}`;
+      if (seenEdges.has(edgeKey)) continue;
+      seenEdges.add(edgeKey);
+
+      const predItem = itemMap.get(predId);
+      const succItem = itemMap.get(succId);
+      const predBar = barDataMap.get(predId);
+      const succBar = barDataMap.get(succId);
+      const predY = rowYMap.get(predId);
+      const succY = rowYMap.get(succId);
+
+      if (!predItem || !succItem || !predBar || !succBar || predY === undefined || succY === undefined) {
+        continue;
+      }
+      if (!predBar.hasDates || !succBar.hasDates) continue;
+
       let fromX: number;
       let toX: number;
       let violated: boolean;
 
-      if (FS_TYPES.has(relType)) {
-        depType = 'FS';
-        fromX = fromBar.pixelLeft + fromBar.pixelWidth;
-        toX = toBar.pixelLeft;
-        const toStart = parseDateOnly(toItem.startDate);
-        const fromDue = parseDateOnly(fromItem.dueDate);
-        violated = !!(toStart && fromDue && toStart < fromDue);
-      } else if (SS_TYPES.has(relType)) {
-        depType = 'SS';
-        fromX = fromBar.pixelLeft;
-        toX = toBar.pixelLeft;
-        const toStart = parseDateOnly(toItem.startDate);
-        const fromStart = parseDateOnly(fromItem.startDate);
-        violated = !!(toStart && fromStart && toStart < fromStart);
+      const predStart = parseDateOnly(predItem.startDate);
+      const predDue = parseDateOnly(predItem.dueDate);
+      const succStart = parseDateOnly(succItem.startDate);
+      const succDue = parseDateOnly(succItem.dueDate);
+
+      if (depType === 'FS') {
+        fromX = predBar.pixelLeft + predBar.pixelWidth;
+        toX = succBar.pixelLeft;
+        violated = !!(succStart && predDue && succStart < predDue);
+      } else if (depType === 'SS') {
+        fromX = predBar.pixelLeft;
+        toX = succBar.pixelLeft;
+        violated = !!(succStart && predStart && succStart < predStart);
       } else {
-        depType = 'FF';
-        fromX = fromBar.pixelLeft + fromBar.pixelWidth;
-        toX = toBar.pixelLeft + toBar.pixelWidth;
-        const toDue = parseDateOnly(toItem.dueDate);
-        const fromDue = parseDateOnly(fromItem.dueDate);
-        violated = !!(toDue && fromDue && toDue < fromDue);
+        fromX = predBar.pixelLeft + predBar.pixelWidth;
+        toX = succBar.pixelLeft + succBar.pixelWidth;
+        violated = !!(succDue && predDue && succDue < predDue);
       }
 
+      const isCritical = criticalEdges?.has(`${predId}->${succId}`) ?? false;
+
       lines.push({
-        fromItemId: fromItem.id,
-        toItemId,
+        fromItemId: predId,
+        toItemId: succId,
         fromX,
-        fromY,
+        fromY: predY,
         toX,
-        toY,
+        toY: succY,
         type: depType,
         violated,
+        isCritical,
       });
     }
   }
@@ -648,6 +698,9 @@ interface TimelineTopControlsProps {
   onTodayClick: () => void;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
+  showCriticalPath?: boolean;
+  onToggleCriticalPath?: () => void;
+  criticalCount?: number;
 }
 
 const TimelineTopControls = memo(function TimelineTopControls({
@@ -657,6 +710,9 @@ const TimelineTopControls = memo(function TimelineTopControls({
   onTodayClick,
   isFullscreen,
   onToggleFullscreen,
+  showCriticalPath = false,
+  onToggleCriticalPath,
+  criticalCount = 0,
 }: TimelineTopControlsProps) {
   const zoomOptions: Array<{ id: TimelineZoom; label: string }> = [
     { id: 'week', label: 'Week' },
@@ -667,12 +723,35 @@ const TimelineTopControls = memo(function TimelineTopControls({
   return (
     <div className="flex items-center justify-end gap-3 px-4 py-2 border-b border-border bg-background select-none shrink-0">
       {/* 1. Work items Count */}
-      <span className="text-xs text-foreground font-normal tabular-nums">
-        {totalCount} {totalCount === 1 ? 'Work item' : 'Work items'}
+      <span className="text-xs text-foreground font-normal">
+        <span className="font-mono tabular-nums">{totalCount}</span> {totalCount === 1 ? 'Work item' : 'Work items'}
       </span>
 
-      {/* 2. Zoom Options (Plane segmented style) */}
-      <div className="inline-flex items-center gap-0.5 text-xs bg-muted/40 p-0.5 rounded-md border border-border/40">
+      {/* 2. Critical Path Toggle */}
+      {onToggleCriticalPath && (
+        <button
+          type="button"
+          onClick={onToggleCriticalPath}
+          className={cn(
+            'px-2 py-1 text-xs font-medium rounded-md border transition-colors cursor-pointer select-none outline-none flex items-center gap-1.5 focus-visible:ring-1 focus-visible:ring-ring',
+            showCriticalPath
+              ? 'bg-rose-500/10 text-rose-500 border-rose-500/30 font-semibold'
+              : 'text-foreground/70 hover:text-foreground border-border hover:bg-muted'
+          )}
+          title="Toggle Critical Path analysis"
+        >
+          <span className="size-1.5 rounded-full bg-rose-500" />
+          <span>Critical path</span>
+          {criticalCount > 0 && (
+            <span className="px-1 py-0.2 rounded text-10 font-mono bg-rose-500/20 text-rose-500">
+              {criticalCount}
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* 3. Zoom Options (Plane segmented style) */}
+      <div className="inline-flex items-center gap-0.5 text-xs bg-muted p-0.5 rounded-md">
         {zoomOptions.map((option) => {
           const isActive = zoom === option.id;
           return (
@@ -684,7 +763,7 @@ const TimelineTopControls = memo(function TimelineTopControls({
                 'px-2.5 py-1 rounded-md text-xs transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring',
                 isActive
                   ? 'bg-background text-foreground font-medium shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-foreground/70 hover:text-foreground'
               )}
             >
               {option.label}
@@ -693,11 +772,11 @@ const TimelineTopControls = memo(function TimelineTopControls({
         })}
       </div>
 
-      {/* 3. Today Button */}
+      {/* 4. Today Button */}
       <button
         type="button"
         onClick={onTodayClick}
-        className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted border border-border/50 rounded-md transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted border border-border rounded-md transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         Today
       </button>
@@ -737,6 +816,7 @@ interface TimelineBarProps {
   isConnecting?: boolean;
   isConnectTarget?: boolean;
   isReadOnly?: boolean;
+  isCritical?: boolean;
 }
 
 const TimelineBar = memo(function TimelineBar({
@@ -751,6 +831,7 @@ const TimelineBar = memo(function TimelineBar({
   isConnecting = false,
   isConnectTarget = false,
   isReadOnly = false,
+  isCritical = false,
 }: TimelineBarProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [dragging, setDragging] = useState<'move' | 'start' | 'end' | null>(null);
@@ -836,7 +917,27 @@ const TimelineBar = memo(function TimelineBar({
     visualWidth = Math.max(24, barData.pixelWidth + dragOffsetPx);
   }
 
-  const accentColor = resolveColumnColor(stateColumn, item.state?.color || '#3B82F6');
+  const showText = visualWidth >= 60;
+  const accentColor = resolveColumnColor(stateColumn, item.state?.color || '#0969DA');
+
+  const identifier =
+    item.identifier ||
+    (item.sequenceNumber ? `PLO-${item.sequenceNumber}` : item.id ? `PLO-${item.id.slice(0, 4)}` : '');
+  const startFormatted = formatTimelineDisplayDate(item.startDate);
+  const dueFormatted = formatTimelineDisplayDate(item.dueDate);
+  const dateRangeStr =
+    startFormatted && dueFormatted
+      ? `${startFormatted} → ${dueFormatted}`
+      : startFormatted
+      ? `Starts ${startFormatted}`
+      : dueFormatted
+      ? `Due ${dueFormatted}`
+      : 'No dates set';
+  const statusStr = stateColumn?.title || 'Backlog';
+  const duration = calculateDuration(item.startDate, item.dueDate);
+  const durationStr = duration.label ? ` (${duration.label})` : '';
+
+  const barTooltip = `${identifier ? `[${identifier}] ` : ''}${item.title}\nSchedule: ${dateRangeStr}${durationStr}\nStatus: ${statusStr}`;
 
   return (
     <div
@@ -852,15 +953,16 @@ const TimelineBar = memo(function TimelineBar({
       style={{
         left: `${visualLeft}px`,
         width: `${visualWidth}px`,
-        height: '22px',
-        top: '5px',
+        height: `${BAR_HEIGHT}px`,
+        top: `${BAR_TOP}px`,
         backgroundColor: accentColor,
       }}
       className={cn(
-        'absolute z-10 rounded-md flex items-center px-2 text-white select-none transition-all outline-none',
+        'absolute z-10 rounded-md flex items-center px-1.5 text-white select-none transition-all outline-none',
         dragging ? 'opacity-90 ring-2 ring-foreground cursor-grabbing' : 'cursor-pointer hover:brightness-105',
-        isConnectTarget && 'ring-2 ring-foreground ring-offset-2 scale-[1.02] shadow-md',
-        isConnecting && 'ring-2 ring-foreground opacity-80'
+        isConnectTarget && 'ring-2 ring-primary ring-offset-1',
+        isConnecting && 'ring-2 ring-foreground opacity-80',
+        isCritical && 'ring-2 ring-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.45)]'
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -870,7 +972,7 @@ const TimelineBar = memo(function TimelineBar({
           onEditCard(item);
         }
       }}
-      title={`${item.title} (${item.startDate || 'No start'} → ${item.dueDate || 'No due'})`}
+      title={barTooltip}
     >
       {/* Left connector handle */}
       {!isReadOnly && onStartConnect && (
@@ -893,7 +995,7 @@ const TimelineBar = memo(function TimelineBar({
       )}
 
       {/* Left resize handle */}
-      {!isReadOnly && onUpdateCard && (
+      {!isReadOnly && onUpdateCard && visualWidth >= 40 && (
         <div
           onPointerDown={(event) => handlePointerDown(event, 'start')}
           className={`absolute left-0 top-0 bottom-0 w-2.5 cursor-ew-resize rounded-l-md hover:bg-black/20 flex items-center justify-center transition-opacity ${
@@ -906,7 +1008,10 @@ const TimelineBar = memo(function TimelineBar({
 
       {/* Main Bar Content */}
       <div
-        className="flex items-center gap-1.5 min-w-0 flex-1 h-full cursor-pointer px-1"
+        className={cn(
+          'flex items-center min-w-0 flex-1 h-full cursor-pointer',
+          showText ? 'gap-1.5 px-1 justify-start' : 'justify-center px-0.5'
+        )}
         onPointerDown={(event) => handlePointerDown(event, 'move')}
       >
         <StatusIcon
@@ -915,9 +1020,16 @@ const TimelineBar = memo(function TimelineBar({
           color={stateColumn?.color || stateColumn?.accentColor}
           className="size-3 shrink-0 text-white"
         />
-        <span className="text-11 font-medium truncate text-white">
-          {item.title}
-        </span>
+        {showText && (
+          <span className="text-11 font-medium truncate text-white">
+            {item.title}
+          </span>
+        )}
+        {isCritical && showText && (
+          <span className="ml-auto px-1 py-0.5 rounded text-[9px] font-bold bg-rose-600 text-white shrink-0 tracking-wider">
+            CP
+          </span>
+        )}
       </div>
 
       {/* Right resize handle */}
@@ -976,7 +1088,7 @@ const DependencyOverlay = memo(function DependencyOverlay({
   return (
     <svg
       aria-hidden="true"
-      className="absolute inset-0 pointer-events-none z-20"
+      className="absolute inset-0 pointer-events-none z-10"
       width={totalWidth}
       height={totalHeight}
       style={{ overflow: 'visible' }}
@@ -1000,14 +1112,24 @@ const DependencyOverlay = memo(function DependencyOverlay({
           refY="3"
           orient="auto"
         >
-          <path d="M0,0 L0,6 L6,3 z" fill="#EF4444" />
+          <path d="M0,0 L0,6 L6,3 z" fill="#CF222E" />
+        </marker>
+        <marker
+          id="dep-arrow-critical"
+          markerWidth="6"
+          markerHeight="6"
+          refX="5"
+          refY="3"
+          orient="auto"
+        >
+          <path d="M0,0 L0,6 L6,3 z" fill="#f43f5e" />
         </marker>
       </defs>
 
       {lines.map((line, idx) => {
-        const { fromX, fromY, toX, toY, violated } = line;
-        const stroke = violated ? '#EF4444' : 'var(--foreground)';
-        const markerId = violated ? 'dep-arrow-violated' : 'dep-arrow-normal';
+        const { fromX, fromY, toX, toY, violated, isCritical } = line;
+        const stroke = violated ? '#CF222E' : isCritical ? '#f43f5e' : 'var(--foreground)';
+        const markerId = violated ? 'dep-arrow-violated' : isCritical ? 'dep-arrow-critical' : 'dep-arrow-normal';
 
         let d: string;
         const midX1 = fromX + ELBOW_OFFSET;
@@ -1027,15 +1149,132 @@ const DependencyOverlay = memo(function DependencyOverlay({
             key={`dep-${idx}`}
             d={d}
             stroke={stroke}
-            strokeWidth={violated ? 2 : 1.5}
+            strokeWidth={violated ? 2 : isCritical ? 2.5 : 1.5}
             fill="none"
             strokeDasharray={violated ? '5,3' : undefined}
             markerEnd={`url(#${markerId})`}
-            opacity={violated ? 0.95 : 0.8}
+            opacity={violated ? 0.95 : isCritical ? 1 : 0.8}
           />
         );
       })}
     </svg>
+  );
+});
+
+// ── Timeline Pinned Bottom Add Bar (Plane.so Parity) ──────────────────────
+export const TimelineBottomAddBar = memo(function TimelineBottomAddBar({
+  defaultColId,
+  onAddCard,
+  sidebarWidth,
+}: {
+  defaultColId: string;
+  onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
+  sidebarWidth?: number;
+}) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [title, setTitle] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isAdding) {
+      inputRef.current?.focus();
+    }
+  }, [isAdding]);
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const trimmed = title.trim();
+    if (!trimmed) {
+      setIsAdding(false);
+      return;
+    }
+    onAddCard(defaultColId, trimmed);
+    setTitle('');
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSubmit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsAdding(false);
+      setTitle('');
+    }
+  };
+
+  return (
+    <div className="h-9 flex items-center bg-background select-none shrink-0">
+      {!isAdding ? (
+        <div
+          onClick={() => setIsAdding(true)}
+          style={sidebarWidth ? { width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px` } : undefined}
+          className={cn(
+            "h-full px-3 flex items-center gap-2 bg-background cursor-pointer group/bottom-add",
+            !sidebarWidth && "w-auto max-w-sm"
+          )}
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsAdding(true);
+            }}
+            className="flex items-center gap-2 text-13 text-foreground font-normal cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <Plus className="size-3.5 shrink-0" />
+            <span>New work item</span>
+          </button>
+        </div>
+      ) : (
+        <form
+          onSubmit={handleSubmit}
+          style={sidebarWidth ? { width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px` } : undefined}
+          className={cn(
+            "h-full px-3 flex items-center gap-2 transition-colors bg-background",
+            !sidebarWidth && "w-auto max-w-sm"
+          )}
+        >
+          <Plus className="size-3.5 text-foreground shrink-0" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={title}
+            aria-label="New work item title"
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={() => {
+              if (!title.trim()) setIsAdding(false);
+            }}
+            placeholder="New work item"
+            className="flex-1 min-w-0 bg-transparent text-13 text-foreground placeholder:text-foreground/50 outline-none font-normal px-1"
+          />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setIsAdding(false);
+                setTitle('');
+              }}
+              className="h-6 px-2 text-xs text-foreground hover:text-foreground/80 transition-colors cursor-pointer rounded-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!title.trim()}
+              className="h-6 px-2.5 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors cursor-pointer rounded-sm"
+            >
+              Save
+            </button>
+          </div>
+        </form>
+      )}
+      <div className="flex-1 h-full bg-background" />
+    </div>
   );
 });
 
@@ -1044,41 +1283,52 @@ const DependencyOverlay = memo(function DependencyOverlay({
 // ============================================================================
 
 export const TimelineView = memo(function TimelineView({
-  items = [],
+  items = EMPTY_ARRAY,
   columns,
   projectStates,
   projectId = '',
-  members = [],
+  members = EMPTY_ARRAY,
   displayOptions,
   onAddCard,
   onEditCard,
   onUpdateCard,
   isReadOnly = false,
 }: TimelineViewProps) {
-  // Zoom state with localStorage persistence
-  const [zoom, setZoom] = useState<TimelineZoom>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('flux:timeline_view:zoom') as TimelineZoom;
-      if (saved === 'week' || saved === 'month' || saved === 'quarter') {
-        return saved;
-      }
-    }
-    return 'week';
-  });
+  // ── Grouping definition (Guaranteed top-of-component scope) ─────────────────
+  const isGrouped = false;
+  const effectiveGroupBy: 'state' | 'priority' | 'assignee' | null =
+    (displayOptions?.groupBy as 'state' | 'priority' | 'assignee' | null) ?? null;
 
-  // Resizable sidebar width with localStorage persistence
-  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('flux:timeline_view:sidebar_width');
-        if (saved) {
-          const val = parseInt(saved, 10);
-          if (!isNaN(val) && val >= 180 && val <= 600) return val;
+  // Zoom state with localStorage persistence (SSR-safe to prevent hydration mismatch)
+  const [zoom, setZoom] = useState<TimelineZoom>('week');
+
+  // Critical Path Method (CPM) calculation & toggle
+  const [showCriticalPath, setShowCriticalPath] = useState(false);
+  const cpmAnalysis = useMemo(() => analyzeCriticalPath(items), [items]);
+
+  // Resizable sidebar width with localStorage persistence (SSR-safe)
+  const [sidebarWidth, setSidebarWidth] = useState<number>(DEFAULT_SIDEBAR_WIDTH);
+
+  // Sync saved preferences on client mount without breaking hydration
+  useEffect(() => {
+    try {
+      const savedZoom = localStorage.getItem('flux:timeline_view:zoom') as TimelineZoom;
+      if (savedZoom === 'week' || savedZoom === 'month' || savedZoom === 'quarter') {
+        setZoom(savedZoom);
+      }
+      const savedWidth = localStorage.getItem('flux:timeline_view:sidebar_width');
+      if (savedWidth) {
+        const val = parseInt(savedWidth, 10);
+        if (!isNaN(val) && val >= 180 && val <= 650) {
+          if (val === 280) {
+            setSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+          } else {
+            setSidebarWidth(val);
+          }
         }
-      } catch {}
-    }
-    return DEFAULT_SIDEBAR_WIDTH;
-  });
+      }
+    } catch {}
+  }, []);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1099,7 +1349,7 @@ export const TimelineView = memo(function TimelineView({
     const startWidth = sidebarWidth;
 
     const onMouseMove = (moveEvent: MouseEvent) => {
-      const newWidth = Math.min(600, Math.max(180, startWidth + (moveEvent.clientX - startX)));
+      const newWidth = Math.min(650, Math.max(200, startWidth + (moveEvent.clientX - startX)));
       setSidebarWidth(newWidth);
     };
 
@@ -1184,8 +1434,7 @@ export const TimelineView = memo(function TimelineView({
   }, []);
 
   // ── Grouping & Hierarchy Logic ─────────────────────────────────────────────
-  const effectiveGroupBy = displayOptions?.groupBy;
-  const isGrouped = Boolean(effectiveGroupBy && effectiveGroupBy !== 'none');
+  // (isGrouped and effectiveGroupBy defined at top of component)
 
   const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<Set<string>>(new Set());
   const toggleGroupCollapse = useCallback((groupKey: string) => {
@@ -1330,7 +1579,7 @@ export const TimelineView = memo(function TimelineView({
           icon: (
             <Avatar className="size-4 shrink-0">
               <AvatarImage src={mem.avatar || mem.user?.avatar} />
-              <AvatarFallback className="text-9 font-medium bg-muted">
+              <AvatarFallback className="text-11 font-mono font-medium bg-muted">
                 {name.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -1460,8 +1709,14 @@ export const TimelineView = memo(function TimelineView({
 
   // Compute dependency lines with accurate Y coordinates
   const depLines = useMemo(
-    () => computeDependencyLines(items, barDataMap, rowYMap),
-    [items, barDataMap, rowYMap]
+    () =>
+      computeDependencyLines(
+        items,
+        barDataMap,
+        rowYMap,
+        showCriticalPath ? cpmAnalysis.criticalEdges : undefined
+      ),
+    [items, barDataMap, rowYMap, showCriticalPath, cpmAnalysis.criticalEdges]
   );
 
   // Quick schedule when clicking empty row cell
@@ -1555,6 +1810,15 @@ export const TimelineView = memo(function TimelineView({
               ? currentDrag.hoveredItemId
               : currentDrag.sourceItemId;
 
+          // Prevent circular dependencies prior to API dispatch
+          const currentEdges = extractNormalizedEdges(items);
+          if (wouldCauseCycle(fromId, toId, currentEdges)) {
+            toast.error('Cannot create dependency: circular dependency detected', {
+              id: 'work-item-relation',
+            });
+            return null;
+          }
+
           RelationService.addRelation(fromId, {
             targetId: toId,
             targetWorkItemId: toId,
@@ -1604,7 +1868,7 @@ export const TimelineView = memo(function TimelineView({
     <div
       ref={containerRef}
       className={cn(
-        'flex flex-col h-full w-full bg-background select-none',
+        'flex flex-col flex-1 h-full w-full min-h-0 select-none relative',
         isFullscreen && 'fixed inset-0 z-50 bg-background'
       )}
     >
@@ -1616,12 +1880,15 @@ export const TimelineView = memo(function TimelineView({
         onTodayClick={scrollToToday}
         onToggleFullscreen={handleToggleFullscreen}
         isFullscreen={isFullscreen}
+        showCriticalPath={showCriticalPath}
+        onToggleCriticalPath={() => setShowCriticalPath((prev) => !prev)}
+        criticalCount={cpmAnalysis.criticalPathItemIds.size}
       />
 
       {/* 2. Unified Master Scroll Container (Native 60/120fps sync) */}
       <div
         ref={mainScrollRef}
-        className="flex-1 overflow-auto select-none bg-background relative h-full [scrollbar-gutter:stable]"
+        className="flex-1 overflow-auto select-none bg-background relative min-h-0 interactive-scrollbar scrollbar-x-none"
       >
         <div
           style={{ minWidth: `${sidebarWidth + totalTimelineWidth}px` }}
@@ -1635,16 +1902,20 @@ export const TimelineView = memo(function TimelineView({
             {/* Top-Left Corner (Sticky Left + Sticky Top = z-40) */}
             <div
               style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, left: 0 }}
-              className="sticky left-0 z-40 flex items-end justify-between px-3 pb-2 border-r border-border bg-background text-foreground text-xs font-medium shrink-0 shadow-[1px_0_0_0_var(--border)] group/sidebar-header"
+              className="sticky left-0 z-40 flex items-end justify-between px-3 pb-2 bg-background text-foreground text-xs font-medium shrink-0 group/sidebar-header border-r border-border"
             >
-              <span className="text-foreground">Work items</span>
-              <span className="text-foreground pr-1">Duration</span>
+              <div className="flex items-center justify-between w-full">
+                <span className="text-foreground font-medium text-xs truncate">Work items</span>
+                <span className="w-16 shrink-0 text-right font-mono text-11 text-foreground tabular-nums">
+                  Duration
+                </span>
+              </div>
 
               {/* Sidebar Resize Splitter */}
               <div
-                className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize z-50"
+                className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize z-50 hover:bg-primary/20 transition-colors"
                 onMouseDown={handleSidebarResizeMouseDown}
-                title="Drag to resize sidebar width"
+                aria-label="Drag to resize sidebar width"
               />
             </div>
 
@@ -1662,17 +1933,17 @@ export const TimelineView = memo(function TimelineView({
                     className="shrink-0 px-3 flex items-center justify-between border-r border-border text-xs truncate"
                   >
                     <div className="flex items-center gap-1.5 truncate">
-                      <span className="font-normal text-foreground truncate">
+                      <span className="font-mono text-xs font-medium text-foreground tabular-nums truncate">
                         {group.label}
                       </span>
                       {group.isCurrent && (
-                        <span className="bg-foreground text-background text-11 font-medium px-1.5 py-0.5 rounded-md shrink-0">
+                        <span className="bg-primary text-primary-foreground font-mono text-11 font-medium px-1.5 py-0.5 rounded-md shrink-0 tabular-nums">
                           Current
                         </span>
                       )}
                     </div>
                     {group.subLabel && (
-                      <span className="text-11 text-foreground/70 font-normal shrink-0">
+                      <span className="font-mono text-11 text-foreground/70 font-normal shrink-0 tabular-nums">
                         {group.subLabel}
                       </span>
                     )}
@@ -1695,17 +1966,17 @@ export const TimelineView = memo(function TimelineView({
                       >
                         {col.isCurrent ? (
                           <div className="flex items-center">
-                            <span className="bg-foreground text-background font-medium text-xs rounded-md px-1 min-w-[20px] h-[18px] inline-flex items-center justify-center mr-1">
+                            <span className="bg-primary text-primary-foreground font-mono font-medium text-xs rounded-md px-1 min-w-[20px] h-[18px] inline-flex items-center justify-center mr-1 tabular-nums">
                               {col.primaryLabel}
                             </span>
-                            <span className="text-foreground font-semibold text-xs">
+                            <span className="text-foreground font-mono font-semibold text-xs tabular-nums">
                               {col.secondaryLabel}
                             </span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1 text-foreground">
-                            <span className="font-normal text-xs">{col.primaryLabel}</span>
-                            <span className="text-foreground text-xs font-normal">
+                            <span className="font-mono font-normal text-xs tabular-nums">{col.primaryLabel}</span>
+                            <span className="text-foreground font-mono text-xs font-normal tabular-nums">
                               {col.secondaryLabel}
                             </span>
                           </div>
@@ -1723,18 +1994,18 @@ export const TimelineView = memo(function TimelineView({
                       >
                         <span
                           className={cn(
-                            'text-xs font-normal',
+                            'text-xs font-mono tabular-nums font-normal',
                             col.isCurrent ? 'text-foreground font-semibold' : 'text-foreground'
                           )}
                         >
                           {col.primaryLabel}
                         </span>
                         {col.isCurrent ? (
-                          <span className="bg-foreground text-background font-medium text-xs px-1.5 py-0.5 rounded-md">
+                          <span className="bg-primary text-primary-foreground font-mono font-medium text-xs px-1.5 py-0.5 rounded-md tabular-nums">
                             {col.secondaryLabel}
                           </span>
                         ) : (
-                          <span className="text-foreground text-xs font-normal">
+                          <span className="text-foreground font-mono text-xs font-normal tabular-nums">
                             {col.secondaryLabel}
                           </span>
                         )}
@@ -1750,11 +2021,11 @@ export const TimelineView = memo(function TimelineView({
                       className="shrink-0 px-2 flex items-center justify-center border-r border-border text-xs transition-colors"
                     >
                       {col.isCurrent ? (
-                        <span className="bg-foreground text-background font-medium text-xs px-2 py-0.5 rounded-md">
+                        <span className="bg-primary text-primary-foreground font-mono font-medium text-xs px-2 py-0.5 rounded-md tabular-nums">
                           {col.primaryLabel}
                         </span>
                       ) : (
-                        <span className="text-foreground text-xs font-normal">
+                        <span className="text-foreground font-mono text-xs font-normal tabular-nums">
                           {col.primaryLabel}
                         </span>
                       )}
@@ -1788,18 +2059,18 @@ export const TimelineView = memo(function TimelineView({
                 <div
                   aria-hidden="true"
                   style={{ left: `${currentColLeft}px`, width: `${currentColWidth}px` }}
-                  className="absolute top-0 bottom-0 bg-muted/30 border-x border-border/70 pointer-events-none z-0"
+                  className="absolute top-0 bottom-0 bg-muted/30 border-x border-border pointer-events-none z-0"
                 />
               )}
 
-              {/* Sharp Red Today Indicator Vertical Line */}
+              {/* Primer Blue Today Indicator Vertical Line */}
               {currentCol && (
                 <div
                   aria-hidden="true"
                   style={{ left: `${currentColLeft + currentColWidth / 2}px` }}
-                  className="absolute top-0 bottom-0 w-[2px] bg-red-500/80 pointer-events-none z-15"
+                  className="absolute top-0 bottom-0 w-[2px] bg-primary/80 pointer-events-none z-15"
                 >
-                  <div className="size-2 rounded-full bg-red-500 -ml-[3px] -mt-1 shadow-xs" />
+                  <div className="size-2 rounded-full bg-primary -ml-[3px] -mt-1" />
                 </div>
               )}
             </div>
@@ -1807,7 +2078,7 @@ export const TimelineView = memo(function TimelineView({
             {/* Dependency Lines SVG Overlay */}
             <div
               style={{ left: `${sidebarWidth}px`, width: `${totalTimelineWidth}px`, height: `${totalContentHeight}px` }}
-              className="absolute top-0 pointer-events-none z-20"
+              className="absolute top-0 pointer-events-none z-10"
             >
               <DependencyOverlay
                 lines={depLines}
@@ -1819,7 +2090,7 @@ export const TimelineView = memo(function TimelineView({
               {activeDrag && (
                 <svg
                   aria-hidden="true"
-                  className="absolute inset-0 pointer-events-none z-35"
+                  className="absolute inset-0 pointer-events-none z-15"
                   width={totalTimelineWidth}
                   height={totalContentHeight}
                   style={{ overflow: 'visible' }}
@@ -1876,27 +2147,16 @@ export const TimelineView = memo(function TimelineView({
                       role="row"
                       onClick={() => toggleGroupCollapse(rowElement.key)}
                       style={{ height: `${GROUP_HEADER_HEIGHT}px` }}
-                      className="sticky top-[60px] z-25 flex items-center border-b border-border/60 bg-muted/60 hover:bg-muted/80 backdrop-blur-xs transition-colors cursor-pointer select-none text-xs font-medium text-foreground w-full"
+                      className="sticky top-[60px] z-25 flex items-center border-b border-border bg-muted/50 hover:bg-muted/70 transition-colors cursor-pointer select-none text-xs font-medium text-foreground w-full"
                     >
                       {/* Sticky Left Group Label */}
                       <div
                         style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, left: 0 }}
-                        className="sticky left-0 z-25 flex items-center gap-2 px-3 h-full shrink-0 bg-muted/95 backdrop-blur-xs shadow-[1px_0_0_0_var(--border)] border-r border-border"
+                        className="sticky left-0 z-26 flex items-center gap-2 px-3 h-full shrink-0 bg-muted/50 border-r border-border"
                       >
-                        <button
-                          type="button"
-                          className="size-4 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer rounded-sm"
-                          aria-label={rowElement.isExpanded ? 'Collapse section' : 'Expand section'}
-                        >
-                          {rowElement.isExpanded ? (
-                            <ChevronDown className="size-3.5 shrink-0" />
-                          ) : (
-                            <ChevronRight className="size-3.5 shrink-0" />
-                          )}
-                        </button>
                         {rowElement.icon}
                         <span className="font-semibold text-foreground truncate">{rowElement.title}</span>
-                        <span className="rounded-md bg-muted px-1.5 py-0.2 text-10 font-mono font-medium text-muted-foreground tabular-nums">
+                        <span className="rounded-md bg-background border border-border px-1.5 py-0.5 text-11 font-mono font-medium text-muted-foreground tabular-nums">
                           {rowElement.count}
                         </span>
                       </div>
@@ -1925,7 +2185,7 @@ export const TimelineView = memo(function TimelineView({
                     key={item.id}
                     style={{ height: `${ROW_HEIGHT}px` }}
                     className={cn(
-                      'flex items-center border-b border-border/50 group/row hover:bg-muted/30 transition-colors w-full relative',
+                      'flex items-center group/row hover:bg-muted/30 transition-colors w-full relative',
                       isConnectTarget && 'bg-muted ring-1 ring-inset ring-border'
                     )}
                   >
@@ -1933,16 +2193,15 @@ export const TimelineView = memo(function TimelineView({
                     <div
                       style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, left: 0 }}
                       className={cn(
-                        'sticky left-0 z-20 flex items-center justify-between px-3 h-full shrink-0 border-r border-border bg-background group-hover/row:bg-muted/30 shadow-[1px_0_0_0_var(--border)] transition-colors cursor-pointer',
+                        'sticky left-0 z-20 flex items-center justify-between px-3 h-full shrink-0 bg-background group-hover/row:bg-muted/30 transition-colors cursor-pointer border-r border-border',
                         isSubItem && 'pl-7'
                       )}
                       onClick={() => onEditCard(item)}
-                      title={item.title}
                     >
                       <div className="flex items-center gap-1.5 min-w-0 flex-1 pr-2">
                         {/* Subitem connector indicator */}
                         {isSubItem && (
-                          <CornerDownRight className="size-3 text-muted-foreground/60 shrink-0 mr-0.5" />
+                          <CornerDownRight className="size-3 text-foreground shrink-0 mr-0.5" />
                         )}
 
                         {/* Parent item expand/collapse chevron */}
@@ -1953,7 +2212,7 @@ export const TimelineView = memo(function TimelineView({
                               e.stopPropagation();
                               toggleExpandChildren(item.id);
                             }}
-                            className="p-0.5 -ml-1 mr-0.5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer rounded-sm"
+                            className="p-0.5 -ml-1 mr-0.5 text-foreground hover:text-foreground transition-colors cursor-pointer rounded-sm"
                             aria-label={isChildrenExpanded ? 'Collapse sub-items' : 'Expand sub-items'}
                           >
                             {isChildrenExpanded ? (
@@ -1970,17 +2229,19 @@ export const TimelineView = memo(function TimelineView({
                         </span>
 
                         {/* Title */}
-                        <span className="truncate text-xs text-foreground font-normal group-hover/row:underline transition-colors">
+                        <span className="truncate text-xs text-foreground font-normal transition-colors">
                           {item.title}
                         </span>
                       </div>
 
                       {/* Duration */}
-                      {duration.label ? (
-                        <span className="font-mono text-11 text-muted-foreground font-normal shrink-0 tabular-nums">
-                          {duration.label}
-                        </span>
-                      ) : null}
+                      <div className="w-16 shrink-0 text-right font-mono text-11 text-foreground tabular-nums">
+                        {duration.label ? (
+                          duration.label
+                        ) : (
+                          <span className="text-foreground/30 select-none">—</span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Right Gantt Bar Cell (width = totalTimelineWidth) */}
@@ -2002,6 +2263,7 @@ export const TimelineView = memo(function TimelineView({
                           isConnecting={activeDrag?.sourceItemId === item.id}
                           isConnectTarget={isConnectTarget}
                           isReadOnly={isReadOnly}
+                          isCritical={showCriticalPath && cpmAnalysis.criticalPathItemIds.has(item.id)}
                         />
                       ) : (
                         /* Empty row: clickable cells to schedule */
@@ -2012,7 +2274,7 @@ export const TimelineView = memo(function TimelineView({
                               style={{ width: `${col.width}px` }}
                               onClick={() => handleEmptyCellClick(item, col)}
                               className="h-full cursor-pointer hover:bg-muted/40 transition-colors"
-                              title="Click to schedule dates"
+                              aria-label={`Schedule for ${col.primaryLabel}${col.secondaryLabel ? ` (${col.secondaryLabel})` : ''}`}
                             />
                           ))}
                         </div>
@@ -2023,36 +2285,21 @@ export const TimelineView = memo(function TimelineView({
               })}
 
             </div>
-
-            {/* Pinned Bottom "+ New work item" Row (Official Plane Parity) */}
-            {!isReadOnly && (
-              <div
-                style={{ height: `${ROW_HEIGHT}px` }}
-                onClick={() => onAddCard(defaultColId)}
-                className="sticky bottom-0 z-30 flex items-center border-t border-border bg-background/95 backdrop-blur-xs hover:bg-muted/40 transition-colors w-full cursor-pointer select-none group/add-bottom shrink-0"
-              >
-                <div
-                  style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, left: 0 }}
-                  className="sticky left-0 z-30 flex items-center h-full px-3"
-                >
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAddCard(defaultColId);
-                    }}
-                    className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover/add-bottom:text-foreground font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  >
-                    <Plus className="size-3.5 shrink-0" />
-                    <span>New work item</span>
-                  </button>
-                </div>
-                <div className="flex-1 h-full" />
-              </div>
-            )}
           </div>
         </div>
       </div>
+
+      {/* Sleek Horizontal Scrollbar - placed ABOVE TimelineBottomAddBar */}
+      <TableHorizontalScrollbar scrollRef={mainScrollRef} />
+
+      {/* Pinned Bottom "+ New work item" Row (Plane.so Parity) */}
+      {!isReadOnly && (
+        <TimelineBottomAddBar
+          defaultColId={defaultColId}
+          onAddCard={onAddCard}
+          sidebarWidth={sidebarWidth}
+        />
+      )}
     </div>
   );
 });

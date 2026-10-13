@@ -116,6 +116,10 @@ export interface SyncTeXForwardDetail {
 export interface SyncTeXReverseDetail {
   sourcePath: string | null;
   line: number;
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
 }
 
 export class CompilerCoordinatorRegistry {

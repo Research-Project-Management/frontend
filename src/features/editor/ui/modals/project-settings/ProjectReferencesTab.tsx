@@ -13,7 +13,7 @@ import { RefreshCw, ExternalLink, Check, AlertCircle, BookOpen, Blocks } from 'l
 import { useIntegrations, useRemoteCollections, useSyncCollection } from '@/features/settings/hooks/use-integrations';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
-import { ZoteroIcon, MendeleyIcon } from '@/shared/components/icons';
+import { ZoteroIcon, MendeleyIcon } from '@/shared/components/icons/IntegrationIcons';
 import {
   Select,
   SelectContent,

@@ -33,12 +33,9 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
-import { useEditorStorage } from '@/features/editor/ui/hooks/use-storage';
+import { useEditorStorage } from '@/features/editor/ui/hooks/useStorage';
 import { resolveFileUrl } from '@/features/editor/domain/latex/latex-structure';
-import {
-  figureWizardSchema,
-  type FigureWizardFormValues,
-} from '@/features/editor/domain/types';
+import { figureWizardSchema, type FigureWizardFormValues } from '@/features/editor/domain/types/forms.types';
 
 export interface FigureWizardModalProps {
   open: boolean;

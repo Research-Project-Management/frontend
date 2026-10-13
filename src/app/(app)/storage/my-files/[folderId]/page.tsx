@@ -1,3 +1,4 @@
+import AppLoading from '@/app/(app)/loading';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import HomePage from '@/features/storage/pages/HomePage';
@@ -11,7 +12,7 @@ export default async function StorageFolderPage({
 }) {
   const { folderId } = await params;
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<AppLoading />}>
       <HomePage initialSection="my-files" initialFolderId={folderId} />
     </Suspense>
   );

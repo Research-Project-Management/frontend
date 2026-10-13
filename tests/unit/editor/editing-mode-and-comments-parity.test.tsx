@@ -2,28 +2,44 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { EditingModeDropdown } from '@/features/editor/ui/shell/topbar/EditingModeDropdown';
-import { CommentCard } from '@/features/editor/ui/features/sidebar/review/subcomponents/ReviewComments';
-import { EditorToolbar } from '@/features/editor/ui/features/editor/EditorToolbar';
+import { CommentCard } from '@/features/editor/ui/sidebar/review/subcomponents/ReviewComments';
+import { EditorToolbar } from '@/features/editor/ui/editor/EditorToolbar';
 import { FigureWizardModal } from '@/features/editor/ui/modals/FigureWizardModal';
+import { VisualEditorView } from '@/features/editor/ui/editor/VisualEditorView';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
+
+vi.mock('@/features/editor/sdk/manuscript/filestore.api', () => ({
+  filestore: {
+    upload: vi.fn().mockResolvedValue({ id: 'f-1', filename: 'chart.png' }),
+  },
+}));
+
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
 
 const mockMutateUpdate = vi.fn();
 const mockMutateResolve = vi.fn();
 const mockMutateDelete = vi.fn();
 const mockMutateDeleteReply = vi.fn();
 
-vi.mock('@/features/editor/ui/hooks/use-comment', () => ({
+vi.mock('@/features/editor/ui/sidebar/review/hooks/useComment', () => ({
   useResolveComment: () => ({ mutate: mockMutateResolve, isPending: false }),
   useDeleteComment: () => ({ mutate: mockMutateDelete, isPending: false }),
   useDeleteReply: () => ({ mutate: mockMutateDeleteReply, isPending: false }),
   useAddReply: () => ({ mutate: vi.fn(), isPending: false }),
   useCreateComment: () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateComment: () => ({ mutate: mockMutateUpdate, isPending: false }),
+  usePageComments: () => ({ data: [], isLoading: false }),
+  commentKeys: { all: ['page-comments'], byPage: () => ['page-comments'] },
 }));
 
-vi.mock('@/features/editor/ui/hooks/use-storage', () => ({
+vi.mock('@/features/editor/ui/hooks/useStorage', () => ({
   useEditorStorage: () => ({
     files: [
       { id: 'img-1', filename: 'figure1.png', url: '/figure1.png', isFolder: false, mimeType: 'image/png' },
@@ -173,5 +189,46 @@ describe('Overleaf 1:1 Parity: Editing Modes, Comment Editing, Omega Button & Fi
 
     // Live preview should show \includegraphics with custom path
     expect(screen.getByText(/figures\/custom_diagram\.pdf/i)).toBeDefined();
+  });
+
+  it('supports F1 keydown in VisualEditorView to open shortcuts modal', () => {
+    const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
+    const { container } = render(<VisualEditorView value="Hello world" />);
+
+    const editable = container.querySelector('[contenteditable="true"]');
+    expect(editable).toBeDefined();
+
+    fireEvent.keyDown(editable!, { key: 'F1' });
+
+    expect(dispatchSpy).toHaveBeenCalledWith({
+      type: 'dialog:open',
+      dialog: 'shortcuts',
+    });
+  });
+
+  it('handles drop of image file in VisualEditorView, inserting figure and uploading asset', async () => {
+    const { filestore } = await import('@/features/editor/sdk/manuscript/filestore.api');
+    const { container } = render(
+      <VisualEditorView value="Some text" projectId="proj-123" />
+    );
+
+    const dropzone = container.querySelector('[contenteditable="true"]');
+    expect(dropzone).toBeDefined();
+
+    const mockFile = new File(['fake-png-content'], 'diagram.png', { type: 'image/png' });
+
+    fireEvent.drop(dropzone!, {
+      dataTransfer: {
+        files: [mockFile],
+        items: [
+          {
+            type: 'image/png',
+            getAsFile: () => mockFile,
+          },
+        ],
+      },
+    });
+
+    expect(filestore.upload).toHaveBeenCalledWith('proj-123', expect.any(File), 'diagram.png');
   });
 });

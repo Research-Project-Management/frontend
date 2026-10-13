@@ -31,9 +31,19 @@ import {
   hoverTooltip,
   type Tooltip,
 } from '@codemirror/view';
-import { manuscriptService, type MisspelledWord } from '@/features/editor/sdk';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import type { MisspelledWord } from '@/features/editor/sdk/manuscript/spelling.api';
 const spellingService = manuscriptService.spelling;
 import { toast } from 'sonner';
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
 // ── State Effects ─────────────────────────────────────────────────────────────
 
@@ -247,7 +257,7 @@ export function createSpellingHoverTooltip(projectId?: string): Extension {
         header.className = 'flex items-center gap-1.5 font-medium text-foreground';
         header.innerHTML = `
           <span class="size-2 rounded-full bg-destructive shrink-0"></span>
-          <span>Spelling: <code class="font-mono text-destructive font-semibold">${word}</code></span>
+          <span>Spelling: <code class="font-mono text-destructive font-semibold">${escapeHtml(word)}</code></span>
         `;
         dom.appendChild(header);
 
@@ -565,7 +575,7 @@ export function createSpellingContextMenu(projectId?: string): Extension {
         'px-1.5 py-0.5 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground border-b border-border/60 pb-1.5';
       header.innerHTML = `
         <span class="size-1.5 rounded-full bg-destructive shrink-0"></span>
-        <span>Spelling: <code class="font-mono text-destructive font-semibold">${word}</code></span>
+        <span>Spelling: <code class="font-mono text-destructive font-semibold">${escapeHtml(word)}</code></span>
       `;
       menu.appendChild(header);
 
@@ -579,7 +589,7 @@ export function createSpellingContextMenu(projectId?: string): Extension {
           item.type = 'button';
           item.className =
             'w-full text-left px-2 py-1 rounded-md text-xs font-mono text-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer flex items-center justify-between';
-          item.innerHTML = `<span>${sug}</span><span class="text-[10px] text-muted-foreground">Replace</span>`;
+          item.innerHTML = `<span>${escapeHtml(sug)}</span><span class="text-[10px] text-muted-foreground">Replace</span>`;
           item.onclick = (ev) => {
             ev.preventDefault();
             ev.stopPropagation();

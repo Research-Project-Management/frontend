@@ -433,7 +433,7 @@ export class SessionCoordinatorRegistry {
       origin?: 'local' | 'remote';
     }
   ): void {
-    const isRealtime = options?.isRealtimeActive ?? false;
+    const isRealtime = options?.isRealtimeActive ?? this.isRealtimeConnected(fileId);
     const isRemote = options?.origin === 'remote';
 
     // 1. In-memory hot RAM update (0ms latency). Remote changes never set — nor clear — the
@@ -741,6 +741,9 @@ export class SessionCoordinatorRegistry {
   }
 
   private scheduleAutoSave(fileId: string, delayMs: number): void {
+    if (this.isRealtimeConnected(fileId)) {
+      return;
+    }
     const existing = this.saveTimers.get(fileId);
     if (existing) {
       clearTimeout(existing);

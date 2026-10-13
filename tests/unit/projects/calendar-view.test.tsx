@@ -49,7 +49,7 @@ describe('CalendarView Component', () => {
     expect(screen.getByText('Sun')).toBeInTheDocument();
   });
 
-  it('renders multi-day spanning bars with correct titles', () => {
+  it('renders items with correct titles and date range badge', () => {
     render(
       <CalendarView
         items={mockItems}
@@ -60,10 +60,15 @@ describe('CalendarView Component', () => {
       />
     );
 
-    // Spanning items should be rendered in the calendar
+    // Items should be rendered in the calendar
     const flux19s = screen.getAllByText('Implement Adam optimizer');
     expect(flux19s.length).toBeGreaterThan(0);
     const flux23s = screen.getAllByText('Draft Section 2');
     expect(flux23s.length).toBeGreaterThan(0);
+
+    // Date range badge with arrow should be visible for multi-day tasks
+    const dateBadges = screen.getAllByText('28/09 → 08/10');
+    expect(dateBadges.length).toBeGreaterThan(0);
+    expect(dateBadges[0]).toBeInTheDocument();
   });
 });

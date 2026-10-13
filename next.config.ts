@@ -4,6 +4,7 @@ const isStandalone =
   process.env.STANDALONE === 'true' || process.env.DOCKER_BUILD === 'true';
 
 const nextConfig: NextConfig = {
+  reactCompiler: true,
   distDir: process.env.NEXT_DIST_DIR || '.next',
   reactStrictMode: false,
   poweredByHeader: false,
@@ -78,6 +79,7 @@ const nextConfig: NextConfig = {
   },
 
   experimental: {
+    turbopackRustReactCompiler: true,
     turbopackFileSystemCacheForDev: false,
     turbopackFileSystemCacheForBuild: false,
     proxyClientMaxBodySize: '100mb',
@@ -260,6 +262,36 @@ const nextConfig: NextConfig = {
       {
         source: `/:workspaceId((?!${excludedPrefixes}).+)/editor/:path*`,
         destination: '/editor/:path*',
+        permanent: false,
+      },
+      {
+        source: '/dashboard',
+        destination: '/home',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/:path*',
+        destination: '/home/:path*',
+        permanent: true,
+      },
+      {
+        source: '/archives',
+        destination: '/projects/archives',
+        permanent: true,
+      },
+      {
+        source: '/projects/sticky',
+        destination: '/stickies',
+        permanent: true,
+      },
+      {
+        source: '/projects/stickies',
+        destination: '/stickies',
+        permanent: true,
+      },
+      {
+        source: '/editor',
+        destination: '/projects',
         permanent: false,
       },
       {

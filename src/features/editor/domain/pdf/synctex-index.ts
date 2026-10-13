@@ -11,6 +11,22 @@ export interface SyncTeXNode {
   y: number;
   w?: number;
   h?: number;
+  page?: number;
+}
+
+export interface KdTreeNode {
+  node: SyncTeXNode;
+  left: KdTreeNode | null;
+  right: KdTreeNode | null;
+  axis: number; // 0 for x, 1 for y
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  subMinX: number;
+  subMaxX: number;
+  subMinY: number;
+  subMaxY: number;
 }
 
 export interface SyncTeXMap {
@@ -23,6 +39,191 @@ export interface SyncTeXMap {
   tagToPath: Map<number, string>;
   pathToTag: Map<string, number>;
   tagToSortedLines: Map<number, number[]>;
+  pageToKdTree?: Map<number, KdTreeNode>;
+}
+
+/**
+ * Calculates effective bounding box and area for a SyncTeX node.
+ * Respects baseline coordinates where glyphs extend upward by height and slightly downward.
+ */
+export function getNodeBounds(node: SyncTeXNode) {
+  const width = node.w !== undefined && node.w > 0 ? node.w : 50;
+  const height = node.h !== undefined && node.h > 0 ? node.h : 12;
+  const minX = node.x;
+  const maxX = node.x + width;
+  const minY = Math.min(node.y - height, node.y);
+  const maxY = Math.max(node.y + 4, node.y + height);
+  const area = Math.max(1, (maxX - minX) * (maxY - minY));
+  return { minX, maxX, minY, maxY, area };
+}
+
+/**
+ * Calculates squared Euclidean distance from point (px, py) to an Axis-Aligned Bounding Box (AABB).
+ * Returns 0 if the point is strictly inside the box.
+ */
+export function pointToAabbDistSq(
+  px: number,
+  py: number,
+  minX: number,
+  maxX: number,
+  minY: number,
+  maxY: number,
+): number {
+  const dx = px < minX ? minX - px : px > maxX ? px - maxX : 0;
+  const dy = py < minY ? minY - py : py > maxY ? py - maxY : 0;
+  return dx * dx + dy * dy;
+}
+
+/**
+ * Constructs a 2D k-d Tree from an array of SyncTeX page nodes.
+ * Alternates partitioning between X and Y axes with subtree bounding box computation for O(N log N) build.
+ */
+export function buildKdTree2D(
+  nodes: SyncTeXNode[],
+  depth = 0,
+): KdTreeNode | null {
+  if (!nodes || nodes.length === 0) return null;
+
+  const axis = depth % 2; // 0: X-axis, 1: Y-axis
+  const sorted = nodes.slice().sort((a, b) => {
+    return axis === 0 ? a.x - b.x : a.y - b.y;
+  });
+
+  const mid = Math.floor(sorted.length / 2);
+  const current = sorted[mid];
+  const bounds = getNodeBounds(current);
+
+  const left = buildKdTree2D(sorted.slice(0, mid), depth + 1);
+  const right = buildKdTree2D(sorted.slice(mid + 1), depth + 1);
+
+  let subMinX = bounds.minX;
+  let subMaxX = bounds.maxX;
+  let subMinY = bounds.minY;
+  let subMaxY = bounds.maxY;
+
+  if (left) {
+    subMinX = Math.min(subMinX, left.subMinX);
+    subMaxX = Math.max(subMaxX, left.subMaxX);
+    subMinY = Math.min(subMinY, left.subMinY);
+    subMaxY = Math.max(subMaxY, left.subMaxY);
+  }
+
+  if (right) {
+    subMinX = Math.min(subMinX, right.subMinX);
+    subMaxX = Math.max(subMaxX, right.subMaxX);
+    subMinY = Math.min(subMinY, right.subMinY);
+    subMaxY = Math.max(subMaxY, right.subMaxY);
+  }
+
+  return {
+    node: current,
+    left,
+    right,
+    axis,
+    minX: bounds.minX,
+    maxX: bounds.maxX,
+    minY: bounds.minY,
+    maxY: bounds.maxY,
+    subMinX,
+    subMaxX,
+    subMinY,
+    subMaxY,
+  };
+}
+
+export interface KdTreeSearchResult {
+  bestNode: SyncTeXNode | null;
+  bestDistSq: number;
+  visitedCount: number;
+}
+
+/**
+ * High-performance 2D Nearest Neighbor search with branch-and-bound pruning and containment priority.
+ * Average time complexity: O(log N).
+ */
+export function searchKdTreeNearest(
+  root: KdTreeNode | null,
+  px: number,
+  py: number,
+): KdTreeSearchResult {
+  if (!root) return { bestNode: null, bestDistSq: Infinity, visitedCount: 0 };
+
+  let bestNode: SyncTeXNode | null = null;
+  let bestDistSq = Infinity;
+  let bestArea = Infinity;
+  let visitedCount = 0;
+
+  function traverse(curr: KdTreeNode | null) {
+    if (!curr) return;
+
+    // Prune branch if minimum distance to the entire subtree bounding box exceeds current best
+    const subtreeMinDistSq = pointToAabbDistSq(
+      px,
+      py,
+      curr.subMinX,
+      curr.subMaxX,
+      curr.subMinY,
+      curr.subMaxY,
+    );
+
+    if (subtreeMinDistSq > bestDistSq || (bestDistSq === 0 && subtreeMinDistSq > 0)) {
+      return;
+    }
+
+    visitedCount++;
+
+    // Distance from query point to current node's bounding box
+    const distSq = pointToAabbDistSq(px, py, curr.minX, curr.maxX, curr.minY, curr.maxY);
+    const currArea = Math.max(1, (curr.maxX - curr.minX) * (curr.maxY - curr.minY));
+
+    if (distSq < bestDistSq) {
+      bestDistSq = distSq;
+      bestNode = curr.node;
+      bestArea = currArea;
+    } else if (distSq === bestDistSq && distSq === 0 && currArea < bestArea) {
+      // Containment tie-breaker: prioritize tighter inner box (e.g., inline math/token over line)
+      bestNode = curr.node;
+      bestArea = currArea;
+    }
+
+    // Traverse closest child subtree first for faster branch-and-bound pruning
+    const queryCoord = curr.axis === 0 ? px : py;
+    const nodeCoord = curr.axis === 0 ? curr.node.x : curr.node.y;
+
+    const [first, second] = queryCoord < nodeCoord ? [curr.left, curr.right] : [curr.right, curr.left];
+
+    if (first) {
+      const firstMinDistSq = pointToAabbDistSq(
+        px,
+        py,
+        first.subMinX,
+        first.subMaxX,
+        first.subMinY,
+        first.subMaxY,
+      );
+      if (firstMinDistSq <= bestDistSq || (bestDistSq === 0 && firstMinDistSq === 0)) {
+        traverse(first);
+      }
+    }
+
+    if (second) {
+      const secondMinDistSq = pointToAabbDistSq(
+        px,
+        py,
+        second.subMinX,
+        second.subMaxX,
+        second.subMinY,
+        second.subMaxY,
+      );
+      if (secondMinDistSq <= bestDistSq || (bestDistSq === 0 && secondMinDistSq === 0)) {
+        traverse(second);
+      }
+    }
+  }
+
+  traverse(root);
+
+  return { bestNode, bestDistSq, visitedCount };
 }
 
 /**
@@ -315,6 +516,14 @@ export function parseSyncTeX(text: string): SyncTeXMap {
     pageToNodes.set(page, nodes.sort((a, b) => a.y - b.y));
   }
 
+  const pageToKdTree = new Map<number, KdTreeNode>();
+  for (const [page, nodes] of pageToNodes.entries()) {
+    const root = buildKdTree2D(nodes);
+    if (root) {
+      pageToKdTree.set(page, root);
+    }
+  }
+
   const sortedLines = Array.from(lineToPage.keys()).sort((a, b) => a - b);
 
   const tagToSortedLines = new Map<number, number[]>();
@@ -332,6 +541,7 @@ export function parseSyncTeX(text: string): SyncTeXMap {
     tagToPath,
     pathToTag,
     tagToSortedLines,
+    pageToKdTree,
   };
 }
 
@@ -421,9 +631,19 @@ export function resolveForward(
   return resolveForwardDetail(line, synctexMap, activeTitle, maxPages)?.page ?? null;
 }
 
+export interface SyncTeXReverseResult {
+  sourcePath: string | null;
+  line: number;
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+}
+
 /**
  * SyncTeX reverse resolution (PDF double-click -> LaTeX source line and file)
- * Employs O(log N) binary search on y-sorted nodes with branch-and-bound geometric pruning.
+ * Utilizes 2D k-d Tree spatial index for O(log N) nearest neighbor search with bounding box containment
+ * and two-column layout disambiguation. Falls back to 1D search for legacy maps or undefined ptX.
  */
 export function resolveReverse(
   clickFraction: number,
@@ -431,13 +651,31 @@ export function resolveReverse(
   synctexMap: SyncTeXMap | null | undefined,
   ptX?: number,
   ptY?: number,
-): { sourcePath: string | null; line: number } | null {
+): SyncTeXReverseResult | null {
   if (!synctexMap) return null;
 
-  // 1. Direct page node mapping (nearest coordinate with O(log N) binary search + pruning)
+  const targetY = ptY !== undefined ? ptY : clickFraction * 842;
+
+  // 1. High-Performance 2D k-d Tree Spatial Resolution (O(log N) with Bounding Box Containment)
+  if (ptX !== undefined && synctexMap.pageToKdTree?.has(pageNum)) {
+    const kdRoot = synctexMap.pageToKdTree.get(pageNum)!;
+    const { bestNode } = searchKdTreeNearest(kdRoot, ptX, targetY);
+    if (bestNode) {
+      const sourcePath = synctexMap.tagToPath?.get(bestNode.tag) || null;
+      return {
+        sourcePath,
+        line: bestNode.line,
+        x: bestNode.x,
+        y: bestNode.y,
+        w: bestNode.w,
+        h: bestNode.h,
+      };
+    }
+  }
+
+  // 2. Direct page node mapping (fallback for legacy maps or undefined ptX)
   const nodes = synctexMap.pageToNodes?.get(pageNum);
   if (nodes && nodes.length > 0) {
-    const targetY = ptY !== undefined ? ptY : clickFraction * 842;
     const targetX = ptX !== undefined ? ptX : undefined;
 
     // Binary search for node closest in y-coordinate
@@ -493,7 +731,14 @@ export function resolveReverse(
 
     if (bestNode) {
       const sourcePath = synctexMap.tagToPath?.get(bestNode.tag) || null;
-      return { sourcePath, line: bestNode.line };
+      return {
+        sourcePath,
+        line: bestNode.line,
+        x: bestNode.x,
+        y: bestNode.y,
+        w: bestNode.w,
+        h: bestNode.h,
+      };
     }
   }
 

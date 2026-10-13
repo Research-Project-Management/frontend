@@ -9,7 +9,7 @@
  * Domain: Layer 1 (Pure Domain Model & Document Hierarchy).
  */
 
-import type { EditorStorageItem as StorageItem } from '@/features/editor/sdk';
+import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
 import { displayName } from './document-naming';
 
 export type FileTreeFolderNode = {

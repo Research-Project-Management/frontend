@@ -80,11 +80,15 @@ export const Relations: React.FC<RelationsProps> = ({
 
   return (
     <div className="space-y-1.5 pt-1">
-      <div className="flex items-center justify-between">
-        <label className="text-11 font-semibold text-foreground tracking-normal flex items-center gap-1.5">
-          <Link2 className="size-3.5 shrink-0 text-foreground" />
-          <span>Dependencies & Relations ({relations.length})</span>
-        </label>
+      <div className="flex items-center justify-between h-8">
+        <div className="flex items-center gap-1.5">
+          <span className="text-12 font-medium text-foreground tracking-tight">Relations</span>
+          {relations.length > 0 && (
+            <span className="text-11 font-mono font-medium text-foreground px-1.5 py-0.5 rounded bg-muted tabular-nums">
+              {relations.length}
+            </span>
+          )}
+        </div>
 
         {!isReadOnly && (
           <Popover open={openAddPopover} onOpenChange={(open) => {
@@ -197,7 +201,7 @@ export const Relations: React.FC<RelationsProps> = ({
                   <Button
                     type="submit"
                     size="sm"
-                    className="h-8 text-13 font-medium px-3 rounded-md shadow-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-foreground text-background hover:bg-foreground/90"
+                    className="h-8 text-13 font-medium px-3 rounded-md shadow-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-primary text-primary-foreground hover:bg-primary-hover"
                     disabled={!selectedTargetItem}
                   >
                     Add Relation

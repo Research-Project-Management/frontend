@@ -34,12 +34,12 @@ import {
   PanelRight,
   Link2,
   ArrowRight,
-  Layers,
   Folder,
   Plus,
   CalendarDays,
   User,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useAuth } from '@/features/auth/hooks/use-auth';
@@ -85,6 +85,7 @@ import { useActivityLogs } from "../../hooks/use-history";
 import { useLabelsQuery } from "../../hooks/use-label";
 import { useUploadFilesWithToast, useWorkItemAttachments } from "../../hooks/use-attachment";
 import {
+  useRelations,
   useAddRelationMutation,
   useRemoveRelationMutation,
 } from "../../hooks/use-relation";
@@ -235,8 +236,11 @@ export function DetailModal({
   const [moduleId, setModuleId] = useState<string | null>(rawCardModule?.moduleId || null);
   const [commentText, setCommentText] = useState("");
   const [showDetailActivity, setShowDetailActivity] = useState(false);
-  const [showDescriptionActions, setShowDescriptionActions] = useState(false);
-  const descriptionDraftRef = useRef("");
+  const [timeSpent, setTimeSpent] = useState<number | null>(() => {
+    return typeof card?.timeSpent === 'number' ? card.timeSpent : null;
+  });
+  const [isAutosaving, setIsAutosaving] = useState(false);
+  const [copiedIdentifier, setCopiedIdentifier] = useState(false);
   const commentTextareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [subItems, setSubItems] = useState<SubItem[]>([]);
@@ -267,6 +271,7 @@ export function DetailModal({
   const { data: itemComments = [] } = useComments(open && workItemId ? workItemId : "");
   const { data: itemActivity = [], error: activityError, isLoading: activityLoading } = useActivityLogs(open && workItemId ? workItemId : "");
   const { data: fetchedAttachments } = useWorkItemAttachments(open && workItemId ? workItemId : "");
+  const { data: fetchedRelationsData } = useRelations(open && workItemId ? workItemId : "");
   const createCommentMutation = useAddComment();
   const updateCommentMutation = useUpdateComment();
   const reactCommentMutation = useReactComment();
@@ -387,7 +392,7 @@ export function DetailModal({
     if (card) {
       setTitle(card.title ?? "");
       setDescription(card.description || card.content || "");
-      descriptionDraftRef.current = card.description || card.content || "";
+      setTimeSpent(typeof card?.timeSpent === 'number' ? card.timeSpent : null);
       setColumnId(card.columnId || firstColumnId);
       setRelations(card.relations || []);
       setPriority(card.priority || "none");
@@ -421,7 +426,7 @@ export function DetailModal({
     } else {
       setTitle("");
       setDescription("");
-      descriptionDraftRef.current = "";
+      setTimeSpent(null);
       setColumnId(firstColumnId);
       setRelations([]);
       setPriority("none");
@@ -440,7 +445,6 @@ export function DetailModal({
     setCommentText("");
     setCommentCaretPosition(0);
     setShowDetailActivity(false);
-    setShowDescriptionActions(false);
     const initialAssigneeIds = card
       ? (Array.isArray(card.assigneeIds) && card.assigneeIds.length > 0
         ? card.assigneeIds
@@ -468,6 +472,7 @@ export function DetailModal({
       parentId: card?.parentId || null,
       completed: card?.completed || false,
       attachments: normalizeAttachments(card?.attachments),
+      timeSpent: typeof card?.timeSpent === 'number' ? card.timeSpent : null,
     });
     autosaveSignatureRef.current = initialSnapshotRef.current;
     autosaveReadyRef.current = false;
@@ -488,6 +493,25 @@ export function DetailModal({
     }
   }, [fetchedAttachments]);
 
+  useEffect(() => {
+    if (fetchedRelationsData) {
+      const rawList = Array.isArray(fetchedRelationsData)
+        ? fetchedRelationsData
+        : Array.isArray((fetchedRelationsData as any).relations)
+        ? (fetchedRelationsData as any).relations
+        : [];
+      const mappedRelations: Relation[] = rawList.map((r: any) => ({
+        id: r.id,
+        type: r.type,
+        targetId: r.targetWorkItemId || r.targetId || r.targetWorkItem?.id,
+        targetWorkItemId: r.targetWorkItemId || r.targetWorkItem?.id,
+        targetTitle: r.targetWorkItem?.title || r.targetTitle,
+        targetIdentifier: r.targetWorkItem?.identifier || r.targetIdentifier,
+      }));
+      setRelations(mappedRelations);
+    }
+  }, [fetchedRelationsData]);
+
   const currentPayload = useMemo<ItemMutationInput>(() => {
     return {
       title: title.trim(),
@@ -504,6 +528,7 @@ export function DetailModal({
       completed,
       attachments,
       parentId: parentId || undefined,
+      timeSpent: timeSpent !== null && !isNaN(timeSpent) ? timeSpent : null,
     };
   }, [
     title,
@@ -519,6 +544,7 @@ export function DetailModal({
     completed,
     attachments,
     parentId,
+    timeSpent,
   ]);
 
   const hasUnsavedChanges = useMemo(() => {
@@ -540,16 +566,24 @@ export function DetailModal({
       return;
     }
 
-    if (!hasUnsavedChanges) return;
+    if (!hasUnsavedChanges) {
+      setIsAutosaving(false);
+      return;
+    }
 
     const payloadSnapshot = ItemHelpers.createSnapshot(currentPayload);
-    if (payloadSnapshot === autosaveSignatureRef.current) return;
+    if (payloadSnapshot === autosaveSignatureRef.current) {
+      setIsAutosaving(false);
+      return;
+    }
 
+    setIsAutosaving(true);
     const timer = setTimeout(() => {
       autosaveSignatureRef.current = payloadSnapshot;
       // Exclude relations and attachments from field autosave for existing items to prevent race conditions with dedicated mutations
       const { relations: _relations, attachments: _attachments, ...fieldPayload } = currentPayload;
       safeSave(fieldPayload);
+      setIsAutosaving(false);
     }, 400);
 
     return () => clearTimeout(timer);
@@ -583,6 +617,8 @@ export function DetailModal({
   const handleCopyIdentifier = () => {
     if (card?.identifier) {
       copyItemText(card.identifier, `Copied identifier: ${card.identifier}`);
+      setCopiedIdentifier(true);
+      setTimeout(() => setCopiedIdentifier(false), 2000);
     }
   };
 
@@ -846,30 +882,6 @@ export function DetailModal({
     reactCommentMutation.mutate({ id: workItemId, itemId: workItemId, workItemId, commentId, emoji });
   };
 
-  // Selected Member & Labels for display
-  const selectedMembers = useMemo(() => {
-    return assigneeIds
-      .map((id) => {
-        const m = (members || []).find(
-          (mem) => ((mem as { user?: { id?: string } }).user?.id || (mem as { userId?: string }).userId || (mem as { id?: string }).id) === id
-        ) as { user?: { name?: string; avatar?: string | null }; name?: string; avatar?: string | null } | undefined;
-        return m
-          ? {
-              id,
-              name: m.user?.name || m.name || 'Member',
-              avatar: m.user?.avatar || m.avatar,
-            }
-          : null;
-      })
-      .filter(Boolean) as Array<{ id: string; name: string; avatar?: string | null }>;
-  }, [assigneeIds, members]);
-
-  const selectedLabelsList = useMemo(() => {
-    const safeLabels = Array.isArray(projectLabels) ? projectLabels : [];
-    const safeSelected = Array.isArray(labels) ? labels : [];
-    return safeLabels.filter((l) => safeSelected.includes(l.id));
-  }, [projectLabels, labels]);
-
   const progressRollup = useMemo(() => {
     return ItemHelpers.calculateProgressRollup(subItems);
   }, [subItems]);
@@ -1034,7 +1046,7 @@ export function DetailModal({
       {/* Backdrop for Side Peek & Modal */}
       {!isFullScreen && (
         <div
-          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px] transition-opacity animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity animate-in fade-in duration-150"
           onClick={handleClose}
           aria-hidden="true"
         />
@@ -1052,7 +1064,7 @@ export function DetailModal({
         aria-modal="true"
       >
         {/* Top Header Bar */}
-        <div className="flex items-center justify-between px-3.5 sm:px-4 py-2 border-b border-border bg-background/95 backdrop-blur-xs shrink-0 min-h-[46px]">
+        <div className="flex items-center justify-between px-3.5 sm:px-4 py-2 border-b border-border bg-background shrink-0 min-h-[46px]">
           {/* Left Controls: Collapse, View Mode, Breadcrumb */}
           <div className="flex items-center gap-1 min-w-0">
             {/* Close / Collapse Button */}
@@ -1106,9 +1118,12 @@ export function DetailModal({
               <button
                 type="button"
                 onClick={handleCopyIdentifier}
-                className="font-mono text-xs font-medium text-foreground px-2 py-0.5 rounded-md border border-border bg-background hover:bg-muted transition-colors cursor-pointer flex items-center gap-1 shrink-0 truncate max-w-[140px] relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+                className="font-mono text-11 font-medium text-foreground px-2 py-0.5 rounded-sm border border-border bg-muted hover:bg-muted/80 transition-colors cursor-pointer flex items-center gap-1 shrink-0 truncate max-w-[140px] relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
                 title="Click to copy identifier"
               >
+                {copiedIdentifier ? (
+                  <Check className="size-3 text-foreground shrink-0" />
+                ) : null}
                 <span>{card.identifier}</span>
               </button>
             )}
@@ -1142,18 +1157,6 @@ export function DetailModal({
               </Button>
             )}
 
-            {/* Copy Git Branch */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleCopyGitBranch}
-              className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
-              title={copiedGit ? "Copied branch!" : "Copy git branch name"}
-              aria-label="Copy git branch name"
-            >
-              {copiedGit ? <Check className="size-3.5 text-foreground shrink-0" /> : <GitBranch className="size-3.5 shrink-0" />}
-            </Button>
-
             {/* Copy Link */}
             <Button
               variant="ghost"
@@ -1179,6 +1182,10 @@ export function DetailModal({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52 rounded-md border border-border p-1 z-100 bg-popover shadow-overlay">
+                <DropdownMenuItem onClick={handleCopyGitBranch} className="rounded-md py-1.5 text-xs text-foreground cursor-pointer">
+                  <GitBranch className="mr-2 size-3.5 shrink-0 text-foreground" />
+                  <span>{copiedGit ? "Copied branch!" : "Copy git branch"}</span>
+                </DropdownMenuItem>
                 {!isReadOnly && onDuplicate && (
                   <DropdownMenuItem onClick={onDuplicate} className="rounded-md py-1.5 text-xs text-foreground cursor-pointer">
                     <Copy className="mr-2 size-3.5 shrink-0 text-foreground" />
@@ -1227,18 +1234,6 @@ export function DetailModal({
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-
-            {/* Direct Close Button in Modal/Fullscreen */}
-            {!isSidePeek && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleClose}
-                className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden"
-              >
-                <X className="size-4 shrink-0" />
-              </Button>
-            )}
           </div>
         </div>
 
@@ -1246,230 +1241,195 @@ export function DetailModal({
         <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
           <div className="px-4 sm:px-7 py-4 sm:py-6 space-y-6 max-w-4xl mx-auto">
             
-            {/* Title & Character Length Counter (e.g. 19/255) */}
+            {/* Title Section */}
             <div className="space-y-1">
-              <div className="flex items-start justify-between gap-2">
-                <input
-                  value={title}
-                  maxLength={255}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Work item title"
-                  aria-label="Work item title"
-                  disabled={isReadOnly}
-                  className="w-full text-16 sm:text-lg font-semibold text-foreground outline-none bg-transparent placeholder:text-muted-foreground/60 border-none p-0 focus:ring-0 tracking-tight"
-                />
-                <span className="text-10 text-muted-foreground tabular-nums shrink-0 pt-1 select-none">
-                  {title.length}/255
-                </span>
-              </div>
+              <input
+                value={title}
+                maxLength={255}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Work item title"
+                aria-label="Work item title"
+                disabled={isReadOnly}
+                className="w-full text-16 sm:text-lg font-semibold text-foreground outline-none bg-transparent placeholder:text-muted-foreground/60 border-none p-0 focus:ring-0 tracking-tight"
+              />
             </div>
 
-            {/* Quick Properties Strip (Horizontal Row Directly Below Title) */}
-            <div className="flex items-center gap-1.5 flex-wrap pt-0.5 pb-1">
-              {renderStatusSelector()}
+            {/* Properties Section - Academic Library Inspector Style */}
+            <div className="border-b border-border/60 pb-3">
+              <button
+                type="button"
+                onClick={() => setShowProperties((prev) => !prev)}
+                className="flex items-center justify-between w-full h-8 select-none transition-colors group cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-xs"
+              >
+                <span className="text-12 font-medium text-foreground tracking-tight">Properties</span>
+                <div className="flex items-center gap-1">
+                  {showProperties ? (
+                    <ChevronDown className="size-3.5 text-foreground shrink-0" />
+                  ) : (
+                    <ChevronRight className="size-3.5 text-foreground shrink-0" />
+                  )}
+                </div>
+              </button>
+              {showProperties && (
+                <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                  {/* Left Column: Workflow State */}
+                  <div className="space-y-2">
+                    {/* Status */}
+                    <div className="grid grid-cols-[84px_1fr] items-center gap-2 h-8">
+                      <span className="text-muted-foreground text-11 font-medium select-none">Status</span>
+                      <div className="flex items-center min-w-0">{renderStatusSelector()}</div>
+                    </div>
 
-              <PriorityPopover
-                open={openPriorityPopover}
-                onOpenChange={setOpenPriorityPopover}
-                priority={priority}
-                setPriority={(p) => {
-                  setPriority(p);
-                  onSave({ ...currentPayload, priority: p });
-                }}
-                actionBtnClass={actionBtnClass}
-              />
+                    {/* Priority */}
+                    <div className="grid grid-cols-[84px_1fr] items-center gap-2 h-8">
+                      <span className="text-muted-foreground text-11 font-medium select-none">Priority</span>
+                      <div className="flex items-center min-w-0">
+                        <PriorityPopover
+                          open={openPriorityPopover}
+                          onOpenChange={setOpenPriorityPopover}
+                          priority={priority}
+                          setPriority={(p) => {
+                            setPriority(p);
+                            safeSave({ ...currentPayload, priority: p });
+                          }}
+                          actionBtnClass={actionBtnClass}
+                        />
+                      </div>
+                    </div>
 
-              <MemberPopover
-                open={openMemberPopover}
-                onOpenChange={setOpenMemberPopover}
-                assigneeId={assigneeId}
-                setAssigneeId={(id) => {
-                  setAssigneeId(id);
-                  onSave({ ...currentPayload, assigneeId: id });
-                }}
-                assigneeIds={assigneeIds}
-                setAssigneeIds={(ids) => {
-                  setAssigneeIds(ids);
-                  setAssigneeId(ids[0] ?? null);
-                  onSave({
-                    ...currentPayload,
-                    assigneeIds: ids,
-                    assigneeId: ids[0] ?? null,
-                  });
-                }}
-                isMulti={true}
-                members={members}
-                actionBtnClass={actionBtnClass}
-              />
+                    {/* Assignees */}
+                    <div className="grid grid-cols-[84px_1fr] items-center gap-2 h-8">
+                      <span className="text-muted-foreground text-11 font-medium select-none">Assignees</span>
+                      <div className="flex items-center min-w-0">
+                        <MemberPopover
+                          open={openMemberPopover}
+                          onOpenChange={setOpenMemberPopover}
+                          assigneeId={assigneeId}
+                          setAssigneeId={(id) => {
+                            setAssigneeId(id);
+                            safeSave({ ...currentPayload, assigneeId: id });
+                          }}
+                          assigneeIds={assigneeIds}
+                          setAssigneeIds={(ids) => {
+                            setAssigneeIds(ids);
+                            setAssigneeId(ids[0] ?? null);
+                            safeSave({
+                              ...currentPayload,
+                              assigneeIds: ids,
+                              assigneeId: ids[0] ?? null,
+                            });
+                          }}
+                          isMulti={true}
+                          members={members}
+                          actionBtnClass={actionBtnClass}
+                        />
+                      </div>
+                    </div>
 
-              <DatePopover
-                open={openDatePopover}
-                onOpenChange={setOpenDatePopover}
-                startDate={startDate}
-                dueDate={dueDate}
-                onApplyDates={(data) => {
-                  setStartDate(data.startDate || "");
-                  setDueDate(data.dueDate || "");
-                  onSave({
-                    ...currentPayload,
-                    startDate: data.startDate,
-                    dueDate: data.dueDate,
-                  });
-                }}
-                actionBtnClass={actionBtnClass}
-              />
-
-              <LabelPopover
-                open={openLabelPopover}
-                onOpenChange={setOpenLabelPopover}
-                labels={labels}
-                setLabels={(l) => {
-                  const updated = typeof l === 'function' ? l(labels) : l;
-                  setLabels(updated);
-                  onSave({ ...currentPayload, labels: updated });
-                }}
-                actionBtnClass={actionBtnClass}
-              />
-
-              <Popover open={openAttachmentPopover} onOpenChange={setOpenAttachmentPopover}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={actionBtnClass}>
-                    <Paperclip className="size-3.5 shrink-0 text-foreground" />
-                    <span>Attach</span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-72 rounded-md p-0 border-border flex flex-col z-100 bg-popover shadow-overlay">
-                  <div className="flex items-center justify-between px-3 py-1.5 border-b border-border shrink-0">
-                    <span className="text-12 font-semibold text-foreground">Attach Files</span>
-                    <Button variant="ghost" size="icon" className="size-5 text-foreground relative before:absolute before:-inset-2 md:before:hidden" onClick={() => setOpenAttachmentPopover(false)}>
-                      <X className="size-3 shrink-0" />
-                    </Button>
-                  </div>
-                  <div className="p-2.5 space-y-2">
-                    <div
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        setDragActive(true);
-                      }}
-                      onDragLeave={() => setDragActive(false)}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        setDragActive(false);
-                        handleAttachFiles(e.dataTransfer.files);
-                      }}
-                      onClick={() => fileInputRef.current?.click()}
-                      className={cn(
-                        'border border-dashed rounded-md p-3 text-center cursor-pointer transition-colors',
-                        dragActive ? 'border-foreground bg-muted' : 'border-border hover:bg-muted'
-                      )}
-                    >
-                      <Paperclip className="mx-auto h-5 w-5 shrink-0 text-foreground mb-1" />
-                      <p className="text-12 font-medium text-foreground">Click or drag & drop</p>
-                      <p className="text-10 text-muted-foreground mt-0.5">Images, PDFs, Documents</p>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        className="hidden"
-                        onChange={(e) => handleAttachFiles(e.target.files)}
-                      />
+                    {/* Dates */}
+                    <div className="grid grid-cols-[84px_1fr] items-center gap-2 h-8">
+                      <span className="text-muted-foreground text-11 font-medium select-none">Dates</span>
+                      <div className="flex items-center min-w-0">
+                        <DatePopover
+                          open={openDatePopover}
+                          onOpenChange={setOpenDatePopover}
+                          startDate={startDate}
+                          dueDate={dueDate}
+                          onApplyDates={(data) => {
+                            setStartDate(data.startDate || "");
+                            setDueDate(data.dueDate || "");
+                            safeSave({
+                              ...currentPayload,
+                              startDate: data.startDate,
+                              dueDate: data.dueDate,
+                            });
+                          }}
+                          actionBtnClass={actionBtnClass}
+                        />
+                      </div>
                     </div>
                   </div>
-                </PopoverContent>
-              </Popover>
+
+                  {/* Right Column: Hierarchy & Attributes */}
+                  <div className="space-y-2">
+                    {/* Parent Item */}
+                    <div className="grid grid-cols-[84px_1fr] items-center gap-2 h-8">
+                      <span className="text-muted-foreground text-11 font-medium select-none">Parent</span>
+                      <div className="flex items-center min-w-0">
+                        <ParentItemPopover
+                          open={openParentPopover}
+                          onOpenChange={setOpenParentPopover}
+                          parentId={parentId}
+                          setParentId={(pId) => {
+                            setParentId(pId);
+                            safeSave({ ...currentPayload, parentId: pId || undefined });
+                          }}
+                          items={availableItems}
+                          actionBtnClass={actionBtnClass}
+                          isReadOnly={isReadOnly}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Labels */}
+                    <div className="grid grid-cols-[84px_1fr] items-center gap-2 h-8">
+                      <span className="text-muted-foreground text-11 font-medium select-none">Labels</span>
+                      <div className="flex items-center min-w-0">
+                        <LabelPopover
+                          open={openLabelPopover}
+                          onOpenChange={setOpenLabelPopover}
+                          labels={labels}
+                          setLabels={(l) => {
+                            const updated = typeof l === 'function' ? l(labels) : l;
+                            setLabels(updated);
+                            safeSave({ ...currentPayload, labels: updated });
+                          }}
+                          actionBtnClass={actionBtnClass}
+                          isReadOnly={isReadOnly}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Time Spent */}
+                    <div className="grid grid-cols-[84px_1fr] items-center gap-2 h-8">
+                      <span className="text-muted-foreground text-11 font-medium select-none">Time Spent</span>
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          type="number"
+                          min={0}
+                          step={0.5}
+                          aria-label="Time spent in hours"
+                          disabled={isReadOnly}
+                          value={timeSpent ?? ''}
+                          placeholder="0"
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? null : parseFloat(e.target.value);
+                            setTimeSpent(val);
+                            safeSave({ ...currentPayload, timeSpent: val });
+                          }}
+                          className="h-8 w-20 text-xs px-2 text-right font-mono text-foreground bg-background border-border"
+                        />
+                        <span className="text-11 text-muted-foreground select-none">hrs</span>
+                      </div>
+                    </div>
+
+                    {/* Audit Info */}
+                    <div className="grid grid-cols-[84px_1fr] items-center gap-2 h-8 text-11 text-muted-foreground">
+                      <span className="font-medium select-none">Audit</span>
+                      <div className="flex items-center gap-1.5 text-foreground truncate min-w-0">
+                        <span className="truncate">Created by <span className="font-medium">{authorName}</span></span>
+                        {createdAtFormatted && (
+                          <span className="font-mono text-10 text-muted-foreground tabular-nums shrink-0">• {createdAtFormatted}</span>
+                        )}
+                        {updatedAtFormatted && (
+                          <span className="font-mono text-10 text-muted-foreground tabular-nums shrink-0">• Updated {updatedAtFormatted}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-
-            {/* Active Property Badges */}
-            {(selectedMembers.length > 0 || selectedLabelsList.length > 0 || dueDate || startDate) && (
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                {selectedMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center gap-1.5 bg-muted/60 rounded-md px-2 py-0.5 text-11 font-medium text-foreground border border-border"
-                  >
-                    <Avatar className="size-4 shrink-0">
-                      <AvatarImage src={member.avatar || undefined} />
-                      <AvatarFallback className="text-9">
-                        {member.name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span>{member.name}</span>
-                    {!isReadOnly && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = assigneeIds.filter((id) => id !== member.id);
-                          setAssigneeIds(updated);
-                          setAssigneeId(updated[0] ?? null);
-                          onSave({
-                            ...currentPayload,
-                            assigneeIds: updated,
-                            assigneeId: updated[0] ?? null,
-                          });
-                        }}
-                        className="text-foreground hover:bg-muted rounded-sm cursor-pointer ml-0.5 relative before:absolute before:-inset-2 md:before:hidden"
-                        aria-label="Remove assignee"
-                      >
-                        <X className="size-3 shrink-0" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-
-                {selectedLabelsList.map((l: any) => (
-                  <span
-                    key={l.id}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-11 font-medium text-white"
-                    style={{ backgroundColor: l.color }}
-                  >
-                    {l.name}
-                    {!isReadOnly && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = labels.filter((id) => id !== l.id);
-                          setLabels(updated);
-                          onSave({ ...currentPayload, labels: updated });
-                        }}
-                        className="hover:opacity-80 cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
-                        aria-label={`Remove label ${l.name}`}
-                      >
-                        <X className="size-3 shrink-0" />
-                      </button>
-                    )}
-                  </span>
-                ))}
-
-                {(startDate || dueDate) && (
-                  <div className="flex items-center gap-1.5 bg-muted/60 rounded-md px-2 py-0.5 text-11 font-medium text-foreground border border-border">
-                    <Clock className="size-3.5 shrink-0 text-foreground" />
-                    <span>
-                      {startDate && ItemHelpers.formatDate(startDate)}
-                      {startDate && dueDate ? ' - ' : ''}
-                      {dueDate && ItemHelpers.formatDate(dueDate)}
-                    </span>
-                    {!isReadOnly && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setStartDate("");
-                          setDueDate("");
-                          onSave({
-                            ...currentPayload,
-                            startDate: null,
-                            dueDate: null,
-                          });
-                        }}
-                        className="text-foreground hover:bg-muted rounded-sm cursor-pointer ml-0.5 relative before:absolute before:-inset-2 md:before:hidden"
-                        aria-label="Remove dates"
-                      >
-                        <X className="size-3 shrink-0" />
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Description Section */}
             <div className="space-y-2">
@@ -1478,7 +1438,6 @@ export function DetailModal({
                 aria-label="Work item description"
                 onChange={(e) => {
                   setDescription(e.target.value);
-                  setShowDescriptionActions(true);
                 }}
                 placeholder="Add a detailed description..."
                 disabled={isReadOnly}
@@ -1486,184 +1445,41 @@ export function DetailModal({
                 className="w-full resize-none rounded-md border border-border bg-background p-3 text-13 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring transition-colors leading-relaxed min-h-[90px]"
               />
 
-              {/* Description Footer with Plane Last Edited Info */}
+              {/* Description Footer with Plane Last Edited Info & Auto-save Status */}
               <div className="flex items-center justify-between text-11 text-muted-foreground pt-0.5">
                 <span>
                   Last edited by <span className="font-medium text-foreground">{authorName}</span> {descriptionLastEdited}
                 </span>
 
-                {showDescriptionActions && !isReadOnly && (
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      className="h-8 text-12 px-3 relative before:absolute before:-inset-1 md:before:hidden"
-                      onClick={() => {
-                        setShowDescriptionActions(false);
-                        descriptionDraftRef.current = description;
-                        onSave(currentPayload);
-                      }}
-                    >
-                      Save
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 text-12 px-3 relative before:absolute before:-inset-1 md:before:hidden"
-                      onClick={() => {
-                        setDescription(descriptionDraftRef.current);
-                        setShowDescriptionActions(false);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                )}
+                <div className="flex items-center gap-1.5 text-11 select-none">
+                  {isAutosaving ? (
+                    <span className="inline-flex items-center gap-1 text-muted-foreground">
+                      <Loader2 className="size-3 animate-spin text-muted-foreground shrink-0" />
+                      <span>Saving...</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-muted-foreground/80">
+                      <Check className="size-3 text-muted-foreground shrink-0" />
+                      <span>Saved</span>
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Action Bar / Shortcuts */}
-            <div className="flex items-center gap-2 pt-1 border-t border-border flex-wrap">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  const inputEl = document.getElementById('sub-item-quick-input');
-                  if (inputEl) inputEl.focus();
-                }}
-                className="h-8 px-2.5 text-12 font-medium text-foreground hover:bg-muted cursor-pointer flex items-center gap-1.5 relative before:absolute before:-inset-1 md:before:hidden"
-              >
-                <Plus className="size-3.5 shrink-0" />
-                <span>Add sub-work item</span>
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setOpenAttachmentPopover(true)}
-                className="h-8 px-2.5 text-12 font-medium text-foreground hover:bg-muted cursor-pointer flex items-center gap-1.5 relative before:absolute before:-inset-1 md:before:hidden"
-              >
-                <Paperclip className="size-3.5 shrink-0" />
-                <span>Attach file</span>
-              </Button>
-            </div>
-
-            {/* Collapsible Properties Section (Plane Style Accordion) */}
-            <div className="border border-border rounded-md bg-card overflow-hidden">
-              {/* Accordion Header */}
-              <button
-                type="button"
-                onClick={() => setShowProperties((prev) => !prev)}
-                className="w-full flex items-center justify-between px-4 py-2.5 bg-muted/40 hover:bg-muted/70 transition-colors text-left cursor-pointer"
-              >
-                <div className="flex items-center gap-2">
-                  <Layers className="size-4 shrink-0 text-foreground" />
-                  <span className="text-xs font-semibold text-foreground tracking-tight">Properties</span>
-                </div>
-                {showProperties ? (
-                  <ChevronUp className="size-4 text-foreground shrink-0" />
-                ) : (
-                  <ChevronDown className="size-4 text-foreground shrink-0" />
-                )}
-              </button>
-
-              {/* Accordion Body */}
-              {showProperties && (
-                <div className="divide-y divide-border p-3 sm:p-4 space-y-4">
-                  {/* Details Subsection */}
-                  <div className="space-y-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowDetails((prev) => !prev)}
-                      className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:underline transition-colors cursor-pointer"
-                    >
-                      {showDetails ? <ChevronDown className="size-3.5 shrink-0" /> : <ChevronRight className="size-3.5 shrink-0" />}
-                      <span>Details</span>
-                    </button>
-
-                    {showDetails && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-2">
-                        {/* Parent Item */}
-                        <div className="flex items-center justify-between text-xs py-1">
-                          <span className="text-foreground">Parent</span>
-                          <ParentItemPopover
-                            open={openParentPopover}
-                            onOpenChange={setOpenParentPopover}
-                            parentId={parentId}
-                            setParentId={(pId) => {
-                              setParentId(pId);
-                              safeSave({ ...currentPayload, parentId: pId || undefined });
-                            }}
-                            items={availableItems}
-                            actionBtnClass={actionBtnClass}
-                            isReadOnly={isReadOnly}
-                          />
-                        </div>
-
-                        {/* Labels Selector */}
-                        <div className="flex items-center justify-between text-xs py-1">
-                          <span className="text-foreground">Labels</span>
-                          <LabelPopover
-                            open={openLabelPopover}
-                            onOpenChange={setOpenLabelPopover}
-                            labels={labels}
-                            setLabels={(l) => {
-                              const updated = typeof l === 'function' ? l(labels) : l;
-                              setLabels(updated);
-                              safeSave({ ...currentPayload, labels: updated });
-                            }}
-                            actionBtnClass={actionBtnClass}
-                            isReadOnly={isReadOnly}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Plane Metadata Timestamps Section */}
-                  <div className="pt-3 space-y-1.5 text-xs pl-2 text-foreground">
-                    <div className="flex items-center justify-between py-0.5">
-                      <span>Created by</span>
-                      <span className="font-medium text-foreground">{authorName}</span>
-                    </div>
-
-                    {createdAtFormatted && (
-                      <div className="flex items-center justify-between py-0.5">
-                        <span>Created on</span>
-                        <span className="text-foreground">{createdAtFormatted}</span>
-                      </div>
-                    )}
-
-                    {updatedAtFormatted && (
-                      <div className="flex items-center justify-between py-0.5">
-                        <span>Updated on</span>
-                        <span className="text-foreground">{updatedAtFormatted}</span>
-                      </div>
-                    )}
-
-                    {completedAtFormatted && (
-                      <div className="flex items-center justify-between py-0.5">
-                        <span>Completed on</span>
-                        <span className="text-foreground font-medium">
-                          {completedAtFormatted}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* Sub-items Section */}
-            <div className="space-y-2.5 pt-1">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-foreground tracking-tight flex items-center gap-2">
-                  <GitBranch className="size-4 shrink-0 text-foreground" />
-                  <span>
-                    Sub-items ({subItems.filter((s: any) => s.completed || s.stateGroup === 'completed' || s.state?.group === 'completed' || s.columnId === 'done').length}/{subItems.length})
-                  </span>
-                </label>
+            <div className="space-y-2.5 pt-1 border-b border-border/60 pb-4">
+              <div className="flex items-center justify-between h-8">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-12 font-medium text-foreground tracking-tight">Sub-items</span>
+                  {subItems.length > 0 && (
+                    <span className="text-11 font-mono font-medium text-foreground px-1.5 py-0.5 rounded bg-muted tabular-nums">
+                      {subItems.filter((s: any) => s.completed || s.stateGroup === 'completed' || s.state?.group === 'completed' || s.columnId === 'done').length}/{subItems.length}
+                    </span>
+                  )}
+                </div>
                 {subItems.length > 0 && (
-                  <span className="text-xs font-semibold text-foreground tabular-nums">
+                  <span className="text-11 font-mono font-medium text-foreground tabular-nums">
                     {progressRollup}% done
                   </span>
                 )}
@@ -1671,9 +1487,9 @@ export function DetailModal({
 
               {/* Progress Bar */}
               {subItems.length > 0 && (
-                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-foreground rounded-full transition-all duration-300"
+                    className="h-full bg-primary rounded-full transition-all duration-200 ease-out"
                     style={{ width: `${progressRollup}%` }}
                   />
                 </div>
@@ -1709,7 +1525,7 @@ export function DetailModal({
                             aria-label={`Mark sub-item ${sub.title || 'untitled'} as ${isSubDone ? 'incomplete' : 'complete'}`}
                             className={cn(
                               'size-4 rounded-md border flex items-center justify-center transition-colors cursor-pointer relative before:absolute before:-inset-2.5 md:before:hidden',
-                              isSubDone ? 'bg-foreground border-foreground text-background' : 'border-border hover:border-foreground'
+                              isSubDone ? 'bg-primary border-primary text-primary-foreground' : 'border-border hover:border-foreground'
                             )}
                           >
                             {isSubDone && <Check className="size-3 shrink-0" />}
@@ -1764,7 +1580,7 @@ export function DetailModal({
                     className="h-8 text-13 placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
                   />
                   {newSubItemTitle.trim() && (
-                    <Button type="submit" size="sm" className="h-8 text-12 shrink-0 px-3 relative before:absolute before:-inset-1 md:before:hidden">
+                    <Button type="submit" size="sm" className="h-8 text-12 shrink-0 px-3 relative before:absolute before:-inset-1 md:before:hidden bg-primary text-primary-foreground hover:bg-primary-hover">
                       Add
                     </Button>
                   )}

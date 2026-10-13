@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
+import EditorSkeleton from '@/features/editor/ui/shell/EditorSkeleton';
 
 export default function EditorLayout({
   children,
@@ -20,34 +20,14 @@ export default function EditorLayout({
     }
   }, [isLoading, user, router]);
 
-  useEffect(() => {
-    document.documentElement.classList.add('overflow-hidden');
-    document.body.classList.add('overflow-hidden');
-    return () => {
-      document.documentElement.classList.remove('overflow-hidden');
-      document.body.classList.remove('overflow-hidden');
-    };
-  }, []);
-
   // If unauthenticated, block rendering and redirect to marketing
   if (!isLoading && !user) {
     return null;
   }
 
-  // Show loading indicator while session is being verified
+  // Show instant workbench skeleton while session is being verified
   if (isLoading) {
-    return (
-      <div
-        role="status"
-        aria-live="polite"
-        aria-label="Loading workspace..."
-        className="flex h-dvh w-full items-center justify-center bg-background"
-        suppressHydrationWarning
-      >
-        <Loader2 className="h-8 w-8 animate-spin text-primary shrink-0" />
-        <span className="sr-only">Loading workspace...</span>
-      </div>
-    );
+    return <EditorSkeleton />;
   }
 
   return (
@@ -56,8 +36,10 @@ export default function EditorLayout({
       featureName="Document Editor"
       description="An issue occurred while rendering the document editor."
     >
-      <div className="h-dvh max-h-dvh w-full flex flex-col relative" suppressHydrationWarning>
-        {children}
+      <div className="h-dvh max-h-dvh w-full flex flex-col relative overflow-hidden" suppressHydrationWarning>
+        <Suspense fallback={<EditorSkeleton />}>
+          {children}
+        </Suspense>
       </div>
     </ErrorBoundary>
   );

@@ -142,7 +142,7 @@ function SubmenuSearchBar({
   placeholder?: string;
 }) {
   return (
-    <div className="p-1 pb-1.5 border-b border-border/50 mb-1" onClick={(e) => e.stopPropagation()}>
+    <div className="p-1 pb-1.5 border-b border-border mb-1" onClick={(e) => e.stopPropagation()}>
       <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-background border border-border text-12 text-foreground">
         <Search className="size-3.5 text-foreground shrink-0" />
         <input
@@ -307,7 +307,7 @@ export function FilterDropdown({
             const id = lbl.id || lbl.name;
             const name = lbl.name || lbl.title || id || 'Label';
             if (id && !map.has(id)) {
-              map.set(id, { id, name, color: lbl.color || '#3b82f6' });
+              map.set(id, { id, name, color: lbl.color || '#0969DA' });
             }
           }
         }
@@ -315,11 +315,11 @@ export function FilterDropdown({
     }
     if (map.size === 0) {
       return [
-        { id: 'Bug', name: 'Bug', color: '#ef4444' },
-        { id: 'Feature', name: 'Feature', color: '#3b82f6' },
-        { id: 'Frontend', name: 'Frontend', color: '#10b981' },
-        { id: 'Backend', name: 'Backend', color: '#f59e0b' },
-        { id: 'Documentation', name: 'Documentation', color: '#8b5cf6' },
+        { id: 'Bug', name: 'Bug', color: '#CF222E' },
+        { id: 'Feature', name: 'Feature', color: '#0969DA' },
+        { id: 'Frontend', name: 'Frontend', color: '#1A7F37' },
+        { id: 'Backend', name: 'Backend', color: '#D97706' },
+        { id: 'Documentation', name: 'Documentation', color: '#8250DF' },
       ];
     }
     return Array.from(map.values());
@@ -353,7 +353,7 @@ export function FilterDropdown({
         className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-[85vh] overflow-y-auto"
       >
         {/* Main Search Header */}
-        <div className="p-1 pb-1.5 border-b border-border/50 mb-1" onClick={(e) => e.stopPropagation()}>
+        <div className="p-1 pb-1.5 border-b border-border mb-1" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-background border border-border text-12 text-foreground">
             <Search className="size-3.5 text-foreground shrink-0" />
             <input
@@ -370,7 +370,7 @@ export function FilterDropdown({
 
         {/* Active filters count */}
         {hasActiveFilters && (
-          <div className="px-2 py-1 border-b border-border/50 mb-1 flex items-center">
+          <div className="px-2 py-1 border-b border-border mb-1 flex items-center">
             <span className="text-11 font-medium text-foreground">
               <span className="font-mono tabular-nums">{totalActiveFilters}</span> active filter{totalActiveFilters > 1 ? 's' : ''}
             </span>
@@ -892,7 +892,7 @@ export function FilterDropdown({
                       <div className="flex items-center gap-2 min-w-0">
                         <span
                           className="size-2 rounded-full shrink-0"
-                          style={{ backgroundColor: label.color || '#3b82f6' }}
+                          style={{ backgroundColor: label.color || '#0969DA' }}
                         />
                         <span className="truncate">{label.name}</span>
                       </div>

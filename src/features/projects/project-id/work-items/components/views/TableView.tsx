@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Users,
   Tag,
@@ -62,7 +63,7 @@ import type {
   WorkItemCardHandlers,
 } from '../../types/work-item.types';
 
-// ── 1. Table Types ───────────────────────────────────────────────────────────
+// â”€â”€ 1. Table Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export type TablePropertyKey =
   | 'state'
@@ -113,24 +114,24 @@ export interface TableViewProps extends BaseWorkItemViewProps, WorkItemCardHandl
   onToggleDisplayProperty?: (key: any, value: boolean) => void;
 }
 
-// ── 2. Table Constants ───────────────────────────────────────────────────────
+// â”€â”€ 2. Table Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const TABLE_STORAGE_KEY = 'flux:table_view:columns_v5';
 export const TABLE_WIDTHS_STORAGE_KEY = 'flux:table_view:column_widths_v4';
 
 export const TABLE_PROPERTIES: TablePropertyConfig[] = [
-  { key: 'state', label: 'State', icon: StatusIcon, defaultVisible: true, minWidth: 130 },
-  { key: 'priority', label: 'Priority', icon: MediumPriorityBoxIcon, defaultVisible: true, minWidth: 110 },
-  { key: 'assignees', label: 'Assignees', icon: Users, defaultVisible: true, minWidth: 140 },
-  { key: 'startDate', label: 'Start date', icon: CalendarClock, defaultVisible: false, minWidth: 125 },
-  { key: 'dueDate', label: 'Due date', icon: Calendar, defaultVisible: true, minWidth: 125 },
-  { key: 'labels', label: 'Labels', icon: Tag, defaultVisible: true, minWidth: 140 },
-  { key: 'subItemCount', label: 'Sub-items', icon: Layers, defaultVisible: false, minWidth: 110 },
-  { key: 'attachment', label: 'Attachments', icon: Paperclip, defaultVisible: false, minWidth: 110 },
-  { key: 'link', label: 'Links', icon: Link2, defaultVisible: false, minWidth: 100 },
-  { key: 'createdOn', label: 'Created on', icon: Calendar, defaultVisible: false, minWidth: 125 },
-  { key: 'createdBy', label: 'Created by', icon: User, defaultVisible: false, minWidth: 130 },
-  { key: 'updatedOn', label: 'Updated on', icon: Calendar, defaultVisible: false, minWidth: 125 },
+  { key: 'state', label: 'State', icon: StatusIcon, defaultVisible: true, minWidth: 115 },
+  { key: 'priority', label: 'Priority', icon: MediumPriorityBoxIcon, defaultVisible: true, minWidth: 95 },
+  { key: 'assignees', label: 'Assignees', icon: Users, defaultVisible: true, minWidth: 120 },
+  { key: 'startDate', label: 'Start date', icon: CalendarClock, defaultVisible: false, minWidth: 110 },
+  { key: 'dueDate', label: 'Due date', icon: Calendar, defaultVisible: true, minWidth: 110 },
+  { key: 'labels', label: 'Labels', icon: Tag, defaultVisible: true, minWidth: 120 },
+  { key: 'subItemCount', label: 'Sub-items', icon: Layers, defaultVisible: false, minWidth: 95 },
+  { key: 'attachment', label: 'Attachments', icon: Paperclip, defaultVisible: false, minWidth: 95 },
+  { key: 'link', label: 'Links', icon: Link2, defaultVisible: false, minWidth: 90 },
+  { key: 'createdOn', label: 'Created on', icon: Calendar, defaultVisible: false, minWidth: 110 },
+  { key: 'createdBy', label: 'Created by', icon: User, defaultVisible: false, minWidth: 115 },
+  { key: 'updatedOn', label: 'Updated on', icon: Calendar, defaultVisible: false, minWidth: 110 },
 ];
 
 export const DEFAULT_VISIBLE_PROPERTIES: Record<TablePropertyKey, boolean> = {
@@ -149,22 +150,22 @@ export const DEFAULT_VISIBLE_PROPERTIES: Record<TablePropertyKey, boolean> = {
 };
 
 export const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
-  title: 360,
-  state: 130,
-  priority: 110,
-  assignees: 140,
-  startDate: 125,
-  dueDate: 125,
-  labels: 140,
-  subItemCount: 110,
-  attachment: 110,
-  link: 100,
-  createdOn: 125,
-  createdBy: 130,
-  updatedOn: 125,
+  title: 320,
+  state: 115,
+  priority: 95,
+  assignees: 120,
+  startDate: 110,
+  dueDate: 110,
+  labels: 120,
+  subItemCount: 95,
+  attachment: 95,
+  link: 90,
+  createdOn: 110,
+  createdBy: 115,
+  updatedOn: 110,
 };
 
-// ── 3. Helper: Priority Icon ─────────────────────────────────────────────────
+// â”€â”€ 3. Helper: Priority Icon â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function renderPriorityIcon(priority?: Priority, className?: string) {
   const p = priority || 'none';
@@ -183,7 +184,7 @@ export function renderPriorityIcon(priority?: Priority, className?: string) {
   }
 }
 
-// ── 4. Helper: Date Formatter ────────────────────────────────────────────────
+// â”€â”€ 4. Helper: Date Formatter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function formatTableDate(dateStr?: string | null) {
   return ItemHelpers.formatDate(dateStr) || null;
@@ -201,7 +202,7 @@ function isDateOverdue(dateStr?: string | null, completed?: boolean) {
   }
 }
 
-// ── 5. Table Column Properties Popover ───────────────────────────────────────
+// â”€â”€ 5. Table Column Properties Popover â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function TableColumnPropertiesPopover({
   visibleProperties,
@@ -230,7 +231,7 @@ export function TableColumnPropertiesPopover({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-foreground hover:bg-muted border border-border/60 bg-background transition-colors cursor-pointer select-none relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+          className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-foreground hover:bg-muted border border-border bg-background transition-colors cursor-pointer select-none relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
         >
           <SlidersHorizontal className="size-3.5 shrink-0" />
           <span>Display</span>
@@ -282,7 +283,7 @@ export function TableColumnPropertiesPopover({
   );
 }
 
-// ── 6. Table Header Row ──────────────────────────────────────────────────────
+// â”€â”€ 6. Table Header Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function TableHeaderRow({
   visibleProperties,
@@ -296,11 +297,10 @@ export function TableHeaderRow({
   sortField,
   sortOrder,
   onSort,
-  totalItemsCount = 0,
 }: {
   visibleProperties: Record<TablePropertyKey, boolean>;
-  columnWidths: Record<string, number>;
-  onResizeColumn: (key: string, width: number) => void;
+  columnWidths?: Record<string, number>;
+  onResizeColumn?: (key: string, width: number) => void;
   onToggleProperty?: (key: TablePropertyKey) => void;
   onResetProperties?: () => void;
   isAllSelected: boolean;
@@ -309,7 +309,6 @@ export function TableHeaderRow({
   sortField?: TableSortField;
   sortOrder?: TableSortOrder;
   onSort?: (field: TableSortField) => void;
-  totalItemsCount?: number;
 }) {
   const activeProperties = useMemo(
     () => TABLE_PROPERTIES.filter((p) => visibleProperties[p.key]),
@@ -325,68 +324,28 @@ export function TableHeaderRow({
     );
   };
 
-  const handleResizeMouseDown = (colKey: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const startX = e.clientX;
-    const currentW = columnWidths[colKey] || (colKey === 'title' ? 360 : 130);
-
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      const deltaX = moveEvent.clientX - startX;
-      const minW = colKey === 'title' ? 200 : 70;
-      onResizeColumn(colKey, Math.max(minW, currentW + deltaX));
-    };
-
-    const onMouseUp = () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  };
-
-  const titleWidth = columnWidths.title || 360;
+  const titleWidth = columnWidths?.title || DEFAULT_COLUMN_WIDTHS.title;
 
   return (
     <div
       role="row"
-      className="sticky top-0 z-20 flex items-center h-8 border-b border-border bg-muted/40 backdrop-blur-xs text-11 font-medium text-muted-foreground select-none w-full"
+      className="sticky top-0 z-20 flex items-center h-9 border-b border-border bg-background text-11 font-medium text-muted-foreground select-none w-full"
     >
-      {/* 1. First Column: Checkbox + Work items Title (Frozen / Sticky Left) */}
+      {/* 1. First Column: Work items Title (Frozen / Sticky Left) */}
       <div
         role="columnheader"
         style={{ width: `${titleWidth}px`, minWidth: `${titleWidth}px`, left: 0 }}
-        className="sticky left-0 z-30 flex items-center px-3 h-full border-r border-border/50 shrink-0 group/header bg-muted/95 backdrop-blur-xs shadow-[1px_0_0_0_var(--border)]"
+        className="sticky left-0 z-30 flex items-center px-2.5 h-full border-r border-border shrink-0 group/header bg-background"
       >
-        <div className="flex items-center gap-2.5 w-full">
-          <Checkbox
-            checked={isAllSelected ? true : isSomeSelected ? 'indeterminate' : false}
-            onCheckedChange={onToggleSelectAll}
-            aria-label="Select all work items"
-            className="size-3.5 border-border data-[state=checked]:border-primary"
-          />
+        <div className="flex items-center w-full">
           <span
             onClick={() => onSort?.('title')}
             className="flex items-center gap-1.5 text-11 font-medium text-foreground cursor-pointer hover:text-foreground transition-colors truncate"
           >
             <span>Work items</span>
-            {totalItemsCount > 0 && (
-              <span className="text-10 font-mono text-muted-foreground font-normal tabular-nums">
-                {totalItemsCount}
-              </span>
-            )}
             {renderSortIndicator('title')}
           </span>
         </div>
-
-        {/* Resize Handle */}
-        <div
-          className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize z-20"
-          onMouseDown={(e) => handleResizeMouseDown('title', e)}
-          onClick={(e) => e.stopPropagation()}
-        />
       </div>
 
       {/* 2. Dynamic Property Headers */}
@@ -401,7 +360,7 @@ export function TableHeaderRow({
             'createdOn',
             'updatedOn',
           ].includes(p.key);
-          const propWidth = columnWidths[p.key] || p.minWidth || 130;
+          const propWidth = columnWidths?.[p.key] || DEFAULT_COLUMN_WIDTHS[p.key] || p.minWidth || 144;
 
           return (
             <div
@@ -421,20 +380,13 @@ export function TableHeaderRow({
               style={{ width: `${propWidth}px`, minWidth: `${propWidth}px` }}
               onClick={() => isSortable && onSort?.(p.key as TableSortField)}
               className={cn(
-                'relative flex items-center gap-1.5 px-3 h-full text-xs font-medium text-foreground select-none transition-colors outline-none border-r border-border/40 shrink-0 group/col',
+                'relative flex items-center gap-1.5 px-3 h-full text-xs font-medium text-foreground select-none transition-colors outline-none shrink-0 group/col border-r border-border',
                 isSortable && 'cursor-pointer hover:bg-muted/50 hover:text-foreground'
               )}
             >
               <Icon className="size-3.5 shrink-0 text-foreground" />
               <span className="truncate">{p.label}</span>
               {isSortable && renderSortIndicator(p.key as TableSortField)}
-
-              {/* Resize Handle */}
-              <div
-                className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize z-20"
-                onMouseDown={(e) => handleResizeMouseDown(p.key, e)}
-                onClick={(e) => e.stopPropagation()}
-              />
             </div>
           );
         })}
@@ -445,13 +397,14 @@ export function TableHeaderRow({
         role="columnheader"
         aria-label="Actions"
         style={{ width: '48px', minWidth: '48px' }}
-        className="flex items-center justify-center h-full border-r border-border/40 shrink-0"
+        className="flex items-center justify-center h-full shrink-0 border-r border-border"
       />
+      <div className="flex-1 h-full min-w-0" />
     </div>
   );
 }
 
-// ── 7. Table Group Header ────────────────────────────────────────────────────
+// â”€â”€ 7. Table Group Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function TableGroupHeader({
   title,
@@ -476,25 +429,9 @@ export function TableGroupHeader({
     <div
       role="row"
       onClick={onToggle}
-      className="sticky top-8 z-20 flex items-center h-7 px-3 border-b border-border/60 bg-muted/50 hover:bg-muted/70 backdrop-blur-xs transition-colors cursor-pointer select-none gap-2 text-xs font-medium text-foreground w-full"
+      className="sticky top-9 z-20 flex items-center h-9 px-2.5 border-b border-border bg-muted/50 hover:bg-muted/70 backdrop-blur-xs transition-colors cursor-pointer select-none gap-2 text-xs font-medium text-foreground w-full"
     >
-      <div className="sticky left-3 flex items-center gap-2 shrink-0">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle();
-          }}
-          className="size-4 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer rounded-sm"
-          aria-label={isExpanded ? 'Collapse section' : 'Expand section'}
-        >
-          {isExpanded ? (
-            <ChevronDown className="size-3.5 shrink-0" />
-          ) : (
-            <ChevronRight className="size-3.5 shrink-0" />
-          )}
-        </button>
-
+      <div className="sticky left-2.5 flex items-center gap-2 shrink-0">
         {icon ? (
           icon
         ) : (
@@ -506,7 +443,7 @@ export function TableGroupHeader({
 
         <span className="font-semibold text-foreground truncate">{title}</span>
 
-        <span className="rounded-md bg-muted px-1.5 py-0.2 text-10 font-mono font-medium text-muted-foreground tabular-nums">
+        <span className="rounded-md bg-background border border-border px-1.5 py-0.2 text-10 font-mono font-medium text-muted-foreground tabular-nums">
           {count}
         </span>
       </div>
@@ -514,7 +451,7 @@ export function TableGroupHeader({
   );
 }
 
-// ── 8. Table Row Item ────────────────────────────────────────────────────────
+// â”€â”€ 8. Table Row Item â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const TableRowItem = React.memo(function TableRowItem({
   item,
@@ -540,12 +477,12 @@ export const TableRowItem = React.memo(function TableRowItem({
   columns: ColumnType[];
   projectStates?: ColumnType[];
   visibleProperties: Record<TablePropertyKey, boolean>;
-  columnWidths: Record<string, number>;
+  columnWidths?: Record<string, number>;
   isSelected: boolean;
   onToggleSelect: (id: string) => void;
   onEditCard: (item: Item) => void;
-  onDeleteCard: (item: Item) => void;
-  onDuplicateCard: (item: Item) => void;
+  onDeleteCard?: (item: Item) => void;
+  onDuplicateCard?: (item: Item) => void;
   onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
   members?: ProjectMember[];
   projectId?: string;
@@ -633,7 +570,7 @@ export const TableRowItem = React.memo(function TableRowItem({
     [visibleProperties]
   );
 
-  const titleWidth = columnWidths.title || 360;
+  const titleWidth = columnWidths?.title || DEFAULT_COLUMN_WIDTHS.title;
 
   // Sub-items count
   const childCount =
@@ -673,7 +610,14 @@ export const TableRowItem = React.memo(function TableRowItem({
     <div
       role="row"
       tabIndex={0}
-      onClick={() => onEditCard(item)}
+      onClick={(e) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.stopPropagation();
+          onToggleSelect(item.id);
+        } else {
+          onEditCard(item);
+        }
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' && !isEditingTitle) {
           e.preventDefault();
@@ -682,18 +626,18 @@ export const TableRowItem = React.memo(function TableRowItem({
       }}
       aria-label={`Work item: ${item.title}`}
       className={cn(
-        'group/row flex items-center h-8 border-b border-border/50 hover:bg-muted/30 transition-colors duration-0 cursor-pointer text-xs select-none w-full relative outline-none focus-visible:ring-1 focus-visible:ring-ring',
+        'group/row flex items-center h-9 border-b border-border hover:bg-muted/40 transition-colors duration-0 cursor-pointer text-13 select-none w-full relative outline-none focus-visible:ring-1 focus-visible:ring-ring',
         isSelected && 'bg-muted ring-1 ring-inset ring-border font-medium'
       )}
     >
-      {/* ── 1. Checkbox + Identifier + Title Column (Frozen / Sticky Left) ──── */}
+      {/* 1. Identifier + Title Column (Frozen / Sticky Left) */}
       <div
         role="cell"
         style={{ width: `${titleWidth}px`, minWidth: `${titleWidth}px`, left: 0 }}
         className={cn(
-          'sticky left-0 z-10 flex items-center px-3 h-full shrink-0 border-r border-border/40 transition-colors bg-background group-hover/row:bg-muted/30 shadow-[1px_0_0_0_var(--border)]',
+          'sticky left-0 z-10 flex items-center px-2.5 h-full shrink-0 border-r border-border transition-colors bg-background group-hover/row:bg-muted/40',
           isSelected && 'bg-muted group-hover/row:bg-muted',
-          isSubItem && 'pl-7'
+          isSubItem && 'pl-5'
         )}
         onClick={(e) => {
           // If double click title cell, allow inline edit
@@ -727,29 +671,12 @@ export const TableRowItem = React.memo(function TableRowItem({
           </button>
         )}
 
-        {/* Checkbox */}
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="flex items-center justify-center shrink-0 mr-2"
-        >
-          <Checkbox
-            checked={isSelected}
-            onCheckedChange={() => onToggleSelect(item.id)}
-            aria-label={isSelected ? `Deselect ${item.title}` : `Select ${item.title}`}
-            className={cn(
-              'size-3.5 rounded-sm border-border data-[state=checked]:border-foreground transition-opacity',
-              !isSelected && 'sm:opacity-0 sm:group-hover/row:opacity-100'
-            )}
-          />
-        </div>
-
         {/* Identifier Badge */}
         {item.identifier && (
           <button
             type="button"
             onClick={handleCopyIdentifier}
-            title="Click to copy identifier"
-            className="text-11 font-mono text-foreground hover:underline px-1 py-0.5 rounded-sm mr-2 shrink-0 transition-colors tabular-nums cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+            className="text-11 font-mono text-muted-foreground hover:text-foreground font-medium px-1 py-0.5 rounded-sm mr-2 shrink-0 transition-colors tabular-nums cursor-pointer min-w-[58px] text-left relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             {item.identifier}
           </button>
@@ -806,17 +733,17 @@ export const TableRowItem = React.memo(function TableRowItem({
         )}
       </div>
 
-      {/* ── 2. Dynamic Property Cells ───────────────────────────────────────── */}
+      {/* â”€â”€ 2. Dynamic Property Cells â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex items-center h-full">
         {activeProperties.map((p) => {
-          const propWidth = columnWidths[p.key] || p.minWidth || 130;
+          const propWidth = columnWidths?.[p.key] || DEFAULT_COLUMN_WIDTHS[p.key] || p.minWidth || 144;
 
           return (
             <div
               key={p.key}
               role="cell"
               style={{ width: `${propWidth}px`, minWidth: `${propWidth}px` }}
-              className="flex items-center h-full px-2 overflow-hidden shrink-0 border-r border-border/30"
+              className="flex items-center h-full px-2 overflow-hidden shrink-0 border-r border-border"
               onClick={(e) => e.stopPropagation()}
             >
               {/* STATE CELL */}
@@ -1125,11 +1052,11 @@ export const TableRowItem = React.memo(function TableRowItem({
         })}
       </div>
 
-      {/* ── 3. Actions Column Cell ─────────────────────── */}
+      {/* â”€â”€ 3. Actions Column Cell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div
         role="cell"
         style={{ width: '48px', minWidth: '48px' }}
-        className="flex items-center justify-center h-full border-r border-border/30 shrink-0"
+        className="flex items-center justify-center h-full shrink-0 border-r border-border"
         onClick={(e) => e.stopPropagation()}
       >
         <DropdownMenu>
@@ -1161,7 +1088,7 @@ export const TableRowItem = React.memo(function TableRowItem({
             {!isReadOnly && (
               <>
                 <DropdownMenuItem
-                  onClick={() => onDuplicateCard(item)}
+                  onClick={() => onDuplicateCard?.(item)}
                   className="flex items-center gap-2 cursor-pointer py-1.5 text-xs rounded-md"
                 >
                   <Copy className="size-3.5 text-muted-foreground" />
@@ -1169,7 +1096,7 @@ export const TableRowItem = React.memo(function TableRowItem({
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
-                  onClick={() => onDeleteCard(item)}
+                  onClick={() => onDeleteCard?.(item)}
                   className="flex items-center gap-2 cursor-pointer py-1.5 text-xs rounded-md text-destructive focus:text-destructive focus:bg-destructive/10"
                 >
                   <Trash2 className="size-3.5" />
@@ -1180,11 +1107,12 @@ export const TableRowItem = React.memo(function TableRowItem({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      <div className="flex-1 h-full min-w-0" />
     </div>
   );
 });
 
-// ── 9. Table Inline Quick Add Row ────────────────────────────────────────────
+// â”€â”€ 9. Table Inline Quick Add Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function TableInlineAddRow({
   targetColumnId,
@@ -1235,10 +1163,10 @@ export function TableInlineAddRow({
       <div
         role="row"
         onClick={() => setIsAdding(true)}
-        className="sticky bottom-0 z-20 flex items-center h-9 border-t border-border bg-background/95 backdrop-blur-xs hover:bg-muted/40 transition-colors w-full cursor-pointer select-none group/table-add-bottom shrink-0"
+        className="flex items-center h-9 border-b border-border bg-background hover:bg-muted/40 transition-colors duration-0 w-full cursor-pointer select-none group/table-add-bottom shrink-0"
       >
         <div
-          className="sticky left-0 flex items-center h-full px-3 text-xs text-muted-foreground group-hover/table-add-bottom:text-foreground font-medium transition-colors"
+          className="sticky left-0 flex items-center h-full px-2.5 transition-colors border-r border-border"
           style={{ width: `${titleWidth}px`, minWidth: `${titleWidth}px` }}
         >
           <button
@@ -1247,9 +1175,9 @@ export function TableInlineAddRow({
               e.stopPropagation();
               setIsAdding(true);
             }}
-            className="flex items-center gap-2 h-full text-xs text-muted-foreground group-hover/table-add-bottom:text-foreground font-medium transition-colors cursor-pointer text-left outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="flex items-center gap-2 h-full text-13 text-muted-foreground hover:text-foreground font-normal transition-colors cursor-pointer text-left outline-none focus-visible:outline-none"
           >
-            <Plus className="size-3.5 shrink-0" />
+            <Plus className="size-3.5 shrink-0 text-muted-foreground group-hover/table-add-bottom:text-foreground transition-colors" />
             <span>New work item</span>
           </button>
         </div>
@@ -1262,10 +1190,10 @@ export function TableInlineAddRow({
     <form
       role="row"
       onSubmit={handleSubmit}
-      className="sticky bottom-0 z-20 flex items-center h-9 border-t border-b border-border bg-background transition-colors w-full shrink-0"
+      className="flex items-center h-9 border-b border-border bg-background transition-colors duration-0 w-full shrink-0"
     >
       <div
-        className="sticky left-0 flex items-center gap-2 h-full px-3 bg-background z-10"
+        className="sticky left-0 flex items-center gap-2 h-full px-2.5 bg-background z-10 border-r border-border"
         style={{ width: `${titleWidth}px`, minWidth: `${titleWidth}px` }}
       >
         <Plus className="size-3.5 text-muted-foreground shrink-0" />
@@ -1273,11 +1201,11 @@ export function TableInlineAddRow({
           ref={inputRef}
           type="text"
           value={title}
-          aria-label="What needs to be done?"
+          aria-label="New work item title"
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="What needs to be done? (Enter to save, Esc to cancel)"
-          className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none px-1"
+          placeholder="New work item"
+          className="flex-1 bg-transparent text-13 text-foreground placeholder:text-muted-foreground outline-none font-normal px-1"
         />
         <div className="flex items-center gap-1.5 shrink-0">
           <Button
@@ -1307,7 +1235,216 @@ export function TableInlineAddRow({
   );
 }
 
-// ── 10. Main TableView Component ─────────────────────────────────────────────
+export function TableBottomAddBar({
+  defaultColId,
+  onAddCard,
+}: {
+  defaultColId: string;
+  onAddCard: (columnId: string, title: string) => void;
+}) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [title, setTitle] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isAdding) {
+      inputRef.current?.focus();
+    }
+  }, [isAdding]);
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const trimmed = title.trim();
+    if (!trimmed) {
+      setIsAdding(false);
+      return;
+    }
+    onAddCard(defaultColId, trimmed);
+    setTitle('');
+    setIsAdding(false);
+  };
+
+  return (
+    <div className="h-9 flex items-center bg-background select-none shrink-0 px-2.5">
+      {!isAdding ? (
+        <button
+          type="button"
+          onClick={() => setIsAdding(true)}
+          className="flex items-center gap-1.5 text-13 text-foreground hover:text-foreground cursor-pointer font-normal"
+        >
+          <Plus className="size-3.5 shrink-0 text-foreground" />
+          <span>Add work item</span>
+        </button>
+      ) : (
+        <form onSubmit={handleSubmit} className="flex items-center gap-2 w-full">
+          <input
+            ref={inputRef}
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setIsAdding(false);
+                setTitle('');
+              }
+            }}
+            placeholder="New work item"
+            className="flex-1 bg-transparent text-13 outline-none text-foreground placeholder:text-muted-foreground"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              setIsAdding(false);
+              setTitle('');
+            }}
+            className="text-11 px-2 py-0.5 rounded text-foreground hover:bg-muted"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            onClick={handleSubmit}
+            className="text-11 px-2 py-0.5 rounded bg-primary text-primary-foreground font-medium"
+          >
+            Add
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+export interface TableGroupRowListProps {
+  rows: Array<{
+    item: Item;
+    isSubItem: boolean;
+    hasChildren: boolean;
+    isChildrenExpanded: boolean;
+  }>;
+  scrollRef: React.RefObject<HTMLDivElement | null>;
+  columns: ColumnType[];
+  projectStates?: ColumnType[];
+  visibleProperties: Record<TablePropertyKey, boolean>;
+  selectedIds: string[];
+  onToggleSelect: (id: string) => void;
+  onEditCard: (card: Item) => void;
+  onDeleteCard?: (card: any) => void;
+  onDuplicateCard?: (card: any) => void;
+  onUpdateCard?: (data: Partial<Item> & { id: string }) => void;
+  members?: any[];
+  projectId?: string;
+  isReadOnly?: boolean;
+  toggleExpandChildren: (parentId: string) => void;
+}
+
+export function TableGroupRowList({
+  rows,
+  scrollRef,
+  columns,
+  projectStates,
+  visibleProperties,
+  selectedIds,
+  onToggleSelect,
+  onEditCard,
+  onDeleteCard,
+  onDuplicateCard,
+  onUpdateCard,
+  members = [],
+  projectId = '',
+  isReadOnly = false,
+  toggleExpandChildren,
+}: TableGroupRowListProps) {
+  const isVirtualized = rows.length > 50;
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 36,
+    overscan: 10,
+    enabled: isVirtualized,
+  });
+
+  const virtualItems = isVirtualized ? virtualizer.getVirtualItems() : [];
+
+  if (isVirtualized && virtualItems.length > 0) {
+    return (
+      <div
+        className="relative w-full"
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+        }}
+      >
+        {virtualItems.map((virtualRow) => {
+          const row = rows[virtualRow.index];
+          if (!row) return null;
+          const { item, isSubItem, hasChildren, isChildrenExpanded } = row;
+          return (
+            <div
+              key={item.id}
+              data-index={virtualRow.index}
+              ref={virtualizer.measureElement}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              <TableRowItem
+                item={item}
+                columns={columns}
+                projectStates={projectStates || columns}
+                visibleProperties={visibleProperties}
+                isSelected={selectedIds.includes(item.id)}
+                onToggleSelect={onToggleSelect}
+                onEditCard={onEditCard}
+                onDeleteCard={onDeleteCard}
+                onDuplicateCard={onDuplicateCard}
+                onUpdateCard={onUpdateCard}
+                members={members}
+                projectId={projectId}
+                isReadOnly={isReadOnly}
+                isSubItem={isSubItem}
+                hasChildren={hasChildren}
+                isChildrenExpanded={isChildrenExpanded}
+                onToggleExpandChildren={toggleExpandChildren}
+              />
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col">
+      {rows.map(({ item, isSubItem, hasChildren, isChildrenExpanded }) => (
+        <TableRowItem
+          key={item.id}
+          item={item}
+          columns={columns}
+          projectStates={projectStates || columns}
+          visibleProperties={visibleProperties}
+          isSelected={selectedIds.includes(item.id)}
+          onToggleSelect={onToggleSelect}
+          onEditCard={onEditCard}
+          onDeleteCard={onDeleteCard}
+          onDuplicateCard={onDuplicateCard}
+          onUpdateCard={onUpdateCard}
+          members={members}
+          projectId={projectId}
+          isReadOnly={isReadOnly}
+          isSubItem={isSubItem}
+          hasChildren={hasChildren}
+          isChildrenExpanded={isChildrenExpanded}
+          onToggleExpandChildren={toggleExpandChildren}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── 10. Main TableView Component ──────────────────────────────────────────────
 
 export function TableView({
   items = [],
@@ -1328,7 +1465,7 @@ export function TableView({
   onSelectAll: rawOnSelectAll,
   onToggleDisplayProperty,
 }: TableViewProps) {
-  // ── A. Column Visibility (Synchronized with displayOptions.properties) ─────
+  // â”€â”€ A. Column Visibility (Synchronized with displayOptions.properties) â”€â”€â”€â”€â”€
   const visibleProperties = useMemo<Record<TablePropertyKey, boolean>>(() => {
     const p = (displayOptions?.properties || {}) as Record<string, unknown>;
 
@@ -1400,37 +1537,7 @@ export function TableView({
     // Reset properties to default
   }, []);
 
-  // ── B. Column Widths ───────────────────────────────────────────────────────
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(TABLE_WIDTHS_STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed && typeof parsed === 'object') {
-            return { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
-          }
-        }
-      } catch {
-        // Ignore localStorage error
-      }
-    }
-    return DEFAULT_COLUMN_WIDTHS;
-  });
-
-  const handleResizeColumn = useCallback((key: string, newWidth: number) => {
-    setColumnWidths((prev) => {
-      const updated = { ...prev, [key]: newWidth };
-      try {
-        localStorage.setItem(TABLE_WIDTHS_STORAGE_KEY, JSON.stringify(updated));
-      } catch {
-        // Ignore localStorage error
-      }
-      return updated;
-    });
-  }, []);
-
-  // ── C. Multi-Select Handling ───────────────────────────────────────────────
+  // â”€â”€ B. Multi-Select Handling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [localSelectedIds, setLocalSelectedIds] = useState<string[]>([]);
   const selectedIds = propSelectedIds ?? localSelectedIds;
 
@@ -1458,7 +1565,7 @@ export function TableView({
     }
   }, [items, selectedIds, rawOnSelectAll]);
 
-  // ── D. Sorting ─────────────────────────────────────────────────────────────
+  // â”€â”€ D. Sorting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [sortField, setSortField] = useState<TableSortField>('identifier');
   const [sortOrder, setSortOrder] = useState<TableSortOrder>('asc');
 
@@ -1538,8 +1645,8 @@ export function TableView({
     [sortField, sortOrder]
   );
 
-  // ── E. Grouping Logic ──────────────────────────────────────────────────────
-  const effectiveGroupBy = displayOptions?.groupBy;
+  // â”€â”€ E. Grouping Logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const effectiveGroupBy = displayOptions?.groupBy ?? 'none';
   const isGrouped = Boolean(effectiveGroupBy && effectiveGroupBy !== 'none');
 
   // Group expansion state
@@ -1576,7 +1683,10 @@ export function TableView({
       ];
 
       return priorityConfigs.map((p) => {
-        const groupItems = items.filter((item) => (item.priority || 'none') === p.key);
+        const groupItems =
+          itemsByColumnId instanceof Map && itemsByColumnId.has(p.key)
+            ? itemsByColumnId.get(p.key) || []
+            : items.filter((item) => (item.priority || 'none').toLowerCase() === p.key.toLowerCase());
         return {
           key: p.key,
           title: p.title,
@@ -1592,9 +1702,12 @@ export function TableView({
         const mem = m as typeof m & { user?: { id?: string; name?: string } };
         const userId = mem.userId || mem.user?.id || mem.id || '';
         const name = mem.name || mem.user?.name || 'Member';
-        const groupItems = items.filter(
-          (item) => ItemHelpers.resolveAssigneeId(item) === userId
-        );
+        const groupItems =
+          itemsByColumnId instanceof Map && itemsByColumnId.has(userId)
+            ? itemsByColumnId.get(userId) || []
+            : items.filter(
+                (item) => ItemHelpers.resolveAssigneeId(item) === userId
+              );
         return {
           key: userId,
           title: name,
@@ -1611,7 +1724,10 @@ export function TableView({
         };
       });
 
-      const unassignedItems = items.filter((item) => !ItemHelpers.resolveAssigneeId(item));
+      const unassignedItems =
+        itemsByColumnId instanceof Map && itemsByColumnId.has('__unassigned__')
+          ? itemsByColumnId.get('__unassigned__') || []
+          : items.filter((item) => !ItemHelpers.resolveAssigneeId(item));
       memberGroups.push({
         key: '__unassigned__',
         title: 'Unassigned',
@@ -1671,7 +1787,14 @@ export function TableView({
     // Default: Group by State
     return stateList.map((col) => {
       const colId = resolveColumnId(col);
-      const groupItems = items.filter((i) => i.columnId === colId);
+      const groupItems =
+        itemsByColumnId instanceof Map
+          ? itemsByColumnId.get(colId) || []
+          : (itemsByColumnId as Record<string, Item[]>)?.[colId] ??
+            items.filter((i) => {
+              const itemCol = i.columnId || (i as any).stateId || i.state?.id;
+              return itemCol === colId;
+            });
       const colColor = col.color || col.accentColor || '#6B7280';
       const colTitle = col.title || col.name || 'Group';
 
@@ -1691,7 +1814,7 @@ export function TableView({
         items: sortItemsList(groupItems),
       };
     });
-  }, [isGrouped, effectiveGroupBy, items, stateList, members, sortItemsList]);
+  }, [isGrouped, effectiveGroupBy, items, itemsByColumnId, stateList, members, sortItemsList]);
 
   // Flat sorted items when not grouped
   const flatSortedItems = useMemo(() => {
@@ -1699,7 +1822,7 @@ export function TableView({
     return sortItemsList(items);
   }, [isGrouped, items, sortItemsList]);
 
-  // ── F. Sub-items Tree & Hierarchy (Plane.so style) ──────────────────────────
+  // â”€â”€ F. Sub-items Tree & Hierarchy (Plane.so style) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [collapsedParentIds, setCollapsedParentIds] = useState<Set<string>>(new Set());
 
   const toggleExpandChildren = useCallback((parentId: string) => {
@@ -1799,150 +1922,253 @@ export function TableView({
     return defaultCol ? resolveColumnId(defaultCol) : 'backlog';
   }, [columns]);
 
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="flex flex-col flex-1 w-full overflow-hidden bg-background">
-      <div className="flex-1 overflow-auto">
-        <div role="table" aria-label="Work items table" className="min-w-max min-h-full flex flex-col justify-between">
-          <div className="flex-1 flex flex-col">
-            {/* Main Sticky Header */}
-            <div role="rowgroup">
-              <TableHeaderRow
-                visibleProperties={visibleProperties}
-                columnWidths={columnWidths}
-                onResizeColumn={handleResizeColumn}
-                onToggleProperty={handleToggleProperty}
-                onResetProperties={handleResetProperties}
-                isAllSelected={isAllSelected}
-                isSomeSelected={isSomeSelected}
-                onToggleSelectAll={handleSelectAll}
-                sortField={sortField}
-                sortOrder={sortOrder}
-                onSort={handleSort}
-                totalItemsCount={items.length}
-              />
-            </div>
-
-            {/* Zero items state */}
-            {items.length === 0 && (
-              <div className="py-20 flex flex-col items-center justify-center text-center">
-                <div className="size-10 rounded-md bg-muted flex items-center justify-center mb-3">
-                  <FileText className="size-5 text-foreground" />
-                </div>
-                <h4 className="text-16 font-semibold text-foreground mb-1">No work items found</h4>
-                <p className="text-13 text-muted-foreground mb-4">
-                  There are no items matching the current view filters.
-                </p>
-                {!isReadOnly && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onAddCard(defaultColId)}
-                    className="gap-1.5 text-xs rounded-md focus-visible:ring-1 focus-visible:ring-ring"
-                  >
-                    <Plus className="size-3.5" />
-                    <span>Create work item</span>
-                  </Button>
-                )}
-              </div>
-            )}
-
-            {/* Grouped Mode */}
-            {isGrouped && items.length > 0 && (
-              <div role="rowgroup" className="flex flex-col">
-                {groups.map((group) => {
-                  if (group.items.length === 0 && !displayOptions?.showEmptyGroups) {
-                    return null;
-                  }
-                  const isExpanded = !collapsedGroupKeys.has(group.key);
-
-                  return (
-                    <div key={group.key} className="flex flex-col">
-                      <TableGroupHeader
-                        title={group.title}
-                        color={group.color}
-                        icon={group.icon}
-                        count={group.items.length}
-                        isExpanded={isExpanded}
-                        onToggle={() => toggleGroupCollapse(group.key)}
-                      />
-
-                      {isExpanded && (
-                        <div className="flex flex-col">
-                          {buildTreeRows(group.items).map(
-                            ({ item, isSubItem, hasChildren, isChildrenExpanded }) => (
-                              <TableRowItem
-                                key={item.id}
-                                item={item}
-                                columns={columns}
-                                projectStates={projectStates || columns}
-                                visibleProperties={visibleProperties}
-                                columnWidths={columnWidths}
-                                isSelected={selectedIds.includes(item.id)}
-                                onToggleSelect={handleToggleSelect}
-                                onEditCard={onEditCard}
-                                onDeleteCard={onDeleteCard}
-                                onDuplicateCard={onDuplicateCard}
-                                onUpdateCard={onUpdateCard}
-                                members={members}
-                                projectId={projectId}
-                                isReadOnly={isReadOnly}
-                                isSubItem={isSubItem}
-                                hasChildren={hasChildren}
-                                isChildrenExpanded={isChildrenExpanded}
-                                onToggleExpandChildren={toggleExpandChildren}
-                              />
-                            )
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Flat Mode */}
-            {!isGrouped && items.length > 0 && (
-              <div role="rowgroup" className="flex flex-col">
-                {flatTreeRows.map(
-                  ({ item, isSubItem, hasChildren, isChildrenExpanded }) => (
-                    <TableRowItem
-                      key={item.id}
-                      item={item}
-                      columns={columns}
-                      projectStates={projectStates || columns}
-                      visibleProperties={visibleProperties}
-                      columnWidths={columnWidths}
-                      isSelected={selectedIds.includes(item.id)}
-                      onToggleSelect={handleToggleSelect}
-                      onEditCard={onEditCard}
-                      onDeleteCard={onDeleteCard}
-                      onDuplicateCard={onDuplicateCard}
-                      onUpdateCard={onUpdateCard}
-                      members={members}
-                      projectId={projectId}
-                      isReadOnly={isReadOnly}
-                      isSubItem={isSubItem}
-                      hasChildren={hasChildren}
-                      isChildrenExpanded={isChildrenExpanded}
-                      onToggleExpandChildren={toggleExpandChildren}
-                    />
-                  )
-                )}
-              </div>
-            )}
+      <div
+        ref={tableScrollRef}
+        className="flex-1 overflow-auto select-none bg-background relative min-h-0 interactive-scrollbar"
+      >
+        <div role="table" aria-label="Work items table" className="min-w-full w-max flex flex-col">
+          {/* Main Sticky Header */}
+          <div role="rowgroup">
+            <TableHeaderRow
+              visibleProperties={visibleProperties}
+              onToggleProperty={handleToggleProperty}
+              onResetProperties={handleResetProperties}
+              isAllSelected={isAllSelected}
+              isSomeSelected={isSomeSelected}
+              onToggleSelectAll={handleSelectAll}
+              sortField={sortField}
+              sortOrder={sortOrder}
+              onSort={handleSort}
+            />
           </div>
 
-          {/* Pinned Bottom "+ New work item" Row (Official Plane Parity) */}
-          {items.length > 0 && !isReadOnly && (
-            <TableInlineAddRow
-              targetColumnId={defaultColId}
-              titleWidth={columnWidths.title || 360}
-              onAddCard={onAddCard}
-              isReadOnly={isReadOnly}
-            />
+          {/* Zero items state */}
+          {items.length === 0 && (
+            <div className="py-20 flex flex-col items-center justify-center text-center">
+              <div className="size-10 rounded-md bg-muted flex items-center justify-center mb-3">
+                <FileText className="size-5 text-foreground" />
+              </div>
+              <h4 className="text-16 font-semibold text-foreground mb-1">No work items found</h4>
+              <p className="text-13 text-muted-foreground mb-4">
+                There are no items matching the current view filters.
+              </p>
+              {!isReadOnly && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onAddCard(defaultColId)}
+                  className="gap-1.5 text-xs rounded-md focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <Plus className="size-3.5" />
+                  <span>Create work item</span>
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Grouped Mode */}
+          {isGrouped && items.length > 0 && (
+            <div role="rowgroup" className="flex flex-col">
+              {groups.map((group) => {
+                if (group.items.length === 0 && !displayOptions?.showEmptyGroups) {
+                  return null;
+                }
+                const isExpanded = !collapsedGroupKeys.has(group.key);
+
+                return (
+                  <div key={group.key} className="flex flex-col">
+                    <TableGroupHeader
+                      title={group.title}
+                      color={group.color}
+                      icon={group.icon}
+                      count={group.items.length}
+                      isExpanded={isExpanded}
+                      onToggle={() => toggleGroupCollapse(group.key)}
+                    />
+
+                    {isExpanded && (
+                      <TableGroupRowList
+                        rows={buildTreeRows(group.items)}
+                        scrollRef={tableScrollRef}
+                        columns={columns}
+                        projectStates={projectStates || columns}
+                        visibleProperties={visibleProperties}
+                        selectedIds={selectedIds}
+                        onToggleSelect={handleToggleSelect}
+                        onEditCard={onEditCard}
+                        onDeleteCard={onDeleteCard}
+                        onDuplicateCard={onDuplicateCard}
+                        onUpdateCard={onUpdateCard}
+                        members={members}
+                        projectId={projectId}
+                        isReadOnly={isReadOnly}
+                        toggleExpandChildren={toggleExpandChildren}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Flat Mode */}
+          {!isGrouped && items.length > 0 && (
+            <div role="rowgroup" className="flex flex-col">
+              <TableGroupRowList
+                rows={flatTreeRows}
+                scrollRef={tableScrollRef}
+                columns={columns}
+                projectStates={projectStates || columns}
+                visibleProperties={visibleProperties}
+                selectedIds={selectedIds}
+                onToggleSelect={handleToggleSelect}
+                onEditCard={onEditCard}
+                onDeleteCard={onDeleteCard}
+                onDuplicateCard={onDuplicateCard}
+                onUpdateCard={onUpdateCard}
+                members={members}
+                projectId={projectId}
+                isReadOnly={isReadOnly}
+                toggleExpandChildren={toggleExpandChildren}
+              />
+            </div>
           )}
         </div>
+      </div>
+
+      {/* Fixed Bottom Footer: "+ New work item" Row (pinned at bottom, outside the scroll area) */}
+      {items.length > 0 && !isReadOnly && (
+        <div className="shrink-0 border-t border-border bg-background z-20">
+          <TableInlineAddRow
+            targetColumnId={defaultColId}
+            titleWidth={DEFAULT_COLUMN_WIDTHS.title}
+            onAddCard={onAddCard}
+            isReadOnly={isReadOnly}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function TableHorizontalScrollbar({
+  scrollRef,
+}: {
+  scrollRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [scrollState, setScrollState] = useState({
+    scrollLeft: 0,
+    scrollWidth: 0,
+    clientWidth: 0,
+    canScroll: false,
+  });
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const can = el.scrollWidth > el.clientWidth + 2;
+    setScrollState({
+      scrollLeft: el.scrollLeft,
+      scrollWidth: el.scrollWidth,
+      clientWidth: el.clientWidth,
+      canScroll: can,
+    });
+  }, [scrollRef]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    updateScrollState();
+
+    const handleScroll = () => {
+      updateScrollState();
+    };
+
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', updateScrollState);
+    const ro = new ResizeObserver(updateScrollState);
+    ro.observe(el);
+
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', updateScrollState);
+      ro.disconnect();
+    };
+  }, [scrollRef, updateScrollState]);
+
+  if (!scrollState.canScroll) return null;
+
+  const maxScroll = Math.max(1, scrollState.scrollWidth - scrollState.clientWidth);
+  const scrollRatio = Math.min(1, Math.max(0, scrollState.scrollLeft / maxScroll));
+  // Keep thumb width clean and compact (between 15% and 35%) so it is never excessively long
+  const thumbWidthPercent = Math.max(
+    15,
+    Math.min(35, (scrollState.clientWidth / scrollState.scrollWidth) * 100)
+  );
+  const maxThumbLeft = 100 - thumbWidthPercent;
+  const thumbLeftPercent = scrollRatio * maxThumbLeft;
+
+  const handleTrackClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = scrollRef.current;
+    const track = trackRef.current;
+    if (!el || !track) return;
+    const rect = track.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+    el.scrollTo({
+      left: ratio * maxScroll,
+      behavior: 'smooth',
+    });
+  };
+
+  const handleThumbMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = scrollRef.current;
+    const track = trackRef.current;
+    if (!el || !track) return;
+
+    const startX = e.clientX;
+    const startScrollLeft = el.scrollLeft;
+    const trackRect = track.getBoundingClientRect();
+    const thumbWidthPx = (thumbWidthPercent / 100) * trackRect.width;
+    const availableTravel = Math.max(1, trackRect.width - thumbWidthPx);
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const scrollDelta = (deltaX / availableTravel) * maxScroll;
+      el.scrollLeft = Math.max(0, Math.min(maxScroll, startScrollLeft + scrollDelta));
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  return (
+    <div className="h-3.5 w-full border-t border-border bg-background flex items-center justify-center shrink-0 select-none py-1">
+      <div
+        ref={trackRef}
+        onClick={handleTrackClick}
+        className="relative w-64 sm:w-80 h-1.5 rounded-full bg-muted/60 hover:bg-muted/80 cursor-pointer transition-colors"
+      >
+        <div
+          onMouseDown={handleThumbMouseDown}
+          className="absolute top-0 bottom-0 rounded-full bg-muted-foreground/40 hover:bg-muted-foreground/60 active:bg-muted-foreground/80 transition-colors cursor-grab active:cursor-grabbing"
+          style={{
+            width: `${thumbWidthPercent}%`,
+            left: `${thumbLeftPercent}%`,
+          }}
+        />
       </div>
     </div>
   );

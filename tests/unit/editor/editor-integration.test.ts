@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { collaborationService, type CollaborationEvent } from '@/features/editor/sdk';
+import { collaborationService, type CollaborationEvent } from '@/features/editor/sdk/manuscript.service';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { parseSyncTeX, resolveForward } from '@/features/editor/domain/pdf/synctex-index';
 import { fromAny, fromPartial } from '@/shared/lib/type-utilities';

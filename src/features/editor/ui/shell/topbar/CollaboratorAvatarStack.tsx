@@ -34,10 +34,10 @@ import { cn } from '@/shared/lib/utils';
 import {
   useCollaborationPresence,
   type CollaboratorPresenceInfo,
-} from '../../hooks/use-collaboration';
-import { getCollaboratorColor } from '../../features/editor/CollaboratorCursors';
-import { navigationCoordinator } from '../../../coordinators/navigation.coordinator';
-import { editorCommandBus } from '../../../coordinators/command-bus';
+} from '@/features/editor/ui/hooks/useCollaboration';
+import { getCollaboratorColor } from '../../editor/CollaboratorCursors';
+import { navigationCoordinator } from '@/features/editor/coordinators/navigation.coordinator';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { usePageStore } from '@/features/editor/store/editor.store';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 

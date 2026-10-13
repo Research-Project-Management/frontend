@@ -12,7 +12,7 @@ import {
 } from '@/features/editor/engines/extensions/inline-diff';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { aiCoordinator } from '@/features/editor/coordinators/ai.coordinator';
-import { manuscriptService } from '@/features/editor/sdk';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { CodeMirrorEngineAdapter } from '@/features/editor/engines/adapters/codemirror.adapter';
 import { setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
 import { usePageStore } from '@/features/editor/store/editor.store';
@@ -24,6 +24,7 @@ describe('AI Inline Ghost Diff & 1-Click Error Assist (Cursor / Overleaf Parity)
 
   beforeEach(() => {
     vi.useFakeTimers();
+    aiCoordinator.initCommandSubscriptions(true);
 
     if (typeof Range.prototype.getClientRects !== 'function') {
       Range.prototype.getClientRects = () =>

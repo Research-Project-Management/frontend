@@ -16,7 +16,7 @@ import {
   StorageService,
 } from '../manuscript.service';
 import { resolveFileUrl } from '@/features/editor/domain/latex/latex-structure';
-import { extractDocumentContentString } from '@/features/editor/domain/types';
+import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 
 export interface ExportZipOptions {
   parentPageId: string;
@@ -128,6 +128,36 @@ async function bundleAndDownloadZip({
           : extractDocumentContentString(rootPage?.content) || currentContent || '';
 
       filesMap.set(rootTitle, rootStr);
+    }
+
+    // 3.5. arXiv Publication Parity: Ensure compiled .bbl is retrieved from compiler artifacts if missing
+    if (isArxiv) {
+      const hasBbl = Array.from(filesMap.keys()).some((k) => k.toLowerCase().endsWith('.bbl'));
+      if (!hasBbl) {
+        try {
+          const auxFiles = await manuscriptService.compiler.listAuxFiles(parentPageId).catch(() => []);
+          const bblItem = (auxFiles || []).find((f) => f.name.toLowerCase().endsWith('.bbl'));
+          if (bblItem) {
+            const bblName = bblItem.name;
+            const bblUrl = manuscriptService.compiler.downloadAuxFileUrl(parentPageId, bblName);
+            const res = await fetch(bblUrl, { credentials: 'include' });
+            if (res.ok) {
+              const bblContent = await res.text();
+              filesMap.set(bblName, bblContent);
+              // If root file is main.tex but bbl is output.bbl, also provide main.bbl for arXiv compiler auto-detection
+              const rootTex = Array.from(filesMap.keys()).find((k) => k.toLowerCase().endsWith('.tex'));
+              if (rootTex && bblName.toLowerCase() === 'output.bbl') {
+                const targetBbl = rootTex.replace(/\.tex$/i, '.bbl');
+                if (!filesMap.has(targetBbl)) {
+                  filesMap.set(targetBbl, bblContent);
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[export-arxiv] Could not fetch compiled .bbl artifact:', e);
+        }
+      }
     }
 
     // Add all source files to the ZIP

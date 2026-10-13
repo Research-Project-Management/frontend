@@ -4,12 +4,9 @@
  * Unified DTOs and payloads for the Manuscript service subsystem.
  */
 
-import type {
-  PageComment,
-  PageSuggestion,
-  SuggestionType,
-  ErrorExplanationDto,
-} from '@/features/editor/domain/types';
+import type { PageComment } from '@/features/editor/domain/types/comment.types';
+import type { PageSuggestion, SuggestionType } from '@/features/editor/domain/types/suggestion.types';
+import type { ErrorExplanationDto } from '@/features/editor/domain/types/compiler.types';
 import type {
   ProjectVersionListItem,
   ProjectSnapshotDetail,

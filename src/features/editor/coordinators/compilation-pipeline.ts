@@ -18,7 +18,7 @@ import {
   type CompileLatexPayload,
   type CompilerDiagnostic,
   type ForwardSyncResult,
-} from '@/features/editor/sdk';
+} from '@/features/editor/sdk/manuscript.service';
 import { parseCompileErrors, type ParsedCompileError } from '@/features/editor/domain/latex/latex-structure';
 import { logger } from '@/shared/lib/utils';
 import {

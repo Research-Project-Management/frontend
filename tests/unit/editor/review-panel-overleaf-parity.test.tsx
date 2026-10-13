@@ -18,17 +18,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useLayoutStore } from '@/features/editor/store/layout.store';
 import { usePageStore } from '@/features/editor/store/editor.store';
 import { useDocumentCollaborationStore } from '@/features/editor/store/collaboration.store';
-import { useReviewPendingCount } from '@/features/editor/ui/features/sidebar/review/hooks/useReviewPendingCount';
-import { SuggestionCard, SuggestionBulkActions } from '@/features/editor/ui/features/sidebar/review/subcomponents/ReviewSuggestions';
+import { useReviewPendingCount } from '@/features/editor/ui/sidebar/review/hooks/useReviewPendingCount';
+import { SuggestionCard, SuggestionBulkActions } from '@/features/editor/ui/sidebar/review/subcomponents/ReviewSuggestions';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
-import { EditorToolbar } from '@/features/editor/ui/features/editor/EditorToolbar';
+import { EditorToolbar } from '@/features/editor/ui/editor/EditorToolbar';
 import { ActivityBar } from '@/features/editor/ui/shell/ActivityBar';
 import { Topbar } from '@/features/editor/ui/shell/Topbar';
 import { reviewCoordinator } from '@/features/editor/coordinators/review.coordinator';
 import { jumpToEditorLine } from '@/features/editor/coordinators/navigation.coordinator';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
-import { suggestionService, commentService } from '@/features/editor/sdk';
-import type { PageSuggestion } from '@/features/editor/domain/types';
+import { suggestionService, commentService } from '@/features/editor/sdk/manuscript.service';
+import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
@@ -51,7 +51,7 @@ vi.mock('sonner', () => ({
 const mockComments: any[] = [];
 const mockSuggestions: PageSuggestion[] = [];
 
-vi.mock('@/features/editor/ui/hooks/use-comment', () => ({
+vi.mock('@/features/editor/ui/sidebar/review/hooks/useComment', () => ({
   usePageComments: () => ({
     data: mockComments,
     isLoading: false,
@@ -59,7 +59,7 @@ vi.mock('@/features/editor/ui/hooks/use-comment', () => ({
   }),
 }));
 
-vi.mock('@/features/editor/ui/hooks/use-suggestion', () => ({
+vi.mock('@/features/editor/ui/sidebar/review/hooks/useSuggestion', () => ({
   usePageSuggestions: () => ({
     data: mockSuggestions,
     isLoading: false,
@@ -67,7 +67,7 @@ vi.mock('@/features/editor/ui/hooks/use-suggestion', () => ({
   }),
 }));
 
-vi.mock('@/features/editor/ui/hooks/use-page-actions', () => ({
+vi.mock('@/features/editor/ui/hooks/usePageActions', () => ({
   usePageActions: () => ({
     updateTitle: { isPending: false },
   }),

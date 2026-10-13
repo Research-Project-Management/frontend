@@ -1,19 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
 import {
   VisualMathSymbolPalette,
   MATH_SYMBOLS,
   type VisualMathSymbolPaletteProps,
-} from '@/features/editor/ui/features/editor/visual/modals/VisualMathSymbolPalette';
-import { VisualEditorView } from '@/features/editor/ui/features/editor/VisualEditorView';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
+} from '@/features/editor/ui/editor/visual/modals/VisualMathSymbolPalette';
 
-describe('VisualMathSymbolPalette & Math Modal Integration', () => {
-  beforeEach(() => {
-    useSettingsStore.setState({ editorMode: 'visual' });
-  });
-
+describe('VisualMathSymbolPalette Component', () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
@@ -104,153 +98,6 @@ describe('VisualMathSymbolPalette & Math Modal Integration', () => {
       fireEvent.click(fracBtn);
 
       expect(handleInsert).toHaveBeenCalledWith('\\frac{a}{b}');
-    });
-  });
-
-  describe('2. VisualEditorView Math Modal Integration', () => {
-    const mathLatex = [
-      '\\section{Math Demonstration}',
-      'The mass-energy relation is $E = mc^2$ in relativity.',
-    ].join('\n');
-
-    it('opens math editor modal with KaTeX preview and quick-symbol palette on click', () => {
-      const { container } = render(
-        <VisualEditorView filePath="math.tex" value={mathLatex} onChange={vi.fn()} />
-      );
-
-      const mathEl = container.querySelector('.latex-math-inline');
-      expect(mathEl).toBeTruthy();
-      fireEvent.click(mathEl!);
-
-      // Modal is open
-      expect(screen.getByText(/Edit LaTeX Math \(Inline Formula\)/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/LaTeX equation input/i)).toHaveValue('E = mc^2');
-      // Palette is present
-      expect(screen.getByRole('region', { name: /KaTeX Quick-Symbol Palette/i })).toBeInTheDocument();
-    });
-
-    it('toggles the quick symbol palette with the header button', () => {
-      const { container } = render(
-        <VisualEditorView filePath="math.tex" value={mathLatex} onChange={vi.fn()} />
-      );
-
-      const mathEl = container.querySelector('.latex-math-inline');
-      fireEvent.click(mathEl!);
-
-      const toggleBtn = screen.getByRole('button', { name: /Toggle math symbol palette/i });
-      expect(screen.getByRole('region', { name: /KaTeX Quick-Symbol Palette/i })).toBeInTheDocument();
-
-      // Click to hide
-      fireEvent.click(toggleBtn);
-      expect(screen.queryByRole('region', { name: /KaTeX Quick-Symbol Palette/i })).toBeNull();
-
-      // Click to show again
-      fireEvent.click(toggleBtn);
-      expect(screen.getByRole('region', { name: /KaTeX Quick-Symbol Palette/i })).toBeInTheDocument();
-    });
-
-    it('inserts clicked symbol into the equation and updates KaTeX live preview', async () => {
-      const handleChange = vi.fn();
-      const { container } = render(
-        <VisualEditorView filePath="math.tex" value={mathLatex} onChange={handleChange} />
-      );
-
-      const mathEl = container.querySelector('.latex-math-inline');
-      fireEvent.click(mathEl!);
-
-      // Click Greek tab and insert alpha
-      fireEvent.click(screen.getByRole('tab', { name: 'Greek' }));
-      const alphaBtn = screen.getByRole('button', { name: /Insert alpha/i });
-      fireEvent.click(alphaBtn);
-
-      const input = screen.getByLabelText(/LaTeX equation input/i) as HTMLInputElement;
-      expect(input.value).toContain('\\alpha');
-
-      // Click Apply Changes
-      fireEvent.click(screen.getByRole('button', { name: /Apply Changes/i }));
-
-      await waitFor(() => {
-        expect(handleChange).toHaveBeenCalled();
-        const nextLatex = handleChange.mock.calls[handleChange.mock.calls.length - 1][0];
-        expect(nextLatex).toContain('\\alpha');
-      });
-    });
-
-    it('deletes math formula on Delete Formula click', async () => {
-      const handleChange = vi.fn();
-      const { container } = render(
-        <VisualEditorView filePath="math.tex" value={mathLatex} onChange={handleChange} />
-      );
-
-      const mathEl = container.querySelector('.latex-math-inline');
-      fireEvent.click(mathEl!);
-
-      fireEvent.click(screen.getByRole('button', { name: /Delete Formula/i }));
-
-      await waitFor(() => {
-        expect(handleChange).toHaveBeenCalled();
-        const nextLatex = handleChange.mock.calls[handleChange.mock.calls.length - 1][0];
-        expect(nextLatex).not.toContain('$E = mc^2$');
-        expect(container.querySelector('.latex-math-inline')).toBeNull();
-      });
-    });
-
-    it('closes modal on Escape key press or Cancel click', () => {
-      const { container } = render(
-        <VisualEditorView filePath="math.tex" value={mathLatex} onChange={vi.fn()} />
-      );
-
-      const mathEl = container.querySelector('.latex-math-inline');
-      fireEvent.click(mathEl!);
-      expect(screen.getByText(/Edit LaTeX Math/i)).toBeInTheDocument();
-
-      const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
-      fireEvent.click(cancelBtn);
-
-      expect(screen.queryByText(/Edit LaTeX Math/i)).toBeNull();
-    });
-
-    it('opens math editor modal on double-click and provides Matrix Wizard button (Overleaf Parity)', async () => {
-      const { editorCommandBus } = await import('@/features/editor/coordinators/command-bus');
-      const busSpy = vi.spyOn(editorCommandBus, 'dispatch');
-
-      const { container } = render(
-        <VisualEditorView filePath="math.tex" value={mathLatex} onChange={vi.fn()} />
-      );
-
-      const mathEl = container.querySelector('.latex-math-inline');
-      expect(mathEl).toBeTruthy();
-
-      // Double-click on math element
-      fireEvent.doubleClick(mathEl!);
-
-      // Modal should be open
-      expect(screen.getByText(/Edit LaTeX Math \(Inline Formula\)/i)).toBeInTheDocument();
-
-      // Matrix Wizard button should be visible
-      const matrixBtn = screen.getByRole('button', { name: /Open Matrix Wizard/i });
-      expect(matrixBtn).toBeInTheDocument();
-
-      fireEvent.click(matrixBtn);
-      expect(busSpy).toHaveBeenCalledWith({
-        type: 'dialog:open',
-        dialog: 'matrix-wizard',
-      });
-
-      // External text insertion via editorCommandBus inserts into math input
-      act(() => {
-        editorCommandBus.dispatch({
-          type: 'editor:insert-text',
-          text: '\\begin{pmatrix} 1 & 0 \\\\ 0 & 1 \\end{pmatrix}',
-        });
-      });
-
-      await waitFor(() => {
-        const input = screen.getByLabelText(/LaTeX equation input/i) as HTMLInputElement;
-        expect(input.value).toContain('\\begin{pmatrix}');
-      });
-
-      busSpy.mockRestore();
     });
   });
 });

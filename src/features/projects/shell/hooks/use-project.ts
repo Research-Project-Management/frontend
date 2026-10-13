@@ -10,6 +10,7 @@ import {
   fetchUserProjects,
   duplicateProjectApi,
   fetchTrashedProjects,
+  restoreTrashedProjectApi,
   permanentDeleteProjectApi,
   type Project,
   type ProjectPermissions,
@@ -257,11 +258,10 @@ export const useDeleteProject = () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.projectsHeader() });
       queryClient.invalidateQueries({ queryKey: projectKeys.header(variables.projectId) });
       queryClient.invalidateQueries({ queryKey: ['workspace'] });
-      queryClient.invalidateQueries({ queryKey: trashProjectKeys.all() });
-      toast.success('Project moved to trash', { id: 'project-action' });
+      toast.success('Project permanently deleted', { id: 'project-action' });
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to move project to trash', { id: 'project-error' });
+      toast.error(error.message || 'Failed to delete project', { id: 'project-error' });
     },
   });
 };
@@ -816,6 +816,24 @@ export const useTrashedProjects = () => {
   };
 };
 
+export const useRestoreTrashedProject = () => {
+  const queryClient = useQueryClient();
+  return useMutation<unknown, Error, ProjectIdVariables>({
+    mutationFn: ({ projectId }: ProjectIdVariables) => restoreTrashedProjectApi(projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: trashProjectKeys.all() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.all() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.projectsHeader() });
+      toast.success('Project restored from trash', { id: 'project-restore-trash-success' });
+    },
+    onError: (error: Error) => {
+      toast.error(error?.message || 'Failed to restore project from trash', {
+        id: 'project-restore-trash-error',
+      });
+    },
+  });
+};
+
 export const usePermanentDeleteProject = () => {
   const queryClient = useQueryClient();
   return useMutation<unknown, Error, ProjectIdVariables>({
@@ -832,3 +850,4 @@ export const usePermanentDeleteProject = () => {
     },
   });
 };
+

@@ -6,10 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
-import {
-  newFileModalSchema,
-  type NewFileModalFormValues,
-} from '@/features/editor/domain/types';
+import { newFileModalSchema, type NewFileModalFormValues } from '@/features/editor/domain/types/forms.types';
 
 export interface NewFileTabPaneProps {
   parentPageId: string | null;

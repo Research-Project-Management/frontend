@@ -367,6 +367,7 @@ export const WorkItemHelpers = {
       assigneeId: data.assigneeId,
       columnId: data.columnId,
       attachments: data.attachments,
+      timeSpent: data.timeSpent,
     }),
 
   calculateProgressRollup: (

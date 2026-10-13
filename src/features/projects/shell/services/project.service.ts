@@ -183,6 +183,17 @@ export const fetchDefaultStatesTemplate = () =>
     `/api/v1/projects/settings/states/default-template`,
   );
 
+// ── Trash & Permanent Delete ────────────────────────────────────────
+
+export const fetchTrashedProjects = (signal?: AbortSignal) =>
+  apiGet<ProjectListResponse>(`/api/projects/trash`, { signal });
+
+export const restoreTrashedProjectApi = (projectId: string) =>
+  apiPost<{ message: string }>(`/api/projects/${projectId}/restore`, {});
+
+export const permanentDeleteProjectApi = (projectId: string) =>
+  apiDelete<{ message: string }>(`/api/projects/${projectId}/permanent`);
+
 // ── Structured Project Service Object ─────────────────────────────────────────
 
 export const ProjectService = {
@@ -208,6 +219,10 @@ export const ProjectService = {
   reorderStates: reorderProjectStatesApi,
   deleteState: deleteProjectStateApi,
   getDefaultStatesTemplate: fetchDefaultStatesTemplate,
+  // Trash & Permanent Delete
+  getTrashed: fetchTrashedProjects,
+  restoreTrashed: (projectId: string) => restoreTrashedProjectApi(projectId),
+  permanentDelete: (projectId: string) => permanentDeleteProjectApi(projectId),
 };
 
 // Backwards compatibility aliases
@@ -220,11 +235,3 @@ export const addProjectMember = addProjectMemberApi;
 export const updateProjectMemberRole = updateProjectMemberRoleApi;
 export const removeProjectMember = removeProjectMemberApi;
 export const transferOwnership = transferOwnershipApi;
-
-// ── Trash & Permanent Delete ────────────────────────────────────────
-
-export const fetchTrashedProjects = (signal?: AbortSignal) =>
-  apiGet<ProjectListResponse>(`/api/projects/trash`, { signal });
-
-export const permanentDeleteProjectApi = (projectId: string) =>
-  apiDelete<{ message: string }>(`/api/projects/${projectId}/permanent`);

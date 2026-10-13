@@ -27,7 +27,7 @@ export interface DocumentModelState {
   content: string;
   selection?: DocumentCursorSelection;
   scrollViewport?: DocumentScrollViewport;
-  yText?: any | null;
+  yText?: unknown | null;
   isDirty: boolean;
   /** Monotonic counter bumped on every content mutation; used for race-free markClean. */
   contentVersion?: number;
@@ -53,7 +53,7 @@ export interface DocumentModelStats {
   lruFileId: string | null;
 }
 
-const DEFAULT_CAPACITY = 25;
+const DEFAULT_CAPACITY = 10;
 
 export class LRUDocumentCache {
   private readonly models = new Map<string, DocumentModelState>();

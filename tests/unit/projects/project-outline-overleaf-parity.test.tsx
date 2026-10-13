@@ -12,7 +12,7 @@ import {
   type OutlineItem,
 } from '@/features/editor/domain/latex/latex-symbols-core';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
-import { OutlineTab } from '@/features/editor/ui/features/sidebar/outline/OutlineTab';
+import { OutlineTab } from '@/features/editor/ui/sidebar/outline/OutlineTab';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { usePageStore } from '@/features/editor/store/editor.store';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';

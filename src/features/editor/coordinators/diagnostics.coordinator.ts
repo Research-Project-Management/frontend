@@ -15,6 +15,8 @@ import type { CompileError } from '../domain/types/compiler.types';
 import { normalizeLatexPath } from '../domain/latex/latex-dag-engine';
 import { heuristicLatexErrorFix } from '../domain/ai/ai-error-assist';
 import type { EditorDiagnosticItem } from '../domain/types/ports/command-bus.port';
+import { type WarningFilterOptions, filterDiagnostics } from '../domain/compiler/warning-filter';
+import { useState, useEffect } from 'react';
 
 export type IndexedDiagnosticItem = EditorDiagnosticItem;
 
@@ -27,15 +29,45 @@ export interface FileDiagnosticsSummary {
 
 export class DiagnosticsCoordinatorRegistry {
   private fileIndex = new Map<string, IndexedDiagnosticItem[]>();
+  private linterIndex = new Map<string, IndexedDiagnosticItem[]>();
   private unmappedDiagnostics: IndexedDiagnosticItem[] = [];
   private aliasMap = new Map<string, string>();
+  private filterOptions: WarningFilterOptions = {};
   private listeners = new Set<(fileKey?: string) => void>();
 
   public clear(): void {
     this.fileIndex.clear();
+    this.linterIndex.clear();
     this.unmappedDiagnostics = [];
     this.aliasMap.clear();
     this.notify();
+  }
+
+  public setFilterOptions(options: WarningFilterOptions): void {
+    this.filterOptions = { ...options };
+    this.notify();
+  }
+
+  public getFilterOptions(): WarningFilterOptions {
+    return { ...this.filterOptions };
+  }
+
+  public ingestLinterDiagnostics(fileIdOrPath: string, diagnostics: IndexedDiagnosticItem[]): void {
+    if (!fileIdOrPath) return;
+    const canonicalKey = this.resolveCanonicalKey(fileIdOrPath);
+    this.linterIndex.set(canonicalKey, [...diagnostics]);
+    this.notify(canonicalKey);
+  }
+
+  public clearLinterDiagnostics(fileIdOrPath?: string): void {
+    if (fileIdOrPath) {
+      const canonicalKey = this.resolveCanonicalKey(fileIdOrPath);
+      this.linterIndex.delete(canonicalKey);
+      this.notify(canonicalKey);
+    } else {
+      this.linterIndex.clear();
+      this.notify();
+    }
   }
 
   public registerAlias(canonicalPath: string, alias: string): void {
@@ -125,13 +157,40 @@ export class DiagnosticsCoordinatorRegistry {
     this.notify();
   }
 
-  public getDiagnosticsForFile(fileIdOrPath: string): IndexedDiagnosticItem[] {
+  public getDiagnosticsForFile(fileIdOrPath: string, applyFilter = true): IndexedDiagnosticItem[] {
     const key = this.resolveCanonicalKey(fileIdOrPath);
-    return this.fileIndex.get(key) || [];
+    const compilerItems = this.fileIndex.get(key) || [];
+    const linterItems = this.linterIndex.get(key) || [];
+
+    let combined: IndexedDiagnosticItem[];
+    if (linterItems.length === 0) {
+      combined = compilerItems;
+    } else if (compilerItems.length === 0) {
+      combined = linterItems;
+    } else {
+      const seen = new Set<string>();
+      combined = [];
+      for (const item of compilerItems) {
+        seen.add(`${item.line}:${item.code || item.message.slice(0, 30)}`);
+        combined.push(item);
+      }
+      for (const item of linterItems) {
+        const itemKey = `${item.line}:${item.code || item.message.slice(0, 30)}`;
+        if (!seen.has(itemKey)) {
+          combined.push(item);
+        }
+      }
+      combined.sort((a, b) => a.line - b.line || (a.column ?? 0) - (b.column ?? 0));
+    }
+
+    if (applyFilter) {
+      return filterDiagnostics(combined, this.filterOptions);
+    }
+    return combined;
   }
 
-  public getFileDiagnostics(fileIdOrPath: string): IndexedDiagnosticItem[] {
-    return this.getDiagnosticsForFile(fileIdOrPath);
+  public getFileDiagnostics(fileIdOrPath: string, applyFilter = true): IndexedDiagnosticItem[] {
+    return this.getDiagnosticsForFile(fileIdOrPath, applyFilter);
   }
 
   public findDiagnosticsAtLine(fileIdOrPath: string, targetLine: number): IndexedDiagnosticItem[] {
@@ -213,8 +272,8 @@ export class DiagnosticsCoordinatorRegistry {
     return items.slice(startIndex, endIndex + 1);
   }
 
-  public getFileSummary(fileIdOrPath: string): FileDiagnosticsSummary {
-    const items = this.getDiagnosticsForFile(fileIdOrPath);
+  public getFileSummary(fileIdOrPath: string, applyFilter = true): FileDiagnosticsSummary {
+    const items = this.getDiagnosticsForFile(fileIdOrPath, applyFilter);
     let errorCount = 0;
     let warningCount = 0;
     let infoCount = 0;
@@ -228,30 +287,66 @@ export class DiagnosticsCoordinatorRegistry {
     return { errorCount, warningCount, infoCount, total: items.length };
   }
 
-  public getProjectSummary(): FileDiagnosticsSummary {
+  public getFolderSummary(folderNameOrPath: string, applyFilter = true): FileDiagnosticsSummary {
+    const rawFolder = folderNameOrPath.trim().replace(/^["']|["']$/g, '').replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+    if (!rawFolder) return this.getProjectSummary(applyFilter);
+
+    const prefix = `${rawFolder}/`;
     let errorCount = 0;
     let warningCount = 0;
     let infoCount = 0;
     let total = 0;
 
-    for (const list of this.fileIndex.values()) {
-      for (const item of list) {
-        total++;
-        if (item.severity === 'error') errorCount++;
-        else if (item.severity === 'warning') warningCount++;
-        else infoCount++;
+    const checkedKeys = new Set<string>();
+    const allKeys = new Set([...this.fileIndex.keys(), ...this.linterIndex.keys()]);
+
+    for (const key of allKeys) {
+      if (key.startsWith(prefix) || key.includes(`/${prefix}`) || key === rawFolder) {
+        if (!checkedKeys.has(key)) {
+          checkedKeys.add(key);
+          const fileSummary = this.getFileSummary(key, applyFilter);
+          errorCount += fileSummary.errorCount;
+          warningCount += fileSummary.warningCount;
+          infoCount += fileSummary.infoCount;
+          total += fileSummary.total;
+        }
       }
     }
 
     return { errorCount, warningCount, infoCount, total };
   }
 
-  public getAllDiagnostics(): IndexedDiagnosticItem[] {
-    const all: IndexedDiagnosticItem[] = [];
-    for (const list of this.fileIndex.values()) {
-      all.push(...list);
+  public getProjectSummary(applyFilter = true): FileDiagnosticsSummary {
+    let errorCount = 0;
+    let warningCount = 0;
+    let infoCount = 0;
+    let total = 0;
+
+    const allKeys = new Set([...this.fileIndex.keys(), ...this.linterIndex.keys()]);
+    for (const key of allKeys) {
+      const summary = this.getFileSummary(key, applyFilter);
+      errorCount += summary.errorCount;
+      warningCount += summary.warningCount;
+      infoCount += summary.infoCount;
+      total += summary.total;
     }
-    all.push(...this.unmappedDiagnostics);
+
+    return { errorCount, warningCount, infoCount, total };
+  }
+
+  public getAllDiagnostics(applyFilter = true): IndexedDiagnosticItem[] {
+    const allKeys = new Set([...this.fileIndex.keys(), ...this.linterIndex.keys()]);
+    const all: IndexedDiagnosticItem[] = [];
+
+    for (const key of allKeys) {
+      all.push(...this.getDiagnosticsForFile(key, applyFilter));
+    }
+    for (const unmapped of this.unmappedDiagnostics) {
+      if (!applyFilter || filterDiagnostics([unmapped], this.filterOptions).length > 0) {
+        all.push(unmapped);
+      }
+    }
+
     return all.sort((a, b) => {
       const fileA = a.file || a.normalizedPath || '';
       const fileB = b.file || b.normalizedPath || '';
@@ -261,8 +356,8 @@ export class DiagnosticsCoordinatorRegistry {
     });
   }
 
-  public getDiagnosticsCount(severity?: 'error' | 'warning' | 'info'): number {
-    const all = this.getAllDiagnostics();
+  public getDiagnosticsCount(severity?: 'error' | 'warning' | 'info', applyFilter = true): number {
+    const all = this.getAllDiagnostics(applyFilter);
     if (!severity) return all.length;
     return all.filter((d) => d.severity === severity).length;
   }
@@ -286,3 +381,61 @@ export class DiagnosticsCoordinatorRegistry {
 }
 
 export const diagnosticsCoordinator = new DiagnosticsCoordinatorRegistry();
+
+/**
+ * React Hook for subscribing to a single file's diagnostics summary in the UI.
+ */
+export function useFileDiagnosticsSummary(fileIdOrPath: string, applyFilter = true): FileDiagnosticsSummary {
+  const [summary, setSummary] = useState<FileDiagnosticsSummary>(() =>
+    diagnosticsCoordinator.getFileSummary(fileIdOrPath, applyFilter)
+  );
+
+  useEffect(() => {
+    const update = () => {
+      setSummary(diagnosticsCoordinator.getFileSummary(fileIdOrPath, applyFilter));
+    };
+    update();
+    return diagnosticsCoordinator.subscribe(update);
+  }, [fileIdOrPath, applyFilter]);
+
+  return summary;
+}
+
+/**
+ * React Hook for subscribing to a folder's aggregated diagnostics summary in the UI.
+ */
+export function useFolderDiagnosticsSummary(folderNameOrPath: string, applyFilter = true): FileDiagnosticsSummary {
+  const [summary, setSummary] = useState<FileDiagnosticsSummary>(() =>
+    diagnosticsCoordinator.getFolderSummary(folderNameOrPath, applyFilter)
+  );
+
+  useEffect(() => {
+    const update = () => {
+      setSummary(diagnosticsCoordinator.getFolderSummary(folderNameOrPath, applyFilter));
+    };
+    update();
+    return diagnosticsCoordinator.subscribe(update);
+  }, [folderNameOrPath, applyFilter]);
+
+  return summary;
+}
+
+/**
+ * React Hook for subscribing to the whole project's diagnostics summary in the UI.
+ */
+export function useProjectDiagnosticsSummary(applyFilter = true): FileDiagnosticsSummary {
+  const [summary, setSummary] = useState<FileDiagnosticsSummary>(() =>
+    diagnosticsCoordinator.getProjectSummary(applyFilter)
+  );
+
+  useEffect(() => {
+    const update = () => {
+      setSummary(diagnosticsCoordinator.getProjectSummary(applyFilter));
+    };
+    update();
+    return diagnosticsCoordinator.subscribe(update);
+  }, [applyFilter]);
+
+  return summary;
+}
+

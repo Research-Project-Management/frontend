@@ -30,9 +30,12 @@ import {
 import type { IndexedDiagnosticItem } from '../../coordinators/diagnostics.coordinator';
 import { editorCommandBus } from '../../coordinators/command-bus';
 
-// ── State Effects ─────────────────────────────────────────────────────────────
+export interface ErrorLensPayload {
+  diagnostics: IndexedDiagnosticItem[];
+  filePath?: string;
+}
 
-export const setErrorLensDiagnosticsEffect = StateEffect.define<IndexedDiagnosticItem[]>();
+export const setErrorLensDiagnosticsEffect = StateEffect.define<IndexedDiagnosticItem[] | ErrorLensPayload>();
 export const clearErrorLensDiagnosticsEffect = StateEffect.define<void>();
 
 // ── Error Lens Widget ─────────────────────────────────────────────────────────
@@ -63,6 +66,9 @@ export class ErrorLensWidget extends WidgetType {
     wrap.className = `cm-error-lens cm-error-lens-${sev}`;
     wrap.setAttribute('role', 'status');
     wrap.setAttribute('aria-label', `${sev}: ${this.diagnostic.message}`);
+
+    wrap.setAttribute('data-line', String(this.diagnostic.line));
+    wrap.setAttribute('data-severity', sev);
 
     // 1. Icon Indicator
     const iconSpan = document.createElement('span');
@@ -98,6 +104,7 @@ export class ErrorLensWidget extends WidgetType {
     const fixBtn = document.createElement('button');
     fixBtn.type = 'button';
     fixBtn.className = 'cm-error-lens-btn cm-error-lens-btn-fix';
+    fixBtn.setAttribute('data-testid', 'error-lens-fix-btn');
     fixBtn.title = 'AI AutoFix: Generate instant inline diff for this line (Mod-Enter to accept)';
     fixBtn.innerHTML = `
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -105,7 +112,7 @@ export class ErrorLensWidget extends WidgetType {
       </svg>
       <span>Fix with AI</span>
     `;
-    fixBtn.onclick = (e) => {
+    const triggerFix = (e: Event) => {
       e.preventDefault();
       e.stopPropagation();
       editorCommandBus.dispatch({
@@ -113,19 +120,22 @@ export class ErrorLensWidget extends WidgetType {
         diagnostic: this.diagnostic,
       });
     };
+    fixBtn.onmousedown = (e) => e.stopPropagation();
+    fixBtn.onclick = triggerFix;
     wrap.appendChild(fixBtn);
 
     // 4. "Ask AI" in Sidebar Action Button
     const askBtn = document.createElement('button');
     askBtn.type = 'button';
     askBtn.className = 'cm-error-lens-btn cm-error-lens-btn-chat';
+    askBtn.setAttribute('data-testid', 'error-lens-ask-btn');
     askBtn.title = 'Open AI Assistant in left sidebar with full error context';
     askBtn.innerHTML = `
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
     `;
-    askBtn.onclick = (e) => {
+    const triggerAsk = (e: Event) => {
       e.preventDefault();
       e.stopPropagation();
       editorCommandBus.dispatch({
@@ -138,6 +148,8 @@ export class ErrorLensWidget extends WidgetType {
         },
       });
     };
+    askBtn.onmousedown = (e) => e.stopPropagation();
+    askBtn.onclick = triggerAsk;
     wrap.appendChild(askBtn);
 
     return wrap;
@@ -210,7 +222,13 @@ export const errorLensField = StateField.define<DecorationSet>({
     // 2. Handle explicit diagnostic updates
     for (const effect of tr.effects) {
       if (effect.is(setErrorLensDiagnosticsEffect)) {
-        return buildDecorations(effect.value, tr.state.doc, '');
+        const val = effect.value;
+        if (Array.isArray(val)) {
+          return buildDecorations(val, tr.state.doc, '');
+        } else if (val && typeof val === 'object') {
+          return buildDecorations(val.diagnostics, tr.state.doc, val.filePath || '');
+        }
+        return Decoration.none;
       }
       if (effect.is(clearErrorLensDiagnosticsEffect)) {
         return Decoration.none;

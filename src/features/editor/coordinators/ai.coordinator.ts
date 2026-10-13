@@ -15,7 +15,7 @@ import { usePageStore } from '../store/editor.store';
 import { useLayoutStore } from '../store/layout.store';
 import { diagnosticsCoordinator, type IndexedDiagnosticItem } from './diagnostics.coordinator';
 import { sessionCoordinator } from './session.coordinator';
-import { manuscriptService } from '@/features/editor/sdk';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { lruDocumentCache } from '../domain/document/lru-document-cache';
 import type { DiffProposal } from '../domain/types/ports/editor-engine.port';
 import { heuristicLatexErrorFix } from '../domain/ai/ai-error-assist';
@@ -36,8 +36,9 @@ export class AiCoordinatorRegistry {
     this.initCommandSubscriptions();
   }
 
-  private initCommandSubscriptions(): void {
-    if (typeof window === 'undefined' || this.initialized) return;
+  public initCommandSubscriptions(force = false): void {
+    if (typeof window === 'undefined') return;
+    if (this.initialized && !force) return;
     this.initialized = true;
 
     editorCommandBus.subscribe('editor:suggest-fix', (cmd) => {

@@ -1,3 +1,4 @@
+import AppLoading from '@/app/(app)/loading';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import FavoritesPage from '@/features/projects/favorite/pages/FavoritesPage';
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function FavoriteProjectsRoute() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<AppLoading />}>
       <FavoritesPage />
     </Suspense>
   );

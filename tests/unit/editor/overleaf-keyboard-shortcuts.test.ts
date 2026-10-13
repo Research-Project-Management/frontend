@@ -203,7 +203,7 @@ describe('Overleaf LaTeX Formatting & Auto-Close (Overleaf Parity)', () => {
   });
 
   it('VisualSlashCommandMenu has table-wizard command', async () => {
-    const { SLASH_COMMANDS } = await import('@/features/editor/ui/features/editor/visual/toolbars/VisualSlashCommandMenu');
+    const { SLASH_COMMANDS } = await import('@/features/editor/ui/editor/visual/toolbars/VisualSlashCommandMenu');
     const tableWizardCmd = SLASH_COMMANDS.find((c) => c.id === 'table-wizard');
     expect(tableWizardCmd).toBeDefined();
     expect(tableWizardCmd?.shortcut).toBe('Ctrl+Shift+T');

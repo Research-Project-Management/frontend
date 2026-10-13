@@ -7,18 +7,21 @@
  * - Single source of coordination between CodeMirror 6, Sidebar ReviewTab, and Backend Review/Suggestion Service.
  * - Handles navigation between comments/suggestions and editor line offsets.
  * - Dispatches single-click Accept and Reject mutations, updating editor state and document tree.
- * - Bridges track changes view mode ('show' | 'hide') and review mode ('on' | 'off') directly to CodeMirror.
+ * - Executes 0ms optimistic local document edits for instant user feedback.
+ * - Bridges track changes view modes ('changes' | 'clean' | 'original') and review mode directly to CodeMirror.
  * - Integrates with IEditorCommandBus for cross-component event decoupling.
  */
 
 import { type EditorView } from '@codemirror/view';
 import { editorCommandBus, getActiveEditorEngine } from './command-bus';
-import { suggestionService, commentService, manuscriptService } from '@/features/editor/sdk';
+import { suggestionService } from '@/features/editor/sdk/manuscript.service';
 import {
   setTrackChangesSuggestionsEffect,
   setTrackChangesCommentsEffect,
   setTrackChangesViewModeEffect,
   setTrackChangesReviewModeEffect,
+  getSafeOffset,
+  type TrackChangesViewMode,
 } from '../engines/extensions/track-changes.extension';
 import type { PageSuggestion } from '../domain/types/suggestion.types';
 import type { PageComment } from '../domain/types/comment.types';
@@ -27,6 +30,10 @@ import { toast } from 'sonner';
 export class ReviewCoordinatorRegistry {
   private activeView: EditorView | null = null;
   private activePageId: string | null = null;
+  private currentSuggestions = new Map<string, PageSuggestion>();
+  private currentComments = new Map<string, PageComment>();
+  private currentViewMode: TrackChangesViewMode = 'changes';
+  private currentReviewMode = false;
   private initialized = false;
 
   constructor() {
@@ -72,6 +79,23 @@ export class ReviewCoordinatorRegistry {
   public bindEditorView(view: EditorView | null, pageId: string): void {
     this.activeView = view;
     this.activePageId = pageId;
+
+    if (view && this.currentSuggestions.size > 0) {
+      this.syncEditorDecorations(
+        view,
+        Array.from(this.currentSuggestions.values()),
+        Array.from(this.currentComments.values()),
+        this.currentViewMode,
+        this.currentReviewMode
+      );
+    }
+  }
+
+  /**
+   * Retrieves currently cached suggestion by ID.
+   */
+  public getSuggestion(suggestionId: string): PageSuggestion | undefined {
+    return this.currentSuggestions.get(suggestionId);
   }
 
   /**
@@ -81,9 +105,20 @@ export class ReviewCoordinatorRegistry {
     view: EditorView | null,
     suggestions: PageSuggestion[],
     comments: PageComment[],
-    viewMode: 'show' | 'hide' = 'show',
+    viewMode: TrackChangesViewMode = 'changes',
     reviewMode: boolean = false
   ): void {
+    this.currentSuggestions.clear();
+    for (const s of suggestions) {
+      this.currentSuggestions.set(s.id, s);
+    }
+    this.currentComments.clear();
+    for (const c of comments) {
+      this.currentComments.set(c.id, c);
+    }
+    this.currentViewMode = viewMode;
+    this.currentReviewMode = reviewMode;
+
     const targetView = view || this.activeView;
     if (!targetView) return;
 
@@ -99,6 +134,65 @@ export class ReviewCoordinatorRegistry {
     } catch (err) {
       console.debug('[ReviewCoordinator] Failed to sync decorations:', err);
     }
+  }
+
+  /**
+   * Applies local optimistic text edits into CodeMirror for 0ms tactile responsiveness.
+   */
+  public applySuggestionLocally(
+    view: EditorView,
+    sug: PageSuggestion,
+    action: 'accept' | 'reject'
+  ): void {
+    const doc = view.state.doc;
+    const cand = sug as typeof sug & { fromIndex?: number; fromOffset?: number; toIndex?: number; toOffset?: number };
+    const rawFrom = cand.fromIndex ?? cand.fromOffset;
+    const rawTo = cand.toIndex ?? cand.toOffset;
+    const from = getSafeOffset(doc, sug.fromLine, sug.fromColumn, rawFrom);
+    let to = getSafeOffset(doc, sug.toLine, sug.toColumn, rawTo);
+
+    if (from === to && sug.type === 'insert') {
+      to = Math.min(doc.length, from + (sug.suggestedText?.length || 1));
+    }
+
+    if (action === 'accept') {
+      if (sug.type === 'delete') {
+        // Text marked for deletion is permanently removed on accept
+        if (from < to && to <= doc.length) {
+          view.dispatch({
+            changes: { from, to, insert: '' },
+          });
+        }
+      }
+      // If type === 'insert', text is already present in document
+    } else {
+      // action === 'reject'
+      if (sug.type === 'insert') {
+        // Proposed insertion is removed on reject
+        if (from < to && to <= doc.length) {
+          view.dispatch({
+            changes: { from, to, insert: '' },
+          });
+        }
+      }
+      // If type === 'delete', original text was preserved in document
+    }
+
+    // Mark suggestion resolved in local cache
+    const updatedSug = {
+      ...sug,
+      status: action === 'accept' ? ('accepted' as const) : ('rejected' as const),
+    };
+    this.currentSuggestions.set(sug.id, updatedSug);
+
+    // Update active view decorations immediately
+    this.syncEditorDecorations(
+      view,
+      Array.from(this.currentSuggestions.values()),
+      Array.from(this.currentComments.values()),
+      this.currentViewMode,
+      this.currentReviewMode
+    );
   }
 
   /**
@@ -128,6 +222,11 @@ export class ReviewCoordinatorRegistry {
    * Accepts a proposed track change and applies it permanently.
    */
   public async acceptSuggestion(pageId: string, suggestionId: string): Promise<boolean> {
+    const sug = this.currentSuggestions.get(suggestionId);
+    if (this.activeView && sug) {
+      this.applySuggestionLocally(this.activeView, sug, 'accept');
+    }
+
     try {
       await suggestionService.acceptSuggestion(pageId, suggestionId);
       toast.success('Change accepted', { id: `sug-${suggestionId}` });
@@ -140,6 +239,12 @@ export class ReviewCoordinatorRegistry {
       return true;
     } catch (err: unknown) {
       toast.error((err as Error)?.message || 'Failed to accept change', { id: `sug-${suggestionId}` });
+      editorCommandBus.dispatch({
+        type: 'editor:review-event',
+        pageId,
+        event: 'suggestion:rollback',
+        payload: { suggestionId },
+      });
       return false;
     }
   }
@@ -148,6 +253,11 @@ export class ReviewCoordinatorRegistry {
    * Rejects a proposed track change and reverts it.
    */
   public async rejectSuggestion(pageId: string, suggestionId: string): Promise<boolean> {
+    const sug = this.currentSuggestions.get(suggestionId);
+    if (this.activeView && sug) {
+      this.applySuggestionLocally(this.activeView, sug, 'reject');
+    }
+
     try {
       await suggestionService.rejectSuggestion(pageId, suggestionId);
       toast.success('Change rejected', { id: `sug-${suggestionId}` });
@@ -160,6 +270,12 @@ export class ReviewCoordinatorRegistry {
       return true;
     } catch (err: unknown) {
       toast.error((err as Error)?.message || 'Failed to reject change', { id: `sug-${suggestionId}` });
+      editorCommandBus.dispatch({
+        type: 'editor:review-event',
+        pageId,
+        event: 'suggestion:rollback',
+        payload: { suggestionId },
+      });
       return false;
     }
   }
@@ -168,6 +284,14 @@ export class ReviewCoordinatorRegistry {
    * Bulk accepts all pending changes in a document.
    */
   public async acceptAll(pageId: string): Promise<boolean> {
+    // Optimistically accept all in local view
+    if (this.activeView) {
+      const pending = Array.from(this.currentSuggestions.values()).filter((s) => s.status === 'pending');
+      for (const s of pending) {
+        this.applySuggestionLocally(this.activeView, s, 'accept');
+      }
+    }
+
     try {
       await suggestionService.acceptAllSuggestions(pageId);
       toast.success('All changes accepted', { id: 'sug-bulk' });
@@ -187,6 +311,14 @@ export class ReviewCoordinatorRegistry {
    * Bulk rejects all pending changes in a document.
    */
   public async rejectAll(pageId: string): Promise<boolean> {
+    // Optimistically reject all in local view
+    if (this.activeView) {
+      const pending = Array.from(this.currentSuggestions.values()).filter((s) => s.status === 'pending');
+      for (const s of pending) {
+        this.applySuggestionLocally(this.activeView, s, 'reject');
+      }
+    }
+
     try {
       await suggestionService.rejectAllSuggestions(pageId);
       toast.success('All changes rejected', { id: 'sug-bulk' });

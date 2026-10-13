@@ -6,12 +6,27 @@ import { useSummaryWork } from '../hooks/use-summary-work';
 import { useWorkItemModal } from '../hooks/use-work-item-modal';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { YourWorkEmptyState } from '../components/shared/YourWorkEmptyState';
+import dynamic from 'next/dynamic';
 import { OverviewCards } from '../components/summary/OverviewCards';
 import { WorkloadCards } from '../components/summary/WorkloadCards';
-import { PriorityBreakdown } from '../components/summary/PriorityBreakdown';
-import { StateBreakdown } from '../components/summary/StateBreakdown';
 import { RecentActivityFeed } from '../components/summary/RecentActivityFeed';
 import { WorkItemModalHost } from '../components/shared/WorkItemModalHost';
+
+const PriorityBreakdown = dynamic(
+  () => import('../components/summary/PriorityBreakdown').then((m) => m.PriorityBreakdown),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-44 w-full rounded-md" />,
+  }
+);
+
+const StateBreakdown = dynamic(
+  () => import('../components/summary/StateBreakdown').then((m) => m.StateBreakdown),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-44 w-full rounded-md" />,
+  }
+);
 
 export function SummaryPage() {
   const { state } = useSummaryWork();

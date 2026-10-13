@@ -6,7 +6,7 @@ import {
 } from '@/features/editor/domain/document/lru-document-cache';
 import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
-import { manuscriptService } from '@/features/editor/sdk';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { useCompileStore } from '@/features/editor/store/compiler.store';
 import { useConnectivityStore } from '@/features/editor/store/connectivity.store';
 import { usePageStore } from '@/features/editor/store/editor.store';

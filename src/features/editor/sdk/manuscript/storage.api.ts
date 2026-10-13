@@ -13,18 +13,9 @@ import { API_BASE_URL } from '@/config/env';
 import { presignUpload, completePresigned } from '@/features/storage/services/upload.service';
 import { MANUSCRIPTS_API_BASE } from './base';
 
-export interface EditorStorageItem {
-  id: string;
-  filename: string;
-  size?: number;
-  mimeType?: string;
-  isFolder: boolean;
-  parentId?: string | null;
-  url?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  [key: string]: unknown;
-}
+import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
+
+export type { EditorStorageItem };
 
 export const storage = {
   getProjectFiles: async (projectId: string, parentId?: string | null): Promise<EditorStorageItem[]> => {

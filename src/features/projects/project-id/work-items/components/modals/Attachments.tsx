@@ -282,13 +282,10 @@ export function Attachments({
     <div className="mt-8 border-t border-border pt-6">
       {/* Attach Center Header & Section Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <Paperclip className="size-4 text-foreground shrink-0" />
-          <h3 className="text-sm font-semibold text-foreground">
-            Attach Center
-          </h3>
+        <div className="flex items-center gap-1.5">
+          <span className="text-12 font-medium text-foreground tracking-tight">Attachments</span>
           {totalAttachments > 0 && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted text-foreground">
+            <span className="text-11 font-mono font-medium text-foreground px-1.5 py-0.5 rounded bg-muted tabular-nums">
               {totalAttachments}
             </span>
           )}
@@ -497,14 +494,34 @@ export function Attachments({
                         </p>
                         <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                           {paper.citationKey && (
-                            <span className="font-mono text-10 px-1.5 py-0.5 rounded-md bg-muted text-foreground">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                                  navigator.clipboard.writeText(paper.citationKey!);
+                                }
+                              }}
+                              className="font-mono text-11 px-1.5 py-0.5 rounded-sm bg-muted border border-border text-foreground hover:bg-muted/80 transition-colors cursor-pointer select-all"
+                              title="Click to copy citation key"
+                            >
                               @{paper.citationKey}
-                            </span>
+                            </button>
                           )}
                           {paper.doi && (
-                            <span className="font-mono text-10 text-foreground/70">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                                  navigator.clipboard.writeText(paper.doi!);
+                                }
+                              }}
+                              className="font-mono text-11 px-1.5 py-0.5 rounded-sm bg-muted border border-border text-foreground hover:bg-muted/80 transition-colors cursor-pointer select-all"
+                              title="Click to copy DOI"
+                            >
                               DOI: {paper.doi}
-                            </span>
+                            </button>
                           )}
                         </div>
                       </div>
@@ -835,7 +852,7 @@ export function Attachments({
               size="sm"
               disabled={!selectedPageId}
               onClick={handleConfirmAttachPage}
-              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-foreground text-background hover:bg-foreground/90"
+              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-primary text-primary-foreground hover:bg-primary-hover"
             >
               Attach Page
             </Button>
@@ -935,17 +952,17 @@ export function Attachments({
                             )}
                             <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                               {paper.year && (
-                                <span className="px-1.5 py-0.5 rounded-md bg-muted text-foreground text-10 font-mono">
+                                <span className="font-mono text-11 px-1.5 py-0.5 rounded-sm bg-muted border border-border text-foreground">
                                   {paper.year}
                                 </span>
                               )}
                               {doi && (
-                                <span className="px-1.5 py-0.5 rounded-md bg-muted text-foreground text-10 font-mono">
+                                <span className="font-mono text-11 px-1.5 py-0.5 rounded-sm bg-muted border border-border text-foreground">
                                   DOI: {doi}
                                 </span>
                               )}
                               {citationKey && (
-                                <span className="px-1.5 py-0.5 rounded-md bg-muted text-foreground text-10 font-mono">
+                                <span className="font-mono text-11 px-1.5 py-0.5 rounded-sm bg-muted border border-border text-foreground">
                                   @{citationKey}
                                 </span>
                               )}
@@ -1027,7 +1044,7 @@ export function Attachments({
                   : !paperTitle.trim()
               }
               onClick={handleConfirmAttachPaper}
-              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-foreground text-background hover:bg-foreground/90"
+              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-primary text-primary-foreground hover:bg-primary-hover"
             >
               Attach Paper
             </Button>
@@ -1089,7 +1106,7 @@ export function Attachments({
               size="sm"
               disabled={!linkUrl.trim()}
               onClick={handleConfirmAttachLink}
-              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-foreground text-background hover:bg-foreground/90"
+              className="h-8 px-3 text-13 font-medium relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-primary text-primary-foreground hover:bg-primary-hover"
             >
               Add Link
             </Button>

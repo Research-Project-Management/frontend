@@ -406,7 +406,7 @@ export function Activities({
             <Button
               type="button"
               size="sm"
-              className="h-8 px-3 text-13 font-medium rounded-md shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-foreground text-background hover:bg-foreground/90"
+              className="h-8 px-3 text-13 font-medium rounded-md shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-primary text-primary-foreground hover:bg-primary-hover"
               onClick={handleSaveComment}
               disabled={!commentText.trim() || isSavingComment}
             >
@@ -483,7 +483,7 @@ export function Activities({
                               <Button
                                 type="button"
                                 size="sm"
-                                className="h-7 px-3 text-12 font-medium rounded-md shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-foreground text-background hover:bg-foreground/90"
+                                className="h-7 px-3 text-12 font-medium rounded-md shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring bg-primary text-primary-foreground hover:bg-primary-hover"
                                 onClick={handleSaveEditedComment}
                                 disabled={!editingCommentText.trim() || isSubmittingEdit}
                               >

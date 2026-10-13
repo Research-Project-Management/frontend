@@ -116,7 +116,9 @@ export function calculateStatusBreakdown(workItems: any[] = []): Record<string, 
     const rawCol = (t.columnId || 'todo').toLowerCase();
     const group = inferStateGroup(rawCol, rawCol);
     breakdown[group] = (breakdown[group] || 0) + 1;
-    breakdown[rawCol] = (breakdown[rawCol] || 0) + 1;
+    if (rawCol !== group) {
+      breakdown[rawCol] = (breakdown[rawCol] || 0) + 1;
+    }
   });
   return breakdown;
 }
@@ -175,9 +177,11 @@ export function categorizeWorkItems(
       const rawCol = (t.columnId || 'todo').toLowerCase();
       const group = inferStateGroup(rawCol, rawCol);
       statusBreakdown[group] = (statusBreakdown[group] || 0) + 1;
-      statusBreakdown[rawCol] = (statusBreakdown[rawCol] || 0) + 1;
+      if (rawCol !== group) {
+        statusBreakdown[rawCol] = (statusBreakdown[rawCol] || 0) + 1;
+      }
 
-      const prio = t.priority || 'none';
+      const prio = (t.priority || 'none').toLowerCase();
       priorityBreakdown[prio] = (priorityBreakdown[prio] || 0) + 1;
     }
 

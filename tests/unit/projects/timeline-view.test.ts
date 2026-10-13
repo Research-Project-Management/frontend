@@ -4,6 +4,7 @@ import {
   calculateDuration,
   formatToDateStr,
   parseDateOnly,
+  formatTimelineDisplayDate,
   getStartOfWeek,
   getEndOfWeek,
   getISOWeekNumber,
@@ -25,6 +26,12 @@ describe('TimelineView Calculations & Granularity', () => {
     expect(parsed?.getFullYear()).toBe(2026);
     expect(parsed?.getMonth()).toBe(8);
     expect(parsed?.getDate()).toBe(16);
+
+    // formatTimelineDisplayDate tests
+    expect(formatTimelineDisplayDate('2026-09-28T16:41:55.848Z')).toBe('Sept 28, 2026');
+    expect(formatTimelineDisplayDate('2026-10-08T16:41:55.848Z')).toBe('Oct 8, 2026');
+    expect(formatTimelineDisplayDate(null)).toBe('');
+    expect(formatTimelineDisplayDate(undefined)).toBe('');
   });
 
   it('calculates duration correctly including empty strings when no dates', () => {

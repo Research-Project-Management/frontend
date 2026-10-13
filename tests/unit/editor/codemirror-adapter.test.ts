@@ -94,4 +94,11 @@ describe('CodeMirrorEngineAdapter (IEditorEngine Implementation for CM6)', () =>
     const pos = adapter.getCursorPosition();
     expect(pos?.line).toBe(2);
   });
+
+  it('should jump to line, offset by column and select exact range', () => {
+    // Line 2 is "\section{Introduction}"
+    // "\section{" is 9 characters, so "Introduction" starts at offset 9
+    adapter.jumpToLine(2, undefined, 9, 12);
+    expect(adapter.getSelectedText()).toBe('Introduction');
+  });
 });

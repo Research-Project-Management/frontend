@@ -17,6 +17,7 @@ import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSub, M
 import { cn } from "@/shared/lib/utils";
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { useLayoutStore } from '@/features/editor/store/layout.store';
 import { useShallow } from 'zustand/react/shallow';
 
 function PenIcon({ className }: { className?: string }) {
@@ -118,6 +119,8 @@ export function ViewMenu() {
       toggleShowEquationPreview: s.toggleShowEquationPreview,
     }))
   );
+
+  const fileOutlineOpen = useLayoutStore((s) => s.fileOutlineOpen);
 
   const handleToggleFocusMode = () => {
     if (typeof document === 'undefined') return;
@@ -316,6 +319,21 @@ export function ViewMenu() {
             {showEquationPreview && <Check className="size-3.5 text-primary stroke-[2.5]" />}
           </div>
           <span className="flex-1 text-xs whitespace-nowrap">Show equation preview</span>
+        </MenubarItem>
+
+        {/* Show file outline */}
+        <MenubarItem
+          onClick={() => {
+            useLayoutStore.getState().setSidebarLeftOpen(true);
+            useLayoutStore.getState().setActiveSidebarTab('files');
+            useLayoutStore.getState().toggleFileOutline();
+          }}
+          className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors text-xs font-medium select-none"
+        >
+          <div className="size-4 flex items-center justify-center shrink-0">
+            {fileOutlineOpen && <Check className="size-3.5 text-primary stroke-[2.5]" />}
+          </div>
+          <span className="flex-1 text-xs whitespace-nowrap">Show file outline</span>
         </MenubarItem>
 
         {/* Divider */}

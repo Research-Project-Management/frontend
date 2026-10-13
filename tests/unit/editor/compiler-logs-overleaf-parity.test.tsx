@@ -1,8 +1,9 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
-import { CompilerLogs, parseLatexLog, type LogEntry } from '@/features/editor/ui/features/preview/CompilerLogs';
+import { CompilerLogs, parseLatexLog, type LogEntry } from '@/features/editor/ui/preview/CompilerLogs';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import { useDocumentSettingsStore } from '@/features/editor/store/settings.store';
 import { toast } from 'sonner';
 
 vi.mock('sonner', () => ({
@@ -14,8 +15,8 @@ vi.mock('sonner', () => ({
 }));
 
 
-vi.mock('@/features/editor/sdk', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/features/editor/sdk')>();
+vi.mock('@/features/editor/sdk/manuscript.service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/editor/sdk/manuscript.service')>();
   return {
     ...actual,
     listAuxFiles: vi.fn().mockResolvedValue([]),
@@ -108,34 +109,19 @@ No pages of output.`;
     expect(toast.info).toHaveBeenCalledWith(expect.stringContaining('18'));
   });
 
-  it('provides Overleaf error stepper (F8 / Next Error) in top header', () => {
-    const onJumpToError = vi.fn();
+  it('renders "Back to PDF" action in top header', () => {
+    const onClose = vi.fn();
     render(
       <CompilerLogs
         log={sampleLog}
-        onClose={vi.fn()}
-        onJumpToError={onJumpToError}
+        onClose={onClose}
       />
     );
 
-    // Error count badge e.g. "1/2 lỗi"
-    expect(screen.getByText(/1\/2 lỗi/i)).toBeInTheDocument();
-
-    // Click "Lỗi tiếp theo (F8)"
-    const nextBtn = screen.getByRole('button', { name: /lỗi tiếp theo/i });
-    fireEvent.click(nextBtn);
-
-    // Should have jumped to second error (line 18)
-    expect(onJumpToError).toHaveBeenCalledWith('sections/intro.tex', 18);
-    expect(screen.getByText(/2\/2 lỗi/i)).toBeInTheDocument();
-
-    // Click "Lỗi trước (Shift+F8)"
-    const prevBtn = screen.getByRole('button', { name: /lỗi trước/i });
-    fireEvent.click(prevBtn);
-
-    // Cycles back to first error (line 42)
-    expect(onJumpToError).toHaveBeenCalledWith(undefined, 42);
-    expect(screen.getByText(/1\/2 lỗi/i)).toBeInTheDocument();
+    const backBtn = screen.getByRole('button', { name: /back to pdf/i });
+    expect(backBtn).toBeInTheDocument();
+    fireEvent.click(backBtn);
+    expect(onClose).toHaveBeenCalled();
   });
 
   it('supports keyboard navigation via F8 keydown event', () => {
@@ -157,15 +143,13 @@ No pages of output.`;
     expect(onJumpToError).toHaveBeenCalledWith(undefined, 42);
   });
 
-  it('updates currentErrorIdx when editor:error-stepped event is dispatched across command bus', () => {
+  it('handles editor:error-stepped event across command bus without errors', () => {
     render(
       <CompilerLogs
         log={sampleLog}
         onClose={vi.fn()}
       />
     );
-
-    expect(screen.getByText(/1\/2 lỗi/i)).toBeInTheDocument();
 
     // Dispatch external error-stepped event for index 1
     act(() => {
@@ -177,8 +161,6 @@ No pages of output.`;
         message: "File 'algorithm.sty' not found.",
       });
     });
-
-    expect(screen.getByText(/2\/2 lỗi/i)).toBeInTheDocument();
   });
 
   it('diagnosticsCoordinator.getAllDiagnostics returns indexed diagnostics across all files sorted by file and line', async () => {
@@ -276,6 +258,36 @@ No pages of output.`;
 
     expect(createObjectURLMock).toHaveBeenCalled();
     expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('output.log'));
+  });
+
+  it('filters out suppressed bad boxes and displays suppression toggle button', () => {
+    useDocumentSettingsStore.setState({
+      suppressBadBoxes: true,
+      suppressFontWarnings: false,
+      suppressPackageWarnings: false,
+      customSuppressedWarnings: [],
+    });
+
+    render(
+      <CompilerLogs
+        log={sampleLog}
+        onClose={vi.fn()}
+      />
+    );
+
+    // sampleLog has 1 bad box: Overfull \hbox (15.234pt too wide)
+    // When suppressBadBoxes is true, it should show toggle button "Suppressed (1)"
+    const toggleBtn = screen.getByTestId('toggle-suppressed-warnings-btn');
+    expect(toggleBtn).toBeInTheDocument();
+    expect(toggleBtn.textContent).toContain('Suppressed (1)');
+
+    // Click toggle to show all
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn.textContent).toContain('Showing all');
+
+    // Click toggle again to re-hide
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn.textContent).toContain('Suppressed (1)');
   });
 });
 

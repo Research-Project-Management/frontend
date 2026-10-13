@@ -49,8 +49,6 @@ export default function Sidebar() {
         ? pathname === '/' ||
           pathname === '/home' ||
           pathname.startsWith('/home/') ||
-          pathname === '/dashboard' ||
-          pathname.startsWith('/dashboard/') ||
           pathname === '/projects' ||
           pathname.startsWith('/projects/') ||
           pathname === '/drafts' ||

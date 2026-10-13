@@ -9,8 +9,8 @@ import {
   exportDocumentAsMarkdown,
   exportDocumentAsHtml,
 } from '@/features/editor/sdk/archive/document-download';
-import { documentService, fileService, exportService } from '@/features/editor/sdk';
-import { StorageService } from '@/features/editor/sdk';
+import { documentService, fileService, exportService } from '@/features/editor/sdk/manuscript.service';
+import { StorageService } from '@/features/editor/sdk/manuscript.service';
 
 describe('Export Pipeline & Inline Suggestion Unit Tests', () => {
   beforeEach(() => {

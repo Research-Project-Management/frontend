@@ -8,6 +8,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { CompilerEngine, CompileMode } from '../domain/types/compiler.types';
+import { diagnosticsCoordinator } from '../coordinators/diagnostics.coordinator';
 
 export type LaTeXEngine = CompilerEngine;
 export type { CompilerEngine, CompileMode };
@@ -63,6 +64,7 @@ export interface DocumentSettingsState {
   lineHeight: number;
   autoCloseBrackets: boolean;
   linterEnabled: boolean;
+  errorLensEnabled: boolean;
   autoComplete: boolean;
   nonBlinkingCursor: boolean;
   previewEditorTabs: boolean;
@@ -127,12 +129,27 @@ export interface DocumentSettingsState {
   toggleAutoCloseBrackets: () => void;
   setLinterEnabled: (linterEnabled: boolean) => void;
   toggleLinterEnabled: () => void;
+  setErrorLensEnabled: (enabled: boolean) => void;
+  toggleErrorLensEnabled: () => void;
   setShowEditorTabs: (show: boolean) => void;
   toggleShowEditorTabs: () => void;
   setShowEquationPreview: (show: boolean) => void;
   toggleShowEquationPreview: () => void;
   setPdfSpreadView: (spread: boolean) => void;
   togglePdfSpreadView: () => void;
+  suppressBadBoxes: boolean;
+  suppressFontWarnings: boolean;
+  suppressPackageWarnings: boolean;
+  customSuppressedWarnings: string[];
+  setSuppressBadBoxes: (suppress: boolean) => void;
+  toggleSuppressBadBoxes: () => void;
+  setSuppressFontWarnings: (suppress: boolean) => void;
+  toggleSuppressFontWarnings: () => void;
+  setSuppressPackageWarnings: (suppress: boolean) => void;
+  toggleSuppressPackageWarnings: () => void;
+  setCustomSuppressedWarnings: (patterns: string[]) => void;
+  addSuppressedWarning: (pattern: string) => void;
+  removeSuppressedWarning: (pattern: string) => void;
 }
 
 export const useDocumentSettingsStore = create<DocumentSettingsState>()(
@@ -166,6 +183,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       lineHeight: 1.6,
       autoCloseBrackets: true,
       linterEnabled: true,
+      errorLensEnabled: true,
       autoComplete: true,
       nonBlinkingCursor: false,
       previewEditorTabs: false,
@@ -226,6 +244,8 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       toggleAutoCloseBrackets: () => set((s) => ({ autoCloseBrackets: !s.autoCloseBrackets })),
       setLinterEnabled: (linterEnabled) => set({ linterEnabled }),
       toggleLinterEnabled: () => set((s) => ({ linterEnabled: !s.linterEnabled })),
+      setErrorLensEnabled: (errorLensEnabled) => set({ errorLensEnabled }),
+      toggleErrorLensEnabled: () => set((s) => ({ errorLensEnabled: !s.errorLensEnabled })),
       setShowEditorTabs: (showEditorTabs) => set({ showEditorTabs }),
       toggleShowEditorTabs: () => set((s) => ({ showEditorTabs: !s.showEditorTabs })),
       setShowBreadcrumbs: (showBreadcrumbs) => set({ showBreadcrumbs }),
@@ -239,6 +259,31 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       setPreviewEditorTabs: (previewEditorTabs) => set({ previewEditorTabs }),
       setPdfViewer: (pdfViewer) => set({ pdfViewer }),
       setIsLocked: (isLocked) => set({ isLocked }),
+      suppressBadBoxes: false,
+      suppressFontWarnings: false,
+      suppressPackageWarnings: false,
+      customSuppressedWarnings: [],
+
+      setSuppressBadBoxes: (suppressBadBoxes) => set({ suppressBadBoxes }),
+      toggleSuppressBadBoxes: () =>
+        set((s) => ({ suppressBadBoxes: !s.suppressBadBoxes })),
+      setSuppressFontWarnings: (suppressFontWarnings) => set({ suppressFontWarnings }),
+      toggleSuppressFontWarnings: () =>
+        set((s) => ({ suppressFontWarnings: !s.suppressFontWarnings })),
+      setSuppressPackageWarnings: (suppressPackageWarnings) => set({ suppressPackageWarnings }),
+      toggleSuppressPackageWarnings: () =>
+        set((s) => ({ suppressPackageWarnings: !s.suppressPackageWarnings })),
+      setCustomSuppressedWarnings: (customSuppressedWarnings) => set({ customSuppressedWarnings }),
+      addSuppressedWarning: (pattern) =>
+        set((s) => {
+          const trimmed = pattern.trim();
+          if (!trimmed || s.customSuppressedWarnings.includes(trimmed)) return s;
+          return { customSuppressedWarnings: [...s.customSuppressedWarnings, trimmed] };
+        }),
+      removeSuppressedWarning: (pattern) =>
+        set((s) => ({
+          customSuppressedWarnings: s.customSuppressedWarnings.filter((p) => p !== pattern),
+        })),
       setNotifyComments: (notifyComments) => set({ notifyComments }),
       setNotifyUpdates: (notifyUpdates) => set({ notifyUpdates }),
     }),
@@ -267,3 +312,20 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
 export const useSettingsStore = useDocumentSettingsStore;
 export const useEditorSettingsStore = useDocumentSettingsStore;
 export type SettingsState = DocumentSettingsState;
+
+// Sync warning suppression filter options with diagnosticsCoordinator
+const syncFilterOptions = (state: DocumentSettingsState) => {
+  diagnosticsCoordinator.setFilterOptions({
+    suppressBadBoxes: state.suppressBadBoxes,
+    suppressFontWarnings: state.suppressFontWarnings,
+    suppressPackageWarnings: state.suppressPackageWarnings,
+    customPatterns: state.customSuppressedWarnings,
+  });
+};
+
+// Initial sync
+syncFilterOptions(useDocumentSettingsStore.getState());
+
+// Dynamic sync on store updates
+useDocumentSettingsStore.subscribe(syncFilterOptions);
+

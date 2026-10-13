@@ -178,7 +178,11 @@ export const ProjectSelectorPopover: React.FC<ProjectSelectorPopoverProps> = ({
             open && 'bg-muted border-border'
           )}
         >
-          <span className="text-sm leading-none">{project?.emoji || '🐥'}</span>
+          {project?.emoji ? (
+            <span className="text-sm leading-none">{project.emoji}</span>
+          ) : (
+            <Hash className="size-3.5 text-foreground shrink-0" />
+          )}
           <span className="text-xs text-foreground tracking-normal font-normal">
             {project?.name || project?.identifier || 'Select Project'}
           </span>
@@ -224,7 +228,11 @@ export const ProjectSelectorPopover: React.FC<ProjectSelectorPopoverProps> = ({
                   )}
                 >
                   <div className="flex items-center gap-2.5 truncate">
-                    <span className="text-sm leading-none shrink-0">{p.emoji || '📁'}</span>
+                    {p.emoji ? (
+                      <span className="text-sm leading-none shrink-0">{p.emoji}</span>
+                    ) : (
+                      <Hash className="size-3.5 text-foreground shrink-0" />
+                    )}
                     <span className="truncate text-foreground text-xs">{p.name || p.identifier}</span>
                   </div>
                   {isSelected && <Check className="size-3.5 shrink-0 text-foreground" />}
@@ -698,13 +706,16 @@ export function LabelPopover({
   iconOnly = false,
   children,
 }: LabelPopoverProps) {
-  const { projectId } = useParams() as { projectId?: string };
+  const params = useParams() as { projectId?: string } | null;
+  const projectId = params?.projectId;
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = open !== undefined ? open : internalOpen;
   const setIsOpen = onOpenChange !== undefined ? onOpenChange : setInternalOpen;
   const [labelSearch, setLabelSearch] = useState('');
 
-  const { data: rawLabels } = useLabelsQuery(projectId, 'work-item');
+  const { data: rawLabels } = useLabelsQuery(projectId, 'work-item', {
+    enabled: Boolean(projectId) && isOpen,
+  });
 
   const labelList: Label[] = useMemo(() => {
     if (Array.isArray(rawLabels)) return rawLabels;
@@ -784,7 +795,7 @@ export function LabelPopover({
                   <div className="flex items-center gap-2 truncate min-w-0">
                     <span
                       className="size-2 rounded-full shrink-0"
-                      style={{ backgroundColor: label.color || '#3B82F6' }}
+                      style={{ backgroundColor: label.color || '#0969DA' }}
                     />
                     <span className="truncate text-foreground">{label.name}</span>
                   </div>
@@ -1056,7 +1067,7 @@ export function DatePopover({
             <Button
               size="sm"
               onClick={handleSave}
-              className="h-7 text-xs font-semibold px-4 cursor-pointer rounded-md shadow-none bg-foreground text-background hover:bg-foreground/90"
+              className="h-7 text-xs font-semibold px-4 cursor-pointer rounded-md shadow-none bg-primary text-primary-foreground hover:bg-primary-hover"
             >
               Apply
             </Button>
@@ -1079,6 +1090,7 @@ export interface SingleDatePopoverProps {
   variant?: 'outline' | 'ghost' | 'default' | 'secondary';
   disabled?: boolean;
   isReadOnly?: boolean;
+  children?: React.ReactNode;
 }
 
 export function SingleDatePopover({
@@ -1091,6 +1103,7 @@ export function SingleDatePopover({
   variant = 'outline',
   disabled = false,
   isReadOnly = false,
+  children,
 }: SingleDatePopoverProps) {
   const selectedDate = date ? new Date(date) : undefined;
 
@@ -1106,21 +1119,25 @@ export function SingleDatePopover({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild disabled={isDisabled}>
-        <Button
-          variant={variant}
-          size="sm"
-          className={cn(
-            variant === 'ghost'
-              ? 'h-7 px-2 text-xs font-normal rounded-md bg-transparent hover:bg-muted/50 text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 border-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring'
-              : 'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
-            actionBtnClass,
-            open && (variant === 'ghost' ? 'bg-muted/60' : 'bg-muted border-border'),
-            date && 'text-foreground font-medium'
-          )}
-        >
-          <DateCalendarIcon />
-          <span className={cn(date && 'font-mono tabular-nums')}>{formattedLabel}</span>
-        </Button>
+        {children ? (
+          children
+        ) : (
+          <Button
+            variant={variant}
+            size="sm"
+            className={cn(
+              variant === 'ghost'
+                ? 'h-7 px-2 text-xs font-normal rounded-md bg-transparent hover:bg-muted/50 text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 border-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring'
+                : 'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
+              actionBtnClass,
+              open && (variant === 'ghost' ? 'bg-muted/60' : 'bg-muted border-border'),
+              date && 'text-foreground font-medium'
+            )}
+          >
+            <DateCalendarIcon />
+            <span className={cn(date && 'font-mono tabular-nums')}>{formattedLabel}</span>
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent
         align="start"

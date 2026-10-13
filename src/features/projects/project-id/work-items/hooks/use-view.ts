@@ -281,21 +281,28 @@ export function useKanban({
     setActiveId(null);
   }, []);
 
-  return {
-    state: {
+  const state = useMemo(
+    () => ({
       activeId,
       activeItem,
       activeWorkItem: activeItem,
       itemsByColumn,
       workItemsByColumn: itemsByColumn,
       sensors,
-    },
-    actions: {
+    }),
+    [activeId, activeItem, itemsByColumn, sensors]
+  );
+
+  const actions = useMemo(
+    () => ({
       dragStart,
       dragEnd,
       dragCancel,
-    },
-  };
+    }),
+    [dragStart, dragEnd, dragCancel]
+  );
+
+  return { state, actions };
 }
 
 // ── 4. Card Presentation Controller (useCard) ────────────────────────────────
@@ -333,11 +340,11 @@ export function useCard({
       case 'urgent':
         return { label: 'Urgent', icon: AlertCircle, colorClass: 'text-destructive' };
       case 'high':
-        return { label: 'High', icon: ArrowUp, colorClass: 'text-orange-500' };
+        return { label: 'High', icon: ArrowUp, colorClass: 'text-warning' };
       case 'medium':
-        return { label: 'Medium', icon: Minus, colorClass: 'text-yellow-500' };
+        return { label: 'Medium', icon: Minus, colorClass: 'text-muted-foreground' };
       case 'low':
-        return { label: 'Low', icon: ArrowDown, colorClass: 'text-blue-500' };
+        return { label: 'Low', icon: ArrowDown, colorClass: 'text-muted-foreground' };
       default:
         return { label: 'No Priority', icon: Minus, colorClass: 'text-muted-foreground' };
     }
@@ -461,33 +468,83 @@ export function useCard({
     return items;
   }, [card.priority, priorityMeta, hasDesc, childWorkItemTotal, childWorkItemDone, comments, attachments, card.relations]);
 
-  const state = {
-    priority: priorityMeta,
-    dates,
-    counts: { comments, attachments, childWorkItemTotal, childWorkItemDone },
-    labels,
-    assignee: { user, initials, isCurrentUser, avatar: user?.avatar },
-    hasDescription: hasDesc,
-    showLabelDetails: showLabels,
-    metadataItems,
-    isBlocked: Array.isArray(card.relations) && card.relations.some((relation) => relation.type === 'blocked_by'),
-    status: {
-      isCompleted: Boolean(card.completed || card.stateGroup === 'completed' || card.state?.group === 'completed' || card.columnId === 'done'),
-      isReadOnly,
-    },
-  };
+  const isCompleted = Boolean(
+    card.completed ||
+    card.stateGroup === 'completed' ||
+    card.state?.group === 'completed' ||
+    card.columnId === 'done'
+  );
 
-  const actions = {
-    setShowLabelDetails: setShowLabels,
-    toggleLabelDetails: toggleLabels,
-    toggleLabels,
-    edit: useCallback(() => onEdit?.(card), [onEdit, card]),
-    duplicate: useCallback(() => onDuplicate?.(card), [onDuplicate, card]),
-    remove: useCallback(() => onDelete?.(card), [onDelete, card]),
-    delete: useCallback(() => onDelete?.(card), [onDelete, card]),
-    join: useCallback(() => onJoin?.(card), [onJoin, card]),
-    leave: useCallback(() => onLeave?.(card), [onLeave, card]),
-  };
+  const isBlocked = useMemo(() => {
+    return Array.isArray(card.relations) && card.relations.some((relation) => relation.type === 'blocked_by');
+  }, [card.relations]);
+
+  const assigneeData = useMemo(() => ({
+    user,
+    initials,
+    isCurrentUser,
+    avatar: user?.avatar,
+  }), [user, initials, isCurrentUser]);
+
+  const counts = useMemo(() => ({
+    comments,
+    attachments,
+    childWorkItemTotal,
+    childWorkItemDone,
+  }), [comments, attachments, childWorkItemTotal, childWorkItemDone]);
+
+  const status = useMemo(() => ({
+    isCompleted,
+    isReadOnly,
+  }), [isCompleted, isReadOnly]);
+
+  const state = useMemo(
+    () => ({
+      priority: priorityMeta,
+      dates,
+      counts,
+      labels,
+      assignee: assigneeData,
+      hasDescription: hasDesc,
+      showLabelDetails: showLabels,
+      metadataItems,
+      isBlocked,
+      status,
+    }),
+    [
+      priorityMeta,
+      dates,
+      counts,
+      labels,
+      assigneeData,
+      hasDesc,
+      showLabels,
+      metadataItems,
+      isBlocked,
+      status,
+    ]
+  );
+
+  const edit = useCallback(() => onEdit?.(card), [onEdit, card]);
+  const duplicate = useCallback(() => onDuplicate?.(card), [onDuplicate, card]);
+  const remove = useCallback(() => onDelete?.(card), [onDelete, card]);
+  const join = useCallback(() => onJoin?.(card), [onJoin, card]);
+  const leave = useCallback(() => onLeave?.(card), [onLeave, card]);
+
+  const actions = useMemo(
+    () => ({
+      setShowLabelDetails: setShowLabels,
+      toggleLabelDetails: toggleLabels,
+      toggleLabels,
+      edit,
+      duplicate,
+      remove,
+      delete: remove,
+      join,
+      leave,
+    }),
+    [toggleLabels, edit, duplicate, remove, join, leave]
+  );
 
   return { state, actions };
 }

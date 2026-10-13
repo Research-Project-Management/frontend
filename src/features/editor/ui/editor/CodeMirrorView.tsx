@@ -1,0 +1,522 @@
+/**
+ * CodeMirrorView.tsx
+ *
+ * Core CodeMirror 6 Editor View (Block 6: UI Features Layer).
+ * Location: `features/editor/ui/features/editor/CodeMirrorView.tsx`
+ *
+ * Integrates:
+ * - CodeMirror preset extensions from `engines/codemirror-preset.ts`.
+ * - Yjs real-time collaboration adapter from `engines/yjs-codemirror-adapter.ts`.
+ * - Bounded LRU Cache hydration (restores cursor selection & scroll position in 0ms).
+ * - CodeMirrorEngineAdapter registered into EditorInstanceContext for global bus orchestration.
+ * - DiagnosticsGutter for compiler and syntax error markers.
+ * - Tab Visibility & Hibernation Coordinator (auto-flushes and frees DOM resources).
+ */
+
+'use client';
+
+import React, { useEffect, useRef, useMemo } from 'react';
+import { EditorState } from '@codemirror/state';
+import { EditorView } from '@codemirror/view';
+import { forceLinting } from '@codemirror/lint';
+import { ySyncAnnotation } from 'y-codemirror.next';
+import type * as Y from 'yjs';
+
+import {
+  createCodeMirrorPreset,
+  reconfigureLineNumbers,
+  reconfigureLineWrapping,
+  reconfigureKeybinding,
+  reconfigureVimMode,
+  reconfigureReadOnly,
+  reconfigureSpellCheck,
+  reconfigureTheme,
+  reconfigureTypography,
+  reconfigureVisualMode,
+  reconfigureErrorLens,
+} from '@/features/editor/engines/codemirror/codemirror-preset';
+import { YjsCodeMirrorAdapter } from '@/features/editor/engines/collaboration/yjs-codemirror-adapter';
+import {
+  createTrackChangesExtension,
+  setTrackChangesViewModeEffect,
+  setTrackChangesReviewModeEffect,
+} from '@/features/editor/engines/extensions/track-changes.extension';
+import { useEditorReviewSync } from '@/features/editor/ui/hooks/useEditorReviewSync';
+import { setErrorLensDiagnosticsEffect } from '@/features/editor/engines/extensions/latex-error-lens';
+import { CodeMirrorEngineAdapter } from '@/features/editor/engines/adapters/codemirror.adapter';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { visibilityCoordinator } from '@/features/editor/coordinators/visibility.coordinator';
+import { diagnosticsCoordinator } from '@/features/editor/coordinators/diagnostics.coordinator';
+import { sessionCoordinator, shouldUseRealtimePersistence } from '@/features/editor/coordinators/session.coordinator';
+import { reviewCoordinator } from '@/features/editor/coordinators/review.coordinator';
+import { setActiveEditorEngine, getActiveEditorEngine, editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { useConnectivityStore } from '@/features/editor/store/connectivity.store';
+import { createDiagnosticsGutter } from '@/features/editor/engines/extensions/diagnostics-gutter';
+import { cn } from '@/shared/lib/utils';
+
+export interface CodeMirrorViewProps {
+  fileId: string;
+  filePath: string;
+  value: string;
+  onChange?: (nextValue: string) => void;
+  yText?: Y.Text | null;
+  awareness?: any | null;
+  /** True only while the realtime (Yjs socket) provider is actually connected. */
+  isRealtimeConnected?: boolean;
+  readOnly?: boolean;
+  className?: string;
+  projectId?: string;
+  isActive?: boolean;
+  onCursorChange?: (line: number, column: number) => void;
+}
+
+export function CodeMirrorView({
+  fileId,
+  filePath,
+  value,
+  onChange,
+  yText,
+  awareness,
+  isRealtimeConnected = false,
+  readOnly = false,
+  className,
+  projectId,
+  isActive = true,
+  onCursorChange,
+}: CodeMirrorViewProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const viewRef = useRef<EditorView | null>(null);
+  const adapterRef = useRef<CodeMirrorEngineAdapter | null>(null);
+  const [activeEditorView, setActiveEditorView] = React.useState<EditorView | null>(null);
+  const collabAdapter = useMemo(() => new YjsCodeMirrorAdapter(), []);
+
+  // Narrow selectors to prevent useless re-renders when other settings mutate
+  const keybinding = useSettingsStore((s) => s.keybinding);
+  const lineNumbers = useSettingsStore((s) => s.lineNumbers);
+  const wordWrap = useSettingsStore((s) => s.wordWrap);
+  const reviewMode = useSettingsStore((s) => s.reviewMode);
+  const trackChangesViewMode = useSettingsStore((s) => s.trackChangesViewMode);
+  const spellCheck = useSettingsStore((s) => s.spellCheck);
+  const spellCheckLanguage = useSettingsStore((s) => s.spellCheckLanguage);
+  const fontSize = useSettingsStore((s) => s.fontSize);
+  const fontFamily = useSettingsStore((s) => s.fontFamily);
+  const lineHeight = useSettingsStore((s) => s.lineHeight);
+  const editorTheme = useSettingsStore((s) => s.editorTheme);
+  const editorMode = useSettingsStore((s) => s.editorMode);
+  const errorLensEnabled = useSettingsStore((s) => s.errorLensEnabled);
+
+  // Synchronize suggestions & comments to active CodeMirror view independently of Review sidebar
+  useEditorReviewSync(fileId, activeEditorView);
+
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  const isRealtimeConnectedRef = useRef(isRealtimeConnected);
+  isRealtimeConnectedRef.current = isRealtimeConnected;
+
+  const onCursorChangeRef = useRef(onCursorChange);
+  onCursorChangeRef.current = onCursorChange;
+
+  const isActiveRef = useRef(isActive);
+  isActiveRef.current = isActive;
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    // 1. Hydrate previous view state from LRU Cache
+    const cachedModel = lruDocumentCache.get(fileId);
+    const initialText = yText && yText.length > 0 ? yText.toString() : (cachedModel?.content ?? value);
+
+    // 2. Preset Extensions & Diagnostic Gutter
+    const presetExtensions = createCodeMirrorPreset({
+      readOnly,
+      lineNumbers,
+      lineWrapping: wordWrap,
+      keybinding,
+      vimMode: keybinding === 'vim',
+      enableMathPreview: true,
+      enableAutocomplete: true,
+      enableErrorLens: errorLensEnabled,
+      enableSpellCheck: spellCheck,
+      spellCheckLanguage,
+      projectId,
+      editorTheme,
+      fontSize,
+      fontFamily,
+      lineHeight,
+      enableVisualMode: editorMode === 'visual',
+    });
+
+    const diagnosticsExtension = createDiagnosticsGutter({
+      filePath,
+      enabled: true,
+    });
+
+    const collabExtension = collabAdapter.getExtension({
+      yText: yText ?? null,
+      awareness,
+    });
+
+    // 3. View Update Listener
+    const viewUpdateListener = EditorView.updateListener.of((update) => {
+      if (adapterRef.current) {
+        adapterRef.current.handleViewUpdate(update);
+      }
+
+      if (update.docChanged) {
+        // Detect if changes originated from remote peer via Yjs collaboration
+        const isRemote = update.transactions.some((tr) => Boolean(tr.annotation(ySyncAnnotation)));
+        const origin: 'local' | 'remote' = isRemote ? 'remote' : 'local';
+
+        let hasStructuralChange = false;
+        // Fast incremental check: only check if changes involve backslash directives
+        update.changes.iterChanges((_fromA, _toA, _fromB, _toB, inserted) => {
+          if (hasStructuralChange) return;
+          if (inserted.length > 0) {
+            const slice = inserted.sliceString(0, Math.min(inserted.length, 500));
+            if (slice.includes('\\')) {
+              hasStructuralChange = true;
+            }
+          }
+        });
+
+        const nextContent = update.state.doc.toString();
+        // Remote-origin (Yjs) transactions must never mark the local model dirty — nor clear an
+        // existing dirty flag. notifyContentChange applies the content with the right semantics.
+        const isOnline = useConnectivityStore.getState().isOnline;
+        sessionCoordinator.notifyContentChange(fileId, nextContent, {
+          // Only rely on the CRDT channel for persistence while the socket is truly connected;
+          // otherwise HTTP autosave + drafts take over.
+          isRealtimeActive: shouldUseRealtimePersistence({
+            hasYText: Boolean(yText),
+            isOnline,
+            isProviderConnected: isRealtimeConnectedRef.current,
+          }),
+          hasStructuralChange,
+          origin,
+        });
+        onChangeRef.current?.(nextContent);
+      }
+
+      if (update.selectionSet || update.geometryChanged) {
+        const mainSel = update.state.selection.main;
+        const scrollDOM = update.view.scrollDOM;
+
+        lruDocumentCache.updateViewState(
+          fileId,
+          { anchor: mainSel.anchor, head: mainSel.head },
+          { top: scrollDOM.scrollTop, left: scrollDOM.scrollLeft }
+        );
+
+        if (onCursorChangeRef.current) {
+          const line = update.state.doc.lineAt(mainSel.head);
+          onCursorChangeRef.current(line.number, mainSel.head - line.from + 1);
+        }
+      }
+    });
+
+    const trackChangesExtension = createTrackChangesExtension({
+      initialViewMode: trackChangesViewMode === 'clean' ? 'hide' : 'show',
+      initialReviewMode: Boolean(reviewMode),
+    });
+
+    // 4. Assemble State & View
+    const state = EditorState.create({
+      doc: initialText,
+      extensions: [
+        ...presetExtensions,
+        diagnosticsExtension,
+        collabExtension,
+        trackChangesExtension,
+        viewUpdateListener,
+      ],
+    });
+
+    const view = new EditorView({
+      state,
+      parent: containerRef.current,
+    });
+
+    viewRef.current = view;
+    setActiveEditorView(view);
+    reviewCoordinator.bindEditorView(view, fileId);
+
+    // 5. Connect Concrete Engine Adapter to Global Context
+    const engineAdapter = new CodeMirrorEngineAdapter(view);
+    adapterRef.current = engineAdapter;
+    if (isActiveRef.current) {
+      setActiveEditorEngine(engineAdapter);
+    }
+
+    const handleFocus = () => {
+      if (adapterRef.current) {
+        setActiveEditorEngine(adapterRef.current);
+      }
+    };
+    view.dom.addEventListener('focus', handleFocus, true);
+    view.dom.addEventListener('mousedown', handleFocus, true);
+
+    // 6. Restore cached selection & scroll position
+    if (cachedModel?.selection) {
+      const docLen = state.doc.length;
+      const anchor = Math.min(cachedModel.selection.anchor, docLen);
+      const head = Math.min(cachedModel.selection.head, docLen);
+      view.dispatch({ selection: { anchor, head } });
+    }
+
+    if (cachedModel?.scrollViewport) {
+      requestAnimationFrame(() => {
+        if (view.scrollDOM) {
+          view.scrollDOM.scrollTop = cachedModel.scrollViewport!.top;
+          view.scrollDOM.scrollLeft = cachedModel.scrollViewport!.left;
+        }
+      });
+    }
+
+    // 7. Subscribe to Diagnostics updates to trigger re-lint & refresh Error Lens
+    const syncErrorLens = (targetView: EditorView) => {
+      const diags = diagnosticsCoordinator.getDiagnosticsForFile(filePath);
+      targetView.dispatch({
+        effects: setErrorLensDiagnosticsEffect.of({
+          diagnostics: diags,
+          filePath,
+        }),
+      });
+    };
+
+    const unsubDiagnostics = diagnosticsCoordinator.subscribe(() => {
+      if (viewRef.current) {
+        forceLinting(viewRef.current);
+        syncErrorLens(viewRef.current);
+      }
+    });
+
+    // Initial Error Lens hydration
+    syncErrorLens(view);
+
+    // 8. Tab Visibility Hibernation Handler
+    const unsubVisibility = visibilityCoordinator.subscribe((lifecycle) => {
+      if (lifecycle === 'hibernated') {
+        if (viewRef.current) {
+          const scroller = viewRef.current.scrollDOM;
+          const mainSel = viewRef.current.state.selection.main;
+          lruDocumentCache.updateViewState(
+            fileId,
+            { anchor: mainSel.anchor, head: mainSel.head },
+            { top: scroller.scrollTop, left: scroller.scrollLeft }
+          );
+        }
+      }
+    });
+
+    // Synchronized Dual-Scroll Producer (Editor -> Preview)
+    let scrollRafId: number | null = null;
+    let lastDispatchedLine = -1;
+    const handleScroll = () => {
+      if (scrollRafId !== null) return;
+      scrollRafId = requestAnimationFrame(() => {
+        scrollRafId = null;
+        if (!viewRef.current) return;
+        const line = engineAdapter.getVisibleLine();
+        const totalLines = view.state.doc.lines;
+        const fraction = totalLines > 1 ? (line - 1) / (totalLines - 1) : 0;
+        if (line !== lastDispatchedLine) {
+          lastDispatchedLine = line;
+          editorCommandBus.dispatch({ type: 'sync:editor-scrolled', line, totalLines, fraction });
+        }
+      });
+    };
+    view.scrollDOM.addEventListener('scroll', handleScroll, { passive: true });
+
+    // Handle full remote/server document updates targeted at this document
+    const unsubContentUpdated = editorCommandBus.subscribe('document:content-updated', (cmd) => {
+      if (cmd.docId === fileId && viewRef.current) {
+        const currentDoc = viewRef.current.state.doc.toString();
+        if (currentDoc !== cmd.content) {
+          const sel = viewRef.current.state.selection.main;
+          const newLen = cmd.content.length;
+          viewRef.current.dispatch({
+            changes: { from: 0, to: currentDoc.length, insert: cmd.content },
+            selection: {
+              anchor: Math.min(sel.anchor, newLen),
+              head: Math.min(sel.head, newLen),
+            },
+          });
+        }
+      }
+    });
+
+    // Handle targeted set-content commands
+    const unsubSetContent = editorCommandBus.subscribe('editor:set-content', (cmd) => {
+      const anyCmd = cmd as { type: string; content: string; fileId?: string };
+      if (anyCmd.fileId && anyCmd.fileId === fileId && viewRef.current) {
+        const currentDoc = viewRef.current.state.doc.toString();
+        if (currentDoc !== anyCmd.content) {
+          const sel = viewRef.current.state.selection.main;
+          const newLen = anyCmd.content.length;
+          viewRef.current.dispatch({
+            changes: { from: 0, to: currentDoc.length, insert: anyCmd.content },
+            selection: {
+              anchor: Math.min(sel.anchor, newLen),
+              head: Math.min(sel.head, newLen),
+            },
+          });
+        }
+      }
+    });
+
+    const unsubLint = editorCommandBus.subscribe('editor:lint-project', () => {
+      if (viewRef.current) {
+        forceLinting(viewRef.current);
+        syncErrorLens(viewRef.current);
+      }
+    });
+
+    return () => {
+      if (scrollRafId !== null) cancelAnimationFrame(scrollRafId);
+      view.scrollDOM.removeEventListener('scroll', handleScroll);
+      view.dom.removeEventListener('focus', handleFocus, true);
+      view.dom.removeEventListener('mousedown', handleFocus, true);
+      unsubContentUpdated();
+      unsubSetContent();
+      unsubLint();
+      unsubDiagnostics();
+      unsubVisibility();
+      if (viewRef.current) {
+        const latestDoc = viewRef.current.state.doc.toString();
+        // Only persist if the view diverged from the cache (unknown origin => treat as local, dirty).
+        // Re-writing identical content must not flip a clean model (e.g. after remote edits) to dirty.
+        if (lruDocumentCache.getModel(fileId)?.content !== latestDoc) {
+          lruDocumentCache.updateContent(fileId, latestDoc, true);
+        }
+        const mainSel = viewRef.current.state.selection.main;
+        const scrollDOM = viewRef.current.scrollDOM;
+        lruDocumentCache.updateViewState(
+          fileId,
+          { anchor: mainSel.anchor, head: mainSel.head },
+          { top: scrollDOM.scrollTop, left: scrollDOM.scrollLeft }
+        );
+      }
+      reviewCoordinator.bindEditorView(null, fileId);
+      if (getActiveEditorEngine() === engineAdapter) {
+        setActiveEditorEngine(null);
+      }
+      adapterRef.current = null;
+      view.destroy();
+      viewRef.current = null;
+      setActiveEditorView(null);
+    };
+  }, [fileId, filePath]);
+
+  // Sync active engine when pane active status updates
+  useEffect(() => {
+    if (isActive && adapterRef.current) {
+      setActiveEditorEngine(adapterRef.current);
+    }
+  }, [isActive]);
+
+  // Synchronize external value changes (e.g. Draft restoration, async fetch, revision revert)
+  useEffect(() => {
+    if (!viewRef.current || value === undefined) return;
+    const currentDoc = viewRef.current.state.doc.toString();
+    if (currentDoc !== value) {
+      const sel = viewRef.current.state.selection.main;
+      const newLen = value.length;
+      viewRef.current.dispatch({
+        changes: { from: 0, to: currentDoc.length, insert: value },
+        selection: {
+          anchor: Math.min(sel.anchor, newLen),
+          head: Math.min(sel.head, newLen),
+        },
+      });
+    }
+  }, [value]);
+
+  // ── 0ms Dynamic Compartment Reconfigurations (No View Re-mount) ───────────
+  useEffect(() => {
+    if (!viewRef.current) return;
+    reconfigureLineNumbers(viewRef.current, lineNumbers);
+  }, [lineNumbers]);
+
+  useEffect(() => {
+    if (!viewRef.current) return;
+    reconfigureLineWrapping(viewRef.current, wordWrap);
+  }, [wordWrap]);
+
+  useEffect(() => {
+    if (!viewRef.current) return;
+    reconfigureKeybinding(viewRef.current, keybinding);
+  }, [keybinding]);
+
+  useEffect(() => {
+    if (!viewRef.current) return;
+    reconfigureReadOnly(viewRef.current, readOnly);
+  }, [readOnly]);
+
+  useEffect(() => {
+    if (!viewRef.current) return;
+    reconfigureSpellCheck(viewRef.current, spellCheck, projectId, spellCheckLanguage);
+  }, [spellCheck, spellCheckLanguage, projectId]);
+
+  useEffect(() => {
+    if (!viewRef.current) return;
+    reconfigureTheme(viewRef.current, editorTheme);
+  }, [editorTheme]);
+
+  useEffect(() => {
+    if (!viewRef.current) return;
+    reconfigureTypography(viewRef.current, fontSize, fontFamily, lineHeight);
+  }, [fontSize, fontFamily, lineHeight]);
+
+  useEffect(() => {
+    if (!viewRef.current) return;
+    reconfigureVisualMode(viewRef.current, editorMode === 'visual');
+  }, [editorMode]);
+
+  useEffect(() => {
+    if (!viewRef.current) return;
+    reconfigureErrorLens(viewRef.current, errorLensEnabled);
+    if (errorLensEnabled) {
+      const diags = diagnosticsCoordinator.getDiagnosticsForFile(filePath);
+      viewRef.current.dispatch({
+        effects: setErrorLensDiagnosticsEffect.of({
+          diagnostics: diags,
+          filePath,
+        }),
+      });
+    }
+  }, [errorLensEnabled, filePath]);
+
+  // Reconfigure Track Changes mode & viewMode dynamically in-place
+  useEffect(() => {
+    if (!viewRef.current) return;
+    viewRef.current.dispatch({
+      effects: [
+        setTrackChangesViewModeEffect.of(trackChangesViewMode),
+        setTrackChangesReviewModeEffect.of(Boolean(reviewMode)),
+      ],
+    });
+  }, [reviewMode, trackChangesViewMode]);
+
+  // Reconfigure Yjs collab extension on prop change
+  useEffect(() => {
+    if (viewRef.current) {
+      viewRef.current.dispatch({
+        effects: collabAdapter.reconfigure({
+          yText: yText ?? null,
+          awareness,
+        }),
+      });
+    }
+  }, [yText, awareness, collabAdapter]);
+
+  return (
+    <div
+      ref={containerRef}
+      className={cn('h-full w-full overflow-hidden flex flex-col font-mono text-sm', className)}
+    />
+  );
+}
+
+export default CodeMirrorView;

@@ -11,7 +11,7 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
-import type { ProjectDiffResponse } from '../../../domain/types/history.types';
+import type { ProjectDiffResponse } from '@/features/editor/domain/types/history.types';
 import { SideBySideDiffViewer } from './SideBySideDiffViewer';
 import { UnifiedDiffViewer } from './UnifiedDiffViewer';
 

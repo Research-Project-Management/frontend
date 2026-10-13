@@ -16,7 +16,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import React from 'react';
-import { VisualReferenceHoverCard } from '@/features/editor/ui/features/editor/visual/toolbars/VisualReferenceHoverCard';
+import { VisualReferenceHoverCard } from '@/features/editor/ui/editor/visual/toolbars/VisualReferenceHoverCard';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 

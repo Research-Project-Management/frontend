@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   closestCorners,
   DndContext,
@@ -124,12 +125,14 @@ const PRIORITY_THEME_CLASSES: Record<string, string> = {
   low:
     'text-foreground bg-muted/10 border-border hover:bg-muted shadow-none font-normal',
   none:
-    'text-foreground bg-transparent hover:bg-muted/50 border-border/40 shadow-none font-normal',
+    'text-foreground bg-transparent hover:bg-muted/50 border-border shadow-none font-normal',
 };
 
 function formatDateDisplay(dateStr?: string | null): string {
   return ItemHelpers.formatDate(dateStr);
 }
+
+const EMPTY_ARRAY: never[] = [];
 
 // ── Card Component ──────────────────────────────────────────────────────────
 
@@ -157,13 +160,13 @@ export interface CardProps {
 
 export const CardUI = React.memo(function CardUI({
   card,
-  columns = [],
+  columns = EMPTY_ARRAY,
   projectStates,
   displayOptions,
   labelMap,
   currentUserId,
   currentUserAvatar,
-  members = [],
+  members = EMPTY_ARRAY,
   onEdit,
   onDuplicate,
   onDelete,
@@ -470,7 +473,7 @@ export const CardUI = React.memo(function CardUI({
                       e.stopPropagation();
                       setLabelOpen(true);
                     }}
-                    className="inline-flex items-center gap-1 h-5 px-1.5 rounded-sm border border-border/70 bg-muted/20 text-10 text-foreground font-normal hover:bg-muted transition-colors shrink-0 cursor-pointer"
+                    className="inline-flex items-center gap-1 h-5 px-1.5 rounded-sm border border-border bg-muted/20 text-10 text-foreground font-normal hover:bg-muted transition-colors shrink-0 cursor-pointer"
                     title={`Label: ${lblName}`}
                   >
                     <span
@@ -488,7 +491,7 @@ export const CardUI = React.memo(function CardUI({
                     e.stopPropagation();
                     setLabelOpen(true);
                   }}
-                  className="inline-flex items-center h-5 px-1.5 rounded-sm border border-border/70 bg-muted/20 text-10 font-mono text-muted-foreground shrink-0 hover:bg-muted cursor-pointer"
+                  className="inline-flex items-center h-5 px-1.5 rounded-sm border border-border bg-muted/20 text-10 font-mono text-muted-foreground shrink-0 hover:bg-muted cursor-pointer"
                   title={labels.slice(2).map((l: any) => l.title || l.name).join(', ')}
                 >
                   +{labels.length - 2}
@@ -500,7 +503,7 @@ export const CardUI = React.memo(function CardUI({
           {/* 5. Subitem Indicator */}
           {showSubItems && (
             <div
-              className="inline-flex items-center gap-1 px-1.5 h-5 rounded-sm text-10 text-foreground border border-border/70 bg-muted/20 shrink-0"
+              className="inline-flex items-center gap-1 px-1.5 h-5 rounded-sm text-10 text-foreground border border-border bg-muted/20 shrink-0"
               title={`${childWorkItemDone}/${childWorkItemTotal} sub-items`}
             >
               <CheckSquare className="size-2.5 shrink-0" />
@@ -511,7 +514,7 @@ export const CardUI = React.memo(function CardUI({
           {/* 6. Attachments Indicator */}
           {showAttach && (
             <div
-              className="inline-flex items-center gap-1 px-1.5 h-5 rounded-sm text-10 text-foreground border border-border/70 bg-muted/20 shrink-0"
+              className="inline-flex items-center gap-1 px-1.5 h-5 rounded-sm text-10 text-foreground border border-border bg-muted/20 shrink-0"
               title={`${attachmentsCount} attachment${attachmentsCount > 1 ? 's' : ''}`}
             >
               <Paperclip className="size-2.5 shrink-0" />
@@ -522,7 +525,7 @@ export const CardUI = React.memo(function CardUI({
           {/* 7. Links Indicator */}
           {showLinks && (
             <div
-              className="inline-flex items-center gap-1 px-1.5 h-5 rounded-sm text-10 text-foreground border border-border/70 bg-muted/20 shrink-0"
+              className="inline-flex items-center gap-1 px-1.5 h-5 rounded-sm text-10 text-foreground border border-border bg-muted/20 shrink-0"
               title={`${linksCount} link${linksCount > 1 ? 's' : ''}`}
             >
               <Link2 className="size-2.5 shrink-0" />
@@ -546,7 +549,7 @@ export const CardUI = React.memo(function CardUI({
                     dueDate: payload.dueDate,
                   });
                 }}
-                actionBtnClass="size-5 p-0 rounded-sm border border-border/60 bg-transparent hover:bg-muted text-foreground flex items-center justify-center transition-colors cursor-pointer shrink-0 [&>span]:hidden"
+                actionBtnClass="size-5 p-0 rounded-sm border border-border bg-transparent hover:bg-muted text-foreground flex items-center justify-center transition-colors cursor-pointer shrink-0 [&>span]:hidden"
               />
             </div>
           )}
@@ -564,7 +567,7 @@ export const CardUI = React.memo(function CardUI({
                   onUpdateItem?.(card.id, { labels: next });
                 }}
                 iconOnly
-                actionBtnClass="size-5 p-0 rounded-sm border border-border/60 bg-transparent hover:bg-muted text-foreground flex items-center justify-center transition-colors cursor-pointer shrink-0 [&>span]:hidden"
+                actionBtnClass="size-5 p-0 rounded-sm border border-border bg-transparent hover:bg-muted text-foreground flex items-center justify-center transition-colors cursor-pointer shrink-0 [&>span]:hidden"
               />
             </div>
           )}
@@ -675,13 +678,13 @@ export interface ColumnProps extends BaseWorkItemViewProps, Partial<WorkItemCard
 export const Column = React.memo(function Column({
   column,
   cards,
-  columns = [],
+  columns = EMPTY_ARRAY,
   projectStates,
   displayOptions,
   labelMap,
   currentUserId,
   currentUserAvatar,
-  members = [],
+  members = EMPTY_ARRAY,
   droppableId,
   laneId,
   subGroupBy,
@@ -694,7 +697,7 @@ export const Column = React.memo(function Column({
   onMoveCard,
   onUpdateItem,
   isReadOnly = false,
-  selectedIds = [],
+  selectedIds = EMPTY_ARRAY,
   onToggleSelect,
 }: ColumnProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -717,6 +720,17 @@ export const Column = React.memo(function Column({
   });
 
   const cardIds = useMemo(() => cards.map((c) => c.id), [cards]);
+  const selectedIdsSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+  const cardListRef = useRef<HTMLDivElement>(null);
+  const isVirtualized = cards.length > 25;
+  const cardVirtualizer = useVirtualizer({
+    count: cards.length,
+    getScrollElement: () => cardListRef.current,
+    estimateSize: () => 100,
+    overscan: 5,
+    enabled: isVirtualized,
+  });
 
   useEffect(() => {
     if (isQuickAdding && inputRef.current) {
@@ -745,7 +759,7 @@ export const Column = React.memo(function Column({
         ref={setNodeRef}
         onClick={() => setIsCollapsed(false)}
         className={cn(
-          'flex flex-col items-center py-3 w-11 shrink-0 rounded-md bg-muted/40 dark:bg-muted/15 border border-border/50 transition-all cursor-pointer hover:bg-muted/60 h-full min-h-[350px] select-none',
+          'flex flex-col items-center py-3 w-11 shrink-0 rounded-md bg-muted/40 dark:bg-muted/15 border border-border transition-all cursor-pointer hover:bg-muted/60 h-full min-h-[350px] select-none',
           isOver && 'bg-muted/60'
         )}
       >
@@ -806,7 +820,7 @@ export const Column = React.memo(function Column({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex flex-col w-[320px] shrink-0 h-full min-h-[350px] rounded-md bg-muted/40 dark:bg-muted/15 border border-border/50 transition-colors overflow-hidden',
+        'flex flex-col w-[320px] shrink-0 h-full min-h-[350px] rounded-md bg-muted/40 dark:bg-muted/15 border border-border transition-colors overflow-hidden',
         isOver && 'bg-muted/60'
       )}
     >
@@ -854,9 +868,15 @@ export const Column = React.memo(function Column({
       </div>
 
       {/* Cards List */}
-      <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2.5 min-h-[60px] kanban-scrollbar">
+      <div
+        ref={cardListRef}
+        className={cn(
+          "flex-1 overflow-y-auto px-2 pb-2 min-h-[60px] kanban-scrollbar",
+          !isVirtualized && "space-y-2.5"
+        )}
+      >
         {isQuickAdding && (
-          <form onSubmit={handleQuickAddSubmit} className="p-3 bg-card rounded-md border border-border shadow-none space-y-2.5">
+          <form onSubmit={handleQuickAddSubmit} className="p-3 bg-card rounded-md border border-border shadow-none space-y-2.5 mb-2.5">
             <input
               ref={inputRef}
               value={quickTitle}
@@ -894,29 +914,80 @@ export const Column = React.memo(function Column({
         )}
 
         <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
-          {cards.map((card) => (
-            <Card
-              key={card.id}
-              card={card}
-              columns={columns}
-              projectStates={projectStates}
-              displayOptions={displayOptions}
-              labelMap={labelMap}
-              currentUserId={currentUserId}
-              currentUserAvatar={currentUserAvatar}
-              members={members}
-              onEdit={onEditCard}
-              onDuplicate={onDuplicateCard}
-              onDelete={onDeleteCard}
-              onJoin={onJoinCard}
-              onLeave={onLeaveCard}
-              onMoveCard={onMoveCard}
-              onUpdateItem={onUpdateItem}
-              isReadOnly={isReadOnly}
-              isSelected={selectedIds.includes(card.id)}
-              onToggleSelect={onToggleSelect}
-            />
-          ))}
+          {isVirtualized ? (
+            <div
+              style={{
+                height: `${cardVirtualizer.getTotalSize()}px`,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              {cardVirtualizer.getVirtualItems().map((virtualRow) => {
+                const card = cards[virtualRow.index];
+                if (!card) return null;
+                return (
+                  <div
+                    key={card.id}
+                    ref={cardVirtualizer.measureElement}
+                    data-index={virtualRow.index}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualRow.start}px)`,
+                      paddingBottom: '10px',
+                    }}
+                  >
+                    <Card
+                      card={card}
+                      columns={columns}
+                      projectStates={projectStates}
+                      displayOptions={displayOptions}
+                      labelMap={labelMap}
+                      currentUserId={currentUserId}
+                      currentUserAvatar={currentUserAvatar}
+                      members={members}
+                      onEdit={onEditCard}
+                      onDuplicate={onDuplicateCard}
+                      onDelete={onDeleteCard}
+                      onJoin={onJoinCard}
+                      onLeave={onLeaveCard}
+                      onMoveCard={onMoveCard}
+                      onUpdateItem={onUpdateItem}
+                      isReadOnly={isReadOnly}
+                      isSelected={selectedIdsSet.has(card.id)}
+                      onToggleSelect={onToggleSelect}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            cards.map((card) => (
+              <Card
+                key={card.id}
+                card={card}
+                columns={columns}
+                projectStates={projectStates}
+                displayOptions={displayOptions}
+                labelMap={labelMap}
+                currentUserId={currentUserId}
+                currentUserAvatar={currentUserAvatar}
+                members={members}
+                onEdit={onEditCard}
+                onDuplicate={onDuplicateCard}
+                onDelete={onDeleteCard}
+                onJoin={onJoinCard}
+                onLeave={onLeaveCard}
+                onMoveCard={onMoveCard}
+                onUpdateItem={onUpdateItem}
+                isReadOnly={isReadOnly}
+                isSelected={selectedIdsSet.has(card.id)}
+                onToggleSelect={onToggleSelect}
+              />
+            ))
+          )}
         </SortableContext>
 
         {!isQuickAdding && !isReadOnly && onAddCard && (
@@ -957,8 +1028,8 @@ interface SwimlaneDef {
   icon?: React.ReactNode;
 }
 
-export function BoardView({
-  items: propItems = [],
+export const BoardView = React.memo(function BoardView({
+  items: propItems = EMPTY_ARRAY,
   itemsByColumnId: propItemsByColumnId,
   columns,
   projectStates,
@@ -966,7 +1037,7 @@ export function BoardView({
   labelMap,
   currentUserId,
   currentUserAvatar,
-  members = [],
+  members = EMPTY_ARRAY,
   onAddCard,
   onEditCard,
   onDeleteCard,
@@ -977,7 +1048,7 @@ export function BoardView({
   onReorderCard,
   onUpdateItem,
   isReadOnly = false,
-  selectedIds = [],
+  selectedIds = EMPTY_ARRAY,
   onToggleSelect,
 }: BoardViewProps) {
   const items = propItems;
@@ -1179,7 +1250,7 @@ export function BoardView({
               return (
                 <div
                   key={lane.id}
-                  className="rounded-md border border-border/50 bg-card/40 overflow-hidden shadow-none"
+                  className="rounded-md border border-border bg-card/40 overflow-hidden shadow-none"
                 >
                   {/* Swimlane Header */}
                   <div
@@ -1194,7 +1265,7 @@ export function BoardView({
                         toggleLaneCollapse(lane.id);
                       }
                     }}
-                    className="flex items-center justify-between px-3.5 py-2 bg-muted/60 hover:bg-muted cursor-pointer select-none transition-colors border-b border-border/40"
+                    className="flex items-center justify-between px-3.5 py-2 bg-muted/60 hover:bg-muted cursor-pointer select-none transition-colors border-b border-border"
                   >
                     <div className="flex items-center gap-2">
                       <ChevronDown
@@ -1326,7 +1397,7 @@ export function BoardView({
       </DndContext>
     </div>
   );
-}
+});
 
 export const Board = BoardView;
 export default BoardView;

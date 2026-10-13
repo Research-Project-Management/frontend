@@ -33,7 +33,7 @@ import {
   MenubarSeparator,
   MenubarShortcut,
 } from '@/shared/components/ui/menubar';
-import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
+import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import type { LatexFormatType } from '@/features/editor/domain/types/ports/editor-engine.port';

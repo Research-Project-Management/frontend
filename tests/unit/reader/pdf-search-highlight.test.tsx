@@ -5,8 +5,8 @@ import {
   usePdfSearch,
   buildPdfSearchRegex,
   escapePdfSearchRegExp,
-} from '@/features/editor/ui/features/preview/hooks/use-pdf-search';
-import { PdfFindBar } from '@/features/editor/ui/features/preview/PdfFindBar';
+} from '@/features/editor/ui/preview/hooks/usePdfSearch';
+import { PdfFindBar } from '@/features/editor/ui/preview/PdfFindBar';
 import {
   editorCommandBus,
   setActiveEditorEngine,

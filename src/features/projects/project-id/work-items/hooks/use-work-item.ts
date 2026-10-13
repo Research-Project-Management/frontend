@@ -644,32 +644,35 @@ export function useProject({ projectId }: UseProjectOptions) {
   const isError = itemsQ.isError || detailsQ.isError;
   const error = itemsQ.error || detailsQ.error;
 
-  const state = {
-    items,
-    workItems: items,
-    allWorkItems: items,
-    columns,
-    project,
-    members,
-    labels,
-    labelMap,
-    status: {
+  const state = useMemo(
+    () => ({
+      items,
+      workItems: items,
+      allWorkItems: items,
+      columns,
+      project,
+      members,
+      labels,
+      labelMap,
+      status: {
+        isLoading,
+        isError,
+        isSaving,
+        isDeleting,
+        error,
+      },
       isLoading,
       isError,
+      error,
       isSaving,
       isDeleting,
-      error,
-    },
-    isLoading,
-    isError,
-    error,
-    isSaving,
-    isDeleting,
-    isSavingItem: isSaving,
-    isDeletingItem: isDeleting,
-    isSavingWorkItem: isSaving,
-    isDeletingWorkItem: isDeleting,
-  };
+      isSavingItem: isSaving,
+      isDeletingItem: isDeleting,
+      isSavingWorkItem: isSaving,
+      isDeletingWorkItem: isDeleting,
+    }),
+    [items, columns, project, members, labels, labelMap, isLoading, isError, isSaving, isDeleting, error]
+  );
 
   const createMutAsync = createMut.mutateAsync;
   const updateMutAsync = updateMut.mutateAsync;
@@ -782,43 +785,60 @@ export function useProject({ projectId }: UseProjectOptions) {
     [bulkMutAsync, projectId],
   );
 
-  const actions = {
-    create: createAction,
-    update: updateAction,
-    delete: deleteAction,
-    duplicate: duplicateAction,
-    move: moveAction,
-    reorder: reorderAction,
-    createSubItem: createSubItemAction,
-    bulk: bulkAction,
-    refetch: refetchAction,
+  const notifyAnalyticsComingSoon = useCallback(() => {
+    toast.info('Analytics is coming soon', { id: 'work-item-info' });
+  }, []);
 
-    // Item Action Aliases
-    createItem: createAction,
-    updateItem: updateAction,
-    moveItem: moveAction,
-    deleteItem: deleteAction,
-    duplicateItem: duplicateAction,
-    bulkUpdateItems: bulkAction,
-    reorderItem: reorderAction,
+  const actions = useMemo(
+    () => ({
+      create: createAction,
+      update: updateAction,
+      delete: deleteAction,
+      duplicate: duplicateAction,
+      move: moveAction,
+      reorder: reorderAction,
+      createSubItem: createSubItemAction,
+      bulk: bulkAction,
+      refetch: refetchAction,
 
-    // Work Item Action Aliases
-    createWorkItem: createAction,
-    updateWorkItem: updateAction,
-    moveWorkItem: moveAction,
-    deleteWorkItem: deleteAction,
-    duplicateWorkItem: duplicateAction,
-    bulkUpdateWorkItems: bulkAction,
-    reorderWorkItem: reorderAction,
-    createSubWorkItem: createSubItemAction,
+      // Item Action Aliases
+      createItem: createAction,
+      updateItem: updateAction,
+      moveItem: moveAction,
+      deleteItem: deleteAction,
+      duplicateItem: duplicateAction,
+      bulkUpdateItems: bulkAction,
+      reorderItem: reorderAction,
 
-    assignItemsToDate: assignItemsToDateAction,
-    assignWorkItemsToDate: assignItemsToDateAction,
+      // Work Item Action Aliases
+      createWorkItem: createAction,
+      updateWorkItem: updateAction,
+      moveWorkItem: moveAction,
+      deleteWorkItem: deleteAction,
+      duplicateWorkItem: duplicateAction,
+      bulkUpdateWorkItems: bulkAction,
+      reorderWorkItem: reorderAction,
+      createSubWorkItem: createSubItemAction,
 
-    notifyAnalyticsComingSoon: useCallback(() => {
-      toast.info('Analytics is coming soon', { id: 'work-item-info' });
-    }, []),
-  };
+      assignItemsToDate: assignItemsToDateAction,
+      assignWorkItemsToDate: assignItemsToDateAction,
+
+      notifyAnalyticsComingSoon,
+    }),
+    [
+      createAction,
+      updateAction,
+      deleteAction,
+      duplicateAction,
+      moveAction,
+      reorderAction,
+      createSubItemAction,
+      bulkAction,
+      refetchAction,
+      assignItemsToDateAction,
+      notifyAnalyticsComingSoon,
+    ]
+  );
 
   return { state, actions };
 }

@@ -14,7 +14,7 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
-import type { ProjectVersionListItem } from '../../../domain/types/history.types';
+import type { ProjectVersionListItem } from '@/features/editor/domain/types/history.types';
 
 export function formatVersionTime(dateStr?: string | null): string {
   if (!dateStr) return 'Just now';

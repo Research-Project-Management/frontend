@@ -18,7 +18,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
-  ArrowLeft,
   History,
   Loader2,
   PanelLeft,
@@ -45,13 +44,15 @@ import ProjectTitleDropdown from './topbar/ProjectTitleDropdown';
 import CollaboratorAvatarStack from './topbar/CollaboratorAvatarStack';
 import EditingModeDropdown from './topbar/EditingModeDropdown';
 
-import { editorCommandBus } from '../../coordinators/command-bus';
-import { sessionCoordinator } from '../../coordinators/session.coordinator';
+import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { useCompileStore } from '@/features/editor/store/compiler.store';
 import { usePageStore } from '@/features/editor/store/editor.store';
-import { usePageActions } from '../hooks/use-page-actions';
+import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
+import { useGithubSync } from '@/features/editor/ui/hooks/useGithubSync';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
+import { GitHubIcon } from '@/shared/components/icons/IntegrationIcons';
 
 const TemplateGalleryModal = dynamic(
   () => import('../modals/TemplateGalleryModal'),
@@ -92,6 +93,10 @@ export function Topbar() {
   const { updateTitle: updateTitleMutation } = usePageActions();
   const isSaving = hasDirtyFiles || updateTitleMutation.isPending;
 
+  const { linkData: githubLinkData } = useGithubSync({
+    projectId: effectiveProjectId,
+  });
+
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isQuickOpenOpen, setIsQuickOpenOpen] = useState(false);
 
@@ -120,7 +125,16 @@ export function Topbar() {
       }
     });
 
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F1') {
+        e.preventDefault();
+        setIsShortcutsOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+
     return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
       unsubOpen();
       unsubClose();
     };
@@ -213,6 +227,34 @@ export function Topbar() {
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={6}>
                 All changes saved to cloud
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* GitHub Sync Status Indicator & Shortcut */}
+          {githubLinkData?.link && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => {
+                    useSettingsStore.getState().setSettingsActiveTab('github');
+                    useSettingsStore.getState().setSettingsPanelOpen(true);
+                  }}
+                  aria-label={`GitHub: ${githubLinkData.link.repoFullName} (${githubLinkData.link.branch})`}
+                  className="hidden lg:flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-normal text-muted-foreground hover:text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none mr-0.5"
+                >
+                  <GitHubIcon className="size-3.5 shrink-0 text-foreground/70" />
+                  <span className="max-w-[110px] truncate text-11 font-mono">
+                    {githubLinkData.link.repoFullName.split('/')[1] || githubLinkData.link.repoFullName}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/70 font-mono">
+                    :{githubLinkData.link.branch}
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={6}>
+                GitHub: {githubLinkData.link.repoFullName} ({githubLinkData.link.branch})
               </TooltipContent>
             </Tooltip>
           )}

@@ -14,7 +14,7 @@ import {
 } from '@/shared/components/ui/select';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
-import { pageService } from '@/features/editor/sdk';
+import { pageService } from '@/features/editor/sdk/manuscript.service';
 
 interface ProjectOption {
   id: string;

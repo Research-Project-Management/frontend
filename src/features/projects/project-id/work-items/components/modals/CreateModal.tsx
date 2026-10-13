@@ -787,7 +787,7 @@ export function CreateModal({
               size="sm"
               disabled={isSubmitting}
               onClick={handleSubmit}
-              className="h-8 text-13 px-4 font-medium cursor-pointer rounded-md bg-foreground text-background hover:bg-foreground/90 flex items-center gap-1.5 shadow-none select-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-8 text-13 px-4 font-medium cursor-pointer rounded-md bg-primary text-primary-foreground hover:bg-primary-hover flex items-center gap-1.5 shadow-none select-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               {isSubmitting && <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none shrink-0" />}
               <span>{isSubmitting ? 'Creating...' : 'Create work item'}</span>

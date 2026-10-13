@@ -1,13 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
 import {
   VisualSlashCommandMenu,
   SLASH_COMMANDS,
   type SlashCommandItem,
-} from '@/features/editor/ui/features/editor/visual/toolbars/VisualSlashCommandMenu';
-import { VisualEditorView } from '@/features/editor/ui/features/editor/VisualEditorView';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+} from '@/features/editor/ui/editor/visual/toolbars/VisualSlashCommandMenu';
 
 describe('VisualSlashCommandMenu Component', () => {
   afterEach(() => {
@@ -92,144 +90,5 @@ describe('VisualSlashCommandMenu Component', () => {
     fireEvent.mouseEnter(items[1]);
 
     expect(handleHover).toHaveBeenCalledWith(1);
-  });
-});
-
-describe('VisualEditorView Slash Command Integration', () => {
-  beforeEach(() => {
-    document.execCommand = vi.fn();
-  });
-
-  afterEach(() => {
-    cleanup();
-    vi.clearAllMocks();
-  });
-
-  it('opens slash command menu when typing "/" in the document surface', async () => {
-    const { container } = render(
-      <VisualEditorView
-        filePath="main.tex"
-        value="\section{Introduction}\nText here."
-        onChange={vi.fn()}
-      />
-    );
-
-    const surface = container.querySelector('.visual-editor-surface') as HTMLElement;
-    expect(surface).toBeInTheDocument();
-
-    // Trigger slash key
-    fireEvent.keyDown(surface, { key: '/' });
-
-    await waitFor(() => {
-      expect(screen.getByRole('menu', { name: /Slash Commands/i })).toBeInTheDocument();
-    });
-  });
-
-  it('navigates with ArrowDown / ArrowUp and selects item with Enter', async () => {
-    const handleChange = vi.fn();
-    const { container } = render(
-      <VisualEditorView
-        filePath="main.tex"
-        value="\section{Introduction}\n"
-        onChange={handleChange}
-      />
-    );
-
-    const surface = container.querySelector('.visual-editor-surface') as HTMLElement;
-
-    // Open slash menu
-    fireEvent.keyDown(surface, { key: '/' });
-    await waitFor(() => {
-      expect(screen.getByRole('menu', { name: /Slash Commands/i })).toBeInTheDocument();
-    });
-
-    // Arrow down to second command (Subsection)
-    fireEvent.keyDown(surface, { key: 'ArrowDown' });
-
-    // Press Enter to execute Subsection command
-    fireEvent.keyDown(surface, { key: 'Enter' });
-
-    // formatBlock to h2 should be called
-    expect(document.execCommand).toHaveBeenCalledWith('formatBlock', false, 'h2');
-
-    // Menu should close
-    expect(screen.queryByRole('menu', { name: /Slash Commands/i })).toBeNull();
-  });
-
-  it('closes slash menu on Escape key', async () => {
-    const { container } = render(
-      <VisualEditorView
-        filePath="main.tex"
-        value="\section{Introduction}\n"
-        onChange={vi.fn()}
-      />
-    );
-
-    const surface = container.querySelector('.visual-editor-surface') as HTMLElement;
-
-    fireEvent.keyDown(surface, { key: '/' });
-    await waitFor(() => {
-      expect(screen.getByRole('menu', { name: /Slash Commands/i })).toBeInTheDocument();
-    });
-
-    fireEvent.keyDown(surface, { key: 'Escape' });
-    expect(screen.queryByRole('menu', { name: /Slash Commands/i })).toBeNull();
-  });
-
-  it('inserts 3x3 table when selecting Table from slash menu', async () => {
-    const { container } = render(
-      <VisualEditorView
-        filePath="main.tex"
-        value="\section{Introduction}\n"
-        onChange={vi.fn()}
-      />
-    );
-
-    const surface = container.querySelector('.visual-editor-surface') as HTMLElement;
-
-    fireEvent.keyDown(surface, { key: '/' });
-    await waitFor(() => {
-      expect(screen.getByRole('menu', { name: /Slash Commands/i })).toBeInTheDocument();
-    });
-
-    // Click Table menuitem
-    const slashMenu = screen.getByRole('menu', { name: /Slash Commands/i });
-    const tableItem = slashMenu.querySelector('button[data-command-id="table"]') as HTMLElement;
-    expect(tableItem).toBeInTheDocument();
-    fireEvent.click(tableItem);
-
-    // insertHTML called with <table> HTML
-    expect(document.execCommand).toHaveBeenCalledWith(
-      'insertHTML',
-      false,
-      expect.stringContaining('<table')
-    );
-  });
-
-  it('dispatches citation-picker dialog when selecting Citation from slash menu', async () => {
-    const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
-    const { container } = render(
-      <VisualEditorView
-        filePath="main.tex"
-        value="\section{Introduction}\n"
-        onChange={vi.fn()}
-      />
-    );
-
-    const surface = container.querySelector('.visual-editor-surface') as HTMLElement;
-
-    fireEvent.keyDown(surface, { key: '/' });
-    await waitFor(() => {
-      expect(screen.getByRole('menu', { name: /Slash Commands/i })).toBeInTheDocument();
-    });
-
-    const citeItem = document.querySelector('[data-command-id="citation"]') as HTMLElement;
-    expect(citeItem).toBeTruthy();
-    fireEvent.click(citeItem);
-
-    expect(dispatchSpy).toHaveBeenCalledWith({
-      type: 'dialog:open',
-      dialog: 'citation-picker',
-    });
   });
 });

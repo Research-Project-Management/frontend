@@ -1,3 +1,4 @@
+import AppLoading from '@/app/(app)/loading';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import UnfiledPage from '@/features/library/pages/UnfiledPage';
@@ -6,7 +7,7 @@ export const metadata: Metadata = { title: 'Unfiled Items · Library · Flux' };
 
 export default function LibraryUnfiledPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<AppLoading />}>
       <UnfiledPage />
     </Suspense>
   );

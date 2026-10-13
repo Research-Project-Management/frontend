@@ -91,8 +91,8 @@ export interface IEditorEngine {
   /** Applies LaTeX semantic formatting to selection or cursor */
   format(type: LatexFormatType): void;
 
-  /** Navigates editor viewport to line and optionally decorates highlight */
-  jumpToLine(line: number, highlight?: 'error' | 'synctex'): void;
+  /** Navigates editor viewport to line and optionally decorates highlight, with optional column offset and selection length */
+  jumpToLine(line: number, highlight?: 'error' | 'synctex', column?: number, length?: number): void;
 
   /** Smoothly scrolls editor viewport to line without stealing focus or moving cursor */
   scrollToLine?(line: number, smooth?: boolean): void;

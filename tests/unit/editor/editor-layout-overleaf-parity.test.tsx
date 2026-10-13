@@ -3,8 +3,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { Menubar } from '@/shared/components/ui';
-import { PdfToolbar } from '@/features/editor/ui/features/preview/PdfToolbar';
-import { EditorArea } from '@/features/editor/ui/features/editor/EditorArea';
+import { PdfToolbar } from '@/features/editor/ui/preview/PdfToolbar';
+import { EditorArea } from '@/features/editor/ui/editor/EditorArea';
 import { Topbar } from '@/features/editor/ui/shell/Topbar';
 import { ActivityBar } from '@/features/editor/ui/shell/ActivityBar';
 import { WorkbenchShell } from '@/features/editor/ui/shell/WorkbenchShell';
@@ -37,7 +37,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/editor/proj-123',
 }));
 
-vi.mock('@/features/editor/ui/hooks/use-active-document', () => ({
+vi.mock('@/features/editor/ui/hooks/useActiveDocument', () => ({
   useActiveDocument: () => ({
     isLoading: false,
     activePage: {
@@ -63,14 +63,14 @@ vi.mock('@/features/editor/ui/hooks/use-active-document', () => ({
   }),
 }));
 
-vi.mock('@/features/editor/ui/hooks/use-page-actions', () => ({
+vi.mock('@/features/editor/ui/hooks/usePageActions', () => ({
   usePageActions: () => ({
     updateThumbnail: { mutate: vi.fn() },
     updateTitle: { mutate: vi.fn(), isPending: false },
   }),
 }));
 
-vi.mock('@/features/editor/ui/hooks/use-file-actions', () => ({
+vi.mock('@/features/editor/ui/hooks/useFileActions', () => ({
   useFileActions: () => ({
     setMainFile: { mutate: vi.fn() },
   }),
@@ -82,7 +82,7 @@ vi.mock('@/features/editor/ui/hooks/document.queries', () => ({
 }));
 
 // Mock CodeMirrorView to identify it easily
-vi.mock('@/features/editor/ui/features/editor/CodeMirrorView', () => ({
+vi.mock('@/features/editor/ui/editor/CodeMirrorView', () => ({
   CodeMirrorView: (props: any) => (
     <div data-testid="mock-codemirror-view" data-file-id={props.fileId}>
       <span>CodeMirror Engine Mock</span>
@@ -92,7 +92,7 @@ vi.mock('@/features/editor/ui/features/editor/CodeMirrorView', () => ({
 }));
 
 // Mock VisualEditorView to prevent TipTap/DOM measurement issues in JSDOM
-vi.mock('@/features/editor/ui/features/editor/VisualEditorView', () => ({
+vi.mock('@/features/editor/ui/editor/VisualEditorView', () => ({
   VisualEditorView: (props: { fileId?: string }) => (
     <div data-testid="mock-visual-view" data-file-id={props.fileId} className="visual-editor-surface">
       <span>Visual Engine Mock</span>
@@ -293,7 +293,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
   });
 
   describe('2. Vertical Space Optimization: EditorTabs & EditorToolbar', () => {
-    it('renders SourceVisualSwitcher in EditorTabs and omits EditorToolbar when editorMode is "code"', () => {
+    it('renders SourceVisualSwitcher in EditorToolbar and omits formatting buttons when editorMode is "code"', () => {
       useSettingsStore.setState({ editorMode: 'code' });
       renderWithProviders(<EditorArea />);
 
@@ -301,7 +301,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       expect(screen.getByRole('radio', { name: /source mode/i })).toBeInTheDocument();
       expect(screen.getByRole('radio', { name: /visual mode/i })).toBeInTheDocument();
 
-      // Bold, Italic formatting buttons are NOT rendered in code mode (reclaiming 36px)
+      // Bold, Italic formatting buttons are NOT rendered in code mode
       expect(screen.queryByRole('button', { name: /bold/i })).toBeNull();
       expect(screen.queryByRole('button', { name: /italic/i })).toBeNull();
       expect(screen.queryByRole('button', { name: /section/i })).toBeNull();
@@ -320,7 +320,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       expect(screen.getByRole('button', { name: /italic/i })).toBeInTheDocument();
     });
 
-    it('supports Ctrl+Alt+M keydown in EditorArea in code mode even when EditorToolbar is hidden', () => {
+    it('supports Ctrl+Alt+M keydown in EditorArea in code mode', () => {
       useSettingsStore.setState({ editorMode: 'code' });
       const mockEngine = {
         getSelection: vi.fn().mockReturnValue({ fromLine: 12, toLine: 12 }),
@@ -445,7 +445,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       expect(screen.getByRole('menuitem', { name: /new folder/i })).toBeInTheDocument();
       expect(screen.getByRole('menuitem', { name: /upload file/i })).toBeInTheDocument();
       expect(screen.getByRole('menuitem', { name: /make a copy/i })).toBeInTheDocument();
-      expect(screen.queryByRole('menuitem', { name: /word count/i })).toBeNull();
+      expect(screen.getByRole('menuitem', { name: /word count/i })).toBeInTheDocument();
       expect(screen.queryByRole('menuitem', { name: /deleted files/i })).toBeNull();
     });
 
@@ -458,7 +458,8 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
 
       expect(await screen.findByRole('menuitem', { name: /undo/i })).toBeInTheDocument();
       expect(screen.getByRole('menuitem', { name: /redo/i })).toBeInTheDocument();
-      expect(screen.getByRole('menuitem', { name: /find/i })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: /^find(?!.*project)/i })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: /find in project/i })).toBeInTheDocument();
       expect(screen.getByRole('menuitem', { name: /select all/i })).toBeInTheDocument();
       expect(screen.getByRole('menuitem', { name: /check page syntax/i })).toBeInTheDocument();
       expect(screen.queryByRole('menuitem', { name: /auto-fix page syntax/i })).toBeNull();
@@ -501,7 +502,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
         settingsActiveTab: 'editor',
       });
 
-      const { ProjectSettingsModal } = await import('@/features/editor/ui/modals/ProjectSettingsModal');
+      const { ProjectSettingsModal } = await import('@/features/editor/ui/modals/project-settings/ProjectSettingsModal');
       renderWithProviders(<ProjectSettingsModal />);
 
       // 1. Header
@@ -545,7 +546,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
       useSettingsStore.setState({ settingsPanelOpen: true });
 
-      const { ProjectSettingsModal } = await import('@/features/editor/ui/modals/ProjectSettingsModal');
+      const { ProjectSettingsModal } = await import('@/features/editor/ui/modals/project-settings/ProjectSettingsModal');
       renderWithProviders(<ProjectSettingsModal />);
 
       const wordCountBtn = screen.getByRole('button', { name: /run word count/i });
@@ -560,7 +561,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
 
     it('shows Git Clone URL with Smart-HTTP badge and allows copying command', async () => {
       useSettingsStore.setState({ settingsPanelOpen: true });
-      const { ProjectSettingsModal } = await import('@/features/editor/ui/modals/ProjectSettingsModal');
+      const { ProjectSettingsModal } = await import('@/features/editor/ui/modals/project-settings/ProjectSettingsModal');
       renderWithProviders(<ProjectSettingsModal />);
 
       expect(screen.getByText(/smart-http/i)).toBeInTheDocument();
@@ -579,7 +580,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       useSettingsStore.setState({ settingsPanelOpen: true });
       usePageStore.setState({ projectId: 'proj-test-clean' });
 
-      const { ProjectSettingsModal } = await import('@/features/editor/ui/modals/ProjectSettingsModal');
+      const { ProjectSettingsModal } = await import('@/features/editor/ui/modals/project-settings/ProjectSettingsModal');
       renderWithProviders(<ProjectSettingsModal />);
 
       const clearCacheBtn = screen.getByRole('button', { name: /clear cache/i });

@@ -29,10 +29,10 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { useLayoutStore, type ActivityBarTab } from '../../store/layout.store';
-import { useSettingsStore } from '../../store/settings.store';
-import { usePageStore } from '../../store/editor.store';
-import { useReviewPendingCount } from '../features/sidebar/review/hooks/useReviewPendingCount';
+import { useLayoutStore, type ActivityBarTab } from '@/features/editor/store/layout.store';
+import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { usePageStore } from '@/features/editor/store/editor.store';
+import { useReviewPendingCount } from '@/features/editor/ui/sidebar/review/hooks/useReviewPendingCount';
 
 const StickyDock = dynamic(() => import('@/features/shell/components/StickyDock'), {
   ssr: false,

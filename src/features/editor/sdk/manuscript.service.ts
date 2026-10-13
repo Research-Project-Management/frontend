@@ -25,10 +25,13 @@
  */
 
 import * as api from '@/shared/lib/api';
-import type { Page, PageFile } from '@/features/editor/domain/types';
-import { manuscriptService } from './manuscript';
+import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
+import { manuscriptService } from './manuscript/manuscript-client';
 
-export * from './manuscript';
+export * from './manuscript/manuscript-client';
+export * from './realtime/yjs-socket-provider';
+export * from './archive/archive-export';
+export * from './archive/archive-import';
 export { manuscriptService };
 export default manuscriptService;
 

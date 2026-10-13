@@ -188,9 +188,6 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
 
   // ── Navigation Helpers ─────────────────────────────────────────────────────
   const isActive = (item: NavItem) => {
-    if (item.to === '/home' && (pathname === '/home' || pathname === '/home/' || pathname === '/dashboard' || pathname === '/dashboard/')) {
-      return true;
-    }
     if (item.exact) return pathname === item.to || pathname === item.to + '/';
     return pathname === item.to || pathname.startsWith(item.to + '/');
   };

@@ -35,8 +35,8 @@ import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { usePageStore } from '@/features/editor/store/editor.store';
-import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
-import { manuscriptService } from '@/features/editor/sdk';
+import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 
 import {
   type AcademicTemplate,

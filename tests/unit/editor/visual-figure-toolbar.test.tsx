@@ -4,7 +4,7 @@ import React from 'react';
 import {
   VisualFigureToolbar,
   type VisualFigureToolbarProps,
-} from '@/features/editor/ui/features/editor/visual/toolbars/VisualFigureToolbar';
+} from '@/features/editor/ui/editor/visual/toolbars/VisualFigureToolbar';
 
 describe('VisualFigureToolbar Component (Overleaf Parity)', () => {
   const defaultProps: VisualFigureToolbarProps = {

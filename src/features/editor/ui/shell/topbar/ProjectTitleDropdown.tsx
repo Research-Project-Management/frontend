@@ -53,17 +53,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/
 import { usePageStore } from '@/features/editor/store/editor.store';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { useCompileStore } from '@/features/editor/store/compiler.store';
-import { useEditorInstance } from '@/features/editor/ui/hooks/use-editor-instance';
+import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { useProject } from '@/features/projects/shell/hooks/use-project';
-import { useProjectExport } from '@/features/editor/ui/hooks/use-export';
+import { useProjectExport } from '@/features/editor/ui/hooks/useExport';
 import { duplicateProjectApi } from '@/features/projects/shell/services/project.service';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 
-import {
-  projectRenameSchema,
-  type ProjectRenameInput,
-  extractProjectId,
-} from '@/features/editor/domain/types';
+import { projectRenameSchema, type ProjectRenameInput } from '@/features/editor/domain/types/forms.types';
+import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { useProjectTitleActions } from './useProjectTitleActions';
 
 export function ProjectTitleDropdown() {

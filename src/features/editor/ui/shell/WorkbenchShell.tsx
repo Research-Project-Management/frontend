@@ -21,7 +21,7 @@
 'use client';
 
 import React, { useRef, useCallback } from 'react';
-import { useLayoutStore } from '../../store/layout.store';
+import { useLayoutStore } from '@/features/editor/store/layout.store';
 import { ResizeHandle } from './ResizeHandle';
 import { OfflineBanner } from './OfflineBanner';
 import { cn } from '@/shared/lib/utils';

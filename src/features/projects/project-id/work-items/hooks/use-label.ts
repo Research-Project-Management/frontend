@@ -12,10 +12,15 @@ export const labelKeys = {
   scoped: (projectId?: string, type?: string) => ['labels', projectId ?? 'default', type] as const,
 };
 
-export const useLabelsQuery = (projectId?: string, type?: string) =>
+export const useLabelsQuery = (
+  projectId?: string,
+  type?: string,
+  options?: { enabled?: boolean }
+) =>
   useQuery({
     queryKey: labelKeys.scoped(projectId, type),
     queryFn: () => LabelService.list(projectId, type),
-    staleTime: 30_000,
+    staleTime: 60_000,
+    enabled: options?.enabled !== undefined ? options.enabled : Boolean(projectId),
   });
 

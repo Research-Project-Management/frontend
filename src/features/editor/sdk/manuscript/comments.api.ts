@@ -5,7 +5,7 @@
  */
 
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
-import type { PageComment } from '@/features/editor/domain/types';
+import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import { MANUSCRIPTS_API_BASE } from './base';
 
 export const comments = {

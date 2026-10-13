@@ -153,7 +153,7 @@ export function FilterPillsBar({
       <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto py-0.5">
         {/* 1. Search Query Pill */}
         {activeSearch && (
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border/70 text-11 font-medium text-foreground shrink-0 select-none">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none">
             <TextLinesIcon className="size-3 text-foreground shrink-0" />
             <span className="truncate max-w-44 font-medium">&quot;{activeSearch}&quot;</span>
             <button
@@ -175,7 +175,7 @@ export function FilterPillsBar({
           return (
             <span
               key={`state-${colId}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border/70 text-11 font-medium text-foreground shrink-0 select-none"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
             >
               <StatusIcon
                 id={colId}
@@ -208,7 +208,7 @@ export function FilterPillsBar({
           return (
             <span
               key={`group-${group}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border/70 text-11 font-medium text-foreground shrink-0 select-none"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
             >
               <StatusIcon
                 group={group}
@@ -242,7 +242,7 @@ export function FilterPillsBar({
           return (
             <span
               key={`priority-${priority}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border/70 text-11 font-medium text-foreground shrink-0 select-none capitalize"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none capitalize"
             >
               {PriorityIcon}
               <span className="truncate max-w-40 font-medium">{label}</span>
@@ -270,7 +270,7 @@ export function FilterPillsBar({
           return (
             <span
               key={`user-${userId}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border/70 text-11 font-medium text-foreground shrink-0 select-none"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
             >
               {isUnassigned ? (
                 <User className="size-3.5 text-foreground shrink-0" />
@@ -309,7 +309,7 @@ export function FilterPillsBar({
           return (
             <span
               key={`mention-${m}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border/70 text-11 font-medium text-foreground shrink-0 select-none"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
             >
               <AtSign className="size-3 text-foreground shrink-0" />
               <span className="truncate max-w-40 font-medium">{name}</span>
@@ -332,7 +332,7 @@ export function FilterPillsBar({
           return (
             <span
               key={`created-by-${cId}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border/70 text-11 font-medium text-foreground shrink-0 select-none"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
             >
               <UserCircle className="size-3.5 text-foreground shrink-0" />
               <span className="truncate max-w-40 font-medium">{name}</span>
@@ -357,7 +357,7 @@ export function FilterPillsBar({
           return (
             <span
               key={`lbl-${lbl}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border/70 text-11 font-medium text-foreground shrink-0 select-none"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
             >
               {color ? (
                 <span
@@ -388,7 +388,7 @@ export function FilterPillsBar({
           return (
             <span
               key={`sub-${userId}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border/70 text-11 font-medium text-foreground shrink-0 select-none"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
             >
               <User className="size-3 text-foreground shrink-0" />
               <span className="truncate max-w-40 font-medium">{name}</span>
@@ -424,7 +424,7 @@ export function FilterPillsBar({
           return (
             <span
               key={`attach-${att}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border/70 text-11 font-medium text-foreground shrink-0 select-none"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
             >
               {AttachIcon}
               <span className="truncate max-w-40 font-medium">{label}</span>
@@ -447,7 +447,7 @@ export function FilterPillsBar({
           return (
             <span
               key={`item-${tId}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border/70 text-11 font-medium text-foreground shrink-0 select-none"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
             >
               <ItemsIcon className="size-3 text-foreground shrink-0" />
               <span className="truncate max-w-44 font-medium">{label}</span>
@@ -474,7 +474,7 @@ export function FilterPillsBar({
           return (
             <span
               key={`parent-${pId}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border/70 text-11 font-medium text-foreground shrink-0 select-none"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
             >
               <ParentBranchIcon className="size-3 text-foreground shrink-0" />
               <span className="truncate max-w-44 font-medium">{label}</span>
@@ -496,7 +496,7 @@ export function FilterPillsBar({
           return (
             <span
               key={`due-${d}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border/70 text-11 font-medium text-foreground shrink-0 select-none"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
             >
               <Calendar className="size-3 text-foreground shrink-0" />
               <span className="truncate max-w-40 font-medium">{label}</span>
@@ -521,7 +521,7 @@ export function FilterPillsBar({
           return (
             <span
               key={`start-${s}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border/70 text-11 font-medium text-foreground shrink-0 select-none"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
             >
               <CalendarClock className="size-3 text-foreground shrink-0" />
               <span className="truncate max-w-40 font-medium">{label}</span>
@@ -543,7 +543,7 @@ export function FilterPillsBar({
           return (
             <span
               key={`created-${c}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border/70 text-11 font-medium text-foreground shrink-0 select-none"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
             >
               <Calendar className="size-3 text-foreground shrink-0" />
               <span className="truncate max-w-40 font-medium">{label}</span>
@@ -565,7 +565,7 @@ export function FilterPillsBar({
           return (
             <span
               key={`updated-${u}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border/70 text-11 font-medium text-foreground shrink-0 select-none"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
             >
               <Calendar className="size-3 text-foreground shrink-0" />
               <span className="truncate max-w-40 font-medium">{label}</span>

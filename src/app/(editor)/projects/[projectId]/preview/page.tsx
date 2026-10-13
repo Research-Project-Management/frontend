@@ -15,8 +15,11 @@ import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 
+import { useCompileStore } from '@/features/editor/store/compiler.store';
+import { useLayoutStore } from '@/features/editor/store/layout.store';
+
 const PdfViewer = dynamic(
-  () => import('@/features/editor/ui/features/preview/PdfViewer').then((mod) => mod.PdfViewer),
+  () => import('@/features/editor/ui/preview/PdfViewer').then((mod) => mod.PdfViewer),
   { ssr: false }
 );
 
@@ -25,25 +28,86 @@ export default function DetachedPdfPreviewPage() {
   const projectId = params?.projectId;
 
   useEffect(() => {
+    useLayoutStore.getState().setPdfDetached(true);
+
     if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
 
-    const channel = new BroadcastChannel('flux-synctex-bus');
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel('flux-synctex-bus');
+      channel.onmessage = (event) => {
+        const { type, payload } = event.data || {};
+        if (type === 'preview:attached') {
+          window.close();
+        } else if (type === 'synctex:forward' && payload?.line) {
+          editorCommandBus.dispatch({
+            type: 'synctex:forward',
+            line: payload.line,
+            column: payload.column,
+            filePath: payload.filePath,
+            fileId: payload.fileId,
+          });
+        } else if (type === 'viewer:jump-to-line' && payload?.line) {
+          editorCommandBus.dispatch({
+            type: 'viewer:jump-to-line',
+            line: payload.line,
+          });
+        } else if (type === 'viewer:goto-page' && payload?.page) {
+          editorCommandBus.dispatch({
+            type: 'viewer:goto-page',
+            page: payload.page,
+          });
+        } else if (type === 'sync:editor-scrolled' && payload?.line) {
+          editorCommandBus.dispatch({
+            type: 'sync:editor-scrolled',
+            line: payload.line,
+            totalLines: payload.totalLines,
+            fraction: payload.fraction,
+          });
+        } else if (type === 'compiler:sync-state' && payload) {
+          if (payload.pdfUrl) {
+            useCompileStore.getState().setPdfUrl(payload.pdfUrl);
+          }
+          if (payload.compileStatus) {
+            useCompileStore.getState().setCompileStatus(payload.compileStatus);
+          }
+          if (payload.logs) {
+            useCompileStore.getState().setCompileLog(payload.logs);
+          }
+          if (payload.lastCompiledAt) {
+            useCompileStore.getState().setLastCompiledAt(new Date(payload.lastCompiledAt));
+          }
+        }
+      };
 
-    channel.onmessage = (event) => {
-      const { type, payload } = event.data || {};
-      if (type === 'preview:attached') {
-        window.close();
-      } else if (type === 'synctex:forward' && payload?.line) {
-        editorCommandBus.dispatch({
-          type: 'synctex:forward',
-          line: payload.line,
-          column: payload.column,
-        });
-      }
+      // Query main window for initial PDF and compiler state
+      channel.postMessage({ type: 'preview:ready' });
+    } catch (err) {
+      console.warn('[DetachedPreview] BroadcastChannel failed to initialize:', err);
+    }
+
+    // Forward local PDF dual-scroll movements back to main window editor
+    const unsubScroll = editorCommandBus.subscribe('editor:scroll-to-line', (cmd) => {
+      channel?.postMessage({
+        type: 'editor:scroll-to-line',
+        payload: { line: cmd.line, smooth: cmd.smooth },
+      });
+    });
+
+    const handleBeforeUnload = () => {
+      try {
+        channel?.postMessage({ type: 'preview:window-closed' });
+      } catch {}
     };
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
-      channel.close();
+      unsubScroll();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      try {
+        channel?.postMessage({ type: 'preview:window-closed' });
+        channel?.close();
+      } catch {}
     };
   }, []);
 

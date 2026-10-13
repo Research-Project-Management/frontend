@@ -16,7 +16,7 @@ import type {
   ProjectFileDiff,
   DiffHunk,
   DiffLine,
-} from '../../../domain/types/history.types';
+} from '@/features/editor/domain/types/history.types';
 
 export interface UnifiedDiffViewerProps {
   fileDiff: ProjectFileDiff;

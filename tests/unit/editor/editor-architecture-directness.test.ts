@@ -13,7 +13,7 @@ import {
   InlineInput,
   RenameInput,
   RowActions,
-} from '@/features/editor/ui/features/sidebar/explorer/FileTreePrimitives';
+} from '@/features/editor/ui/sidebar/explorer/subcomponents/FileTreePrimitives';
 
 describe('Editor Architecture Directness & Clean Design', () => {
   beforeEach(() => {

@@ -49,8 +49,77 @@ export class NavigationCoordinatorRegistry {
     this.lastDiagnosticFile = null;
   }
 
-  private initCommandSubscriptions(): void {
-    if (typeof window === 'undefined' || this.initialized) return;
+  public getBroadcastChannel(): BroadcastChannel | null {
+    return this.broadcastChannel;
+  }
+
+  public setBroadcastChannel(channel: BroadcastChannel | null): void {
+    this.broadcastChannel = channel;
+    if (this.broadcastChannel) {
+      this.attachBroadcastChannelListeners();
+    }
+  }
+
+  public attachBroadcastChannelListeners(): void {
+    if (!this.broadcastChannel) return;
+    this.broadcastChannel.onmessage = (event) => {
+      const { type, payload } = event.data || {};
+      if (type === 'synctex:jump-to-code' && payload?.line) {
+        if (payload.fileId || payload.filePath) {
+          this.openDocument({
+            fileId: payload.fileId || payload.filePath,
+            title: payload.filePath || payload.fileId || 'main.tex',
+            path: payload.filePath,
+            line: payload.line,
+            column: payload.column,
+            highlight: payload.highlight || 'synctex',
+          });
+        } else {
+          this.jumpToLine({
+            line: payload.line,
+            column: payload.column,
+            highlight: payload.highlight || 'synctex',
+          });
+        }
+        try {
+          window.focus?.();
+        } catch {}
+      } else if (type === 'preview:ready') {
+        const compileState = useCompileStore.getState();
+        if (compileState.pdfUrl) {
+          this.broadcastChannel?.postMessage({
+            type: 'compiler:sync-state',
+            payload: {
+              pdfUrl: compileState.pdfUrl,
+              compileStatus: compileState.compileStatus,
+              lastCompiledAt: compileState.lastCompiledAt?.toISOString() || null,
+              logs: compileState.compileLog,
+            },
+          });
+        }
+      } else if (type === 'editor:scroll-to-line' && payload?.line) {
+        editorCommandBus.dispatch({
+          type: 'editor:scroll-to-line',
+          line: payload.line,
+          smooth: payload.smooth ?? true,
+        });
+      } else if (type === 'preview:window-closed') {
+        useLayoutStore.getState().setPdfDetached(false);
+      }
+    };
+  }
+
+  public isDetachedPreviewWindow(): boolean {
+    if (typeof window === 'undefined') return false;
+    return (
+      window.location.pathname.includes('/preview') ||
+      (useLayoutStore.getState().isPdfDetached && !getActiveEditorInstance())
+    );
+  }
+
+  public initCommandSubscriptions(force = false): void {
+    if (typeof window === 'undefined') return;
+    if (this.initialized && !force) return;
     this.initialized = true;
 
     editorCommandBus.subscribe('navigation:open-tab', (cmd) => {
@@ -122,21 +191,65 @@ export class NavigationCoordinatorRegistry {
     });
 
     // Cross-window BroadcastChannel for Detached PDF & SyncTeX
-    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    if (!this.broadcastChannel && typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       try {
         this.broadcastChannel = new BroadcastChannel('flux-synctex-bus');
-        this.broadcastChannel.onmessage = (event) => {
-          const { type, payload } = event.data || {};
-          if (type === 'synctex:jump-to-code' && payload?.line) {
-            this.jumpToLine({ line: payload.line, column: payload.column, highlight: 'synctex' });
-          } else if (type === 'synctex:forward' && payload?.line) {
-            editorCommandBus.dispatch({ type: 'synctex:forward', line: payload.line, column: payload.column });
-          }
-        };
+        this.attachBroadcastChannelListeners();
       } catch (err) {
         console.warn('[NavigationCoordinator] BroadcastChannel initialization failed:', err);
       }
     }
+
+    // Main window -> Detached preview window event bridges
+    editorCommandBus.subscribe('synctex:forward', (cmd) => {
+      const activeDoc = usePageStore.getState().getActiveDocument();
+      const activePath = activeDoc?.path || activeDoc?.title;
+      this.broadcastChannel?.postMessage({
+        type: 'synctex:forward',
+        payload: {
+          line: cmd.line,
+          column: cmd.column,
+          filePath: cmd.filePath || activePath,
+          fileId: cmd.fileId || activeDoc?.id,
+        },
+      });
+    });
+
+    editorCommandBus.subscribe('viewer:jump-to-line', (cmd) => {
+      this.broadcastChannel?.postMessage({
+        type: 'viewer:jump-to-line',
+        payload: { line: cmd.line },
+      });
+    });
+
+    editorCommandBus.subscribe('viewer:goto-page', (cmd) => {
+      this.broadcastChannel?.postMessage({
+        type: 'viewer:goto-page',
+        payload: { page: cmd.page },
+      });
+    });
+
+    editorCommandBus.subscribe('sync:editor-scrolled', (cmd) => {
+      this.broadcastChannel?.postMessage({
+        type: 'sync:editor-scrolled',
+        payload: { line: cmd.line, totalLines: cmd.totalLines, fraction: cmd.fraction },
+      });
+    });
+
+    editorCommandBus.subscribe('compiler:finished', (cmd) => {
+      if (cmd.success) {
+        const compileState = useCompileStore.getState();
+        this.broadcastChannel?.postMessage({
+          type: 'compiler:sync-state',
+          payload: {
+            pdfUrl: compileState.pdfUrl,
+            compileStatus: compileState.compileStatus,
+            lastCompiledAt: compileState.lastCompiledAt?.toISOString() || null,
+            logs: compileState.compileLog,
+          },
+        });
+      }
+    });
 
     editorCommandBus.subscribe('preview:detach', () => {
       useLayoutStore.getState().setPdfDetached(true);
@@ -160,6 +273,21 @@ export class NavigationCoordinatorRegistry {
    */
   public openDocument(options: OpenDocumentOptions): void {
     const { fileId, title, path: optPath, line, column, highlight } = options;
+
+    if (this.isDetachedPreviewWindow()) {
+      this.broadcastChannel?.postMessage({
+        type: 'synctex:jump-to-code',
+        payload: {
+          fileId,
+          filePath: optPath || title,
+          line,
+          column,
+          highlight: highlight || 'synctex',
+        },
+      });
+      return;
+    }
+
     const tabsStore = useTabsStore.getState();
     const pageStore = usePageStore.getState();
 
@@ -272,7 +400,22 @@ export class NavigationCoordinatorRegistry {
     column?: number;
     highlight?: 'error' | 'synctex';
   }): void {
-    const { fileId, filePath, line, highlight = 'synctex' } = options;
+    const { fileId, filePath, line, column, highlight = 'synctex' } = options;
+
+    if (this.isDetachedPreviewWindow()) {
+      this.broadcastChannel?.postMessage({
+        type: 'synctex:jump-to-code',
+        payload: {
+          fileId,
+          filePath,
+          line,
+          column,
+          highlight,
+        },
+      });
+      return;
+    }
+
     const pageStore = usePageStore.getState();
     const activePage = pageStore.getActiveDocument();
 

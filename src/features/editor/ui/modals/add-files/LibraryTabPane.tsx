@@ -9,10 +9,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
-import {
-  libraryBibtexModalSchema,
-  type LibraryBibtexModalFormValues,
-} from '@/features/editor/domain/types';
+import { libraryBibtexModalSchema, type LibraryBibtexModalFormValues } from '@/features/editor/domain/types/forms.types';
 import { formatItemToBibtex } from '@/features/editor/domain/citation/citation-formatter';
 import { useViewItems } from '@/features/library/data';
 import type { Item } from '@/features/library/types';

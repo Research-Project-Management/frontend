@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
-import { render, screen, fireEvent, act, renderHook } from '@testing-library/react';
+import { render, screen, fireEvent, act, renderHook, cleanup } from '@testing-library/react';
 import { useViewerStore } from '@/features/editor/store/viewer.store';
-import { usePdfZoom } from '@/features/editor/ui/features/preview/hooks/use-pdf-zoom';
-import { PdfZoomControls } from '@/features/editor/ui/features/preview/PdfZoomControls';
+import { usePdfZoom } from '@/features/editor/ui/preview/hooks/usePdfZoom';
+import { PdfZoomControls } from '@/features/editor/ui/preview/PdfZoomControls';
 import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 
@@ -14,6 +14,7 @@ describe('Phase 10: PDF Zoom Presets & Auto-Fit Resizing Intelligence (Overleaf 
   });
 
   afterEach(() => {
+    cleanup();
     vi.useRealTimers();
     vi.restoreAllMocks();
   });

@@ -5,9 +5,11 @@ import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { keybindingCoordinator } from '@/features/editor/coordinators/keybinding.coordinator';
 import { useSearchStore } from '@/features/editor/store/search.store';
 import { useLayoutStore } from '@/features/editor/store/layout.store';
-import { useProjectSearchActions } from '@/features/editor/ui/features/sidebar/search/useProjectSearchActions';
+import { useProjectSearchActions } from '@/features/editor/ui/sidebar/search/useProjectSearchActions';
 import { renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { TooltipProvider } from '@/shared/components/ui/tooltip';
+import SearchTab from '@/features/editor/ui/sidebar/search/SearchTab';
 import { toast } from 'sonner';
 
 vi.mock('sonner', () => ({
@@ -157,7 +159,7 @@ describe('Project Search & Replace (Overleaf Parity: Ctrl+Shift+F & Replace)', (
     expect(mockEngine.setContent).toHaveBeenCalledWith(
       'First algorithm in Section 1.\nSecond method in Section 2.'
     );
-    expect(mockEngine.jumpToLine).toHaveBeenCalledWith(2);
+    expect(mockEngine.jumpToLine).toHaveBeenCalledWith(2, undefined, 7, 6);
     expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('Replaced occurrence'), expect.anything());
   });
 
@@ -201,5 +203,52 @@ describe('Project Search & Replace (Overleaf Parity: Ctrl+Shift+F & Replace)', (
       'First procedure in Section 1.\nSecond procedure in Section 2.'
     );
     expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('active file'), expect.anything());
+  });
+
+  it('renders SearchTab header without close button (Overleaf parity)', () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <SearchTab />
+        </TooltipProvider>
+      </QueryClientProvider>
+    );
+
+    // Header has title "Search"
+    expect(screen.getByText('Search')).toBeInTheDocument();
+
+    // Does NOT render Close button in header
+    expect(screen.queryByRole('button', { name: /close search/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/close search/i)).not.toBeInTheDocument();
+  });
+
+  it('renders strictly 1:1 Overleaf project search options: Aa, [.*], W only', () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <SearchTab />
+        </TooltipProvider>
+      </QueryClientProvider>
+    );
+
+    // Overleaf project search input placeholder
+    expect(screen.getByPlaceholderText('Search all project files...')).toBeInTheDocument();
+
+    // 1:1 Overleaf search options present
+    expect(screen.getByRole('button', { name: 'Match Case' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Regular Expression' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Whole Word' })).toBeInTheDocument();
+
+    // Elements NOT in Overleaf Project Search sidebar
+    expect(screen.queryByRole('button', { name: /find in selection/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /toggle replace/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('All project files')).not.toBeInTheDocument();
+    expect(screen.queryByText('Current file')).not.toBeInTheDocument();
   });
 });

@@ -5,9 +5,16 @@ import { useParams, useRouter, useSearchParams, usePathname } from "next/navigat
 import dynamic from "next/dynamic";
 import Topbar from "../components/layout/Topbar";
 import { FilterPillsBar } from "../components/filters/FilterPillsBar";
-import { BoardView } from "../components/views/BoardView";
-import { ListView } from "../components/views/ListView";
 import { EmptyState } from "../components/views/EmptyState";
+
+const BoardView = dynamic(
+  () => import("../components/views/BoardView").then((m) => m.BoardView),
+  { ssr: false }
+);
+const ListView = dynamic(
+  () => import("../components/views/ListView").then((m) => m.ListView),
+  { ssr: false }
+);
 
 const CalendarView = dynamic(
   () => import("../components/views/CalendarView").then((m) => m.CalendarView),
@@ -34,8 +41,11 @@ const DeleteModal = dynamic(
   () => import("../components/modals/DeleteModal").then((m) => m.DeleteModal),
   { ssr: false }
 );
+const AnalyticsDrawer = dynamic(
+  () => import("../components/analytics/AnalyticsDrawer").then((m) => m.AnalyticsDrawer),
+  { ssr: false }
+);
 import { BulkActionBar } from "../components/layout/BulkActionBar";
-import { AnalyticsDrawer } from "../components/analytics/AnalyticsDrawer";
 import {
   useProject,
   useBulkUpdate,
@@ -87,6 +97,11 @@ export interface WorkItemPageProps {
   isReadOnly?: boolean;
 }
 export type PageProps = WorkItemPageProps;
+
+const EMPTY_ITEMS: Item[] = [];
+const EMPTY_COLUMNS: Column[] = [];
+const EMPTY_SELECTED_IDS: string[] = [];
+
 export function WorkItemPage({
   isReadOnly: propIsReadOnly,
 }: WorkItemPageProps = {}) {
@@ -117,7 +132,7 @@ export function WorkItemPage({
     labelMap,
     isLoading,
   } = projectState;
-  const allItems = projectItems || [];
+  const allItems = projectItems || EMPTY_ITEMS;
 
   // ── Multi-select & Bulk Operations ─────────────────────────────────────────
   const bulkUpdateMutation = useBulkUpdate();
@@ -125,13 +140,13 @@ export function WorkItemPage({
   const bulkArchiveMutation = useBulkArchive();
   const bulkRestoreMutation = useBulkRestore();
   const [showArchived, setShowArchived] = useState(false);
-  const { data: archivedItems = [] } = useArchivedItems(showArchived ? projectId : '');
+  const { data: archivedItems = EMPTY_ITEMS } = useArchivedItems(showArchived ? projectId : '');
 
   const displayItems = useMemo(() => {
     return showArchived ? archivedItems : allItems;
   }, [showArchived, archivedItems, allItems]);
 
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>(EMPTY_SELECTED_IDS);
 
   const handleToggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) =>
@@ -140,149 +155,60 @@ export function WorkItemPage({
   }, []);
 
   const handleSelectAll = useCallback((ids?: string[]) => {
-    setSelectedIds(ids || []);
+    setSelectedIds(ids || EMPTY_SELECTED_IDS);
   }, []);
 
   const handleClearSelection = useCallback(() => {
-    setSelectedIds([]);
+    setSelectedIds(EMPTY_SELECTED_IDS);
   }, []);
 
-  const handleBulkUpdateState = useCallback((columnId: string) => {
-    if (selectedIds.length === 0) return;
-    bulkUpdateMutation.mutate({
-      workItemIds: selectedIds,
-      ids: selectedIds,
-      data: { columnId },
-      projectId,
-    }, {
-      onSuccess: () => {
-        handleClearSelection();
-      }
-    });
-  }, [selectedIds, projectId, bulkUpdateMutation, handleClearSelection]);
+  const handleBulkUpdate = useCallback(
+    (data: Record<string, unknown>) => {
+      if (selectedIds.length === 0) return;
+      bulkUpdateMutation.mutate(
+        {
+          workItemIds: selectedIds,
+          ids: selectedIds,
+          data,
+          projectId,
+        },
+        { onSuccess: handleClearSelection }
+      );
+    },
+    [selectedIds, projectId, bulkUpdateMutation, handleClearSelection]
+  );
 
-  const handleBulkUpdatePriority = useCallback((priority: any) => {
-    if (selectedIds.length === 0) return;
-    bulkUpdateMutation.mutate({
-      workItemIds: selectedIds,
-      ids: selectedIds,
-      data: { priority },
-      projectId,
-    }, {
-      onSuccess: () => {
-        handleClearSelection();
-      }
-    });
-  }, [selectedIds, projectId, bulkUpdateMutation, handleClearSelection]);
-
-  const handleBulkUpdateAssignee = useCallback((assigneeId: string | null) => {
-    if (selectedIds.length === 0) return;
-    bulkUpdateMutation.mutate({
-      workItemIds: selectedIds,
-      ids: selectedIds,
-      data: { assigneeId },
-      projectId,
-    }, {
-      onSuccess: () => {
-        handleClearSelection();
-      }
-    });
-  }, [selectedIds, projectId, bulkUpdateMutation, handleClearSelection]);
-
-  const handleBulkUpdateDueDate = useCallback((dueDate: string | null) => {
-    if (selectedIds.length === 0) return;
-    bulkUpdateMutation.mutate({
-      workItemIds: selectedIds,
-      ids: selectedIds,
-      data: { dueDate },
-      projectId,
-    }, {
-      onSuccess: () => {
-        handleClearSelection();
-      }
-    });
-  }, [selectedIds, projectId, bulkUpdateMutation, handleClearSelection]);
+  const handleBulkUpdateState = useCallback((columnId: string) => handleBulkUpdate({ columnId }), [handleBulkUpdate]);
+  const handleBulkUpdatePriority = useCallback((priority: any) => handleBulkUpdate({ priority }), [handleBulkUpdate]);
+  const handleBulkUpdateAssignee = useCallback((assigneeId: string | null) => handleBulkUpdate({ assigneeId }), [handleBulkUpdate]);
+  const handleBulkUpdateDueDate = useCallback((dueDate: string | null) => handleBulkUpdate({ dueDate }), [handleBulkUpdate]);
+  const handleBulkAddLabel = useCallback((labelId: string) => handleBulkUpdate({ addLabel: labelId }), [handleBulkUpdate]);
+  const handleBulkRemoveLabel = useCallback((labelId: string) => handleBulkUpdate({ removeLabel: labelId }), [handleBulkUpdate]);
+  const handleBulkClearLabels = useCallback(() => handleBulkUpdate({ clearLabels: true }), [handleBulkUpdate]);
 
   const handleBulkDelete = useCallback(() => {
     if (selectedIds.length === 0) return;
-    bulkDeleteMutation.mutate({
-      workItemIds: selectedIds,
-      ids: selectedIds,
-      projectId,
-    }, {
-      onSuccess: () => {
-        handleClearSelection();
-      }
-    });
+    bulkDeleteMutation.mutate(
+      { workItemIds: selectedIds, ids: selectedIds, projectId },
+      { onSuccess: handleClearSelection }
+    );
   }, [selectedIds, bulkDeleteMutation, projectId, handleClearSelection]);
 
   const handleBulkArchive = useCallback(() => {
     if (selectedIds.length === 0) return;
-    bulkArchiveMutation.mutate({
-      workItemIds: selectedIds,
-      ids: selectedIds,
-      projectId,
-    }, {
-      onSuccess: () => {
-        handleClearSelection();
-      }
-    });
+    bulkArchiveMutation.mutate(
+      { workItemIds: selectedIds, ids: selectedIds, projectId },
+      { onSuccess: handleClearSelection }
+    );
   }, [selectedIds, bulkArchiveMutation, projectId, handleClearSelection]);
 
   const handleBulkRestore = useCallback(() => {
     if (selectedIds.length === 0) return;
-    bulkRestoreMutation.mutate({
-      workItemIds: selectedIds,
-      ids: selectedIds,
-      projectId,
-    }, {
-      onSuccess: () => {
-        handleClearSelection();
-      }
-    });
+    bulkRestoreMutation.mutate(
+      { workItemIds: selectedIds, ids: selectedIds, projectId },
+      { onSuccess: handleClearSelection }
+    );
   }, [selectedIds, bulkRestoreMutation, projectId, handleClearSelection]);
-
-  const handleBulkAddLabel = useCallback((labelId: string) => {
-    if (selectedIds.length === 0) return;
-    bulkUpdateMutation.mutate({
-      workItemIds: selectedIds,
-      ids: selectedIds,
-      data: { addLabel: labelId },
-      projectId,
-    }, {
-      onSuccess: () => {
-        handleClearSelection();
-      }
-    });
-  }, [selectedIds, projectId, bulkUpdateMutation, handleClearSelection]);
-
-  const handleBulkRemoveLabel = useCallback((labelId: string) => {
-    if (selectedIds.length === 0) return;
-    bulkUpdateMutation.mutate({
-      workItemIds: selectedIds,
-      ids: selectedIds,
-      data: { removeLabel: labelId },
-      projectId,
-    }, {
-      onSuccess: () => {
-        handleClearSelection();
-      }
-    });
-  }, [selectedIds, projectId, bulkUpdateMutation, handleClearSelection]);
-
-  const handleBulkClearLabels = useCallback(() => {
-    if (selectedIds.length === 0) return;
-    bulkUpdateMutation.mutate({
-      workItemIds: selectedIds,
-      ids: selectedIds,
-      data: { clearLabels: true },
-      projectId,
-    }, {
-      onSuccess: () => {
-        handleClearSelection();
-      }
-    });
-  }, [selectedIds, projectId, bulkUpdateMutation, handleClearSelection]);
 
   // ── 2. View & Filter Presentation Layer (useTopbar) ───────────────────────
   const { state: topbarState, actions: topbarActions } = useTopbar({
@@ -307,7 +233,10 @@ export function WorkItemPage({
     activeViewId,
     filters,
   } = topbarState;
-  const activeFilteredItems: Item[] = filteredItems || [];
+  const activeFilteredItems: Item[] = useMemo(
+    () => filteredItems || EMPTY_ITEMS,
+    [filteredItems]
+  );
 
   const {
     setViewMode,
@@ -525,33 +454,28 @@ export function WorkItemPage({
   // ── Handlers & Actions ────────────────────────────────────────────────────
 
   const handleOpenAddDialog = useCallback((
-    columnId: string,
-    title?: string,
-    dueDateOrSwimlane?: string | { subGroupBy?: string; laneId?: string },
-    quickTitleParam?: string,
-    swimlaneParam?: { subGroupBy?: string; laneId?: string },
+    columnIdOrOptions: string | { columnId?: string; title?: string; dueDate?: string; lane?: { subGroupBy?: string; laneId?: string } },
+    titleArg?: string,
+    extraArg?: string | { subGroupBy?: string; laneId?: string },
   ) => {
-    const dueDate = typeof dueDateOrSwimlane === 'string' ? dueDateOrSwimlane : undefined;
-    const swimlaneData =
-      typeof dueDateOrSwimlane === 'object' && dueDateOrSwimlane !== null
-        ? dueDateOrSwimlane
-        : swimlaneParam;
-    const quickTitle =
-      quickTitleParam?.trim() ||
-      (typeof dueDateOrSwimlane === 'string' ? undefined : title?.trim());
+    let targetColumnId = typeof columnIdOrOptions === 'string' ? columnIdOrOptions : (columnIdOrOptions?.columnId || '');
+    const title = typeof columnIdOrOptions === 'object' ? columnIdOrOptions.title : titleArg;
+    const dueDate = typeof columnIdOrOptions === 'object' ? columnIdOrOptions.dueDate : (typeof extraArg === 'string' ? extraArg : undefined);
+    const swimlaneData = typeof columnIdOrOptions === 'object' ? columnIdOrOptions.lane : (typeof extraArg === 'object' ? extraArg : undefined);
 
     const defaultCol = columns.find((c) => c.isDefault) || columns[0];
     const defaultColumnId = defaultCol ? resolveStateId(defaultCol) : 'backlog';
-    let targetColumnId = columnId;
+    if (!targetColumnId) targetColumnId = defaultColumnId;
+
     let targetPriority: Priority = 'none';
     let targetAssigneeId: string | null = null;
 
     if (effectiveGroupBy === 'priority') {
+      targetPriority = (targetColumnId === 'none' ? 'none' : targetColumnId) as Priority;
       targetColumnId = defaultColumnId;
-      targetPriority = (columnId === 'none' ? 'none' : columnId) as Priority;
     } else if (effectiveGroupBy === 'assignee') {
+      targetAssigneeId = targetColumnId === '__unassigned__' ? null : targetColumnId;
       targetColumnId = defaultColumnId;
-      targetAssigneeId = columnId === '__unassigned__' ? null : columnId;
     }
 
     if (swimlaneData?.subGroupBy && swimlaneData?.laneId) {
@@ -562,12 +486,13 @@ export function WorkItemPage({
       }
     }
 
-    if (quickTitle) {
+    const trimmedTitle = title?.trim();
+    if (trimmedTitle) {
       if (projectState.isSaving) return;
       (projectActions.createWorkItem || projectActions.create)({
         projectId,
         columnId: targetColumnId,
-        title: quickTitle,
+        title: trimmedTitle,
         dueDate,
         assigneeId: targetAssigneeId,
         priority: targetPriority,
@@ -579,7 +504,7 @@ export function WorkItemPage({
       type: 'create',
       initialData: {
         columnId: targetColumnId,
-        title: title?.trim() || "",
+        title: '',
         dueDate,
         assigneeId: targetAssigneeId,
         priority: targetPriority,
@@ -824,6 +749,29 @@ export function WorkItemPage({
     [projectActions, projectId],
   );
 
+  const handleOpenSaveView = useCallback(() => setIsSaveViewOpen(true), []);
+  const handleCloseSaveView = useCallback(() => setIsSaveViewOpen(false), []);
+  const handleToggleArchived = useCallback(() => setShowArchived((prev) => !prev), []);
+  const handleDisableArchived = useCallback(() => setShowArchived(false), []);
+  const handleOpenAnalytics = useCallback(() => setAnalyticsOpen(true), [setAnalyticsOpen]);
+  const handleCloseAnalytics = useCallback(() => setAnalyticsOpen(false), [setAnalyticsOpen]);
+  const handleAddItemClick = useCallback(() => setModal({ type: 'create' }), []);
+  const handleModalOpenChange = useCallback((open: boolean) => {
+    if (!open) closeModal();
+  }, [closeModal]);
+  const handleDuplicateModalCard = useCallback(() => {
+    if (modal.type === 'detail' && modal.card.id) {
+      handleDuplicateCard(modal.card);
+    }
+  }, [modal, handleDuplicateCard]);
+  const handleCreateItemFromEmpty = useCallback(() => {
+    const firstCol = columns[0];
+    handleOpenAddDialog(firstCol ? resolveStateId(firstCol) : "");
+  }, [columns, handleOpenAddDialog]);
+  const handleQuickUpdateItemFromCard = useCallback((item: any) => {
+    handleQuickUpdateItem(item.id, item);
+  }, [handleQuickUpdateItem]);
+
   const isProjectEmpty = displayItems.length === 0 && !isLoading && !showArchived;
   const isArchivedEmpty = showArchived && displayItems.length === 0 && !isLoading;
 
@@ -857,9 +805,9 @@ export function WorkItemPage({
         savedViews={savedViews}
         activeViewId={activeViewId}
         onSelectSavedView={selectSavedView}
-        onSaveCurrentView={() => setIsSaveViewOpen(true)}
+        onSaveCurrentView={handleOpenSaveView}
         showArchived={showArchived}
-        onToggleArchived={() => setShowArchived((prev) => !prev)}
+        onToggleArchived={handleToggleArchived}
         title={showArchived ? "Archived items" : "Work Items"}
         Icon={showArchived ? Archive : WorkItemsIcon}
         count={displayItems.length}
@@ -888,8 +836,8 @@ export function WorkItemPage({
         onPropertyToggle={updateDisplayProperty}
         displayOpen={displayOpen}
         onDisplayOpenChange={setDisplayOpen}
-        onOpenAnalytics={() => setAnalyticsOpen(true)}
-        onAddItem={() => setModal({ type: 'create' })}
+        onOpenAnalytics={handleOpenAnalytics}
+        onAddItem={handleAddItemClick}
         isLoading={isLoading}
         isReadOnly={isReadOnly}
       />
@@ -906,7 +854,7 @@ export function WorkItemPage({
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => setShowArchived(false)}
+            onClick={handleDisableArchived}
             className="h-6 px-2 text-xs font-medium hover:bg-muted text-foreground relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             Back to active items
@@ -978,7 +926,7 @@ export function WorkItemPage({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowArchived(false)}
+              onClick={handleDisableArchived}
               className="gap-2 rounded-md h-8 px-3 text-13 font-medium bg-background border border-border text-foreground hover:bg-muted shadow-none cursor-pointer"
             >
               <span>Back to active items</span>
@@ -986,10 +934,7 @@ export function WorkItemPage({
           </div>
         ) : isProjectEmpty && viewMode !== 'calendar' ? (
           <EmptyState
-            onCreateItem={() => {
-              const firstCol = columns[0];
-              handleOpenAddDialog(firstCol ? resolveStateId(firstCol) : "");
-            }}
+            onCreateItem={handleCreateItemFromEmpty}
             isReadOnly={isReadOnly}
           />
         ) : (
@@ -1048,7 +993,7 @@ export function WorkItemPage({
                 onJoinCard={handleJoinCard}
                 onLeaveCard={handleLeaveCard}
                 onMoveCard={handleMoveCard}
-                onUpdateCard={(item) => handleQuickUpdateItem(item.id, item)}
+                onUpdateCard={handleQuickUpdateItemFromCard}
                 selectedIds={selectedIds}
                 onToggleSelect={handleToggleSelect}
                 onSelectAll={handleSelectAll}
@@ -1073,7 +1018,7 @@ export function WorkItemPage({
                 onJoinCard={handleJoinCard}
                 onLeaveCard={handleLeaveCard}
                 onMoveCard={handleMoveCard}
-                onUpdateCard={(item) => handleQuickUpdateItem(item.id, item)}
+                onUpdateCard={handleQuickUpdateItemFromCard}
                 isReadOnly={isReadOnly}
               />
             )}
@@ -1109,7 +1054,7 @@ export function WorkItemPage({
       {/* Analytics Drawer */}
       <AnalyticsDrawer
         isOpen={analyticsOpen}
-        onClose={() => setAnalyticsOpen(false)}
+        onClose={handleCloseAnalytics}
         project={project || undefined}
         projectId={projectId}
         items={activeFilteredItems}
@@ -1121,9 +1066,7 @@ export function WorkItemPage({
       {modal.type === 'create' && (
         <CreateModal
           open={true}
-          onOpenChange={(open) => {
-            if (!open) closeModal();
-          }}
+          onOpenChange={handleModalOpenChange}
           columns={columns}
           members={members}
           initialData={modal.initialData}
@@ -1138,9 +1081,7 @@ export function WorkItemPage({
       {modal.type === 'detail' && (
         <DetailModal
           open={true}
-          onOpenChange={(open) => {
-            if (!open) closeModal();
-          }}
+          onOpenChange={handleModalOpenChange}
           card={modal.card}
           columns={columns}
           project={project}
@@ -1149,7 +1090,7 @@ export function WorkItemPage({
           onSave={handleSaveCard}
           onDelete={handleDeleteCard}
           onDuplicate={
-            modal.card.id ? () => handleDuplicateCard(modal.card) : undefined
+            modal.card.id ? handleDuplicateModalCard : undefined
           }
           isReadOnly={isReadOnly}
         />
@@ -1186,7 +1127,7 @@ export function WorkItemPage({
       {modal.type === 'delete' && (
         <DeleteModal
           open={true}
-          onOpenChange={(open) => !open && closeModal()}
+          onOpenChange={handleModalOpenChange}
           item={modal.item}
           onConfirm={handleItemDeleteConfirm}
           isDeleting={projectState.status.isDeleting}
@@ -1231,7 +1172,7 @@ export function WorkItemPage({
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsSaveViewOpen(false)}
+                onClick={handleCloseSaveView}
                 disabled={isSavingCurrentView}
                 className="h-8 px-3 text-13 font-medium rounded-md text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               >
@@ -1241,7 +1182,7 @@ export function WorkItemPage({
                 type="submit"
                 size="sm"
                 disabled={!newViewName.trim() || isSavingCurrentView}
-                className="h-8 px-4 text-13 font-medium rounded-md bg-foreground text-background hover:bg-foreground/90 shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+                className="h-8 px-4 text-13 font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary-hover shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
               >
                 {isSavingCurrentView ? 'Saving...' : 'Save View'}
               </Button>

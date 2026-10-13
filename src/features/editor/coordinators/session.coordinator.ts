@@ -1,15 +1,13 @@
 /**
  * session.coordinator.ts
  *
- * Unified Document Session Coordinator (Coordinators Layer):
- *
- * Responsibilities:
- * - Coordinates document saving across multiple open virtual models (LRUDocumentCache).
- * - Implements debounced auto-save (800ms idle) and debounced auto-compile triggers (2500ms idle).
- * - Enforces Guaranteed Pre-Compile Flush: awaits all pending network writes before compiling.
- * - Manages crash-resilient local draft snapshots (IndexedDB / localStorage) for offline & crash protection.
- * - Handles conflict detection with remote collaborators and non-destructive alerts.
- * - Provides window beforeunload protection against accidental data loss.
+ * Unified Document Session Coordinator (Deep Module - Coordinators Layer):
+ * Follows Matt Pocock's Codebase Design principles:
+ * - Deep Module: A lot of behavior (FSM, autosave, offline sync, conflict resolution,
+ *   crash resilience, debounced draft indexing) behind a concise interface.
+ * - Real Seam: Injected DocumentPersistencePort with production & test stand-in support.
+ * - Finite State Machine: Tracks document session lifecycle to prevent race conditions.
+ * - Single source of truth for in-memory & persisted document state.
  */
 
 import { documentStore } from '../domain/document/document-store';
@@ -23,6 +21,13 @@ import {
   type ProjectFileSnapshot,
   type OfflineMutation,
 } from '../domain/document/draft-storage';
+import {
+  createInitialSessionContext,
+  sessionFsmTransition,
+  type DocumentSessionState,
+  type SessionFsmContext,
+} from '../domain/document/session-fsm';
+import type { DocumentPersistencePort } from '../domain/document/persistence-port';
 import { latexSymbolsIndex } from '../domain/latex/latex-symbols-index';
 import { latexDagEngine } from '../domain/latex/latex-dag-engine';
 import { manuscriptService } from '../sdk/manuscript.service';
@@ -34,7 +39,7 @@ import { useConnectivityStore } from '../store/connectivity.store';
 import { editorCommandBus } from './command-bus';
 import { visibilityCoordinator } from './visibility.coordinator';
 
-export type { DraftSnapshot, ProjectFileSnapshot, OfflineMutation };
+export type { DraftSnapshot, ProjectFileSnapshot, OfflineMutation, DocumentSessionState };
 
 export interface FlushResult {
   fileId: string;
@@ -72,6 +77,9 @@ export function shouldUseRealtimePersistence(input: {
 export interface DocumentSessionOptions {
   autoSaveDelay?: number;
   autoCompileDelay?: number;
+  persistenceAdapter?: DocumentPersistencePort;
+  getProjectId?: () => string | undefined;
+  isAutoCompileEnabled?: () => boolean;
 }
 
 const DEFAULT_AUTOSAVE_DELAY = 800; // ms
@@ -86,6 +94,16 @@ export class SessionCoordinatorRegistry {
   private isFlushingAll = false;
   private isReplayingMutations = false;
   private beforeUnloadInitialized = false;
+
+  /** Per-document Finite State Machine contexts */
+  private readonly fsmContexts = new Map<string, SessionFsmContext>();
+
+  /** Real Seam: Injected Persistence Adapter */
+  private persistenceAdapter: DocumentPersistencePort;
+
+  /** Custom options / dependency hooks */
+  private readonly options: DocumentSessionOptions;
+
   /** Per-file realtime (Yjs socket) connection status reported by the editor UI. */
   private readonly realtimeConnected = new Map<string, boolean>();
   /** Files whose local draft is awaiting a user restore/discard decision. */
@@ -94,14 +112,55 @@ export class SessionCoordinatorRegistry {
   private readonly conflicts = new Map<string, DocumentConflict>();
   private readonly conflictListeners = new Set<ConflictListener>();
 
-  constructor() {
+  constructor(options: DocumentSessionOptions = {}) {
+    this.options = options;
+    this.persistenceAdapter = options.persistenceAdapter || {
+      updateContent: (fileId, content) => manuscriptService.docs.updateContent(fileId, content),
+      markSaved: (fileId) => markHttpSavedWhileDisconnected(fileId),
+    };
+
     this.initVisibilityFlushHandler();
     this.initCommandSubscriptions();
     this.initOnlineListener();
   }
 
+  // ── Dependency Injection (Seam Configuration) ───────────────────────────────
+
+  public setPersistenceAdapter(adapter: DocumentPersistencePort): void {
+    this.persistenceAdapter = adapter;
+  }
+
+  public getFsmState(fileId: string): DocumentSessionState {
+    return this.getOrCreateFsmContext(fileId).state;
+  }
+
+  private getOrCreateFsmContext(fileId: string): SessionFsmContext {
+    let ctx = this.fsmContexts.get(fileId);
+    if (!ctx) {
+      const version = lruDocumentCache.getContentVersion(fileId) || 0;
+      ctx = createInitialSessionContext(fileId, version);
+      this.fsmContexts.set(fileId, ctx);
+    }
+    return ctx;
+  }
+
+  private transitionFsm(
+    fileId: string,
+    event: Parameters<typeof sessionFsmTransition>[1]
+  ): SessionFsmContext {
+    const ctx = this.getOrCreateFsmContext(fileId);
+    const updated = sessionFsmTransition(ctx, event);
+    this.fsmContexts.set(fileId, updated);
+    return updated;
+  }
+
   private resolveEffectiveProjectId(modelProjectId?: string): string {
-    return modelProjectId || usePageStore.getState().projectId || 'workspace-local';
+    if (modelProjectId) return modelProjectId;
+    if (this.options.getProjectId) {
+      const p = this.options.getProjectId();
+      if (p) return p;
+    }
+    return usePageStore.getState().projectId || 'workspace-local';
   }
 
   // ── Realtime connection status ─────────────────────────────────────────────
@@ -118,7 +177,7 @@ export class SessionCoordinatorRegistry {
       const model = lruDocumentCache.getModel(fileId);
       if (model?.isDirty) {
         this.saveDraftSnapshot(fileId, model.content, model.projectId);
-        this.scheduleAutoSave(fileId, DEFAULT_AUTOSAVE_DELAY);
+        this.scheduleAutoSave(fileId, this.options.autoSaveDelay ?? DEFAULT_AUTOSAVE_DELAY);
       }
     }
   }
@@ -197,6 +256,9 @@ export class SessionCoordinatorRegistry {
     const conflict = this.conflicts.get(fileId);
     if (!conflict) return;
     this.conflicts.delete(fileId);
+
+    this.transitionFsm(fileId, { type: 'CONFLICT_RESOLVED', resolution });
+
     if (resolution === 'take-remote') {
       // Preserve the local version as a recoverable draft before replacing it.
       this.flushDraftNow(fileId, conflict.localContent, lruDocumentCache.getModel(fileId)?.projectId);
@@ -205,7 +267,7 @@ export class SessionCoordinatorRegistry {
       this.reindex(fileId, conflict.remoteContent);
       editorCommandBus.dispatch({ type: 'editor:set-content', content: conflict.remoteContent });
     } else {
-      this.scheduleAutoSave(fileId, DEFAULT_AUTOSAVE_DELAY);
+      this.scheduleAutoSave(fileId, this.options.autoSaveDelay ?? DEFAULT_AUTOSAVE_DELAY);
     }
   }
 
@@ -229,9 +291,16 @@ export class SessionCoordinatorRegistry {
     sentContent: string,
     sentVersion?: number
   ): Promise<boolean> {
-    // The backend splices REST content into the live server Y.Doc. If our realtime socket is down,
-    // the provider must rebuild from the server on reconnect instead of replaying offline items.
-    markHttpSavedWhileDisconnected(fileId);
+    // Notify realtime bridges via persistence port
+    this.persistenceAdapter.markSaved?.(fileId);
+
+    const currentVersion = lruDocumentCache.getContentVersion(fileId) || 0;
+    this.transitionFsm(fileId, {
+      type: 'SAVE_SUCCESS',
+      savedVersion: sentVersion ?? currentVersion,
+      currentVersion,
+    });
+
     const model = lruDocumentCache.getModel(fileId);
     if (!model) {
       // No live model: clear the stored draft only if it is exactly what we saved.
@@ -250,7 +319,7 @@ export class SessionCoordinatorRegistry {
     }
     // Content changed while the request was in flight: keep dirty & re-save.
     if (!this.isRealtimeConnected(fileId)) {
-      this.scheduleAutoSave(fileId, DEFAULT_AUTOSAVE_DELAY);
+      this.scheduleAutoSave(fileId, this.options.autoSaveDelay ?? DEFAULT_AUTOSAVE_DELAY);
     }
     return false;
   }
@@ -293,7 +362,7 @@ export class SessionCoordinatorRegistry {
         if (mutation.type === 'update_content') {
           const contentToSave = mutation.payload?.content ?? '';
           useConnectivityStore.getState().incrementPending();
-          await manuscriptService.docs.updateContent(mutation.fileId, contentToSave);
+          await this.persistenceAdapter.updateContent(mutation.fileId, contentToSave);
           await this.finalizeSuccessfulSave(mutation.fileId, contentToSave);
           useConnectivityStore.getState().decrementPending();
         }
@@ -350,6 +419,8 @@ export class SessionCoordinatorRegistry {
     const model = lruDocumentCache.getModel(fileId);
     if (!model?.isDirty) {
       lruDocumentCache.updateContent(fileId, remoteContent, false);
+      const v = lruDocumentCache.getContentVersion(fileId) || 0;
+      this.transitionFsm(fileId, { type: 'REMOTE_EDIT', version: v });
       this.reindex(fileId, remoteContent);
       return;
     }
@@ -360,6 +431,9 @@ export class SessionCoordinatorRegistry {
     if (this.isRealtimeConnected(fileId)) {
       return;
     }
+
+    this.transitionFsm(fileId, { type: 'CONFLICT_DETECTED' });
+
     const conflict: DocumentConflict = {
       fileId,
       localContent: model.content,
@@ -393,6 +467,17 @@ export class SessionCoordinatorRegistry {
   }
 
   private initVisibilityFlushHandler(): void {
+    // Self-contained document visibility change handler
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+          this.flushPendingDrafts();
+          void this.flushAllPending();
+        }
+      });
+    }
+
+    // Also support external coordinator bridge if present
     visibilityCoordinator.registerFlushHandler(async () => {
       await this.flushAllPending();
     });
@@ -440,8 +525,12 @@ export class SessionCoordinatorRegistry {
     //    local dirty flag (clearing it would drop unsaved local edits from persistence).
     if (isRemote) {
       lruDocumentCache.applyRemoteContent(fileId, content);
+      const v = lruDocumentCache.getContentVersion(fileId) || 0;
+      this.transitionFsm(fileId, { type: 'REMOTE_EDIT', version: v });
     } else {
       lruDocumentCache.updateContent(fileId, content, true);
+      const v = lruDocumentCache.getContentVersion(fileId) || 0;
+      this.transitionFsm(fileId, { type: 'LOCAL_EDIT', version: v });
     }
 
     // 1b. Incrementally update Cross-file LaTeX symbols (Offloaded to Web Worker)
@@ -450,16 +539,12 @@ export class SessionCoordinatorRegistry {
     latexSymbolsIndex.indexFile(fileId, filePath, content);
 
     // Fast guard: only re-parse DAG graph if file contains structural include/class directives.
-    // If hasStructuralChange is explicitly false, skip O(N) regex and DAG re-scan completely.
     const shouldCheckDag = options?.hasStructuralChange ?? true;
     if (shouldCheckDag && /\\(?:documentclass|input|include|subfile|import|bibliography|addbibresource)/.test(content)) {
       latexDagEngine.parseAndRegister(filePath, content);
     }
 
     if (isRemote) {
-      // Remote changes are already persisted and broadcasted by remote peer;
-      // Do not mark local dirty or schedule redundant autosave. If unsaved local edits
-      // exist, refresh the draft backup so it reflects the merged document.
       if (currentModel?.isDirty) {
         this.saveDraftSnapshot(fileId, content, currentModel.projectId);
       }
@@ -470,12 +555,12 @@ export class SessionCoordinatorRegistry {
     useCompileStore.getState().markDirty(fileId, content);
 
     // 3. Local crash resilience backup (Tier 2 persistence)
-    const activeProjectId = usePageStore.getState().projectId || undefined;
+    const activeProjectId = this.resolveEffectiveProjectId(currentModel?.projectId);
     this.saveDraftSnapshot(fileId, content, activeProjectId);
 
     // 4. Schedule debounced auto-save to backend
     if (!isRealtime) {
-      this.scheduleAutoSave(fileId, options?.customAutoSaveDelay ?? DEFAULT_AUTOSAVE_DELAY);
+      this.scheduleAutoSave(fileId, options?.customAutoSaveDelay ?? this.options.autoSaveDelay ?? DEFAULT_AUTOSAVE_DELAY);
     }
 
     // 5. Schedule debounced auto-compile if enabled in user settings
@@ -519,17 +604,21 @@ export class SessionCoordinatorRegistry {
       return false;
     }
 
+    // Transition FSM to SAVING
+    this.transitionFsm(fileId, { type: 'SAVE_START' });
+
     // Snapshot what is being sent: the live model may change while the request is in flight.
     const sentContent = model.content;
     const sentVersion = lruDocumentCache.getContentVersion(fileId);
     try {
       useConnectivityStore.getState().incrementPending();
-      await manuscriptService.docs.updateContent(fileId, sentContent);
+      await this.persistenceAdapter.updateContent(fileId, sentContent);
       const clean = await this.finalizeSuccessfulSave(fileId, sentContent, sentVersion);
       useConnectivityStore.getState().decrementPending();
       useConnectivityStore.getState().setLastSavedAt(new Date());
       return clean;
     } catch (err) {
+      this.transitionFsm(fileId, { type: 'SAVE_FAILURE', error: err });
       useConnectivityStore.getState().decrementPending();
       const isNetworkError =
         (typeof navigator !== 'undefined' && !navigator.onLine) ||
@@ -606,15 +695,17 @@ export class SessionCoordinatorRegistry {
     const flushPromises = dirtyModels.map(async (model) => {
       const sentContent = model.content;
       const sentVersion = lruDocumentCache.getContentVersion(model.fileId);
+      this.transitionFsm(model.fileId, { type: 'SAVE_START' });
       try {
         useConnectivityStore.getState().incrementPending();
-        await manuscriptService.docs.updateContent(model.fileId, sentContent);
+        await this.persistenceAdapter.updateContent(model.fileId, sentContent);
         await this.finalizeSuccessfulSave(model.fileId, sentContent, sentVersion);
         useConnectivityStore.getState().decrementPending();
         useConnectivityStore.getState().setLastSavedAt(new Date());
         succeeded++;
         results.push({ fileId: model.fileId, success: true });
       } catch (err) {
+        this.transitionFsm(model.fileId, { type: 'SAVE_FAILURE', error: err });
         useConnectivityStore.getState().decrementPending();
         const isNetworkError =
           (typeof navigator !== 'undefined' && !navigator.onLine) ||
@@ -668,11 +759,8 @@ export class SessionCoordinatorRegistry {
   }
 
   public saveDraftSnapshot(fileId: string, content: string, projectId?: string): void {
-    // Never overwrite a recoverable draft (with e.g. stale server content) before the user
-    // has chosen to restore or discard it.
     if (this.draftDecisionPending.has(fileId)) return;
 
-    // 1. Immediately update in-memory cache for synchronous 0ms lookup
     draftStorageService.saveMemoryDraft(fileId, content, projectId);
 
     const existingTimer = this.draftTimers.get(fileId);
@@ -681,7 +769,6 @@ export class SessionCoordinatorRegistry {
       this.draftTimers.delete(fileId);
     }
 
-    // 2. Debounce disk persistence (LocalStorage / IndexedDB) by 600ms to eliminate typing stutter
     this.pendingDrafts.set(fileId, { content, projectId });
     const timer = setTimeout(() => {
       this.draftTimers.delete(fileId);
@@ -699,7 +786,6 @@ export class SessionCoordinatorRegistry {
   }
 
   public clearDraftSnapshot(fileId: string): void {
-    // The recoverable draft must survive until the user decides (discardDraft ends the gate first).
     if (this.draftDecisionPending.has(fileId)) return;
     const timer = this.draftTimers.get(fileId);
     if (timer) {
@@ -726,16 +812,19 @@ export class SessionCoordinatorRegistry {
 
   public switchTab(fromFileId: string | null, toFileId: string): void {
     if (fromFileId && fromFileId !== toFileId) {
+      this.transitionFsm(fromFileId, { type: 'DEACTIVATE' });
       const fromModel = lruDocumentCache.getModel(fromFileId);
       if (fromModel && fromModel.isDirty) {
         this.saveDraftSnapshot(fromFileId, fromModel.content, fromModel.projectId);
         this.flushPendingDrafts();
       }
     }
+    this.transitionFsm(toFileId, { type: 'ACTIVATE' });
     lruDocumentCache.setActiveFileId(toFileId);
   }
 
   public closeTab(fileId: string): void {
+    this.transitionFsm(fileId, { type: 'EVICT' });
     void this.flushFile(fileId);
     lruDocumentCache.evictModel(fileId);
   }
@@ -762,7 +851,9 @@ export class SessionCoordinatorRegistry {
   }
 
   private scheduleAutoCompile(fileId: string): void {
-    const isAutoCompile = useSettingsStore.getState().autoCompile;
+    const isAutoCompile = this.options.isAutoCompileEnabled
+      ? this.options.isAutoCompileEnabled()
+      : useSettingsStore.getState().autoCompile;
     if (!isAutoCompile) return;
 
     if (this.compileTimer) {
@@ -779,7 +870,7 @@ export class SessionCoordinatorRegistry {
 
       this.lastCompiledContentMap.set(fileId, model.content);
       editorCommandBus.dispatch({ type: 'compiler:trigger', draft: true });
-    }, DEFAULT_AUTOCOMPILE_DELAY);
+    }, this.options.autoCompileDelay ?? DEFAULT_AUTOCOMPILE_DELAY);
   }
 }
 

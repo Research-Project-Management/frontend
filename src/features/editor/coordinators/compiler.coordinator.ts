@@ -1,21 +1,16 @@
 /**
  * compiler.coordinator.ts
  *
- * Headless Compiler & SyncTeX Lifecycle Coordinator (Coordinators Layer).
- *
- * Responsibilities:
+ * Headless Compiler & SyncTeX Lifecycle Coordinator (Deep Module - Coordinators Layer).
+ * Follows Matt Pocock's Codebase Design principles:
+ * - Deep Module: High leverage behind a concise interface (compilation orchestration,
+ *   pre-compile flush, DAG Root inference, PDF blob lifecycle, SyncTeX mapping, and diagnostics indexing).
+ * - Real Seam: Injected CompilerExecutionPort with production & in-memory test stand-in support.
  * - Single source of truth for the active compilation lifecycle (IDLE -> COMPILING -> SYNCING -> SUCCESS / ERROR / ABORTED).
- * - Cancels in-flight compile jobs when a new compile is triggered (via AbortController).
- * - Enforces guaranteed pre-compile flush across all in-memory dirty documents via sessionCoordinator.
- * - Utilizes latexDagEngine to infer compile Root Document from any child file and detect circular includes.
- * - Manages PDF ObjectURL lifecycle (automatically revoking old ObjectURLs to prevent memory leaks).
- * - Stores parsed SyncTeX map and raw SyncTeX text for instant bidirectional navigation.
- * - Feeds diagnostics into diagnosticsCoordinator for file-partitioned O(log K) querying.
- * - Manages pending compile queue when edits occur mid-compilation.
- * - Dispatches typed progress events on IEditorCommandBus (compiler:started, compiler:progress, compiler:finished).
  */
 
 import { LatexCompilerEngine } from './compilation-pipeline';
+import type { CompilerExecutionPort } from '../domain/compiler/compiler-execution-port';
 import {
   resolveForwardDetail,
   resolveForward,
@@ -30,7 +25,7 @@ import {
 import { latexDagEngine } from '../domain/latex/latex-dag-engine';
 import { lruDocumentCache } from '../domain/document/lru-document-cache';
 import { workspaceCoordinator } from './workspace.coordinator';
-import { diagnosticsCoordinator } from './diagnostics.coordinator';
+import { diagnosticsCoordinator, type IndexedDiagnosticItem, type FileDiagnosticsSummary } from './diagnostics.coordinator';
 import { sessionCoordinator } from './session.coordinator';
 import { editorCommandBus } from './command-bus';
 import { useCompileStore } from '../store/compiler.store';
@@ -42,10 +37,13 @@ import type { CompileError, CompileStatus } from '../domain/types/compiler.types
 import { extractProjectId, extractDocumentContentString } from '../domain/types/core.types';
 import type { NodeTreeItem } from '../domain/types/node.types';
 
+export type { CompilerExecutionPort };
+
 export interface CreateSnapshotOptions {
   rootFileId?: string;
   resolvedMainFile?: string;
   projectFiles?: SnapshotProjectFile[];
+  activeContentOverride?: string;
 }
 
 /**
@@ -78,7 +76,7 @@ export class CompilationSnapshotProvider {
     const compileStore = useCompileStore.getState();
 
     const activeDoc = pageStore.getActiveDocument();
-    const activeContent = getActiveEditorContent() || (activeDoc?.content as string) || '';
+    const activeContent = options.activeContentOverride || getActiveEditorContent() || (activeDoc?.content as string) || '';
 
     const baseFiles = options.projectFiles || workspaceCoordinator.getProjectFiles() || [];
     const lruModels = lruDocumentCache.getAllModels();
@@ -122,6 +120,14 @@ export interface SyncTeXReverseDetail {
   h?: number;
 }
 
+export interface CompilerCoordinatorOptions {
+  compilerEngine?: CompilerExecutionPort;
+  getProjectId?: () => string | undefined;
+  getMainFile?: () => string | undefined;
+  getEngine?: () => string | undefined;
+  getTexLiveVersion?: () => string | undefined;
+}
+
 export class CompilerCoordinatorRegistry {
   private isCompiling = false;
   private prevPdfUrl: string | null = null;
@@ -129,8 +135,24 @@ export class CompilerCoordinatorRegistry {
   private rawSynctex: string | null = null;
   private initialized = false;
 
-  constructor() {
+  /** Real Seam: Injected Compiler Engine (LatexCompilerEngine by default) */
+  private compilerEngine: CompilerExecutionPort;
+  private readonly options: CompilerCoordinatorOptions;
+
+  constructor(options: CompilerCoordinatorOptions = {}) {
+    this.options = options;
+    this.compilerEngine = options.compilerEngine || LatexCompilerEngine;
     this.initCommandSubscriptions();
+  }
+
+  // ── Dependency Injection & Seam Configuration ───────────────────────────────
+
+  public setCompilerEngine(engine: CompilerExecutionPort): void {
+    this.compilerEngine = engine;
+  }
+
+  public getCompilerEngine(): CompilerExecutionPort {
+    return this.compilerEngine;
   }
 
   private initCommandSubscriptions(): void {
@@ -198,6 +220,23 @@ export class CompilerCoordinatorRegistry {
     return this.rawSynctex;
   }
 
+  // ── Deep Diagnostics Exposure (High Leverage) ──────────────────────────────
+
+  public getDiagnostics(fileIdOrPath?: string, applyFilter = true): IndexedDiagnosticItem[] {
+    if (fileIdOrPath) {
+      return diagnosticsCoordinator.getDiagnosticsForFile(fileIdOrPath, applyFilter);
+    }
+    return diagnosticsCoordinator.getAllDiagnostics(applyFilter);
+  }
+
+  public getDiagnosticsCount(severity?: 'error' | 'warning' | 'info', applyFilter = true): number {
+    return diagnosticsCoordinator.getDiagnosticsCount(severity, applyFilter);
+  }
+
+  public getFileSummary(fileIdOrPath: string, applyFilter = true): FileDiagnosticsSummary {
+    return diagnosticsCoordinator.getFileSummary(fileIdOrPath, applyFilter);
+  }
+
   public async compile(options?: CompileOptions): Promise<boolean> {
     const pageStore = usePageStore.getState();
     const settingsStore = useSettingsStore.getState();
@@ -230,7 +269,7 @@ export class CompilerCoordinatorRegistry {
     // 1. Guard against overlapping compilations: cancel previous in-flight job and queue next
     if (this.isCompiling || compileStore.compileStatus === 'compiling') {
       compileStore.setPendingCompile(true);
-      LatexCompilerEngine.cancelInFlightCompile();
+      this.compilerEngine.cancelInFlightCompile();
       return false;
     }
     this.isCompiling = true;
@@ -260,9 +299,13 @@ export class CompilerCoordinatorRegistry {
     }
 
     // 5. Infer Root Document (DAG traversal, subfile resolution, or settings preference)
+    const preferredMainFile = this.options.getMainFile
+      ? this.options.getMainFile()
+      : settingsStore.mainFile;
+
     const inferred = latexDagEngine.inferRootDocument(
       effectiveActiveFileId,
-      settingsStore.mainFile
+      preferredMainFile
     );
     const resolvedMainFile = inferred.rootPath;
 
@@ -278,7 +321,11 @@ export class CompilerCoordinatorRegistry {
       console.warn('[CompilerCoordinator] Circular include dependency detected in LaTeX project DAG');
     }
 
-    const effectiveProjectId = extractProjectId(activeDoc) || pageStore.projectId || '';
+    const effectiveProjectId =
+      (this.options.getProjectId ? this.options.getProjectId() : undefined) ||
+      extractProjectId(activeDoc) ||
+      pageStore.projectId ||
+      '';
 
     // 6. Create an atomic in-memory snapshot across open tabs & editor buffer (0ms latency)
     const snapshot = CompilationSnapshotProvider.createSnapshot({
@@ -287,14 +334,14 @@ export class CompilerCoordinatorRegistry {
     });
 
     try {
-      const res = await LatexCompilerEngine.compile({
+      const res = await this.compilerEngine.compile({
         projectId: effectiveProjectId,
         pageId: effectiveActiveFileId,
         mainFile: resolvedMainFile,
         source: snapshot.source,
         files: snapshot.files,
-        engine: settingsStore.engine || 'pdflatex',
-        texLiveVersion: settingsStore.texLiveVersion,
+        engine: this.options.getEngine?.() || settingsStore.engine || 'pdflatex',
+        texLiveVersion: this.options.getTexLiveVersion?.() || settingsStore.texLiveVersion,
         draft: options?.draft ?? (settingsStore.compileMode === 'draft'),
         useCache: options?.forceClean ? false : settingsStore.useCache,
         forceClean: options?.forceClean,
@@ -463,12 +510,18 @@ export class CompilerCoordinatorRegistry {
   }
 
   public async forceSync(projectId?: string): Promise<{ synced: string[] }> {
-    const targetId = projectId || usePageStore.getState().projectId || '';
+    const targetId =
+      projectId ||
+      (this.options.getProjectId ? this.options.getProjectId() : undefined) ||
+      usePageStore.getState().projectId ||
+      '';
     if (!targetId) return { synced: [] };
 
     useCompileStore.getState().setCompileStatus('syncing');
     try {
-      const res = await LatexCompilerEngine.forceSync(targetId);
+      const res = this.compilerEngine.forceSync
+        ? await this.compilerEngine.forceSync(targetId)
+        : await LatexCompilerEngine.forceSync(targetId);
       await this.compile();
       return res;
     } catch (err) {
@@ -478,7 +531,7 @@ export class CompilerCoordinatorRegistry {
   }
 
   public stop(): void {
-    LatexCompilerEngine.cancelInFlightCompile();
+    this.compilerEngine.cancelInFlightCompile();
     this.isCompiling = false;
     useCompileStore.getState().setCompileStatus('idle');
   }
@@ -520,6 +573,9 @@ export class CompilerCoordinatorRegistry {
     x: number,
     y: number,
   ): Promise<{ sourcePath: string | null; line: number } | null> {
+    if (this.compilerEngine.resolveReverseRemote) {
+      return this.compilerEngine.resolveReverseRemote(projectId, pageNum, x, y);
+    }
     return LatexCompilerEngine.resolveReverseRemote(projectId, pageNum, x, y);
   }
 
@@ -529,6 +585,9 @@ export class CompilerCoordinatorRegistry {
     line: number,
     column: number = 0,
   ) {
+    if (this.compilerEngine.resolveForwardRemote) {
+      return this.compilerEngine.resolveForwardRemote(projectId, file, line, column);
+    }
     return LatexCompilerEngine.resolveForwardRemote(projectId, file, line, column);
   }
 }

@@ -22,6 +22,20 @@ import { sessionCoordinator } from './session.coordinator';
 import { getActiveEditorInstance } from './command-bus';
 import { toast } from 'sonner';
 
+export interface NavigationNotificationPort {
+  info(message: string, options?: { id?: string }): void;
+}
+
+export const defaultNavigationNotifier: NavigationNotificationPort = {
+  info(message, options) {
+    if (typeof window !== 'undefined') {
+      try {
+        toast.info(message, options);
+      } catch {}
+    }
+  },
+};
+
 export interface OpenDocumentOptions {
   fileId: string;
   title: string;
@@ -38,8 +52,10 @@ export class NavigationCoordinatorRegistry {
   private lastDiagnosticLine: number | null = null;
   private lastDiagnosticFile: string | null = null;
   private broadcastChannel: BroadcastChannel | null = null;
+  private notifier: NavigationNotificationPort;
 
-  constructor() {
+  constructor(options: { notifier?: NavigationNotificationPort } = {}) {
+    this.notifier = options.notifier || defaultNavigationNotifier;
     this.initCommandSubscriptions();
   }
 
@@ -257,14 +273,14 @@ export class NavigationCoordinatorRegistry {
       if (projectId && typeof window !== 'undefined') {
         const previewUrl = `/projects/${projectId}/preview`;
         window.open(previewUrl, `flux_pdf_preview_${projectId}`, 'width=900,height=1000,menubar=no,toolbar=no');
-        toast.info('PDF preview opened in a separate window', { id: 'pdf-preview-detach' });
+        this.notifier.info('PDF preview opened in a separate window', { id: 'pdf-preview-detach' });
       }
     });
 
     editorCommandBus.subscribe('preview:attach', () => {
       useLayoutStore.getState().setPdfDetached(false);
       this.broadcastChannel?.postMessage({ type: 'preview:attached' });
-      toast.info('PDF preview reattached to main window', { id: 'pdf-preview-detach' });
+      this.notifier.info('PDF preview reattached to main window', { id: 'pdf-preview-detach' });
     });
   }
 
@@ -509,7 +525,7 @@ export class NavigationCoordinatorRegistry {
           return;
         }
       }
-      toast.info('No compilation errors in project', { id: 'compiler-diagnostic-step' });
+      this.notifier.info('No compilation errors in project', { id: 'compiler-diagnostic-step' });
       return;
     }
 
@@ -555,7 +571,7 @@ export class NavigationCoordinatorRegistry {
         highlight: 'error',
       });
 
-      toast.info(
+      this.notifier.info(
         `Error ${targetIndex + 1}/${list.length}: ${target.message}${
           target.file ? ` (${target.file}:${target.line})` : ` (line ${target.line})`
         }`,
@@ -586,7 +602,7 @@ export class NavigationCoordinatorRegistry {
           return;
         }
       }
-      toast.info('No compilation errors in project', { id: 'compiler-diagnostic-step' });
+      this.notifier.info('No compilation errors in project', { id: 'compiler-diagnostic-step' });
       return;
     }
 
@@ -637,7 +653,7 @@ export class NavigationCoordinatorRegistry {
         highlight: 'error',
       });
 
-      toast.info(
+      this.notifier.info(
         `Error ${targetIndex + 1}/${list.length}: ${target.message}${
           target.file ? ` (${target.file}:${target.line})` : ` (line ${target.line})`
         }`,

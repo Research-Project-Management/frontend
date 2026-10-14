@@ -5,7 +5,6 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import {
-  Link2,
   Plus,
   X,
   ShieldAlert,
@@ -15,16 +14,9 @@ import {
 import { cn } from "@/shared/lib/utils";
 import type { Relation, RelationType, Item } from '../../types/work-item.types';
 import { RELATION_TYPE_CONFIG } from '../../types/work-item.types';
+import type { RelationsProps } from '../../types/modal.types';
 
-export interface RelationsProps {
-  relations?: Relation[];
-  currentItemId?: string;
-  currentWorkItemId?: string;
-  availableItems?: Item[];
-  onAddRelation: (relation: Relation) => void;
-  onRemoveRelation: (relationId: string, targetId?: string) => void;
-  isReadOnly?: boolean;
-}
+export type { RelationsProps };
 
 export const Relations: React.FC<RelationsProps> = ({
   relations = [],

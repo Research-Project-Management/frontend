@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useUpload } from "@/shared/hooks/use-upload";
-import { AttachmentService } from '../services/attachment.service';
+import { AttachmentService } from '../api/work-item.api';
 import type {
   AttachPageInput,
   AttachPaperInput,
@@ -16,7 +16,7 @@ import {
   attachPaperInputSchema,
   attachFileInputSchema,
   attachLinkInputSchema,
-} from '../schemas/work-item.schema';
+} from '../types/work-item.types';
 
 export const useAttachPage = () => {
   const queryClient = useQueryClient();

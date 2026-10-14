@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { Item, Column } from '../../types/work-item.types';
+import type { Item, Column, Project, ProjectMember } from '../../types/work-item.types';
 import type { AssigneeFilterOption } from '../../hooks/use-topbar';
-import { AnalyticsService } from '../../services/analytics.service';
+import { AnalyticsService } from '../../api/work-item.api';
 
 import {
   Sheet,
@@ -20,22 +20,14 @@ import {
   AvatarFallback,
   AvatarImage,
 } from '@/shared/components/ui/avatar';
-import { BarChart3, TrendingUp, Users, CheckCircle2 } from 'lucide-react';
+import { BarChart3, Users, CheckCircle2 } from 'lucide-react';
+import type { AnalyticsDrawerProps } from '../../types/layout.types';
 
-export interface AnalyticsDrawerProps {
-  isOpen: boolean;
-  onClose: () => void;
-  project?: any;
-  projectId?: string;
-  items?: Item[];
-  columns?: Column[];
-  assignees?: AssigneeFilterOption[];
-  [key: string]: any;
-}
+export type { AnalyticsDrawerProps };
 
 export function AnalyticsDrawer({
-  isOpen,
-  onClose,
+  isOpen = false,
+  onClose = () => {},
   project,
   projectId,
   items = [],

@@ -1,33 +1,396 @@
 import { z } from "zod";
-import {
-  prioritySchema,
-  relationTypeSchema,
-  relationSchema,
-  stateGroupSchema,
-  userMinimalSchema,
-  parentItemMinimalSchema,
-  subItemSchema,
-  attachPageSchema,
-  attachPaperSchema,
-  attachFileSchema,
-  attachLinkSchema,
-  attachmentsSchema,
-  attachmentSchema,
-  attachPageInputSchema,
-  attachPaperInputSchema,
-  attachFileInputSchema,
-  attachLinkInputSchema,
-  itemSchema,
-  createItemSchema,
-  updateItemSchema,
-  itemMutationInputSchema,
-  reorderItemSchema,
-  bulkUpdateItemSchema,
-  bulkDeleteItemSchema,
-  createSubItemSchema,
-  stateSchema,
-  filtersSchema,
-} from "../schemas/work-item.schema";
+
+// ── 1. Zod Domain Schemas ────────────────────────────────────────────────────
+
+// Priority
+export const workItemPrioritySchema = z.enum([
+  "urgent",
+  "high",
+  "medium",
+  "low",
+  "none",
+]);
+export const prioritySchema = workItemPrioritySchema;
+export const itemPrioritySchema = workItemPrioritySchema;
+
+// Relations
+export const relationTypeSchema = z.enum([
+  "blocks",
+  "blocked_by",
+  "relates_to",
+  "duplicate_of",
+]);
+export const itemRelationTypeSchema = relationTypeSchema;
+export const workItemRelationTypeSchema = relationTypeSchema;
+
+export const addRelationDtoSchema = z.object({
+  targetWorkItemId: z.string().min(1, "Target work item ID is required"),
+  type: relationTypeSchema,
+});
+export type AddRelationDtoInput = z.infer<typeof addRelationDtoSchema>;
+
+export const relationSchema = z.object({
+  id: z.string(),
+  type: relationTypeSchema,
+  targetId: z.string().optional(),
+  targetWorkItemId: z.string().optional(),
+  targetTitle: z.string().optional(),
+  targetIdentifier: z.string().optional(),
+  targetColumnId: z.string().optional(),
+  targetWorkItem: z
+    .object({
+      id: z.string().optional(),
+      title: z.string().optional(),
+      identifier: z.string().optional(),
+      columnId: z.string().optional(),
+    })
+    .nullable()
+    .optional(),
+});
+export const itemRelationSchema = relationSchema;
+export const workItemRelationSchema = relationSchema;
+
+// State Groups
+export const stateGroupSchema = z.enum([
+  "backlog",
+  "unstarted",
+  "started",
+  "completed",
+  "cancelled",
+]);
+
+// Minimal Entities
+export const userMinimalSchema = z.object({
+  id: z.string(),
+  name: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
+  avatar: z.string().nullable().optional(),
+});
+
+export const parentItemMinimalSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  identifier: z.string().nullable().optional(),
+});
+export const parentWorkItemMinimalSchema = parentItemMinimalSchema;
+
+export const subItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  identifier: z.string().nullable().optional(),
+  columnId: z.string().default("backlog"),
+  completed: z.boolean().default(false),
+  stateGroup: stateGroupSchema.optional(),
+  state: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      group: stateGroupSchema.optional(),
+      color: z.string().optional(),
+    })
+    .nullable()
+    .optional(),
+  rank: z.number().default(0),
+  assigneeId: z.string().nullable().optional(),
+  assignee: userMinimalSchema.nullable().optional(),
+  dueDate: z.string().nullable().optional(),
+});
+
+// Attach Center Schemas (Pages, Papers, Files, Links)
+export const attachPageSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  slug: z.string().nullable().optional(),
+  addedAt: z.string().optional(),
+});
+
+export const attachPaperSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  doi: z.string().nullable().optional(),
+  citationKey: z.string().nullable().optional(),
+  addedAt: z.string().optional(),
+});
+
+export const attachFileSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  url: z.string(),
+  size: z.union([z.number(), z.string()]).nullable().optional(),
+  type: z.string().nullable().optional(),
+  createdAt: z.string().optional(),
+  uploadedAt: z.string().optional(),
+});
+
+export const attachLinkSchema = z.object({
+  title: z.string(),
+  url: z.string(),
+  addedAt: z.string().optional(),
+});
+
+export const attachmentsSchema = z.object({
+  pages: z.array(attachPageSchema).optional(),
+  papers: z.array(attachPaperSchema).optional(),
+  files: z.array(attachFileSchema).optional(),
+  links: z.array(attachLinkSchema).optional(),
+});
+export const itemAttachmentsSchema = attachmentsSchema;
+export const workItemAttachmentsSchema = attachmentsSchema;
+
+export const attachmentSchema = attachFileSchema;
+export const itemAttachmentSchema = attachmentSchema;
+export const workItemAttachmentSchema = attachmentSchema;
+
+export const attachPageInputSchema = z.object({
+  pageId: z.string().min(1, "Page ID is required"),
+  title: z.string().optional(),
+});
+
+export const attachPaperInputSchema = z.object({
+  paperId: z.string().min(1, "Paper ID is required"),
+  title: z.string().optional(),
+  doi: z.string().optional(),
+  citationKey: z.string().optional(),
+});
+
+export const attachFileInputSchema = z.object({
+  name: z.string().min(1, "File name is required"),
+  url: z.string().url("Must be a valid URL"),
+  size: z.union([z.number(), z.string()]).optional(),
+  type: z.string().optional(),
+});
+
+export const attachLinkInputSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  url: z.string().url("Must be a valid URL"),
+});
+
+// Create / Update / Reorder / Bulk DTO Schemas
+export const createWorkItemDtoSchema = z.object({
+  title: z.string().trim().min(1, "WorkItem title is required"),
+  content: z.string().optional(),
+  description: z.string().optional(),
+  columnId: z.string().optional(),
+  projectId: z.string().optional(),
+  assignee: z.union([z.string(), userMinimalSchema]).nullable().optional(),
+  assigneeId: z.string().nullable().optional(),
+  assigneeIds: z.array(z.string()).optional(),
+  startDate: z.string().nullable().optional(),
+  dueDate: z.string().nullable().optional(),
+  priority: workItemPrioritySchema.optional(),
+  rank: z.number().optional(),
+  parentId: z.string().nullable().optional(),
+  parentWorkItemId: z.string().nullable().optional(),
+  parentItemId: z.string().nullable().optional(),
+  labels: z
+    .array(
+      z.union([
+        z.string(),
+        z
+          .object({
+            id: z.string(),
+            name: z.string().optional(),
+            color: z.string().optional(),
+          })
+          .passthrough(),
+      ]),
+    )
+    .optional(),
+  labelIds: z.array(z.string()).optional(),
+  timeSpent: z.number().nullable().optional(),
+  completed: z.boolean().optional(),
+  attachments: attachmentsSchema.optional(),
+  relations: z.array(relationSchema).optional(),
+});
+export const createItemSchema = createWorkItemDtoSchema;
+export const createWorkItemSchema = createWorkItemDtoSchema;
+export type CreateWorkItemDtoInput = z.infer<typeof createWorkItemDtoSchema>;
+
+export const updateWorkItemDtoSchema = createWorkItemDtoSchema.partial();
+export const updateItemSchema = updateWorkItemDtoSchema;
+export const updateWorkItemSchema = updateWorkItemDtoSchema;
+export const itemMutationInputSchema = updateWorkItemDtoSchema;
+export const workItemMutationInputSchema = updateWorkItemDtoSchema;
+export type UpdateWorkItemDtoInput = z.infer<typeof updateWorkItemDtoSchema>;
+
+export const queryWorkItemDtoSchema = z.object({
+  search: z.string().optional(),
+  priority: workItemPrioritySchema.optional(),
+  columnId: z.string().optional(),
+  assigneeId: z.string().optional(),
+  page: z.number().int().min(1).optional().default(1),
+  limit: z.number().int().min(1).max(100).optional().default(50),
+  sort: z.string().optional(),
+  order: z.enum(["asc", "desc"]).optional().default("asc"),
+});
+export type QueryWorkItemDtoInput = z.infer<typeof queryWorkItemDtoSchema>;
+
+export const reorderWorkItemDtoSchema = z.object({
+  id: z.string().optional(),
+  itemId: z.string().optional(),
+  workItemId: z.string().optional(),
+  columnId: z.string().optional(),
+  rank: z.number(),
+  projectId: z.string().optional(),
+});
+export const reorderWorkItemSchema = reorderWorkItemDtoSchema;
+export const reorderItemSchema = reorderWorkItemDtoSchema;
+export type ReorderWorkItemDtoInput = z.infer<typeof reorderWorkItemDtoSchema>;
+
+export const bulkUpdateWorkItemDtoSchema = z.object({
+  ids: z.array(z.string()).optional(),
+  itemIds: z.array(z.string()).optional(),
+  workItemIds: z.array(z.string()).optional(),
+  data: updateWorkItemDtoSchema.extend({
+    addLabel: z.string().optional(),
+    removeLabel: z.string().optional(),
+    clearLabels: z.boolean().optional(),
+  }),
+  projectId: z.string().optional(),
+});
+export const bulkUpdateWorkItemSchema = bulkUpdateWorkItemDtoSchema;
+export const bulkUpdateItemSchema = bulkUpdateWorkItemDtoSchema;
+export type BulkUpdateWorkItemDtoInput = z.infer<typeof bulkUpdateWorkItemDtoSchema>;
+
+export const bulkDeleteWorkItemDtoSchema = z.object({
+  ids: z.array(z.string()).optional(),
+  itemIds: z.array(z.string()).optional(),
+  workItemIds: z.array(z.string()).optional(),
+  projectId: z.string().optional(),
+});
+export const bulkDeleteWorkItemSchema = bulkDeleteWorkItemDtoSchema;
+export const bulkDeleteItemSchema = bulkDeleteWorkItemDtoSchema;
+export type BulkDeleteWorkItemDtoInput = z.infer<typeof bulkDeleteWorkItemDtoSchema>;
+
+export const duplicateWorkItemDtoSchema = z.object({
+  destinationProjectId: z.string().optional(),
+  projectId: z.string().optional(),
+});
+export type DuplicateWorkItemDtoInput = z.infer<typeof duplicateWorkItemDtoSchema>;
+
+export const createSubItemSchema = z.object({
+  title: z.string().trim().min(1, "Title is required"),
+  columnId: z.string().optional(),
+  assigneeId: z.string().optional(),
+  dueDate: z.string().optional(),
+  priority: workItemPrioritySchema.optional(),
+});
+export const createSubWorkItemSchema = createSubItemSchema;
+
+// Main Item Schema
+export const itemSchema = z.object({
+  id: z.string(),
+  identifier: z.string().nullable().optional(),
+  sequenceNumber: z.number().nullable().optional(),
+  title: z.string().min(1, "Title is required"),
+  content: z.string().default(""),
+  description: z.string().default(""),
+  columnId: z.string(),
+  priority: workItemPrioritySchema.default("none"),
+  relations: z.array(relationSchema).default([]),
+  startDate: z.string().nullable().optional(),
+  dueDate: z.string().nullable().optional(),
+  labels: z
+    .array(
+      z.union([
+        z.string(),
+        z.object({
+          id: z.string(),
+          name: z.string().optional(),
+          color: z.string().optional(),
+        }).passthrough(),
+      ]),
+    )
+    .default([]),
+  attachments: attachmentsSchema.default({
+    pages: [],
+    papers: [],
+    files: [],
+    links: [],
+  }),
+  completed: z.boolean().default(false),
+  stateGroup: stateGroupSchema.optional(),
+  state: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      group: stateGroupSchema,
+      color: z.string().optional(),
+    })
+    .nullable()
+    .optional(),
+  progressPercentage: z.number().optional(),
+  rank: z.number().default(0),
+  timeSpent: z.number().nullable().optional(),
+  projectId: z.string(),
+  authorId: z.string().optional(),
+  author: userMinimalSchema.nullable().optional(),
+  assigneeId: z.string().nullable().optional(),
+  assignee: userMinimalSchema.nullable().optional(),
+  assigneeIds: z.array(z.string()).default([]),
+  assignees: z.array(userMinimalSchema).default([]),
+  subscriberIds: z.array(z.string()).default([]),
+  parentId: z.string().nullable().optional(),
+  parentItemId: z.string().nullable().optional(),
+  parentWorkItemId: z.string().nullable().optional(),
+  parentItem: parentItemMinimalSchema.nullable().optional(),
+  parentWorkItem: parentWorkItemMinimalSchema.nullable().optional(),
+  subItems: z.array(subItemSchema).default([]),
+  childWorkItems: z.array(subItemSchema).default([]),
+  subItemCount: z.number().optional(),
+  childWorkItemCount: z.number().optional(),
+  subItemCompletedCount: z.number().optional(),
+  childWorkItemCompletedCount: z.number().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+export const workItemSchema = itemSchema;
+
+// State Schema
+export const stateSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  title: z.string().optional(),
+  slug: z.string().optional(),
+  color: z.string(),
+  accentColor: z.string().optional(),
+  icon: z.string().optional(),
+  group: stateGroupSchema,
+  sequence: z.number().default(0),
+  isDefault: z.boolean().default(false),
+  description: z.string().nullable().optional(),
+});
+
+// Filters Schema
+export const filtersSchema = z.object({
+  search: z.string().default(""),
+  state: z.array(z.string()).default([]),
+  state_group: z.array(z.string()).default([]),
+  priority: z.array(workItemPrioritySchema).default([]),
+  assignees: z.array(z.string()).default([]),
+  mentions: z.array(z.string()).default([]),
+  created_by: z.array(z.string()).default([]),
+  labels: z.array(z.string()).default([]),
+  attach: z.array(z.string()).default([]),
+  items: z.array(z.string()).default([]),
+  work_items: z.array(z.string()).default([]),
+  parent: z.array(z.string()).default([]),
+  due_date: z.array(z.string()).default([]),
+  start_date: z.array(z.string()).default([]),
+  created_at: z.array(z.string()).default([]),
+  updated_at: z.array(z.string()).default([]),
+  subscribers: z.array(z.string()).default([]),
+  columnId: z.union([z.string(), z.array(z.string())]).optional(),
+  assigneeId: z.union([z.string(), z.array(z.string())]).optional(),
+  dueDateRange: z
+    .object({
+      from: z.string().optional(),
+      to: z.string().optional(),
+    })
+    .optional(),
+  hasAttachment: z.boolean().optional(),
+});
+export const workItemFiltersSchema = filtersSchema;
 
 // ── 1. Branded Identifier Types (Matt Pocock Pattern) ─────────────────────────
 
@@ -142,6 +505,7 @@ export type ProjectMember = {
 
 export type Project = {
   id: string;
+  identifier?: string;
   name: string;
   description?: string;
   avatar?: string | null;
@@ -197,15 +561,15 @@ export type ProjectItemsData = {
 export type ProjectWorkItemsData = ProjectItemsData;
 
 export interface WorkItemCardHandlers {
-  onEditCard: (card: any) => void;
-  onDeleteCard: (card: any) => void;
-  onDuplicateCard: (card: any) => void;
-  onJoinCard: (card: any) => void;
-  onLeaveCard: (card: any) => void;
-  onMoveCard: (workItemId: string, newColumnId: string, laneData?: any) => void;
-  onUpdateCard?: (card: any) => void;
-  onUpdateItem?: (id: string, data: any) => void;
-  onUpdateWorkItem?: (id: string, data: any) => void;
+  onEditCard: (card: Item) => void;
+  onDeleteCard: (card: Item) => void;
+  onDuplicateCard: (card: Item) => void;
+  onJoinCard: (card: Item) => void;
+  onLeaveCard: (card: Item) => void;
+  onMoveCard: (workItemId: string, newColumnId: string, laneData?: { subGroupBy?: string; laneId?: string }) => void;
+  onUpdateCard?: (card: { id: string } & Partial<Item>) => void;
+  onUpdateItem?: (id: string, data: Partial<Item>) => void;
+  onUpdateWorkItem?: (id: string, data: Partial<Item>) => void;
 }
 
 export interface BaseWorkItemViewProps {
@@ -214,7 +578,7 @@ export interface BaseWorkItemViewProps {
   currentUserId?: string | null;
   currentUserAvatar?: string;
   isReadOnly?: boolean;
-  members?: ProjectMember[] | any[];
+  members?: ProjectMember[];
   selectedIds?: string[];
   onToggleSelect?: (id: string) => void;
   onSelectAll?: (ids: string[]) => void;
@@ -514,3 +878,18 @@ export interface Label {
 
 export type WorkItemLabel = Label;
 
+// ── Re-exports from modular types ───────────────────────────────────────────
+export * from './list-view.types';
+export * from './table-view.types';
+export * from './kanban-view.types';
+export * from './timeline-view.types';
+export * from './calendar-view.types';
+export * from './attachment.types';
+export * from './modal.types';
+export * from './picker.types';
+export * from './layout.types';
+export * from './topbar.types';
+export * from './hook.types';
+export * from './cpm.types';
+export * from './filter.types';
+export * from './activity.types';

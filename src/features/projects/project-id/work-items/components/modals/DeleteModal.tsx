@@ -5,14 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/shared/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import type { Item } from '../../types/work-item.types';
+import type { DeleteModalProps } from '../../types/modal.types';
 
-export interface DeleteModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  item?: Item | null;
-  onConfirm: () => void | Promise<void>;
-  isDeleting?: boolean;
-}
+export type { DeleteModalProps };
 
 export function DeleteModal({
   open,

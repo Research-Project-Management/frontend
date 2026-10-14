@@ -15,10 +15,11 @@ import type {
   Item,
   Column,
   Filters,
-  Priority,
-  StateGroup,
 } from '../types/work-item.types';
+import type { WorkItemFilterQuery } from '../types/filter.types';
 import { ItemHelpers, resolveStateId, inferStateGroup } from './work-item.utils';
+
+export type { WorkItemFilterQuery };
 
 // ============================================================================
 // 1. FAST BITSET DATA STRUCTURE (UINT32ARRAY POWERED)
@@ -556,7 +557,7 @@ export class WorkItemFilterEngine {
   /**
    * Execute full bitwise query matching current filter state & optional text search.
    */
-  public executeFilter(filters: Filters, searchQuery: string = ''): Item[] {
+  public executeFilter(filters: Partial<Filters> = {}, searchQuery: string = ''): Item[] {
     if (this.size === 0) return [];
 
     // Start with all bits set (111...1)

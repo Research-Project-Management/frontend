@@ -40,49 +40,10 @@ import {
   PriorityMediumIcon,
   PriorityLowIcon,
   PriorityNoneIcon,
-} from './FilterDropdown';
+import type { FilterPillsBarProps } from '../../types/layout.types';
+import { DUE_DATE_LABELS, DUE_DATE_QUICK_OPTIONS } from '../../utils/filter.utils';
 
-export interface FilterPillsBarProps {
-  columns: Column[];
-  assignees: AssigneeFilterOption[];
-  items?: Item[];
-  totalFiltersCount: number;
-  onClearAll: () => void;
-  // Unified Filter State
-  filters?: Filters;
-  onRemoveFilter?: <K extends keyof Filters>(key: K, item?: any) => void;
-  onToggleFilter?: <K extends keyof Filters>(key: K, item: any) => void;
-  // Legacy props
-  selectedColumnIds?: string[];
-  onRemoveColumn?: (colId: string) => void;
-  selectedAssigneeIds?: string[];
-  onRemoveAssignee?: (userId: string) => void;
-  selectedPriorities?: Priority[];
-  onRemovePriority?: (priority: Priority) => void;
-  dueDateFilter?: DueDateFilterOption;
-  onRemoveDueDate?: () => void;
-}
-
-const DUE_DATE_LABELS: Record<string, string> = {
-  all: 'All',
-  overdue: 'Overdue',
-  today: 'Due today',
-  this_week: 'Due this week',
-  this_month: 'Due this month',
-  '15_days': 'Due in 15 days',
-  '30_days': 'Due in 30 days',
-  no_date: 'No due date',
-};
-
-const DUE_DATE_QUICK_OPTIONS: Array<{ id: string; label: string }> = [
-  { id: 'overdue', label: 'Overdue' },
-  { id: 'today', label: 'Due today' },
-  { id: 'this_week', label: 'Due this week' },
-  { id: 'this_month', label: 'Due this month' },
-  { id: '15_days', label: '15 days from now' },
-  { id: '30_days', label: '30 days from now' },
-  { id: 'no_date', label: 'No due date' },
-];
+export type { FilterPillsBarProps };
 
 export function FilterPillsBar({
   columns,
@@ -202,7 +163,7 @@ export function FilterPillsBar({
 
         {/* 3. State Group Pills */}
         {activeStateGroups.map((group) => {
-          const config = (STATE_GROUP_CONFIG as Record<string, any>)[group];
+          const config = (STATE_GROUP_CONFIG as Record<string, { label: string; defaultColor: string; description: string }>)[group];
           const label = config?.label || group;
 
           return (

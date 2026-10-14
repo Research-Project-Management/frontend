@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   ChevronRight,
@@ -27,79 +26,17 @@ import type {
 import { Button } from '@/shared/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from "@/shared/lib/utils";
-import type { AssigneeFilterOption, ViewMode } from '../../hooks/use-topbar';
-import type { SavedViewRecord } from '../../services/view.service';
+import type { AssigneeFilterOption, ViewMode, TopbarProps } from '../../types/topbar.types';
 import { DisplayPopover } from './DisplayPopover';
 import { FilterDropdown } from '../filters/FilterDropdown';
 import { Switcher } from '@/features/projects/project-id/components/layout/Switcher';
 
-export type { AssigneeFilterOption, ViewMode };
-
-export interface TopbarProps {
-  projectId?: string;
-  project?: {
-    id?: string;
-    name: string;
-    avatar?: string | null;
-    modules?: string[];
-  };
-  projectModules?: string[];
-  savedViews?: SavedViewRecord[];
-  activeViewId?: string;
-  onSelectSavedView?: (view: SavedViewRecord) => void;
-  onSaveCurrentView?: () => void;
-  title?: string;
-  icon?: React.ComponentType<{ className?: string }>;
-  Icon?: React.ComponentType<{ className?: string }>;
-  count?: number;
-  items?: Item[];
-  // View controls
-  viewMode: ViewMode;
-  onViewChange: (mode: ViewMode) => void;
-  // Filters
-  columns: Column[];
-  selectedColumnIds: string[];
-  onColumnFilterChange: (colIds: string[]) => void;
-  onToggleColumn?: (colId: string) => void;
-  assignees: AssigneeFilterOption[];
-  members?: ProjectMember[];
-  selectedAssigneeIds: string[];
-  onAssigneeFilterChange: (userIds: string[]) => void;
-  onToggleAssignee?: (userId: string) => void;
-  selectedPriorities?: Priority[];
-  onTogglePriority?: (priority: Priority) => void;
-  dueDateFilter?: DueDateFilterOption;
-  onDueDateFilterChange?: (opt: DueDateFilterOption) => void;
-  onClearAllFilters?: () => void;
-  totalActiveFilters?: number;
-  filters?: Filters;
-  onToggleFilter?: <K extends keyof Filters>(key: K, item: any) => void;
-  onRemoveFilter?: <K extends keyof Filters>(key: K, item?: any) => void;
-  // Display options
-  displayOptions?: DisplayOptions;
-  onDisplayOptionsChange?: (options: DisplayOptions) => void;
-  onPropertyToggle?: (key: DisplayPropertyKey, value: boolean) => void;
-  displayOpen?: boolean;
-  onDisplayOpenChange?: (open: boolean) => void;
-  // Analytics drawer
-  onOpenAnalytics?: () => void;
-  // Actions
-  onAddItem?: () => void;
-  showArchived?: boolean;
-  onToggleArchived?: () => void;
-  isLoading?: boolean;
-  isReadOnly?: boolean;
-  className?: string;
-}
+export type { AssigneeFilterOption, ViewMode, TopbarProps };
 
 export function Topbar({
   projectId,
   project,
   projectModules: propProjectModules,
-  savedViews,
-  activeViewId,
-  onSelectSavedView,
-  onSaveCurrentView,
   showArchived = false,
   onToggleArchived,
   title = 'Work Items',

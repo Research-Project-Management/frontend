@@ -250,11 +250,9 @@ export function WorkItemVerticalStackIllustration({ className }: TIllustrationAs
   );
 }
 
-export interface EmptyStateProps {
-  onCreateItem?: () => void;
-  isReadOnly?: boolean;
-}
-export type WorkItemsEmptyStateProps = EmptyStateProps;
+import type { EmptyStateProps, WorkItemsEmptyStateProps } from '../../types/layout.types';
+
+export type { EmptyStateProps, WorkItemsEmptyStateProps };
 
 export function EmptyState({
   onCreateItem,

@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import {
   MouseSensor,
   TouchSensor,
@@ -12,7 +10,6 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import {
-  Clock3,
   AlignLeft,
   MessageSquare,
   Paperclip,
@@ -22,137 +19,25 @@ import {
   ArrowUp,
   Minus,
   ArrowDown,
-  ShieldAlert,
   type LucideIcon,
 } from 'lucide-react';
 
-import {
-  ViewService,
-  type SavedViewRecord,
-  type CreateViewInput,
-  type UpdateViewInput,
-} from '../services/view.service';
-import type { Item, WorkItem, Column } from '../types/work-item.types';
-import { resolveColumnId, resolveWorkItemColumnId, getItemBucketKey } from '../utils/work-item.utils';
-import { ItemHelpers, WorkItemHelpers } from '../utils/work-item.utils';
+import type { Item, Column } from '../types/work-item.types';
+import type {
+  ItemCardLabel,
+  CardMetadataItem,
+  UseKanbanOptions,
+  UseCardOptions,
+} from '../types/kanban-view.types';
+import { resolveColumnId, getItemBucketKey } from '../utils/work-item.utils';
+import { ItemHelpers } from '../utils/work-item.utils';
 
-// ── 1. Query Keys & Server State Hooks (matching backend view module) ───────────
-
-export const viewKeys = {
-  all: ['project-views'] as const,
-  list: (projectId: string) => ['project-views', projectId] as const,
-  detail: (projectId: string, viewId: string) => ['project-views', projectId, viewId] as const,
-  favorites: (projectId: string) => ['project-views', projectId, 'favorites'] as const,
-  workItems: (projectId: string, viewId: string) => ['project-views', projectId, viewId, 'work-items'] as const,
+export type {
+  ItemCardLabel,
+  CardMetadataItem,
+  UseKanbanOptions,
+  UseCardOptions,
 };
-
-export function useViewsQuery(projectId: string) {
-  return useQuery({
-    queryKey: viewKeys.list(projectId),
-    queryFn: () => ViewService.getViews(projectId),
-    enabled: Boolean(projectId),
-    staleTime: 30_000,
-  });
-}
-
-export function useCreateViewMutation(projectId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: CreateViewInput) => ViewService.createView(projectId, data),
-    onSuccess: (newView) => {
-      queryClient.invalidateQueries({ queryKey: viewKeys.list(projectId) });
-      toast.success(`Created view "${newView.name}"`, { id: 'work-item-view-action' });
-    },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Failed to create view', { id: 'work-item-view-action' });
-    },
-  });
-}
-
-export function useUpdateViewMutation(projectId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      viewId,
-      data,
-    }: {
-      viewId: string;
-      data: UpdateViewInput;
-    }) => ViewService.updateView(projectId, viewId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: viewKeys.list(projectId) });
-      toast.success('View updated', { id: 'work-item-view-action' });
-    },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Failed to update view', { id: 'work-item-view-action' });
-    },
-  });
-}
-
-export function useDeleteViewMutation(projectId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (viewId: string) => ViewService.deleteView(projectId, viewId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: viewKeys.list(projectId) });
-      toast.success('View deleted', { id: 'work-item-view-action' });
-    },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Failed to delete view', { id: 'work-item-view-action' });
-    },
-  });
-}
-
-export function useFavoriteViewMutation(projectId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (viewId: string) => ViewService.favorite(projectId, viewId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: viewKeys.list(projectId) });
-      queryClient.invalidateQueries({ queryKey: viewKeys.favorites(projectId) });
-    },
-  });
-}
-
-export function useUnfavoriteViewMutation(projectId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (viewId: string) => ViewService.unfavorite(projectId, viewId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: viewKeys.list(projectId) });
-      queryClient.invalidateQueries({ queryKey: viewKeys.favorites(projectId) });
-    },
-  });
-}
-
-// ── 2. Card & Kanban Types ───────────────────────────────────────────────────
-
-export type ItemCardLabel = {
-  id: string;
-  name: string;
-  color?: string;
-};
-
-export type CardMetadataItem = {
-  key: string;
-  icon: LucideIcon;
-  label: string;
-  text: string;
-};
-
-// ── 3. Kanban Board Controller (useKanban) ──────────────────────────────────
-
-export interface UseKanbanOptions {
-  items?: Item[];
-  workItems?: Item[];
-  columns: Column[];
-  onMoveCard?: (cardId: string, targetColumnId: string, laneData?: { subGroupBy?: string; laneId?: string }) => void;
-  onReorderCard?: (workItemId: string, targetColumnId: string, rank: number) => void;
-  isReadOnly?: boolean;
-  subGroupBy?: string;
-  groupBy?: string;
-  itemsByColumnId?: Map<string, Item[]>;
-}
 
 export function useKanban({
   items: propItems,
@@ -307,19 +192,6 @@ export function useKanban({
 
 // ── 4. Card Presentation Controller (useCard) ────────────────────────────────
 
-export interface UseCardOptions {
-  card: Item;
-  labelMap?: Map<string, ItemCardLabel>;
-  currentUserId?: string | null;
-  currentUserAvatar?: string;
-  onEdit?: (card: Item) => void;
-  onDuplicate?: (card: Item) => void;
-  onDelete?: (card: Item) => void;
-  onJoin?: (card: Item) => void;
-  onLeave?: (card: Item) => void;
-  isReadOnly?: boolean;
-}
-
 export function useCard({
   card,
   labelMap,
@@ -367,8 +239,8 @@ export function useCard({
     commentCount?: number;
     comments?: unknown[];
     attachmentCount?: number;
-    subItems?: any[];
-    children?: any[];
+    subItems?: unknown[];
+    children?: unknown[];
   };
   const comments = cardObj.commentCount ?? cardObj.comments?.length ?? 0;
   const attachments = cardObj.attachmentCount ?? (
@@ -549,6 +421,4 @@ export function useCard({
   return { state, actions };
 }
 
-// ── Export aliases ───────────────────────────────────────────────────────────
-export const useView = useViewsQuery;
-export default useViewsQuery;
+

@@ -124,39 +124,25 @@ type CalendarViewProps = {
   isReadOnly?: boolean;
 };
 
-type CalendarLayoutMode = "month" | "week";
+import type { CalendarLayoutMode } from '../../types/calendar-view.types';
+import {
+  DATE_KEY_FORMAT,
+  WEEK_DAY_LABELS,
+  DATE_KEY_PATTERN,
+  isMidnightDueDate,
+  getCalendarDateKey,
+  createCalendarDueDate,
+} from '../../utils/calendar.utils';
 
-const DATE_KEY_FORMAT = "yyyy-MM-dd";
-const WEEK_DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-function isMidnightDueDate(value: string) {
-  return /^\d{4}-\d{2}-\d{2}T00:00(?::00(?:\.000)?)?(?:Z|[+-]\d{2}:\d{2})?$/.test(
-    value,
-  );
-}
-
-function getCalendarDateKey(dueDate?: string | null) {
-  if (!dueDate) return null;
-  if (DATE_KEY_PATTERN.test(dueDate)) return dueDate;
-
-  const [datePart] = dueDate.split("T");
-  const parsedDate = new Date(dueDate);
-
-  if (isMidnightDueDate(dueDate) && DATE_KEY_PATTERN.test(datePart)) {
-    return datePart;
-  }
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return DATE_KEY_PATTERN.test(datePart) ? datePart : null;
-  }
-
-  return format(parsedDate, DATE_KEY_FORMAT);
-}
-
-function createCalendarDueDate(dateKey: string) {
-  return `${dateKey}T00:00:00.000Z`;
-}
+export type { CalendarLayoutMode };
+export {
+  DATE_KEY_FORMAT,
+  WEEK_DAY_LABELS,
+  DATE_KEY_PATTERN,
+  isMidnightDueDate,
+  getCalendarDateKey,
+  createCalendarDueDate,
+};
 
 const EMPTY_ARRAY: never[] = [];
 const NOOP = () => {};
@@ -735,6 +721,32 @@ export const CalendarView = memo(function CalendarView({
   );
 });
 
+interface CalendarDayCellProps {
+  dateKey: string;
+  day: Date | null;
+  dayItems: Item[];
+  isQuickAdding: boolean;
+  isCurrentMonth: boolean;
+  isThisToday: boolean;
+  dayTextClass?: string;
+  dayCellMinHeight: string | number;
+  layoutMode: string;
+  onOpenCardDetail: (item: Item) => void;
+  handleOpenAddItemMenu: (dateKey: string) => void;
+  addItemMenuDateKey: string | null;
+  isAddItemMenuOpen?: boolean;
+  onSetAddItemMenuDateKey: (dateKey: string | null) => void;
+  onAddWorkItem: (dateKey: string) => void;
+  onAddExistingWorkItem: (dateKey: string) => void;
+  onSetQuickAddTitle: (title: string) => void;
+  onQuickAddSubmit: () => void;
+  onCloseQuickAdd: () => void;
+  isAddingCard?: boolean;
+  columns: Column[];
+  isReadOnly?: boolean;
+  quickAddTitle?: string;
+}
+
 const CalendarDayCell = memo(({
   dateKey,
   day,
@@ -758,7 +770,7 @@ const CalendarDayCell = memo(({
   columns,
   isReadOnly,
   quickAddTitle = '',
-}: any) => {
+}: CalendarDayCellProps) => {
   const isAddItemMenuOpen = addItemMenuDateKey === dateKey;
   const isFirstDayOfMonth = day ? day.getDate() === 1 : false;
   const { setNodeRef, isOver } = useDroppable({
@@ -815,7 +827,7 @@ const CalendarDayCell = memo(({
             layoutMode === "week" ? "max-h-175" : "max-h-full"
           )}
         >
-          {dayItems.map((item: any) => (
+          {dayItems.map((item: Item) => (
             <CalendarItem
               key={item.id}
               item={item}

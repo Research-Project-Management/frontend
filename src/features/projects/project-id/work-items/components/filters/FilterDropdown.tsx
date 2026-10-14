@@ -12,8 +12,6 @@ import {
   UserCircle,
   User,
   Check,
-  CircleDashed,
-  Circle,
   AlertCircle,
   CircleSlash,
   FileText,
@@ -37,7 +35,6 @@ import type {
 } from '../../types/work-item.types';
 import {
   resolveStateId,
-  inferStateGroup,
 } from '../../utils/work-item.utils';
 import type { AssigneeFilterOption } from '../../hooks/use-topbar';
 
@@ -161,32 +158,10 @@ function SubmenuSearchBar({
 
 // ── Filter Dropdown Props & Configuration ───────────────────────────────────
 
-export interface FilterDropdownProps {
-  items?: Item[];
-  columns: Column[];
-  selectedColumnIds?: string[];
-  onToggleColumn?: (columnId: string) => void;
-  assignees: AssigneeFilterOption[];
-  members?: ProjectMember[];
-  selectedAssigneeIds?: string[];
-  onToggleAssignee?: (userId: string) => void;
-  selectedPriorities?: Priority[];
-  onTogglePriority?: (priority: Priority) => void;
-  dueDateFilter?: DueDateFilterOption;
-  onDueDateFilterChange?: (option: DueDateFilterOption) => void;
-  totalActiveFilters: number;
-  onClearAll: () => void;
-  // Unified Filter State
-  filters?: Filters;
-  onToggleFilter?: <K extends keyof Filters>(key: K, item: any) => void;
-  onRemoveFilter?: <K extends keyof Filters>(key: K, item?: any) => void;
-}
+import type { FilterDropdownProps } from '../../types/layout.types';
+import type { FilterItemConfig } from '../../types/filter.types';
 
-interface FilterItemConfig {
-  id: string;
-  label: string;
-  icon: React.ElementType;
-}
+export type { FilterDropdownProps, FilterItemConfig };
 
 const FILTER_ITEMS: FilterItemConfig[] = [
   { id: 'work-items', label: 'Work items', icon: ItemsIcon },
@@ -270,7 +245,7 @@ export function FilterDropdown({
   }, [filterQuery]);
 
   // Central toggle helper
-  const handleToggle = <K extends keyof Filters>(key: K, item: unknown) => {
+  const handleToggle = <K extends keyof Filters>(key: K, item: Filters[K] extends (infer E)[] ? E : string) => {
     if (onToggleFilter) {
       onToggleFilter(key, item);
     } else {

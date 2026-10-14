@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avat
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Textarea } from '@/shared/components/ui/textarea';
-import { SmilePlus, MessageSquare, History, ListFilter, Activity as ActivityIcon } from "lucide-react";
+import { SmilePlus, History } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/g;
@@ -76,46 +76,17 @@ function renderCommentContent(
   });
 }
 
-export type ActivityEntry = {
-  id: string;
-  author: string;
-  authorInitials: string;
-  avatarUrl?: string | null;
-  content: string;
-  timestamp: string;
-  createdAt?: number;
-  kind?: "comment" | "system" | "activity";
-  reactionEmoji?: string;
-  permissions?: {
-    canEdit: boolean;
-    canDelete: boolean;
-  };
-};
+import type {
+  ActivityEntry,
+  ActivitiesProps,
+  ActivityTab,
+} from '../../types/activity.types';
 
-export type ActivitiesProps = {
-  commentText: string;
-  setCommentText: (text: string) => void;
-  commentTextareaRef?: React.RefObject<HTMLTextAreaElement | null>;
-  onSaveComment: (content: string) => void;
-  onUpdateComment: (commentId: string, content: string) => void;
-  onDeleteComment: (commentId: string) => void;
-  onReactComment: (commentId: string, emoji: string) => void;
-  attachmentLinks?: Array<{ name: string; url: string }>;
-  commentFocusToken?: number;
-  commentCaretPosition?: number;
-  onCommentCaretChange?: (position: number) => void;
-  canComment?: boolean;
-  isSavingComment?: boolean;
-  isUpdatingComment?: boolean;
-  showDetailActivity: boolean;
-  setShowDetailActivity: (show: boolean | ((prev: boolean) => boolean)) => void;
-  activityLoading?: boolean;
-  activityError?: boolean;
-  activities: ActivityEntry[];
-  isReadOnly?: boolean;
+export type {
+  ActivityEntry,
+  ActivitiesProps,
+  ActivityTab,
 };
-
-type ActivityTab = "all" | "activity" | "comments" | "history";
 
 export function Activities({
   commentText,

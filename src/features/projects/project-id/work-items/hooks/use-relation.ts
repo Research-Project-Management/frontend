@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { RelationService } from '../services/relation.service';
+import { RelationService } from '../api/work-item.api';
 
 export const relationKeys = {
   item: (id: string) => ['work-item-relations', id] as const,

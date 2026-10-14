@@ -4,11 +4,9 @@ import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { API_BASE_URL } from '@/config/env';
 import { getAuthToken } from '@/shared/lib/token-storage';
+import type { UseRealtimeWorkItemsOptions } from '../types/hook.types';
 
-export interface UseRealtimeWorkItemsOptions {
-  projectId?: string;
-  enabled?: boolean;
-}
+export type { UseRealtimeWorkItemsOptions };
 
 export function useRealtimeWorkItems({
   projectId,

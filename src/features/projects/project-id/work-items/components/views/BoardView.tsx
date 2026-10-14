@@ -24,8 +24,6 @@ import {
   Copy,
   UserPlus,
   UserMinus,
-  RotateCcw,
-  Clock3,
   User,
   Tag,
   ChevronDown,
@@ -36,15 +34,13 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Button } from '@/shared/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { StatusIcon } from "@/shared/components/icons";
 import { cn } from "@/shared/lib/utils";
-import { useKanban, useCard, type ItemCardLabel } from '../../hooks/use-view';
-import {
-  PriorityPopover,
-  DatePopover,
-  MemberPopover,
-  LabelPopover,
-  AvatarStack,
-} from '../modals/Popovers';
+import { useKanban, useCard } from '../../hooks/use-view';
+import { PriorityPopover } from '../pickers/PriorityPicker';
+import { DatePopover } from '../pickers/DatePicker';
+import { MemberPopover, AvatarStack } from '../pickers/MemberPicker';
+import { LabelPopover } from '../pickers/LabelPicker';
 import {
   ItemHelpers,
   resolveColumnId,
@@ -61,10 +57,19 @@ import {
   type BaseWorkItemViewProps,
   type WorkItemCardHandlers,
   type Priority,
+  type ProjectMember,
 } from '../../types/work-item.types';
-import { StatusIcon } from '@/shared/components/icons';
+import type {
+  ItemCardLabel,
+  CardProps,
+  ColumnProps,
+  BoardViewProps,
+  BoardProps,
+  SwimlaneDef,
+} from '../../types/kanban-view.types';
+import { formatDateDisplay, EMPTY_ARRAY } from '../../utils/board.utils';
 
-export type { ItemCardLabel };
+export type { ItemCardLabel, CardProps, ColumnProps, BoardViewProps, BoardProps, SwimlaneDef };
 
 // ── Icons & Themes ──────────────────────────────────────────────────────────
 
@@ -128,35 +133,7 @@ const PRIORITY_THEME_CLASSES: Record<string, string> = {
     'text-foreground bg-transparent hover:bg-muted/50 border-border shadow-none font-normal',
 };
 
-function formatDateDisplay(dateStr?: string | null): string {
-  return ItemHelpers.formatDate(dateStr);
-}
-
-const EMPTY_ARRAY: never[] = [];
-
 // ── Card Component ──────────────────────────────────────────────────────────
-
-export interface CardProps {
-  card: Item;
-  columns?: ColumnType[];
-  projectStates?: ColumnType[];
-  displayOptions?: DisplayOptions;
-  labelMap?: Map<string, ItemCardLabel>;
-  currentUserId?: string | null;
-  currentUserAvatar?: string;
-  members?: any[];
-  onEdit?: (card: Item) => void;
-  onDuplicate?: (card: Item) => void;
-  onDelete?: (card: Item) => void;
-  onJoin?: (card: Item) => void;
-  onLeave?: (card: Item) => void;
-  onMoveCard?: (cardId: string, newColumnId: string) => void;
-  onUpdateItem?: (cardId: string, data: any) => void;
-  isReadOnly?: boolean;
-  isDragging?: boolean;
-  isSelected?: boolean;
-  onToggleSelect?: (itemId: string) => void;
-}
 
 export const CardUI = React.memo(function CardUI({
   card,
@@ -462,7 +439,7 @@ export const CardUI = React.memo(function CardUI({
           {/* 3. Labels (compact pills: max 2 + counter pill to prevent any lone drop) */}
           {displayOptions?.properties?.labels !== false && labels.length > 0 && (
             <>
-              {labels.slice(0, 2).map((lbl: any) => {
+              {labels.slice(0, 2).map((lbl: { id?: string; name?: string; color?: string; title?: string }) => {
                 const lblName = lbl.title || lbl.name || lbl.id || '';
                 const lblColor = lbl.color || GROUP_DEFAULT_COLORS.label;
                 return (
@@ -492,7 +469,7 @@ export const CardUI = React.memo(function CardUI({
                     setLabelOpen(true);
                   }}
                   className="inline-flex items-center h-5 px-1.5 rounded-sm border border-border bg-muted/20 text-10 font-mono text-muted-foreground shrink-0 hover:bg-muted cursor-pointer"
-                  title={labels.slice(2).map((l: any) => l.title || l.name).join(', ')}
+                  title={labels.slice(2).map((l: { title?: string; name?: string }) => l.title || l.name).join(', ')}
                 >
                   +{labels.length - 2}
                 </button>
@@ -661,19 +638,6 @@ export const Card = React.memo(function Card(props: CardProps) {
 });
 
 // ── Column Component ────────────────────────────────────────────────────────
-
-export interface ColumnProps extends BaseWorkItemViewProps, Partial<WorkItemCardHandlers> {
-  column: ColumnType;
-  cards: Item[];
-  columns?: ColumnType[];
-  projectStates?: ColumnType[];
-  droppableId?: string;
-  laneId?: string;
-  subGroupBy?: string;
-  labelMap?: Map<string, ItemCardLabel>;
-  onAddCard?: (columnId: string, title?: string, swimlaneData?: { subGroupBy?: string; laneId?: string }) => void;
-  onUpdateItem?: (itemId: string, data: any) => void;
-}
 
 export const Column = React.memo(function Column({
   column,
@@ -1007,27 +971,6 @@ export const Column = React.memo(function Column({
 
 // ── BoardView Component ─────────────────────────────────────────────────────
 
-export interface BoardViewProps extends BaseWorkItemViewProps, Partial<WorkItemCardHandlers> {
-  items?: Item[];
-  itemsByColumnId?: Map<string, Item[]>;
-  columns: ColumnType[];
-  projectStates?: ColumnType[];
-  labelMap?: Map<string, ItemCardLabel>;
-  onAddCard?: (columnId: string, title?: string, swimlaneData?: { subGroupBy?: string; laneId?: string }) => void;
-  onMoveCard?: (itemId: string, newColumnId: string, laneData?: { subGroupBy?: string; laneId?: string }) => void;
-  onReorderCard?: (itemId: string, newColumnId: string, rank: number) => void;
-  onUpdateItem?: (itemId: string, data: any) => void;
-}
-
-export type BoardProps = BoardViewProps;
-
-interface SwimlaneDef {
-  id: string;
-  title: string;
-  color?: string;
-  icon?: React.ReactNode;
-}
-
 export const BoardView = React.memo(function BoardView({
   items: propItems = EMPTY_ARRAY,
   itemsByColumnId: propItemsByColumnId,
@@ -1111,7 +1054,7 @@ export const BoardView = React.memo(function BoardView({
       const allLabels = new Set<string>();
       items.forEach((t: Item) => {
         if (Array.isArray(t.labels)) {
-          t.labels.forEach((lbl: any) => {
+          t.labels.forEach((lbl: string | { id?: string; name?: string }) => {
             const str = typeof lbl === 'string' ? lbl : lbl?.name || lbl?.id;
             if (str) allLabels.add(str);
           });

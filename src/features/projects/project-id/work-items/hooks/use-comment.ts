@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { CommentService } from '../services/comment.service';
+import { CommentService } from '../api/work-item.api';
 
 export const commentKeys = {
   item: (id: string) => ['comments', id] as const,

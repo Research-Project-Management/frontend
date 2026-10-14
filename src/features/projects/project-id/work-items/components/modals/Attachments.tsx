@@ -28,73 +28,17 @@ import type {
   AttachFileItem,
   AttachLinkItem,
 } from '../../types/work-item.types';
+import type {
+  ItemAttachment,
+  AttachCenterData,
+  AttachmentsProps,
+} from '../../types/attachment.types';
+import {
+  getAttachmentTypeLabel,
+  formatAttachmentMeta,
+} from '../../utils/attachment.utils';
 
-export type ItemAttachment = {
-  id: string;
-  name: string;
-  type?: string | null;
-  size?: string | number | null;
-  createdAt?: string;
-  uploadedAt?: string;
-  url: string;
-};
-
-export type AttachCenterData = {
-  pages?: AttachPageItem[];
-  papers?: AttachPaperItem[];
-  files?: (ItemAttachment | AttachFileItem)[];
-  links?: AttachLinkItem[];
-};
-
-export type AttachmentsProps = {
-  attachments?: AttachCenterData | ItemAttachment[];
-  itemId?: string;
-  workItemId?: string;
-  projectId?: string;
-  onRenameAttachment?: (attachmentId: string, newName: string) => void;
-  onRemoveAttachment?: (attachmentId: string) => void;
-  onAttachPage?: (page: { pageId: string; title: string }) => void;
-  onDetachPage?: (pageId: string) => void;
-  onAttachPaper?: (paper: { paperId: string; title: string; doi?: string; citationKey?: string }) => void;
-  onDetachPaper?: (paperId: string) => void;
-  onAttachFile?: (file: { name: string; url: string; size?: number; type?: string; fileId?: string }) => void;
-  onDetachFile?: (fileId: string) => void;
-  onAttachLink?: (link: { title: string; url: string }) => void;
-  onDetachLink?: (linkIndex: number) => void;
-  onCommentAttachment?: (attachment: ItemAttachment) => void;
-  onDownloadAttachment?: (attachment: ItemAttachment) => void;
-  isReadOnly?: boolean;
-};
-
-function getAttachmentTypeLabel(attachment: ItemAttachment | AttachFileItem) {
-  const name = attachment.name?.trim() || '';
-  const extension = name.includes('.') ? name.split('.').pop()?.toUpperCase() : '';
-  const mimeType = attachment.type?.split('/')[0] || '';
-
-  if (extension) return extension;
-  if (mimeType === 'image') return 'IMG';
-  if (mimeType === 'video') return 'VID';
-  if (mimeType === 'audio') return 'AUD';
-  if (mimeType === 'application') return 'FILE';
-
-  return 'FILE';
-}
-
-function formatAttachmentMeta(dateStr?: string) {
-  if (!dateStr) return 'Added';
-  const createdDate = new Date(dateStr);
-  if (Number.isNaN(createdDate.getTime())) return 'Added';
-
-  const diffInMinutes = Math.floor((Date.now() - createdDate.getTime()) / 60000);
-  if (diffInMinutes < 1) return 'Just now';
-  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours}h ago`;
-
-  const diffInDays = Math.floor(diffInHours / 24);
-  return `${diffInDays}d ago`;
-}
+export type { ItemAttachment, AttachCenterData, AttachmentsProps };
 
 export function Attachments({
   attachments,
@@ -141,8 +85,8 @@ export function Attachments({
   );
   const projectPages = React.useMemo(
     () =>
-      rawProjectPages.map((p: any) => ({
-        id: p.id,
+      rawProjectPages.map((p: { id?: string; title?: string; name?: string }) => ({
+        id: p.id || '',
         title: p.title || 'Untitled Page',
       })),
     [rawProjectPages],
@@ -151,12 +95,23 @@ export function Attachments({
   const [customPageTitle, setCustomPageTitle] = useState('');
 
   // Attach Paper State
+  interface LibraryPaperItem {
+    id?: string;
+    title?: string;
+    authors?: string[] | string;
+    doi?: string;
+    DOI?: string;
+    citationKey?: string;
+    year?: string | number;
+    extra?: { citationKey?: string; [key: string]: unknown };
+    [key: string]: unknown;
+  }
   const [paperTitle, setPaperTitle] = useState('');
   const [paperDoi, setPaperDoi] = useState('');
   const [paperCitationKey, setPaperCitationKey] = useState('');
   const [paperDialogMode, setPaperDialogMode] = useState<'library' | 'manual'>('library');
   const [paperSearchQuery, setPaperSearchQuery] = useState('');
-  const [selectedLibraryPaper, setSelectedLibraryPaper] = useState<any | null>(null);
+  const [selectedLibraryPaper, setSelectedLibraryPaper] = useState<LibraryPaperItem | null>(null);
 
   const libraryScope = projectId || 'user';
   const { data: libraryData, isLoading: loadingLibraryPapers } = useViewItems(
@@ -165,7 +120,7 @@ export function Attachments({
     paperSearchQuery,
   );
   const libraryPapers = React.useMemo(() => {
-    const dataObj = libraryData as { items?: Array<Record<string, unknown>> } | undefined;
+    const dataObj = libraryData as { items?: LibraryPaperItem[] } | undefined;
     return Array.isArray(dataObj?.items) ? dataObj.items : [];
   }, [libraryData]);
 
@@ -424,7 +379,7 @@ export function Attachments({
                       {!isReadOnly && (
                         <button
                           type="button"
-                          onClick={() => onDetachPage?.((page as any).pageId || page.id || '')}
+                          onClick={() => onDetachPage?.(((page as { pageId?: string; id?: string }).pageId || page.id || ''))}
                           className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
                           title="Detach Page"
                         >
@@ -530,7 +485,7 @@ export function Attachments({
                     {!isReadOnly && (
                       <button
                         type="button"
-                        onClick={() => onDetachPaper?.(((paper as any).paperId || paper.id || ''))}
+                        onClick={() => onDetachPaper?.(((paper as { paperId?: string; id?: string }).paperId || paper.id || ''))}
                         className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
                         title="Detach Paper"
                       >
@@ -920,7 +875,7 @@ export function Attachments({
                     Searching library...
                   </div>
                 ) : libraryPapers.length > 0 ? (
-                  libraryPapers.map((paper: any) => {
+                  libraryPapers.map((paper) => {
                     const isSelected = selectedLibraryPaper?.id === paper.id;
                     const authorsList = Array.isArray(paper.authors)
                       ? paper.authors.join(', ')

@@ -2,17 +2,12 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
-import { isSameWeek } from 'date-fns';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { ViewService, type SavedViewRecord } from '../services/view.service';
-import { useProperty } from './use-property';
+
 import type {
   Item,
   Column,
   Project,
   Priority,
-  StateGroup,
   DisplayOptions,
   DueDateFilterOption,
   DisplayPropertyKey,
@@ -26,91 +21,25 @@ import type {
 import {
   DEFAULT_DISPLAY_OPTIONS,
   DEFAULT_FILTERS,
-  STATE_GROUPS,
 } from '../types/work-item.types';
+import type {
+  ViewMode,
+  AssigneeFilterOption,
+  UseTopbarOptions,
+} from '../types/topbar.types';
+import {
+  ITEMS_VIEW_STORAGE_KEY,
+  DISPLAY_OPTIONS_STORAGE_KEY,
+  VALID_MODES,
+  getDisplayOptionsStorageKey,
+  getInitialDisplayOptions,
+  PRIORITY_WEIGHT,
+} from '../utils/topbar.utils';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
-import { ItemHelpers, resolveStateId, inferStateGroup } from '../utils/work-item.utils';
+import { ItemHelpers, resolveStateId } from '../utils/work-item.utils';
 import { WorkItemFilterEngine } from '../utils/work-item-filter-engine';
 
-export type ViewMode = 'board' | 'list' | 'calendar' | 'table' | 'timeline' | 'split';
-
-const ITEMS_VIEW_STORAGE_KEY = 'flux:work-items-view-mode';
-const DISPLAY_OPTIONS_STORAGE_KEY = 'flux:work-item-display-options';
-const VALID_MODES: ViewMode[] = ['board', 'list', 'calendar', 'table', 'timeline', 'split'];
-
-const getDisplayOptionsStorageKey = (projId?: string, currentMode?: ViewMode) => {
-  const modeKey = currentMode || 'board';
-  return projId
-    ? `flux:work-item-display-options:${projId}:${modeKey}`
-    : `${DISPLAY_OPTIONS_STORAGE_KEY}:${modeKey}`;
-};
-
-const getInitialDisplayOptions = (projId?: string, targetMode: ViewMode = 'board'): DisplayOptions => {
-  const defaultGb: GroupByOption = (targetMode === 'table' || targetMode === 'timeline') ? 'none' : 'state';
-  if (typeof window !== 'undefined') {
-    try {
-      const modeKey = getDisplayOptionsStorageKey(projId, targetMode);
-      const saved = localStorage.getItem(modeKey);
-      if (saved) {
-        const parsed = JSON.parse(saved) as Record<string, any>;
-        const rawGb = parsed.groupBy;
-        const rawSubGb = parsed.subGroupBy;
-        const groupBy = rawGb && rawGb !== 'null' ? (rawGb as GroupByOption) : defaultGb;
-        let subGroupBy = rawSubGb && rawSubGb !== 'null' ? (rawSubGb as SubGroupByOption) : 'none';
-        if (subGroupBy === groupBy) subGroupBy = 'none';
-        return {
-          ...DEFAULT_DISPLAY_OPTIONS,
-          ...parsed,
-          groupBy,
-          subGroupBy,
-        };
-      }
-      // Fallback check legacy key if exists
-      const legacyKey = projId ? `flux:work-item-display-options:${projId}` : DISPLAY_OPTIONS_STORAGE_KEY;
-      const legacySaved = localStorage.getItem(legacyKey);
-      if (legacySaved) {
-        const parsed = JSON.parse(legacySaved) as Record<string, any>;
-        const groupBy = (targetMode === 'table' || targetMode === 'timeline') ? 'none' : ((parsed.groupBy && parsed.groupBy !== 'null' ? parsed.groupBy : defaultGb) as GroupByOption);
-        return {
-          ...DEFAULT_DISPLAY_OPTIONS,
-          ...parsed,
-          groupBy,
-        };
-      }
-    } catch {}
-  }
-  return {
-    ...DEFAULT_DISPLAY_OPTIONS,
-    groupBy: defaultGb,
-  };
-};
-
-const PRIORITY_WEIGHT: Record<Priority, number> = {
-  urgent: 4,
-  high: 3,
-  medium: 2,
-  low: 1,
-  none: 0,
-};
-
-export type AssigneeFilterOption = {
-  id: string;
-  name: string;
-  avatar?: string;
-};
-
-export interface UseTopbarOptions {
-  items?: Item[];
-  workItems?: Item[];
-  columns?: Column[];
-  selectedColumnIds?: string[];
-  onColumnFilterChange?: (colIds: string[]) => void;
-  assignees?: AssigneeFilterOption[];
-  members?: ProjectMember[];
-  selectedAssigneeIds?: string[];
-  onAssigneeFilterChange?: (userIds: string[]) => void;
-  initialFilters?: Partial<Filters>;
-}
+export type { ViewMode, AssigneeFilterOption, UseTopbarOptions };
 
 export function useTopbar({
   items: propItems,
@@ -130,19 +59,7 @@ export function useTopbar({
   const router = useRouter();
   const pathname = usePathname();
   const { projects = [] } = useProjects();
-  const queryClient = useQueryClient();
 
-  // ── Saved Views Query ──────────────────────────────────────────────────────
-  const { data: savedViews = [] } = useQuery({
-    queryKey: ['project-saved-views', projectId],
-    queryFn: () => ViewService.getViews(projectId),
-    enabled: Boolean(projectId),
-  });
-
-  const [activeViewId, setActiveViewId] = useState<string | undefined>(undefined);
-
-  // ── User Project Properties Query (Delegated to dedicated useProperty hook) ──
-  const { userProperties, updateProperties } = useProperty(projectId);
 
   // ── View Mode State (SSR-safe initial default to prevent hydration mismatch) ──
   const [mode, setModeState] = useState<ViewMode>('board');
@@ -157,10 +74,7 @@ export function useTopbar({
     // Switch display options to the target mode's layout preferences
     const modeOptions = getInitialDisplayOptions(projectId, newMode);
     setDisplayOptionsState(modeOptions);
-    if (projectId) {
-      updateProperties({ preferences: { viewMode: newMode } });
-    }
-  }, [projectId, updateProperties]);
+  }, [projectId]);
 
   // Client-side hydration sync for saved view mode & display options
   useEffect(() => {
@@ -302,54 +216,11 @@ export function useTopbar({
           localStorage.setItem(storageKey, JSON.stringify(next));
         } catch {}
       }
-      if (projectId) {
-        updateProperties({ displayProperties: next.properties as Record<string, unknown> });
-      }
       return next;
     });
-  }, [projectId, storageKey, updateProperties]);
+  }, [storageKey]);
 
-  // ── Saved View Controller Actions ─────────────────────────────────────────
-  const selectSavedView = useCallback((view: SavedViewRecord) => {
-    setActiveViewId(view.id);
-    if (view.layout && VALID_MODES.includes(view.layout as ViewMode)) {
-      setModeState(view.layout as ViewMode);
-    }
-    if (view.filters) {
-      setFilters((prev) => ({
-        ...prev,
-        ...(view.filters as Record<string, unknown>),
-      }));
-    }
-    if (view.displayProperties) {
-      setDisplayOptionsState((prev) => ({
-        ...prev,
-        properties: {
-          ...prev.properties,
-          ...(view.displayProperties as Record<string, unknown>),
-        },
-      }));
-    }
-  }, []);
 
-  const saveCurrentViewMutation = useMutation({
-    mutationFn: (name: string) =>
-      ViewService.createView(projectId, {
-        name,
-        layout: mode === 'split' ? 'board' : mode,
-        filters: filters as Record<string, unknown>,
-        displayProperties: displayOptions.properties as Record<string, unknown>,
-        access: 'public',
-      }),
-    onSuccess: (newView: SavedViewRecord) => {
-      queryClient.invalidateQueries({ queryKey: ['project-saved-views', projectId] });
-      setActiveViewId(newView.id);
-      toast.success(`Saved view "${newView.name}"`, { id: 'work-item-view-action' });
-    },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Failed to save view', { id: 'work-item-view-action' });
-    },
-  });
 
   // ── Dropdown Search States ────────────────────────────────────────────────
   const [projSearch, setProjSearch] = useState('');
@@ -659,8 +530,6 @@ export function useTopbar({
       filteredProjects,
       currentModule: 'work-items',
       projectId,
-      savedViews,
-      activeViewId,
     }),
     [
       mode,
@@ -677,8 +546,6 @@ export function useTopbar({
       displayOptions,
       filteredProjects,
       projectId,
-      savedViews,
-      activeViewId,
     ]
   );
 
@@ -710,9 +577,6 @@ export function useTopbar({
       updateDisplayProperty,
       setProjectSearch: setProjSearch,
       handleProjectClick: selectProject,
-      selectSavedView,
-      saveCurrentView: saveCurrentViewMutation.mutateAsync,
-      isSavingCurrentView: saveCurrentViewMutation.isPending,
     }),
     [
       setMode,
@@ -737,9 +601,6 @@ export function useTopbar({
       updateDisplayProperty,
       setProjSearch,
       selectProject,
-      selectSavedView,
-      saveCurrentViewMutation.mutateAsync,
-      saveCurrentViewMutation.isPending,
     ],
   );
 

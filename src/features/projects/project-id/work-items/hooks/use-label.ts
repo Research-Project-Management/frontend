@@ -1,8 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { LabelService, AVAILABLE_LABEL_COLORS, DEFAULT_LABEL_COLOR } from '../services/label.service';
-import type { Label } from '../types/work-item.types';
+import { LabelService, AVAILABLE_LABEL_COLORS, DEFAULT_LABEL_COLOR } from '../api/work-item.api';
 
 export { AVAILABLE_LABEL_COLORS, DEFAULT_LABEL_COLOR };
 

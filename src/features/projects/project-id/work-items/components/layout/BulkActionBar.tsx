@@ -23,7 +23,6 @@ import { Button } from '@/shared/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { cn } from "@/shared/lib/utils";
 import type {
   Column,
   Priority,
@@ -40,26 +39,9 @@ const PRIORITY_ICONS: Record<Priority, React.ElementType> = {
   none: CircleOff,
 };
 
-export interface BulkActionBarProps {
-  selectedIds?: string[];
-  totalCount: number;
-  columns: Column[];
-  members: ProjectMember[];
-  labels?: Array<{ id: string; name: string; color?: string }>;
-  onClearSelection: () => void;
-  onUpdateState: (columnId: string) => void;
-  onUpdatePriority: (priority: Priority) => void;
-  onUpdateAssignee: (assigneeId: string | null) => void;
-  onUpdateDueDate: (dueDate: string | null) => void;
-  onAddLabel?: (labelId: string) => void;
-  onRemoveLabel?: (labelId: string) => void;
-  onClearLabels?: () => void;
-  onDeleteSelected: () => void;
-  onArchiveSelected?: () => void;
-  onRestoreSelected?: () => void;
-  isArchivedView?: boolean;
-  isUpdating?: boolean;
-}
+import type { BulkActionBarProps } from '../../types/layout.types';
+
+export type { BulkActionBarProps };
 
 export const BulkActionBar: React.FC<BulkActionBarProps> = ({
   selectedIds = [],
@@ -198,7 +180,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
               <span>Unassign</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            {members.map((m: any) => {
+            {members.map((m: ProjectMember) => {
               const u = m.user || m;
               const memberId = m.id || m.userId || u.id;
               const name = u.name || 'Member';

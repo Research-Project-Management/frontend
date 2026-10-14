@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ArchiveService } from '../services/archive.service';
+import { ArchiveService } from '../api/work-item.api';
 import type { Item } from '../types/work-item.types';
 
 export const archiveKeys = {

@@ -11,16 +11,8 @@ import {
 } from "@/shared/components/ui/dialog";
 import { Button } from "@/shared/components/ui/button";
 import { Switch } from "@/shared/components/ui/switch";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/components/ui/popover";
 import { Form } from "@/shared/components/ui/form";
-import {
-  Loader2,
-  Plus,
-} from 'lucide-react';
+import { Loader2, Paperclip } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { cn } from "@/shared/lib/utils";
 import { useUpload } from "@/shared/hooks/use-upload";
@@ -31,7 +23,7 @@ import type {
   ItemMutationInput,
   Priority,
   ProjectMember,
-  ItemAttachment,
+  Label,
   AttachPageItem,
   AttachPaperItem,
   AttachFileItem,
@@ -42,7 +34,6 @@ import {
   resolveStateId,
   normalizeStates,
   ItemHelpers,
-  WorkItemHelpers,
   DEFAULT_STATES,
 } from '../../utils/work-item.utils';
 import { useLabelsQuery } from '../../hooks/use-label';
@@ -67,36 +58,14 @@ import {
   PriorityPopover,
   SingleDatePopover,
   ParentItemPopover,
-  AttachPaperclipIcon,
   ProjectSelectorPopover,
 } from './Popovers';
+import type { CreateModalProps } from '../../types/modal.types';
+import { EMPTY_ATTACHMENTS as DEFAULT_EMPTY_ATTACHMENTS } from '../../utils/modal.utils';
 
-export interface CreateModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  columns: Column[];
-  members?: ProjectMember[];
-  initialData?: Partial<Item>;
-  project?: {
-    id?: string;
-    name?: string;
-    identifier?: string;
-    emoji?: string | null;
-    icon?: string | null;
-    modules?: string[];
-  } | null;
-  availableItems?: Item[];
-  onSubmit: (data: ItemMutationInput & { createMore?: boolean }) => Promise<void> | void;
-  isSubmitting?: boolean;
-}
+export type { CreateModalProps };
 
 const DEFAULT_EMPTY_ARRAY: string[] = [];
-const DEFAULT_EMPTY_ATTACHMENTS: AttachCenterData = {
-  pages: [],
-  papers: [],
-  files: [],
-  links: [],
-};
 
 const pillBtnClass =
   'h-8 px-2.5 text-12 font-medium rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring outline-none';
@@ -179,7 +148,7 @@ export function CreateModal({
 
   const projectLabels = useMemo(() => {
     if (Array.isArray(rawLabels)) return rawLabels;
-    const labelsRecord = rawLabels as { labels?: any[] } | undefined;
+    const labelsRecord = rawLabels as { labels?: Label[] } | undefined;
     if (Array.isArray(labelsRecord?.labels)) return labelsRecord.labels;
     return [];
   }, [rawLabels]);
@@ -281,16 +250,17 @@ export function CreateModal({
   }, [attachments]);
 
   // Normalize attachments input
-  const normalizeAttachments = useCallback((raw: any): AttachCenterData => {
+  const normalizeAttachments = useCallback((raw: unknown): AttachCenterData => {
     if (!raw) return { pages: [], papers: [], files: [], links: [] };
     if (Array.isArray(raw)) {
-      return { pages: [], papers: [], files: raw, links: [] };
+      return { pages: [], papers: [], files: raw as AttachFileItem[], links: [] };
     }
+    const obj = raw as Partial<AttachCenterData>;
     return {
-      pages: Array.isArray(raw.pages) ? raw.pages : [],
-      papers: Array.isArray(raw.papers) ? raw.papers : [],
-      files: Array.isArray(raw.files) ? raw.files : [],
-      links: Array.isArray(raw.links) ? raw.links : [],
+      pages: Array.isArray(obj.pages) ? obj.pages : [],
+      papers: Array.isArray(obj.papers) ? obj.papers : [],
+      files: Array.isArray(obj.files) ? obj.files : [],
+      links: Array.isArray(obj.links) ? obj.links : [],
     };
   }, []);
 
@@ -713,7 +683,7 @@ export function CreateModal({
                   'border-ring bg-muted text-foreground font-medium'
               )}
             >
-              <AttachPaperclipIcon />
+              <Paperclip className="h-3.5 w-3.5 mr-1" />
               <span>
                 {totalAttachments > 0 ? `Attach (${totalAttachments})` : 'Attach'}
               </span>

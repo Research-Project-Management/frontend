@@ -2,11 +2,9 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Button } from '@/shared/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { Input } from '@/shared/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import {
   MoreHorizontal,
   X,
@@ -14,31 +12,21 @@ import {
   Trash2,
   UserMinus,
   UserPlus,
-  RotateCcw,
-  Clock,
-  Paperclip,
   GitBranch,
   Check,
-  Zap,
   ArrowUpRight,
   Archive,
   ArchiveRestore,
-  Bookmark,
   Bell,
   BellOff,
   ChevronRight,
   ChevronDown,
-  ChevronUp,
   Maximize2,
   Minimize2,
   PanelRight,
   Link2,
   ArrowRight,
-  Folder,
-  Plus,
-  CalendarDays,
   User,
-  Sparkles,
   Loader2,
 } from "lucide-react";
 import { useParams } from "next/navigation";
@@ -54,16 +42,15 @@ import type {
   SubItem,
   Project,
   ProjectMember,
+  Label,
   AttachPageItem,
   AttachPaperItem,
-  AttachFileItem,
   AttachLinkItem,
 } from '../../types/work-item.types';
 import {
   resolveColumnId,
   resolveStateId,
   ItemHelpers,
-  WorkItemHelpers,
 } from "../../utils/work-item.utils";
 import { StatusIcon } from "@/shared/components/icons";
 import {
@@ -105,78 +92,15 @@ import {
   ParentItemPopover,
 } from "./Popovers";
 import { Relations } from "./Relations";
+import type { DetailModalProps } from "../../types/modal.types";
+import {
+  EMPTY_ATTACHMENTS,
+  normalizeAttachments,
+  formatMetaDate,
+  getTimeAgo,
+} from "../../utils/modal.utils";
 
-const EMPTY_ATTACHMENTS: AttachCenterData = {
-  pages: [],
-  papers: [],
-  files: [],
-  links: [],
-};
-
-const normalizeAttachments = (raw: any): AttachCenterData => {
-  if (!raw) return { pages: [], papers: [], files: [], links: [] };
-  if (Array.isArray(raw)) {
-    return { pages: [], papers: [], files: raw, links: [] };
-  }
-  return {
-    pages: Array.isArray(raw.pages) ? raw.pages : [],
-    papers: Array.isArray(raw.papers) ? raw.papers : [],
-    files: Array.isArray(raw.files) ? raw.files : [],
-    links: Array.isArray(raw.links) ? raw.links : [],
-  };
-};
-
-const formatMetaDate = (dateStr?: string | null) => {
-  if (!dateStr) return null;
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return null;
-    return d.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-  } catch {
-    return dateStr;
-  }
-};
-
-const getTimeAgo = (dateStr?: string | null) => {
-  if (!dateStr) return 'recently';
-  try {
-    const diffMs = Date.now() - new Date(dateStr).getTime();
-    const diffSec = Math.floor(diffMs / 1000);
-    if (diffSec < 60) return 'just now';
-    const diffMin = Math.floor(diffSec / 60);
-    if (diffMin < 60) return `${diffMin}m ago`;
-    const diffHours = Math.floor(diffMin / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 30) return `${diffDays} days ago`;
-    const diffMonths = Math.floor(diffDays / 30);
-    return `${diffMonths} months ago`;
-  } catch {
-    return 'recently';
-  }
-};
-
-export type DetailModalProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  item?: Partial<Item>;
-  card?: Partial<Item>;
-  columns: Column[];
-  project?: Project;
-  members?: ProjectMember[];
-  availableItems?: Item[];
-  onSave: (data: ItemMutationInput) => void;
-  onDelete?: () => void;
-  onDuplicate?: () => void;
-  isReadOnly?: boolean;
-};
+export type { DetailModalProps };
 
 export function DetailModal({
   open,
@@ -205,7 +129,7 @@ export function DetailModal({
 
   const projectLabels = useMemo(() => {
     if (Array.isArray(rawLabels)) return rawLabels;
-    const labelsRecord = rawLabels as { labels?: any[] } | undefined;
+    const labelsRecord = rawLabels as { labels?: Label[] } | undefined;
     if (Array.isArray(labelsRecord?.labels)) return labelsRecord.labels;
     return [];
   }, [rawLabels]);
@@ -232,8 +156,6 @@ export function DetailModal({
   const [assigneeId, setAssigneeId] = useState<string | null>(null);
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [parentId, setParentId] = useState<string | null>(card?.parentId || null);
-  const rawCardModule = card as (Item & { moduleId?: string | null }) | undefined;
-  const [moduleId, setModuleId] = useState<string | null>(rawCardModule?.moduleId || null);
   const [commentText, setCommentText] = useState("");
   const [showDetailActivity, setShowDetailActivity] = useState(false);
   const [timeSpent, setTimeSpent] = useState<number | null>(() => {
@@ -302,8 +224,8 @@ export function DetailModal({
   }, [rawCard]);
   const isSubscribed = Boolean(currentUserId && subscriberList.includes(currentUserId));
 
-  // Author & timestamps for Plane metadata display
-  const authorName = rawCard?.author?.name || rawCard?.creator?.name || rawCard?.createdByName || currentUser?.name || 'Plane';
+  // Author & timestamps for metadata display
+  const authorName = rawCard?.author?.name || rawCard?.creator?.name || rawCard?.createdByName || currentUser?.name || 'Member';
   const createdAtFormatted = formatMetaDate(rawCard?.createdAt) || formatMetaDate(new Date().toISOString());
   const updatedAtFormatted = formatMetaDate(rawCard?.updatedAt);
   const completedAtFormatted = rawCard?.completedAt ? formatMetaDate(rawCard.completedAt) : (completed ? 'Completed' : null);
@@ -347,7 +269,7 @@ export function DetailModal({
     await restoreItemMutation.mutateAsync(workItemId);
   };
 
-  const handleConvertSubItem = async (sub: any, sIdx: number) => {
+  const handleConvertSubItem = async (sub: SubItem, sIdx: number) => {
     try {
       await convertSubItemToRoot.mutateAsync({ id: sub.id, itemId: sub.id, workItemId: sub.id });
       const updated = subItems.filter((_, i) => i !== sIdx);
@@ -400,8 +322,6 @@ export function DetailModal({
       setDueDate(card.dueDate || "");
       setStartDate(card.startDate || "");
       setParentId(card.parentId || null);
-      const cardObj = card as (Item & { moduleId?: string | null });
-      setModuleId(cardObj.moduleId || null);
       setSubItems(
         Array.isArray(card.childWorkItems) && card.childWorkItems.length > 0
           ? card.childWorkItems
@@ -436,7 +356,6 @@ export function DetailModal({
       setAssigneeId(null);
       setAssigneeIds([]);
       setParentId(null);
-      setModuleId(null);
       setSubItems([]);
       setCompleted(false);
       setAttachments(EMPTY_ATTACHMENTS);
@@ -484,7 +403,7 @@ export function DetailModal({
       setAttachments(normalized);
       if (initialSnapshotRef.current) {
         try {
-          const parsed = JSON.parse(initialSnapshotRef.current) as Record<string, any>;
+          const parsed = JSON.parse(initialSnapshotRef.current) as Record<string, unknown>;
           parsed.attachments = normalized;
           initialSnapshotRef.current = JSON.stringify(parsed);
           autosaveSignatureRef.current = initialSnapshotRef.current;
@@ -495,12 +414,12 @@ export function DetailModal({
 
   useEffect(() => {
     if (fetchedRelationsData) {
-      const rawList = Array.isArray(fetchedRelationsData)
+      const rawList: Relation[] = Array.isArray(fetchedRelationsData)
         ? fetchedRelationsData
-        : Array.isArray((fetchedRelationsData as any).relations)
-        ? (fetchedRelationsData as any).relations
+        : Array.isArray((fetchedRelationsData as { relations?: Relation[] }).relations)
+        ? (fetchedRelationsData as { relations: Relation[] }).relations
         : [];
-      const mappedRelations: Relation[] = rawList.map((r: any) => ({
+      const mappedRelations: Relation[] = rawList.map((r: Relation) => ({
         id: r.id,
         type: r.type,
         targetId: r.targetWorkItemId || r.targetId || r.targetWorkItem?.id,
@@ -654,17 +573,17 @@ export function DetailModal({
 
     if (workItemId) {
       try {
-        const res: any = await createSubItemMutation.mutateAsync({
+        const res = (await createSubItemMutation.mutateAsync({
           id: workItemId,
           itemId: workItemId,
           workItemId: workItemId,
           title: itemTitle,
           columnId: defaultUnstartedColumnId,
-        });
-        const created = res?.subItem || res?.workItem || res?.item || res;
+        })) as { subItem?: SubItem; workItem?: SubItem; item?: SubItem } & Partial<SubItem>;
+        const created = (res?.subItem || res?.workItem || res?.item || res) as Partial<SubItem>;
         const newSub: SubItem = {
-          id: created.id,
-          title: created.title,
+          id: created.id || `sub_${Date.now()}`,
+          title: created.title || itemTitle,
           identifier: created.identifier,
           columnId: created.columnId || defaultUnstartedColumnId,
           completed: created.completed || false,
@@ -739,7 +658,7 @@ export function DetailModal({
     const updated: AttachCenterData = {
       ...attachments,
       pages: (attachments.pages || []).filter(
-        (p: any) => (p.pageId || p.id) !== pageId
+        (p: { pageId?: string; id?: string }) => (p.pageId || p.id) !== pageId
       ),
     };
     setAttachments(updated);
@@ -774,7 +693,7 @@ export function DetailModal({
     const updated: AttachCenterData = {
       ...attachments,
       papers: (attachments.papers || []).filter(
-        (p: any) => (p.paperId || p.id) !== paperId
+        (p: { paperId?: string; id?: string }) => (p.paperId || p.id) !== paperId
       ),
     };
     setAttachments(updated);
@@ -1474,7 +1393,7 @@ export function DetailModal({
                   <span className="text-12 font-medium text-foreground tracking-tight">Sub-items</span>
                   {subItems.length > 0 && (
                     <span className="text-11 font-mono font-medium text-foreground px-1.5 py-0.5 rounded bg-muted tabular-nums">
-                      {subItems.filter((s: any) => s.completed || s.stateGroup === 'completed' || s.state?.group === 'completed' || s.columnId === 'done').length}/{subItems.length}
+                      {subItems.filter((s: SubItem) => s.completed || s.columnId === 'done').length}/{subItems.length}
                     </span>
                   )}
                 </div>
@@ -1498,7 +1417,7 @@ export function DetailModal({
               {/* Sub-items List */}
               {subItems.length > 0 && (
                 <div className="divide-y divide-border rounded-md border border-border bg-background overflow-hidden">
-                  {subItems.map((sub: any, sIdx: number) => {
+                  {subItems.map((sub: SubItem, sIdx: number) => {
                     const isSubDone = Boolean(sub.completed || sub.stateGroup === 'completed' || sub.state?.group === 'completed' || sub.columnId === 'done');
                     const isSubCancelled = Boolean(sub.columnId === 'cancelled' || sub.stateGroup === 'cancelled' || sub.state?.group === 'cancelled');
                     return (

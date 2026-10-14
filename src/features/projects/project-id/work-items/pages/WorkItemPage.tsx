@@ -1,97 +1,43 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { useParams, useRouter, useSearchParams, usePathname } from "next/navigation";
-import dynamic from "next/dynamic";
-import Topbar from "../components/layout/Topbar";
-import { FilterPillsBar } from "../components/filters/FilterPillsBar";
-import { EmptyState } from "../components/views/EmptyState";
-
-const BoardView = dynamic(
-  () => import("../components/views/BoardView").then((m) => m.BoardView),
-  { ssr: false }
-);
-const ListView = dynamic(
-  () => import("../components/views/ListView").then((m) => m.ListView),
-  { ssr: false }
-);
-
-const CalendarView = dynamic(
-  () => import("../components/views/CalendarView").then((m) => m.CalendarView),
-  { ssr: false }
-);
-const TableView = dynamic(
-  () => import("../components/views/TableView").then((m) => m.TableView),
-  { ssr: false }
-);
-const TimelineView = dynamic(
-  () => import("../components/views/TimelineView").then((m) => m.TimelineView),
-  { ssr: false }
-);
-
-const CreateModal = dynamic(
-  () => import("../components/modals/CreateModal").then((m) => m.CreateModal),
-  { ssr: false }
-);
-const DetailModal = dynamic(
-  () => import("../components/modals/DetailModal").then((m) => m.DetailModal),
-  { ssr: false }
-);
-const DeleteModal = dynamic(
-  () => import("../components/modals/DeleteModal").then((m) => m.DeleteModal),
-  { ssr: false }
-);
-const AnalyticsDrawer = dynamic(
-  () => import("../components/analytics/AnalyticsDrawer").then((m) => m.AnalyticsDrawer),
-  { ssr: false }
-);
-import { BulkActionBar } from "../components/layout/BulkActionBar";
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
+import Topbar from '../components/layout/Topbar';
+import { FilterPillsBar } from '../components/filters/FilterPillsBar';
+import { BulkActionBar } from '../components/layout/BulkActionBar';
+import {
+  WorkItemModals,
+  ModalState,
+} from '../components/layout/WorkItemModals';
+import { WorkItemViewContainer } from '../components/layout/WorkItemViewContainer';
 import {
   useProject,
   useBulkUpdate,
   useBulkDelete,
-} from "../hooks/use-work-item";
+  useWorkItemSelection,
+} from '../hooks/use-work-item';
 import {
   useBulkArchive,
   useBulkRestore,
   useArchivedItems,
-} from "../hooks/use-archive";
+} from '../hooks/use-archive';
+import { useWorkItemGrouping } from '../hooks/use-work-item-grouping';
 import {
   ItemHelpers,
-  WorkItemHelpers,
-  resolveColumnId,
   resolveStateId,
-  getItemBucketKey,
-  PRIORITY_THEME_COLORS,
-  GROUP_DEFAULT_COLORS,
-} from "../utils/work-item.utils";
-import { useTopbar } from "../hooks/use-topbar";
-import { useRealtimeWorkItems } from "../hooks/use-realtime";
+} from '../utils/work-item.utils';
+import { useTopbar } from '../hooks/use-topbar';
+import { useRealtimeWorkItems } from '../hooks/use-realtime';
 import type {
   Item,
-  WorkItem,
   ItemMutationInput,
-  WorkItemMutationInput,
-  Column,
   Priority,
-} from "../types/work-item.types";
+} from '../types/work-item.types';
 import { Button } from '@/shared/components/ui/button';
 import { Skeleton } from '@/shared/components/ui/skeleton';
-import { Input } from '@/shared/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import {
-  Plus,
-  Archive,
-  SlidersHorizontal,
-} from "lucide-react";
-import { WorkItemsIcon } from "@/shared/components/icons";
-
-export type ModalState =
-  | { type: 'idle' }
-  | { type: 'create'; initialData?: Partial<Item> }
-  | { type: 'detail'; card: Item; item?: Item }
-  | { type: 'delete'; item: Item };
+import { Archive } from 'lucide-react';
+import { WorkItemsIcon } from '@/shared/components/icons';
 
 export interface WorkItemPageProps {
   isReadOnly?: boolean;
@@ -99,8 +45,6 @@ export interface WorkItemPageProps {
 export type PageProps = WorkItemPageProps;
 
 const EMPTY_ITEMS: Item[] = [];
-const EMPTY_COLUMNS: Column[] = [];
-const EMPTY_SELECTED_IDS: string[] = [];
 
 export function WorkItemPage({
   isReadOnly: propIsReadOnly,
@@ -110,13 +54,11 @@ export function WorkItemPage({
   const searchParams = useSearchParams();
   const params = useParams() as {
     projectId?: string;
-    viewId?: string;
   };
-  const projectId = params.projectId || "";
-  const rawViewId = params.viewId || searchParams?.get('viewId');
+  const projectId = params.projectId || '';
   const isReadOnly = propIsReadOnly ?? false;
 
-  // ── 1. Data Domain Layer (useProject) ─────────────────────────────────
+  // ── 1. Data Domain Layer (useProject) ──────────────────────────────────────
   const { state: projectState, actions: projectActions } = useProject({
     projectId,
   });
@@ -134,7 +76,7 @@ export function WorkItemPage({
   } = projectState;
   const allItems = projectItems || EMPTY_ITEMS;
 
-  // ── Multi-select & Bulk Operations ─────────────────────────────────────────
+  // ── 2. Multi-select & Bulk Operations ──────────────────────────────────────
   const bulkUpdateMutation = useBulkUpdate();
   const bulkDeleteMutation = useBulkDelete();
   const bulkArchiveMutation = useBulkArchive();
@@ -146,21 +88,12 @@ export function WorkItemPage({
     return showArchived ? archivedItems : allItems;
   }, [showArchived, archivedItems, allItems]);
 
-  const [selectedIds, setSelectedIds] = useState<string[]>(EMPTY_SELECTED_IDS);
-
-  const handleToggleSelect = useCallback((id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  }, []);
-
-  const handleSelectAll = useCallback((ids?: string[]) => {
-    setSelectedIds(ids || EMPTY_SELECTED_IDS);
-  }, []);
-
-  const handleClearSelection = useCallback(() => {
-    setSelectedIds(EMPTY_SELECTED_IDS);
-  }, []);
+  const {
+    selectedIds,
+    toggleSelect: handleToggleSelect,
+    selectAll: handleSelectAll,
+    clearSelection: handleClearSelection,
+  } = useWorkItemSelection();
 
   const handleBulkUpdate = useCallback(
     (data: Record<string, unknown>) => {
@@ -179,7 +112,7 @@ export function WorkItemPage({
   );
 
   const handleBulkUpdateState = useCallback((columnId: string) => handleBulkUpdate({ columnId }), [handleBulkUpdate]);
-  const handleBulkUpdatePriority = useCallback((priority: any) => handleBulkUpdate({ priority }), [handleBulkUpdate]);
+  const handleBulkUpdatePriority = useCallback((priority: Priority) => handleBulkUpdate({ priority }), [handleBulkUpdate]);
   const handleBulkUpdateAssignee = useCallback((assigneeId: string | null) => handleBulkUpdate({ assigneeId }), [handleBulkUpdate]);
   const handleBulkUpdateDueDate = useCallback((dueDate: string | null) => handleBulkUpdate({ dueDate }), [handleBulkUpdate]);
   const handleBulkAddLabel = useCallback((labelId: string) => handleBulkUpdate({ addLabel: labelId }), [handleBulkUpdate]);
@@ -210,7 +143,7 @@ export function WorkItemPage({
     );
   }, [selectedIds, bulkRestoreMutation, projectId, handleClearSelection]);
 
-  // ── 2. View & Filter Presentation Layer (useTopbar) ───────────────────────
+  // ── 3. View & Filter Presentation Layer (useTopbar) ────────────────────────
   const { state: topbarState, actions: topbarActions } = useTopbar({
     items: displayItems,
     columns,
@@ -229,10 +162,9 @@ export function WorkItemPage({
     totalActiveFilters,
     filteredItems,
     assignees,
-    savedViews,
-    activeViewId,
     filters,
   } = topbarState;
+
   const activeFilteredItems: Item[] = useMemo(
     () => filteredItems || EMPTY_ITEMS,
     [filteredItems]
@@ -257,157 +189,24 @@ export function WorkItemPage({
     updateDisplayProperty,
     setDisplayOpen,
     setAnalyticsOpen,
-    selectSavedView,
-    saveCurrentView,
-    isSavingCurrentView,
   } = topbarActions;
 
-  const [isSaveViewOpen, setIsSaveViewOpen] = useState(false);
-  const [newViewName, setNewViewName] = useState('');
+  // ── 4. Dynamic GroupBy & Column Bucketing Adapter ───────────────────────────
+  const {
+    effectiveGroupBy,
+    itemsByColumnId,
+    visibleColumns,
+  } = useWorkItemGrouping({
+    items: activeFilteredItems,
+    columns,
+    members,
+    labels,
+    displayOptions,
+  });
 
-  // Auto-activate saved view if viewId is passed in URL params or route
-  const appliedViewIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!rawViewId || !savedViews || savedViews.length === 0) return;
-    if (appliedViewIdRef.current === rawViewId) return;
-
-    const targetView = savedViews.find((v) => v.id === rawViewId);
-    if (targetView) {
-      appliedViewIdRef.current = rawViewId;
-      selectSavedView(targetView);
-    }
-  }, [rawViewId, savedViews, selectSavedView]);
-
-  // ── 3. Dynamic GroupBy Adapter (Plane.so matching architecture) ──────────
-  const effectiveGroupBy = useMemo(() => {
-    const gb = displayOptions.groupBy;
-    return gb && ['state', 'priority', 'assignee', 'labels', 'none', 'createdBy'].includes(gb)
-      ? gb
-      : 'state';
-  }, [displayOptions.groupBy]);
-
-  const activeColumns = useMemo<Column[]>(() => {
-    const groupBy = effectiveGroupBy;
-    if (groupBy === 'priority') {
-      return [
-        { id: 'urgent', name: 'Urgent', title: 'Urgent', color: PRIORITY_THEME_COLORS.urgent, accentColor: PRIORITY_THEME_COLORS.urgent, group: 'unstarted', sequence: 0, isDefault: false },
-        { id: 'high', name: 'High', title: 'High', color: PRIORITY_THEME_COLORS.high, accentColor: PRIORITY_THEME_COLORS.high, group: 'unstarted', sequence: 1, isDefault: false },
-        { id: 'medium', name: 'Medium', title: 'Medium', color: PRIORITY_THEME_COLORS.medium, accentColor: PRIORITY_THEME_COLORS.medium, group: 'unstarted', sequence: 2, isDefault: false },
-        { id: 'low', name: 'Low', title: 'Low', color: PRIORITY_THEME_COLORS.low, accentColor: PRIORITY_THEME_COLORS.low, group: 'unstarted', sequence: 3, isDefault: false },
-        { id: 'none', name: 'No Priority', title: 'No Priority', color: PRIORITY_THEME_COLORS.none, accentColor: PRIORITY_THEME_COLORS.none, group: 'unstarted', sequence: 4, isDefault: false },
-      ];
-    }
-    if (groupBy === 'assignee') {
-      const memberCols: Column[] = (members || []).map((m, idx) => {
-        const mem = m as typeof m & { user?: { id?: string; name?: string } };
-        const userId = mem.userId || mem.user?.id || mem.id || `member-${idx}`;
-        const name = mem.name || mem.user?.name || 'Member';
-        return {
-          id: userId,
-          name,
-          title: name,
-          color: GROUP_DEFAULT_COLORS.assignee,
-          accentColor: GROUP_DEFAULT_COLORS.assignee,
-          group: 'unstarted',
-          sequence: idx,
-          isDefault: false,
-        };
-      });
-      return [
-        ...memberCols,
-        { id: '__unassigned__', name: 'Unassigned', title: 'Unassigned', color: GROUP_DEFAULT_COLORS.unassigned, accentColor: GROUP_DEFAULT_COLORS.unassigned, group: 'backlog', sequence: 999, isDefault: false },
-      ];
-    }
-    if (groupBy === 'labels') {
-      const labelCols: Column[] = (labels || []).map((l: any, idx: number) => {
-        const id = l.id || l.name;
-        const name = l.name || l.title || 'Label';
-        const color = l.color || GROUP_DEFAULT_COLORS.label;
-        return {
-          id,
-          name,
-          title: name,
-          color,
-          accentColor: color,
-          group: 'unstarted',
-          sequence: idx,
-          isDefault: false,
-        };
-      });
-      return [
-        ...labelCols,
-        { id: '__no_label__', name: 'No Label', title: 'No Label', color: GROUP_DEFAULT_COLORS.noLabel, accentColor: GROUP_DEFAULT_COLORS.noLabel, group: 'backlog', sequence: 999, isDefault: false },
-      ];
-    }
-    if (groupBy === 'createdBy') {
-      const authorCols: Column[] = (members || []).map((m: any, idx: number) => {
-        const userId = m.userId || m.user?.id || m.id || `author-${idx}`;
-        const name = m.name || m.user?.name || 'Member';
-        return {
-          id: userId,
-          name,
-          title: name,
-          color: GROUP_DEFAULT_COLORS.createdBy,
-          accentColor: GROUP_DEFAULT_COLORS.createdBy,
-          group: 'unstarted',
-          sequence: idx,
-          isDefault: false,
-        };
-      });
-      return [
-        ...authorCols,
-        { id: '__unknown__', name: 'Unknown Creator', title: 'Unknown Creator', color: GROUP_DEFAULT_COLORS.unknown, accentColor: GROUP_DEFAULT_COLORS.unknown, group: 'backlog', sequence: 999, isDefault: false },
-      ];
-    }
-    if (groupBy === 'none') {
-      return [
-        { id: '__all__', name: 'All Work Items', title: 'All Work Items', color: GROUP_DEFAULT_COLORS.all, accentColor: GROUP_DEFAULT_COLORS.all, group: 'unstarted', sequence: 0, isDefault: true },
-      ];
-    }
-    return columns;
-  }, [effectiveGroupBy, columns, members, labels]);
-
-  // ── 4. Kanban Column Mapping ──────────────────────────────────────────────
-  const itemsByColumnId = useMemo(() => {
-    const map = new Map<string, Item[]>();
-    for (const column of activeColumns) {
-      const colId = resolveColumnId(column);
-      if (colId) map.set(colId, []);
-    }
-
-    const fallbackCol = activeColumns.find((c) => c.isDefault) || activeColumns[0];
-    const fallbackColId = fallbackCol ? resolveColumnId(fallbackCol) : undefined;
-
-    for (const item of activeFilteredItems) {
-      const bucketKey = getItemBucketKey(item, effectiveGroupBy);
-      if (bucketKey && map.has(bucketKey)) {
-        map.get(bucketKey)!.push(item);
-      } else if (fallbackColId && map.has(fallbackColId)) {
-        map.get(fallbackColId)!.push(item);
-      } else if (bucketKey) {
-        map.set(bucketKey, [item]);
-      }
-    }
-    return map;
-  }, [activeColumns, activeFilteredItems, effectiveGroupBy]);
-
-  // Display visible columns respecting showEmptyGroups
-  const visibleColumns = useMemo(() => {
-    if (displayOptions.showEmptyGroups === false && effectiveGroupBy !== 'none') {
-      const filtered = activeColumns.filter((col) => {
-        const colId = resolveColumnId(col);
-        const count = itemsByColumnId.get(colId)?.length ?? 0;
-        return count > 0;
-      });
-      return filtered.length > 0 ? filtered : activeColumns;
-    }
-    return activeColumns;
-  }, [activeColumns, itemsByColumnId, displayOptions.showEmptyGroups, effectiveGroupBy]);
-
-  // ── 4. Unified Discriminated Modal State (Matt Pocock Pattern) ────────────
+  // ── 5. Unified Modal State & Keyboard Shortcuts ────────────────────────────
   const [modal, setModal] = useState<ModalState>({ type: 'idle' });
   const closeModal = useCallback(() => setModal({ type: 'idle' }), []);
-
   const pathname = usePathname();
 
   useEffect(() => {
@@ -451,8 +250,7 @@ export function WorkItemPage({
     };
   }, [columns, searchParams, pathname, router]);
 
-  // ── Handlers & Actions ────────────────────────────────────────────────────
-
+  // ── 6. Action Handlers ─────────────────────────────────────────────────────
   const handleOpenAddDialog = useCallback((
     columnIdOrOptions: string | { columnId?: string; title?: string; dueDate?: string; lane?: { subGroupBy?: string; laneId?: string } },
     titleArg?: string,
@@ -554,7 +352,7 @@ export function WorkItemPage({
       return;
     }
 
-    const updatePayload: any = { columnId: newColumnId };
+    const updatePayload: Partial<Item> = { columnId: newColumnId };
     if (laneData?.subGroupBy && laneData?.laneId) {
       if (laneData.subGroupBy === 'priority') {
         updatePayload.priority = (laneData.laneId === 'none' ? 'none' : laneData.laneId) as Priority;
@@ -636,9 +434,7 @@ export function WorkItemPage({
   }, [effectiveGroupBy, projectActions, projectId, displayItems]);
 
   const handleCreateItem = useCallback(async (formData: ItemMutationInput & { createMore?: boolean }) => {
-    if (!formData.title?.trim()) {
-      return;
-    }
+    if (!formData.title?.trim()) return;
 
     const { createMore, ...restData } = formData;
     const defaultCol = columns.find((c) => c.isDefault) || columns[0];
@@ -651,8 +447,12 @@ export function WorkItemPage({
     };
 
     try {
-      const result: any = await (projectActions.createWorkItem || projectActions.create)(payload);
-      const createdItem = result?.subItem || result?.workItem || result?.item;
+      const result = (await (projectActions.createWorkItem || projectActions.create)(payload)) as {
+        subItem?: Item;
+        workItem?: Item;
+        item?: Item;
+      } & Partial<Item>;
+      const createdItem = result?.subItem || result?.workItem || result?.item || (result?.id ? (result as Item) : undefined);
       if (createMore) {
         setModal({
           type: 'create',
@@ -664,15 +464,13 @@ export function WorkItemPage({
         closeModal();
       }
     } catch {
-      // Error is handled by mutation hook
+      // Error handled by mutation hook
     }
   }, [columns, projectId, projectActions, closeModal]);
 
   const handleSaveCard = useCallback(async (formData: ItemMutationInput) => {
     if (modal.type !== 'detail' || !modal.card.id) return;
-    if (!formData.title?.trim()) {
-      return;
-    }
+    if (!formData.title?.trim()) return;
 
     const payload = {
       ...formData,
@@ -685,7 +483,7 @@ export function WorkItemPage({
     try {
       await projectActions.updateWorkItem(payload);
     } catch {
-      // Error is handled by mutation hook
+      // Error handled by mutation hook
     }
   }, [modal, projectId, projectActions]);
 
@@ -743,32 +541,13 @@ export function WorkItemPage({
   }, [projectActions]);
 
   const handleQuickUpdateItem = useCallback(
-    (itemId: string, data: any) => {
+    (itemId: string, data: Partial<Item>) => {
       projectActions.updateWorkItem({ workItemId: itemId, id: itemId, projectId, ...data });
     },
     [projectActions, projectId],
   );
 
-  const handleOpenSaveView = useCallback(() => setIsSaveViewOpen(true), []);
-  const handleCloseSaveView = useCallback(() => setIsSaveViewOpen(false), []);
-  const handleToggleArchived = useCallback(() => setShowArchived((prev) => !prev), []);
-  const handleDisableArchived = useCallback(() => setShowArchived(false), []);
-  const handleOpenAnalytics = useCallback(() => setAnalyticsOpen(true), [setAnalyticsOpen]);
-  const handleCloseAnalytics = useCallback(() => setAnalyticsOpen(false), [setAnalyticsOpen]);
-  const handleAddItemClick = useCallback(() => setModal({ type: 'create' }), []);
-  const handleModalOpenChange = useCallback((open: boolean) => {
-    if (!open) closeModal();
-  }, [closeModal]);
-  const handleDuplicateModalCard = useCallback(() => {
-    if (modal.type === 'detail' && modal.card.id) {
-      handleDuplicateCard(modal.card);
-    }
-  }, [modal, handleDuplicateCard]);
-  const handleCreateItemFromEmpty = useCallback(() => {
-    const firstCol = columns[0];
-    handleOpenAddDialog(firstCol ? resolveStateId(firstCol) : "");
-  }, [columns, handleOpenAddDialog]);
-  const handleQuickUpdateItemFromCard = useCallback((item: any) => {
+  const handleQuickUpdateItemFromCard = useCallback((item: { id: string } & Partial<Item>) => {
     handleQuickUpdateItem(item.id, item);
   }, [handleQuickUpdateItem]);
 
@@ -802,13 +581,9 @@ export function WorkItemPage({
         projectId={projectId}
         project={project}
         projectModules={(project as { modules?: string[] } | undefined)?.modules}
-        savedViews={savedViews}
-        activeViewId={activeViewId}
-        onSelectSavedView={selectSavedView}
-        onSaveCurrentView={handleOpenSaveView}
         showArchived={showArchived}
-        onToggleArchived={handleToggleArchived}
-        title={showArchived ? "Archived items" : "Work Items"}
+        onToggleArchived={() => setShowArchived((prev) => !prev)}
+        title={showArchived ? 'Archived items' : 'Work Items'}
         Icon={showArchived ? Archive : WorkItemsIcon}
         count={displayItems.length}
         viewMode={viewMode}
@@ -836,8 +611,8 @@ export function WorkItemPage({
         onPropertyToggle={updateDisplayProperty}
         displayOpen={displayOpen}
         onDisplayOpenChange={setDisplayOpen}
-        onOpenAnalytics={handleOpenAnalytics}
-        onAddItem={handleAddItemClick}
+        onOpenAnalytics={() => setAnalyticsOpen(true)}
+        onAddItem={() => setModal({ type: 'create' })}
         isLoading={isLoading}
         isReadOnly={isReadOnly}
       />
@@ -854,7 +629,7 @@ export function WorkItemPage({
           <Button
             size="sm"
             variant="ghost"
-            onClick={handleDisableArchived}
+            onClick={() => setShowArchived(false)}
             className="h-6 px-2 text-xs font-medium hover:bg-muted text-foreground relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
           >
             Back to active items
@@ -862,33 +637,7 @@ export function WorkItemPage({
         </div>
       )}
 
-      {/* Active Saved View Notice Banner */}
-      {!showArchived && activeViewId && (
-        <div className="flex items-center justify-between px-4 py-1.5 bg-muted/40 border-b border-border text-xs text-foreground shrink-0 animate-in fade-in duration-150">
-          <div className="flex items-center gap-2 min-w-0">
-            <SlidersHorizontal className="size-3.5 shrink-0 text-foreground" />
-            <span className="truncate">
-              Viewing view: <span className="font-semibold text-foreground">{savedViews?.find((v) => v.id === activeViewId)?.name || 'Custom View'}</span>
-            </span>
-            <span className="text-11 font-mono capitalize px-1.5 py-0.5 rounded-md bg-muted text-foreground font-medium">
-              {viewMode}
-            </span>
-          </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              clearAllFilters();
-              if (rawViewId) {
-                router.push(`/projects/${projectId}/work-items`);
-              }
-            }}
-            className="h-6 px-2 text-xs font-medium hover:bg-muted text-foreground shrink-0 rounded-md cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
-          >
-            Clear view
-          </Button>
-        </div>
-      )}
+
 
       {/* Filter Active Pills Bar */}
       <FilterPillsBar
@@ -910,191 +659,45 @@ export function WorkItemPage({
         items={allItems}
       />
 
-      {/* Main View Area */}
+      {/* Main View Area Container */}
       <div className="flex-1 flex flex-col min-h-0 relative">
-        {isArchivedEmpty ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center mb-4">
-              <Archive className="w-8 h-8 text-foreground shrink-0" />
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-1">
-              No archived work items
-            </h3>
-            <p className="text-sm text-foreground/70 max-w-sm mb-6">
-              When work items are archived, they will appear here safely stored away from active views.
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDisableArchived}
-              className="gap-2 rounded-md h-8 px-3 text-13 font-medium bg-background border border-border text-foreground hover:bg-muted shadow-none cursor-pointer"
-            >
-              <span>Back to active items</span>
-            </Button>
-          </div>
-        ) : isProjectEmpty && viewMode !== 'calendar' ? (
-          <EmptyState
-            onCreateItem={handleCreateItemFromEmpty}
-            isReadOnly={isReadOnly}
-          />
-        ) : (
-          <>
-            {viewMode === 'list' && (
-              <ListView
-                projectId={projectId}
-                itemsByColumnId={itemsByColumnId}
-                columns={visibleColumns}
-                projectStates={columns}
-                currentUserId={currentUser?.id}
-                currentUserAvatar={currentUser?.avatar ?? undefined}
-                onAddCard={handleOpenAddDialog}
-                onEditCard={handleOpenEditDialog}
-                onDeleteCard={handleDeleteCard}
-                onDuplicateCard={handleDuplicateCard}
-                onJoinCard={handleJoinCard}
-                onLeaveCard={handleLeaveCard}
-                onMoveCard={handleMoveCard}
-                onReorderCard={handleReorderCard}
-                onUpdateItem={handleQuickUpdateItem}
-                isReadOnly={isReadOnly}
-                selectedIds={selectedIds}
-                onToggleSelect={handleToggleSelect}
-                onSelectAll={handleSelectAll}
-                displayOptions={displayOptions}
-                members={members}
-              />
-            )}
-            {viewMode === 'calendar' && (
-              <CalendarView
-                items={activeFilteredItems}
-                columns={columns}
-                projectId={projectId}
-                onAddCard={handleOpenAddDialog}
-                onOpenCardDetail={handleOpenEditDialog}
-                onAssignExistingItems={handleAssignExistingItemsToDate}
-                isReadOnly={isReadOnly}
-              />
-            )}
-            {viewMode === 'table' && (
-              <TableView
-                items={activeFilteredItems}
-                itemsByColumnId={itemsByColumnId}
-                columns={visibleColumns}
-                projectStates={columns}
-                displayOptions={displayOptions}
-                currentUserId={currentUser?.id}
-                currentUserAvatar={currentUser?.avatar ?? undefined}
-                projectId={projectId}
-                members={members}
-                onAddCard={handleOpenAddDialog}
-                onEditCard={handleOpenEditDialog}
-                onDeleteCard={handleDeleteCard}
-                onDuplicateCard={handleDuplicateCard}
-                onJoinCard={handleJoinCard}
-                onLeaveCard={handleLeaveCard}
-                onMoveCard={handleMoveCard}
-                onUpdateCard={handleQuickUpdateItemFromCard}
-                selectedIds={selectedIds}
-                onToggleSelect={handleToggleSelect}
-                onSelectAll={handleSelectAll}
-                isReadOnly={isReadOnly}
-                onToggleDisplayProperty={updateDisplayProperty}
-              />
-            )}
-            {viewMode === 'timeline' && (
-              <TimelineView
-                items={activeFilteredItems}
-                columns={columns}
-                projectStates={columns}
-                displayOptions={displayOptions}
-                currentUserId={currentUser?.id}
-                currentUserAvatar={currentUser?.avatar ?? undefined}
-                projectId={projectId}
-                members={members}
-                onAddCard={handleOpenAddDialog}
-                onEditCard={handleOpenEditDialog}
-                onDeleteCard={handleDeleteCard}
-                onDuplicateCard={handleDuplicateCard}
-                onJoinCard={handleJoinCard}
-                onLeaveCard={handleLeaveCard}
-                onMoveCard={handleMoveCard}
-                onUpdateCard={handleQuickUpdateItemFromCard}
-                isReadOnly={isReadOnly}
-              />
-            )}
-            {(viewMode === 'board' || !['list', 'calendar', 'table', 'timeline'].includes(viewMode)) && (
-              <BoardView
-                items={activeFilteredItems}
-                itemsByColumnId={itemsByColumnId}
-                columns={visibleColumns}
-                projectStates={columns}
-                labelMap={labelMap}
-                currentUserId={currentUser?.id}
-                currentUserAvatar={currentUser?.avatar ?? undefined}
-                members={members}
-                onAddCard={handleOpenAddDialog}
-                onEditCard={handleOpenEditDialog}
-                onDeleteCard={handleDeleteCard}
-                onDuplicateCard={handleDuplicateCard}
-                onJoinCard={handleJoinCard}
-                onLeaveCard={handleLeaveCard}
-                onMoveCard={handleMoveCard}
-                onReorderCard={handleReorderCard}
-                isReadOnly={isReadOnly}
-                displayOptions={displayOptions}
-                selectedIds={selectedIds}
-                onToggleSelect={handleToggleSelect}
-                onUpdateItem={handleQuickUpdateItem}
-              />
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Analytics Drawer */}
-      <AnalyticsDrawer
-        isOpen={analyticsOpen}
-        onClose={handleCloseAnalytics}
-        project={project || undefined}
-        projectId={projectId}
-        items={activeFilteredItems}
-        columns={columns}
-        assignees={assignees}
-      />
-
-      {/* Work Item Create Dialog */}
-      {modal.type === 'create' && (
-        <CreateModal
-          open={true}
-          onOpenChange={handleModalOpenChange}
-          columns={columns}
-          members={members}
-          initialData={modal.initialData}
-          project={project || undefined}
-          availableItems={allItems}
-          onSubmit={handleCreateItem}
-          isSubmitting={projectState.isSaving}
-        />
-      )}
-
-      {/* Work Item Detail Dialog */}
-      {modal.type === 'detail' && (
-        <DetailModal
-          open={true}
-          onOpenChange={handleModalOpenChange}
-          card={modal.card}
-          columns={columns}
-          project={project}
-          members={members}
-          availableItems={allItems}
-          onSave={handleSaveCard}
-          onDelete={handleDeleteCard}
-          onDuplicate={
-            modal.card.id ? handleDuplicateModalCard : undefined
-          }
+        <WorkItemViewContainer
+          viewMode={viewMode}
+          isArchivedEmpty={isArchivedEmpty}
+          isProjectEmpty={isProjectEmpty}
+          onDisableArchived={() => setShowArchived(false)}
+          onCreateItemFromEmpty={() => {
+            const firstCol = columns[0];
+            handleOpenAddDialog(firstCol ? resolveStateId(firstCol) : '');
+          }}
           isReadOnly={isReadOnly}
+          projectId={projectId}
+          activeFilteredItems={activeFilteredItems}
+          itemsByColumnId={itemsByColumnId}
+          visibleColumns={visibleColumns}
+          columns={columns}
+          displayOptions={displayOptions}
+          currentUserId={currentUser?.id}
+          currentUserAvatar={currentUser?.avatar ?? undefined}
+          members={members}
+          labelMap={labelMap}
+          selectedIds={selectedIds}
+          onToggleSelect={handleToggleSelect}
+          onSelectAll={(ids) => handleSelectAll(ids || [])}
+          onOpenAddDialog={handleOpenAddDialog}
+          onOpenEditDialog={handleOpenEditDialog}
+          onDeleteCard={handleDeleteCard}
+          onDuplicateCard={handleDuplicateCard}
+          onJoinCard={handleJoinCard}
+          onLeaveCard={handleLeaveCard}
+          onMoveCard={handleMoveCard}
+          onReorderCard={handleReorderCard}
+          onQuickUpdateItem={handleQuickUpdateItem}
+          onQuickUpdateItemFromCard={handleQuickUpdateItemFromCard}
+          onAssignExistingItemsToDate={handleAssignExistingItemsToDate}
+          updateDisplayProperty={updateDisplayProperty}
         />
-      )}
+      </div>
 
       {/* Floating Bulk Actions Bar */}
       <BulkActionBar
@@ -1123,77 +726,35 @@ export function WorkItemPage({
         }
       />
 
-      {/* Work Item Delete Confirmation Modal */}
-      {modal.type === 'delete' && (
-        <DeleteModal
-          open={true}
-          onOpenChange={handleModalOpenChange}
-          item={modal.item}
-          onConfirm={handleItemDeleteConfirm}
-          isDeleting={projectState.status.isDeleting}
-        />
-      )}
-
-      {/* Save Current View Dialog */}
-      <Dialog open={isSaveViewOpen} onOpenChange={setIsSaveViewOpen}>
-        <DialogContent className="sm:max-w-md p-5 bg-background border-border shadow-raised-200 rounded-md">
-          <DialogHeader>
-            <DialogTitle className="text-16 font-semibold text-foreground">
-              Save Current View
-            </DialogTitle>
-            <DialogDescription className="text-13 text-foreground/70">
-              Save your current layout and filter criteria as a reusable view.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (!newViewName.trim()) return;
-              await saveCurrentView(newViewName.trim());
-              setNewViewName('');
-              setIsSaveViewOpen(false);
-            }}
-            className="space-y-4 pt-2"
-          >
-            <div className="space-y-1.5">
-              <label className="text-12 font-medium text-foreground">View Name *</label>
-              <Input
-                placeholder="e.g. Active Experiments, Urgent Bugs..."
-                value={newViewName}
-                onChange={(e) => setNewViewName(e.target.value)}
-                autoFocus
-                className="h-8 text-13 bg-background border-border placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
-              />
-            </div>
-
-            <DialogFooter className="pt-2 gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleCloseSaveView}
-                disabled={isSavingCurrentView}
-                className="h-8 px-3 text-13 font-medium rounded-md text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={!newViewName.trim() || isSavingCurrentView}
-                className="h-8 px-4 text-13 font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary-hover shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                {isSavingCurrentView ? 'Saving...' : 'Save View'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Modals & Dialogs Container */}
+      <WorkItemModals
+        modal={modal}
+        onCloseModal={closeModal}
+        columns={columns}
+        members={members}
+        project={project}
+        projectId={projectId}
+        allItems={allItems}
+        isSaving={projectState.isSaving}
+        isDeleting={projectState.status.isDeleting}
+        isReadOnly={isReadOnly}
+        onCreateItem={handleCreateItem}
+        onSaveCard={handleSaveCard}
+        onDeleteCard={handleDeleteCard}
+        onConfirmDelete={handleItemDeleteConfirm}
+        onDuplicateCard={() => {
+          if (modal.type === 'detail' && modal.card.id) {
+            handleDuplicateCard(modal.card);
+          }
+        }}
+        isAnalyticsOpen={analyticsOpen}
+        onCloseAnalytics={() => setAnalyticsOpen(false)}
+        analyticsItems={activeFilteredItems}
+        analyticsAssignees={assignees}
+      />
     </div>
   );
 }
 
 export const Page = WorkItemPage;
 export default WorkItemPage;
-

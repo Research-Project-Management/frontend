@@ -115,7 +115,7 @@ export default function DeletedFilesModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="sm:max-w-lg w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-200 rounded-md text-foreground flex flex-col max-h-[85vh] select-none"
+        className="w-[95vw] sm:w-full sm:max-w-lg p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-200 rounded-md text-foreground flex flex-col max-h-[85vh] select-none"
       >
         {/* ── Dialog Header (Only Title and Close Icon) ─────────────────────── */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-background shrink-0">
@@ -126,7 +126,7 @@ export default function DeletedFilesModal({
             type="button"
             onClick={() => onOpenChange(false)}
             aria-label="Close"
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
           >
             <X className="size-4" strokeWidth={1.5} />
           </button>
@@ -151,7 +151,7 @@ export default function DeletedFilesModal({
         )}
 
         {/* ── Body: Open Lines List ─────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto px-5 py-2 max-h-[50vh] thin-scrollbar">
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-2 max-h-[50vh] thin-scrollbar">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground">
               <Loader2 className="size-5 animate-spin text-muted-foreground motion-reduce:animate-none" strokeWidth={1.5} />
@@ -200,7 +200,7 @@ export default function DeletedFilesModal({
                       variant="outline"
                       disabled={isRestoring}
                       onClick={() => handleRestore(file.id)}
-                      className="h-7 px-2.5 text-11 gap-1.5 shrink-0 cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground shadow-none"
+                      className="h-7 px-2.5 text-11 gap-1.5 shrink-0 cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground shadow-none relative after:absolute after:-inset-1 after:content-['']"
                     >
                       {isRestoring ? (
                         <Loader2 className="size-3 animate-spin motion-reduce:animate-none" strokeWidth={1.5} />

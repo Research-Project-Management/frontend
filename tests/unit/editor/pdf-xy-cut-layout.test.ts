@@ -5,7 +5,7 @@ import {
   computeBoundingBox,
   performRecursiveXyCut,
   type PdfTextItem,
-} from '@/features/editor/domain/pdf/xy-cut';
+} from '@/features/editor/subsystems/compiler/synctex/xy-cut';
 
 describe('PDF Recursive XY-Cut Multi-Column Layout Analysis & Reading Order', () => {
   describe('1. PDF.js Text Content Coordinate Normalization', () => {

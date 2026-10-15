@@ -1,19 +1,19 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { usePageStore } from '@/features/editor/store/editor.store';
-import { useDocumentSettingsStore } from '@/features/editor/store/settings.store';
-import { useLayoutStore } from '@/features/editor/store/layout.store';
+import { usePageStore } from '@/features/editor/core';
+import { useDocumentSettingsStore } from '@/features/editor/core';
+import { useLayoutStore } from '@/features/editor/core';
 import {
   CANONICAL_MATH_SYMBOLS,
   getModalSymbols,
   getVisualSymbols,
 } from '@/features/editor/domain/latex/latex-symbols';
-import { buildPageStoreFilePaths } from '@/features/editor/coordinators/compiler.coordinator';
+import { buildPageStoreFilePaths } from '@/features/editor/subsystems/compiler';
 import {
   IndentGuides,
   InlineInput,
   RenameInput,
   RowActions,
-} from '@/features/editor/ui/sidebar/explorer/subcomponents/FileTreePrimitives';
+} from '@/features/editor/subsystems/explorer';
 
 describe('Editor Architecture Directness & Clean Design', () => {
   beforeEach(() => {

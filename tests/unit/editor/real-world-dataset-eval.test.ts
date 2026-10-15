@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { parseBibContent, type BibEntry } from '@/features/editor/domain/citation/bib-parser';
+import { parseBibContent, type BibEntry } from '@/features/editor/subsystems/citation/model/bib-parser';
 import { LatexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
-import { runLatexLinter } from '@/features/editor/engines/extensions/latex-linter-core';
+import { runLatexLinter } from '@/features/editor/subsystems/diagnostics/extensions/latex-linter-core';
 import { latexToHtml, htmlToLatex } from '@/features/editor/domain/latex/latex-converter';
 import { countLatexWords } from '@/features/editor/domain/document/word-count';
 

@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   parseSyncTeX,
   type SyncTeXMap,
-} from '@/features/editor/domain/pdf/synctex-index';
-import { LatexCompilerEngine } from '@/features/editor/coordinators/compilation-pipeline';
+} from '@/features/editor/subsystems/compiler/synctex/synctex-index';
+import { LatexCompilerEngine } from '@/features/editor/subsystems/compiler';
 import { synctexService } from '@/features/editor/sdk/manuscript.service';
 
 describe('Reverse SyncTeX (PDF Double-Click -> LaTeX Source Jump)', () => {

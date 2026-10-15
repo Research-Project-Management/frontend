@@ -20,8 +20,8 @@ import { VisualCollaboratorCursors } from '@/features/editor/ui/editor/visual/Vi
 import {
   useDocumentCollaborationStore,
   type CollaboratorPresenceInfo,
-} from '@/features/editor/store/collaboration.store';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+} from '@/features/editor/core';
+import { editorCommandBus } from '@/features/editor/core';
 
 describe('VisualCollaboratorCursors - Real-Time Presence & Carets in Visual Mode', () => {
   let contentDiv: HTMLDivElement;

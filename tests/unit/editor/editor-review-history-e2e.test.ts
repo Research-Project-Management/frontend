@@ -1,4 +1,4 @@
-﻿/**
+/**
  * editor-review-history-e2e.test.ts
  *
  * Comprehensive End-to-End Suite for Track Changes, Review Mode,
@@ -17,12 +17,12 @@ import {
   setTrackChangesDataEffect,
   trackChangesStateField,
   trackChangesDecorationsField,
-} from '@/features/editor/engines/extensions/track-changes.extension';
-import { reviewCoordinator } from '@/features/editor/coordinators/review.coordinator';
+} from '@/features/editor/subsystems/review/extensions/track-changes.extension';
+import { reviewCoordinator } from '@/features/editor/subsystems/review';
 import { manuscriptService, suggestionService, historyService } from '@/features/editor/sdk/manuscript.service';
-import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
+import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
 import type { TrackChangeDto, CommentThreadDto } from '@/features/editor/sdk/manuscript/types';
-import type { ProjectVersionListItem, ProjectDiffResponse } from '@/features/editor/domain/types/history.types';
+import type { ProjectVersionListItem, ProjectDiffResponse } from '@/features/editor/subsystems/history/model/history.types';
 
 describe('Track Changes, Review Mode & Version History Subsystem', () => {
   // ─── 1. CodeMirror 6 Track Changes Extension ────────────────────────────────
@@ -433,6 +433,7 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
         id: 'lbl-new',
         version: 2,
         label: 'Pre-Submission',
+        createdAt: '2026-09-01T00:00:00Z',
       });
 
       const spyDelete = vi.spyOn(manuscriptService.history, 'deleteProjectLabel').mockResolvedValue();

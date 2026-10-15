@@ -28,7 +28,7 @@ import {
   type SymbolsWorkerMessageOut,
 } from './latex-symbols-core';
 import { PrefixTrie, LatexSymbolCatalog } from './prefix-trie';
-import { isItemRetracted, getRetractionInfo } from '@/features/library/utils/retraction';
+import { isItemRetracted, getRetractionInfo } from '@/features/library/domain/retraction';
 
 export type {
   BibEntry,
@@ -85,7 +85,7 @@ export class LatexSymbolsIndex {
         const { snapshot } = event.data;
         if (snapshot && snapshot.version >= this.snapshot.version) {
           if (this.libraryCitations.length > 0) {
-            const existingKeys = new Set(snapshot.citations.map((c: any) => c.key.toLowerCase()));
+            const existingKeys = new Set(snapshot.citations.map((c) => c.key.toLowerCase()));
             const additions = this.libraryCitations.filter((b) => !existingKeys.has(b.key.toLowerCase()));
             this.snapshot = {
               ...snapshot,
@@ -405,16 +405,39 @@ export class LatexSymbolsIndex {
    * Seamlessly ingests workspace library items into symbols snapshot so citations
    * are immediately autocomplete-able and hover-able even before any .bib file is exported.
    */
-  public setLibraryCitations(items: any[]): void {
+  public setLibraryCitations(items: unknown[]): void {
     if (!Array.isArray(items) || items.length === 0) return;
 
-    const newBibs: BibEntry[] = items
+    type LibraryCitationInput = Record<string, unknown> & {
+      id?: string;
+      citationKey?: string;
+      title?: string;
+      year?: string | number;
+      publicationYear?: string | number;
+      journal?: string;
+      venue?: string;
+      publicationTitle?: string;
+      doi?: string;
+      itemType?: string;
+      type?: string;
+      isRetracted?: boolean;
+      retractionStatus?: string;
+      is_retracted?: boolean;
+      retractionReason?: string;
+      retractionNature?: string;
+      retractionNoticeUrl?: string;
+      authors?: Array<string | { fullName?: string; lastName?: string; firstName?: string }>;
+      creators?: Array<{ name?: string; lastName?: string; firstName?: string }>;
+    };
+
+    const typedItems = items as LibraryCitationInput[];
+    const newBibs: BibEntry[] = typedItems
       .filter((it) => it && (it.citationKey || it.id))
       .map((it) => {
         let authorStr = '';
         if (Array.isArray(it.authors) && it.authors.length > 0) {
           authorStr = it.authors
-            .map((a: any) =>
+            .map((a) =>
               typeof a === 'string'
                 ? a
                 : a.fullName || `${a.lastName || ''} ${a.firstName || ''}`.trim()
@@ -423,7 +446,7 @@ export class LatexSymbolsIndex {
             .join(' and ');
         } else if (Array.isArray(it.creators) && it.creators.length > 0) {
           authorStr = it.creators
-            .map((c: any) =>
+            .map((c) =>
               c.name || `${c.lastName || ''} ${c.firstName || ''}`.trim()
             )
             .filter(Boolean)
@@ -431,7 +454,7 @@ export class LatexSymbolsIndex {
         }
 
         const isRetracted = isItemRetracted(it) || Boolean(it.isRetracted || it.retractionStatus === 'retracted' || it.is_retracted);
-        let retInfo: any = undefined;
+        let retInfo: ReturnType<typeof getRetractionInfo> | undefined = undefined;
         if (isRetracted) {
           retInfo = getRetractionInfo(it);
           if (it.doi) {
@@ -453,7 +476,7 @@ export class LatexSymbolsIndex {
         }
 
         return {
-          key: it.citationKey || it.id,
+          key: String(it.citationKey || it.id || ''),
           type: it.itemType || 'article',
           title: it.title || '',
           author: authorStr,

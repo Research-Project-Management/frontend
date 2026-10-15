@@ -14,17 +14,17 @@ import {
   clearErrorLensDiagnosticsEffect,
   errorLensField,
   ErrorLensWidget,
-} from '@/features/editor/engines/extensions/latex-error-lens';
+} from '@/features/editor/subsystems/diagnostics/extensions/latex-error-lens';
 import {
   createCodeMirrorPreset,
   reconfigureErrorLens,
   editorCompartments,
-} from '@/features/editor/engines/codemirror/codemirror-preset';
-import { diagnosticsCoordinator } from '@/features/editor/coordinators/diagnostics.coordinator';
-import { navigationCoordinator } from '@/features/editor/coordinators/navigation.coordinator';
-import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { usePageStore } from '@/features/editor/store/editor.store';
+} from '@/features/editor/core/engine/codemirror/codemirror-preset';
+import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
+import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
+import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
+import { useSettingsStore } from '@/features/editor/core';
+import { usePageStore } from '@/features/editor/core';
 import type { CompileError } from '@/features/editor/domain/types/compiler.types';
 
 describe('LaTeX Error Lens & Diagnostic Gutter Parity', () => {

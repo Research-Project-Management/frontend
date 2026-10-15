@@ -34,14 +34,12 @@ const ImagePanel = dynamic(
   { ssr: false }
 );
 
-import { SourceVisualSwitcher } from './SourceVisualSwitcher';
 import { EditorToolbar } from './EditorToolbar';
+import { SourceVisualSwitcher } from './SourceVisualSwitcher';
 import { EditorContextMenu } from './EditorContextMenu';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { useSettingsStore, editorCommandBus, sessionCoordinator } from '@/features/editor/core';
 import { useEditorCollaboration } from '@/features/editor/ui/hooks/useCollaboration';
-import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
 
@@ -104,14 +102,16 @@ export function EditorPane({
   // Content resolution with LRU cache
   const cachedModel = fileId ? lruDocumentCache.getModel(fileId) : null;
   const fileContent = file && 'content' in file ? (file as { content?: unknown }).content : undefined;
+  const fallbackContent =
+    typeof fileContent === 'string'
+      ? fileContent
+      : typeof fileContent === 'object' && fileContent !== null && 'source' in fileContent
+        ? String((fileContent as { source?: unknown }).source ?? '')
+        : '';
   const rawContent =
-    cachedModel?.content !== undefined
+    cachedModel?.content !== undefined && (cachedModel.content.length > 0 || !fallbackContent)
       ? cachedModel.content
-      : typeof fileContent === 'string'
-        ? fileContent
-        : typeof fileContent === 'object' && fileContent !== null && 'source' in fileContent
-          ? String((fileContent as { source?: unknown }).source ?? '')
-          : '';
+      : fallbackContent;
 
   // Realtime Yjs collaboration
   const { yText, awareness, status: realtimeStatus } = useEditorCollaboration({
@@ -232,13 +232,15 @@ export function EditorPane({
           availableFiles={availableFiles as { id: string; title: string }[] | undefined}
         />
       ) : !showEditorTabs && fileId ? (
-        <div className="flex items-center h-8 bg-surface border-b border-border px-3 shrink-0">
+        <div className="flex items-center h-8 bg-surface border-b border-border px-3 shrink-0 gap-2">
+          <SourceVisualSwitcher />
+          <div className="h-4 w-px bg-border/60 mx-0.5 shrink-0" />
           <span className="text-xs font-medium text-muted-foreground">{fileName}</span>
         </div>
       ) : null}
 
       {/* ── Editor Body Surface ────────────────────────────────────────────── */}
-      <div className="flex-1 min-h-0 min-w-0 w-full h-full flex flex-col bg-canvas overflow-hidden">
+      <div className="flex-1 min-h-0 min-w-0 w-full flex flex-col bg-canvas overflow-hidden">
         {isAsset && file ? (
           <ImagePanel
             asset={
@@ -259,12 +261,12 @@ export function EditorPane({
             }
           />
         ) : fileId ? (
-          <div className="flex-1 min-h-0 min-w-0 w-full h-full flex flex-col bg-canvas">
+          <div className="flex-1 min-h-0 min-w-0 w-full flex flex-col bg-canvas overflow-hidden">
             <EditorToolbar readOnly={isLocked} onSplitRight={onSplitRight} />
-            <div className="flex-1 min-h-0 min-w-0 w-full h-full overflow-hidden">
+            <div className="flex-1 min-h-0 min-w-0 w-full overflow-hidden">
               <EditorContextMenu>
                 <CodeMirrorView
-                  key={fileId}
+                  key={paneId || 'primary'}
                   fileId={fileId}
                   filePath={fileName}
                   value={rawContent}

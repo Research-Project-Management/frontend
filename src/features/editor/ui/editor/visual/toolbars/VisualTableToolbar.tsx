@@ -100,19 +100,19 @@ export function VisualTableToolbar({
       role="toolbar"
       aria-label="Table Matrix Toolbar"
       className={cn(
-        'fixed z-50 flex flex-col items-start bg-popover/95 backdrop-blur-md border border-border shadow-overlay rounded-md p-1.5 text-xs text-foreground select-none',
+        'fixed z-50 flex flex-col items-start bg-popover/95 backdrop-blur-md border border-border shadow-overlay rounded-md p-1.5 text-xs text-foreground select-none max-w-[calc(100vw-1.5rem)]',
         'animate-in fade-in zoom-in-95 duration-150'
       )}
       style={{
         top: `${Math.max(10, position.top)}px`,
-        left: `${Math.max(10, position.left)}px`,
+        left: `${Math.max(10, Math.min(position.left, (typeof window !== 'undefined' ? window.innerWidth - 340 : position.left)))}px`,
       }}
       onClick={(e) => e.stopPropagation()}
     >
       {/* ── Main Action Bar ── */}
-      <div className="flex items-center gap-1 w-full">
+      <div className="flex items-center gap-1 w-full overflow-x-auto scrollbar-none py-0.5">
         {/* Table & Matrix Position Indicator */}
-        <div className="flex items-center gap-1.5 px-2 py-1 bg-muted/50 rounded-md text-muted-foreground mr-1 text-[11px] font-mono font-medium">
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-muted/50 rounded-md text-muted-foreground mr-1 text-[11px] font-mono font-medium shrink-0">
           <TableIcon className="size-3.5 text-primary" />
           <span>
             R{rowIndex + 1}
@@ -121,15 +121,15 @@ export function VisualTableToolbar({
           </span>
         </div>
 
-        <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />
+        <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5 shrink-0" />
 
         {/* Row Operations */}
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-0.5 shrink-0">
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer"
+            className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
             onClick={onAddRowAbove}
             title="Add Row Above"
             aria-label="Add row above"
@@ -140,7 +140,7 @@ export function VisualTableToolbar({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer"
+            className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
             onClick={onAddRowBelow}
             title="Add Row Below"
             aria-label="Add row below"
@@ -151,7 +151,7 @@ export function VisualTableToolbar({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-7 hover:bg-destructive/10 text-muted-foreground hover:text-destructive cursor-pointer"
+            className="size-7 hover:bg-destructive/10 text-muted-foreground hover:text-destructive cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
             onClick={onDeleteRow}
             title="Delete Current Row"
             aria-label="Delete row"
@@ -160,15 +160,15 @@ export function VisualTableToolbar({
           </Button>
         </div>
 
-        <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />
+        <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5 shrink-0" />
 
         {/* Column Operations */}
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-0.5 shrink-0">
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer"
+            className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
             onClick={onAddColumnLeft}
             title="Add Column Left"
             aria-label="Add column left"
@@ -179,7 +179,7 @@ export function VisualTableToolbar({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer"
+            className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
             onClick={onAddColumnRight}
             title="Add Column Right"
             aria-label="Add column right"
@@ -190,7 +190,7 @@ export function VisualTableToolbar({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-7 hover:bg-destructive/10 text-muted-foreground hover:text-destructive cursor-pointer"
+            className="size-7 hover:bg-destructive/10 text-muted-foreground hover:text-destructive cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
             onClick={onDeleteColumn}
             title="Delete Current Column"
             aria-label="Delete column"
@@ -199,16 +199,16 @@ export function VisualTableToolbar({
           </Button>
         </div>
 
-        <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />
+        <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5 shrink-0" />
 
         {/* Alignment Controls */}
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-0.5 shrink-0">
           <Button
             type="button"
             variant={columnAlignment === 'left' ? 'secondary' : 'ghost'}
             size="icon"
             className={cn(
-              'size-7 cursor-pointer',
+              'size-7 cursor-pointer relative after:absolute after:-inset-1 after:content-[\'\']',
               columnAlignment === 'left'
                 ? 'bg-primary/15 text-primary font-semibold hover:bg-primary/20'
                 : 'hover:bg-muted text-foreground/80 hover:text-foreground'
@@ -224,7 +224,7 @@ export function VisualTableToolbar({
             variant={columnAlignment === 'center' ? 'secondary' : 'ghost'}
             size="icon"
             className={cn(
-              'size-7 cursor-pointer',
+              'size-7 cursor-pointer relative after:absolute after:-inset-1 after:content-[\'\']',
               columnAlignment === 'center'
                 ? 'bg-primary/15 text-primary font-semibold hover:bg-primary/20'
                 : 'hover:bg-muted text-foreground/80 hover:text-foreground'
@@ -240,7 +240,7 @@ export function VisualTableToolbar({
             variant={columnAlignment === 'right' ? 'secondary' : 'ghost'}
             size="icon"
             className={cn(
-              'size-7 cursor-pointer',
+              'size-7 cursor-pointer relative after:absolute after:-inset-1 after:content-[\'\']',
               columnAlignment === 'right'
                 ? 'bg-primary/15 text-primary font-semibold hover:bg-primary/20'
                 : 'hover:bg-muted text-foreground/80 hover:text-foreground'
@@ -253,16 +253,16 @@ export function VisualTableToolbar({
           </Button>
         </div>
 
-        <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />
+        <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5 shrink-0" />
 
         {/* Merge & Formatting Controls (Overleaf Parity) */}
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-0.5 shrink-0">
           {onMergeCells && (
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer"
+              className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
               onClick={onMergeCells}
               aria-label="Merge cells"
             >
@@ -275,7 +275,7 @@ export function VisualTableToolbar({
               type="button"
               variant="ghost"
               size="icon"
-              className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer"
+              className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
               onClick={onToggleBorder}
               aria-label="Toggle table borders"
             >
@@ -288,7 +288,7 @@ export function VisualTableToolbar({
               type="button"
               variant="ghost"
               size="icon"
-              className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer"
+              className="size-7 hover:bg-muted text-foreground/80 hover:text-foreground cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
               onClick={() => onToggleColumnWidth('stretch')}
               aria-label="Toggle column width"
             >
@@ -297,7 +297,7 @@ export function VisualTableToolbar({
           )}
         </div>
 
-        <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />
+        <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5 shrink-0" />
 
         {/* Metadata Settings Toggle */}
         <Button
@@ -305,7 +305,7 @@ export function VisualTableToolbar({
           variant={isEditingMeta ? 'secondary' : 'ghost'}
           size="sm"
           className={cn(
-            'h-7 px-2 gap-1 text-[11px] font-medium cursor-pointer',
+            'h-7 px-2 gap-1 text-[11px] font-medium cursor-pointer shrink-0 relative after:absolute after:-inset-1 after:content-[\'\']',
             isEditingMeta
               ? 'bg-primary/15 text-primary hover:bg-primary/20'
               : 'hover:bg-muted text-muted-foreground hover:text-foreground'
@@ -321,14 +321,14 @@ export function VisualTableToolbar({
           <span className="hidden sm:inline">Caption/Label</span>
         </Button>
 
-        <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />
+        <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5 shrink-0" />
 
         {/* Delete Table Action */}
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="size-7 hover:bg-destructive/15 text-destructive cursor-pointer"
+          className="size-7 hover:bg-destructive/15 text-destructive cursor-pointer shrink-0 relative after:absolute after:-inset-1 after:content-['']"
           onClick={onDeleteTable}
           title="Delete Entire Table"
           aria-label="Delete table"
@@ -341,7 +341,7 @@ export function VisualTableToolbar({
           type="button"
           variant="ghost"
           size="icon"
-          className="size-7 hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer ml-1"
+          className="size-7 hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer ml-1 shrink-0 relative after:absolute after:-inset-1 after:content-['']"
           onClick={onClose}
           aria-label="Close table toolbar"
         >
@@ -397,7 +397,7 @@ export function VisualTableToolbar({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-6 px-2 text-[11px]"
+              className="h-6 min-h-[26px] px-2.5 text-[11px] relative after:absolute after:-inset-1 after:content-['']"
               onClick={() => setIsEditingMeta(false)}
             >
               Cancel
@@ -405,7 +405,7 @@ export function VisualTableToolbar({
             <Button
               type="submit"
               size="sm"
-              className="h-6 px-2 text-[11px] gap-1 font-medium cursor-pointer"
+              className="h-6 min-h-[26px] px-2.5 text-[11px] gap-1 font-medium cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
             >
               <Check className="size-3" />
               <span>Apply Metadata</span>

@@ -17,8 +17,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { StorageService } from '@/features/editor/sdk/manuscript.service';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
-import { usePageStore } from '@/features/editor/store/editor.store';
-import { workspaceCoordinator } from '@/features/editor/coordinators/workspace.coordinator';
+import { usePageStore, workspaceCoordinator } from '@/features/editor/core';
 
 export function useResolvedProjectId(
   pageIdOrProjectId?: string | null,
@@ -143,7 +142,7 @@ export function useEditorStorageMutations(
       parentId?: string | null;
       projectId?: string;
       pageId?: string;
-    }): Promise<any> => {
+    }): Promise<unknown> => {
       const pid = targetProjectId || effectiveProjectId;
       if (pid) {
         return await StorageService.createProjectFolder(pid, name, targetParentId ?? defaultParentId);
@@ -168,7 +167,7 @@ export function useEditorStorageMutations(
       newName?: string;
       name?: string;
       oldName?: string;
-    }): Promise<any> => {
+    }): Promise<unknown> => {
       const id = args.itemId || args.fileId || '';
       const name = args.newName || args.name || '';
       const old = args.oldName || '';
@@ -193,7 +192,7 @@ export function useEditorStorageMutations(
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (itemId: string): Promise<any> => {
+    mutationFn: async (itemId: string): Promise<unknown> => {
       try {
         const ok = await workspaceCoordinator.deleteFile(itemId, effectiveProjectId);
         if (ok) return { success: true };
@@ -210,7 +209,7 @@ export function useEditorStorageMutations(
   });
 
   const moveMutation = useMutation({
-    mutationFn: async (args: { itemId?: string; targetFolderId?: string | null } | string): Promise<any> => {
+    mutationFn: async (args: { itemId?: string; targetFolderId?: string | null } | string): Promise<unknown> => {
       const itemId = typeof args === 'string' ? args : (args.itemId || '');
       const targetFolderId = typeof args === 'string' ? null : (args.targetFolderId ?? null);
       try {

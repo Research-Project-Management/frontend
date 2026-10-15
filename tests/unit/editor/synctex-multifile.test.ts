@@ -4,8 +4,8 @@ import {
   resolveForwardDetail,
   resolveReverse,
   resolvePageForLine,
-} from '@/features/editor/domain/pdf/synctex-index';
-import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+} from '@/features/editor/subsystems/compiler/synctex/synctex-index';
+import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
 
 describe('Bidirectional SyncTeX Multi-File & Subfile Precision (Overleaf Parity)', () => {
   // Realistic multi-file SyncTeX sample

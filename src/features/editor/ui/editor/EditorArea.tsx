@@ -35,17 +35,26 @@ const DraftRecoveryDialog = dynamic(
   { ssr: false }
 );
 
+const DocumentConflictDialog = dynamic(
+  () => import('./DocumentConflictDialog').then((m) => m.DocumentConflictDialog),
+  { ssr: false }
+);
+
 import { useActiveDocument } from '@/features/editor/ui/hooks/useActiveDocument';
 import { useEditorCollaboration } from '@/features/editor/ui/hooks/useCollaboration';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { usePageStore } from '@/features/editor/store/editor.store';
-import { useDocumentCollaborationStore } from '@/features/editor/store/collaboration.store';
-import { useLayoutStore } from '@/features/editor/store/layout.store';
-import { useConnectivityStore } from '@/features/editor/store/connectivity.store';
-import { getActiveEditorEngine, editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import {
+  useSettingsStore,
+  usePageStore,
+  useConnectivityStore,
+  useLayoutStore,
+  editorCommandBus,
+  sessionCoordinator,
+  type DraftSnapshot,
+  type DocumentConflict,
+} from '@/features/editor/core';
+import { reviewCoordinator } from '@/features/editor/subsystems/review';
+import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
-import { sessionCoordinator, type DraftSnapshot } from '@/features/editor/coordinators/session.coordinator';
 
 interface EmptyEditorStateProps {
   onOpenDefaultFile?: () => void;
@@ -197,20 +206,19 @@ export function EditorArea() {
     sessionCoordinator.setRealtimeConnected(id, isRealtimeConnected);
   }, [displayPage?.id, isRealtimeConnected]);
 
-  // Surface remote-vs-local conflicts instead of silently dropping remote edits.
+  // Surface remote-vs-local conflicts with visual inspection & merge dialog
+  const [activeConflict, setActiveConflict] = React.useState<DocumentConflict | null>(null);
+
   React.useEffect(() => {
     return sessionCoordinator.onConflict((conflict) => {
-      toast.warning('Document was updated remotely while you have unsaved changes.', {
+      setActiveConflict(conflict);
+      toast.warning('Phát hiện xung đột tài liệu với máy chủ', {
         id: `doc-conflict-${conflict.fileId}`,
-        duration: Infinity,
-        description: 'Your local changes are preserved. Choose which version to keep.',
+        duration: 15000,
+        description: 'Tài liệu đã được cập nhật từ máy chủ trong khi bạn có thay đổi chưa lưu.',
         action: {
-          label: 'Use remote version',
-          onClick: () => sessionCoordinator.resolveConflict(conflict.fileId, 'take-remote'),
-        },
-        cancel: {
-          label: 'Keep my changes',
-          onClick: () => sessionCoordinator.resolveConflict(conflict.fileId, 'keep-local'),
+          label: 'Xem & Giải quyết',
+          onClick: () => setActiveConflict(conflict),
         },
       });
     });
@@ -321,27 +329,14 @@ export function EditorArea() {
 
       if (modKey && e.altKey && e.key.toLowerCase() === 'm') {
         e.preventDefault();
-        const engine = getActiveEditorEngine();
-        const sel = engine?.getSelection?.();
-        const cursor = engine?.getCursorPosition?.();
-
-        const startLine = sel?.startLine ?? sel?.fromLine ?? cursor?.line ?? 1;
-        const endLine = sel?.endLine ?? sel?.toLine ?? cursor?.line ?? 1;
-        const selectedText = engine?.getSelectedText?.() || '';
-
-        useDocumentCollaborationStore.getState().setPendingComment({
-          startLine,
-          endLine,
-          selectedText,
-        });
-        useLayoutStore.getState().setActiveSidebarTab('review');
-        useLayoutStore.getState().setSidebarLeftOpen(true);
+        reviewCoordinator.initiateComment();
+        return;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [childFiles, displayPage?.id, parentPage?.id, setActiveEditorPane, setEditorSplitMode, setSecondaryFileId]);
 
   if (isLoading) return <LoadingSkeleton />;
 
@@ -357,7 +352,7 @@ export function EditorArea() {
     <div className="h-full w-full flex flex-col bg-canvas min-h-0">
       {/* ── Offline Mode Notice ── */}
       {!isOnline && (
-        <div className="flex items-center justify-between px-3 py-1 bg-warning/10 border-b border-warning/20 text-warning text-xs shrink-0 animate-in fade-in duration-200">
+        <div className="flex items-center justify-between px-3 py-1 bg-warning/10 border-b border-warning/20 text-warning text-xs shrink-0">
           <div className="flex items-center gap-2">
             <WifiOff className="size-3.5 shrink-0 text-warning" />
             <span>
@@ -366,7 +361,7 @@ export function EditorArea() {
                 : 'Đang ngoại tuyến: Các thay đổi đang được lưu an toàn vào bộ nhớ máy (IndexedDB). Sẽ tự động đồng bộ khi có mạng.'}
             </span>
           </div>
-          <span className="text-[10px] text-warning/80 font-mono hidden sm:inline">
+          <span className="text-10 text-warning/80 font-mono hidden sm:inline">
             Tự động đồng bộ khi kết nối lại
           </span>
         </div>
@@ -382,6 +377,20 @@ export function EditorArea() {
           savedAt={recoverableDraft.savedAt}
           onRestore={handleRestoreDraft}
           onKeepServer={handleDismissDraft}
+        />
+      )}
+
+      {/* ── Document Conflict Dialog (explicit decision & diff/merge) ── */}
+      {activeConflict && (
+        <DocumentConflictDialog
+          open={Boolean(activeConflict)}
+          conflict={activeConflict}
+          fileName={displayPage?.title || 'main.tex'}
+          onResolve={(resolution, mergedContent) => {
+            sessionCoordinator.resolveConflict(activeConflict.fileId, resolution, mergedContent);
+            setActiveConflict(null);
+          }}
+          onClose={() => setActiveConflict(null)}
         />
       )}
 

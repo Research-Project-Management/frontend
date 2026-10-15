@@ -4,7 +4,7 @@ import {
   refactorCitationKeyInBibTeX,
   refactorCitationKeyInLatex,
   refactorCitationKeyAcrossFiles,
-} from '@/features/editor/domain/citation/citation-refactor';
+} from '@/features/editor/subsystems/citation/model/citation-refactor';
 
 describe('Citation Key Refactoring & Renaming Subsystem (Overleaf Parity)', () => {
   describe('1. validateCitationKey', () => {

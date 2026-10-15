@@ -50,7 +50,19 @@ export interface DependencyGraphAnalysis {
  */
 export function normalizeLatexPath(rawPath: string, defaultExt: string = '.tex'): string {
   if (!rawPath) return '';
-  let clean = rawPath.trim().replace(/^["']|["']$/g, '').replace(/\\/g, '/');
+  let clean = rawPath
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .replace(/\\/g, '/')
+    .replace(/\/+/g, '/');
+
+  // Official Overleaf `normalizeFilePath` (`services/web/frontend/js/features/pdf-preview/util/output-files.ts`):
+  // Strip CLSI container build paths: `/var/lib/.../compiles/<objectId>(-<objectId>)?/(./)?` and `/compile/`
+  clean = clean.replace(
+    /^.*\/compiles\/[0-9a-zA-Z_-]+(?:-[0-9a-zA-Z_-]+)?\/(?:\.\/)?/,
+    '',
+  );
+  clean = clean.replace(/^\/?compile\//, '');
 
   while (clean.startsWith('./')) {
     clean = clean.slice(2);
@@ -614,9 +626,13 @@ export class LatexDagEngine {
 
     const normalizedActive = activeFileIdOrPath ? this.resolveNormalizedPath(activeFileIdOrPath) : null;
     const activeNode = normalizedActive ? this.nodes.get(normalizedActive) : null;
+    const isBibActive = Boolean(
+      (normalizedActive && normalizedActive.endsWith('.bib')) ||
+      (activeFileIdOrPath && activeFileIdOrPath.endsWith('.bib'))
+    );
 
-    // Active standalone check: file has \documentclass and in-degree 0 (not a subfile)
-    if (activeNode && activeNode.hasDocumentClass && !activeNode.isSubfile && activeNode.inDegree === 0) {
+    // Active standalone check: file has \documentclass and in-degree 0 (not a subfile, never a .bib)
+    if (!isBibActive && activeNode && activeNode.hasDocumentClass && !activeNode.isSubfile && activeNode.inDegree === 0) {
       return {
         rootPath: activeNode.path,
         rootFileId: activeNode.id,
@@ -629,7 +645,7 @@ export class LatexDagEngine {
     // and is compiled directly as the active document, resolve the file itself as root
     // Subfiles: by default compile via the parent document (\documentclass[parent]{subfiles}).
     // Pass { subfileStandalone: true } to compile the child on its own as root.
-    if (activeNode && activeNode.isSubfile) {
+    if (!isBibActive && activeNode && activeNode.isSubfile) {
       if (!options.subfileStandalone) {
         const parent = this.resolveSubfileParent(activeNode);
         if (parent) {
@@ -655,7 +671,7 @@ export class LatexDagEngine {
 
       for (const ancPath of ancestors) {
         const node = this.nodes.get(ancPath);
-        if (node && (node.hasDocumentClass || node.hasBeginDocument)) {
+        if (node && !ancPath.endsWith('.bib') && (node.hasDocumentClass || node.hasBeginDocument)) {
           rootAncestors.push(node);
         }
       }
@@ -671,7 +687,7 @@ export class LatexDagEngine {
         const bestAncestor = rootAncestors[0];
         return {
           rootPath: bestAncestor.path,
-          rootFileId: bestAncestor.id,
+          rootFileId: bestAncestor.id || this.pathToIdMap.get(bestAncestor.path),
           inferredBy: 'dag-backtracking',
           hasCycleWarning,
         };
@@ -685,9 +701,10 @@ export class LatexDagEngine {
       const isPreambleFile = this.isPreambleLike(node);
 
       const isCandidate =
-        node.hasDocumentClass ||
-        node.hasBeginDocument ||
-        (node.inDegree === 0 && node.outDegree > 0);
+        !path.endsWith('.bib') &&
+        (node.hasDocumentClass ||
+         node.hasBeginDocument ||
+         (node.inDegree === 0 && node.outDegree > 0));
 
       if (isCandidate && !node.isSubfile) {
         let score = 50;
@@ -731,7 +748,7 @@ export class LatexDagEngine {
       const best = candidates[0].node;
       return {
         rootPath: best.path,
-        rootFileId: best.id,
+        rootFileId: best.id || this.pathToIdMap.get(best.path),
         inferredBy: 'heuristic',
         hasCycleWarning,
       };

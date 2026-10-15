@@ -73,6 +73,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
   } = useGithubSync({
     projectId,
     projectTitle,
+    enabled: isGithubConnected,
     onLinkSuccess: () => setShowChangeRepo(false),
     onCreateSuccess: () => setIsCreatingNew(false),
   });
@@ -184,11 +185,24 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
   return (
     <div className="space-y-6">
       {/* Overview Info Header */}
-      <div className="p-3.5 rounded-md border border-border/70 bg-muted/30 text-xs text-muted-foreground leading-relaxed flex items-start gap-2.5">
-        <GitBranch className="size-4 text-foreground shrink-0 mt-0.5" />
-        <div>
-          Synchronize this project with GitHub. Commits are tracked in the remote repository tree, allowing seamless collaboration across Overleaf, Git, and Flux.
+      <div className="p-3.5 rounded-md border border-border/70 bg-muted/30 text-xs text-muted-foreground leading-relaxed flex items-center justify-between gap-2.5">
+        <div className="flex items-start gap-2.5">
+          <GitBranch className="size-4 text-foreground shrink-0 mt-0.5" />
+          <div>
+            Synchronize this project with GitHub
+            {githubIntegration?.accountName ? ` (${githubIntegration.accountName})` : ''}. Commits are tracked in the remote repository tree.
+          </div>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => connect('github')}
+          disabled={isConnecting}
+          className="h-7 text-xs px-2.5 shrink-0 cursor-pointer"
+        >
+          {isConnecting && <RefreshCw className="size-3 animate-spin mr-1.5" />}
+          Reconnect
+        </Button>
       </div>
 
       {/* ── Linked State ──────────────────────────────────────────────────────── */}
@@ -446,7 +460,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
 
       {/* Pull Confirmation Dialog */}
       <AlertDialog open={isPullConfirmOpen} onOpenChange={setIsPullConfirmOpen}>
-        <AlertDialogContent className="max-w-md">
+        <AlertDialogContent className="w-[95vw] sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>Pull changes from GitHub?</AlertDialogTitle>
             <AlertDialogDescription className="text-xs">

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useDocumentSettingsStore } from '@/features/editor/store/settings.store';
+import { useDocumentSettingsStore } from '@/features/editor/core';
 
 describe('Vim Mode & Keybinding Configuration', () => {
   beforeEach(() => {

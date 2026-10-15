@@ -93,7 +93,7 @@ export function SymbolPaletteModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-6 gap-3.5 text-xs bg-background border border-border shadow-raised-200 rounded-md">
+      <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[85vh] flex flex-col p-6 gap-3.5 text-xs bg-background border border-border shadow-raised-200 rounded-md">
         <DialogHeader>
           <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
             LaTeX Symbol Palette
@@ -118,7 +118,7 @@ export function SymbolPaletteModal({
               type="button"
               onClick={() => setSearchQuery('')}
               aria-label="Clear search"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
             >
               <X className="size-3.5" />
             </button>
@@ -131,13 +131,13 @@ export function SymbolPaletteModal({
           onValueChange={setActiveTab}
           className="w-full flex-1 flex flex-col overflow-hidden"
         >
-          <TabsList className="grid grid-cols-6 w-full h-8 text-11 rounded-md bg-muted p-0.5 border border-border">
-            <TabsTrigger value="all" className="cursor-pointer rounded-sm text-11">All</TabsTrigger>
-            <TabsTrigger value="greek-lower" className="cursor-pointer rounded-sm text-11">Greek (α)</TabsTrigger>
-            <TabsTrigger value="greek-upper" className="cursor-pointer rounded-sm text-11">Greek (Δ)</TabsTrigger>
-            <TabsTrigger value="operators" className="cursor-pointer rounded-sm text-11">Operators (∫)</TabsTrigger>
-            <TabsTrigger value="relations" className="cursor-pointer rounded-sm text-11">Relations (≤)</TabsTrigger>
-            <TabsTrigger value="arrows" className="cursor-pointer rounded-sm text-11">Arrows (→)</TabsTrigger>
+          <TabsList className="flex items-center w-full h-8 text-11 rounded-md bg-muted p-0.5 border border-border overflow-x-auto scrollbar-none">
+            <TabsTrigger value="all" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">All</TabsTrigger>
+            <TabsTrigger value="greek-lower" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Greek (α)</TabsTrigger>
+            <TabsTrigger value="greek-upper" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Greek (Δ)</TabsTrigger>
+            <TabsTrigger value="operators" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Operators (∫)</TabsTrigger>
+            <TabsTrigger value="relations" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Relations (≤)</TabsTrigger>
+            <TabsTrigger value="arrows" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Arrows (→)</TabsTrigger>
           </TabsList>
 
           {/* Symbol Grid */}
@@ -195,7 +195,7 @@ export function SymbolPaletteModal({
         </Tabs>
 
         {/* Footer with keep open toggle and dismiss */}
-        <DialogFooter className="flex items-center justify-between sm:justify-between pt-2 border-t border-border">
+        <DialogFooter className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-2 pt-2 border-t border-border">
           <div className="flex items-center gap-2">
             <Checkbox
               id="keep-palette-open"
@@ -204,7 +204,7 @@ export function SymbolPaletteModal({
             />
             <label
               htmlFor="keep-palette-open"
-              className="text-xs font-medium text-muted-foreground cursor-pointer"
+              className="text-xs font-medium text-muted-foreground cursor-pointer select-none min-h-[28px] flex items-center"
             >
               Keep open after inserting (click multiple symbols)
             </label>

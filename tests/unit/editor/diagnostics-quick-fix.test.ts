@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { diagnosticsCoordinator } from '@/features/editor/coordinators/diagnostics.coordinator';
+import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
 import type { CompileError } from '@/features/editor/domain/types/compiler.types';
 
 describe('Diagnostics Intelligence & Compiler Error Quick-Fix (Overleaf Parity)', () => {
@@ -130,5 +130,23 @@ describe('Diagnostics Intelligence & Compiler Error Quick-Fix (Overleaf Parity)'
 
     const line99Items = diagnosticsCoordinator.findDiagnosticsAtLine('main.tex', 99);
     expect(line99Items).toHaveLength(0);
+  });
+
+  it('guarantees .bib files never receive leaked LaTeX compiler document errors', () => {
+    const errors: CompileError[] = [
+      { line: 1, message: 'Missing \\begin{document}', file: 'main.tex', severity: 'error' },
+      { line: 1, message: 'Emergency stop', file: 'main.tex', severity: 'error' },
+    ];
+
+    diagnosticsCoordinator.ingestCompilerErrors(errors, 'main.tex');
+
+    // Register alias mapping as if .bib was active during compile
+    diagnosticsCoordinator.registerAlias('references.bib', 'doc-bib-uuid');
+
+    const bibItems = diagnosticsCoordinator.getDiagnosticsForFile('references.bib');
+    expect(bibItems).toHaveLength(0);
+
+    const mainItems = diagnosticsCoordinator.getDiagnosticsForFile('main.tex');
+    expect(mainItems.length).toBeGreaterThan(0);
   });
 });

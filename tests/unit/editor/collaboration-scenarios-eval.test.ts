@@ -28,8 +28,8 @@ import * as Y from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as encoding from 'lib0/encoding';
 import * as decoding from 'lib0/decoding';
-import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
-import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { sessionCoordinator } from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
 import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 
 describe('Real-Time Collaboration System: Best Case, Bad Case & Edge Cases', () => {
@@ -148,7 +148,7 @@ describe('Real-Time Collaboration System: Best Case, Bad Case & Edge Cases', () 
       textA.insert(textA.toString().indexOf('\\end{document}'), '\\begin{theorem}Convergence is guaranteed.\\end{theorem}\n');
 
       // Update LRU cache as session coordinator does
-      sessionCoordinator.notifyContentChange(fileId, textA.toString(), filePath);
+      sessionCoordinator.notifyContentChange(fileId, textA.toString());
 
       // Flush before compile
       const flushed = sessionCoordinator.flushAllPending();
@@ -388,7 +388,7 @@ describe('Real-Time Collaboration System: Best Case, Bad Case & Edge Cases', () 
       });
 
       // Simulating remote update via SessionCoordinator with options.isRealtimeActive = true
-      sessionCoordinator.notifyContentChange(fileId, 'Original Content + Remote Edit', undefined, {
+      sessionCoordinator.notifyContentChange(fileId, 'Original Content + Remote Edit', {
         isRealtimeActive: true,
       });
 

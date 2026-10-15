@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
 import { EditorArea } from '@/features/editor/ui/editor/EditorArea';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { useLayoutStore } from '@/features/editor/store/layout.store';
-import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { useSettingsStore } from '@/features/editor/core';
+import { useLayoutStore } from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 
@@ -130,7 +130,7 @@ describe('EditorArea - Source vs Visual Mode Integration', () => {
 
     // Initially in Code/Source mode
     expect(screen.getByTestId('mock-codemirror-view')).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: /Source/i })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /(Source|Code)/i })).toBeChecked();
 
     // Trigger Visual mode via store
     useSettingsStore.getState().setEditorMode('visual');
@@ -145,6 +145,6 @@ describe('EditorArea - Source vs Visual Mode Integration', () => {
     rerender(<EditorArea />);
 
     expect(screen.getByTestId('mock-codemirror-view')).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: /Source/i })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /(Source|Code)/i })).toBeChecked();
   });
 });

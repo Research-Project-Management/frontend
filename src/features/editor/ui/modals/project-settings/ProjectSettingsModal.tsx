@@ -67,9 +67,10 @@ import {
   type CompilerEngine,
   type KeybindingMode,
   type EditorTheme,
-} from '@/features/editor/store/settings.store';
-import { usePageStore } from '@/features/editor/store/editor.store';
-import { useCompileStore } from '@/features/editor/store/compiler.store';
+  usePageStore,
+  useCompileStore,
+  editorCommandBus,
+} from '@/features/editor/core';
 import { filesQuery, pageQuery } from '@/features/editor/ui/hooks/document.queries';
 import { useFileActions } from '@/features/editor/ui/hooks/useFileActions';
 import { useProjectExport } from '@/features/editor/ui/hooks/useExport';
@@ -77,7 +78,6 @@ import { useGithubSync } from '@/features/editor/ui/hooks/useGithubSync';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { useSpellingDictionary } from '@/features/editor/ui/hooks/useSpelling';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import { apiPost, apiDelete } from '@/shared/lib/api';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 
@@ -275,18 +275,34 @@ export function ProjectSettingsModal() {
   // Git clone copy feedback
   const [copiedGitUrl, setCopiedGitUrl] = useState(false);
   const [gitToken, setGitToken] = useState<string | null>(null);
+  const [gitTokensList, setGitTokensList] = useState<Array<{ id: string; label: string; prefix: string; createdAt: string; lastUsedAt: string | null }>>([]);
   const [isCreatingToken, setIsCreatingToken] = useState(false);
+  const [revokingTokenId, setRevokingTokenId] = useState<string | null>(null);
   const [copiedGitToken, setCopiedGitToken] = useState(false);
   const [gitRepoInfo, setGitRepoInfo] = useState<{ cloneUrl?: string; branch?: string } | null>(null);
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
   useEffect(() => {
-    if (!effectiveProjectId) return;
+    if (!effectiveProjectId || !settingsPanelOpen) return;
     manuscriptService.git.getRepoInfo(effectiveProjectId)
       .then((info) => {
-        if (info) setGitRepoInfo(info);
+        if (info) {
+          setGitRepoInfo(info);
+          if (Array.isArray(info.tokens)) {
+            setGitTokensList(info.tokens);
+          }
+        }
       })
       .catch(() => {});
-  }, [effectiveProjectId]);
+
+    manuscriptService.git.listTokens()
+      .then((res) => {
+        if (res && Array.isArray(res.tokens)) {
+          setGitTokensList(res.tokens);
+        }
+      })
+      .catch(() => {});
+  }, [effectiveProjectId, settingsPanelOpen]);
 
   const gitCloneUrl = gitRepoInfo?.cloneUrl || (typeof window !== 'undefined'
     ? `${window.location.origin}/git/${effectiveProjectId || 'project'}.git`
@@ -305,12 +321,55 @@ export function ProjectSettingsModal() {
     setIsCreatingToken(true);
     try {
       const res = await manuscriptService.git.createToken(`Token ${new Date().toLocaleDateString()}`);
-      setGitToken(res.token);
+      const rawToken =
+        typeof res?.token === 'string'
+          ? res.token
+          : (res?.token as unknown as { token?: string })?.token || '';
+      setGitToken(rawToken);
       toast.success('Git Access Token generated successfully!', { id: 'git-token-action' });
+      const updated = await manuscriptService.git.listTokens().catch(() => null);
+      if (updated && Array.isArray(updated.tokens)) {
+        setGitTokensList(updated.tokens);
+      }
     } catch (err: unknown) {
       toast.error((err as Error)?.message || 'Failed to generate Git Token', { id: 'git-token-action' });
     } finally {
       setIsCreatingToken(false);
+    }
+  };
+
+  const handleRevokeGitToken = async (tokenId: string) => {
+    setRevokingTokenId(tokenId);
+    try {
+      await manuscriptService.git.revokeToken(tokenId);
+      setGitTokensList((prev) => prev.filter((t) => t.id !== tokenId));
+      toast.success('Git Access Token revoked', { id: 'git-token-revoke' });
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to revoke Git Token', { id: 'git-token-revoke' });
+    } finally {
+      setRevokingTokenId(null);
+    }
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!effectiveProjectId) {
+      toast.info('No active project found to save as template.', { id: 'save-template' });
+      return;
+    }
+    setIsSavingTemplate(true);
+    const toastId = toast.loading('Saving project as custom template...');
+    try {
+      await manuscriptService.templates.createCustom({
+        projectId: effectiveProjectId,
+        name: `${projectTitle} Template`,
+        description: `Custom template saved from ${projectTitle}`,
+        category: 'Academic',
+      });
+      toast.success('Project saved to Template Gallery!', { id: toastId });
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to save custom template', { id: toastId });
+    } finally {
+      setIsSavingTemplate(false);
     }
   };
 
@@ -359,15 +418,13 @@ export function ProjectSettingsModal() {
 
     setIsClearingCache(true);
     try {
-      await apiPost(`/api/v1/manuscripts/projects/${effectiveProjectId}/clean-aux`);
-      toast.success('Cached files cleared. You can recompile whenever ready.', { id: 'clear-cache' });
-    } catch {
-      try {
-        await apiDelete(`/api/v1/manuscripts/projects/${effectiveProjectId}/artifacts`);
-        toast.success('Cached files cleared. You can recompile whenever ready.', { id: 'clear-cache' });
-      } catch (err: unknown) {
-        toast.error((err as Error)?.message || 'Failed to clear cached files', { id: 'clear-cache' });
+      const res = await manuscriptService.compiler.cleanAuxFiles(effectiveProjectId);
+      if (res && res.success === false) {
+        throw new Error('Failed to clear cached files');
       }
+      toast.success('Cached files cleared. You can recompile whenever ready.', { id: 'clear-cache' });
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to clear cached files', { id: 'clear-cache' });
     } finally {
       setIsClearingCache(false);
     }
@@ -446,7 +503,7 @@ export function ProjectSettingsModal() {
                   setSettingsActiveTab('editor');
                 }}
                 aria-label="Back to Menu"
-                className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
               >
                 <ArrowLeft className="size-4 shrink-0" />
               </button>
@@ -468,7 +525,7 @@ export function ProjectSettingsModal() {
             type="button"
             onClick={() => setSettingsPanelOpen(false)}
             aria-label="Close menu"
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1.5 after:content-['']"
           >
             <X className="size-4 shrink-0" />
           </button>
@@ -476,21 +533,21 @@ export function ProjectSettingsModal() {
 
         {/* ── Sub-view: GitHub ───────────────────────────────────────────────── */}
         {currentView === 'github' && (
-          <div className="flex-1 overflow-y-auto p-5">
+          <div className="flex-1 min-h-0 overflow-y-auto p-5">
             <ProjectGithubTab projectId={effectiveProjectId} projectTitle={projectTitle} />
           </div>
         )}
 
         {/* ── Sub-view: References ───────────────────────────────────────────── */}
         {currentView === 'references' && (
-          <div className="flex-1 overflow-y-auto p-5">
+          <div className="flex-1 min-h-0 overflow-y-auto p-5">
             <ProjectReferencesTab projectId={effectiveProjectId} bibFiles={bibFiles} />
           </div>
         )}
 
         {/* ── Sub-view: Personal Dictionary ──────────────────────────────────── */}
         {currentView === 'dictionary' && (
-          <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
             <div>
               <h3 className="text-sm font-semibold text-foreground">Learned Words</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -540,7 +597,7 @@ export function ProjectSettingsModal() {
 
         {/* ── Primary Overleaf Menu Body ─────────────────────────────────────── */}
         {currentView === 'menu' && (
-          <div className="flex-1 overflow-y-auto p-5 space-y-6 text-foreground">
+          <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-6 text-foreground">
             {/* 1. DOWNLOAD SECTION */}
             <section aria-labelledby="menu-download-heading">
               <h3
@@ -660,7 +717,7 @@ export function ProjectSettingsModal() {
                     variant="ghost"
                     size="sm"
                     onClick={handleCopyGitUrl}
-                    className="h-6 px-2 text-[11px] cursor-pointer"
+                    className="h-6 min-h-[26px] px-2 text-[11px] cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
                   >
                     {copiedGitUrl ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
                     <span className="ml-1">{copiedGitUrl ? 'Copied' : 'Copy'}</span>
@@ -674,7 +731,7 @@ export function ProjectSettingsModal() {
                       size="sm"
                       onClick={handleCreateGitToken}
                       disabled={isCreatingToken}
-                      className="h-5 px-2 text-[10px] cursor-pointer"
+                      className="min-h-[26px] h-6 px-2.5 text-[11px] cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
                     >
                       {isCreatingToken ? 'Generating...' : 'Generate Git Token'}
                     </Button>
@@ -688,10 +745,33 @@ export function ProjectSettingsModal() {
                         variant="ghost"
                         size="sm"
                         onClick={handleCopyGitToken}
-                        className="h-5 px-1.5 text-[10px] cursor-pointer"
+                        className="min-h-[26px] h-6 px-2 text-[11px] cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
                       >
                         {copiedGitToken ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
                       </Button>
+                    </div>
+                  )}
+                  {gitTokensList.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      {gitTokensList.slice(0, 3).map((tok) => (
+                        <div
+                          key={tok.id}
+                          className="flex items-center justify-between text-[10px] bg-background/60 border border-border/60 rounded px-2 py-0.5"
+                        >
+                          <span className="truncate font-mono text-foreground">
+                            {tok.label} ({tok.prefix}…)
+                          </span>
+                          <button
+                            type="button"
+                            disabled={revokingTokenId === tok.id}
+                            onClick={() => handleRevokeGitToken(tok.id)}
+                            className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer ml-2 shrink-0 relative after:absolute after:-inset-1.5 after:content-[''] py-0.5"
+                            aria-label={`Revoke ${tok.label}`}
+                          >
+                            {revokingTokenId === tok.id ? 'Revoking…' : 'Revoke'}
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -742,6 +822,28 @@ export function ProjectSettingsModal() {
                 </div>
                 <span className="text-xs text-primary font-medium group-hover:underline">
                   {isCopyingProject ? 'Copying...' : 'Duplicate →'}
+                </span>
+              </button>
+
+              {/* Save as Custom Template */}
+              <button
+                type="button"
+                onClick={handleSaveAsTemplate}
+                disabled={isSavingTemplate}
+                aria-label="Save as Template"
+                className="w-full flex items-center justify-between p-2.5 rounded-md border border-border bg-card/40 hover:bg-card hover:border-foreground/30 transition-colors text-left cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="size-7 rounded-md bg-muted text-foreground flex items-center justify-center shrink-0">
+                    {isSavingTemplate ? <Loader2 className="size-4 animate-spin" /> : <BookOpen className="size-4" />}
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-foreground">Save as Template</p>
+                    <p className="text-[11px] text-muted-foreground">Publish to reusable custom templates</p>
+                  </div>
+                </div>
+                <span className="text-xs text-primary font-medium group-hover:underline">
+                  {isSavingTemplate ? 'Saving...' : 'Save →'}
                 </span>
               </button>
 
@@ -1251,7 +1353,7 @@ export function ProjectSettingsModal() {
                           <button
                             type="button"
                             onClick={() => removeSuppressedWarning(pat)}
-                            className="text-muted-foreground hover:text-foreground cursor-pointer font-bold px-0.5"
+                            className="text-muted-foreground hover:text-foreground cursor-pointer font-semibold px-1 relative after:absolute after:-inset-1.5 after:content-['']"
                             aria-label={`Remove filter ${pat}`}
                           >
                             ×

@@ -3,7 +3,7 @@ import {
   parseBibContent,
   parseMultipleBibContents,
   type BibEntry,
-} from '@/features/editor/domain/citation/bib-parser';
+} from '@/features/editor/subsystems/citation/model/bib-parser';
 
 describe('BibTeX Parser (bib-parser.util.ts)', () => {
   it('should parse standard BibTeX article entry', () => {

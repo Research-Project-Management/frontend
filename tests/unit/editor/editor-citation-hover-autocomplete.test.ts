@@ -10,12 +10,12 @@ import {
   formatShortAuthor,
   formatInTextCitationPreview,
   formatBibliographyPreview,
-} from '@/features/editor/domain/citation/citation-formatter';
+} from '@/features/editor/subsystems/citation/model/citation-formatter';
 import {
   latexCitationHoverTooltip,
   citationHoverSource,
-} from '@/features/editor/engines/extensions/latex-citation-hover';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+} from '@/features/editor/subsystems/citation/extensions/latex-citation-hover';
+import { editorCommandBus } from '@/features/editor/core';
 
 describe('Editor Citation Autocomplete & Hover Tooltip Suite', () => {
   beforeEach(() => {

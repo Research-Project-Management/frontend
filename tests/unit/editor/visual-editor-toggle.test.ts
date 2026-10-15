@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { useSettingsStore } from '@/features/editor/core';
 import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
 import {
   latexToHtml,

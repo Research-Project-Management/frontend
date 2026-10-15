@@ -8,7 +8,7 @@ import {
   resolveReverse,
   type SyncTeXMap,
   type SyncTeXNode,
-} from '@/features/editor/domain/pdf/synctex-index';
+} from '@/features/editor/subsystems/compiler/synctex/synctex-index';
 
 describe('SyncTeX 2D Spatial Search Algorithm (k-d Tree & Two-Column Disambiguation)', () => {
   describe('1. Geometry & Distance Primitives', () => {

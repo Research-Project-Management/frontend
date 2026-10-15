@@ -18,7 +18,7 @@ import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import React from 'react';
 import { VisualReferenceHoverCard } from '@/features/editor/ui/editor/visual/toolbars/VisualReferenceHoverCard';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import { editorCommandBus } from '@/features/editor/core';
 
 describe('VisualReferenceHoverCard - Citations & References in Visual Mode', () => {
   let contentDiv: HTMLDivElement;

@@ -2,9 +2,9 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
-import { ActivityBar } from '@/features/editor/ui/shell/ActivityBar';
-import { TexFileRow } from '@/features/editor/ui/sidebar/explorer/subcomponents/TexFileRow';
-import { useLayoutStore } from '@/features/editor/store/layout.store';
+import { ActivityBar } from '@/features/editor/core/shell/ActivityBar';
+import { TexFileRow } from '@/features/editor/subsystems/explorer';
+import { useLayoutStore } from '@/features/editor/core';
 
 // Mock manuscriptService to keep tests decoupled and fast
 vi.mock('@/features/editor/sdk/manuscript.service', () => ({
@@ -16,7 +16,7 @@ vi.mock('@/features/editor/sdk/manuscript.service', () => ({
   },
 }));
 
-vi.mock('@/features/editor/ui/sidebar/review/hooks/useReviewPendingCount', () => ({
+vi.mock('@/features/editor/subsystems/review', () => ({
   useReviewPendingCount: () => ({ totalPendingCount: 0 }),
 }));
 

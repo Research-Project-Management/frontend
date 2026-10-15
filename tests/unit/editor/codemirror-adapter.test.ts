@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { CodeMirrorEngineAdapter } from '@/features/editor/engines/adapters/codemirror.adapter';
+import { CodeMirrorEngineAdapter } from '@/features/editor/core/engine/adapters/codemirror.adapter';
 
 describe('CodeMirrorEngineAdapter (IEditorEngine Implementation for CM6)', () => {
   let view: EditorView;

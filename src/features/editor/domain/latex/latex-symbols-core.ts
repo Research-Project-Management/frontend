@@ -150,6 +150,7 @@ export class LatexSymbolsIndexCore {
   private includeEntries = new Map<string, Array<{ path: string; line: number }>>(); // fileId -> includes
   private filePaths = new Map<string, string>(); // fileId -> normalized filePath
   private knownFiles = new Set<string>(); // List of known project file paths
+  private docClassFiles = new Set<string>(); // Normalized paths of files containing \documentclass (excluding subfiles)
   private version = 0;
 
   /**
@@ -162,7 +163,13 @@ export class LatexSymbolsIndexCore {
 
     if (normPath.endsWith('.bib')) {
       this.indexBibContent(fileId, normPath, content);
-    } else if (normPath.endsWith('.tex') || normPath.endsWith('.ltx') || normPath.endsWith('.sty')) {
+    } else if (
+      normPath.endsWith('.tex') ||
+      normPath.endsWith('.ltx') ||
+      normPath.endsWith('.sty') ||
+      normPath.endsWith('.cls') ||
+      normPath.endsWith('.bbl')
+    ) {
       this.indexTexContent(fileId, normPath, content);
     }
     this.version++;
@@ -172,6 +179,7 @@ export class LatexSymbolsIndexCore {
    * Removes all indexed symbols for a deleted file
    */
   public removeFile(fileId: string, filePath?: string): void {
+    const prevPath = this.filePaths.get(fileId);
     this.bibEntries.delete(fileId);
     this.labelEntries.delete(fileId);
     this.commandEntries.delete(fileId);
@@ -179,8 +187,13 @@ export class LatexSymbolsIndexCore {
     this.outlineEntries.delete(fileId);
     this.includeEntries.delete(fileId);
     this.filePaths.delete(fileId);
+    if (prevPath) {
+      this.docClassFiles.delete(prevPath);
+    }
     if (filePath) {
-      this.knownFiles.delete(filePath.replace(/\\/g, '/'));
+      const norm = filePath.replace(/\\/g, '/');
+      this.knownFiles.delete(norm);
+      this.docClassFiles.delete(norm);
     }
     this.version++;
   }
@@ -197,6 +210,7 @@ export class LatexSymbolsIndexCore {
     this.includeEntries.clear();
     this.filePaths.clear();
     this.knownFiles.clear();
+    this.docClassFiles.clear();
     this.version++;
   }
 
@@ -255,6 +269,9 @@ export class LatexSymbolsIndexCore {
 
     const allPaths = Array.from(this.knownFiles);
     const rootPath =
+      allPaths.find((p) => this.docClassFiles.has(p) && /(^|\/)main\.tex$/i.test(p)) ||
+      allPaths.find((p) => this.docClassFiles.has(p) && /(^|\/)main[^/]*\.tex$/i.test(p)) ||
+      allPaths.find((p) => this.docClassFiles.has(p)) ||
       allPaths.find((p) => /(^|\/)main\.tex$/i.test(p)) ||
       allPaths.find((p) => /(^|\/)index\.tex$/i.test(p)) ||
       allPaths.find((p) => p.endsWith('.tex')) ||
@@ -263,13 +280,17 @@ export class LatexSymbolsIndexCore {
     const appendFileOutlines = (targetPath: string) => {
       const norm = targetPath.replace(/\\/g, '/');
       if (visitedFiles.has(norm)) return;
-      visitedFiles.add(norm);
 
       const bareName = norm.split('/').pop() || norm;
       const fileIdMatch = Array.from(this.filePaths.entries()).find(
-        ([_, p]) => p === norm || p.endsWith('/' + bareName) || bareName === p.split('/').pop()
+        ([_, p]) => p === norm || p.endsWith('/' + norm) || p.endsWith('/' + bareName) || bareName === p.split('/').pop()
       );
       const resolvedId = fileIdMatch ? fileIdMatch[0] : norm;
+      const resolvedNormPath = fileIdMatch ? fileIdMatch[1] : norm;
+      if (visitedFiles.has(resolvedNormPath)) return;
+      visitedFiles.add(norm);
+      visitedFiles.add(resolvedNormPath);
+
       const items = this.outlineEntries.get(resolvedId) || this.outlineEntries.get(norm) || [];
       const includes = this.includeEntries.get(resolvedId) || this.includeEntries.get(norm) || [];
 
@@ -292,8 +313,8 @@ export class LatexSymbolsIndexCore {
     }
     // Append any orphan / unincluded .tex files so they are still discoverable in project outline
     for (const [fId, items] of this.outlineEntries.entries()) {
-      const p = this.filePaths.get(fId) || fId;
-      if (!visitedFiles.has(p.replace(/\\/g, '/'))) {
+      const p = (this.filePaths.get(fId) || fId).replace(/\\/g, '/');
+      if (!visitedFiles.has(p)) {
         for (const it of items) {
           projectFlatOutline.push(it);
         }
@@ -318,44 +339,170 @@ export class LatexSymbolsIndexCore {
   }
 
   /**
-   * Fast regex parsing of BibTeX entries
+   * Extracts balanced brace `{...}` content starting at the index of `{`.
+   */
+  private extractBalancedBraces(text: string, openBraceIdx: number): { value: string; endIdx: number } | null {
+    if (openBraceIdx < 0 || openBraceIdx >= text.length || text[openBraceIdx] !== '{') {
+      return null;
+    }
+    let depth = 1;
+    let i = openBraceIdx + 1;
+    const len = text.length;
+    while (i < len && depth > 0) {
+      const ch = text[i];
+      if (ch === '\\') {
+        i += 2;
+        continue;
+      }
+      if (ch === '{') depth++;
+      else if (ch === '}') depth--;
+      i++;
+    }
+    if (depth !== 0) return null;
+    return {
+      value: text.slice(openBraceIdx + 1, i - 1),
+      endIdx: i,
+    };
+  }
+
+  /**
+   * Balanced-brace and quote-aware BibTeX parser (handles nested braces like {PASCAL}, {\L}ukasz, and @ in URLs/emails)
    */
   private indexBibContent(fileId: string, filePath: string, content: string): void {
     const fileBibMap = new Map<string, BibEntry>();
+    const len = content.length;
+    let pos = 0;
 
-    // Match @type{key, ...
-    const entryRegex = /@([a-zA-Z]+)\s*\{\s*([^,\s]+)\s*,([^@]*)/g;
-    let match: RegExpExecArray | null;
+    while (pos < len) {
+      const atIdx = content.indexOf('@', pos);
+      if (atIdx === -1) break;
 
-    while ((match = entryRegex.exec(content)) !== null) {
-      const type = match[1].toLowerCase();
-      const key = match[2].trim();
-      const body = match[3];
+      let typeStart = atIdx + 1;
+      while (typeStart < len && /\s/.test(content[typeStart])) typeStart++;
+      let typeEnd = typeStart;
+      while (typeEnd < len && /[a-zA-Z0-9_-]/.test(content[typeEnd])) typeEnd++;
+
+      const type = content.slice(typeStart, typeEnd).toLowerCase();
+      if (!type) {
+        pos = atIdx + 1;
+        continue;
+      }
+
+      let openIdx = typeEnd;
+      while (openIdx < len && /\s/.test(content[openIdx])) openIdx++;
+      if (openIdx >= len || (content[openIdx] !== '{' && content[openIdx] !== '(')) {
+        pos = typeEnd;
+        continue;
+      }
+
+      const openChar = content[openIdx];
+      const closeChar = openChar === '{' ? '}' : ')';
+      let depth = 1;
+      let i = openIdx + 1;
+      while (i < len && depth > 0) {
+        if (content[i] === openChar) depth++;
+        else if (content[i] === closeChar) depth--;
+        i++;
+      }
+
+      const rawEntryBody = content.slice(openIdx + 1, depth === 0 ? i - 1 : i);
+      pos = i;
 
       if (type === 'comment' || type === 'string' || type === 'preamble') {
         continue;
       }
 
-      // Extract title, author, year, journal, doi from entry body
-      const titleMatch = /title\s*=\s*[{"]([^}"]+)[}"]/i.exec(body);
-      const authorMatch = /author\s*=\s*[{"]([^}"]+)[}"]/i.exec(body);
-      const yearMatch = /year\s*=\s*[{"]?(\d{4})[}"]?/i.exec(body);
-      const journalMatch = /(?:journal|booktitle)\s*=\s*[{"]([^}"]+)[}"]/i.exec(body);
-      const doiMatch = /doi\s*=\s*[{"]([^}"]+)[}"]/i.exec(body);
+      const commaIdx = rawEntryBody.indexOf(',');
+      if (commaIdx === -1) continue;
+
+      const key = rawEntryBody.slice(0, commaIdx).trim();
+      if (!key || /\s/.test(key)) continue;
+
+      const fieldsBody = rawEntryBody.slice(commaIdx + 1);
+      const fields = this.parseBibEntryFields(fieldsBody);
 
       fileBibMap.set(key, {
         key,
         type,
-        title: titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : undefined,
-        author: authorMatch ? authorMatch[1].replace(/\s+/g, ' ').trim() : undefined,
-        year: yearMatch ? yearMatch[1] : undefined,
-        journal: journalMatch ? journalMatch[1].replace(/\s+/g, ' ').trim() : undefined,
-        doi: doiMatch ? doiMatch[1].trim() : undefined,
+        title: fields.title,
+        author: fields.author,
+        year: fields.year,
+        journal: fields.journal || fields.booktitle,
+        booktitle: fields.booktitle,
+        doi: fields.doi,
         sourceFile: filePath,
       });
     }
 
     this.bibEntries.set(fileId, fileBibMap);
+  }
+
+  private parseBibEntryFields(body: string): Record<string, string | undefined> {
+    const result: Record<string, string | undefined> = {};
+    let i = 0;
+    const len = body.length;
+
+    while (i < len) {
+      while (i < len && /[\s,]/.test(body[i])) i++;
+      if (i >= len) break;
+
+      const nameStart = i;
+      while (i < len && /[a-zA-Z0-9_-]/.test(body[i])) i++;
+      const fieldName = body.slice(nameStart, i).toLowerCase();
+      if (!fieldName) {
+        i++;
+        continue;
+      }
+
+      while (i < len && /\s/.test(body[i])) i++;
+      if (i >= len || body[i] !== '=') continue;
+      i++; // skip '='
+
+      while (i < len && /\s/.test(body[i])) i++;
+      if (i >= len) break;
+
+      let value = '';
+      if (body[i] === '{') {
+        let depth = 1;
+        i++;
+        const valStart = i;
+        while (i < len && depth > 0) {
+          if (body[i] === '{') depth++;
+          else if (body[i] === '}') depth--;
+          i++;
+        }
+        value = body.slice(valStart, depth === 0 ? i - 1 : i);
+      } else if (body[i] === '"') {
+        i++;
+        const valStart = i;
+        while (i < len) {
+          if (body[i] === '"' && body[i - 1] !== '\\') {
+            i++;
+            break;
+          }
+          i++;
+        }
+        value = body.slice(valStart, i > valStart ? i - 1 : i);
+      } else {
+        const valStart = i;
+        while (i < len && body[i] !== ',' && body[i] !== '}' && body[i] !== ')') {
+          i++;
+        }
+        value = body.slice(valStart, i);
+      }
+
+      const cleaned = value.replace(/\s+/g, ' ').trim();
+      if (cleaned) {
+        if (fieldName === 'year') {
+          const ym = cleaned.match(/\b(\d{4})\b/);
+          result.year = ym ? ym[1] : cleaned;
+        } else {
+          result[fieldName] = cleaned;
+        }
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -372,7 +519,7 @@ export class LatexSymbolsIndexCore {
   }
 
   /**
-   * Fast regex parsing of LaTeX labels, commands, and structural sections (Overleaf Parity)
+   * Fast regex & balanced-brace parsing of LaTeX labels, commands, \bibitem (.tex/.bbl), and structural sections (Overleaf Parity)
    */
   private indexTexContent(fileId: string, filePath: string, content: string): void {
     const fileLabelMap = new Map<string, LabelEntry>();
@@ -381,22 +528,36 @@ export class LatexSymbolsIndexCore {
     const fileOutlineItems: OutlineItem[] = [];
     const fileIncludes: Array<{ path: string; line: number }> = [];
 
-    // Also support embedded \bibitem references directly in .tex files
+    // Also support embedded \bibitem references directly in .tex and .bbl files
     let fileBibMap = this.bibEntries.get(fileId);
     if (!fileBibMap) {
       fileBibMap = new Map<string, BibEntry>();
       this.bibEntries.set(fileId, fileBibMap);
+    } else if (!filePath.endsWith('.bib')) {
+      fileBibMap.clear();
     }
 
     const lines = content.split('\n');
+    const cleanLines: string[] = new Array(lines.length);
     let inFigure = false;
     let inTable = false;
+    let hasDocClass = false;
+    let isSubfileDoc = false;
 
     for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
       const line = lines[lineIdx];
       // Accurate comment stripping: ignore escaped \%
       const activeLine = this.getNonCommentedContent(line);
+      cleanLines[lineIdx] = activeLine;
       if (!activeLine.trim()) continue;
+
+      // Detect root \documentclass (excluding subfiles child documents)
+      if (/\\documentclass\b/.test(activeLine)) {
+        hasDocClass = true;
+        if (/\\documentclass\s*(?:\[[^\]]*\])?\s*\{\s*subfiles\s*\}/.test(activeLine)) {
+          isSubfileDoc = true;
+        }
+      }
 
       // Environment tracking for Figures & Tables (Overleaf Parity)
       if (/\\begin\s*\{\s*figure\*?\s*\}/.test(activeLine)) {
@@ -411,15 +572,25 @@ export class LatexSymbolsIndexCore {
         inTable = false;
       }
 
-      // 0. Figure / Table Caption Extraction (Overleaf Parity)
+      // 0. Figure / Table Caption Extraction with balanced braces (supports nested macros & multi-line captions)
       if (inFigure || inTable) {
-        const captionRegex = /\\caption(?:\s*\[[^\]]*\])?\{([^}]+)\}/g;
-        let capMatch: RegExpExecArray | null;
-        while ((capMatch = captionRegex.exec(activeLine)) !== null) {
-          const rawCaption = capMatch[1];
+        const capPrefixRegex = /\\caption(?:\s*\[[^\]]*\])?\s*\{/g;
+        let capPrefixMatch: RegExpExecArray | null;
+        while ((capPrefixMatch = capPrefixRegex.exec(activeLine)) !== null) {
+          const openBraceCol = capPrefixMatch.index + capPrefixMatch[0].length - 1;
+          // Join up to 8 subsequent non-commented lines if caption spans multiple lines
+          let windowText = activeLine.slice(openBraceCol);
+          for (let lookahead = 1; lookahead <= 8 && lineIdx + lookahead < lines.length; lookahead++) {
+            if (this.extractBalancedBraces(windowText, 0)) break;
+            windowText += '\n' + this.getNonCommentedContent(lines[lineIdx + lookahead]);
+          }
+          const balanced = this.extractBalancedBraces(windowText, 0);
+          const rawCaption = balanced ? balanced.value : activeLine.slice(openBraceCol + 1).replace(/\}.*$/, '');
           const cleanTitle = rawCaption
-            .replace(/\\cite\{[^}]+\}/g, '')
-            .replace(/\\label\{[^}]+\}/g, '')
+            .replace(/\\(?:auto|paren|text|foot|no|new|short)?cite[a-z*]*\{[^}]*\}/gi, '')
+            .replace(/\\(?:C|c)?ref\{[^}]*\}/g, '')
+            .replace(/\\label\{[^}]*\}/g, '')
+            .replace(/\\looseness-?\d+\s*/g, '')
             .replace(/\s+/g, ' ')
             .trim();
           const type: SectionLevel = inFigure ? 'figure' : 'table';
@@ -460,8 +631,8 @@ export class LatexSymbolsIndexCore {
         this.registerLabel(fileLabelMap, optionMatch[1].trim(), lineIdx + 1, filePath);
       }
 
-      // 2. Match \newcommand{\name}[args]
-      const cmdRegex = /\\(?:re)?newcommand\{?\\([a-zA-Z]+)\}?(?:\[(\d+)\])?/g;
+      // 2. Match \newcommand{\name}[args], \newcommand*\name[args], \renewcommand*, \providecommand*
+      const cmdRegex = /\\(?:re|provide)?newcommand\*?\s*\{?\s*\\([a-zA-Z@]+)\s*\}?(?:\s*\[(\d+)\])?/g;
       let cmdMatch: RegExpExecArray | null;
       while ((cmdMatch = cmdRegex.exec(activeLine)) !== null) {
         const name = `\\${cmdMatch[1]}`;
@@ -473,8 +644,37 @@ export class LatexSymbolsIndexCore {
         });
       }
 
+      // 2a-extra. Match \DeclareMathOperator*{\name}{...} and \def\name
+      const mathOpRegex = /\\DeclareMathOperator\*?\s*\{\s*\\([a-zA-Z]+)\s*\}/g;
+      let mathOpMatch: RegExpExecArray | null;
+      while ((mathOpMatch = mathOpRegex.exec(activeLine)) !== null) {
+        const name = `\\${mathOpMatch[1]}`;
+        fileCommandMap.set(name, {
+          name,
+          argsCount: 0,
+          sourceFile: filePath,
+        });
+      }
+
+      const defRegex = /\\(?:g|e|x)?def\s*\\([a-zA-Z]{2,})((?:#\d+)*)\s*\{/g;
+      let defMatch: RegExpExecArray | null;
+      while ((defMatch = defRegex.exec(activeLine)) !== null) {
+        const rawName = defMatch[1];
+        if (rawName === 'natexlab') continue;
+        const name = `\\${rawName}`;
+        const params = defMatch[2] || '';
+        const argsCount = params ? (params.match(/#\d/g) || []).length : 0;
+        if (!fileCommandMap.has(name)) {
+          fileCommandMap.set(name, {
+            name,
+            argsCount,
+            sourceFile: filePath,
+          });
+        }
+      }
+
       // 2b. Match \newtheorem{envname} or \newenvironment{envname}
-      const envRegex = /\\(?:newtheorem|(?:re)?newenvironment)\{([a-zA-Z*0-9_]+)\}/g;
+      const envRegex = /\\(?:newtheorem|(?:re)?newenvironment)\*?\{([a-zA-Z*0-9_]+)\}/g;
       let envMatch: RegExpExecArray | null;
       while ((envMatch = envRegex.exec(activeLine)) !== null) {
         const envName = envMatch[1].trim();
@@ -485,29 +685,20 @@ export class LatexSymbolsIndexCore {
         });
       }
 
-      // 2c. Match embedded \bibitem[label]{key} (e.g. \begin{thebibliography})
-      const bibitemRegex = /\\bibitem(?:\[([^\]]*)\])?\{([^}]+)\}/g;
-      let bibMatch: RegExpExecArray | null;
-      while ((bibMatch = bibitemRegex.exec(activeLine)) !== null) {
-        const key = bibMatch[2].trim();
-        const shortAuthor = bibMatch[1] ? bibMatch[1].trim() : undefined;
-        fileBibMap.set(key, {
-          key,
-          type: 'bibitem',
-          author: shortAuthor,
-          sourceFile: filePath,
-        });
-      }
-
-      // 3. Match LaTeX Document Structure: \book, \part, \chapter, \section, \subsection, etc.
-      const sectionRegex = /\\(book|part|chapter|section|subsection|subsubsection|paragraph|subparagraph)(\*?)\{([^}]+)\}/;
-      const sectionMatch = sectionRegex.exec(activeLine);
+      // 3. Match LaTeX Document Structure: \book, \part, \chapter, \section, \subsection, etc. (with balanced braces)
+      const sectionPrefixRegex = /\\(book|part|chapter|section|subsection|subsubsection|paragraph|subparagraph)(\*?)\s*(?:\[[^\]]*\])?\s*\{/;
+      const sectionMatch = sectionPrefixRegex.exec(activeLine);
       if (sectionMatch) {
         const type = sectionMatch[1] as SectionLevel;
         const hasStar = sectionMatch[2] === '*';
-        const cleanTitle = sectionMatch[3]
-          .replace(/\\cite\{[^}]+\}/g, '')
-          .replace(/\\label\{[^}]+\}/g, '')
+        const openBraceIdx = sectionMatch.index + sectionMatch[0].length - 1;
+        const balanced = this.extractBalancedBraces(activeLine, openBraceIdx);
+        const rawTitle = balanced
+          ? balanced.value
+          : activeLine.slice(openBraceIdx + 1).replace(/\}.*$/, '');
+        const cleanTitle = rawTitle
+          .replace(/\\(?:auto|paren|text|foot|no|new|short)?cite[a-z*]*\{[^}]*\}/gi, '')
+          .replace(/\\label\{[^}]*\}/g, '')
           .replace(/\s+/g, ' ')
           .trim();
         const level = SECTION_LEVEL_WEIGHT[type];
@@ -520,6 +711,82 @@ export class LatexSymbolsIndexCore {
           line: lineIdx + 1,
           sourceFile: filePath,
           hasStar,
+        });
+      }
+    }
+
+    if (hasDocClass && !isSubfileDoc) {
+      this.docClassFiles.add(filePath);
+    } else {
+      this.docClassFiles.delete(filePath);
+    }
+
+    // 4. Multi-line \bibitem[...]{key} extraction across full clean text (supports wrapped .bbl & inline thebibliography)
+    const fullCleanText = cleanLines.join('\n');
+    if (fullCleanText.includes('\\bibitem')) {
+      const bibitemGlobalRegex = /\\bibitem\s*(?:\[([\s\S]*?)\])?\s*\{([^}]+)\}/g;
+      const matches: Array<{ key: string; optLabel?: string; bodyStart: number; matchStart: number }> = [];
+      let bm: RegExpExecArray | null;
+      while ((bm = bibitemGlobalRegex.exec(fullCleanText)) !== null) {
+        matches.push({
+          optLabel: bm[1] ? bm[1].replace(/\s+/g, ' ').trim() : undefined,
+          key: bm[2].trim(),
+          matchStart: bm.index,
+          bodyStart: bm.index + bm[0].length,
+        });
+      }
+
+      const endBibIdx = fullCleanText.indexOf('\\end{thebibliography}');
+      for (let mIdx = 0; mIdx < matches.length; mIdx++) {
+        const cur = matches[mIdx];
+        const nextStart =
+          mIdx + 1 < matches.length
+            ? matches[mIdx + 1].matchStart
+            : endBibIdx !== -1 && endBibIdx > cur.bodyStart
+              ? endBibIdx
+              : Math.min(fullCleanText.length, cur.bodyStart + 800);
+        const block = fullCleanText.slice(cur.bodyStart, nextStart).trim();
+        const newblocks = block.split(/\\newblock\b/).map((s) => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
+
+        // Extract author from first segment before \newblock or from optional [label]
+        let author = cur.optLabel
+          ? cur.optLabel.replace(/^\{|\}$/g, '').replace(/\(\d{4}[a-z]?\).*/, '').trim()
+          : undefined;
+        if ( newblocks.length > 0) {
+          const firstSeg = newblocks[0]
+            .replace(/\\(?:emph|textit|textbf|textsc)\{([^}]*)\}/g, '$1')
+            .replace(/[{}~]/g, ' ')
+            .replace(/\s+\d{4}[a-z]?\.\s*$/, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+          if (firstSeg && (!author || firstSeg.length > author.length)) {
+            author = firstSeg.replace(/\.\s*$/, '');
+          }
+        }
+
+        // Extract title from second segment (after first \newblock)
+        let title: string | undefined;
+        if (newblocks.length > 1) {
+          title = newblocks[1]
+            .replace(/\\href\s*\{[^}]*\}\s*\{([\s\S]*?)\}/g, '$1')
+            .replace(/\\(?:emph|textit|textbf|textsc)\{([^}]*)\}/g, '$1')
+            .replace(/\{\\(?:em|it|bf)\s+([^}]*)\}/g, '$1')
+            .replace(/[{}]/g, '')
+            .replace(/\.\s*$/, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        }
+
+        const yearMatch = (cur.optLabel || '') .match(/\b(19\d{2}|20\d{2})\b/) || block.match(/\b(19\d{2}|20\d{2})\b/);
+        const year = yearMatch ? yearMatch[1] : undefined;
+
+        fileBibMap.set(cur.key, {
+          key: cur.key,
+          type: 'bibitem',
+          author: author || undefined,
+          title: title || undefined,
+          year,
+          sourceFile: filePath,
         });
       }
     }

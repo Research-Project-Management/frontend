@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseDocumentOutline, type OutlineEntry } from '@/features/editor/domain/pdf/pdf-outline';
+import { parseDocumentOutline, type OutlineEntry } from '@/features/editor/subsystems/compiler/synctex/pdf-outline';
 import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
 
 describe('Phase 1 Parity: Document Outline Parsing (OutlineTab)', () => {
@@ -61,7 +61,7 @@ Line 31 content.
     expect(entries[2]).toMatchObject({
       level: 1,
       levelName: 'Section',
-      title: 'Background \\& Motivation',
+      title: 'Background & Motivation',
       line: 16,
     });
 

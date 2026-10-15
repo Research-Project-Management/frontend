@@ -15,16 +15,16 @@ import { EditorView } from '@codemirror/view';
 import {
   findMatchingBrace,
   latexVisualHeadings,
-} from '@/features/editor/engines/extensions/latex-visual-headings';
-import { latexVisualMath } from '@/features/editor/engines/extensions/latex-visual-math';
-import { latexVisualCitations } from '@/features/editor/engines/extensions/latex-visual-citations';
+} from '@/features/editor/core/engine/extensions/latex-visual-headings';
+import { latexVisualMath } from '@/features/editor/core/engine/extensions/latex-visual-math';
+import { latexVisualCitations } from '@/features/editor/core/engine/extensions/latex-visual-citations';
 import {
   editorCommandBus,
   setActiveEditorEngine,
   getActiveEditorEngine,
   registerDefaultBridges,
-} from '@/features/editor/coordinators/command-bus';
-import { CodeMirrorEngineAdapter } from '@/features/editor/engines/adapters/codemirror.adapter';
+} from '@/features/editor/core';
+import { CodeMirrorEngineAdapter } from '@/features/editor/core/engine/adapters/codemirror.adapter';
 
 describe('Editor Hardening & Stability Verification', () => {
   let container: HTMLDivElement;

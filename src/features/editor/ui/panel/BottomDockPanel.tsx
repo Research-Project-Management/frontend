@@ -15,9 +15,12 @@
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
-import { useLayoutStore } from '@/features/editor/store/layout.store';
-import { useCompilerStore, type CompileError } from '@/features/editor/store/compiler.store';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import {
+  useLayoutStore,
+  useCompilerStore,
+  type CompileError,
+  editorCommandBus,
+} from '@/features/editor/core';
 import { DockHeader } from './DockHeader';
 import { DockProblemsTab } from './DockProblemsTab';
 import { DockOutputTab } from './DockOutputTab';

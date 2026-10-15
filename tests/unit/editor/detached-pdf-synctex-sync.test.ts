@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { navigationCoordinator } from '@/features/editor/coordinators/navigation.coordinator';
-import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
-import { usePageStore } from '@/features/editor/store/editor.store';
-import { useWorkspaceStore } from '@/features/editor/store/workspace.store';
-import { useLayoutStore } from '@/features/editor/store/layout.store';
-import { useCompileStore } from '@/features/editor/store/compiler.store';
+import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
+import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
+import { usePageStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '@/features/editor/core';
+import { useLayoutStore } from '@/features/editor/core';
+import { useCompileStore } from '@/features/editor/core';
 
 // In-memory BroadcastChannel simulator for cross-window testing
 class MockBroadcastChannel {
@@ -56,8 +56,8 @@ describe('Detached PDF Viewer Multi-Window SyncTeX & Dual-Scroll Bus', () => {
 
     usePageStore.setState({
       projectId: 'proj-123',
-      currentPage: { id: 'file-main', title: 'main.tex', path: 'main.tex' },
-      activeFilePage: { id: 'file-main', title: 'main.tex', path: 'main.tex' },
+      currentPage: { id: 'file-main', title: 'main.tex', path: 'main.tex' } as any,
+      activeFilePage: { id: 'file-main', title: 'main.tex', path: 'main.tex' } as any,
     });
 
     useLayoutStore.setState({
@@ -68,7 +68,7 @@ describe('Detached PDF Viewer Multi-Window SyncTeX & Dual-Scroll Bus', () => {
 
     useWorkspaceStore.setState({
       tabsByProject: {
-        'proj-123': [{ id: 'file-main', title: 'main.tex', path: 'main.tex' }],
+        'proj-123': [{ id: 'file-main', title: 'main.tex', path: 'main.tex' } as any],
       },
       activeByProject: {
         'proj-123': 'file-main',

@@ -11,7 +11,7 @@ import {
   Trash2,
   WrapText,
   Loader2,
-  Wand2,
+  Bot,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import {
@@ -70,9 +70,9 @@ export function DockHeader({
   onClosePanel,
 }: DockHeaderProps) {
   return (
-    <div className="h-9 shrink-0 flex items-center justify-between border-b border-border bg-surface px-2.5">
+    <div className="h-9 shrink-0 flex items-center justify-between border-b border-border bg-surface px-2.5 overflow-x-auto overflow-y-hidden scrollbar-none gap-2">
       {/* Left Dock Tabs */}
-      <div className="flex items-center h-full">
+      <div className="flex items-center h-full shrink-0">
         {/* Problems Tab */}
         <button
           type="button"
@@ -133,7 +133,7 @@ export function DockHeader({
       </div>
 
       {/* Right Toolbar Actions */}
-      <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center gap-2 shrink-0">
         {/* ── TAB 1 CONTROLS: PROBLEMS ── */}
         {activeBottomTab === 'problems' && (
           <>
@@ -145,7 +145,7 @@ export function DockHeader({
                 className={cn(
                   'px-2.5 py-0.5 rounded-xs font-medium transition-colors cursor-pointer',
                   filterSeverity === 'all'
-                    ? 'bg-canvas text-foreground shadow-2xs font-semibold'
+                    ? 'bg-canvas text-foreground border border-border/60 font-semibold'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -157,7 +157,7 @@ export function DockHeader({
                 className={cn(
                   'px-2.5 py-0.5 rounded-xs font-medium transition-colors cursor-pointer flex items-center gap-1',
                   filterSeverity === 'error'
-                    ? 'bg-canvas text-destructive shadow-2xs font-semibold'
+                    ? 'bg-canvas text-destructive border border-border/60 font-semibold'
                     : 'text-muted-foreground hover:text-destructive'
                 )}
               >
@@ -170,7 +170,7 @@ export function DockHeader({
                 className={cn(
                   'px-2.5 py-0.5 rounded-xs font-medium transition-colors cursor-pointer flex items-center gap-1',
                   filterSeverity === 'warning'
-                    ? 'bg-canvas text-warning shadow-2xs font-semibold'
+                    ? 'bg-canvas text-warning border border-border/60 font-semibold'
                     : 'text-muted-foreground hover:text-warning'
                 )}
               >
@@ -185,9 +185,9 @@ export function DockHeader({
                 type="button"
                 onClick={onAutoFixFirst}
                 title="1-Click AI AutoFix for first error in workspace"
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-sm text-xs font-medium bg-success/10 hover:bg-success/20 text-success border border-success/20 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-sm text-xs font-medium bg-ai-subtle hover:bg-ai-subtle/80 text-ai border border-ai-border/40 transition-colors cursor-pointer"
               >
-                <Wand2 className="size-3 shrink-0" />
+                <Bot className="size-3 shrink-0" />
                 <span>AutoFix</span>
               </button>
             )}
@@ -219,7 +219,7 @@ export function DockHeader({
                 <button
                   type="button"
                   onClick={() => setSearchFilter('')}
-                  className="text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                  className="text-muted-foreground hover:text-foreground cursor-pointer shrink-0 relative after:absolute after:-inset-1.5 after:content-['']"
                   title="Clear search"
                 >
                   <X className="size-3" />
@@ -239,7 +239,7 @@ export function DockHeader({
                   type="button"
                   onClick={() => setShowLogErrorsOnly((v) => !v)}
                   className={cn(
-                    'flex size-6 items-center justify-center rounded-md transition-colors cursor-pointer shrink-0',
+                    'flex size-6 items-center justify-center rounded-md transition-colors cursor-pointer shrink-0 relative after:absolute after:-inset-1.5 after:content-[\'\']',
                     showLogErrorsOnly
                       ? 'bg-destructive/15 text-destructive font-semibold'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
@@ -268,7 +268,7 @@ export function DockHeader({
                 <button
                   type="button"
                   onClick={() => setLogSearch('')}
-                  className="text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                  className="text-muted-foreground hover:text-foreground cursor-pointer shrink-0 relative after:absolute after:-inset-1.5 after:content-['']"
                   title="Clear filter"
                 >
                   <X className="size-3" />
@@ -286,7 +286,7 @@ export function DockHeader({
                   type="button"
                   onClick={() => setWrapLines((w) => !w)}
                   className={cn(
-                    'flex size-6 items-center justify-center rounded-md transition-colors cursor-pointer shrink-0',
+                    'flex size-6 items-center justify-center rounded-md transition-colors cursor-pointer shrink-0 relative after:absolute after:-inset-1.5 after:content-[\'\']',
                     wrapLines
                       ? 'text-primary bg-primary/10 hover:bg-primary/15'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
@@ -309,7 +309,7 @@ export function DockHeader({
                   onClick={onCopyLogs}
                   disabled={!compileLog}
                   className={cn(
-                    'flex size-6 items-center justify-center rounded-md transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed',
+                    'flex size-6 items-center justify-center rounded-md transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed relative after:absolute after:-inset-1.5 after:content-[\'\']',
                     copied
                       ? 'text-success bg-success/15'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
@@ -335,7 +335,7 @@ export function DockHeader({
                   type="button"
                   onClick={onClearLogs}
                   disabled={!compileLog && compileErrorsCount === 0}
-                  className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed relative after:absolute after:-inset-1.5 after:content-[\'\']"
                   aria-label="Clear compiler output"
                 >
                   <Trash2 className="size-3.5" />
@@ -353,7 +353,7 @@ export function DockHeader({
               type="button"
               onClick={onClosePanel}
               aria-label="Close bottom panel"
-              className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer shrink-0 ml-1"
+              className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer shrink-0 ml-1 relative after:absolute after:-inset-1.5 after:content-['']"
             >
               <X className="size-3.5" />
             </button>

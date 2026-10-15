@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import React from 'react';
 import { render } from '@testing-library/react';
-import { OverleafReviewIcon, OverleafReviewSolidIcon } from '@/features/editor/ui/sidebar/review/subcomponents/ReviewBadges';
+import { OverleafReviewIcon, OverleafReviewSolidIcon } from '@/features/editor/subsystems/review';
 
 describe('Overleaf Review Icon & Empty State Vector Parity', () => {
   it('renders OverleafReviewIcon with SVG viewBox 0 0 24 24 and evenodd cutout path', () => {

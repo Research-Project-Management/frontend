@@ -45,12 +45,8 @@ import {
   DropdownMenuItem,
 } from '@/shared/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { editorCommandBus, getActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
+import { editorCommandBus, useSettingsStore } from '@/features/editor/core';
 import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { useDocumentCollaborationStore } from '@/features/editor/store/collaboration.store';
-import { useLayoutStore } from '@/features/editor/store/layout.store';
-import { SourceVisualSwitcher } from './SourceVisualSwitcher';
 import { cn } from '@/shared/lib/utils';
 
 export interface EditorToolbarProps {
@@ -91,7 +87,13 @@ function ToolbarSeparator() {
 
 export function EditorToolbar({ className, readOnly = false, onSplitRight }: EditorToolbarProps) {
   const editorMode = useSettingsStore((s) => s.editorMode);
+  const layout = useSettingsStore((s) => s.layout);
+  const setLayout = useSettingsStore((s) => s.setLayout);
   const [currentStyle, setCurrentStyle] = useState<string>('Normal');
+
+  const handleToggleSplitView = React.useCallback(() => {
+    setLayout(layout === 'split' ? 'editor-only' : 'split');
+  }, [layout, setLayout]);
 
   // ── History Handlers (Undo / Redo) ──
   const handleUndo = () => {
@@ -247,21 +249,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
   // ── Comment Handler ──
   const handleAddComment = React.useCallback(() => {
     if (readOnly) return;
-    const engine = getActiveEditorEngine();
-    const sel = engine?.getSelection?.();
-    const cursor = engine?.getCursorPosition?.();
-
-    const startLine = sel?.startLine ?? sel?.fromLine ?? cursor?.line ?? 1;
-    const endLine = sel?.endLine ?? sel?.toLine ?? cursor?.line ?? 1;
-    const selectedText = engine?.getSelectedText?.() || '';
-
-    useDocumentCollaborationStore.getState().setPendingComment({
-      startLine,
-      endLine,
-      selectedText,
-    });
-    useLayoutStore.getState().setActiveSidebarTab('review');
-    useLayoutStore.getState().setSidebarLeftOpen(true);
+    editorCommandBus.dispatch({ type: 'review:create-comment' });
   }, [readOnly]);
 
   React.useEffect(() => {
@@ -283,72 +271,73 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
     return (
       <div
         className={cn(
-          'h-9 px-2 flex items-center justify-between border-b border-border bg-surface select-none shrink-0 overflow-x-auto overflow-y-hidden scrollbar-none',
+          'h-9 min-h-[36px] px-2 flex items-center border-b border-border bg-surface select-none shrink-0 overflow-x-auto overflow-y-hidden scrollbar-none gap-0.5',
           className
         )}
       >
-        <div className="flex items-center gap-1.5">
-          <SourceVisualSwitcher />
-        </div>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={readOnly}
+              onClick={handleInsertSymbol}
+              className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
+              aria-label="Insert Symbol (Ω)"
+            >
+              <OmegaIcon />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            <span>Insert Symbol (Ω)</span>
+          </TooltipContent>
+        </Tooltip>
 
-        <div className="ml-auto flex items-center gap-1">
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={readOnly}
-                onClick={handleInsertSymbol}
-                className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                aria-label="Insert Symbol (Ω)"
-              >
-                <OmegaIcon />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              <span>Insert Symbol (Ω)</span>
-            </TooltipContent>
-          </Tooltip>
+        <ToolbarSeparator />
 
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={readOnly}
-                onClick={handleAddComment}
-                className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                aria-label="Add Comment"
-              >
-                <MessageSquarePlus className="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              <span>Add Comment</span>
-              <span className="ml-1.5 opacity-60">(Mod-Alt-m)</span>
-            </TooltipContent>
-          </Tooltip>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={readOnly}
+              onClick={handleAddComment}
+              className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
+              aria-label="Add Comment"
+            >
+              <MessageSquarePlus className="size-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            <span>Add Comment</span>
+            <span className="ml-1.5 opacity-60">(Mod-Alt-m)</span>
+          </TooltipContent>
+        </Tooltip>
 
-          {onSplitRight && (
-            <Tooltip delayDuration={300}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onSplitRight}
-                  className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                  aria-label="Chia đôi khung soạn thảo"
-                  title="Chia đôi khung soạn thảo (Split to Side)"
-                >
-                  <Columns2 className="size-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
-                <span>Chia đôi khung soạn thảo</span>
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </div>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleToggleSplitView}
+              className={cn(
+                "size-7 p-0 rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']",
+                layout === 'split'
+                  ? "text-primary bg-muted/60"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
+              aria-label="Split view"
+              title="Split view (Editor & PDF preview) - Chia đôi khung soạn thảo"
+            >
+              <Columns2 className="size-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            <span>{layout === 'split' ? 'Editor only (Ẩn PDF)' : 'Split view (Hiện PDF)'}</span>
+          </TooltipContent>
+        </Tooltip>
+
+        <ToolbarSeparator />
       </div>
     );
   }
@@ -356,16 +345,11 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
   return (
     <div
       className={cn(
-        'h-9 px-2 flex items-center gap-0.5 border-b border-border bg-surface select-none shrink-0 overflow-x-auto overflow-y-hidden scrollbar-none',
+        'h-9 min-h-[36px] px-2 flex items-center gap-0.5 border-b border-border bg-surface select-none shrink-0 overflow-x-auto overflow-y-hidden scrollbar-none',
         className
       )}
     >
-      {/* ── Mode Switcher (Overleaf Parity: Top-left of toolbar) ── */}
-      <div className="mr-1 shrink-0">
-        <SourceVisualSwitcher />
-      </div>
 
-      <ToolbarSeparator />
 
       {/* ── 1. History Group (Undo / Redo) ── */}
       <Tooltip delayDuration={300}>
@@ -375,7 +359,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
             size="sm"
             disabled={readOnly}
             onClick={handleUndo}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
             aria-label="Undo"
           >
             <RotateCcw className="size-3.5" />
@@ -394,7 +378,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
             size="sm"
             disabled={readOnly}
             onClick={handleRedo}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
             aria-label="Redo"
           >
             <RotateCw className="size-3.5" />
@@ -417,9 +401,9 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
                 variant="ghost"
                 size="sm"
                 disabled={readOnly}
-                className="h-7 px-2 gap-1 text-xs font-normal text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                className="h-7 px-2 gap-1 text-xs font-normal text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
               >
-                <span className="truncate max-w-[85px] text-[12px]">{currentStyle}</span>
+                <span className="truncate max-w-[85px] text-12">{currentStyle}</span>
                 <ChevronDown className="size-3 opacity-60 shrink-0" />
               </Button>
             </DropdownMenuTrigger>
@@ -451,7 +435,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
             size="sm"
             disabled={readOnly}
             onClick={() => handleInlineFormat('bold')}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
             aria-label="Bold"
           >
             <Bold className="size-3.5" />
@@ -470,7 +454,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
             size="sm"
             disabled={readOnly}
             onClick={() => handleInlineFormat('italic')}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
             aria-label="Italic"
           >
             <Italic className="size-3.5" />
@@ -489,7 +473,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
             size="sm"
             disabled={readOnly}
             onClick={() => handleInlineFormat('underline')}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
             aria-label="Underline"
           >
             <Underline className="size-3.5" />
@@ -511,7 +495,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
             size="sm"
             disabled={readOnly}
             onClick={handleInsertMath}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
             aria-label="Math formula"
           >
             <Sigma className="size-3.5" />
@@ -529,7 +513,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
             size="sm"
             disabled={readOnly}
             onClick={handleInsertSymbol}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
             aria-label="Insert Symbol (Ω)"
           >
             <OmegaIcon />
@@ -547,7 +531,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
             size="sm"
             disabled={readOnly}
             onClick={handleInsertTable}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
             aria-label="Insert table"
           >
             <TableIcon className="size-3.5" />
@@ -566,7 +550,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
             size="sm"
             disabled={readOnly}
             onClick={handleInsertFigure}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
             aria-label="Insert figure"
           >
             <ImageIcon className="size-3.5" />
@@ -584,7 +568,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
             size="sm"
             disabled={readOnly}
             onClick={handleInsertDiagram}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
             aria-label="Insert TikZ diagram"
           >
             <Shapes className="size-3.5" />
@@ -602,7 +586,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
             size="sm"
             disabled={readOnly}
             onClick={handleInsertLink}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
             aria-label="Insert link"
           >
             <Link2 className="size-3.5" />
@@ -621,7 +605,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
             size="sm"
             disabled={readOnly}
             onClick={handleInsertCitation}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
             aria-label="Cite reference"
           >
             <BookOpen className="size-3.5" />
@@ -643,7 +627,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
             size="sm"
             disabled={readOnly}
             onClick={() => handleInsertEnvironment('itemize')}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
             aria-label="Bulleted list"
           >
             <List className="size-3.5" />
@@ -661,7 +645,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
             size="sm"
             disabled={readOnly}
             onClick={() => handleInsertEnvironment('enumerate')}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
             aria-label="Numbered list"
           >
             <ListOrdered className="size-3.5" />
@@ -679,7 +663,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
             size="sm"
             disabled={readOnly}
             onClick={() => handleInsertEnvironment('quote')}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
             aria-label="Quote environment"
           >
             <Quote className="size-3.5" />
@@ -697,7 +681,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
             size="sm"
             disabled={readOnly}
             onClick={() => handleInsertEnvironment('code')}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
             aria-label="Code block"
           >
             <Code className="size-3.5" />
@@ -709,46 +693,51 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
       </Tooltip>
 
       {/* ── 6. Collaboration & Actions (Add Comment & Split) ── */}
-      <div className="ml-auto flex items-center gap-1">
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={readOnly}
-              onClick={handleAddComment}
-              className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-              aria-label="Add Comment"
-            >
-              <MessageSquarePlus className="size-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            <span>Add Comment</span>
-            <span className="ml-1.5 opacity-60">(Mod-Alt-m)</span>
-          </TooltipContent>
-        </Tooltip>
+      <ToolbarSeparator />
 
-        {onSplitRight && (
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onSplitRight}
-                className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                aria-label="Chia đôi khung soạn thảo"
-                title="Chia đôi khung soạn thảo (Split to Side)"
-              >
-                <Columns2 className="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              <span>Chia đôi khung soạn thảo</span>
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </div>
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={handleAddComment}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
+            aria-label="Add Comment"
+          >
+            <MessageSquarePlus className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Add Comment</span>
+          <span className="ml-1.5 opacity-60">(Mod-Alt-m)</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleToggleSplitView}
+            className={cn(
+              "size-7 p-0 rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']",
+              layout === 'split'
+                ? "text-primary bg-muted/60"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            )}
+            aria-label="Split view"
+            title="Split view (Editor & PDF preview) - Chia đôi khung soạn thảo"
+          >
+            <Columns2 className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>{layout === 'split' ? 'Editor only (Ẩn PDF)' : 'Split view (Hiện PDF)'}</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <ToolbarSeparator />
     </div>
   );
 }

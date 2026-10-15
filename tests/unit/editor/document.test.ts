@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { parseSyncTeX } from '@/features/editor/domain/pdf/synctex-index';
-import { extractDoiFromText, parsePdfDate } from '@/features/editor/domain/pdf/pdf-resolver';
-import { LatexCompilerEngine } from '@/features/editor/coordinators/compilation-pipeline';
+import { parseSyncTeX } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
+import { extractDoiFromText, parsePdfDate } from '@/features/editor/subsystems/compiler/synctex/pdf-resolver';
+import { LatexCompilerEngine } from '@/features/editor/subsystems/compiler';
 import { parseCompileErrors } from '@/features/editor/domain/latex/latex-structure';
 
 describe('Document & LaTeX Compiler Frontend Utilities', () => {

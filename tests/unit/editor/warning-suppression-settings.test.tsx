@@ -2,8 +2,8 @@ import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useDocumentSettingsStore } from '@/features/editor/store/settings.store';
-import { diagnosticsCoordinator } from '@/features/editor/coordinators/diagnostics.coordinator';
+import { useDocumentSettingsStore } from '@/features/editor/core';
+import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
 import { ProjectSettingsModal } from '@/features/editor/ui/modals/project-settings/ProjectSettingsModal';
 
 vi.mock('next/navigation', () => ({

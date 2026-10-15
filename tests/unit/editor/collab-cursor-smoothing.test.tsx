@@ -13,8 +13,8 @@ import {
 import {
   useDocumentCollaborationStore,
   type CollaboratorPresenceInfo,
-} from '@/features/editor/store/collaboration.store';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+} from '@/features/editor/core';
+import { editorCommandBus } from '@/features/editor/core';
 
 describe('Phase 12: Realtime Collab Cursor & Awareness Smoothing (Overleaf Parity)', () => {
   beforeEach(() => {

@@ -54,15 +54,18 @@ export function useCollaborativeDiagram({
     return yDoc ? yDoc.getMap<CanvasElement>('canvas:diagram') : null;
   }, [yDoc]);
 
+  const initialElementsRef = useRef(initialElements);
+  initialElementsRef.current = initialElements;
+
   useEffect(() => {
     if (!yMap) return;
 
     // Load initial from Y.Map
     if (yMap.size > 0) {
       setElements(Array.from(yMap.values()));
-    } else if (elements.length > 0) {
+    } else if (initialElementsRef.current.length > 0) {
       yDoc?.transact(() => {
-        elements.forEach((el) => yMap.set(el.id, el));
+        initialElementsRef.current.forEach((el) => yMap.set(el.id, el));
       }, 'init-canvas');
     }
 

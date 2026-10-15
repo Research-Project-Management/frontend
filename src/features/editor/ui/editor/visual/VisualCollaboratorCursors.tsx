@@ -23,8 +23,8 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   useDocumentCollaborationStore,
   type CollaboratorPresenceInfo,
-} from '@/features/editor/store/collaboration.store';
-import { getCollaboratorColor } from '../CollaboratorCursors';
+} from '@/features/editor/core';
+import { getCollaboratorColor } from '@/features/editor/ui/editor/CollaboratorCursors';
 import { cn } from '@/shared/lib/utils';
 
 export interface VisualCollaboratorCursorsProps {

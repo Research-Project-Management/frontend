@@ -97,6 +97,13 @@ describe('sessionFsmTransition (Pure Domain FSM)', () => {
       resolution: 'keep-local',
     });
     expect(localResolved.state).toBe('dirty');
+
+    // Custom merge
+    const mergeResolved = sessionFsmTransition(ctx, {
+      type: 'CONFLICT_RESOLVED',
+      resolution: 'custom-merge',
+    });
+    expect(mergeResolved.state).toBe('dirty');
   });
 
   it('transitions to evicted on EVICT and ignores further edits', () => {

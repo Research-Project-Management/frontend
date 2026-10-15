@@ -130,6 +130,9 @@ export interface IEditorEngine {
   /** Outdents current line or selection */
   outdent(): void;
 
+  /** Toggles line comment on active line or selection */
+  toggleComment?(): void;
+
   /** Subscribes to content modifications */
   onContentChange(handler: (content: string) => void): () => void;
 

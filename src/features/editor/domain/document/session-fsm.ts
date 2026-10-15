@@ -24,7 +24,7 @@ export type DocumentSessionEvent =
   | { type: 'SAVE_SUCCESS'; savedVersion: number; currentVersion: number }
   | { type: 'SAVE_FAILURE'; error: unknown }
   | { type: 'CONFLICT_DETECTED' }
-  | { type: 'CONFLICT_RESOLVED'; resolution: 'keep-local' | 'take-remote' }
+  | { type: 'CONFLICT_RESOLVED'; resolution: 'keep-local' | 'take-remote' | 'custom-merge' }
   | { type: 'EVICT' };
 
 export interface SessionFsmContext {
@@ -76,11 +76,13 @@ export function sessionFsmTransition(
 
     case 'REMOTE_EDIT': {
       if (ctx.state === 'evicted') return ctx;
-      // Remote edit updates version but only marks dirty if local was already dirty
+      // Remote edit updates version but preserves lastSavedVersion if local has unsaved/in-flight/conflicting changes
+      const hasLocalUnsaved =
+        ctx.state === 'dirty' || ctx.state === 'saving' || ctx.state === 'conflict';
       return {
         ...ctx,
         version: event.version,
-        lastSavedVersion: ctx.state === 'dirty' ? ctx.lastSavedVersion : event.version,
+        lastSavedVersion: hasLocalUnsaved ? ctx.lastSavedVersion : event.version,
       };
     }
 

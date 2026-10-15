@@ -24,7 +24,7 @@ import {
   Check,
   Code2,
   Trash2,
-  Sparkles,
+  Network,
   Download,
   Share2,
 } from 'lucide-react';
@@ -275,10 +275,10 @@ export function CollaborativeDiagramModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl w-[94vw] h-[88vh] flex flex-col p-0 gap-0 overflow-hidden bg-background">
         {/* Header Bar */}
-        <DialogHeader className="p-4 border-b border-border flex flex-row items-center justify-between shrink-0">
+        <DialogHeader className="p-3 sm:p-4 border-b border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0">
           <div>
             <DialogTitle className="flex items-center gap-2 text-base font-semibold">
-              <Sparkles className="size-4 text-primary" />
+              <Network className="size-4 text-primary" />
               Collaborative Diagram & TikZ Canvas
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
@@ -286,7 +286,7 @@ export function CollaborativeDiagramModal({
             </DialogDescription>
           </div>
 
-          <div className="flex items-center gap-2 pr-6">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap pr-8 sm:pr-10 shrink-0">
             <div className="flex items-center rounded-md bg-muted p-0.5 border border-border">
               <button
                 type="button"
@@ -294,7 +294,7 @@ export function CollaborativeDiagramModal({
                 className={cn(
                   'text-xs px-3 py-1 rounded font-medium transition-colors cursor-pointer',
                   activeTab === 'canvas'
-                    ? 'bg-background text-foreground shadow-sm'
+                    ? 'bg-background text-foreground border border-border/60'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -306,7 +306,7 @@ export function CollaborativeDiagramModal({
                 className={cn(
                   'text-xs px-3 py-1 rounded font-medium transition-colors cursor-pointer flex items-center gap-1.5',
                   activeTab === 'tikz'
-                    ? 'bg-background text-foreground shadow-sm'
+                    ? 'bg-background text-foreground border border-border/60'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -319,9 +319,9 @@ export function CollaborativeDiagramModal({
               variant="outline"
               size="sm"
               onClick={handleCopyTikZ}
-              className="h-8 text-xs gap-1.5"
+              className="h-8 text-xs gap-1.5 cursor-pointer"
             >
-              {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+              {copied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
               {copied ? 'Copied' : 'Copy TikZ'}
             </Button>
 
@@ -329,7 +329,7 @@ export function CollaborativeDiagramModal({
               variant="default"
               size="sm"
               onClick={handleInsertTikZ}
-              className="h-8 text-xs gap-1.5"
+              className="h-8 text-xs gap-1.5 cursor-pointer"
             >
               <Download className="size-3.5" />
               Insert into LaTeX
@@ -341,13 +341,13 @@ export function CollaborativeDiagramModal({
         {activeTab === 'canvas' ? (
           <div className="flex-1 flex flex-col min-h-0 relative">
             {/* Top Toolbar */}
-            <div className="h-10 px-3 bg-muted/40 border-b border-border flex items-center justify-between select-none">
+            <div className="h-10 px-3 bg-muted/40 border-b border-border flex items-center justify-between select-none overflow-x-auto overflow-y-hidden scrollbar-none gap-2">
               {/* Tool Selection */}
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0">
                 <Button
                   variant={activeTool === 'select' ? 'secondary' : 'ghost'}
                   size="icon"
-                  className="size-8"
+                  className="size-8 relative after:absolute after:-inset-1 after:content-['']"
                   onClick={() => setActiveTool('select')}
                   title="Select / Move Tool"
                 >
@@ -357,7 +357,7 @@ export function CollaborativeDiagramModal({
                 <Button
                   variant={activeTool === 'rectangle' ? 'secondary' : 'ghost'}
                   size="icon"
-                  className="size-8"
+                  className="size-8 relative after:absolute after:-inset-1 after:content-['']"
                   onClick={() => setActiveTool('rectangle')}
                   title="Rectangle"
                 >
@@ -366,7 +366,7 @@ export function CollaborativeDiagramModal({
                 <Button
                   variant={activeTool === 'ellipse' ? 'secondary' : 'ghost'}
                   size="icon"
-                  className="size-8"
+                  className="size-8 relative after:absolute after:-inset-1 after:content-['']"
                   onClick={() => setActiveTool('ellipse')}
                   title="Ellipse / Circle"
                 >
@@ -375,7 +375,7 @@ export function CollaborativeDiagramModal({
                 <Button
                   variant={activeTool === 'diamond' ? 'secondary' : 'ghost'}
                   size="icon"
-                  className="size-8"
+                  className="size-8 relative after:absolute after:-inset-1 after:content-['']"
                   onClick={() => setActiveTool('diamond')}
                   title="Diamond (Decision)"
                 >
@@ -384,7 +384,7 @@ export function CollaborativeDiagramModal({
                 <Button
                   variant={activeTool === 'database' ? 'secondary' : 'ghost'}
                   size="icon"
-                  className="size-8"
+                  className="size-8 relative after:absolute after:-inset-1 after:content-['']"
                   onClick={() => setActiveTool('database')}
                   title="Database / Cylinder"
                 >
@@ -393,7 +393,7 @@ export function CollaborativeDiagramModal({
                 <Button
                   variant={activeTool === 'cloud' ? 'secondary' : 'ghost'}
                   size="icon"
-                  className="size-8"
+                  className="size-8 relative after:absolute after:-inset-1 after:content-['']"
                   onClick={() => setActiveTool('cloud')}
                   title="Cloud / External API"
                 >
@@ -402,7 +402,7 @@ export function CollaborativeDiagramModal({
                 <Button
                   variant={activeTool === 'text' ? 'secondary' : 'ghost'}
                   size="icon"
-                  className="size-8"
+                  className="size-8 relative after:absolute after:-inset-1 after:content-['']"
                   onClick={() => setActiveTool('text')}
                   title="Text Label"
                 >
@@ -412,7 +412,7 @@ export function CollaborativeDiagramModal({
                 <Button
                   variant={activeTool === 'arrow' ? 'secondary' : 'ghost'}
                   size="icon"
-                  className="size-8"
+                  className="size-8 relative after:absolute after:-inset-1 after:content-['']"
                   onClick={() => setActiveTool('arrow')}
                   title="Arrow Connector"
                 >
@@ -421,12 +421,12 @@ export function CollaborativeDiagramModal({
               </div>
 
               {/* Presets & Controls */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <span className="text-xs text-muted-foreground mr-1">Presets:</span>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 text-[11px] px-2"
+                  className="min-h-[28px] h-7 text-[11px] px-2 relative after:absolute after:-inset-1 after:content-['']"
                   onClick={() => loadPreset('transformer')}
                 >
                   Transformer Attention
@@ -434,7 +434,7 @@ export function CollaborativeDiagramModal({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 text-[11px] px-2"
+                  className="min-h-[28px] h-7 text-[11px] px-2 relative after:absolute after:-inset-1 after:content-['']"
                   onClick={() => loadPreset('pipeline')}
                 >
                   ML Pipeline
@@ -442,7 +442,7 @@ export function CollaborativeDiagramModal({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 text-[11px] px-2"
+                  className="min-h-[28px] h-7 text-[11px] px-2 relative after:absolute after:-inset-1 after:content-['']"
                   onClick={() => loadPreset('flowchart')}
                 >
                   Flowchart
@@ -454,7 +454,7 @@ export function CollaborativeDiagramModal({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-7"
+                  className="size-7 relative after:absolute after:-inset-1.5 after:content-['']"
                   onClick={() => handleZoom(-0.1)}
                   title="Zoom Out"
                 >
@@ -466,7 +466,7 @@ export function CollaborativeDiagramModal({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-7"
+                  className="size-7 relative after:absolute after:-inset-1.5 after:content-['']"
                   onClick={() => handleZoom(0.1)}
                   title="Zoom In"
                 >
@@ -475,7 +475,7 @@ export function CollaborativeDiagramModal({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-7"
+                  className="size-7 relative after:absolute after:-inset-1.5 after:content-['']"
                   onClick={handleResetView}
                   title="Reset View"
                 >
@@ -484,7 +484,7 @@ export function CollaborativeDiagramModal({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-7 text-rose-500 hover:text-rose-600"
+                  className="size-7 text-destructive hover:text-destructive relative after:absolute after:-inset-1.5 after:content-['']"
                   onClick={clearCanvas}
                   title="Clear Canvas"
                 >

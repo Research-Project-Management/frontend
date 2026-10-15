@@ -43,7 +43,7 @@ export interface OfflineMutation {
     title?: string;
     filePath?: string;
     parentFolderId?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   status: 'pending' | 'processing' | 'failed';
   retryCount: number;

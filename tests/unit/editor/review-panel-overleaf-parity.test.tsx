@@ -15,18 +15,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import { useLayoutStore } from '@/features/editor/store/layout.store';
-import { usePageStore } from '@/features/editor/store/editor.store';
-import { useDocumentCollaborationStore } from '@/features/editor/store/collaboration.store';
-import { useReviewPendingCount } from '@/features/editor/ui/sidebar/review/hooks/useReviewPendingCount';
-import { SuggestionCard, SuggestionBulkActions } from '@/features/editor/ui/sidebar/review/subcomponents/ReviewSuggestions';
+import { useLayoutStore } from '@/features/editor/core';
+import { usePageStore } from '@/features/editor/core';
+import { useDocumentCollaborationStore } from '@/features/editor/core';
+import { useReviewPendingCount } from '@/features/editor/subsystems/review';
+import { SuggestionCard, SuggestionBulkActions } from '@/features/editor/subsystems/review';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { EditorToolbar } from '@/features/editor/ui/editor/EditorToolbar';
-import { ActivityBar } from '@/features/editor/ui/shell/ActivityBar';
-import { Topbar } from '@/features/editor/ui/shell/Topbar';
-import { reviewCoordinator } from '@/features/editor/coordinators/review.coordinator';
-import { jumpToEditorLine } from '@/features/editor/coordinators/navigation.coordinator';
-import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
+import { ActivityBar } from '@/features/editor/core/shell/ActivityBar';
+import { Topbar } from '@/features/editor/core/shell/Topbar';
+import { reviewCoordinator } from '@/features/editor/subsystems/review';
+import { jumpToEditorLine } from '@/features/editor/subsystems/navigation';
+import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
 import { suggestionService, commentService } from '@/features/editor/sdk/manuscript.service';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 
@@ -38,34 +38,9 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/editor/proj-123',
 }));
 
-// Mock sonner toast
-vi.mock('sonner', () => ({
-  toast: {
-    info: vi.fn(),
-    success: vi.fn(),
-    error: vi.fn(),
-  },
-}));
-
-// Mock hooks
-const mockComments: any[] = [];
-const mockSuggestions: PageSuggestion[] = [];
-
-vi.mock('@/features/editor/ui/sidebar/review/hooks/useComment', () => ({
-  usePageComments: () => ({
-    data: mockComments,
-    isLoading: false,
-    isError: false,
-  }),
-}));
-
-vi.mock('@/features/editor/ui/sidebar/review/hooks/useSuggestion', () => ({
-  usePageSuggestions: () => ({
-    data: mockSuggestions,
-    isLoading: false,
-    isError: false,
-  }),
-}));
+// Connect to global review mocks
+const mockComments: any[] = (globalThis as any).__reviewMocks.mockComments;
+const mockSuggestions: PageSuggestion[] = (globalThis as any).__reviewMocks.mockSuggestions;
 
 vi.mock('@/features/editor/ui/hooks/usePageActions', () => ({
   usePageActions: () => ({
@@ -93,6 +68,8 @@ function renderWithClient(ui: React.ReactElement) {
 describe('Track Changes & Review Panel (Overleaf Parity)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockComments.length = 0;
+    mockSuggestions.length = 0;
     vi.spyOn(suggestionService, 'getSuggestions').mockImplementation(async () => [...mockSuggestions]);
     vi.spyOn(commentService, 'getComments').mockImplementation(async () => [...mockComments]);
     document.body.removeAttribute('data-scroll-locked');

@@ -20,8 +20,8 @@ import * as decoding from 'lib0/decoding';
 import { Awareness, removeAwarenessStates } from 'y-protocols/awareness';
 import { io, type Socket } from 'socket.io-client';
 import { getEffectiveBaseUrl, getAuthToken } from '@/shared/lib/api';
-import type { IEditorCommandBus } from '@/features/editor/domain/types/ports/command-bus.port';
-import type { CollaborationPresence } from '../manuscript.service';
+import type { IEditorCommandBus } from '@/features/editor/core/bus/command-bus.port';
+import type { CollaborationPresence } from '@/features/editor/sdk/manuscript.service';
 
 export interface CollaboratorUser {
   id: string;
@@ -35,12 +35,49 @@ export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 
 export interface CompileProgressPayload {
   status?: string;
-  logs?: string;
+  logs?: string | string[];
 }
 
 export interface DocContentUpdatedPayload {
   docId: string;
   content: string;
+}
+
+export interface RemoteCursorSelection {
+  anchor: { row: number; column: number };
+  head: { row: number; column: number };
+}
+
+export interface RemoteCursorData {
+  row: number;
+  column: number;
+  selection?: RemoteCursorSelection | null;
+}
+
+export interface RemotePresencePayload {
+  userId: string;
+  socketId?: string;
+  name?: string;
+  avatar?: string | null;
+  color?: string;
+  role?: string;
+  cursor?: RemoteCursorData | null;
+  [key: string]: unknown;
+}
+
+export type RemoteCursorPayload = RemotePresencePayload;
+export type RemoteUserJoinedPayload = RemotePresencePayload;
+
+export interface ProjectChatMessage {
+  id: string;
+  projectId: string;
+  userId: string;
+  userName: string;
+  userColor?: string;
+  userAvatar?: string;
+  text: string;
+  replyToId?: string;
+  createdAt: string;
 }
 
 export interface YjsSocketIOProviderOptions {
@@ -52,6 +89,7 @@ export interface YjsSocketIOProviderOptions {
   onStatusChange?: (status: ConnectionStatus) => void;
   onSynced?: () => void;
   onCollaboratorsChange?: (collaborators: CollaborationPresence[]) => void;
+  onChatMessage?: (message: ProjectChatMessage) => void;
 }
 
 /**
@@ -155,7 +193,7 @@ export class YjsSocketIOProvider {
   private pendingUpdates: Uint8Array[] = [];
   private updateBatchTimer: ReturnType<typeof setTimeout> | null = null;
   private lastCursorEmitTime = 0;
-  private pendingCursorData: { row: number; column: number; selection?: any } | null = null;
+  private pendingCursorData: { row: number; column: number; selection?: RemoteCursorSelection | null } | null = null;
   private cursorThrottleTimer: ReturnType<typeof setTimeout> | null = null;
   private handleOnline: (() => void) | null = null;
 
@@ -191,6 +229,7 @@ export class YjsSocketIOProvider {
   }
 
   private statusListeners = new Set<(status: ConnectionStatus) => void>();
+  private chatListeners = new Set<(message: ProjectChatMessage) => void>();
 
   /** Subscribe to connection status changes (safe across pooled provider reuse). */
   public subscribeStatus(listener: (status: ConnectionStatus) => void): () => void {
@@ -198,6 +237,48 @@ export class YjsSocketIOProvider {
     return () => {
       this.statusListeners.delete(listener);
     };
+  }
+
+  /** Subscribe to real-time project chat messages (project:chat:message). */
+  public subscribeChatMessages(listener: (message: ProjectChatMessage) => void): () => void {
+    this.chatListeners.add(listener);
+    return () => {
+      this.chatListeners.delete(listener);
+    };
+  }
+
+  /** Send a real-time chat message to collaborators in the active project room (project:chat:send). */
+  public sendChatMessage(text: string, replyToId?: string): Promise<ProjectChatMessage | null> {
+    return new Promise((resolve) => {
+      if (this.destroyed || !this.socket || !this.socket.connected || !text.trim()) {
+        resolve(null);
+        return;
+      }
+      this.socket.emit(
+        'project:chat:send',
+        { projectId: this.projectId, text: text.trim(), replyToId },
+        (res?: { success?: boolean; message?: ProjectChatMessage }) => {
+          resolve(res?.success && res.message ? res.message : null);
+        },
+      );
+    });
+  }
+
+  /** Fetch recent real-time chat history for the active project room (project:chat:history). */
+  public getChatHistory(): Promise<ProjectChatMessage[]> {
+    return new Promise((resolve) => {
+      if (this.destroyed || !this.socket || !this.socket.connected) {
+        resolve([]);
+        return;
+      }
+      this.socket.emit(
+        'project:chat:history',
+        { projectId: this.projectId },
+        (res?: { success?: boolean; messages?: ProjectChatMessage[] }) => {
+          resolve(res?.success && Array.isArray(res.messages) ? res.messages : []);
+        },
+      );
+    });
   }
 
   /** Number of local updates queued but not yet acknowledged-sent to the server. */
@@ -226,7 +307,7 @@ export class YjsSocketIOProvider {
     const token = this.options.token || getAuthToken() || undefined;
 
     const user = this.options.user;
-    const authPayload: Record<string, any> = {
+    const authPayload: Record<string, unknown> = {
       token,
       userId: user?.id,
       name: user?.name,
@@ -280,7 +361,7 @@ export class YjsSocketIOProvider {
       this.socket?.emit(
         'project:join',
         { projectId: this.projectId },
-        (res?: { success?: boolean; projectPresence?: any[]; error?: string }) => {
+        (res?: { success?: boolean; projectPresence?: CollaborationPresence[]; error?: string }) => {
           if (res?.error) {
             console.debug('[YjsSocketIOProvider] project:join info:', res.error);
           }
@@ -291,7 +372,7 @@ export class YjsSocketIOProvider {
       this.socket?.emit(
         'doc:join',
         { projectId: this.projectId, docId: this.pageId },
-        (res?: { success?: boolean; docPresence?: any[]; error?: string }) => {
+        (res?: { success?: boolean; docPresence?: RemotePresencePayload[]; error?: string }) => {
           if (res?.success && Array.isArray(res.docPresence)) {
             this.handleInitialDocPresence(res.docPresence);
           }
@@ -325,7 +406,7 @@ export class YjsSocketIOProvider {
     });
 
     // Binary Yjs sync-update from server / remote collaborators
-    this.socket.on('doc:sync-update', (payload: { projectId: string; docId: string; data: any }) => {
+    this.socket.on('doc:sync-update', (payload: { projectId: string; docId: string; data: Uint8Array | ArrayLike<number> }) => {
       if (this.destroyed) return;
       if (payload.projectId !== this.projectId || payload.docId !== this.pageId) return;
       if (!payload.data) return;
@@ -359,23 +440,25 @@ export class YjsSocketIOProvider {
     });
 
     // Real-time LaTeX compilation streaming
-    this.socket.on('compile:progress', (data: any) => {
+    this.socket.on('compile:progress', (data: CompileProgressPayload | string) => {
       if (this.destroyed) return;
+      const status = typeof data === 'object' && data?.status ? data.status : 'compiling';
+      const logs = typeof data === 'object' && data?.logs ? data.logs : typeof data === 'string' ? data : '';
       this.commandBus?.dispatch({
         type: 'compiler:progress',
-        status: data?.status || 'compiling',
-        logs: data?.logs || (typeof data === 'string' ? data : ''),
+        status,
+        logs: Array.isArray(logs) ? logs : logs ? [logs] : [],
       });
     });
 
     // Remote cursor update from peer
-    this.socket.on('doc:cursor', (data: any) => {
+    this.socket.on('doc:cursor', (data: RemoteCursorPayload) => {
       if (this.destroyed) return;
       this.handleRemoteCursor(data);
     });
 
     // Collaborator joined document room
-    this.socket.on('doc:user-joined', (data: any) => {
+    this.socket.on('doc:user-joined', (data: RemoteUserJoinedPayload) => {
       if (this.destroyed) return;
       if (data.socketId === this.socket?.id) return;
       this.handleUserJoined(data);
@@ -394,7 +477,7 @@ export class YjsSocketIOProvider {
     });
 
     // Real-time project file-tree mutation (create, rename, move, delete)
-    this.socket.on('fileTree:update', (data: any) => {
+    this.socket.on('fileTree:update', (data: Record<string, unknown>) => {
       if (this.destroyed) return;
       this.commandBus?.dispatch({ type: 'filetree:updated', payload: data });
       if (typeof window !== 'undefined') {
@@ -403,7 +486,7 @@ export class YjsSocketIOProvider {
     });
 
     // Real-time document content update from collaborator
-    this.socket.on('doc:content-updated', (data: any) => {
+    this.socket.on('doc:content-updated', (data: DocContentUpdatedPayload) => {
       if (this.destroyed) return;
       if (data?.docId && typeof data?.content === 'string') {
         this.commandBus?.dispatch({
@@ -418,7 +501,7 @@ export class YjsSocketIOProvider {
     });
 
     // Real-time Track Changes & Review broadcasts
-    this.socket.on('track-changes:recorded', (data: any) => {
+    this.socket.on('track-changes:recorded', (data: Record<string, unknown> & { docId?: string }) => {
       if (this.destroyed) return;
       const docId = data?.docId || this.pageId;
       this.commandBus?.dispatch({
@@ -429,7 +512,7 @@ export class YjsSocketIOProvider {
       });
     });
 
-    this.socket.on('track-changes:resolved', (data: any) => {
+    this.socket.on('track-changes:resolved', (data: Record<string, unknown> & { docId?: string }) => {
       if (this.destroyed) return;
       const docId = data?.docId || this.pageId;
       this.commandBus?.dispatch({
@@ -440,7 +523,7 @@ export class YjsSocketIOProvider {
       });
     });
 
-    this.socket.on('comment:created', (data: any) => {
+    this.socket.on('comment:created', (data: Record<string, unknown> & { docId?: string }) => {
       if (this.destroyed) return;
       const docId = data?.docId || this.pageId;
       this.commandBus?.dispatch({
@@ -451,7 +534,7 @@ export class YjsSocketIOProvider {
       });
     });
 
-    this.socket.on('comment:replied', (data: any) => {
+    this.socket.on('comment:replied', (data: Record<string, unknown> & { docId?: string }) => {
       if (this.destroyed) return;
       const docId = data?.docId || this.pageId;
       this.commandBus?.dispatch({
@@ -462,7 +545,7 @@ export class YjsSocketIOProvider {
       });
     });
 
-    this.socket.on('comment:resolved', (data: any) => {
+    this.socket.on('comment:resolved', (data: Record<string, unknown> & { docId?: string }) => {
       if (this.destroyed) return;
       const docId = data?.docId || this.pageId;
       this.commandBus?.dispatch({
@@ -472,11 +555,26 @@ export class YjsSocketIOProvider {
         payload: data,
       });
     });
+
+    this.socket.on('project:chat:message', (msg: ProjectChatMessage) => {
+      if (this.destroyed || !msg) return;
+      this.options.onChatMessage?.(msg);
+      for (const listener of this.chatListeners) {
+        try {
+          listener(msg);
+        } catch (err) {
+          console.warn('[YjsSocketIOProvider] chat listener error:', err);
+        }
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flux:project-chat-message', { detail: msg }));
+      }
+    });
   }
 
   private setupLocalDocListener(): void {
     const doc = this.doc;
-    doc.on('update', (update: Uint8Array, origin: any) => {
+    doc.on('update', (update: Uint8Array, origin: unknown) => {
       // Ignore updates from a replaced (stale) doc: they must never reach the server.
       if (doc !== this.doc) return;
       if (origin === 'socket.io' || this.destroyed) return;
@@ -546,7 +644,7 @@ export class YjsSocketIOProvider {
     this.socket.emit(
       'doc:sync-step-1',
       { projectId: this.projectId, docId: this.pageId, data: encoding.toUint8Array(encoder) },
-      (res?: { success?: boolean; data?: any; error?: string }) => {
+      (res?: { success?: boolean; data?: Uint8Array | ArrayLike<number> | unknown; error?: string }) => {
         this.resyncInFlight = false;
         if (this.destroyed) {
           freshDoc.destroy();
@@ -560,7 +658,7 @@ export class YjsSocketIOProvider {
         }
         try {
           if (res.data) {
-            const rawData = res.data instanceof Uint8Array ? res.data : new Uint8Array(res.data);
+            const rawData = res.data instanceof Uint8Array ? res.data : new Uint8Array(res.data as ArrayLike<number>);
             const decoder = decoding.createDecoder(rawData);
             const sink = encoding.createEncoder();
             while (decoding.hasContent(decoder)) {
@@ -670,14 +768,14 @@ export class YjsSocketIOProvider {
         docId: this.pageId,
         data: step1Payload,
       },
-      (res?: { success?: boolean; data?: any; error?: string }) => {
+      (res?: { success?: boolean; data?: Uint8Array | ArrayLike<number> | unknown; error?: string }) => {
         if (this.destroyed) return;
         if (res?.success && res.data) {
           try {
             const rawData =
               res.data instanceof Uint8Array
                 ? res.data
-                : new Uint8Array(res.data);
+                : new Uint8Array(res.data as ArrayLike<number>);
             const decoder = decoding.createDecoder(rawData);
             const replyEncoder = encoding.createEncoder();
             while (decoding.hasContent(decoder)) {
@@ -707,7 +805,7 @@ export class YjsSocketIOProvider {
     );
   }
 
-  private handleInitialDocPresence(docPresence: any[]): void {
+  private handleInitialDocPresence(docPresence: RemotePresencePayload[]): void {
     const remoteList: CollaborationPresence[] = [];
 
     for (const p of docPresence) {
@@ -748,7 +846,7 @@ export class YjsSocketIOProvider {
     this.options.onCollaboratorsChange?.([...this.activeCollaborators]);
   }
 
-  private handleRemoteCursor(data: any): void {
+  private handleRemoteCursor(data: RemoteCursorPayload): void {
     if (!data || !data.cursor) return;
     if (data.socketId && data.socketId === this.socket?.id) return;
 
@@ -795,7 +893,7 @@ export class YjsSocketIOProvider {
     this.updateCollaboratorCursor(data);
   }
 
-  private handleUserJoined(data: any): void {
+  private handleUserJoined(data: RemoteUserJoinedPayload): void {
     const idx = this.activeCollaborators.findIndex(
       (c) => c.userId === data.userId || (data.socketId && c.socketId === data.socketId),
     );
@@ -853,7 +951,8 @@ export class YjsSocketIOProvider {
     this.options.onCollaboratorsChange?.([...this.activeCollaborators]);
   }
 
-  private updateCollaboratorCursor(data: any): void {
+  private updateCollaboratorCursor(data: RemoteCursorPayload): void {
+    if (!data.cursor) return;
     const idx = this.activeCollaborators.findIndex(
       (c) => c.userId === data.userId || (data.socketId && c.socketId === data.socketId),
     );
@@ -910,7 +1009,9 @@ export class YjsSocketIOProvider {
   }
 
   private setupLocalAwarenessListener(): void {
-    this.awareness.on('change', ({ added, updated }: any, origin: any) => {
+    this.awareness.on(
+      'change',
+      ({ added, updated }: { added: number[]; updated: number[]; removed: number[] }, origin: unknown) => {
       if (origin === 'socket.io') return;
       if (
         added.includes(this.awareness.clientID) ||

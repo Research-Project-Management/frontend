@@ -1,18 +1,10 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
-import { CompilerLogs, parseLatexLog, type LogEntry } from '@/features/editor/ui/preview/CompilerLogs';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import { useDocumentSettingsStore } from '@/features/editor/store/settings.store';
+import { CompilerLogs, parseLatexLog, type LogEntry } from '@/features/editor/subsystems/compiler';
+import { editorCommandBus } from '@/features/editor/core';
+import { useDocumentSettingsStore } from '@/features/editor/core';
 import { toast } from 'sonner';
-
-vi.mock('sonner', () => ({
-  toast: {
-    info: vi.fn(),
-    success: vi.fn(),
-    error: vi.fn(),
-  },
-}));
 
 
 vi.mock('@/features/editor/sdk/manuscript.service', async (importOriginal) => {
@@ -55,6 +47,12 @@ No pages of output.`;
 
   afterEach(() => {
     cleanup();
+    useDocumentSettingsStore.setState({
+      suppressBadBoxes: false,
+      suppressFontWarnings: false,
+      suppressPackageWarnings: false,
+      customSuppressedWarnings: [],
+    });
   });
 
   it('correctly parses errors, warnings, and bad boxes with line and file details', () => {
@@ -140,7 +138,7 @@ No pages of output.`;
 
     // Press Shift+F8
     fireEvent.keyDown(window, { key: 'F8', shiftKey: true });
-    expect(onJumpToError).toHaveBeenCalledWith(undefined, 42);
+    expect(onJumpToError).toHaveBeenCalledWith('main.tex', 42);
   });
 
   it('handles editor:error-stepped event across command bus without errors', () => {
@@ -164,7 +162,7 @@ No pages of output.`;
   });
 
   it('diagnosticsCoordinator.getAllDiagnostics returns indexed diagnostics across all files sorted by file and line', async () => {
-    const { diagnosticsCoordinator } = await import('@/features/editor/coordinators/diagnostics.coordinator');
+    const { diagnosticsCoordinator } = await import('@/features/editor/subsystems/diagnostics');
     diagnosticsCoordinator.clear();
 
     diagnosticsCoordinator.ingestCompilerErrors([
@@ -190,9 +188,9 @@ No pages of output.`;
   });
 
   it('navigationCoordinator steps across project diagnostics on F8 / Shift+F8 (Overleaf Parity)', async () => {
-    const { navigationCoordinator } = await import('@/features/editor/coordinators/navigation.coordinator');
-    const { diagnosticsCoordinator } = await import('@/features/editor/coordinators/diagnostics.coordinator');
-    const { usePageStore } = await import('@/features/editor/store/editor.store');
+    const { navigationCoordinator } = await import('@/features/editor/subsystems/navigation');
+    const { diagnosticsCoordinator } = await import('@/features/editor/subsystems/diagnostics');
+    const { usePageStore } = await import('@/features/editor/core');
 
     diagnosticsCoordinator.clear();
     diagnosticsCoordinator.ingestCompilerErrors([
@@ -238,7 +236,7 @@ No pages of output.`;
     jumpSpy.mockRestore();
   });
 
-  it('renders "Download raw log" button in footer and triggers log file download', () => {
+  it('triggers log file download via Other logs and files popover', () => {
     const createObjectURLMock = vi.fn().mockReturnValue('blob:http://localhost/mock-log');
     const revokeObjectURLMock = vi.fn();
     window.URL.createObjectURL = createObjectURLMock;
@@ -251,10 +249,13 @@ No pages of output.`;
       />
     );
 
-    const downloadBtn = screen.getByRole('button', { name: /download.*log/i });
-    expect(downloadBtn).toBeInTheDocument();
+    const otherFilesBtn = screen.getByRole('button', { name: /other logs and files/i });
+    expect(otherFilesBtn).toBeInTheDocument();
+    fireEvent.click(otherFilesBtn);
 
-    fireEvent.click(downloadBtn);
+    const logFileBtn = screen.getByRole('button', { name: 'output.log' });
+    expect(logFileBtn).toBeInTheDocument();
+    fireEvent.click(logFileBtn);
 
     expect(createObjectURLMock).toHaveBeenCalled();
     expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('output.log'));

@@ -12,7 +12,8 @@ import type {
   ProjectSnapshotDetail,
   ProjectDiffResponse,
   ProjectFileDiff,
-} from '@/features/editor/domain/types/history.types';
+  VersionLabelItem,
+} from '@/features/editor/subsystems/history/model/history.types';
 import type { DocumentExportFormat } from '@/features/editor/domain/types/export.types';
 
 export type {
@@ -20,6 +21,7 @@ export type {
   ProjectSnapshotDetail,
   ProjectDiffResponse,
   ProjectFileDiff,
+  VersionLabelItem,
   ErrorExplanationDto,
 };
 
@@ -72,13 +74,18 @@ export interface LinkedFileDto {
   id: string;
   projectId: string;
   name: string;
-  providerType: 'URL' | 'ZOTERO' | 'MENDELEY' | 'DROPBOX' | 'GITHUB';
-  url?: string;
-  collectionId?: string;
+  provider?: 'url' | 'zotero' | 'mendeley';
+  providerType?: 'URL' | 'ZOTERO' | 'MENDELEY' | 'DROPBOX' | 'GITHUB';
+  url?: string | null;
+  collectionId?: string | null;
+  nodeId?: string | null;
+  docId?: string | null;
+  fileId?: string | null;
   targetBibFile?: string;
-  status: 'SYNCED' | 'SYNCING' | 'FAILED' | 'PENDING';
-  lastSyncedAt?: string;
-  errorMessage?: string;
+  status: 'synced' | 'failed' | 'pending' | 'SYNCED' | 'SYNCING' | 'FAILED' | 'PENDING';
+  lastSyncedAt?: string | null;
+  errorMessage?: string | null;
+  autoRefresh?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -95,10 +102,16 @@ export interface CreateLinkedFilePayload {
 }
 
 export interface BibEntryDto {
+  id?: string;
   key: string;
   type: string;
+  entryType?: string;
   title?: string;
   author?: string;
+  authorsDisplay?: string;
+  authors?: string[];
+  displayLabel?: string;
+  fields?: Record<string, string>;
   year?: string;
   journal?: string;
   doi?: string;
@@ -106,8 +119,11 @@ export interface BibEntryDto {
 }
 
 export interface CitationValidationDto {
+  valid?: boolean;
   isValid: boolean;
+  totalFiles?: number;
   duplicateKeys: string[];
+  warnings?: string[];
   missingFieldWarnings: Array<{ key: string; missingFields: string[] }>;
   totalEntries: number;
 }
@@ -126,11 +142,23 @@ export interface TemplateSummaryDto {
 export interface FileMetadataDto {
   id: string;
   projectId: string;
+  name?: string;
   filename: string;
   sizeBytes: number;
   hash: string;
   mimeType: string;
+  storageKey?: string;
+  bucketName?: string;
+  rev?: number;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface TextRangeDto {
+  startLine: number;
+  startCol: number;
+  endLine: number;
+  endCol: number;
 }
 
 export interface TrackChangeDto {
@@ -139,38 +167,47 @@ export interface TrackChangeDto {
   docId: string;
   type: 'insert' | 'delete';
   text: string;
-  fromIndex: number;
-  toIndex: number;
-  authorId: string;
+  range?: TextRangeDto;
+  fromIndex?: number;
+  toIndex?: number;
+  authorId?: string;
+  createdById?: string | null;
   authorName?: string;
   status: 'pending' | 'accepted' | 'rejected';
-  resolvedAt?: string;
-  resolvedById?: string;
+  resolvedAt?: string | null;
+  resolvedById?: string | null;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface CommentReplyDto {
   id: string;
   threadId: string;
-  authorId: string;
+  authorId?: string;
+  createdById?: string | null;
   authorName?: string;
   content: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface CommentThreadDto {
   id: string;
   projectId: string;
   docId: string;
-  authorId: string;
+  authorId?: string;
+  createdById?: string | null;
   authorName?: string;
-  content: string;
-  fromIndex: number;
-  toIndex: number;
+  content?: string;
+  quote?: string | null;
+  range?: TextRangeDto;
+  fromIndex?: number;
+  toIndex?: number;
   selectedText?: string;
-  resolved: boolean;
-  resolvedAt?: string;
-  resolvedById?: string;
+  resolved?: boolean;
+  isResolved?: boolean;
+  resolvedAt?: string | null;
+  resolvedById?: string | null;
   replies: CommentReplyDto[];
   createdAt: string;
   updatedAt: string;
@@ -182,6 +219,15 @@ export interface DocReviewsResponseDto {
 }
 
 export interface QueueUpdatePayload {
+  lines?: string[];
+  splice?: {
+    startLine: number;
+    deleteCount: number;
+    newLines: string[];
+  };
+  userId?: string;
+  clientRev?: number;
+  debounceMs?: number;
   pathname?: string;
   docLines?: string[];
   docOps?: unknown[];
@@ -189,8 +235,14 @@ export interface QueueUpdatePayload {
 }
 
 export interface FlushResultDto {
-  flushed: boolean;
-  flushedDocCount: number;
+  projectId?: string;
+  flushed?: boolean;
+  flushedDocCount?: number;
+  flushedDocsCount: number;
+  flushedDocIds?: string[];
+  skippedDocIds?: string[];
+  errors?: Array<{ docId: string; error: string }>;
+  durationMs?: number;
 }
 
 export interface StructureNodeDto {
@@ -198,9 +250,10 @@ export interface StructureNodeDto {
   projectId: string;
   name: string;
   path: string;
-  type: 'folder' | 'file' | 'doc';
+  type: 'folder' | 'file' | 'doc' | 'FOLDER' | 'FILE' | 'DOC';
   parentId?: string | null;
   sortOrder?: number;
+  sizeBytes?: number;
   isRootDoc?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -474,4 +527,27 @@ export interface CollaborationEvent {
   isLocked?: boolean;
   lockedBy?: string;
   timestamp: number;
+}
+
+export interface ImportProjectZipResult {
+  projectId: string;
+  totalEntries: number;
+  totalDocs: number;
+  totalFiles: number;
+  totalFolders: number;
+  rootDocId?: string | null;
+  rootDocPath?: string | null;
+}
+
+export interface ProjectTemplateItem {
+  id: string;
+  name?: string;
+  title: string;
+  category?: string;
+  description?: string;
+  author?: string;
+  thumbnailUrl?: string | null;
+  fileCount?: number;
+  defaultRootDoc?: string;
+  [key: string]: unknown;
 }

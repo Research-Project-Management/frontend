@@ -5,8 +5,8 @@ import {
   createLatexCompletionSource,
   type LatexBibEntryInput,
   type LatexFileInput,
-} from '@/features/editor/engines/extensions/latex-autocomplete';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
+} from '@/features/editor/core/engine/extensions/latex-autocomplete';
+import { useSettingsStore } from '@/features/editor/core';
 
 describe('Editor Autocompletion & Typography (Overleaf Parity)', () => {
   describe('1. Package Autocompletion (\\usepackage{...})', () => {
@@ -218,7 +218,7 @@ describe('Editor Autocompletion & Typography (Overleaf Parity)', () => {
 
   describe('5. Real-Time LaTeX Code Check Diagnostics (Overleaf Parity)', () => {
     it('should detect unclosed environment and unescaped characters in document', async () => {
-      const { runLatexLinter } = await import('@/features/editor/domain/latex/latex-linter');
+      const { runLatexLinter } = await import('@/features/editor/subsystems/diagnostics/linter/latex-linter');
       const text = '\\begin{equation}\nx = y\n\n\\section{Introduction}\nHere is a 50% discount and an unescaped_variable.';
       const diagnostics = runLatexLinter(text);
 
@@ -263,9 +263,9 @@ describe('Editor Autocompletion & Typography (Overleaf Parity)', () => {
         createCodeMirrorPreset,
         reconfigureTheme,
         reconfigureTypography,
-      } = await import('@/features/editor/engines/codemirror/codemirror-preset');
+      } = await import('@/features/editor/core/engine/codemirror/codemirror-preset');
       const { EDITOR_THEMES, getThemeExtension } = await import(
-        '@/features/editor/engines/codemirror/editor-themes'
+        '@/features/editor/core/engine/codemirror/editor-themes'
       );
 
       // Verify all themes resolve to valid extensions

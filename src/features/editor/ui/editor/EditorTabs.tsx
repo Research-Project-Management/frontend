@@ -19,9 +19,9 @@ import { LayoutGroup } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { X, FileText } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
-import { useTabsStore, type EditorTab } from '@/features/editor/store/tabs.store';
-import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import { useTabsStore, useSettingsStore, type EditorTab, editorCommandBus, sessionCoordinator } from '@/features/editor/core';
+import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
+import { SourceVisualSwitcher } from './SourceVisualSwitcher';
 
 // ── Single Tab Item (Overleaf 1:1) ───────────────────────────────────────────
 
@@ -82,10 +82,10 @@ const TabItem = React.memo(function TabItem({ tab, isActive, rootPageId, canClos
       )}
     >
       {/* File Document Icon - Clean project style */}
-      <FileText className={cn("size-3.5 shrink-0", isActive ? "text-primary" : "text-muted-foreground/80 group-hover/tab:text-foreground")} />
+      <FileText className={cn("size-3.5 shrink-0", isActive ? "text-foreground" : "text-muted-foreground group-hover/tab:text-foreground")} />
 
       {/* Title */}
-      <span className="text-[12px] font-sans font-medium tracking-tight truncate leading-none min-w-0">{tab.title}</span>
+      <span className="text-12 font-sans font-medium tracking-tight truncate leading-none min-w-0">{tab.title}</span>
 
       {/* Close button (only shown when canClose is true) */}
       {canClose && (
@@ -99,10 +99,10 @@ const TabItem = React.memo(function TabItem({ tab, isActive, rootPageId, canClos
           onAuxClick={(e) => e.preventDefault()}
           className={cn(
             "ml-auto shrink-0 relative flex items-center justify-center rounded-xs transition-opacity motion-reduce:transition-none outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer hover:bg-muted text-foreground",
-            "size-4 p-0.5",
+            "size-4 p-0.5 after:absolute after:-inset-2 after:content-['']",
             isActive
-              ? "opacity-60 hover:opacity-100"
-              : "opacity-0 group-hover/tab:opacity-60 group-hover/tab:hover:opacity-100 group-focus-within/tab:opacity-60 focus-visible:opacity-100",
+              ? "opacity-70 hover:opacity-100"
+              : "opacity-40 sm:opacity-0 group-hover/tab:opacity-70 group-hover/tab:hover:opacity-100 group-focus-within/tab:opacity-70 focus-visible:opacity-100",
           )}
         >
           <X className="size-3 shrink-0" />
@@ -138,6 +138,7 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
 
     const availableIds = availableFiles ? new Set(availableFiles.map((f) => f.id)) : null;
 
+    const configuredMain = useSettingsStore.getState().mainFile || 'main.tex';
     const seen = new Set<string>();
     const result: EditorTab[] = [];
     for (const t of rawTabs) {
@@ -149,10 +150,10 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
       const key = isRoot ? '__root__' : (t.id || t.title.toLowerCase());
       if (!seen.has(key)) {
         seen.add(key);
-        // Canonical Overleaf standard: root LaTeX entrypoint is always named main.tex
+        const trimmedTitle = (t.title || '').trim();
         const normalizedTitle =
-          isRoot && (t.title.toLowerCase() === 'flux' || t.title.toLowerCase() === 'flux.tex' || !t.title.includes('.'))
-            ? 'main.tex'
+          isRoot && (!trimmedTitle || trimmedTitle.toLowerCase() === 'flux')
+            ? configuredMain
             : t.title;
         result.push({ ...t, title: normalizedTitle });
       }
@@ -161,7 +162,7 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
     if (result.length === 0 && rootPageId) {
       result.push({
         id: rootPageId,
-        title: 'main.tex',
+        title: configuredMain,
       });
     }
     return result;
@@ -212,13 +213,17 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
 
   const handleTabActivate = useCallback((tabId: string) => {
     const isRoot = tabId === rootPageId || tabId === `${rootPageId}-main`;
+    const targetId = isRoot ? rootPageId : tabId;
 
-    if (tabId !== resolvedActiveTabIdRef.current) {
-      sessionCoordinator.switchTab(resolvedActiveTabIdRef.current, isRoot ? rootPageId : tabId);
-      useTabsStore.getState().setActive(rootPageId, tabId);
-      updateQueryParams(isRoot ? null : tabId);
+    if (targetId !== resolvedActiveTabIdRef.current) {
+      const targetTab = tabs.find((t) => t.id === tabId);
+      navigationCoordinator.openDocument({
+        fileId: targetId,
+        title: targetTab?.title || '',
+        path: targetTab?.path,
+      });
     }
-  }, [rootPageId, updateQueryParams]);
+  }, [rootPageId, tabs]);
 
   const handleTabClose = useCallback((tabId: string) => {
     editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId: tabId });
@@ -255,6 +260,12 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
 
   return (
     <div className="flex items-center h-9 bg-surface select-none border-b border-border w-full px-0 relative">
+      {/* ── Mode Switcher at Top-Left of Editing Pane (Overleaf Parity) ── */}
+      <div className="pl-2 pr-1 shrink-0 flex items-center">
+        <SourceVisualSwitcher />
+      </div>
+      <div className="h-4 w-px bg-border/60 mx-1 shrink-0" />
+
       {/* ── File tabs ── */}
       <LayoutGroup id={`tab-bar-${rootPageId}`}>
         <div

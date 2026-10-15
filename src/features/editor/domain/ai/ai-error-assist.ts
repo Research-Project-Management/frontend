@@ -40,17 +40,45 @@ export function heuristicLatexErrorFix(params: AiErrorFixParams): AiErrorFixResu
 
   // 1. Undefined control sequence
   if (/undefined control sequence/i.test(errorMessage) || /undefined control sequence/i.test(detail)) {
-    const cmdMatch = detail.match(/\\([a-zA-Z]+)/) || errorMessage.match(/\\([a-zA-Z]+)/);
-    const cmd = cmdMatch ? cmdMatch[1] : '';
-
     const packageMap: Record<string, string> = {
       toprule: 'booktabs',
       midrule: 'booktabs',
       bottomrule: 'booktabs',
+      cmidrule: 'booktabs',
+      specialrule: 'booktabs',
+      addlinespace: 'booktabs',
+      multirow: 'multirow',
       includegraphics: 'graphicx',
       mathbb: 'amssymb, amsmath',
+      mathcal: 'amssymb, amsmath',
+      mathfrak: 'amssymb, amsmath',
+      leqslant: 'amssymb, amsmath',
+      geqslant: 'amssymb, amsmath',
+      triangleq: 'amssymb, amsmath',
+      intercal: 'amssymb, amsmath',
       eqref: 'amsmath',
       align: 'amsmath',
+      DeclareMathOperator: 'amsmath',
+      binom: 'amsmath',
+      tfrac: 'amsmath',
+      dfrac: 'amsmath',
+      bm: 'bm',
+      citet: 'natbib',
+      citep: 'natbib',
+      citealp: 'natbib',
+      citealt: 'natbib',
+      citeauthor: 'natbib',
+      citeyear: 'natbib',
+      newcite: 'natbib',
+      shortcite: 'natbib',
+      parencite: 'biblatex',
+      textcite: 'biblatex',
+      autocite: 'biblatex',
+      cref: 'cleveref',
+      Cref: 'cleveref',
+      crefrange: 'cleveref',
+      autoref: 'hyperref',
+      nameref: 'hyperref',
       url: 'hyperref',
       href: 'hyperref',
       textcolor: 'xcolor',
@@ -60,8 +88,19 @@ export function heuristicLatexErrorFix(params: AiErrorFixParams): AiErrorFixResu
       unit: 'siunitx',
       tikz: 'tikz',
       tikzpicture: 'tikz',
+      subfloat: 'subfig',
+      subfigure: 'subcaption',
+      lstinline: 'listings',
+      lstlisting: 'listings',
       lipsum: 'lipsum',
     };
+
+    const allCmds = [
+      ...Array.from(detail.matchAll(/\\([a-zA-Z]+)/g), (m) => m[1]),
+      ...Array.from(errorMessage.matchAll(/\\([a-zA-Z]+)/g), (m) => m[1]),
+    ];
+    const mappedCmd = allCmds.find((c) => Boolean(packageMap[c]));
+    const cmd = mappedCmd || allCmds[allCmds.length - 1] || '';
 
     if (cmd && packageMap[cmd]) {
       const pkg = packageMap[cmd];

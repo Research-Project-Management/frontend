@@ -11,7 +11,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   LRUDocumentCache,
   type DocumentModelState,
-} from '@/features/editor/domain/document/lru-document-cache';
+} from '@/features/editor/subsystems/explorer/model/lru-document-cache';
 import {
   LatexDagEngine,
   normalizeLatexPath,
@@ -19,7 +19,7 @@ import {
 } from '@/features/editor/domain/latex/latex-dag-engine';
 import {
   DiagnosticsCoordinatorRegistry,
-} from '@/features/editor/coordinators/diagnostics.coordinator';
+} from '@/features/editor/subsystems/diagnostics';
 
 describe('1. Bounded LRU Document Cache', () => {
   let cache: LRUDocumentCache;

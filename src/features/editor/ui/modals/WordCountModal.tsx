@@ -288,14 +288,14 @@ export function WordCountModal({
         value: stats.mathDisplayed,
       },
     ],
-    [stats]
+    [stats, includeBib]
   );
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="sm:max-w-[480px] w-full p-0 gap-0 overflow-hidden rounded-md border border-border bg-background shadow-raised-200 flex flex-col max-h-[85vh] select-none"
+        className="w-[95vw] sm:w-full sm:max-w-[480px] p-0 gap-0 overflow-hidden rounded-md border border-border bg-background shadow-raised-200 flex flex-col max-h-[85vh] select-none"
       >
         {/* ── Dialog Header (Only Title with live indicator, and Close Icon) ─── */}
         <div className="flex items-center justify-between px-6 pt-5 pb-2 bg-background shrink-0">
@@ -311,7 +311,7 @@ export function WordCountModal({
             <button
               type="button"
               onClick={onClose}
-              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer"
+              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
               aria-label="Close"
             >
               <X className="size-4" strokeWidth={1.5} />
@@ -354,7 +354,7 @@ export function WordCountModal({
                 <MousePointer className="size-3.5 shrink-0" strokeWidth={1.5} />
                 <span>Selection</span>
                 {hasSelection && (
-                  <span className="size-1.5 rounded-full bg-primary animate-pulse motion-reduce:animate-none ml-0.5" />
+                  <span className="size-1.5 rounded-full bg-primary ml-0.5" />
                 )}
               </TabsTrigger>
             </TabsList>
@@ -362,7 +362,7 @@ export function WordCountModal({
         </div>
 
         {/* ── Body: Single Unified Source of Truth Table ─────────────────── */}
-        <div className="flex-1 overflow-y-auto px-6 py-2 space-y-3 thin-scrollbar">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-2 space-y-3 thin-scrollbar">
           <div className="w-full">
             <table className="w-full text-13 border-collapse" aria-label="Word count metrics">
               <thead>
@@ -461,7 +461,7 @@ export function WordCountModal({
         </div>
 
         {/* ── Dialog Footer with %TC:incbib option and Close button ── */}
-        <DialogFooter className="px-6 pb-5 pt-3 bg-background flex items-center justify-between sm:justify-between shrink-0 m-0 border-0">
+        <DialogFooter className="px-6 pb-5 pt-3 bg-background flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 sm:gap-2 shrink-0 m-0 border-0">
           <div className="flex items-center gap-2">
             <Checkbox
               id="include-bib-count"
@@ -470,7 +470,7 @@ export function WordCountModal({
             />
             <label
               htmlFor="include-bib-count"
-              className="text-11 font-medium text-muted-foreground cursor-pointer select-none"
+              className="text-11 font-medium text-muted-foreground cursor-pointer select-none min-h-[28px] flex items-center"
             >
               Include bibliography (%TC:incbib)
             </label>

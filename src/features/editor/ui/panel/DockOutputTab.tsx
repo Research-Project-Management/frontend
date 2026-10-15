@@ -80,7 +80,7 @@ export const DockOutputTab = React.memo(function DockOutputTab({
                             key={pIdx}
                             type="button"
                             onClick={() => onJumpToLine(item.jumpLine)}
-                            className="inline-flex items-center text-primary font-semibold underline decoration-dotted hover:text-primary-hover cursor-pointer px-1 py-0.2 rounded-sm hover:bg-primary/10 transition-colors"
+                            className="inline-flex items-center text-primary font-semibold underline decoration-dotted hover:text-primary-hover cursor-pointer px-1 py-0.2 rounded-sm hover:bg-primary/10 transition-colors relative after:absolute after:-inset-1 after:content-['']"
                             title={`Jump to line ${item.jumpLine} in editor`}
                           >
                             {part}
@@ -140,7 +140,7 @@ export const DockOutputTab = React.memo(function DockOutputTab({
         <button
           type="button"
           onClick={onScrollToBottom}
-          className="absolute bottom-3 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface/95 border border-border shadow-md text-11 font-medium text-foreground hover:bg-muted transition-all cursor-pointer select-none z-10 backdrop-blur-xs animate-in fade-in slide-in-from-bottom-2"
+          className="absolute bottom-3 right-4 flex items-center gap-1.5 px-3 py-1.5 min-h-[32px] rounded-full bg-surface/95 border border-border shadow-md text-11 font-medium text-foreground hover:bg-muted transition-all cursor-pointer select-none z-10 backdrop-blur-xs animate-in fade-in slide-in-from-bottom-2"
         >
           <ArrowDown className="size-3 text-primary shrink-0" />
           <span>Scroll to bottom</span>

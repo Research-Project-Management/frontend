@@ -15,7 +15,7 @@ import {
   extractCitationKeys,
   formatCitationSnippet,
   formatItemAuthorSummary,
-} from '@/features/editor/domain/citation/citation-formatter';
+} from '@/features/editor/subsystems/citation';
 
 export interface UseEditorCitationsOptions {
   projectId?: string;

@@ -97,17 +97,21 @@ export function VisualSelectionBubbleMenu({
   const currentBlockConfig = BLOCK_TYPE_LABELS[activeFormats.blockType] || BLOCK_TYPE_LABELS.p;
   const CurrentBlockIcon = currentBlockConfig.icon;
 
+  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+  const halfWidth = 150;
+  const clampedLeft = Math.max(halfWidth + 8, Math.min(position.left, viewportWidth - halfWidth - 8));
+
   return (
     <div
       role="toolbar"
       aria-label="Selection Bubble Menu"
       className={cn(
-        'fixed z-50 flex items-center bg-popover border border-border shadow-md rounded-md p-0.5 gap-0.5 text-12 text-foreground select-none',
+        'fixed z-50 flex items-center bg-popover border border-border shadow-md rounded-md p-0.5 gap-0.5 text-12 text-foreground select-none max-w-[calc(100vw-1rem)] overflow-x-auto scrollbar-none',
         'animate-in fade-in zoom-in-95 duration-100'
       )}
       style={{
         top: `${Math.max(10, position.top)}px`,
-        left: `${Math.max(10, position.left)}px`,
+        left: `${clampedLeft}px`,
         transform: 'translateX(-50%)',
       }}
       onMouseDown={(e) => {
@@ -122,7 +126,7 @@ export function VisualSelectionBubbleMenu({
           type="button"
           variant="ghost"
           size="sm"
-          className="h-6 px-1.5 flex items-center gap-1 hover:bg-muted font-medium text-11 text-foreground/90 hover:text-foreground cursor-pointer rounded-xs"
+          className="h-6 min-h-[26px] px-1.5 flex items-center gap-1 hover:bg-muted font-medium text-11 text-foreground/90 hover:text-foreground cursor-pointer rounded-xs relative after:absolute after:-inset-1 after:content-['']"
           onClick={() => setIsDropdownOpen((prev) => !prev)}
           title="Change block style"
           aria-label={`Block style: ${currentBlockConfig.label}`}
@@ -175,7 +179,7 @@ export function VisualSelectionBubbleMenu({
         variant="ghost"
         size="icon"
         className={cn(
-          'size-6 rounded-xs cursor-pointer transition-colors p-0 flex items-center justify-center',
+          'size-6 rounded-xs cursor-pointer transition-colors p-0 flex items-center justify-center relative after:absolute after:-inset-1 after:content-[\'\']',
           activeFormats.bold
             ? 'bg-primary/15 text-primary font-semibold'
             : 'hover:bg-muted text-foreground/80 hover:text-foreground'
@@ -191,7 +195,7 @@ export function VisualSelectionBubbleMenu({
         variant="ghost"
         size="icon"
         className={cn(
-          'size-6 rounded-xs cursor-pointer transition-colors p-0 flex items-center justify-center',
+          'size-6 rounded-xs cursor-pointer transition-colors p-0 flex items-center justify-center relative after:absolute after:-inset-1 after:content-[\'\']',
           activeFormats.italic
             ? 'bg-primary/15 text-primary'
             : 'hover:bg-muted text-foreground/80 hover:text-foreground'
@@ -207,7 +211,7 @@ export function VisualSelectionBubbleMenu({
         variant="ghost"
         size="icon"
         className={cn(
-          'size-6 rounded-xs cursor-pointer transition-colors p-0 flex items-center justify-center',
+          'size-6 rounded-xs cursor-pointer transition-colors p-0 flex items-center justify-center relative after:absolute after:-inset-1 after:content-[\'\']',
           activeFormats.underline
             ? 'bg-primary/15 text-primary'
             : 'hover:bg-muted text-foreground/80 hover:text-foreground'
@@ -223,7 +227,7 @@ export function VisualSelectionBubbleMenu({
         variant="ghost"
         size="icon"
         className={cn(
-          'size-6 rounded-xs cursor-pointer transition-colors p-0 flex items-center justify-center',
+          'size-6 rounded-xs cursor-pointer transition-colors p-0 flex items-center justify-center relative after:absolute after:-inset-1 after:content-[\'\']',
           activeFormats.strike
             ? 'bg-primary/15 text-primary'
             : 'hover:bg-muted text-foreground/80 hover:text-foreground'
@@ -239,7 +243,7 @@ export function VisualSelectionBubbleMenu({
         variant="ghost"
         size="icon"
         className={cn(
-          'size-6 rounded-xs cursor-pointer transition-colors font-mono p-0 flex items-center justify-center',
+          'size-6 rounded-xs cursor-pointer transition-colors font-mono p-0 flex items-center justify-center relative after:absolute after:-inset-1 after:content-[\'\']',
           activeFormats.code
             ? 'bg-primary/15 text-primary'
             : 'hover:bg-muted text-foreground/80 hover:text-foreground'
@@ -257,7 +261,7 @@ export function VisualSelectionBubbleMenu({
         type="button"
         variant="ghost"
         size="icon"
-        className="size-6 rounded-xs cursor-pointer hover:bg-muted text-foreground/80 hover:text-foreground transition-colors p-0 flex items-center justify-center"
+        className="size-6 rounded-xs cursor-pointer hover:bg-muted text-foreground/80 hover:text-foreground transition-colors p-0 flex items-center justify-center relative after:absolute after:-inset-1 after:content-[\'\']"
         onClick={onConvertToMath}
         aria-label="Convert to math formula"
       >
@@ -268,7 +272,7 @@ export function VisualSelectionBubbleMenu({
         type="button"
         variant="ghost"
         size="icon"
-        className="size-6 rounded-xs cursor-pointer hover:bg-muted text-foreground/80 hover:text-foreground transition-colors p-0 flex items-center justify-center"
+        className="size-6 rounded-xs cursor-pointer hover:bg-muted text-foreground/80 hover:text-foreground transition-colors p-0 flex items-center justify-center relative after:absolute after:-inset-1 after:content-[\'\']"
         onClick={onConvertToCitation}
         aria-label="Insert citation"
       >
@@ -282,7 +286,7 @@ export function VisualSelectionBubbleMenu({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-6 rounded-xs cursor-pointer hover:bg-muted text-foreground/80 hover:text-foreground transition-colors p-0 flex items-center justify-center"
+            className="size-6 rounded-xs cursor-pointer hover:bg-muted text-foreground/80 hover:text-foreground transition-colors p-0 flex items-center justify-center relative after:absolute after:-inset-1 after:content-[\'\']"
             onClick={onSyncToPdf}
             aria-label="View in PDF (SyncTeX)"
           >

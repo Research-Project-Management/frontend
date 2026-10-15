@@ -46,12 +46,15 @@ export function maskLatexEntities(text: string): { maskedText: string; unmask: (
   const placeholders: Map<string, string> = new Map();
   let counter = 0;
 
-  // 1. Mask Display Math $$...$$ and \[...\]
-  let masked = text.replace(/(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\])/g, (match) => {
-    const id = `__LATEX_DISPLAY_MATH_${counter++}__`;
-    placeholders.set(id, match);
-    return id;
-  });
+  // 1. Mask Display Math $$...$$, \[...\], and display math environments (equation, align, gather, multline)
+  let masked = text.replace(
+    /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\begin\{(equation\*?|align\*?|gather\*?|multline\*?|eqnarray\*?|displaymath)\}[\s\S]*?\\end\{\2\})/g,
+    (match) => {
+      const id = `__LATEX_DISPLAY_MATH_${counter++}__`;
+      placeholders.set(id, match);
+      return id;
+    },
+  );
 
   // 2. Mask Inline Math $...$ and \(...\)
   masked = masked.replace(/(\$[^$\n]+\$|\\\(.*?\\\))/g, (match) => {
@@ -60,19 +63,25 @@ export function maskLatexEntities(text: string): { maskedText: string; unmask: (
     return id;
   });
 
-  // 3. Mask Citations \cite{...}, \citep{...}, etc.
-  masked = masked.replace(/(\\(?:auto|paren|text|foot|no)?cite(?:p|t|alt|alp|author|year|date|num)?\*?(?:\[[^\]]*\])?\{[^}]+\})/g, (match) => {
-    const id = `__LATEX_CITE_${counter++}__`;
-    placeholders.set(id, match);
-    return id;
-  });
+  // 3. Mask Citations \cite{...}, \citep{...}, \newcite{...}, \shortcite{...}, etc.
+  masked = masked.replace(
+    /(\\(?:auto|paren|text|foot|no|new|short)?cite(?:p|t|alt|alp|author|year|date|num)?\*?(?:\[[^\]]*\])*\{[^}]+\})/g,
+    (match) => {
+      const id = `__LATEX_CITE_${counter++}__`;
+      placeholders.set(id, match);
+      return id;
+    },
+  );
 
-  // 4. Mask References \ref{...}, \eqref{...}, \label{...}
-  masked = masked.replace(/(\\label\{[^}]+\}|\\(?:eq)?ref\{[^}]+\})/g, (match) => {
-    const id = `__LATEX_REF_${counter++}__`;
-    placeholders.set(id, match);
-    return id;
-  });
+  // 4. Mask References \ref{...}, \eqref{...}, \cref{...}, \Cref{...}, \autoref{...}, \pageref{...}, \nameref{...}, \label{...}
+  masked = masked.replace(
+    /(\\label\{[^}]+\}|\\(?:eq|c|C|auto|page|name)?ref\*?\{[^}]+\})/g,
+    (match) => {
+      const id = `__LATEX_REF_${counter++}__`;
+      placeholders.set(id, match);
+      return id;
+    },
+  );
 
   const unmask = (str: string): string => {
     let result = str;

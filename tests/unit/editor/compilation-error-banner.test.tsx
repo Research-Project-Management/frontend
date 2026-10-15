@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { CompilationErrorBanner } from '@/features/editor/ui/preview/CompilationErrorBanner';
+import { CompilationErrorBanner } from '@/features/editor/subsystems/compiler';
 
 describe('CompilationErrorBanner (Overleaf 1:1 Parity)', () => {
   beforeEach(() => {

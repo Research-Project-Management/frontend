@@ -89,7 +89,7 @@ export function VisualMathSymbolPalette({
                 setSearchQuery('');
               }}
               className={cn(
-                'px-2 py-1 rounded-sm text-[11px] font-medium transition-colors cursor-pointer shrink-0',
+                'px-2.5 py-1 min-h-[28px] rounded-sm text-[11px] font-medium transition-colors cursor-pointer shrink-0 relative after:absolute after:-inset-1 after:content-[\'\']',
                 activeTab === cat.id && !searchQuery
                   ? 'bg-primary text-primary-foreground font-semibold'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'

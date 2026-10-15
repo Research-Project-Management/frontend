@@ -14,13 +14,6 @@ import {
 import { TableWizardModal } from '@/features/editor/ui/modals/table-wizard/TableWizardModal';
 import { toast } from 'sonner';
 
-vi.mock('sonner', () => ({
-  toast: {
-    info: vi.fn(),
-    success: vi.fn(),
-    error: vi.fn(),
-  },
-}));
 
 describe('Visual Table & Matrix Wizard (Overleaf Parity)', () => {
   beforeEach(() => {

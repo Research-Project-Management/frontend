@@ -9,13 +9,13 @@ import {
   acceptDiffEffect,
   rejectDiffEffect,
   createInlineDiffExtension,
-} from '@/features/editor/engines/extensions/inline-diff';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import { aiCoordinator } from '@/features/editor/coordinators/ai.coordinator';
+} from '@/features/editor/subsystems/review/extensions/inline-diff';
+import { editorCommandBus } from '@/features/editor/core';
+import { aiCoordinator } from '@/features/editor/subsystems/ai';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import { CodeMirrorEngineAdapter } from '@/features/editor/engines/adapters/codemirror.adapter';
-import { setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
-import { usePageStore } from '@/features/editor/store/editor.store';
+import { CodeMirrorEngineAdapter } from '@/features/editor/core/engine/adapters/codemirror.adapter';
+import { setActiveEditorEngine } from '@/features/editor/core';
+import { usePageStore } from '@/features/editor/core';
 import type { DiffProposal } from '@/features/editor/domain/types/ports/editor-engine.port';
 
 describe('AI Inline Ghost Diff & 1-Click Error Assist (Cursor / Overleaf Parity)', () => {

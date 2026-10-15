@@ -33,6 +33,45 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#039;');
 }
 
+function stripUnescapedComments(src: string): string {
+  return src
+    .split('\n')
+    .map((line) => {
+      for (let i = 0; i < line.length; i++) {
+        if (line[i] === '%') {
+          let bs = 0;
+          for (let j = i - 1; j >= 0 && line[j] === '\\'; j--) bs++;
+          if (bs % 2 === 0) return line.slice(0, i);
+        }
+      }
+      return line;
+    })
+    .join('\n');
+}
+
+function extractBalancedCommandArg(src: string, cmdName: string): string | undefined {
+  const re = new RegExp(`\\\\${cmdName}\\*?(?:\\[[^\\]]*\\])?\\s*\\{`);
+  const m = re.exec(src);
+  if (!m || m.index === undefined) return undefined;
+  const openIdx = m.index + m[0].length - 1;
+  let depth = 0;
+  for (let i = openIdx; i < src.length; i++) {
+    const ch = src[i];
+    if (ch === '\\') {
+      i++;
+      continue;
+    }
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        return src.slice(openIdx + 1, i).trim();
+      }
+    }
+  }
+  return undefined;
+}
+
 /**
  * Extracts preamble and main body from a complete LaTeX manuscript.
  */
@@ -41,30 +80,39 @@ export function extractLatexBodyAndPreamble(latex: string): {
   body: string;
 } {
   const preamble: LatexPreamble = { packages: [], customMacros: [] };
+  const uncommentedFull = stripUnescapedComments(latex);
 
-  const docClassMatch = latex.match(/\\documentclass(?:\[[^\]]*\])?\{([^}]+)\}/);
-  if (docClassMatch) preamble.documentclass = docClassMatch[1];
+  const docClassMatch = uncommentedFull.match(/\\documentclass(?:\[[^\]]*\])?\{([^}]+)\}/);
+  if (docClassMatch) preamble.documentclass = docClassMatch[1].trim();
 
-  const titleMatch = latex.match(/\\title\{([^}]+)\}/);
-  if (titleMatch) preamble.title = titleMatch[1];
+  const extractedTitle = extractBalancedCommandArg(uncommentedFull, 'title');
+  if (extractedTitle !== undefined) preamble.title = extractedTitle;
 
-  const authorMatch = latex.match(/\\author\{([^}]+)\}/);
-  if (authorMatch) preamble.author = authorMatch[1];
+  const extractedAuthor = extractBalancedCommandArg(uncommentedFull, 'author');
+  if (extractedAuthor !== undefined) preamble.author = extractedAuthor;
+
+  const extractedDate = extractBalancedCommandArg(uncommentedFull, 'date');
+  if (extractedDate !== undefined) preamble.date = extractedDate;
 
   const beginDocIdx = latex.indexOf('\\begin{document}');
   const endDocIdx = latex.indexOf('\\end{document}');
 
   if (beginDocIdx !== -1 && endDocIdx !== -1 && endDocIdx > beginDocIdx) {
-    const rawPreamble = latex.substring(0, beginDocIdx);
+    const rawPreamble = stripUnescapedComments(latex.substring(0, beginDocIdx));
 
-    // Extract packages
+    // Extract packages (splitting comma-separated \usepackage{a,b} lists)
     const pkgRegex = /\\usepackage(?:\[[^\]]*\])?\{([^}]+)\}/g;
     let pkgMatch: RegExpExecArray | null;
     while ((pkgMatch = pkgRegex.exec(rawPreamble)) !== null) {
-      preamble.packages.push(pkgMatch[1]);
+      pkgMatch[1].split(',').forEach((p) => {
+        const cleanPkg = p.trim();
+        if (cleanPkg && !preamble.packages.includes(cleanPkg)) {
+          preamble.packages.push(cleanPkg);
+        }
+      });
     }
 
-    // Extract custom macros (\newcommand, \def)
+    // Extract custom macros (\newcommand, \renewcommand, \def)
     const macroRegex = /(\\(?:newcommand|renewcommand|def)\*?\{?[^}\n]+\}?(?:\{[\s\S]*?\})?)/g;
     let macroMatch: RegExpExecArray | null;
     while ((macroMatch = macroRegex.exec(rawPreamble)) !== null) {

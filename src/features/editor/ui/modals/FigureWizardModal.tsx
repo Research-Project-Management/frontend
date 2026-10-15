@@ -124,6 +124,7 @@ export function FigureWizardModal({
     values.width,
     values.caption,
     values.label,
+    values.angle,
   ]);
 
   const insertFigure = useCallback(() => {
@@ -216,9 +217,9 @@ export function FigureWizardModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         onPaste={handlePaste}
-        className="max-w-2xl max-h-[90vh] flex flex-col p-6 gap-4 text-xs bg-background border border-border shadow-raised-200 rounded-md"
+        className="w-[95vw] sm:max-w-2xl max-h-[90vh] flex flex-col p-6 gap-3 text-xs bg-background border border-border shadow-raised-200 rounded-md"
       >
-        <DialogHeader>
+        <DialogHeader className="shrink-0 pb-1">
           <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
             Insert LaTeX Figure
           </DialogTitle>
@@ -227,21 +228,23 @@ export function FigureWizardModal({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Hidden File Input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,.pdf,.eps"
-          className="hidden"
-          onChange={handleFilePicked}
-        />
+        {/* Scrollable Body Pane */}
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
+          {/* Hidden File Input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.pdf,.eps"
+            className="hidden"
+            onChange={handleFilePicked}
+          />
 
-        {/* Section 1: Image Selector Gallery */}
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsDragging(true);
-          }}
+          {/* Section 1: Image Selector Gallery */}
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
           className={cn(
@@ -278,7 +281,7 @@ export function FigureWizardModal({
             <div
               onClick={() => fileInputRef.current?.click()}
               className={cn(
-                'h-32 rounded-md border-2 border-dashed bg-muted/20 flex flex-col items-center justify-center gap-2 text-center p-4 transition-colors cursor-pointer',
+                'h-32 rounded-md border border-dashed bg-muted/20 flex flex-col items-center justify-center gap-2 text-center p-4 transition-colors cursor-pointer',
                 isDragging ? 'border-primary bg-primary/10' : 'border-border'
               )}
             >
@@ -370,7 +373,7 @@ export function FigureWizardModal({
                   type="button"
                   onClick={() => setValue('width', p.id, { shouldValidate: true })}
                   className={cn(
-                    'h-7 px-2 text-11 font-medium rounded-sm border truncate text-center transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                    'h-7 px-2 text-11 font-medium rounded-sm border truncate text-center transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-[\'\']',
                     values.width === p.id
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-background border-border text-foreground hover:bg-muted',
@@ -419,7 +422,7 @@ export function FigureWizardModal({
                     type="button"
                     onClick={() => setValue('placement', spec, { shouldValidate: true })}
                     className={cn(
-                      'px-2 py-0.5 text-11 font-mono rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                      'min-h-[28px] px-2 py-0.5 text-11 font-mono rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-[\'\']',
                       values.placement === spec
                         ? 'bg-primary text-primary-foreground border-primary'
                         : 'bg-background border-border text-foreground hover:bg-muted',
@@ -443,7 +446,7 @@ export function FigureWizardModal({
                     type="button"
                     onClick={() => setValue('angle', deg, { shouldValidate: true })}
                     className={cn(
-                      'px-2 py-0.5 text-11 font-mono rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                      'min-h-[28px] px-2 py-0.5 text-11 font-mono rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-[\'\']',
                       (values.angle ?? '0') === deg
                         ? 'bg-primary text-primary-foreground border-primary'
                         : 'bg-background border-border text-foreground hover:bg-muted',
@@ -477,8 +480,9 @@ export function FigureWizardModal({
             {generatedLatex}
           </pre>
         </div>
+      </div>
 
-        <DialogFooter className="flex items-center justify-between sm:justify-between pt-2 border-t border-border">
+      <DialogFooter className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-2 border-t border-border shrink-0">
           <Button
             type="button"
             variant="outline"
@@ -490,7 +494,7 @@ export function FigureWizardModal({
             Copy Code
           </Button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2">
             <Button
               type="button"
               variant="outline"

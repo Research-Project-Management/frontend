@@ -13,10 +13,10 @@ import {
   reconfigureVisualMode,
   createVisualModeExtensions,
   editorCompartments,
-} from '@/features/editor/engines/codemirror/codemirror-preset';
-import { latexVisualHeadings } from '@/features/editor/engines/extensions/latex-visual-headings';
-import { latexVisualMath } from '@/features/editor/engines/extensions/latex-visual-math';
-import { latexVisualCitations } from '@/features/editor/engines/extensions/latex-visual-citations';
+} from '@/features/editor/core/engine/codemirror/codemirror-preset';
+import { latexVisualHeadings } from '@/features/editor/core/engine/extensions/latex-visual-headings';
+import { latexVisualMath } from '@/features/editor/core/engine/extensions/latex-visual-math';
+import { latexVisualCitations } from '@/features/editor/core/engine/extensions/latex-visual-citations';
 
 describe('CodeMirror 6 Visual Mode Architecture (Lossless CM6 Widgets)', () => {
   it('should instantiate CodeMirror preset with visualMode compartment', () => {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
@@ -8,11 +8,9 @@ import {
   FileCode,
   Bot,
   Loader2,
-  Wand2,
   Lightbulb,
 } from 'lucide-react';
-import type { CompileError } from '@/features/editor/store/compiler.store';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import { type CompileError, editorCommandBus } from '@/features/editor/core';
 
 export interface DockProblemsTabProps {
   filteredErrors: CompileError[];
@@ -24,6 +22,24 @@ export const DockProblemsTab = React.memo(function DockProblemsTab({
   searchFilter,
 }: DockProblemsTabProps) {
   const [fixingLine, setFixingLine] = useState<number | null>(null);
+  const fixingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear fixingLine whenever diagnostics update so the fixing indicator reflects actual diagnostic updates
+  useEffect(() => {
+    setFixingLine(null);
+    if (fixingTimerRef.current) {
+      clearTimeout(fixingTimerRef.current);
+      fixingTimerRef.current = null;
+    }
+  }, [filteredErrors]);
+
+  useEffect(() => {
+    return () => {
+      if (fixingTimerRef.current) {
+        clearTimeout(fixingTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleJumpToProblem = (line?: number | null, file?: string) => {
     if (!line) return;
@@ -57,8 +73,12 @@ export const DockProblemsTab = React.memo(function DockProblemsTab({
       },
     });
 
-    setTimeout(() => {
+    if (fixingTimerRef.current) {
+      clearTimeout(fixingTimerRef.current);
+    }
+    fixingTimerRef.current = setTimeout(() => {
       setFixingLine(null);
+      fixingTimerRef.current = null;
     }, 1500);
   };
 
@@ -101,14 +121,14 @@ export const DockProblemsTab = React.memo(function DockProblemsTab({
   }
 
   return (
-    <div className="h-full w-full overflow-y-auto pb-10">
+    <div className="h-full w-full overflow-auto pb-10">
       <table className="w-full text-left font-sans text-xs border-collapse">
         <thead>
           <tr className="border-b border-border bg-muted/30 text-muted-foreground text-xs font-medium uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
             <th className="py-2 px-3 w-12 text-center">Type</th>
             <th className="py-2 px-3 w-40 sm:w-48">Location</th>
             <th className="py-2 px-3">Description</th>
-            <th className="py-2 px-3 w-32 text-right">Action</th>
+            <th className="py-2 px-3 w-40 text-right">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -170,12 +190,12 @@ export const DockProblemsTab = React.memo(function DockProblemsTab({
                       onClick={(e) => handle1ClickAiFix(e, err)}
                       disabled={fixingLine === (err.line ?? 1)}
                       title="1-Click AI Fix: Generate inline ghost diff directly in CodeMirror (Tab to accept)"
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-success/10 hover:bg-success/20 text-success border border-success/20 hover:border-success/30 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-ai-subtle hover:bg-ai-subtle/80 text-ai border border-ai-border/40 hover:border-ai-border/60 transition-colors cursor-pointer shrink-0 disabled:opacity-50 relative after:absolute after:-inset-1 after:content-['']"
                     >
                       {fixingLine === (err.line ?? 1) ? (
                         <Loader2 className="size-3 animate-spin shrink-0" />
                       ) : (
-                        <Wand2 className="size-3 shrink-0" />
+                        <Bot className="size-3 shrink-0" />
                       )}
                       <span className="font-semibold">1-Click Fix</span>
                     </button>
@@ -184,7 +204,7 @@ export const DockProblemsTab = React.memo(function DockProblemsTab({
                       type="button"
                       onClick={(e) => handleAskAiToFix(e, err)}
                       title="Open full AI Error Assist in companion sidebar"
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-ai/10 hover:bg-ai/20 text-ai border border-ai/20 hover:border-ai/30 transition-colors cursor-pointer shrink-0"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-transparent hover:bg-ai-subtle text-ai border border-ai-border/30 hover:border-ai-border/50 transition-colors cursor-pointer shrink-0 relative after:absolute after:-inset-1 after:content-['']"
                     >
                       <Bot className="size-3 shrink-0" />
                       <span>Ask AI</span>

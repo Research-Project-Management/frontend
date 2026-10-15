@@ -5,11 +5,11 @@ import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { EditorArea } from '@/features/editor/ui/editor/EditorArea';
-import { PdfToolbar } from '@/features/editor/ui/preview/PdfToolbar';
-import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { usePageStore } from '@/features/editor/store/editor.store';
-import { useLayoutStore } from '@/features/editor/store/layout.store';
+import { PdfToolbar } from '@/features/editor/subsystems/compiler';
+import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
+import { useSettingsStore } from '@/features/editor/core';
+import { usePageStore } from '@/features/editor/core';
+import { useLayoutStore } from '@/features/editor/core';
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({

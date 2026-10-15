@@ -69,7 +69,7 @@ export function OverleafSwitch({
       disabled={disabled}
       aria-label={ariaLabel}
       className={cn(
-        'cursor-pointer transition-colors',
+        'cursor-pointer transition-colors relative after:absolute after:-inset-2 after:content-[\'\']',
         'data-[state=checked]:bg-primary',
         'data-[state=unchecked]:bg-muted-foreground/30',
         'h-[22px] w-[40px]'
@@ -89,8 +89,8 @@ export function SettingRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-8 py-3.5 border-b border-border/30 last:border-b-0">
-      <div className="min-w-0 flex-1 pr-4">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 py-3 border-b border-border/30 last:border-b-0">
+      <div className="min-w-0 flex-1 pr-2">
         <h4 className="text-sm font-medium text-foreground leading-snug">{title}</h4>
         <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
       </div>

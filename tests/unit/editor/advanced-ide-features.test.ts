@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { detectMathAtPosition } from '@/features/editor/engines/extensions/latex-math-preview';
+import { detectMathAtPosition } from '@/features/editor/core/engine/extensions/latex-math-preview';
 import { SHORTCUT_LIST, type ShortcutItem } from '@/features/editor/ui/modals/KeyboardShortcutsModal';
-import { parseSyncTeX } from '@/features/editor/domain/pdf/synctex-index';
-import { LatexCompilerEngine } from '@/features/editor/coordinators/compilation-pipeline';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { parseSyncTeX } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
+import { LatexCompilerEngine } from '@/features/editor/subsystems/compiler';
+import { useSettingsStore } from '@/features/editor/core';
 
 describe('Advanced IDE Features (Overleaf Parity)', () => {
   describe('Math Hover Detection (detectMathAtPosition)', () => {

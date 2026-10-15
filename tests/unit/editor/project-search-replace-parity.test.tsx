@@ -1,24 +1,17 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import { keybindingCoordinator } from '@/features/editor/coordinators/keybinding.coordinator';
-import { useSearchStore } from '@/features/editor/store/search.store';
-import { useLayoutStore } from '@/features/editor/store/layout.store';
-import { useProjectSearchActions } from '@/features/editor/ui/sidebar/search/useProjectSearchActions';
+import { editorCommandBus } from '@/features/editor/core';
+import { keybindingCoordinator } from '@/features/editor/subsystems/keybinding';
+import { useSearchStore } from '@/features/editor/core';
+import { useLayoutStore } from '@/features/editor/core';
+import { useProjectSearchActions } from '@/features/editor/subsystems/search';
 import { renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
-import SearchTab from '@/features/editor/ui/sidebar/search/SearchTab';
+import SearchTab from '@/features/editor/subsystems/search';
 import { toast } from 'sonner';
 
-vi.mock('sonner', () => ({
-  toast: {
-    info: vi.fn(),
-    success: vi.fn(),
-    error: vi.fn(),
-  },
-}));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),

@@ -11,7 +11,7 @@ import {
   getActiveEditorEngine,
   getActiveEditorContent,
   getActivePdfViewer,
-} from '@/features/editor/coordinators/command-bus';
+} from '@/features/editor/core';
 
 export function useEditorInstance() {
   return {

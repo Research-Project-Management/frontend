@@ -173,6 +173,25 @@ export function generateLatexTable(grid: TableGrid): string {
   return result;
 }
 
+function extractBalancedArg(text: string, prefixRe: RegExp): string {
+  const m = prefixRe.exec(text);
+  if (!m) return '';
+  const openIdx = m.index + m[0].length - 1;
+  if (text[openIdx] !== '{') return '';
+  let depth = 1;
+  let i = openIdx + 1;
+  while (i < text.length && depth > 0) {
+    if (text[i] === '\\') {
+      i += 2;
+      continue;
+    }
+    if (text[i] === '{') depth++;
+    else if (text[i] === '}') depth--;
+    i++;
+  }
+  return depth === 0 ? text.slice(openIdx + 1, i - 1).trim() : '';
+}
+
 /**
  * Parses LaTeX table or tabular environment into a structured TableGrid.
  */
@@ -180,37 +199,40 @@ export function parseLatexTabular(latex: string): TableGrid | null {
   if (!latex || typeof latex !== 'string') return null;
 
   const tabularMatch = latex.match(
-    /\\begin\{tabular\*?\}(?:\[[^\]]*\])?\{([^}]*)\}([\s\S]*?)\\end\{tabular\*?\}/
+    /\\begin\{tabular\*?\}(?:\[[^\]]*\])?\{((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)\}([\s\S]*?)\\end\{tabular\*?\}/
   );
 
   if (!tabularMatch) return null;
 
   const rawAlignSpec = tabularMatch[1].trim();
-  const rawBody = tabularMatch[2];
+  const rawBodyWithComments = tabularMatch[2];
+  // Strip LaTeX line comments inside tabular body while preserving escaped \%
+  const rawBody = rawBodyWithComments.replace(/(^|[^\\])%.*$/gm, '$1');
 
-  // Extract caption & label if wrapped in \begin{table}
-  const captionMatch = latex.match(/\\caption(?:\[[^\]]*\])?\{([^}]+)\}/);
-  const caption = captionMatch ? captionMatch[1] : '';
+  // Extract caption & label if wrapped in \begin{table} (supports nested braces in \caption)
+  const caption = extractBalancedArg(latex, /\\caption\*?(?:\s*\[[^\]]*\])?\s*\{/);
 
   const labelMatch = latex.match(/\\label\{([^}]+)\}/);
-  const label = labelMatch ? labelMatch[1] : '';
+  const label = labelMatch ? labelMatch[1].trim() : '';
 
   const placementMatch = latex.match(/\\begin\{table\*?\}(?:\[([^\]]*)\])/);
   const placement = placementMatch ? placementMatch[1] : 'htbp';
 
-  const centering = /\\centering/.test(latex);
+  const centering = /\\centering|\\begin\{center\}/.test(latex);
 
   // Determine style and column alignments
   const isBordered = rawAlignSpec.includes('|');
-  const hasBooktabs = /\\(toprule|midrule|bottomrule)/.test(rawBody);
+  const hasBooktabs = /\\(toprule|midrule|bottomrule|cmidrule|specialrule)/.test(rawBody);
   const style: TableStyle = hasBooktabs
     ? 'booktabs'
     : isBordered
     ? 'bordered'
     : 'minimal';
 
-  // Extract alignments: strip |, @{}, p{...}
-  const cleanAligns = rawAlignSpec.replace(/\|/g, '').replace(/@\{[^}]*\}/g, '');
+  // Extract alignments: strip |, @{}, !{}, >{}, <{}, p{...}
+  const cleanAligns = rawAlignSpec
+    .replace(/\|/g, '')
+    .replace(/[@!<>]\{[^{}]*\}/g, '');
   const alignments: TableAlignment[] = [];
   for (const char of cleanAligns) {
     if (char === 'l' || char === 'c' || char === 'r') {
@@ -228,23 +250,52 @@ export function parseLatexTabular(latex: string): TableGrid | null {
     const rawRow = rawRows[i].trim();
     if (!rawRow) continue;
 
-    // Check if this row preceded a \midrule
+    // Strip horizontal rules and spacing commands
     const cleanRow = rawRow
       .replace(/\\toprule/g, '')
       .replace(/\\midrule/g, '')
       .replace(/\\bottomrule/g, '')
       .replace(/\\hline/g, '')
       .replace(/\\cline\{[^}]*\}/g, '')
+      .replace(/\\cmidrule(?:\([^)]*\))?\{[^}]*\}/g, '')
+      .replace(/\\specialrule\{[^}]*\}\{[^}]*\}\{[^}]*\}/g, '')
+      .replace(/\\rule(?:\[[^\]]*\])?\{[^}]*\}\{[^}]*\}/g, '')
+      .replace(/\\addlinespace(?:\[[^\]]*\])?/g, '')
       .trim();
 
     if (!cleanRow) continue;
 
-    // Split cells by unescaped &
-    const cells = cleanRow.split(/(?<!\\)&/).map((c) => unescapeTableCell(c));
+    // Split cells by unescaped & and expand \multicolumn / unwrap \multirow
+    const rawCells = cleanRow.split(/(?<!\\)&/);
+    const cells: string[] = [];
+    for (const rawCell of rawCells) {
+      let cellText = rawCell.trim();
+      let colSpan = 1;
+
+      const multiColMatch = cellText.match(/^\\multicolumn\s*\{\s*(\d+)\s*\}\s*\{[^}]*\}\s*\{([\s\S]*)\}$/);
+      if (multiColMatch) {
+        colSpan = Math.max(1, parseInt(multiColMatch[1], 10) || 1);
+        cellText = multiColMatch[2].trim();
+      }
+
+      const multiRowMatch = cellText.match(/^\\multirow\s*\{\s*\d+\s*\}\s*\{[^}]*\}\s*\{([\s\S]*)\}$/);
+      if (multiRowMatch) {
+        cellText = multiRowMatch[1].replace(/\\vspace\{[^}]*\}/g, '').trim();
+      }
+
+      cells.push(unescapeTableCell(cellText));
+      for (let s = 1; s < colSpan; s++) {
+        cells.push('');
+      }
+    }
     parsedRows.push(cells);
 
-    // If the raw row had midrule or hline after first line, it has a header
-    if (parsedRows.length === 1 && (/\\midrule/.test(rawRow) || /\\hline/.test(rawRow))) {
+    // If the raw row or the next row had midrule/cmidrule/hline after first line, it has a header
+    if (
+      parsedRows.length === 1 &&
+      (/\\(midrule|cmidrule|hline)/.test(rawRow) ||
+        (i + 1 < rawRows.length && /\\(midrule|cmidrule|hline)/.test(rawRows[i + 1])))
+    ) {
       detectedHeader = true;
     }
   }

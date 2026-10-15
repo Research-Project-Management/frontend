@@ -25,9 +25,9 @@ import {
   setTrackChangesReviewModeEffect,
   setTrackChangesCommentsEffect,
   getSafeOffset,
-} from '@/features/editor/engines/extensions/track-changes.extension';
-import { reviewCoordinator } from '@/features/editor/coordinators/review.coordinator';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+} from '@/features/editor/subsystems/review/extensions/track-changes.extension';
+import { reviewCoordinator } from '@/features/editor/subsystems/review';
+import { editorCommandBus } from '@/features/editor/core';
 import { suggestionService } from '@/features/editor/sdk/manuscript.service';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
@@ -60,6 +60,7 @@ describe('Track Changes & In-Editor Inline Suggestion Widget', () => {
       status: 'pending',
       description: 'Emphasize performance scalability',
       createdAt: '2026-10-12T10:00:00.000Z',
+      updatedAt: '2026-10-12T10:00:00.000Z',
     },
     {
       id: 'sug-delete-1',
@@ -76,6 +77,7 @@ describe('Track Changes & In-Editor Inline Suggestion Widget', () => {
       status: 'pending',
       description: 'Remove negative phrasing',
       createdAt: '2026-10-12T10:05:00.000Z',
+      updatedAt: '2026-10-12T10:05:00.000Z',
     },
   ];
 
@@ -89,7 +91,7 @@ describe('Track Changes & In-Editor Inline Suggestion Widget', () => {
       line: 3,
       status: 'open',
       createdAt: '2026-10-12T10:10:00.000Z',
-    },
+    } as any,
   ];
 
   beforeEach(() => {

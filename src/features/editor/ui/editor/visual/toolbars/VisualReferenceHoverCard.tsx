@@ -44,8 +44,8 @@ import {
 import {
   formatShortAuthor,
   formatInTextCitationPreview,
-} from '@/features/editor/domain/citation/citation-formatter';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+} from '@/features/editor/subsystems/citation';
+import { editorCommandBus } from '@/features/editor/core';
 
 export interface VisualReferenceHoverCardProps {
   contentRef: React.RefObject<HTMLDivElement | null>;
@@ -89,7 +89,8 @@ export function VisualReferenceHoverCard({
 
   const calculatePosition = (triggerEl: HTMLElement) => {
     const rect = triggerEl.getBoundingClientRect();
-    const cardWidth = 360;
+    const viewportW = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const cardWidth = Math.min(360, viewportW - 32);
     const cardHeight = 180;
     const margin = 8;
 
@@ -105,8 +106,8 @@ export function VisualReferenceHoverCard({
     // Align horizontally with trigger element, clamped to viewport
     let left = rect.left + rect.width / 2 - cardWidth / 2;
     if (left < 16) left = 16;
-    if (left + cardWidth > window.innerWidth - 16) {
-      left = window.innerWidth - cardWidth - 16;
+    if (left + cardWidth > viewportW - 16) {
+      left = Math.max(16, viewportW - cardWidth - 16);
     }
 
     return { top, left, placement };
@@ -355,7 +356,7 @@ export function VisualReferenceHoverCard({
           closeTimeoutRef.current = setTimeout(() => setActiveCard(null), 200);
         }}
         className={cn(
-          'visual-hover-card fixed z-50 w-96 p-4 rounded-md border border-border shadow-overlay bg-popover text-foreground text-xs leading-relaxed select-text animate-in fade-in-0 zoom-in-95 duration-150',
+          'visual-hover-card fixed z-50 w-96 max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto p-4 rounded-md border border-border shadow-overlay bg-popover text-foreground text-xs leading-relaxed select-text animate-in fade-in-0 zoom-in-95 duration-150',
           className
         )}
         style={{
@@ -379,7 +380,7 @@ export function VisualReferenceHoverCard({
             <button
               type="button"
               onClick={() => handleOpenSourceBib(entry.sourceFile)}
-              className="text-[11px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 cursor-pointer font-sans"
+              className="text-[11px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 cursor-pointer font-sans min-h-[26px] relative after:absolute after:-inset-1 after:content-['']"
               title={`Open ${entry.sourceFile}`}
             >
               <FolderOpen className="size-3 text-muted-foreground" />
@@ -462,7 +463,7 @@ export function VisualReferenceHoverCard({
             variant="ghost"
             size="sm"
             onClick={() => handleCopyCitation(entry, citeKey)}
-            className="h-7 px-2 text-[11px] gap-1 cursor-pointer font-sans"
+            className="h-7 px-2 text-[11px] gap-1 cursor-pointer font-sans relative after:absolute after:-inset-1 after:content-['']"
           >
             {isCopied ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
             <span>{isCopied ? 'Copied' : 'Copy'}</span>
@@ -474,7 +475,7 @@ export function VisualReferenceHoverCard({
               variant="outline"
               size="sm"
               onClick={() => handleEditCitation(citeKey)}
-              className="h-7 px-2.5 text-[11px] gap-1 cursor-pointer font-sans"
+              className="h-7 px-2.5 text-[11px] gap-1 cursor-pointer font-sans relative after:absolute after:-inset-1 after:content-['']"
             >
               <Search className="size-3 text-muted-foreground" />
               <span>{entry ? 'Edit Citation' : 'Search & Add'}</span>
@@ -497,7 +498,7 @@ export function VisualReferenceHoverCard({
         closeTimeoutRef.current = setTimeout(() => setActiveCard(null), 200);
       }}
       className={cn(
-        'visual-hover-card fixed z-50 w-80 p-3.5 rounded-md border border-border shadow-overlay bg-popover text-foreground text-xs leading-relaxed select-text animate-in fade-in-0 zoom-in-95 duration-150',
+        'visual-hover-card fixed z-50 w-80 max-w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto p-3.5 rounded-md border border-border shadow-overlay bg-popover text-foreground text-xs leading-relaxed select-text animate-in fade-in-0 zoom-in-95 duration-150',
         className
       )}
       style={{
@@ -563,7 +564,7 @@ export function VisualReferenceHoverCard({
               type="button"
               size="sm"
               onClick={() => handleJumpToTarget(target.element)}
-              className="h-7 px-3 text-[11px] gap-1.5 cursor-pointer font-sans bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
+              className="h-7 px-3 text-[11px] gap-1.5 cursor-pointer font-sans bg-primary hover:bg-primary/90 text-primary-foreground font-medium relative after:absolute after:-inset-1 after:content-['']"
             >
               <span>Jump to Target</span>
               <ArrowRight className="size-3" />

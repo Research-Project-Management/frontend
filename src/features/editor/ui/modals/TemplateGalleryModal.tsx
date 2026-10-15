@@ -33,15 +33,14 @@ import {
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { usePageStore } from '@/features/editor/store/editor.store';
+import { useSettingsStore, usePageStore } from '@/features/editor/core';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 
 import {
   type AcademicTemplate,
   ACADEMIC_TEMPLATES,
-} from '@/features/editor/domain/document/template-gallery.data';
+} from '@/features/editor/subsystems/explorer';
 
 export type { AcademicTemplate };
 export { ACADEMIC_TEMPLATES };
@@ -102,22 +101,23 @@ export default function TemplateGalleryModal() {
       'Thesis',
       'Resume',
     ];
-    (serverTemplates as RawServerTemplate[]).forEach((st) => {
+    serverTemplates.forEach((st) => {
       if (!list.some((t) => t.id === st.id)) {
         const matchedCat = validCategories.find(
           (c) => c.toLowerCase() === st.category?.toLowerCase(),
         );
+        const templateName = st.name || st.title || 'Untitled Template';
         list.push({
           id: st.id,
-          name: st.name,
+          name: templateName,
           category: matchedCat ?? 'Conference',
-          publisher: st.publisher || 'Manuscripts',
+          publisher: (typeof st.publisher === 'string' && st.publisher) || (typeof st.author === 'string' && st.author) || 'Manuscripts',
           description: st.description || 'Verified academic template from backend repository',
           iconName: 'Layout',
-          badge: st.badge || 'latex',
+          badge: (typeof st.badge === 'string' && st.badge) || 'latex',
           mainTex:
-            st.mainTex ||
-            `% Template: ${st.name}\n\\documentclass{article}\n\\begin{document}\n\\title{${st.name}}\n\\maketitle\n\n\\section{Introduction}\nDocument initialized from template.\n\\end{document}`,
+            (typeof st.mainTex === 'string' && st.mainTex) ||
+            `% Template: ${templateName}\n\\documentclass{article}\n\\begin{document}\n\\title{${templateName}}\n\\maketitle\n\n\\section{Introduction}\nDocument initialized from template.\n\\end{document}`,
         });
       }
     });
@@ -139,11 +139,13 @@ export default function TemplateGalleryModal() {
     if (!ACADEMIC_TEMPLATES.some((a: AcademicTemplate) => a.id === tpl.id)) {
       try {
         const remoteDetails = await manuscriptService.templates.getById(tpl.id);
-        if (remoteDetails?.mainTex || remoteDetails?.content) {
-          setSelectedTemplate((prev: AcademicTemplate) => ({
+        if (remoteDetails && (remoteDetails.mainTex || remoteDetails.content)) {
+          const mainTex = String(remoteDetails.mainTex || remoteDetails.content);
+          const bibTex = remoteDetails.bibTex ? String(remoteDetails.bibTex) : undefined;
+          setSelectedTemplate((prev) => ({
             ...prev,
-            mainTex: remoteDetails.mainTex || remoteDetails.content || prev.mainTex,
-            bibTex: remoteDetails.bibTex || prev.bibTex,
+            mainTex,
+            bibTex: bibTex || prev.bibTex,
           }));
         }
       } catch {
@@ -205,7 +207,10 @@ export default function TemplateGalleryModal() {
 
   return (
     <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
-      <DialogContent className="sm:max-w-4xl lg:max-w-5xl max-h-[85vh] h-[600px] flex flex-col p-0 overflow-hidden rounded-md bg-background border border-border/60 shadow-raised-400 text-foreground select-none">
+      <DialogContent
+        showCloseButton={false}
+        className="w-[95vw] sm:max-w-4xl lg:max-w-5xl max-h-[90vh] h-[85vh] sm:h-[620px] flex flex-col p-0 overflow-hidden rounded-md bg-background border border-border/60 shadow-raised-400 text-foreground select-none"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60 shrink-0">
           <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
@@ -215,7 +220,7 @@ export default function TemplateGalleryModal() {
             type="button"
             onClick={() => setIsTemplateModalOpen(false)}
             aria-label="Close"
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
           >
             <X className="size-4" strokeWidth={1.5} />
           </button>
@@ -227,7 +232,7 @@ export default function TemplateGalleryModal() {
         {/* Modal Body: 2 Columns */}
         <div className="flex-1 flex flex-col md:flex-row min-h-0 divide-y md:divide-y-0 md:divide-x divide-border overflow-hidden">
           {/* Left Column: Search & Template List (~340px) */}
-          <div className="w-full md:w-84 flex flex-col bg-muted/10 shrink-0 overflow-hidden border-r border-border">
+          <div className="w-full md:w-84 max-h-48 md:max-h-none flex flex-col bg-muted/10 shrink-0 overflow-hidden border-r border-border">
             {/* Search Input */}
             <div className="p-2.5 border-b border-border bg-background/50">
               <div className="relative">
@@ -349,7 +354,7 @@ export default function TemplateGalleryModal() {
                   type="button"
                   onClick={copyCode}
                   title="Copy code"
-                  className="size-7 rounded-md flex items-center justify-center border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  className="size-7 rounded-md flex items-center justify-center border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1.5 after:content-['']"
                 >
                   <Copy className="size-3.5" />
                 </button>
@@ -364,43 +369,72 @@ export default function TemplateGalleryModal() {
             </div>
 
             {/* Bottom Action Footer */}
-            <div className="px-5 py-2.5 border-t border-border/60 bg-background flex items-center justify-end gap-2 shrink-0 select-none">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsTemplateModalOpen(false)}
-                className="h-8 px-4 text-12 font-medium"
-              >
-                Close
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={applyTemplate}
-                disabled={isScaffolding}
-                className="h-8 gap-1.5 px-3 text-12 font-medium rounded-md cursor-pointer shadow-none"
-                title="Insert template code into current active file"
-              >
-                <FileText className="size-3.5" />
-                <span>Insert into file</span>
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={scaffoldProject}
-                disabled={isScaffolding}
-                className="h-8 gap-1.5 px-3.5 text-12 font-medium rounded-md cursor-pointer shadow-none"
-                title="Scaffold complete multi-file project with .bib, style files, and assets"
-              >
-                {isScaffolding ? (
-                  <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
-                ) : (
-                  <FileCheck className="size-3.5" />
+            <div className="px-5 py-2.5 border-t border-border/60 bg-background flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0 select-none">
+              <div>
+                {projectId && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      const toastId = toast.loading('Saving current project as template...');
+                      try {
+                        await manuscriptService.templates.createCustom({
+                          projectId,
+                          name: `${activeFilePage?.title?.replace(/\.tex$/i, '') || 'Custom'} Template`,
+                          description: 'Saved from active manuscript project',
+                          category: 'Academic',
+                          mainTex: engine?.getContent(),
+                        });
+                        toast.success('Saved project as custom template!', { id: toastId });
+                      } catch (err: unknown) {
+                        toast.error((err as Error)?.message || 'Failed to save custom template', { id: toastId });
+                      }
+                    }}
+                    className="h-8 px-3 text-12 font-medium text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    Save current project as template
+                  </Button>
                 )}
-                <span>{isScaffolding ? 'Scaffolding...' : 'Scaffold project'}</span>
-              </Button>
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsTemplateModalOpen(false)}
+                  className="h-8 px-4 text-12 font-medium"
+                >
+                  Close
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={applyTemplate}
+                  disabled={isScaffolding}
+                  className="h-8 gap-1.5 px-3 text-12 font-medium rounded-md cursor-pointer shadow-none"
+                  title="Insert template code into current active file"
+                >
+                  <FileText className="size-3.5" />
+                  <span>Insert into file</span>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={scaffoldProject}
+                  disabled={isScaffolding}
+                  className="h-8 gap-1.5 px-3.5 text-12 font-medium rounded-md cursor-pointer shadow-none"
+                  title="Scaffold complete multi-file project with .bib, style files, and assets"
+                >
+                  {isScaffolding ? (
+                    <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
+                  ) : (
+                    <FileCheck className="size-3.5" />
+                  )}
+                  <span>{isScaffolding ? 'Scaffolding...' : 'Scaffold project'}</span>
+                </Button>
+              </div>
             </div>
           </div>
         </div>

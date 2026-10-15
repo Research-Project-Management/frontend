@@ -10,7 +10,7 @@
  */
 
 import JSZip from 'jszip';
-import { fileService, pageService, StorageService } from '../manuscript.service';
+import { fileService, pageService, StorageService, manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
 
 export const TEXT_EXTENSIONS = new Set([
@@ -326,12 +326,15 @@ export async function parseZipArchive(
   if (rootMain) {
     mainFilePath = rootMain.path;
   } else {
-    // 2. Any root-level .tex containing \documentclass
+    // 2. Any root-level .tex containing \documentclass (excluding subfiles child documents)
+    const isRealDocClass = (text?: string) =>
+      Boolean(text && /\\documentclass\b/.test(text) && !/\\documentclass\s*(?:\[[^\]]*\])?\s*\{\s*subfiles\s*\}/.test(text));
+
     const rootDocClass = textFiles.find(
       (f) =>
         !f.folderPath &&
         f.name.toLowerCase().endsWith('.tex') &&
-        f.textContent?.includes('\\documentclass'),
+        isRealDocClass(f.textContent),
     );
     if (rootDocClass) {
       mainFilePath = rootDocClass.path;
@@ -340,7 +343,7 @@ export async function parseZipArchive(
       const anyDocClass = textFiles.find(
         (f) =>
           f.name.toLowerCase().endsWith('.tex') &&
-          f.textContent?.includes('\\documentclass'),
+          isRealDocClass(f.textContent),
       );
       if (anyDocClass) {
         mainFilePath = anyDocClass.path;
@@ -382,6 +385,7 @@ export async function parseZipArchive(
 
 export interface ImportZipOptions {
   extracted: ExtractedZipProject;
+  zipFile?: File;
   projectName?: string;
   projectId?: string;
   parentPageId?: string;
@@ -395,6 +399,7 @@ export interface ImportZipOptions {
  */
 export async function extractAndImportZipToProject({
   extracted,
+  zipFile,
   projectName,
   projectId: existingProjectId,
   parentPageId: existingParentPageId,
@@ -562,6 +567,15 @@ export async function extractAndImportZipToProject({
       });
     } catch (setMainErr) {
       console.warn('[import-zip] Note setting main file:', setMainErr);
+    }
+  }
+
+  // Server-side ZIP import sync if projectId is active
+  if (effectiveProjectId && zipFile) {
+    try {
+      await manuscriptService.export.importProjectZip(effectiveProjectId, zipFile);
+    } catch {
+      // Non-fatal fallback when offline or local-only
     }
   }
 

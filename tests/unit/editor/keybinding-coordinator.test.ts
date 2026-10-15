@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { keybindingCoordinator } from '@/features/editor/coordinators/keybinding.coordinator';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { keybindingCoordinator } from '@/features/editor/subsystems/keybinding';
+import { editorCommandBus } from '@/features/editor/core';
+import { sessionCoordinator } from '@/features/editor/core';
+import { useSettingsStore } from '@/features/editor/core';
 
 describe('KeybindingCoordinatorRegistry (Global & Scoped Shortcuts)', () => {
   let cleanup: () => void;

@@ -3,19 +3,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { Menubar } from '@/shared/components/ui';
-import { PdfToolbar } from '@/features/editor/ui/preview/PdfToolbar';
+import { PdfToolbar } from '@/features/editor/subsystems/compiler';
 import { EditorArea } from '@/features/editor/ui/editor/EditorArea';
-import { Topbar } from '@/features/editor/ui/shell/Topbar';
-import { ActivityBar } from '@/features/editor/ui/shell/ActivityBar';
-import { WorkbenchShell } from '@/features/editor/ui/shell/WorkbenchShell';
-import { FileMenu } from '@/features/editor/ui/shell/topbar/FileMenu';
-import { EditMenu } from '@/features/editor/ui/shell/topbar/EditMenu';
-import { FormatMenu } from '@/features/editor/ui/shell/topbar/FormatMenu';
-import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/coordinators/command-bus';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { usePageStore } from '@/features/editor/store/editor.store';
-import { useLayoutStore } from '@/features/editor/store/layout.store';
-import { useDocumentCollaborationStore } from '@/features/editor/store/collaboration.store';
+import { Topbar } from '@/features/editor/core/shell/Topbar';
+import { ActivityBar } from '@/features/editor/core/shell/ActivityBar';
+import { WorkbenchShell } from '@/features/editor/core/shell/WorkbenchShell';
+import { FileMenu } from '@/features/editor/core/shell/topbar/FileMenu';
+import { EditMenu } from '@/features/editor/core/shell/topbar/EditMenu';
+import { FormatMenu } from '@/features/editor/core/shell/topbar/FormatMenu';
+import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
+import { useSettingsStore } from '@/features/editor/core';
+import { usePageStore } from '@/features/editor/core';
+import { useLayoutStore } from '@/features/editor/core';
+import { useDocumentCollaborationStore } from '@/features/editor/core';
 import { clearYjsProviderPool } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -298,7 +298,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       renderWithProviders(<EditorArea />);
 
       // Source/Visual switcher is present
-      expect(screen.getByRole('radio', { name: /source mode/i })).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: /code mode|source mode/i })).toBeInTheDocument();
       expect(screen.getByRole('radio', { name: /visual mode/i })).toBeInTheDocument();
 
       // Bold, Italic formatting buttons are NOT rendered in code mode
@@ -312,7 +312,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       renderWithProviders(<EditorArea />);
 
       // Source/Visual switcher is present
-      expect(screen.getByRole('radio', { name: /source mode/i })).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: /code mode|source mode/i })).toBeInTheDocument();
       expect(screen.getByRole('radio', { name: /visual mode/i })).toBeInTheDocument();
 
       // Formatting buttons are now rendered in visual mode

@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 
-export const compilerEngineSchema = z.enum(['pdflatex', 'xelatex', 'lualatex']);
+export const compilerEngineSchema = z.enum(['pdflatex', 'xelatex', 'lualatex', 'latex']);
 
 export const compileLatexSchema = z.object({
   projectId: z.string().optional(),
@@ -55,7 +55,7 @@ export const compileDocumentSchema = z.object({
 
 export type CompileDocumentInput = z.infer<typeof compileDocumentSchema>;
 
-export type CompilerEngine = 'pdflatex' | 'xelatex' | 'lualatex';
+export type CompilerEngine = 'pdflatex' | 'xelatex' | 'lualatex' | 'latex';
 export type LaTeXEngine = CompilerEngine;
 
 export type CompileMode = 'full' | 'draft';

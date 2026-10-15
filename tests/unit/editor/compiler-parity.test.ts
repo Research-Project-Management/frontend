@@ -5,7 +5,7 @@ import {
   compileService,
 } from '@/features/editor/sdk/manuscript.service';
 import { parseLatexLog } from '@/features/editor/domain/latex/latex-structure';
-import { createPdfBlobAndUrl } from '@/features/editor/domain/pdf/pdf-resolver';
+import { createPdfBlobAndUrl } from '@/features/editor/subsystems/compiler/synctex/pdf-resolver';
 
 describe('Phase 2: Compiler & Artifacts Overleaf Parity', () => {
   beforeEach(() => {

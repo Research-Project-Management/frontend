@@ -252,10 +252,10 @@ export function VisualSlashCommandMenu({
       data-testid="slash-command-menu"
       style={{
         top: `${Math.max(10, position.top)}px`,
-        left: `${Math.max(10, position.left)}px`,
+        left: `${Math.max(10, Math.min(position.left, typeof window !== 'undefined' ? window.innerWidth - 270 : position.left))}px`,
       }}
       className={cn(
-        'fixed z-50 w-64 max-h-76 overflow-y-auto rounded-md border border-border bg-popover text-popover-foreground shadow-md',
+        'fixed z-50 w-64 max-w-[calc(100vw-1.5rem)] max-h-76 overflow-y-auto rounded-md border border-border bg-popover text-popover-foreground shadow-md',
         'p-1 space-y-0.5 animate-in fade-in-50 zoom-in-95 duration-100 select-none'
       )}
     >
@@ -283,7 +283,7 @@ export function VisualSlashCommandMenu({
               onClick={() => onSelect(item)}
               onMouseEnter={() => onHoverIndex(idx)}
               className={cn(
-                'w-full flex items-center gap-2 px-2 py-1 rounded-xs text-left transition-colors cursor-pointer text-12',
+                'w-full flex items-center gap-2 px-2 py-1 min-h-[32px] rounded-xs text-left transition-colors cursor-pointer text-12',
                 isSelected
                   ? 'bg-primary text-primary-foreground font-medium'
                   : 'hover:bg-muted text-foreground'

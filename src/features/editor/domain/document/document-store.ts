@@ -20,7 +20,7 @@ import {
   type ModelChangeListener,
   type ModelEvictionListener,
   type DocumentModelStats,
-} from './lru-document-cache';
+} from '@/features/editor/subsystems/explorer/model/lru-document-cache';
 import {
   draftStorageService,
   DraftStorageServiceRegistry,
@@ -109,7 +109,7 @@ export class DocumentStore {
       content: string;
       filePath?: string;
       projectId?: string;
-      yText?: any | null;
+      yText?: unknown;
       selection?: DocumentCursorSelection;
       scrollViewport?: DocumentScrollViewport;
     }

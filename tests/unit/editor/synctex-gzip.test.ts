@@ -4,7 +4,7 @@ import {
   decompressSyncTeXData,
   isBase64GzipSyncTeX,
   parseSyncTeX,
-} from '@/features/editor/domain/pdf/synctex-index';
+} from '@/features/editor/subsystems/compiler/synctex/synctex-index';
 
 const PLAIN = [
   'SyncTeX Version:1',

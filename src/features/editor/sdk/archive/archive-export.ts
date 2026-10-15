@@ -14,9 +14,10 @@ import {
   versionService,
   manuscriptService,
   StorageService,
-} from '../manuscript.service';
+} from '@/features/editor/sdk/manuscript.service';
 import { resolveFileUrl } from '@/features/editor/domain/latex/latex-structure';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 
 export interface ExportZipOptions {
   parentPageId: string;
@@ -112,15 +113,19 @@ async function bundleAndDownloadZip({
     }
 
     // 3. Ensure the main LaTeX document is included
-    const hasMain = Array.from(filesMap.keys()).some(
-      (k) => k.toLowerCase() === 'main.tex',
+    const configuredMain = useSettingsStore.getState().mainFile || 'main.tex';
+    const hasMain = Array.from(filesMap.entries()).some(
+      ([k, v]) =>
+        k.toLowerCase() === configuredMain.toLowerCase() ||
+        k.toLowerCase() === 'main.tex' ||
+        (k.toLowerCase().endsWith('.tex') && /\\documentclass\b/.test(v)),
     );
 
     if (!hasMain) {
       const rootTitle =
         rootPage?.title && rootPage.title.endsWith('.tex')
           ? rootPage.title
-          : 'main.tex';
+          : configuredMain;
 
       const rootStr =
         activeFileId === parentPageId && typeof currentContent === 'string'
@@ -168,7 +173,7 @@ async function bundleAndDownloadZip({
     // 4. Download and embed media/storage assets (images, pdfs, bibs, etc.)
     if (storageFiles && storageFiles.length > 0) {
       await Promise.all(
-        storageFiles.map(async (item: any) => {
+        storageFiles.map(async (item) => {
           if (item.isFolder) return;
           if (!item.url || !item.filename) return;
           if (isArxiv && !isArxivAllowed(item.filename)) return;
@@ -224,6 +229,23 @@ async function bundleAndDownloadZip({
 
     return filename;
   } catch (error) {
+    try {
+      const serverBlob = await manuscriptService.export.exportProjectZip(parentPageId);
+      if (serverBlob && serverBlob.size > 0) {
+        const fallbackFilename = isArxiv ? `arxiv-${cleanTitle}.zip` : `${cleanTitle}.zip`;
+        const downloadUrl = URL.createObjectURL(serverBlob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = fallbackFilename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(downloadUrl);
+        return fallbackFilename;
+      }
+    } catch {
+      // Fall through to original error
+    }
     console.error('[export-zip] Error generating ZIP:', error);
     throw error;
   }
@@ -295,10 +317,10 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
         try {
           const versions = await versionService.getByPageId(f.id).catch(() => []);
           if (versions && versions.length > 0) {
-            let matchingVer = versions.find((v: any) => v.id === versionId);
+            let matchingVer = versions.find((v) => v.id === versionId);
             if (!matchingVer && revisionDate) {
               const beforeVers = versions.filter(
-                (v: any) => new Date(v.createdAt).getTime() <= targetDate + 1000,
+                (v) => new Date(v.createdAt).getTime() <= targetDate + 1000,
               );
               matchingVer = beforeVers[0] || versions[versions.length - 1];
             }
@@ -336,8 +358,8 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
       try {
         const rootVersions = await versionService.getByPageId(parentPageId).catch(() => []);
         const matchingRoot =
-          rootVersions.find((v: any) => v.id === versionId) ||
-          rootVersions.find((v: any) => new Date(v.createdAt).getTime() <= targetDate + 1000) ||
+          rootVersions.find((v) => v.id === versionId) ||
+          rootVersions.find((v) => new Date(v.createdAt).getTime() <= targetDate + 1000) ||
           rootVersions[0];
         if (matchingRoot) {
           const fullRoot = await versionService.getById(parentPageId, matchingRoot.id).catch(() => null);
@@ -376,7 +398,7 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
     // 4. Download and embed media/storage assets (images, figures)
     if (storageFiles && storageFiles.length > 0) {
       await Promise.all(
-        storageFiles.map(async (item: any) => {
+        storageFiles.map(async (item) => {
           if (item.isFolder || !item.url || !item.filename) return;
           try {
             const resolvedUrl = resolveFileUrl(item.url);

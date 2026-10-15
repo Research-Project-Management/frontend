@@ -1,13 +1,13 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
-import { EditingModeDropdown } from '@/features/editor/ui/shell/topbar/EditingModeDropdown';
-import { CommentCard } from '@/features/editor/ui/sidebar/review/subcomponents/ReviewComments';
+import { EditingModeDropdown } from '@/features/editor/core/shell/topbar/EditingModeDropdown';
+import { CommentCard } from '@/features/editor/subsystems/review';
 import { EditorToolbar } from '@/features/editor/ui/editor/EditorToolbar';
 import { FigureWizardModal } from '@/features/editor/ui/modals/FigureWizardModal';
 import { VisualEditorView } from '@/features/editor/ui/editor/VisualEditorView';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import { useSettingsStore } from '@/features/editor/core';
+import { editorCommandBus } from '@/features/editor/core';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 
 vi.mock('@/features/editor/sdk/manuscript/filestore.api', () => ({
@@ -16,28 +16,11 @@ vi.mock('@/features/editor/sdk/manuscript/filestore.api', () => ({
   },
 }));
 
-vi.mock('sonner', () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-  },
-}));
 
-const mockMutateUpdate = vi.fn();
-const mockMutateResolve = vi.fn();
-const mockMutateDelete = vi.fn();
-const mockMutateDeleteReply = vi.fn();
-
-vi.mock('@/features/editor/ui/sidebar/review/hooks/useComment', () => ({
-  useResolveComment: () => ({ mutate: mockMutateResolve, isPending: false }),
-  useDeleteComment: () => ({ mutate: mockMutateDelete, isPending: false }),
-  useDeleteReply: () => ({ mutate: mockMutateDeleteReply, isPending: false }),
-  useAddReply: () => ({ mutate: vi.fn(), isPending: false }),
-  useCreateComment: () => ({ mutate: vi.fn(), isPending: false }),
-  useUpdateComment: () => ({ mutate: mockMutateUpdate, isPending: false }),
-  usePageComments: () => ({ data: [], isLoading: false }),
-  commentKeys: { all: ['page-comments'], byPage: () => ['page-comments'] },
-}));
+const mockMutateUpdate = (globalThis as any).__reviewMocks.mockMutateUpdate;
+const mockMutateResolve = (globalThis as any).__reviewMocks.mockMutateResolve;
+const mockMutateDelete = (globalThis as any).__reviewMocks.mockMutateDelete;
+const mockMutateDeleteReply = (globalThis as any).__reviewMocks.mockMutateDeleteReply;
 
 vi.mock('@/features/editor/ui/hooks/useStorage', () => ({
   useEditorStorage: () => ({

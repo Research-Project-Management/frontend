@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
-import { computeDraftDiffSummary } from '@/features/editor/domain/document/draft-diff';
+import { computeDraftDiffSummary } from '@/features/editor/subsystems/history/model/draft-diff';
 
 export interface DraftRecoveryDialogProps {
   open: boolean;
@@ -53,13 +53,14 @@ export function DraftRecoveryDialog({
       }}
     >
       <DialogContent
-        className="sm:max-w-2xl text-foreground bg-background border border-border shadow-raised-200 p-6 rounded-md"
+        showCloseButton={false}
+        className="w-[95vw] sm:max-w-2xl max-h-[85vh] flex flex-col text-foreground bg-background border border-border shadow-raised-200 p-6 rounded-md overflow-hidden"
         data-testid="draft-recovery-dialog"
         onEscapeKeyDown={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader>
+        <DialogHeader className="shrink-0">
           <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">Phát hiện bản nháp chưa lưu</DialogTitle>
           <DialogDescription className="text-12 text-muted-foreground mt-0.5">
             Tệp <span className="font-medium text-foreground">{fileName}</span> có bản nháp cục bộ (lưu lúc{' '}
@@ -68,7 +69,7 @@ export function DraftRecoveryDialog({
         </DialogHeader>
 
         {summary && (
-          <div className="text-xs space-y-2" data-testid="draft-diff-summary">
+          <div className="text-xs space-y-2 flex-1 min-h-0 overflow-y-auto py-1 pr-1" data-testid="draft-diff-summary">
             <div className="flex flex-wrap gap-3 text-muted-foreground">
               <span className="text-success">+{summary.addedLines} dòng trong bản nháp</span>
               <span className="text-destructive">−{summary.removedLines} dòng so với máy chủ</span>
@@ -80,7 +81,7 @@ export function DraftRecoveryDialog({
                 {summary.charDelta} ký tự
               </span>
             </div>
-            <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setShowDiff((v) => !v)}>
+            <Button size="sm" variant="ghost" className="h-7 px-2.5 text-xs relative after:absolute after:-inset-1 after:content-['']" onClick={() => setShowDiff((v) => !v)}>
               {showDiff ? 'Ẩn khác biệt' : 'Xem khác biệt'}
             </Button>
             {showDiff && (
@@ -106,11 +107,11 @@ export function DraftRecoveryDialog({
           </div>
         )}
 
-        <DialogFooter className="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
-          <Button variant="outline" size="sm" onClick={onKeepServer} data-testid="draft-keep-server" className="text-xs cursor-pointer">
+        <DialogFooter className="shrink-0 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2 border-t border-border/50">
+          <Button variant="outline" size="sm" onClick={onKeepServer} data-testid="draft-keep-server" className="text-xs cursor-pointer h-8 relative after:absolute after:-inset-1 after:content-['']">
             Giữ phiên bản máy chủ
           </Button>
-          <Button size="sm" onClick={onRestore} data-testid="draft-restore" className="text-xs cursor-pointer">
+          <Button size="sm" onClick={onRestore} data-testid="draft-restore" className="text-xs cursor-pointer h-8 relative after:absolute after:-inset-1 after:content-['']">
             Khôi phục bản nháp
           </Button>
         </DialogFooter>

@@ -316,7 +316,10 @@ export default function KeyboardShortcutsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl w-full p-0 gap-0 overflow-hidden bg-background border border-border/60 shadow-raised-400 rounded-md text-foreground select-none">
+      <DialogContent
+        showCloseButton={false}
+        className="w-[95vw] sm:w-full max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden bg-background border border-border/60 shadow-raised-400 rounded-md text-foreground select-none"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60 shrink-0">
           <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
@@ -326,7 +329,7 @@ export default function KeyboardShortcutsModal({
             type="button"
             onClick={() => onOpenChange(false)}
             aria-label="Close"
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
           >
             <X className="size-4" strokeWidth={1.5} />
           </button>
@@ -348,14 +351,14 @@ export default function KeyboardShortcutsModal({
             />
           </div>
 
-          <div className="flex items-center rounded-md bg-muted/50 p-0.5 border border-border/60 text-11 w-full sm:w-auto overflow-x-auto shrink-0">
+          <div className="flex items-center rounded-md bg-muted/50 p-0.5 border border-border/60 text-11 w-full sm:w-auto overflow-x-auto shrink-0 scrollbar-none">
             {(['All', 'Compilation', 'Editing', 'Navigation', 'Layout'] as const).map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => setActiveCategory(cat)}
                 className={cn(
-                  'px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                  'px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-[\'\']',
                   activeCategory === cat
                     ? 'bg-background text-foreground font-semibold border border-border/60'
                     : 'text-muted-foreground hover:text-foreground border border-transparent'
@@ -368,7 +371,7 @@ export default function KeyboardShortcutsModal({
         </div>
 
         {/* Shortcuts List: Open Hairlines without outer box */}
-        <div className="max-h-[380px] overflow-y-auto px-5 divide-y divide-border/60">
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 divide-y divide-border/60">
           {filtered.length === 0 ? (
             <div className="py-12 text-center text-xs text-muted-foreground">
               No shortcuts matching "{search}"

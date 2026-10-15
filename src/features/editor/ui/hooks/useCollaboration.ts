@@ -12,11 +12,11 @@ import { useEffect, useMemo, useContext, useState, useRef } from 'react';
 import type * as Y from 'yjs';
 import type { Awareness } from 'y-protocols/awareness';
 import { QueryClient, QueryClientContext, useQuery } from '@tanstack/react-query';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 import {
+  editorCommandBus,
   useDocumentCollaborationStore,
   type CollaboratorPresenceInfo,
-} from '@/features/editor/store/collaboration.store';
+} from '@/features/editor/core';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
 import { getCollaboratorColor } from '@/features/editor/ui/editor/CollaboratorCursors';
 import { getOrCreateYjsProvider, releaseYjsProvider, type YjsSocketIOProvider, type ConnectionStatus } from '@/features/editor/sdk/realtime/yjs-socket-provider';

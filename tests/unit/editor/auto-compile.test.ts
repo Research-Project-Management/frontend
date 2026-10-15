@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useCompileStore } from '@/features/editor/store/compiler.store';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
-import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { useCompileStore } from '@/features/editor/core';
+import { useSettingsStore } from '@/features/editor/core';
+import { editorCommandBus } from '@/features/editor/core';
+import { sessionCoordinator } from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
 
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { draftStorageService } from '@/features/editor/domain/document/draft-storage';

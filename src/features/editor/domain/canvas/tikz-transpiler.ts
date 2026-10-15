@@ -11,14 +11,23 @@ export function sanitizeTikzId(id: string): string {
   return `node_${id.replace(/[^a-zA-Z0-9]/g, '_')}`;
 }
 
-export function escapeLatexText(text: string): string {
-  if (!text) return '';
-  return text
-    .replace(/\\/g, '\\textbackslash{}')
+function escapePlainLatexSegment(segment: string): string {
+  return segment
+    .replace(/\\/g, '\u0000BACKSLASH\u0000')
     .replace(/([&%$#_{}])/g, '\\$1')
     .replace(/~/g, '\\textasciitilde{}')
     .replace(/\^/g, '\\textasciicircum{}')
+    .replace(/\u0000BACKSLASH\u0000/g, '\\textbackslash{}')
     .replace(/\n/g, '\\\\ ');
+}
+
+export function escapeLatexText(text: string): string {
+  if (!text) return '';
+  // Preserve balanced inline math ($...$) in academic diagram node/edge labels while escaping prose
+  const parts = text.split(/(\$[^$\n]+\$)/g);
+  return parts
+    .map((part) => (part.startsWith('$') && part.endsWith('$') && part.length >= 2 ? part : escapePlainLatexSegment(part)))
+    .join('');
 }
 
 export function hexToTikzColorName(hex?: string): string {

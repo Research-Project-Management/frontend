@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   SessionCoordinatorRegistry,
   type DocumentPersistencePort,
-} from '@/features/editor/coordinators/session.coordinator';
-import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { useConnectivityStore } from '@/features/editor/store/connectivity.store';
+} from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { useConnectivityStore } from '@/features/editor/core';
 
 describe('SessionCoordinator as Deep Module (Matt Pocock Codebase Design)', () => {
   beforeEach(() => {

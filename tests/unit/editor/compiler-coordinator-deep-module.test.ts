@@ -1,13 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   CompilerCoordinatorRegistry,
+  compilerCoordinator,
+  compilerSubsystem,
+  CompilationFlushBarrier,
   type CompilerExecutionPort,
-} from '@/features/editor/coordinators/compiler.coordinator';
-import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { useCompileStore } from '@/features/editor/store/compiler.store';
-import { usePageStore } from '@/features/editor/store/editor.store';
-import { useConnectivityStore } from '@/features/editor/store/connectivity.store';
-import { diagnosticsCoordinator } from '@/features/editor/coordinators/diagnostics.coordinator';
+} from '@/features/editor/subsystems/compiler';
+import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { sessionCoordinator, editorCommandBus } from '@/features/editor/core';
+import { useCompileStore } from '@/features/editor/core';
+import { usePageStore } from '@/features/editor/core';
+import { useConnectivityStore } from '@/features/editor/core';
+import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
 
 describe('CompilerCoordinator as Deep Module (Matt Pocock Codebase Design)', () => {
   beforeEach(() => {
@@ -20,6 +24,12 @@ describe('CompilerCoordinator as Deep Module (Matt Pocock Codebase Design)', () 
     });
     lruDocumentCache.clear();
     diagnosticsCoordinator.clear();
+    diagnosticsCoordinator.setFilterOptions({
+      suppressBadBoxes: false,
+      suppressFontWarnings: false,
+      suppressPackageWarnings: false,
+      customPatterns: [],
+    });
   });
 
   afterEach(() => {
@@ -44,6 +54,7 @@ describe('CompilerCoordinator as Deep Module (Matt Pocock Codebase Design)', () 
               message: 'Underfull \\hbox (badness 10000)',
               severity: 'warning',
               file: 'main.tex',
+              context: '',
             },
           ],
         };
@@ -127,5 +138,69 @@ describe('CompilerCoordinator as Deep Module (Matt Pocock Codebase Design)', () 
     expect(summary.errorCount).toBe(1);
     expect(summary.warningCount).toBe(0);
     expect(compiler.getDiagnosticsCount('error')).toBe(1);
+  });
+
+  it('compilerSubsystem encapsulates compile intent, duration, and status into structured CompilationOutcome', async () => {
+    const testCompiler: CompilerExecutionPort = {
+      compile: async () => ({
+        success: true,
+        pdfUrl: 'blob:http://localhost/seam-test.pdf',
+        synctexMap: null,
+        logs: 'Success',
+        compiledAt: new Date(),
+        diagnostics: [
+          { line: 5, message: 'Overfull \\hbox', severity: 'warning', file: 'main.tex', context: '' },
+        ],
+      }),
+      cancelInFlightCompile: vi.fn(),
+    };
+
+    compilerCoordinator.setCompilerEngine(testCompiler);
+
+    lruDocumentCache.registerModel('main-doc', {
+      content: '\\documentclass{article}\\begin{document}Hello\\end{document}',
+      filePath: 'main.tex',
+    });
+
+    const outcome = await compilerSubsystem.compile({ mode: 'fast', reason: 'manual-button' });
+    expect(outcome.status).toBe('success');
+    expect(outcome.pdfUrl).toBe('blob:http://localhost/seam-test.pdf');
+    expect(outcome.warningCount).toBe(1);
+    expect(outcome.errorCount).toBe(0);
+    expect(outcome.durationMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it('compilerSubsystem.abort() and jumpToPdf() delegate cleanly to the coordinator seam', async () => {
+    const stopSpy = vi.spyOn(compilerCoordinator, 'stop');
+    compilerSubsystem.abort();
+    expect(stopSpy).toHaveBeenCalledTimes(1);
+
+    const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
+    vi.spyOn(compilerCoordinator, 'resolveForward').mockReturnValue(3);
+    const jumped = await compilerSubsystem.jumpToPdf('main.tex', 10);
+    expect(jumped).toBe(true);
+    expect(dispatchSpy).toHaveBeenCalledWith({ type: 'viewer:goto-page', page: 3 });
+  });
+
+  it('CompilationFlushBarrier flushes pending drafts and synchronizes active dirty buffer', async () => {
+    const flushDraftsSpy = vi.spyOn(sessionCoordinator, 'flushPendingDrafts');
+    const flushAllSpy = vi.spyOn(sessionCoordinator, 'flushAllPending').mockResolvedValue({
+      total: 0,
+      succeeded: 0,
+      failed: 0,
+      results: [],
+    });
+
+    lruDocumentCache.registerModel('doc-1', {
+      content: 'Original content',
+      filePath: 'doc.tex',
+    });
+
+    const result = await CompilationFlushBarrier.execute('doc-1', 'Updated content via editor');
+    expect(flushDraftsSpy).toHaveBeenCalled();
+    expect(flushAllSpy).toHaveBeenCalled();
+    expect(result.activeFlushed).toBe(true);
+    expect(lruDocumentCache.getModel('doc-1')?.content).toBe('Updated content via editor');
+    expect(useCompileStore.getState().getDirtyFiles().some((d) => d.fileId === 'doc-1')).toBe(true);
   });
 });

@@ -12,11 +12,14 @@
 import { useEffect, useContext } from 'react';
 import { QueryClientContext, QueryClient } from '@tanstack/react-query';
 import type { EditorView } from '@codemirror/view';
-import { usePageSuggestions, suggestionKeys } from '../sidebar/review/hooks/useSuggestion';
-import { usePageComments, commentKeys } from '../sidebar/review/hooks/useComment';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { reviewCoordinator } from '@/features/editor/coordinators/review.coordinator';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import {
+  usePageSuggestions,
+  suggestionKeys,
+  usePageComments,
+  commentKeys,
+  reviewCoordinator,
+} from '@/features/editor/subsystems/review';
+import { useSettingsStore, editorCommandBus } from '@/features/editor/core';
 
 const fallbackClient = new QueryClient({
   defaultOptions: {

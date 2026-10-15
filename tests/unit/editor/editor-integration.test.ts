@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { collaborationService, type CollaborationEvent } from '@/features/editor/sdk/manuscript.service';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { parseSyncTeX, resolveForward } from '@/features/editor/domain/pdf/synctex-index';
+import { useSettingsStore } from '@/features/editor/core';
+import { parseSyncTeX, resolveForward } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
 import { fromAny, fromPartial } from '@/shared/lib/type-utilities';
 
 describe('Editor & Document End-to-End Integration Tests', () => {

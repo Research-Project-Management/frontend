@@ -1,8 +1,8 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import AiTab from '@/features/editor/ui/sidebar/ai/AiTab';
-import { usePageStore } from '@/features/editor/store/editor.store';
+import AiTab from '@/features/editor/subsystems/ai';
+import { usePageStore } from '@/features/editor/core';
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({

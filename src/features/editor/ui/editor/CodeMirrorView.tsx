@@ -15,8 +15,8 @@
 
 'use client';
 
-import React, { useEffect, useRef, useMemo } from 'react';
-import { EditorState } from '@codemirror/state';
+import React, { useEffect, useRef, useMemo, useCallback } from 'react';
+import { EditorState, type Extension, type StateEffect } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { forceLinting } from '@codemirror/lint';
 import { ySyncAnnotation } from 'y-codemirror.next';
@@ -24,35 +24,38 @@ import type * as Y from 'yjs';
 
 import {
   createCodeMirrorPreset,
-  reconfigureLineNumbers,
-  reconfigureLineWrapping,
-  reconfigureKeybinding,
-  reconfigureVimMode,
-  reconfigureReadOnly,
-  reconfigureSpellCheck,
-  reconfigureTheme,
-  reconfigureTypography,
-  reconfigureVisualMode,
-  reconfigureErrorLens,
-} from '@/features/editor/engines/codemirror/codemirror-preset';
-import { YjsCodeMirrorAdapter } from '@/features/editor/engines/collaboration/yjs-codemirror-adapter';
+  reconfigureEditorCompartments,
+  type EditorRuntimeConfig,
+} from '@/features/editor/core/engine/codemirror/codemirror-preset';
+import {
+  YjsCodeMirrorAdapter,
+  type YjsCollabOptions,
+} from '@/features/editor/core/engine/collaboration/yjs-codemirror-adapter';
 import {
   createTrackChangesExtension,
   setTrackChangesViewModeEffect,
   setTrackChangesReviewModeEffect,
-} from '@/features/editor/engines/extensions/track-changes.extension';
+  reviewCoordinator,
+} from '@/features/editor/subsystems/review';
 import { useEditorReviewSync } from '@/features/editor/ui/hooks/useEditorReviewSync';
-import { setErrorLensDiagnosticsEffect } from '@/features/editor/engines/extensions/latex-error-lens';
-import { CodeMirrorEngineAdapter } from '@/features/editor/engines/adapters/codemirror.adapter';
-import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { visibilityCoordinator } from '@/features/editor/coordinators/visibility.coordinator';
-import { diagnosticsCoordinator } from '@/features/editor/coordinators/diagnostics.coordinator';
-import { sessionCoordinator, shouldUseRealtimePersistence } from '@/features/editor/coordinators/session.coordinator';
-import { reviewCoordinator } from '@/features/editor/coordinators/review.coordinator';
-import { setActiveEditorEngine, getActiveEditorEngine, editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { useConnectivityStore } from '@/features/editor/store/connectivity.store';
-import { createDiagnosticsGutter } from '@/features/editor/engines/extensions/diagnostics-gutter';
+import {
+  setErrorLensDiagnosticsEffect,
+  createDiagnosticsGutter,
+  diagnosticsCoordinator,
+} from '@/features/editor/subsystems/diagnostics';
+import { CodeMirrorEngineAdapter } from '@/features/editor/core/engine/adapters/codemirror.adapter';
+import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
+import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
+import {
+  visibilityCoordinator,
+  sessionCoordinator,
+  shouldUseRealtimePersistence,
+  setActiveEditorEngine,
+  getActiveEditorEngine,
+  editorCommandBus,
+  useSettingsStore,
+  useConnectivityStore,
+} from '@/features/editor/core';
 import { cn } from '@/shared/lib/utils';
 
 export interface CodeMirrorViewProps {
@@ -61,7 +64,7 @@ export interface CodeMirrorViewProps {
   value: string;
   onChange?: (nextValue: string) => void;
   yText?: Y.Text | null;
-  awareness?: any | null;
+  awareness?: YjsCollabOptions['awareness'];
   /** True only while the realtime (Yjs socket) provider is actually connected. */
   isRealtimeConnected?: boolean;
   readOnly?: boolean;
@@ -69,6 +72,119 @@ export interface CodeMirrorViewProps {
   projectId?: string;
   isActive?: boolean;
   onCursorChange?: (line: number, column: number) => void;
+}
+
+export interface BuildEditorStateOptions {
+  fileId: string;
+  filePath: string;
+  initialText: string;
+  readOnly: boolean;
+  lineNumbers: boolean;
+  wordWrap: boolean;
+  keybinding: 'standard' | 'vim' | 'emacs';
+  errorLensEnabled: boolean;
+  spellCheck: boolean;
+  spellCheckLanguage: string;
+  projectId?: string;
+  editorTheme: string;
+  fontSize: number;
+  fontFamily?: string;
+  lineHeight?: number;
+  editorMode: string;
+  trackChangesViewMode: string;
+  reviewMode: boolean;
+  collabAdapter: YjsCodeMirrorAdapter;
+  yText?: Y.Text | null;
+  awareness?: YjsCollabOptions['awareness'];
+  viewUpdateListener: Extension;
+}
+
+/**
+ * Pure state factory: builds a fresh CodeMirror EditorState configured with
+ * presets, diagnostics gutter, track changes, collaboration, and update listeners.
+ */
+export function buildEditorState(options: BuildEditorStateOptions): EditorState {
+  const presetExtensions = createCodeMirrorPreset({
+    readOnly: options.readOnly,
+    lineNumbers: options.lineNumbers,
+    lineWrapping: options.wordWrap,
+    keybinding: options.keybinding,
+    vimMode: options.keybinding === 'vim',
+    enableMathPreview: true,
+    enableAutocomplete: true,
+    enableErrorLens: options.errorLensEnabled,
+    enableSpellCheck: options.spellCheck,
+    spellCheckLanguage: options.spellCheckLanguage,
+    projectId: options.projectId,
+    editorTheme: options.editorTheme,
+    fontSize: options.fontSize,
+    fontFamily: options.fontFamily,
+    lineHeight: options.lineHeight,
+    enableVisualMode: options.editorMode === 'visual',
+  });
+
+  const diagnosticsExtension = createDiagnosticsGutter({
+    filePath: options.filePath,
+    enabled: true,
+  });
+
+  const collabExtension = options.collabAdapter.getExtension({
+    yText: options.yText ?? null,
+    awareness: options.awareness,
+  });
+
+  const trackChangesExtension = createTrackChangesExtension({
+    initialViewMode:
+      options.trackChangesViewMode === 'clean' ||
+      options.trackChangesViewMode === 'original' ||
+      options.trackChangesViewMode === 'changes'
+        ? options.trackChangesViewMode
+        : 'changes',
+    initialReviewMode: Boolean(options.reviewMode),
+  });
+
+  return EditorState.create({
+    doc: options.initialText,
+    extensions: [
+      ...presetExtensions,
+      diagnosticsExtension,
+      collabExtension,
+      trackChangesExtension,
+      options.viewUpdateListener,
+    ],
+  });
+}
+
+function flushViewState(view: EditorView, targetFileId: string): void {
+  const latestDoc = view.state.doc.toString();
+  if (lruDocumentCache.getModel(targetFileId)?.content !== latestDoc) {
+    lruDocumentCache.updateContent(targetFileId, latestDoc, true);
+  }
+  const mainSel = view.state.selection.main;
+  const scrollDOM = view.scrollDOM;
+  lruDocumentCache.updateViewState(
+    targetFileId,
+    { anchor: mainSel.anchor, head: mainSel.head },
+    { top: scrollDOM.scrollTop, left: scrollDOM.scrollLeft }
+  );
+}
+
+function restoreViewState(view: EditorView, targetFileId: string, docLength: number): void {
+  const cachedModel = lruDocumentCache.get(targetFileId);
+  if (cachedModel?.selection) {
+    const anchor = Math.min(cachedModel.selection.anchor, docLength);
+    const head = Math.min(cachedModel.selection.head, docLength);
+    view.dispatch({ selection: { anchor, head } });
+  }
+
+  if (cachedModel?.scrollViewport) {
+    requestAnimationFrame(() => {
+      if (view.scrollDOM && cachedModel.scrollViewport) {
+        view.scrollDOM.scrollTop = cachedModel.scrollViewport.top;
+        view.scrollDOM.scrollLeft = cachedModel.scrollViewport.left;
+      }
+    });
+  }
 }
 
 export function CodeMirrorView({
@@ -91,6 +207,10 @@ export function CodeMirrorView({
   const [activeEditorView, setActiveEditorView] = React.useState<EditorView | null>(null);
   const collabAdapter = useMemo(() => new YjsCodeMirrorAdapter(), []);
 
+  // Track currently loaded file within the mounted view instance
+  const currentFileIdRef = useRef<string>(fileId);
+  const currentFilePathRef = useRef<string>(filePath);
+
   // Narrow selectors to prevent useless re-renders when other settings mutate
   const keybinding = useSettingsStore((s) => s.keybinding);
   const lineNumbers = useSettingsStore((s) => s.lineNumbers);
@@ -112,6 +232,9 @@ export function CodeMirrorView({
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
+  const yTextRef = useRef(yText);
+  yTextRef.current = yText;
+
   const isRealtimeConnectedRef = useRef(isRealtimeConnected);
   isRealtimeConnectedRef.current = isRealtimeConnected;
 
@@ -121,56 +244,28 @@ export function CodeMirrorView({
   const isActiveRef = useRef(isActive);
   isActiveRef.current = isActive;
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    // 1. Hydrate previous view state from LRU Cache
-    const cachedModel = lruDocumentCache.get(fileId);
-    const initialText = yText && yText.length > 0 ? yText.toString() : (cachedModel?.content ?? value);
-
-    // 2. Preset Extensions & Diagnostic Gutter
-    const presetExtensions = createCodeMirrorPreset({
-      readOnly,
-      lineNumbers,
-      lineWrapping: wordWrap,
-      keybinding,
-      vimMode: keybinding === 'vim',
-      enableMathPreview: true,
-      enableAutocomplete: true,
-      enableErrorLens: errorLensEnabled,
-      enableSpellCheck: spellCheck,
-      spellCheckLanguage,
-      projectId,
-      editorTheme,
-      fontSize,
-      fontFamily,
-      lineHeight,
-      enableVisualMode: editorMode === 'visual',
+  const syncErrorLens = useCallback((targetView: EditorView, targetFilePath: string) => {
+    const diags = diagnosticsCoordinator.getDiagnosticsForFile(targetFilePath);
+    targetView.dispatch({
+      effects: setErrorLensDiagnosticsEffect.of({
+        diagnostics: diags,
+        filePath: targetFilePath,
+      }),
     });
+  }, []);
 
-    const diagnosticsExtension = createDiagnosticsGutter({
-      filePath,
-      enabled: true,
-    });
-
-    const collabExtension = collabAdapter.getExtension({
-      yText: yText ?? null,
-      awareness,
-    });
-
-    // 3. View Update Listener
-    const viewUpdateListener = EditorView.updateListener.of((update) => {
+  // Stable view update listener delegating dynamically via refs
+  const viewUpdateListener = useMemo(() => {
+    return EditorView.updateListener.of((update) => {
       if (adapterRef.current) {
         adapterRef.current.handleViewUpdate(update);
       }
 
       if (update.docChanged) {
-        // Detect if changes originated from remote peer via Yjs collaboration
         const isRemote = update.transactions.some((tr) => Boolean(tr.annotation(ySyncAnnotation)));
         const origin: 'local' | 'remote' = isRemote ? 'remote' : 'local';
 
         let hasStructuralChange = false;
-        // Fast incremental check: only check if changes involve backslash directives
         update.changes.iterChanges((_fromA, _toA, _fromB, _toB, inserted) => {
           if (hasStructuralChange) return;
           if (inserted.length > 0) {
@@ -182,14 +277,11 @@ export function CodeMirrorView({
         });
 
         const nextContent = update.state.doc.toString();
-        // Remote-origin (Yjs) transactions must never mark the local model dirty — nor clear an
-        // existing dirty flag. notifyContentChange applies the content with the right semantics.
+        const activeId = currentFileIdRef.current;
         const isOnline = useConnectivityStore.getState().isOnline;
-        sessionCoordinator.notifyContentChange(fileId, nextContent, {
-          // Only rely on the CRDT channel for persistence while the socket is truly connected;
-          // otherwise HTTP autosave + drafts take over.
+        sessionCoordinator.notifyContentChange(activeId, nextContent, {
           isRealtimeActive: shouldUseRealtimePersistence({
-            hasYText: Boolean(yText),
+            hasYText: Boolean(yTextRef.current),
             isOnline,
             isProviderConnected: isRealtimeConnectedRef.current,
           }),
@@ -202,9 +294,10 @@ export function CodeMirrorView({
       if (update.selectionSet || update.geometryChanged) {
         const mainSel = update.state.selection.main;
         const scrollDOM = update.view.scrollDOM;
+        const activeId = currentFileIdRef.current;
 
         lruDocumentCache.updateViewState(
-          fileId,
+          activeId,
           { anchor: mainSel.anchor, head: mainSel.head },
           { top: scrollDOM.scrollTop, left: scrollDOM.scrollLeft }
         );
@@ -215,34 +308,127 @@ export function CodeMirrorView({
         }
       }
     });
+  }, []);
 
-    const trackChangesExtension = createTrackChangesExtension({
-      initialViewMode: trackChangesViewMode === 'clean' ? 'hide' : 'show',
-      initialReviewMode: Boolean(reviewMode),
-    });
+  const createStateForDocument = useCallback(
+    (docFileId: string, docFilePath: string, docValue: string) => {
+      const cachedModel = lruDocumentCache.get(docFileId);
+      const cachedContent =
+        cachedModel?.content !== undefined && (cachedModel.content.length > 0 || !docValue)
+          ? cachedModel.content
+          : docValue;
+      const initialText =
+        yText && yText.length > 0 ? yText.toString() : cachedContent;
 
-    // 4. Assemble State & View
-    const state = EditorState.create({
-      doc: initialText,
-      extensions: [
-        ...presetExtensions,
-        diagnosticsExtension,
-        collabExtension,
-        trackChangesExtension,
+      return buildEditorState({
+        fileId: docFileId,
+        filePath: docFilePath,
+        initialText,
+        readOnly,
+        lineNumbers: editorMode === 'visual' ? false : lineNumbers,
+        wordWrap,
+        keybinding,
+        errorLensEnabled,
+        spellCheck,
+        spellCheckLanguage,
+        projectId,
+        editorTheme,
+        fontSize,
+        fontFamily,
+        lineHeight,
+        editorMode,
+        trackChangesViewMode,
+        reviewMode,
+        collabAdapter,
+        yText: yText ?? null,
+        awareness,
         viewUpdateListener,
-      ],
-    });
+      });
+    },
+    [
+      yText,
+      readOnly,
+      lineNumbers,
+      wordWrap,
+      keybinding,
+      errorLensEnabled,
+      spellCheck,
+      spellCheckLanguage,
+      projectId,
+      editorTheme,
+      fontSize,
+      fontFamily,
+      lineHeight,
+      editorMode,
+      trackChangesViewMode,
+      reviewMode,
+      collabAdapter,
+      awareness,
+      viewUpdateListener,
+    ]
+  );
 
+  const currentRuntimeConfig: EditorRuntimeConfig = useMemo(
+    () => ({
+      readOnly,
+      lineNumbers,
+      lineWrapping: wordWrap,
+      keybinding,
+      spellCheck,
+      spellCheckLanguage,
+      projectId,
+      editorTheme,
+      fontSize,
+      fontFamily,
+      lineHeight,
+      visualMode: editorMode === 'visual',
+      errorLensEnabled,
+    }),
+    [
+      readOnly,
+      lineNumbers,
+      wordWrap,
+      keybinding,
+      spellCheck,
+      spellCheckLanguage,
+      projectId,
+      editorTheme,
+      fontSize,
+      fontFamily,
+      lineHeight,
+      editorMode,
+      errorLensEnabled,
+    ]
+  );
+
+  const prevConfigRef = useRef<{
+    runtime: EditorRuntimeConfig;
+    reviewMode: boolean;
+    trackChangesViewMode: string;
+  } | null>(null);
+
+  // ── Persistent Editor View Mount Lifecycle (Runs ONCE per container) ───────
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    currentFileIdRef.current = fileId;
+    currentFilePathRef.current = filePath;
+
+    const state = createStateForDocument(fileId, filePath, value);
     const view = new EditorView({
       state,
       parent: containerRef.current,
     });
 
     viewRef.current = view;
+    prevConfigRef.current = {
+      runtime: currentRuntimeConfig,
+      reviewMode: Boolean(reviewMode),
+      trackChangesViewMode,
+    };
     setActiveEditorView(view);
     reviewCoordinator.bindEditorView(view, fileId);
 
-    // 5. Connect Concrete Engine Adapter to Global Context
     const engineAdapter = new CodeMirrorEngineAdapter(view);
     adapterRef.current = engineAdapter;
     if (isActiveRef.current) {
@@ -257,69 +443,47 @@ export function CodeMirrorView({
     view.dom.addEventListener('focus', handleFocus, true);
     view.dom.addEventListener('mousedown', handleFocus, true);
 
-    // 6. Restore cached selection & scroll position
-    if (cachedModel?.selection) {
-      const docLen = state.doc.length;
-      const anchor = Math.min(cachedModel.selection.anchor, docLen);
-      const head = Math.min(cachedModel.selection.head, docLen);
-      view.dispatch({ selection: { anchor, head } });
+    restoreViewState(view, fileId, state.doc.length);
+    syncErrorLens(view, filePath);
+    if (isActiveRef.current) {
+      navigationCoordinator.registerEditorView(fileId, filePath);
     }
-
-    if (cachedModel?.scrollViewport) {
-      requestAnimationFrame(() => {
-        if (view.scrollDOM) {
-          view.scrollDOM.scrollTop = cachedModel.scrollViewport!.top;
-          view.scrollDOM.scrollLeft = cachedModel.scrollViewport!.left;
-        }
-      });
-    }
-
-    // 7. Subscribe to Diagnostics updates to trigger re-lint & refresh Error Lens
-    const syncErrorLens = (targetView: EditorView) => {
-      const diags = diagnosticsCoordinator.getDiagnosticsForFile(filePath);
-      targetView.dispatch({
-        effects: setErrorLensDiagnosticsEffect.of({
-          diagnostics: diags,
-          filePath,
-        }),
-      });
-    };
 
     const unsubDiagnostics = diagnosticsCoordinator.subscribe(() => {
-      if (viewRef.current) {
-        forceLinting(viewRef.current);
-        syncErrorLens(viewRef.current);
-      }
-    });
-
-    // Initial Error Lens hydration
-    syncErrorLens(view);
-
-    // 8. Tab Visibility Hibernation Handler
-    const unsubVisibility = visibilityCoordinator.subscribe((lifecycle) => {
-      if (lifecycle === 'hibernated') {
+      const runSync = () => {
         if (viewRef.current) {
-          const scroller = viewRef.current.scrollDOM;
-          const mainSel = viewRef.current.state.selection.main;
-          lruDocumentCache.updateViewState(
-            fileId,
-            { anchor: mainSel.anchor, head: mainSel.head },
-            { top: scroller.scrollTop, left: scroller.scrollLeft }
-          );
+          try {
+            forceLinting(viewRef.current);
+            syncErrorLens(viewRef.current, currentFilePathRef.current);
+          } catch {
+            // Defer if called mid-transaction
+            setTimeout(() => {
+              if (viewRef.current) {
+                forceLinting(viewRef.current);
+                syncErrorLens(viewRef.current, currentFilePathRef.current);
+              }
+            }, 0);
+          }
         }
+      };
+      runSync();
+    });
+
+    const unsubVisibility = visibilityCoordinator.subscribe((lifecycle) => {
+      if (lifecycle === 'hibernated' && viewRef.current) {
+        flushViewState(viewRef.current, currentFileIdRef.current);
       }
     });
 
-    // Synchronized Dual-Scroll Producer (Editor -> Preview)
     let scrollRafId: number | null = null;
     let lastDispatchedLine = -1;
     const handleScroll = () => {
       if (scrollRafId !== null) return;
       scrollRafId = requestAnimationFrame(() => {
         scrollRafId = null;
-        if (!viewRef.current) return;
-        const line = engineAdapter.getVisibleLine();
-        const totalLines = view.state.doc.lines;
+        if (!viewRef.current || !adapterRef.current) return;
+        const line = adapterRef.current.getVisibleLine();
+        const totalLines = viewRef.current.state.doc.lines;
         const fraction = totalLines > 1 ? (line - 1) / (totalLines - 1) : 0;
         if (line !== lastDispatchedLine) {
           lastDispatchedLine = line;
@@ -329,9 +493,11 @@ export function CodeMirrorView({
     };
     view.scrollDOM.addEventListener('scroll', handleScroll, { passive: true });
 
-    // Handle full remote/server document updates targeted at this document
     const unsubContentUpdated = editorCommandBus.subscribe('document:content-updated', (cmd) => {
-      if (cmd.docId === fileId && viewRef.current) {
+      if (cmd.docId === currentFileIdRef.current && viewRef.current) {
+        if (sessionCoordinator.getConflict(cmd.docId) || lruDocumentCache.getModel(cmd.docId)?.isDirty) {
+          return;
+        }
         const currentDoc = viewRef.current.state.doc.toString();
         if (currentDoc !== cmd.content) {
           const sel = viewRef.current.state.selection.main;
@@ -347,10 +513,9 @@ export function CodeMirrorView({
       }
     });
 
-    // Handle targeted set-content commands
     const unsubSetContent = editorCommandBus.subscribe('editor:set-content', (cmd) => {
       const anyCmd = cmd as { type: string; content: string; fileId?: string };
-      if (anyCmd.fileId && anyCmd.fileId === fileId && viewRef.current) {
+      if ((!anyCmd.fileId || anyCmd.fileId === currentFileIdRef.current) && viewRef.current) {
         const currentDoc = viewRef.current.state.doc.toString();
         if (currentDoc !== anyCmd.content) {
           const sel = viewRef.current.state.selection.main;
@@ -369,7 +534,7 @@ export function CodeMirrorView({
     const unsubLint = editorCommandBus.subscribe('editor:lint-project', () => {
       if (viewRef.current) {
         forceLinting(viewRef.current);
-        syncErrorLens(viewRef.current);
+        syncErrorLens(viewRef.current, currentFilePathRef.current);
       }
     });
 
@@ -384,21 +549,9 @@ export function CodeMirrorView({
       unsubDiagnostics();
       unsubVisibility();
       if (viewRef.current) {
-        const latestDoc = viewRef.current.state.doc.toString();
-        // Only persist if the view diverged from the cache (unknown origin => treat as local, dirty).
-        // Re-writing identical content must not flip a clean model (e.g. after remote edits) to dirty.
-        if (lruDocumentCache.getModel(fileId)?.content !== latestDoc) {
-          lruDocumentCache.updateContent(fileId, latestDoc, true);
-        }
-        const mainSel = viewRef.current.state.selection.main;
-        const scrollDOM = viewRef.current.scrollDOM;
-        lruDocumentCache.updateViewState(
-          fileId,
-          { anchor: mainSel.anchor, head: mainSel.head },
-          { top: scrollDOM.scrollTop, left: scrollDOM.scrollLeft }
-        );
+        flushViewState(viewRef.current, currentFileIdRef.current);
       }
-      reviewCoordinator.bindEditorView(null, fileId);
+      reviewCoordinator.bindEditorView(null, currentFileIdRef.current);
       if (getActiveEditorEngine() === engineAdapter) {
         setActiveEditorEngine(null);
       }
@@ -407,7 +560,56 @@ export function CodeMirrorView({
       viewRef.current = null;
       setActiveEditorView(null);
     };
-  }, [fileId, filePath]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Zero-Remount Document Swapping via view.setState ──────────────────────
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+
+    const prevFileId = currentFileIdRef.current;
+    const prevFilePath = currentFilePathRef.current;
+
+    // Skip if target document matches currently loaded document
+    if (prevFileId === fileId && prevFilePath === filePath) return;
+
+    // 1. Flush previous document content & viewState to LRU Cache
+    flushViewState(view, prevFileId);
+    reviewCoordinator.bindEditorView(null, prevFileId);
+
+    // 2. Build new EditorState for the target document
+    const nextState = createStateForDocument(fileId, filePath, value);
+
+    // 3. 0ms Zero-Remount State Swap (Preserves DOM container & event listeners)
+    view.setState(nextState);
+    prevConfigRef.current = {
+      runtime: currentRuntimeConfig,
+      reviewMode: Boolean(reviewMode),
+      trackChangesViewMode,
+    };
+
+    // 4. Update tracking refs
+    currentFileIdRef.current = fileId;
+    currentFilePathRef.current = filePath;
+
+    // 5. Restore cached selection and scroll position for target document
+    restoreViewState(view, fileId, nextState.doc.length);
+
+    // 6. Rebind Review Coordinator & Diagnostics Error Lens
+    reviewCoordinator.bindEditorView(view, fileId);
+    syncErrorLens(view, filePath);
+    forceLinting(view);
+
+    // 7. Re-bind adapter view reference & active engine
+    if (adapterRef.current) {
+      adapterRef.current.setView(view);
+      if (isActiveRef.current) {
+        setActiveEditorEngine(adapterRef.current);
+        navigationCoordinator.registerEditorView(fileId, filePath);
+      }
+    }
+  }, [fileId, filePath, value, createStateForDocument, currentRuntimeConfig, reviewMode, trackChangesViewMode, syncErrorLens]);
 
   // Sync active engine when pane active status updates
   useEffect(() => {
@@ -419,6 +621,9 @@ export function CodeMirrorView({
   // Synchronize external value changes (e.g. Draft restoration, async fetch, revision revert)
   useEffect(() => {
     if (!viewRef.current || value === undefined) return;
+    // Guard against applying external value meant for a previous document during swap
+    if (currentFileIdRef.current !== fileId) return;
+
     const currentDoc = viewRef.current.state.doc.toString();
     if (currentDoc !== value) {
       const sel = viewRef.current.state.selection.main;
@@ -431,73 +636,37 @@ export function CodeMirrorView({
         },
       });
     }
-  }, [value]);
+  }, [value, fileId]);
 
-  // ── 0ms Dynamic Compartment Reconfigurations (No View Re-mount) ───────────
+  // ── 0ms Batched Dynamic Compartment Reconfiguration Seam (No View Re-mount) ──
   useEffect(() => {
-    if (!viewRef.current) return;
-    reconfigureLineNumbers(viewRef.current, lineNumbers);
-  }, [lineNumbers]);
+    const view = viewRef.current;
+    const prev = prevConfigRef.current;
+    if (!view || !prev) return;
 
-  useEffect(() => {
-    if (!viewRef.current) return;
-    reconfigureLineWrapping(viewRef.current, wordWrap);
-  }, [wordWrap]);
-
-  useEffect(() => {
-    if (!viewRef.current) return;
-    reconfigureKeybinding(viewRef.current, keybinding);
-  }, [keybinding]);
-
-  useEffect(() => {
-    if (!viewRef.current) return;
-    reconfigureReadOnly(viewRef.current, readOnly);
-  }, [readOnly]);
-
-  useEffect(() => {
-    if (!viewRef.current) return;
-    reconfigureSpellCheck(viewRef.current, spellCheck, projectId, spellCheckLanguage);
-  }, [spellCheck, spellCheckLanguage, projectId]);
-
-  useEffect(() => {
-    if (!viewRef.current) return;
-    reconfigureTheme(viewRef.current, editorTheme);
-  }, [editorTheme]);
-
-  useEffect(() => {
-    if (!viewRef.current) return;
-    reconfigureTypography(viewRef.current, fontSize, fontFamily, lineHeight);
-  }, [fontSize, fontFamily, lineHeight]);
-
-  useEffect(() => {
-    if (!viewRef.current) return;
-    reconfigureVisualMode(viewRef.current, editorMode === 'visual');
-  }, [editorMode]);
-
-  useEffect(() => {
-    if (!viewRef.current) return;
-    reconfigureErrorLens(viewRef.current, errorLensEnabled);
-    if (errorLensEnabled) {
-      const diags = diagnosticsCoordinator.getDiagnosticsForFile(filePath);
-      viewRef.current.dispatch({
-        effects: setErrorLensDiagnosticsEffect.of({
-          diagnostics: diags,
-          filePath,
-        }),
-      });
+    const additionalEffects: StateEffect<unknown>[] = [];
+    if (prev.trackChangesViewMode !== trackChangesViewMode) {
+      additionalEffects.push(setTrackChangesViewModeEffect.of(trackChangesViewMode));
     }
-  }, [errorLensEnabled, filePath]);
+    if (prev.reviewMode !== Boolean(reviewMode)) {
+      additionalEffects.push(setTrackChangesReviewModeEffect.of(Boolean(reviewMode)));
+    }
 
-  // Reconfigure Track Changes mode & viewMode dynamically in-place
-  useEffect(() => {
-    if (!viewRef.current) return;
-    viewRef.current.dispatch({
-      effects: [
-        setTrackChangesViewModeEffect.of(trackChangesViewMode),
-        setTrackChangesReviewModeEffect.of(Boolean(reviewMode)),
-      ],
-    });
-  }, [reviewMode, trackChangesViewMode]);
+    const errorLensActivated =
+      !prev.runtime.errorLensEnabled && currentRuntimeConfig.errorLensEnabled;
+
+    reconfigureEditorCompartments(view, prev.runtime, currentRuntimeConfig, additionalEffects);
+
+    prevConfigRef.current = {
+      runtime: currentRuntimeConfig,
+      reviewMode: Boolean(reviewMode),
+      trackChangesViewMode,
+    };
+
+    if (errorLensActivated) {
+      syncErrorLens(view, currentFilePathRef.current);
+    }
+  }, [currentRuntimeConfig, reviewMode, trackChangesViewMode, syncErrorLens]);
 
   // Reconfigure Yjs collab extension on prop change
   useEffect(() => {

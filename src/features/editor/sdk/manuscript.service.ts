@@ -26,7 +26,7 @@
 
 import * as api from '@/shared/lib/api';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
-import { manuscriptService } from './manuscript/manuscript-client';
+import { manuscriptService, shouldFallbackToLegacyEndpoint } from './manuscript/manuscript-client';
 
 export * from './manuscript/manuscript-client';
 export * from './realtime/yjs-socket-provider';
@@ -54,16 +54,29 @@ export const pageService = {
 
 export const documentService = pageService;
 
+interface RawPageFileRecord {
+  id: string;
+  _id?: string;
+  pageId?: string;
+  title?: string;
+  name?: string;
+  path?: string;
+  content?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export const fileService = {
   getByPageId: async (pageId: string): Promise<PageFile[]> => {
     if (!pageId) return [];
     try {
-      const res = await api.apiGet<{ files: any[] }>(`/api/v1/manuscripts/docs/${pageId}/files`, { silent: true });
+      const res = await api.apiGet<{ files: RawPageFileRecord[] }>(`/api/v1/manuscripts/docs/${pageId}/files`, { silent: true });
       if (res && Array.isArray(res.files)) {
         return res.files.map((f) => ({
           id: f.id,
           pageId: f.pageId || pageId,
           title: f.title || f.name || 'untitled.tex',
+          path: f.path || f.title || f.name || 'untitled.tex',
           content: f.content || '',
           createdAt: f.createdAt || new Date().toISOString(),
           updatedAt: f.updatedAt || new Date().toISOString(),
@@ -78,7 +91,7 @@ export const fileService = {
   getDeletedByPageId: async (pageId: string): Promise<PageFile[]> => {
     if (!pageId) return [];
     try {
-      const res = await api.apiGet<{ files: any[] }>(`/api/v1/manuscripts/docs/${pageId}/deleted-files`, { silent: true });
+      const res = await api.apiGet<{ files: RawPageFileRecord[] }>(`/api/v1/manuscripts/docs/${pageId}/deleted-files`, { silent: true });
       if (res && Array.isArray(res.files)) {
         return res.files.map((f) => ({
           id: f.id,
@@ -107,7 +120,7 @@ export const fileService = {
     content?: string;
   }): Promise<PageFile> => {
     try {
-      const res = await api.apiPost<{ file: any; files?: any[] }>(
+      const res = await api.apiPost<{ file?: RawPageFileRecord; files?: RawPageFileRecord[] } & Partial<RawPageFileRecord>>(
         `/api/v1/manuscripts/docs/${parentPageId}/files`,
         { title, content: content || '' }
       );
@@ -120,12 +133,15 @@ export const fileService = {
         createdAt: node.createdAt || new Date().toISOString(),
         updatedAt: node.updatedAt || new Date().toISOString(),
       };
-    } catch {
-      const node: any = await manuscriptService.structure.createNode(parentPageId, {
+    } catch (err) {
+      if (!manuscriptService.files || !shouldFallbackToLegacyEndpoint(err)) {
+        throw err;
+      }
+      const node = (await manuscriptService.structure.createNode(parentPageId, {
         name: title,
-        type: 'DOC',
+        type: 'doc',
         content: content || '',
-      });
+      })) as Partial<RawPageFileRecord>;
       return {
         id: node.id || node._id || `file-${Date.now()}`,
         pageId: parentPageId,
@@ -204,9 +220,13 @@ export const DocumentCommentService = commentService;
 // ─── 5. Suggestion / Track Changes Aliases ───────────────────────────────────
 
 export const suggestionService = {
-  getSuggestions: (docId: string, status?: any) =>
-    manuscriptService.suggestions.getSuggestions(docId, status),
-  createSuggestion: (payload: any) => manuscriptService.suggestions.createSuggestion(payload),
+  getSuggestions: (
+    docId: string,
+    status?: Parameters<typeof manuscriptService.suggestions.getSuggestions>[1],
+  ) => manuscriptService.suggestions.getSuggestions(docId, status),
+  createSuggestion: (
+    payload: Parameters<typeof manuscriptService.suggestions.createSuggestion>[0],
+  ) => manuscriptService.suggestions.createSuggestion(payload),
   acceptSuggestion: (docId: string, suggestionId: string) =>
     manuscriptService.suggestions.acceptSuggestion(docId, suggestionId),
   rejectSuggestion: (docId: string, suggestionId: string) =>
@@ -227,8 +247,10 @@ export const DocumentSuggestionService = suggestionService;
 export const versionService = {
   getByPageId: (docId: string) => manuscriptService.history.getByDocId(docId),
   getById: (docId: string, versionId: string) => manuscriptService.history.getById(docId, versionId),
-  save: (payload: any) => manuscriptService.history.save(payload),
-  restore: (payload: any) => manuscriptService.history.restore(payload),
+  save: (payload: Parameters<typeof manuscriptService.history.save>[0]) =>
+    manuscriptService.history.save(payload),
+  restore: (payload: Parameters<typeof manuscriptService.history.restore>[0]) =>
+    manuscriptService.history.restore(payload),
   updateLabel: (docId: string, versionId: string, label: string, title?: string) =>
     manuscriptService.history.updateLabel(docId, versionId, label, title),
   getDiff: (docId: string, fromVersionId: string, toVersionId: string) =>

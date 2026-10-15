@@ -13,9 +13,8 @@
 
 import React, { useEffect } from 'react';
 import { CodeMirrorView } from './CodeMirrorView';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { useSettingsStore, editorCommandBus } from '@/features/editor/core';
 import { filestore } from '@/features/editor/sdk/manuscript/filestore.api';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
 
 export interface VisualEditorViewProps {
   fileId?: string;

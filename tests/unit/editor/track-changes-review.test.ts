@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { suggestionService } from '@/features/editor/sdk/manuscript.service';
 import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
 import type { PageSuggestion, SuggestionType, SuggestionStatus } from '@/features/editor/domain/types/suggestion.types';
@@ -141,7 +141,7 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
       expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/manuscripts/docs/page-1/suggestions/accept-all', {});
       expect(res.ok).toBe(true);
       expect(res.acceptedCount).toBe(2);
-      expect(res.page.content).toBe('Fully accepted document');
+      expect(res.page?.content).toBe('Fully accepted document');
     });
 
     it('should reject all pending suggestions', async () => {

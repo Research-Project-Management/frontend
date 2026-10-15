@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import React from 'react';
-import CitationPickerModal from '@/features/editor/ui/modals/citation-picker/CitationPickerModal';
+import CitationPickerModal from '@/features/editor/subsystems/citation/ui/modals/CitationPickerModal';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import {
   editorCommandBus,
   setActiveEditorEngine,
-} from '@/features/editor/coordinators/command-bus';
-import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
-import { workspaceCoordinator } from '@/features/editor/coordinators/workspace.coordinator';
-import { citationHoverSource } from '@/features/editor/engines/extensions/latex-citation-hover';
+} from '@/features/editor/core';
+import { sessionCoordinator } from '@/features/editor/core';
+import { workspaceCoordinator } from '@/features/editor/core';
+import { citationHoverSource } from '@/features/editor/subsystems/citation/extensions/latex-citation-hover';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 
@@ -44,6 +44,18 @@ vi.mock('@/features/library/data/catalog/catalog.queries', () => ({
   }),
 }));
 
+vi.mock('@/features/library/data', () => ({
+  useCollections: vi.fn().mockReturnValue({
+    collections: [],
+    isLoading: false,
+    createCollection: vi.fn(),
+  }),
+  useRetractedItems: vi.fn().mockReturnValue({
+    retractedMap: new Map(),
+    isLoading: false,
+  }),
+}));
+
 vi.mock('@/features/editor/ui/hooks/useCitation', () => ({
   useEditorCitations: vi.fn().mockReturnValue({
     libraryItems: [
@@ -58,7 +70,7 @@ vi.mock('@/features/editor/ui/hooks/useCitation', () => ({
   }),
 }));
 
-import { usePageStore } from '@/features/editor/store/editor.store';
+import { usePageStore } from '@/features/editor/core';
 
 describe('Overleaf Parity: Citation Picker & Reference Workflow', () => {
   let mockEngine: any;

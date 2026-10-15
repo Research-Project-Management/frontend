@@ -14,10 +14,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import { workspaceCoordinator } from '@/features/editor/coordinators/workspace.coordinator';
-import { usePageStore } from '@/features/editor/store/editor.store';
-import { useTabsStore } from '@/features/editor/store/tabs.store';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { workspaceCoordinator, usePageStore, useTabsStore, useSettingsStore } from '@/features/editor/core';
 import { pageKeys } from './document.queries';
 import { toast } from 'sonner';
 

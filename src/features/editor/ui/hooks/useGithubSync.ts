@@ -20,6 +20,7 @@ export const githubSyncKeys = {
 export interface UseGithubSyncOptions {
   projectId?: string;
   projectTitle?: string;
+  enabled?: boolean;
   onLinkSuccess?: () => void;
   onCreateSuccess?: () => void;
 }
@@ -27,6 +28,7 @@ export interface UseGithubSyncOptions {
 export function useGithubSync({
   projectId,
   projectTitle,
+  enabled = true,
   onLinkSuccess,
   onCreateSuccess,
 }: UseGithubSyncOptions = {}) {
@@ -35,12 +37,14 @@ export function useGithubSync({
   const linkQuery = useQuery({
     queryKey: githubSyncKeys.link(projectId),
     queryFn: () => (projectId ? integrationService.getProjectGithubLink(projectId) : null),
-    enabled: Boolean(projectId),
+    enabled: Boolean(projectId) && enabled,
   });
 
   const reposQuery = useQuery({
     queryKey: githubSyncKeys.repos(),
     queryFn: () => integrationService.listGithubRepos(),
+    enabled,
+    retry: false,
   });
 
   const linkMutation = useMutation({

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
-import { citationHoverSource } from '@/features/editor/engines/extensions/latex-citation-hover';
-import { runLatexLinter } from '@/features/editor/engines/extensions/latex-linter-core';
+import { citationHoverSource } from '@/features/editor/subsystems/citation/extensions/latex-citation-hover';
+import { runLatexLinter } from '@/features/editor/subsystems/diagnostics/extensions/latex-linter-core';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 

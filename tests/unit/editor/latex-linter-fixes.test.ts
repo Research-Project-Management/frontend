@@ -5,8 +5,8 @@ import {
   lintLabelsAndReferences,
   scanDisplayMath,
   ALIGNMENT_ENVIRONMENTS,
-} from '@/features/editor/domain/latex/latex-linter.rules';
-import { lintLatexDocument } from '@/features/editor/engines/extensions/latex-linter-core';
+} from '@/features/editor/subsystems/diagnostics/linter/latex-linter.rules';
+import { lintLatexDocument } from '@/features/editor/subsystems/diagnostics/extensions/latex-linter-core';
 
 const codes = (d: Array<{ code: string }>) => d.map((x) => x.code);
 

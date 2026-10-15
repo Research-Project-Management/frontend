@@ -1,0 +1,204 @@
+'use client';
+
+/**
+ * use-log-viewer-actions.ts
+ *
+ * Dedicated hook encapsulating viewer logs actions and notifications:
+ * - Snippet copy to clipboard
+ * - Error explanation lookup with fallback feedback
+ * - Quick fix execution (replacement, end tag insertion, preamble insertion)
+ * - AI fix application
+ * - Auxiliary / output file downloading
+ * Location: `features/editor/ui/features/preview/hooks/use-log-viewer-actions.ts`
+ */
+
+import { useCallback } from 'react';
+import { toast } from 'sonner';
+import type { LogEntry, ErrorExplanationDto } from '@/features/editor/domain/types/compiler.types';
+import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
+import type { AiErrorFixResult } from '@/features/editor/sdk/manuscript/ai.api';
+import { manuscriptService, downloadAuxFileUrl, downloadAllArtifactsZipUrl } from '@/features/editor/sdk/manuscript.service';
+import { aiCoordinator } from '@/features/editor/subsystems/ai';
+import { usePageStore } from '@/features/editor/core';
+
+export function copySnippetToClipboard(snippet?: string): void {
+  if (!snippet) return;
+  navigator.clipboard.writeText(snippet);
+  toast.success('Snippet copied to clipboard', { id: 'copy-snippet' });
+}
+
+export async function fetchLogEntryExplanation(entry: LogEntry): Promise<ErrorExplanationDto | null> {
+  try {
+    if (entry.code) {
+      return await manuscriptService.diagnostics.getExplanation(entry.code);
+    }
+    const rules = await manuscriptService.diagnostics.getRules();
+    const found = rules.find((r) => {
+      if (r.title && entry.message.toLowerCase().includes(r.title.toLowerCase())) return true;
+      return false;
+    });
+    return found || null;
+  } catch {
+    return null;
+  }
+}
+
+export interface UseLogViewerActionsOptions {
+  engine?: (Pick<IEditorEngine, 'jumpToLine'> & Partial<Pick<IEditorEngine, 'getContent' | 'setContent' | 'insertText'>>) | null;
+  projectId?: string;
+  onCompile?: () => void;
+  onClearCacheAndCompile?: () => void;
+}
+
+export function useLogViewerActions({
+  engine,
+  projectId,
+  onCompile,
+  onClearCacheAndCompile,
+}: UseLogViewerActionsOptions = {}) {
+  const copySnippet = copySnippetToClipboard;
+  const fetchErrorExplanation = fetchLogEntryExplanation;
+
+  const applyQuickFix = useCallback(
+    (
+      entry: LogEntry,
+      quickFix: { description: string; replacementText: string },
+    ) => {
+      if (!engine) {
+        toast.error('Editor is not ready', { id: 'log-quick-fix' });
+        return;
+      }
+
+      if (entry.line) {
+        engine.jumpToLine(entry.line, 'error');
+      }
+
+      const replacement = quickFix.replacementText;
+      if (replacement) {
+        if (typeof engine.getContent === 'function' && typeof engine.setContent === 'function') {
+          const content = engine.getContent();
+          const trimmedFix = replacement.trim();
+          const descLower = quickFix.description.toLowerCase();
+          const isPreambleFix =
+            trimmedFix.startsWith('\\usepackage') || descLower.includes('preamble');
+
+          if (isPreambleFix) {
+            if (!content.includes(trimmedFix)) {
+              const beginDocIdx = content.indexOf('\\begin{document}');
+              if (beginDocIdx !== -1) {
+                const updated =
+                  content.slice(0, beginDocIdx) +
+                  `${trimmedFix}\n` +
+                  content.slice(beginDocIdx);
+                engine.setContent(updated);
+              } else {
+                const docClassMatch = content.match(/^.*\\documentclass(?:\[[^\]]*\])?\{[^}]+\}.*$/m);
+                if (docClassMatch && docClassMatch.index !== undefined) {
+                  const insertPos = docClassMatch.index + docClassMatch[0].length;
+                  const updated =
+                    content.slice(0, insertPos) +
+                    `\n${trimmedFix}` +
+                    content.slice(insertPos);
+                  engine.setContent(updated);
+                } else {
+                  engine.setContent(`${trimmedFix}\n${content}`);
+                }
+              }
+            }
+          } else if (entry.line && entry.line >= 1) {
+            const lines = content.split('\n');
+            const targetIdx = Math.min(entry.line - 1, Math.max(0, lines.length - 1));
+            const isInsertion =
+              trimmedFix.startsWith('\\end{') ||
+              descLower.includes('insert') ||
+              descLower.includes('add ') ||
+              descLower.includes('append');
+            if (isInsertion) {
+              lines[targetIdx] = `${lines[targetIdx]}\n${replacement}`;
+            } else {
+              lines[targetIdx] = replacement;
+            }
+            engine.setContent(lines.join('\n'));
+          } else if (typeof engine.insertText === 'function') {
+            engine.insertText(replacement);
+          }
+        } else if (typeof engine.insertText === 'function') {
+          engine.insertText(replacement);
+        }
+      }
+
+      toast.success(`Applied fix: ${quickFix.description}`, { id: 'log-quick-fix' });
+      onCompile?.();
+    },
+    [engine, onCompile],
+  );
+
+  const applyAiFix = useCallback(
+    (entry: LogEntry, fix: AiErrorFixResult, onApplied?: () => void) => {
+      const pageStore = usePageStore.getState();
+      const fileId = pageStore.activeFilePage?.id || pageStore.currentPage?.id || 'main.tex';
+      const startLine = fix.startLine || entry.line;
+      const endLine = fix.endLine && startLine && fix.endLine >= startLine ? fix.endLine : startLine;
+
+      if (
+        fix.fixedSnippet &&
+        engine &&
+        typeof engine.getContent === 'function' &&
+        typeof engine.setContent === 'function' &&
+        startLine &&
+        startLine >= 1
+      ) {
+        const content = engine.getContent();
+        const lines = content.split('\n');
+        const startIdx = Math.min(startLine - 1, Math.max(0, lines.length - 1));
+        const endIdx = Math.min((endLine || startLine) - 1, Math.max(startIdx, lines.length - 1));
+        lines.splice(startIdx, endIdx - startIdx + 1, fix.fixedSnippet);
+        engine.setContent(lines.join('\n'));
+      } else {
+        aiCoordinator.proposeDiff(fileId, fix.fixedSnippet, {
+          line: startLine,
+          endLine,
+          title: `AI Fix: ${fix.explanation || entry.message}`,
+        });
+      }
+
+      onApplied?.();
+      onCompile?.();
+    },
+    [engine, onCompile],
+  );
+
+  const downloadAuxFile = useCallback(
+    (filename: string) => {
+      if (!projectId) {
+        toast.error('Project ID not found', { id: 'download-aux' });
+        return;
+      }
+      const url = downloadAuxFileUrl(projectId, filename);
+      window.open(url, '_blank');
+      toast.success(`Downloading ${filename}...`, { id: `download-aux-${filename}` });
+    },
+    [projectId],
+  );
+
+  const downloadAllAux = useCallback(() => {
+    if (!projectId) {
+      toast.error('Project ID not found', { id: 'download-all-aux' });
+      return;
+    }
+    const url = downloadAllArtifactsZipUrl(projectId);
+    window.open(url, '_blank');
+    toast.success('Downloading all auxiliary files...', { id: 'download-all-aux' });
+  }, [projectId]);
+
+  return {
+    copySnippet,
+    fetchErrorExplanation,
+    applyQuickFix,
+    applyAiFix,
+    downloadAuxFile,
+    downloadAllAux,
+    downloadFile: downloadAuxFile,
+    downloadAllArtifacts: downloadAllAux,
+  };
+}

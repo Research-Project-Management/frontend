@@ -48,11 +48,7 @@ import {
   FileText,
   FileEdit,
 } from 'lucide-react';
-import { getActiveEditorEngine, editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import { useLayoutStore } from '@/features/editor/store/layout.store';
-import { useDocumentCollaborationStore } from '@/features/editor/store/collaboration.store';
-import { toggleComment } from '@codemirror/commands';
-import type { EditorView } from '@codemirror/view';
+import { getActiveEditorEngine, editorCommandBus } from '@/features/editor/core';
 
 export interface EditorContextMenuProps {
   children: React.ReactNode;
@@ -92,18 +88,11 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
     if (selected) {
       try {
         await navigator.clipboard.writeText(selected);
-        const view = engine.getView?.() as EditorView | undefined;
-        if (view) {
-          view.dispatch(view.state.replaceSelection(''));
-          view.focus();
-        }
+        engine.insertText('');
+        engine.focus();
       } catch {
-        // Fallback
-        const view = engine.getView?.() as EditorView | undefined;
-        if (view) {
-          document.execCommand('cut');
-          view.focus();
-        }
+        document.execCommand('cut');
+        engine.focus();
       }
     }
   }, []);
@@ -124,84 +113,64 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
   const handlePaste = useCallback(async () => {
     const engine = getActiveEditorEngine();
     if (!engine) return;
-    const view = engine.getView?.() as EditorView | undefined;
-    if (!view) return;
 
     try {
       const text = await navigator.clipboard.readText();
       if (text) {
-        view.dispatch(view.state.replaceSelection(text));
-        view.focus();
+        engine.insertText(text);
+        engine.focus();
       }
     } catch {
       document.execCommand('paste');
-      view.focus();
+      engine.focus();
     }
   }, []);
 
   const handleDelete = useCallback(() => {
     const engine = getActiveEditorEngine();
-    const view = engine?.getView?.() as EditorView | undefined;
-    if (view) {
-      view.dispatch(view.state.replaceSelection(''));
-      view.focus();
+    if (engine) {
+      engine.insertText('');
+      engine.focus();
     }
   }, []);
 
   const handleToggleLineComment = useCallback(() => {
     const engine = getActiveEditorEngine();
-    const view = engine?.getView?.() as EditorView | undefined;
-    if (view) {
-      toggleComment(view);
-      view.focus();
+    if (engine) {
+      engine.toggleComment?.();
+      engine.focus();
     }
   }, []);
 
   const handleAddReviewComment = useCallback(() => {
-    const engine = getActiveEditorEngine();
-    const view = engine?.getView?.() as EditorView | undefined;
-    if (!view) return;
-
-    const { from, to } = view.state.selection.main;
-    const selectedText = view.state.sliceDoc(from, to);
-    const startLine = view.state.doc.lineAt(from).number;
-    const endLine = view.state.doc.lineAt(to).number;
-
-    useDocumentCollaborationStore.getState().setPendingComment({
-      startLine,
-      endLine,
-      selectedText: selectedText || '',
-    });
-
-    useLayoutStore.getState().setSidebarLeftOpen(true);
-    useLayoutStore.getState().setActiveSidebarTab('review');
-    editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
+    editorCommandBus.dispatch({ type: 'review:create-comment' });
   }, []);
 
   const handleJumpToPdf = useCallback(() => {
     const engine = getActiveEditorEngine();
-    const view = engine?.getView?.() as EditorView | undefined;
-    if (!view) return;
+    if (!engine) return;
 
-    const pos = view.state.selection.main.from;
-    const lineObj = view.state.doc.lineAt(pos);
+    const sel = engine.getSelection?.();
+    const cursor = engine.getCursorPosition?.();
+    const line = sel?.startLine ?? cursor?.line ?? 1;
+    const column = sel?.startColumn ?? cursor?.column ?? 0;
     editorCommandBus.dispatch({
       type: 'synctex:forward',
-      line: lineObj.number,
-      column: pos - lineObj.from,
+      line,
+      column,
     });
   }, []);
 
   const handleFormat = useCallback((type: 'bold' | 'italic' | 'underline' | 'code' | 'inlineMath') => {
     const engine = getActiveEditorEngine();
     engine?.format?.(type);
-    (engine?.getView?.() as EditorView | undefined)?.focus();
+    engine?.focus?.();
   }, []);
 
   const handleSelectAll = useCallback(() => {
     const engine = getActiveEditorEngine();
     engine?.selectAll?.();
-    (engine?.getView?.() as EditorView | undefined)?.focus();
+    engine?.focus?.();
   }, []);
 
   const handleRecompile = useCallback(() => {

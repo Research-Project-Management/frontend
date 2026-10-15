@@ -227,7 +227,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[92vh] flex flex-col p-5 gap-3 text-xs bg-background border border-border shadow-raised-200 rounded-md">
+      <DialogContent className="w-[95vw] sm:max-w-3xl max-h-[92vh] flex flex-col p-5 gap-3 text-xs bg-background border border-border shadow-raised-200 rounded-md">
         {/* Header */}
         <DialogHeader className="pb-2 border-b border-border">
           <div className="flex items-center justify-between">
@@ -244,19 +244,19 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
             <Tabs
               value={tab}
               onValueChange={(v) => setTab(v as 'table' | 'matrix')}
-              className="shrink-0"
+              className="shrink-0 mr-8"
             >
               <TabsList className="h-7 bg-muted p-0.5 border border-border rounded-md">
                 <TabsTrigger
                   value="table"
-                  className="text-xs h-6 px-3 rounded-sm flex items-center gap-1.5 cursor-pointer"
+                  className="text-xs min-h-[26px] h-6 px-3 rounded-sm flex items-center gap-1.5 cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
                 >
                   <TableIcon className="size-3.5" />
                   Table (Tabular)
                 </TabsTrigger>
                 <TabsTrigger
                   value="matrix"
-                  className="text-xs h-6 px-3 rounded-sm flex items-center gap-1.5 cursor-pointer"
+                  className="text-xs min-h-[26px] h-6 px-3 rounded-sm flex items-center gap-1.5 cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
                 >
                   <Variable className="size-3.5" />
                   Math Matrix
@@ -268,7 +268,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
 
         {/* Tab 1: Table Wizard Content */}
         {tab === 'table' && (
-          <div className="flex-1 flex flex-col gap-3 overflow-y-auto pr-1">
+          <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto pr-1">
             {/* Top Toolbar: Dimensions & Table Style */}
             <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-muted/20 border border-border rounded-md">
               {/* Dimensions */}
@@ -316,7 +316,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                       type="button"
                       onClick={() => setTableStyle(s.id)}
                       className={cn(
-                        'h-6 px-2 text-11 font-medium rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                        'min-h-[28px] h-7 px-2 text-11 font-medium rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-[\'\']',
                         tableStyle === s.id
                           ? 'bg-primary text-primary-foreground border-primary font-semibold'
                           : 'bg-background border-border text-foreground hover:bg-muted'
@@ -340,14 +340,14 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                   <button
                     type="button"
                     onClick={() => addTableColumn()}
-                    className="px-2 py-0.5 text-11 bg-muted hover:bg-muted/80 text-foreground font-medium rounded-md border border-border flex items-center gap-1 cursor-pointer transition-colors"
+                    className="min-h-[28px] px-2 py-0.5 text-11 bg-muted hover:bg-muted/80 text-foreground font-medium rounded-md border border-border flex items-center gap-1 cursor-pointer transition-colors relative after:absolute after:-inset-1 after:content-['']"
                   >
                     <Plus className="size-3" /> Add Column
                   </button>
                   <button
                     type="button"
                     onClick={() => addTableRow()}
-                    className="px-2 py-0.5 text-11 bg-muted hover:bg-muted/80 text-foreground font-medium rounded-md border border-border flex items-center gap-1 cursor-pointer transition-colors"
+                    className="min-h-[28px] px-2 py-0.5 text-11 bg-muted hover:bg-muted/80 text-foreground font-medium rounded-md border border-border flex items-center gap-1 cursor-pointer transition-colors relative after:absolute after:-inset-1 after:content-['']"
                   >
                     <Plus className="size-3" /> Add Row
                   </button>
@@ -369,7 +369,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                             <button
                               type="button"
                               onClick={() => toggleColumnAlignment(cIdx)}
-                              className="px-1.5 py-0.5 text-10 font-mono font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded-sm cursor-pointer transition-colors"
+                              className="px-1.5 py-0.5 min-h-[22px] text-10 font-mono font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded-sm cursor-pointer transition-colors relative after:absolute after:-inset-1 after:content-['']"
                               title={`Click to cycle alignment: currently [${tableAlignments[cIdx]?.toUpperCase() || 'C'}]`}
                             >
                               [{tableAlignments[cIdx]?.toUpperCase() || 'C'}]
@@ -379,7 +379,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                               <button
                                 type="button"
                                 onClick={() => removeTableColumn(cIdx)}
-                                className="text-muted-foreground hover:text-destructive cursor-pointer p-0.5 rounded-sm"
+                                className="text-muted-foreground hover:text-destructive cursor-pointer p-1 rounded-sm relative after:absolute after:-inset-1.5 after:content-['']"
                                 title="Remove Column"
                               >
                                 <Trash2 className="size-2.5" />
@@ -434,7 +434,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                             <button
                               type="button"
                               onClick={() => removeTableRow(rIdx)}
-                              className="text-muted-foreground hover:text-destructive cursor-pointer p-1 rounded-md transition-colors"
+                              className="text-muted-foreground hover:text-destructive cursor-pointer p-1 rounded-md transition-colors relative after:absolute after:-inset-1.5 after:content-['']"
                               title="Delete Row"
                             >
                               <Trash2 className="size-3" />
@@ -449,9 +449,9 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
             </div>
 
             {/* AI Table Generator */}
-            <div className="p-2.5 bg-primary/5 border border-primary/25 rounded-md space-y-2">
+            <div className="p-2.5 bg-ai/5 border border-ai/25 rounded-md space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-11 font-medium text-primary flex items-center gap-1.5">
+                <label className="text-11 font-medium text-ai flex items-center gap-1.5">
                   <Bot className="size-3.5" />
                   AI Table Generator
                 </label>
@@ -461,7 +461,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                     size="sm"
                     onClick={handleGenerateAiTable}
                     disabled={isAiGenerating || !aiPrompt.trim()}
-                    className="h-6 text-10 px-2.5 bg-primary text-primary-foreground font-medium cursor-pointer gap-1 hover:bg-primary/90 shadow-none"
+                    className="h-6 text-10 px-2.5 bg-ai text-ai-foreground font-medium cursor-pointer gap-1 hover:bg-ai-hover shadow-none"
                   >
                     {isAiGenerating ? (
                       <Loader2 className="size-3 animate-spin" />
@@ -483,7 +483,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                 }}
                 placeholder="Describe your table or paste raw unformatted text (e.g. 'Compare ResNet, ViT, Mamba on ImageNet with Accuracy, Params, and Latency'). Press Ctrl+Enter to generate..."
                 rows={2}
-                className="w-full p-2 text-xs rounded-md border border-border bg-background resize-none outline-none focus:ring-1 focus:ring-primary"
+                className="w-full p-2 text-xs rounded-md border border-border bg-background resize-none outline-none focus:ring-1 focus:ring-ai focus:border-ai/40"
               />
             </div>
 
@@ -573,7 +573,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
 
         {/* Tab 2: Matrix Wizard Content */}
         {tab === 'matrix' && (
-          <div className="flex-1 flex flex-col gap-3 overflow-y-auto pr-1">
+          <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto pr-1">
             {/* Matrix Type Selector & Dimensions */}
             <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-muted/20 border border-border rounded-md">
               {/* Bracket Type */}
@@ -595,7 +595,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                       type="button"
                       onClick={() => setMatrixType(m.id as MatrixType)}
                       className={cn(
-                        'h-6 px-2 text-11 font-mono font-medium rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                        'min-h-[28px] h-7 px-2 text-11 font-mono font-medium rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-[\'\']',
                         matrixType === m.id
                           ? 'bg-primary text-primary-foreground border-primary font-semibold'
                           : 'bg-background border-border text-foreground hover:bg-muted'
@@ -648,7 +648,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                     applyMatrixPreset('identity');
                     toast.success('Applied identity matrix preset');
                   }}
-                  className="px-2 py-0.5 text-11 bg-background hover:bg-muted border border-border rounded-md cursor-pointer font-medium"
+                  className="min-h-[28px] px-2 py-0.5 text-11 bg-background hover:bg-muted border border-border rounded-md cursor-pointer font-medium relative after:absolute after:-inset-1 after:content-['']"
                 >
                   Identity (I)
                 </button>
@@ -658,7 +658,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                     applyMatrixPreset('zero');
                     toast.success('Applied zero matrix preset');
                   }}
-                  className="px-2 py-0.5 text-11 bg-background hover:bg-muted border border-border rounded-md cursor-pointer font-medium"
+                  className="min-h-[28px] px-2 py-0.5 text-11 bg-background hover:bg-muted border border-border rounded-md cursor-pointer font-medium relative after:absolute after:-inset-1 after:content-['']"
                 >
                   Zero (0)
                 </button>
@@ -668,7 +668,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                     applyMatrixPreset('symbolic');
                     toast.success('Applied symbolic matrix preset');
                   }}
-                  className="px-2 py-0.5 text-11 bg-background hover:bg-muted border border-border rounded-md cursor-pointer font-medium"
+                  className="min-h-[28px] px-2 py-0.5 text-11 bg-background hover:bg-muted border border-border rounded-md cursor-pointer font-medium relative after:absolute after:-inset-1 after:content-['']"
                 >
                   Symbolic (a_ij)
                 </button>
@@ -678,7 +678,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                     applyMatrixPreset('diagonal');
                     toast.success('Applied diagonal matrix preset');
                   }}
-                  className="px-2 py-0.5 text-11 bg-background hover:bg-muted border border-border rounded-md cursor-pointer font-medium"
+                  className="min-h-[28px] px-2 py-0.5 text-11 bg-background hover:bg-muted border border-border rounded-md cursor-pointer font-medium relative after:absolute after:-inset-1 after:content-['']"
                 >
                   Diagonal
                 </button>
@@ -698,7 +698,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                       type="button"
                       onClick={() => setMatrixWrapper(w.id)}
                       className={cn(
-                        'h-6 px-1.5 text-10 font-mono rounded-md border transition-colors cursor-pointer',
+                        'min-h-[26px] h-6 px-1.5 text-10 font-mono rounded-md border transition-colors cursor-pointer relative after:absolute after:-inset-1 after:content-[\'\']',
                         matrixWrapper === w.id
                           ? 'bg-primary text-primary-foreground border-primary font-semibold'
                           : 'bg-background border-border text-foreground hover:bg-muted'
@@ -760,7 +760,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
         </div>
 
         {/* Modal Footer */}
-        <DialogFooter className="flex items-center justify-between sm:justify-between pt-2 border-t border-border shrink-0">
+        <DialogFooter className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-2 border-t border-border shrink-0">
           <Button
             type="button"
             variant="outline"
@@ -772,13 +772,13 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
             Copy Code
           </Button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="w-full sm:w-auto h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               Cancel
             </Button>
@@ -787,7 +787,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
               variant="default"
               size="sm"
               onClick={insertSnippet}
-              className="gap-1.5 h-8 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="w-full sm:w-auto gap-1.5 h-8 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <Check className="size-3.5" />
               {tab === 'table' ? 'Insert Table' : 'Insert Matrix'}

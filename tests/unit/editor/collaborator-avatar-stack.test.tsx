@@ -21,13 +21,13 @@ import React from 'react';
 import {
   CollaboratorAvatarStack,
   getInitials,
-} from '@/features/editor/ui/shell/topbar/CollaboratorAvatarStack';
+} from '@/features/editor/core/shell/topbar/CollaboratorAvatarStack';
 import {
   useDocumentCollaborationStore,
   type CollaboratorPresenceInfo,
-} from '@/features/editor/store/collaboration.store';
-import { navigationCoordinator } from '@/features/editor/coordinators/navigation.coordinator';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+} from '@/features/editor/core';
+import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
+import { editorCommandBus } from '@/features/editor/core';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 
 // Mock next/navigation

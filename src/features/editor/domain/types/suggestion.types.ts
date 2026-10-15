@@ -55,6 +55,8 @@ export interface PageSuggestion {
   fromColumn?: number;
   toLine?: number;
   toColumn?: number;
+  fromIndex?: number;
+  toIndex?: number;
   description?: string | null;
   status: SuggestionStatus;
   resolvedById?: string | null;

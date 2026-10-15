@@ -5,10 +5,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   diagnosticsCoordinator,
   type IndexedDiagnosticItem,
-} from '@/features/editor/coordinators/diagnostics.coordinator';
-import { TexFileRow } from '@/features/editor/ui/sidebar/explorer/subcomponents/TexFileRow';
-import { FileTreeFolderRow } from '@/features/editor/ui/sidebar/explorer/subcomponents/FileTreeFolderRow';
-import { useDocumentSettingsStore } from '@/features/editor/store/settings.store';
+} from '@/features/editor/subsystems/diagnostics';
+import { TexFileRow } from '@/features/editor/subsystems/explorer';
+import { FileTreeFolderRow } from '@/features/editor/subsystems/explorer';
+import { useDocumentSettingsStore } from '@/features/editor/core';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 
 const queryClient = new QueryClient({
@@ -252,7 +252,7 @@ describe('Workspace Diagnostics Coordinator & File Tree Badges (Overleaf Parity)
     act(() => {
       const res = renderWithProviders(
         <FileTreeFolderRow
-          node={{ id: 'folder-chapters', name: 'chapters', type: 'folder', children: [] }}
+          node={{ id: 'folder-chapters', name: 'chapters', fullPath: 'chapters', type: 'folder', children: [] }}
           isExpanded={false}
           onToggle={vi.fn()}
           onMoveItem={vi.fn()}
@@ -273,7 +273,7 @@ describe('Workspace Diagnostics Coordinator & File Tree Badges (Overleaf Parity)
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
             <FileTreeFolderRow
-              node={{ id: 'folder-chapters', name: 'chapters', type: 'folder', children: [] }}
+              node={{ id: 'folder-chapters', name: 'chapters', fullPath: 'chapters', type: 'folder', children: [] }}
               isExpanded={true}
               onToggle={vi.fn()}
               onMoveItem={vi.fn()}

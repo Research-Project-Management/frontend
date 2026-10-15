@@ -6,7 +6,7 @@ import {
   handleAutoCloseEnvironment,
   handleAutoCloseMath,
   handleBackspaceBetweenMath,
-} from '@/features/editor/engines/codemirror/latex-formatting.commands';
+} from '@/features/editor/core/engine/codemirror/latex-formatting.commands';
 
 describe('Overleaf LaTeX Formatting & Auto-Close (Overleaf Parity)', () => {
   let view: EditorView;

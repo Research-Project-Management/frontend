@@ -26,8 +26,8 @@ import {
   CommandItem,
 } from '@/shared/components/ui/command';
 import { cn } from '@/shared/lib/utils';
-import { usePageStore } from '@/features/editor/store/editor.store';
-import { useTabsStore } from '@/features/editor/store/tabs.store';
+import { usePageStore, useTabsStore } from '@/features/editor/core';
+import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import type { PageFile } from '@/features/editor/domain/types/core.types';
 
@@ -41,7 +41,7 @@ function getFileIcon(filename: string) {
   switch (ext) {
     case 'tex':
     case 'ltx':
-      return { icon: FileCode2, color: 'text-primary' };
+      return { icon: FileCode2, color: 'text-foreground' };
     case 'bib':
       return { icon: BookText, color: 'text-foreground/85' };
     case 'cls':
@@ -84,14 +84,11 @@ export default function QuickOpenModal({ open, onOpenChange }: QuickOpenModalPro
 
   const handleSelectFile = (file: PageFile) => {
     if (!file) return;
-    setActiveFilePage(file);
-    if (effectiveProjectId) {
-      openTab(effectiveProjectId, {
-        id: file.id,
-        title: file.title || 'untitled.tex',
-        fileUrl: file.url,
-      });
-    }
+    navigationCoordinator.openDocument({
+      fileId: file.id,
+      title: file.title || 'untitled.tex',
+      path: file.path,
+    });
     onOpenChange(false);
   };
 
@@ -101,7 +98,8 @@ export default function QuickOpenModal({ open, onOpenChange }: QuickOpenModalPro
       onOpenChange={onOpenChange}
       title="Quick Open File"
       description="Quickly switch between project files by searching"
-      className="max-w-lg"
+      showCloseButton={false}
+      className="w-[95vw] sm:max-w-lg"
     >
       <CommandInput placeholder="Type a file name to jump to..." />
       <CommandList className="max-h-80 p-1">

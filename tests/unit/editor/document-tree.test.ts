@@ -6,7 +6,7 @@ import {
   buildFileTree,
   filterFileTree,
   type FileTreeFileNode,
-} from '@/features/editor/domain/document/document-tree';
+} from '@/features/editor/subsystems/explorer/model/document-tree';
 
 describe('document-tree', () => {
   describe('inferResearchFolder', () => {

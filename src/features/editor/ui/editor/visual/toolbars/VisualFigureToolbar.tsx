@@ -106,12 +106,12 @@ export function VisualFigureToolbar({
       role="toolbar"
       aria-label="Figure Floating Toolbar"
       className={cn(
-        'fixed z-50 flex flex-col items-start bg-popover/95 backdrop-blur-md border border-border shadow-overlay rounded-md p-1.5 text-xs text-foreground select-none',
+        'fixed z-50 flex flex-col items-start bg-popover/95 backdrop-blur-md border border-border shadow-overlay rounded-md p-1.5 text-xs text-foreground select-none max-w-[calc(100vw-1.5rem)]',
         'animate-in fade-in zoom-in-95 duration-150'
       )}
       style={{
         top: `${Math.max(10, position.top)}px`,
-        left: `${Math.max(10, position.left)}px`,
+        left: `${Math.max(10, Math.min(position.left, (typeof window !== 'undefined' ? window.innerWidth - 320 : position.left)))}px`,
       }}
       onMouseDown={(e) => {
         // Prevent blurring selection
@@ -120,10 +120,10 @@ export function VisualFigureToolbar({
       onClick={(e) => e.stopPropagation()}
     >
       {/* ── Main Action Bar ── */}
-      <div className="flex items-center gap-1 w-full flex-wrap sm:flex-nowrap">
+      <div className="flex items-center gap-1 w-full overflow-x-auto scrollbar-none py-0.5">
         {/* Figure Asset Name Badge / Picker Trigger */}
         <div
-          className="flex items-center gap-1.5 px-2 py-1 bg-muted/50 hover:bg-muted/80 rounded-md text-foreground/90 mr-1 text-[11px] font-mono cursor-pointer transition-colors"
+          className="flex items-center gap-1.5 px-2 py-1 bg-muted/50 hover:bg-muted/80 rounded-md text-foreground/90 mr-1 text-[11px] font-mono cursor-pointer transition-colors shrink-0"
           onClick={() => {
             setShowImagePicker((prev) => !prev);
             setShowMetadataForm(false);
@@ -139,7 +139,7 @@ export function VisualFigureToolbar({
         <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />
 
         {/* Width Scaling Presets */}
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-0.5 shrink-0">
           {WIDTH_PRESETS.map((preset) => {
             const isActive = Boolean(width && (width.includes(preset.spec.replace('\\', '')) || width === preset.spec));
             return (
@@ -149,7 +149,7 @@ export function VisualFigureToolbar({
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  'h-7 px-1.5 text-[11px] font-mono rounded-md cursor-pointer transition-colors',
+                  'h-7 px-1.5 text-[11px] font-mono rounded-md cursor-pointer transition-colors shrink-0 relative after:absolute after:-inset-1 after:content-[\'\']',
                   isActive
                     ? 'bg-primary/15 text-primary font-semibold'
                     : 'hover:bg-muted text-muted-foreground hover:text-foreground'
@@ -163,16 +163,16 @@ export function VisualFigureToolbar({
           })}
         </div>
 
-        <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />
+        <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5 shrink-0" />
 
         {/* Alignment & Column Span Controls */}
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-0.5 shrink-0">
           <Button
             type="button"
             variant="ghost"
             size="icon"
             className={cn(
-              'size-7 rounded-md cursor-pointer transition-colors',
+              'size-7 rounded-md cursor-pointer transition-colors shrink-0 relative after:absolute after:-inset-1 after:content-[\'\']',
               isCentering
                 ? 'bg-primary/15 text-primary'
                 : 'hover:bg-muted text-muted-foreground hover:text-foreground'
@@ -189,7 +189,7 @@ export function VisualFigureToolbar({
             variant="ghost"
             size="icon"
             className={cn(
-              'size-7 rounded-md cursor-pointer transition-colors',
+              'size-7 rounded-md cursor-pointer transition-colors shrink-0 relative after:absolute after:-inset-1 after:content-[\'\']',
               isStarred
                 ? 'bg-primary/15 text-primary font-semibold'
                 : 'hover:bg-muted text-muted-foreground hover:text-foreground'
@@ -206,7 +206,7 @@ export function VisualFigureToolbar({
               type="button"
               variant="ghost"
               size="icon"
-              className="size-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+              className="size-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer shrink-0 relative after:absolute after:-inset-1 after:content-['']"
               onClick={() => onChangeAngle(((Number(angle) || 0) + 90) % 360)}
               title={`Rotate Figure (${Number(angle) || 0}°)`}
               aria-label="Rotate figure"
@@ -216,7 +216,7 @@ export function VisualFigureToolbar({
           )}
         </div>
 
-        <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5" />
+        <div className="w-[1px] h-4 bg-border/80 my-auto mx-0.5 shrink-0" />
 
         {/* Caption & Label Settings Toggle */}
         <Button
@@ -224,7 +224,7 @@ export function VisualFigureToolbar({
           variant="ghost"
           size="icon"
           className={cn(
-            'size-7 rounded-md cursor-pointer transition-colors',
+            'size-7 rounded-md cursor-pointer transition-colors shrink-0 relative after:absolute after:-inset-1 after:content-[\'\']',
             showMetadataForm
               ? 'bg-primary/15 text-primary'
               : Boolean(caption || label)
@@ -245,7 +245,7 @@ export function VisualFigureToolbar({
           type="button"
           variant="ghost"
           size="icon"
-          className="size-7 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive cursor-pointer"
+          className="size-7 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive cursor-pointer shrink-0 relative after:absolute after:-inset-1 after:content-['']"
           onClick={onDeleteFigure}
           title="Delete Figure"
           aria-label="Delete figure"
@@ -258,7 +258,7 @@ export function VisualFigureToolbar({
           type="button"
           variant="ghost"
           size="icon"
-          className="size-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer ml-auto"
+          className="size-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer ml-auto shrink-0 relative after:absolute after:-inset-1 after:content-['']"
           onClick={onClose}
           aria-label="Close toolbar"
         >
@@ -354,7 +354,7 @@ export function VisualFigureToolbar({
                   <button
                     key={imgPath}
                     type="button"
-                    className="text-[11px] font-mono px-2 py-0.5 rounded-sm bg-muted/50 hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer text-left truncate max-w-[180px]"
+                    className="text-[11px] font-mono px-2 py-0.5 min-h-[26px] flex items-center rounded-sm bg-muted/50 hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer text-left truncate max-w-[180px] relative after:absolute after:-inset-1 after:content-['']"
                     onClick={() => {
                       setEditSrc(imgPath);
                       onChangeImage(imgPath);

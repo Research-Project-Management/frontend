@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import React from 'react';
-import RenameCitationModal from '@/features/editor/ui/modals/citation-picker/RenameCitationModal';
-import { workspaceCoordinator } from '@/features/editor/coordinators/workspace.coordinator';
-import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
+import RenameCitationModal from '@/features/editor/subsystems/citation/ui/modals/RenameCitationModal';
+import { workspaceCoordinator } from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { editorCommandBus } from '@/features/editor/core';
 
-import { usePageStore } from '@/features/editor/store/editor.store';
+import { usePageStore } from '@/features/editor/core';
 
 describe('Citation Key Refactor & Modal Workflow (Overleaf Parity)', () => {
   beforeEach(() => {

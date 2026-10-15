@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 
-export interface DebouncedFunction<T extends (...args: any[]) => any> {
+export interface DebouncedFunction<T extends (...args: never[]) => unknown> {
   (...args: Parameters<T>): void;
   cancel: () => void;
   flush: () => void;
@@ -52,7 +52,7 @@ export function useDebounce<T>(value: T, delay = 500): T {
  *
  * // Controls: handleSearch.cancel(), handleSearch.flush(), handleSearch.isPending()
  */
-export function useDebouncedCallback<T extends (...args: any[]) => any>(
+export function useDebouncedCallback<T extends (...args: never[]) => unknown>(
   callback: T,
   delay = 500,
   options: DebounceOptions = {},
@@ -144,7 +144,7 @@ export function useDebouncedCallback<T extends (...args: any[]) => any>(
  * @example
  * const handleScroll = useThrottledCallback(() => trackScrollPosition(), 100);
  */
-export function useThrottledCallback<T extends (...args: any[]) => any>(
+export function useThrottledCallback<T extends (...args: never[]) => unknown>(
   callback: T,
   interval = 300,
   options: ThrottleOptions = {},

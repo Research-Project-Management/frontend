@@ -14,7 +14,7 @@ interface ToolbarProps {
   onDelete: (id: string) => void;
   editor: StickiesEditorHandle | null;
   activeModal: string | null;
-  onActiveModalChange: (modal: any) => void;
+  onActiveModalChange: (modal: string | null) => void;
 }
 
 const Toolbar = React.memo(function Toolbar({

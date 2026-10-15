@@ -124,7 +124,7 @@ export default function MemberPage() {
   const [transferringMember, setTransferringMember] = useState<ProjectMemberItem | null>(null);
 
   const existingMemberIds = useMemo(() => {
-    return new Set<string>(members.map((m: any) => m.userId));
+    return new Set<string>(members.map((m: ProjectMemberItem) => m.userId));
   }, [members]);
 
   const confirmDelete = () => {
@@ -296,7 +296,7 @@ export default function MemberPage() {
                         </td>
                       </tr>
                     ) : (
-                      filteredMembers.map((member: any) => {
+                      filteredMembers.map((member: ProjectMemberItem) => {
                         const isCurrentUser = currentUser?.id === member.userId;
                         return (
                           <Item

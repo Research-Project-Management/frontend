@@ -1,7 +1,7 @@
 'use client';
 
 import type { TreeNode, CollectionActionHandlers } from './sidebar.types';
-import type { Collection } from '../../types/library.types';
+import type { Collection } from '@/features/library/types/library.types';
 import { CollectionNode } from './CollectionNode';
 
 interface CollectionTreeProps extends CollectionActionHandlers {

@@ -255,6 +255,7 @@ export const itemSchema = z.object({
   silent: z.boolean().optional(),
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional(),
+  dateAdded: z.string().optional(),
   lastReadAt: z.string().nullish(),
   isStarred: z.boolean().optional().default(false),
   hasFile: z.boolean().optional().default(false),
@@ -268,6 +269,7 @@ export const itemSchema = z.object({
   // Transient / Optimistic UI attributes
   _isProcessing: z.boolean().optional(),
   _processingStatus: z.string().optional(),
+  _processingProgress: z.number().optional(),
   _processingError: z.string().optional(),
 
   // Legacy field fallbacks
@@ -287,12 +289,16 @@ export const updateItemSchema = itemSchema.partial().extend({
 });
 
 export const typeConversionPreviewSchema = z.object({
-  targetItemType: z.string(),
+  targetType: z.string().optional(),
+  targetItemType: z.string().optional(),
+  retainUnmappedInExtra: z.boolean().optional(),
 });
 
 export const typeConversionSchema = z.object({
-  targetItemType: z.string(),
+  targetType: z.string().optional(),
+  targetItemType: z.string().optional(),
   expectedVersion: z.number().optional(),
+  retainUnmappedInExtra: z.boolean().optional(),
   customFieldOverrides: z.record(z.string(), z.unknown()).optional(),
 });
 

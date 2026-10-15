@@ -36,11 +36,11 @@ import { Button } from '@/shared/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { StatusIcon } from "@/shared/components/icons";
 import { cn } from "@/shared/lib/utils";
-import { useKanban, useCard } from '../../hooks/use-view';
-import { PriorityPopover } from '../pickers/PriorityPicker';
-import { DatePopover } from '../pickers/DatePicker';
-import { MemberPopover, AvatarStack } from '../pickers/MemberPicker';
-import { LabelPopover } from '../pickers/LabelPicker';
+import { useKanban, useCard } from '@/features/projects/project-id/work-items/hooks/use-view';
+import { PriorityPopover } from '@/features/projects/project-id/work-items/components/pickers/PriorityPicker';
+import { DatePopover } from '@/features/projects/project-id/work-items/components/pickers/DatePicker';
+import { MemberPopover, AvatarStack } from '@/features/projects/project-id/work-items/components/pickers/MemberPicker';
+import { LabelPopover } from '@/features/projects/project-id/work-items/components/pickers/LabelPicker';
 import {
   ItemHelpers,
   resolveColumnId,
@@ -49,16 +49,15 @@ import {
   resolveStateColor,
   PRIORITY_THEME_COLORS,
   GROUP_DEFAULT_COLORS,
-} from '../../utils/work-item.utils';
+} from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import {
   type Item,
-  type Column as ColumnType,
   type DisplayOptions,
   type BaseWorkItemViewProps,
   type WorkItemCardHandlers,
   type Priority,
   type ProjectMember,
-} from '../../types/work-item.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 import type {
   ItemCardLabel,
   CardProps,
@@ -66,8 +65,8 @@ import type {
   BoardViewProps,
   BoardProps,
   SwimlaneDef,
-} from '../../types/kanban-view.types';
-import { formatDateDisplay, EMPTY_ARRAY } from '../../utils/board.utils';
+} from '@/features/projects/project-id/work-items/types/kanban-view.types';
+import { formatDateDisplay, EMPTY_ARRAY } from '@/features/projects/project-id/work-items/utils/board.utils';
 
 export type { ItemCardLabel, CardProps, ColumnProps, BoardViewProps, BoardProps, SwimlaneDef };
 
@@ -192,61 +191,35 @@ export const CardUI = React.memo(function CardUI({
     edit,
   } = actions;
 
-  // State matching (resolve true work item state regardless of board grouping)
-  const matchedState = useMemo(() => {
-    if (card.state && typeof card.state === 'object') {
-      return {
-        id: card.state.id,
-        title: card.state.name,
-        name: card.state.name,
-        group: card.state.group,
-        color: card.state.color,
-        accentColor: card.state.color,
-      };
-    }
-    const stateList = projectStates && projectStates.length > 0 ? projectStates : columns;
-    const found = stateList.find((c) => resolveColumnId(c) === card.columnId);
-    if (found) return found;
-    if (!displayOptions?.groupBy || displayOptions.groupBy === 'state') {
-      return columns.find((c) => resolveColumnId(c) === card.columnId);
-    }
-    return stateList[0];
-  }, [card.state, card.columnId, projectStates, columns, displayOptions?.groupBy]);
+  // State & metadata resolution
+  const itemMeta = useMemo(
+    () =>
+      ItemHelpers.resolveItemMeta(
+        card,
+        columns,
+        projectStates,
+        !displayOptions?.groupBy || displayOptions.groupBy === 'state'
+          ? columns.find((c) => resolveColumnId(c) === card.columnId)
+          : undefined
+      ),
+    [card, columns, projectStates, displayOptions?.groupBy]
+  );
 
   const rawCard = card as Item & {
-    attach?: {
-      files?: unknown[];
-      pages?: unknown[];
-      papers?: unknown[];
-      links?: unknown[];
-    };
-    attachmentCount?: number;
-    linkCount?: number;
-    links?: unknown[];
     subItems?: unknown[];
     children?: unknown[];
   };
 
-  const isDone = Boolean(
-    card.completed ||
-    card.stateGroup === 'completed' ||
-    card.state?.group === 'completed' ||
-    matchedState?.group === 'completed' ||
-    card.columnId === 'done' ||
-    card.columnId === 'completed'
-  );
-
-  const isCancelled = Boolean(
-    card.stateGroup === 'cancelled' ||
-    card.state?.group === 'cancelled' ||
-    matchedState?.group === 'cancelled' ||
-    card.columnId === 'cancelled' ||
-    card.columnId === 'cancel'
-  );
-
-  const colTitle = matchedState?.title || matchedState?.name || 'Backlog';
-  const currentColor = resolveStateColor(matchedState);
-  const stateGroup = matchedState?.group || card.stateGroup || card.state?.group || colTitle;
+  const {
+    resolvedState: matchedState,
+    colTitle,
+    currentColor,
+    stateGroup,
+    isCompleted: isDone,
+    isCancelled,
+    attachmentsCount,
+    linksCount,
+  } = itemMeta;
 
   const priorityKey = (card.priority || 'none').toLowerCase() as Priority;
 
@@ -261,31 +234,6 @@ export const CardUI = React.memo(function CardUI({
     const s = st as { completed?: boolean; stateGroup?: string; state?: { group?: string }; columnId?: string };
     return Boolean(s.completed || s.stateGroup === 'completed' || s.state?.group === 'completed' || s.columnId === 'done');
   }).length;
-
-  // Attachments count
-  const attachmentsCount = useMemo(() => {
-    if (typeof rawCard.attachmentCount === 'number') return rawCard.attachmentCount;
-    if (Array.isArray(card.attachments)) return card.attachments.length;
-    const attachObj = card.attachments || rawCard.attach;
-    if (attachObj && typeof attachObj === 'object') {
-      const files = Array.isArray(attachObj.files) ? attachObj.files.length : 0;
-      const pages = Array.isArray(attachObj.pages) ? attachObj.pages.length : 0;
-      const papers = Array.isArray(attachObj.papers) ? attachObj.papers.length : 0;
-      return files + pages + papers;
-    }
-    return 0;
-  }, [card.attachments, rawCard.attach, rawCard.attachmentCount]);
-
-  // Links count
-  const linksCount = useMemo(() => {
-    if (typeof rawCard.linkCount === 'number') return rawCard.linkCount;
-    if (Array.isArray(rawCard.links)) return rawCard.links.length;
-    const attachObj = card.attachments || rawCard.attach;
-    if (attachObj && typeof attachObj === 'object' && 'links' in attachObj && Array.isArray(attachObj.links)) {
-      return attachObj.links.length;
-    }
-    return 0;
-  }, [rawCard.links, card.attachments, rawCard.attach, rawCard.linkCount]);
 
   const showSubItems = displayOptions?.properties?.childWorkItemCount !== false && childWorkItemTotal > 0;
   const showAttach = displayOptions?.properties?.attachmentCount !== false && attachmentsCount > 0;

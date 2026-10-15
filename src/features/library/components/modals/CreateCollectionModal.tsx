@@ -13,8 +13,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import {
   collectionFormSchema,
   type CollectionFormValues,
-} from '../../types';
-import type { Collection } from '../../types/library.types';
+} from '@/features/library/types';
+import type { Collection } from '@/features/library/types/library.types';
 
 interface CreateCollectionModalProps {
   open: boolean;
@@ -66,7 +66,7 @@ export default function CreateCollectionModal({
     }
   }, [open, defaultParentId, reset]);
 
-  const onValidSubmit = (data: any) => {
+  const onValidSubmit = (data: CollectionFormValues) => {
     const rawParent = data.parent === 'root' || !data.parent ? null : data.parent;
     onSubmit({
       name: data.name.trim() || 'Untitled',

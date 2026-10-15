@@ -1,13 +1,19 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { CommentService } from '../api/work-item.api';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { CommentService } from '@/features/projects/project-id/work-items/api/work-item.api';
+import { workItemToast } from './use-work-item-toast';
 
 export const commentKeys = {
   item: (id: string) => ['comments', id] as const,
   workItem: (id: string) => ['work-item-comments', id] as const,
 };
+
+function invalidateCommentQueries(queryClient: QueryClient, targetId: string) {
+  queryClient.invalidateQueries({ queryKey: commentKeys.item(targetId) });
+  queryClient.invalidateQueries({ queryKey: commentKeys.workItem(targetId) });
+  queryClient.invalidateQueries({ queryKey: ['work-items'] });
+}
 
 export const useComments = (id: string) =>
   useQuery({
@@ -22,8 +28,6 @@ export const useComments = (id: string) =>
     enabled: Boolean(id),
   });
 
-export const useWorkItemComments = useComments;
-
 export const useAddComment = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -33,11 +37,9 @@ export const useAddComment = () => {
     },
     onSuccess: (_, vars) => {
       const targetId = (vars.id || vars.itemId || vars.workItemId) ?? '';
-      queryClient.invalidateQueries({ queryKey: ['comments', targetId] });
-      queryClient.invalidateQueries({ queryKey: ['work-item-comments', targetId] });
-      queryClient.invalidateQueries({ queryKey: ['work-items'] });
+      invalidateCommentQueries(queryClient, targetId);
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to add comment', { id: 'work-item-comment' }),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to add comment', 'comment'),
   });
 };
 
@@ -50,11 +52,9 @@ export const useDeleteComment = () => {
     },
     onSuccess: (_, vars) => {
       const targetId = (vars.id || vars.itemId || vars.workItemId) ?? '';
-      queryClient.invalidateQueries({ queryKey: ['comments', targetId] });
-      queryClient.invalidateQueries({ queryKey: ['work-item-comments', targetId] });
-      queryClient.invalidateQueries({ queryKey: ['work-items'] });
+      invalidateCommentQueries(queryClient, targetId);
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to delete comment', { id: 'work-item-comment' }),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to delete comment', 'comment'),
   });
 };
 
@@ -79,11 +79,9 @@ export const useUpdateComment = () => {
     },
     onSuccess: (_, vars) => {
       const targetId = (vars.id || vars.itemId || vars.workItemId) ?? '';
-      queryClient.invalidateQueries({ queryKey: ['comments', targetId] });
-      queryClient.invalidateQueries({ queryKey: ['work-item-comments', targetId] });
-      queryClient.invalidateQueries({ queryKey: ['work-items'] });
+      invalidateCommentQueries(queryClient, targetId);
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to update comment', { id: 'work-item-comment' }),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to update comment', 'comment'),
   });
 };
 
@@ -108,10 +106,9 @@ export const useReactComment = () => {
     },
     onSuccess: (_, vars) => {
       const targetId = (vars.id || vars.itemId || vars.workItemId) ?? '';
-      queryClient.invalidateQueries({ queryKey: ['comments', targetId] });
-      queryClient.invalidateQueries({ queryKey: ['work-item-comments', targetId] });
-      queryClient.invalidateQueries({ queryKey: ['work-items'] });
+      invalidateCommentQueries(queryClient, targetId);
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to react to comment', { id: 'work-item-comment' }),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to react to comment', 'comment'),
   });
 };
+

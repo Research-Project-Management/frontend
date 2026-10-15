@@ -85,7 +85,7 @@ export const completePresigned = (params: CompletePresignedParams) => {
 };
 
 export const createFileRecord = (params: CreateFileRecordParams) => {
-  return apiPost<{ id: string; url: string; file: any }>('/api/files/upload', {
+  return apiPost<{ id: string; url: string; file: Record<string, unknown> }>('/api/files/upload', {
     filename: params.filename,
     size: params.size,
     mimeType: params.mimeType,
@@ -129,7 +129,14 @@ export const uploadDirectWithProgress = (
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
-          const response = JSON.parse(xhr.responseText) as Record<string, any>;
+          interface UploadResponsePayload {
+            fileId?: string;
+            id?: string;
+            url?: string;
+            path?: string;
+            file?: { id?: string; url?: string };
+          }
+          const response = JSON.parse(xhr.responseText) as UploadResponsePayload & { data?: UploadResponsePayload };
           const payload = response.data || response;
           const fileId = payload.fileId || payload.file?.id || payload.id || '';
           const url = payload.url || payload.file?.url || payload.path || '';
@@ -232,7 +239,7 @@ export const uploadBlobWithPresigned = async (
         fileId: completed.fileId || completed.id,
       };
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (signal?.aborted) throw err;
     // Fallback to direct upload if presigned fails
   }

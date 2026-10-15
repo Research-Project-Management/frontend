@@ -17,14 +17,14 @@ export type ViewAccess = z.infer<typeof viewAccessSchema>;
 export const createViewDtoSchema = z.object({
   name: z.string().trim().min(1, "View name is required").max(100, "View name is too long"),
   description: z.string().max(255, "Description is too long").optional(),
-  query: z.record(z.string(), z.any()).optional(),
-  filters: z.record(z.string(), z.any()).optional(),
-  displayFilters: z.record(z.string(), z.any()).optional(),
+  query: z.record(z.string(), z.unknown()).optional(),
+  filters: z.record(z.string(), z.unknown()).optional(),
+  displayFilters: z.record(z.string(), z.unknown()).optional(),
   layout: viewLayoutModeSchema.optional().default("board"),
-  displayProperties: z.record(z.string(), z.any()).optional(),
-  richFilters: z.record(z.string(), z.any()).optional(),
+  displayProperties: z.record(z.string(), z.unknown()).optional(),
+  richFilters: z.record(z.string(), z.unknown()).optional(),
   sortOrder: z.number().optional(),
-  logoProps: z.record(z.string(), z.any()).optional(),
+  logoProps: z.record(z.string(), z.unknown()).optional(),
   access: viewAccessSchema.optional().default("public"),
 });
 export type CreateViewDtoInput = z.infer<typeof createViewDtoSchema>;

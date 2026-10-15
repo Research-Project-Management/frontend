@@ -38,7 +38,7 @@ export const uploadNewFileVersion = (
   file: File,
   changeComment?: string,
   onProgress?: (progress: number) => void,
-): Promise<any> => {
+): Promise<unknown> => {
   return new Promise((resolve, reject) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -88,7 +88,7 @@ export const uploadNewFileVersion = (
   });
 };
 
-export const revertFileVersion = (fileId: string, versionNumber: number): Promise<any> => {
+export const revertFileVersion = (fileId: string, versionNumber: number): Promise<unknown> => {
   return apiPost(`/api/files/${encodeURIComponent(fileId)}/versions/${versionNumber}/revert`, {});
 };
 

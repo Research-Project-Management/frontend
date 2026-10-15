@@ -3,14 +3,12 @@
 import React from 'react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useSummaryWork } from '../hooks/use-summary-work';
-import { useWorkItemModal } from '../hooks/use-work-item-modal';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { YourWorkEmptyState } from '../components/shared/YourWorkEmptyState';
 import dynamic from 'next/dynamic';
 import { OverviewCards } from '../components/summary/OverviewCards';
 import { WorkloadCards } from '../components/summary/WorkloadCards';
-import { RecentActivityFeed } from '../components/summary/RecentActivityFeed';
-import { WorkItemModalHost } from '../components/shared/WorkItemModalHost';
+import { ActivityFeedList } from '../components/shared/ActivityFeedList';
 
 const PriorityBreakdown = dynamic(
   () => import('../components/summary/PriorityBreakdown').then((m) => m.PriorityBreakdown),
@@ -29,7 +27,7 @@ const StateBreakdown = dynamic(
 );
 
 export function SummaryPage() {
-  const { state } = useSummaryWork();
+  const { state, actions } = useSummaryWork();
   const {
     workItems,
     activities,
@@ -40,8 +38,6 @@ export function SummaryPage() {
     error,
     isEmpty,
   } = state;
-
-  const { selectedWorkItem, handleOpenWorkItem, handleCloseWorkItem } = useWorkItemModal(workItems);
 
   if (isLoading) {
     return (
@@ -118,16 +114,16 @@ export function SummaryPage() {
       </div>
 
       {/* 4. Recent activity */}
-      <RecentActivityFeed
-        activities={activities}
-        onWorkItemClick={handleOpenWorkItem}
+      <ActivityFeedList
+        title="Recent activity"
+        maxItems={5}
+        items={activities}
+        onWorkItemClick={actions.openWorkItem}
         workItemProjectMap={workItemProjectMap}
       />
-
-      {/* Work item detail dialog */}
-      <WorkItemModalHost selectedWorkItem={selectedWorkItem} onClose={handleCloseWorkItem} />
     </div>
   );
 }
 
 export default SummaryPage;
+

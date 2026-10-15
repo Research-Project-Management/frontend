@@ -8,19 +8,77 @@
  * badges, notes, and tags.
  */
 
-import type { Item, Note } from '../types/library.types';
-import { getVenueFieldForType } from '../types';
+import type { Item, Note } from '@/features/library/types/library.types';
+import {
+  getVenueFieldForType,
+  getTitleFieldForType,
+  getDateFieldForType,
+} from '@/features/library/types';
+import { INITIAL_ITEM_TYPE_FIELDS_MAP } from '@/features/library/types/item-fields.constants';
+import { normalizeAuthors } from './creators';
 
-/** Strips LaTeX macros and escaped symbols common in BibTeX keywords */
+const LATEX_DIACRITIC_MAP: ReadonlyArray<readonly [RegExp, (match: string, c1: string, c2: string) => string]> = [
+  [/\{?\\`(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0300`.normalize('NFC')],
+  [/\{?\\'(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0301`.normalize('NFC')],
+  [/\{?\\\^(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0302`.normalize('NFC')],
+  [/\{?\\~(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0303`.normalize('NFC')],
+  [/\{?\\"(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0308`.normalize('NFC')],
+  [/\{?\\=(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0304`.normalize('NFC')],
+  [/\{?\\\.(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0307`.normalize('NFC')],
+  [/\{?\\u(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0306`.normalize('NFC')],
+  [/\{?\\v(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u030C`.normalize('NFC')],
+  [/\{?\\H(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u030B`.normalize('NFC')],
+  [/\{?\\c(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0327`.normalize('NFC')],
+  [/\{?\\k(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0328`.normalize('NFC')],
+  [/\{?\\r(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u030A`.normalize('NFC')],
+];
+
+/** Strips LaTeX macros, decodes LaTeX diacritics, and unescapes symbols common in BibTeX */
 export function stripLatexMarkup(str: string): string {
   if (!str || typeof str !== 'string') return '';
-  return str
+  if (!str.includes('\\') && !str.includes('{') && !str.includes('}')) {
+    return str.trim();
+  }
+  // Normalize dotless \i and \j first so accent commands like {\'\i}, \'{\i}, \'\i combine cleanly
+  let out = str
+    .replace(/\\i\b\s*/g, 'i')
+    .replace(/\\j\b\s*/g, 'j');
+  for (const [pattern, replacer] of LATEX_DIACRITIC_MAP) {
+    out = out.replace(pattern, replacer);
+  }
+  out = out
+    .replace(/\\aa\b/g, 'å')
+    .replace(/\\AA\b/g, 'Å')
+    .replace(/\\ae\b/g, 'æ')
+    .replace(/\\AE\b/g, 'Æ')
+    .replace(/\\oe\b/g, 'œ')
+    .replace(/\\OE\b/g, 'Œ')
+    .replace(/\\o\b/g, 'ø')
+    .replace(/\\O\b/g, 'Ø')
+    .replace(/\\l\b/g, 'ł')
+    .replace(/\\L\b/g, 'Ł')
+    .replace(/\\dj\b/g, 'đ')
+    .replace(/\\DJ\b/g, 'Đ')
+    .replace(/\\ss\b/g, 'ß')
     .replace(/\\([&%$#_{}])/g, '$1')
     .replace(/\\(?:textbf|textit|textsf|texttt|textsc|emph|text|mathrm|mathbf|mathit)\s*\{([^}]+)\}/gi, '$1')
     .replace(/\\(?:bf|it|em|rm|sf|tt|large|Large|small|tiny)\b\s*/gi, '')
     .replace(/[{}]/g, '')
     .trim();
+  return out;
 }
+
+const INVALID_TAG_TOKENS = new Set([
+  'null',
+  'undefined',
+  'n/a',
+  'na',
+  'none',
+  'nil',
+  'unknown',
+  'false',
+  'true',
+]);
 
 /**
  * Lightweight helper to clean a single user-typed tag in the frontend UI.
@@ -37,6 +95,7 @@ export function cleanSingleFrontendTag(raw: string): string | null {
   str = str.replace(/<[^>]+>/g, '').trim();
 
   if (!str || str.length < 2) return null;
+  if (INVALID_TAG_TOKENS.has(str.toLowerCase())) return null;
   return str;
 }
 
@@ -63,25 +122,33 @@ export function normalizeTags(
     candidates.push(rawItem);
   }
 
-  const tagSet = new Set<string>();
+  const tagList: string[] = [];
+  const seenLower = new Set<string>();
+  const addTag = (cleaned: string | null) => {
+    if (!cleaned) return;
+    const lower = cleaned.toLowerCase();
+    if (!seenLower.has(lower)) {
+      seenLower.add(lower);
+      tagList.push(cleaned);
+    }
+  };
+
   for (const item of candidates) {
     if (typeof item === 'string') {
       const parts = item.includes(';') || item.includes(',') ? item.split(/[,;]+/) : [item];
       for (const part of parts) {
-        const cleaned = cleanSingleFrontendTag(part);
-        if (cleaned) tagSet.add(cleaned);
+        addTag(cleanSingleFrontendTag(part));
       }
     } else if (item && typeof item === 'object') {
       const tagObj = item as Record<string, unknown>;
       const name = typeof tagObj.name === 'string' ? tagObj.name : typeof tagObj.tag === 'string' ? tagObj.tag : '';
       if (name) {
-        const cleaned = cleanSingleFrontendTag(name);
-        if (cleaned) tagSet.add(cleaned);
+        addTag(cleanSingleFrontendTag(name));
       }
     }
   }
 
-  return Array.from(tagSet);
+  return tagList;
 }
 
 export interface NormalizedNote {
@@ -134,34 +201,104 @@ export function normalizeNotes(rawNotes?: unknown): NormalizedNote[] {
   return results;
 }
 
+const HTML_ENTITIES: Record<string, string> = {
+  '&amp;': '&',
+  '&lt;': '<',
+  '&gt;': '>',
+  '&quot;': '"',
+  '&#39;': "'",
+  '&apos;': "'",
+  '&nbsp;': ' ',
+  '&ndash;': '–',
+  '&mdash;': '—',
+  '&lsquo;': '‘',
+  '&rsquo;': '’',
+  '&ldquo;': '“',
+  '&rdquo;': '”',
+};
+
 /**
  * Fallback abstract text cleaner for UI presentation.
- * Server TrustedExtractionService performs authoritative cleaning.
+ * Strips JATS/XML/HTML tags (e.g. `<jats:title>Abstract</jats:title><jats:p>...`),
+ * decodes HTML entities, strips leading "Abstract" headers, and filters placeholder strings.
  */
 export function cleanAbstractText(text?: string | null): string {
   if (!text || typeof text !== 'string') return '';
-  return text.trim();
+  if (!isValidValue(text)) return '';
+
+  let cleaned = text
+    // Strip leading <jats:title>Abstract</jats:title> or <title>Abstract</title> blocks
+    .replace(/<(?:jats:)?title[^>]*>\s*abstract\s*:?\s*<\/(?:jats:)?title>/gi, ' ')
+    // Replace paragraph/block closing tags with spaces so sentences don't concatenate
+    .replace(/<\/(?:jats:)?(?:p|sec|div|li|br)\s*>/gi, ' ')
+    // Strip remaining XML/HTML tags
+    .replace(/<[^>]+>/g, '')
+    // Decode named HTML entities
+    .replace(/&(?:amp|lt|gt|quot|#39|apos|nbsp|ndash|mdash|lsquo|rsquo|ldquo|rdquo);/gi, (m) => HTML_ENTITIES[m.toLowerCase()] ?? m)
+    // Decode numeric HTML entities
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    // Strip leading "Abstract:" or "Summary:" prefix if left over
+    .replace(/^(?:abstract|summary)\s*[:.—\-]\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!isValidValue(cleaned)) return '';
+  return cleaned;
 }
 
 /**
- * Extracts publication venue (journal, conference, publisher) for UI cards and tables.
+ * Extracts canonical display title from an Item across Zotero Schema v42 BASE_FIELD_MAPPINGS
+ * (`title`, `caseName` for `case`, `nameOfAct` for `statute`, `subject` for `email`).
+ */
+export function getItemDisplayTitle(
+  item?: Partial<Item> | Record<string, unknown> | null,
+): string {
+  if (!item || typeof item !== 'object') return '';
+  const rec = item as Record<string, unknown>;
+  const ef = (rec.extraFields as Record<string, unknown> | undefined) || {};
+
+  const clean = (val: unknown): string => {
+    if (!isValidValue(val)) return '';
+    return stripLatexMarkup(String(val).trim());
+  };
+
+  const itemType = typeof rec.itemType === 'string' ? rec.itemType : undefined;
+  const preferredTitleField = getTitleFieldForType(itemType);
+  if (preferredTitleField && preferredTitleField !== 'title') {
+    const val = clean(rec[preferredTitleField] ?? ef[preferredTitleField]);
+    if (val) return val;
+  }
+
+  const fallbackFields = ['title', 'caseName', 'nameOfAct', 'subject'] as const;
+  for (const field of fallbackFields) {
+    const val = clean(rec[field] ?? ef[field]);
+    if (val) return val;
+  }
+
+  return '';
+}
+
+/**
+ * Extracts publication venue (journal, conference, court, issuingAuthority, repository, publisher)
+ * for UI cards, tables, citations, and exports across all 37 Zotero Schema v42 item types.
  */
 export function getPublicationVenue(
   item?: Partial<Item> | Record<string, unknown> | null,
 ): string {
   if (!item || typeof item !== 'object') return '';
+  const rec = item as Record<string, unknown>;
+  const extra = (rec.extraFields as Record<string, unknown> | undefined) || {};
 
   const clean = (val: unknown): string => {
-    if (val === null || val === undefined) return '';
-    const str = String(val).trim();
-    if (!str || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined') return '';
-    return str;
+    if (!isValidValue(val)) return '';
+    return stripLatexMarkup(String(val).trim());
   };
 
   const itemType = (item as Item).itemType;
   const preferredField = getVenueFieldForType(itemType);
-  if (preferredField && preferredField in item) {
-    const val = clean((item as Record<string, unknown>)[preferredField]);
+  if (preferredField) {
+    const val = clean(rec[preferredField] ?? extra[preferredField]);
     if (val) return val;
   }
 
@@ -171,21 +308,40 @@ export function getPublicationVenue(
     'bookTitle',
     'proceedingsTitle',
     'conferenceName',
+    'meetingName',
+    'court',
+    'issuingAuthority',
+    'authority',
+    'repository',
     'publisher',
-    'distributor',
+    'company',
+    'organization',
     'institution',
     'university',
+    'distributor',
+    'studio',
+    'network',
+    'label',
+    'programTitle',
     'websiteTitle',
+    'blogTitle',
+    'forumTitle',
+    'dictionaryTitle',
+    'encyclopediaTitle',
+    'sessionTitle',
+    'legislativeBody',
+    'committee',
+    'code',
+    'reporter',
   ];
 
   for (const field of fallbackFields) {
-    if (field in item) {
-      const val = clean((item as Record<string, unknown>)[field]);
+    if (field in rec) {
+      const val = clean(rec[field]);
       if (val) return val;
     }
   }
 
-  const extra = item.extraFields as Record<string, unknown> | undefined;
   if (extra && typeof extra === 'object') {
     for (const field of fallbackFields) {
       if (field in extra) {
@@ -213,36 +369,124 @@ export function formatItemTypeLabel(rawType?: string | null): string {
 }
 
 /**
+ * All 121 canonical Zotero Schema v42 field names derived automatically from the 37 item types.
+ */
+export const ALL_ZOTERO_SCHEMA_FIELDS: ReadonlySet<string> = new Set<string>(
+  Object.values(INITIAL_ITEM_TYPE_FIELDS_MAP).flat(),
+);
+
+/**
+ * Genuine Zotero 7 `Extra` keys that are also valid schema fields on specific item types
+ * (`PMID`/`PMCID` on `journalArticle`, `originalDate` on `book`/`bookSection`) and must remain
+ * allowed as explicit `Key: Value` lines in the Zotero `Extra` textarea.
+ */
+const ALLOWED_ZOTERO_EXTRA_LINE_KEYS = new Set<string>(['pmid', 'pmcid', 'originaldate']);
+
+export const INTERNAL_AND_DEDICATED_METADATA_KEYS = new Set<string>([
+  // Automatically derived from all 121 Zotero Schema v42 fields across all 37 item types
+  ...Array.from(ALL_ZOTERO_SCHEMA_FIELDS)
+    .map((f) => f.toLowerCase())
+    .filter((k) => !ALLOWED_ZOTERO_EXTRA_LINE_KEYS.has(k)),
+  // Internal / system / audit / duplicate / retraction / ingestion telemetry state
+  'dismissedduplicateids',
+  'mergedcitationkeys',
+  'mergedfromids',
+  'isretracted',
+  'retraction',
+  'retractionstatus',
+  'retractiondate',
+  'retractionnature',
+  'retractionreasons',
+  'retractionnoticedoi',
+  'provenance',
+  'fieldprovenance',
+  'sourceprovider',
+  'sources',
+  'extractionstatus',
+  'ingestionstatus',
+  'verificationscore',
+  'isverified',
+  'matchedsignals',
+  'missingfields',
+  'isselfsufficient',
+  'qualityscore',
+  'engineused',
+  'primarycategory',
+  '_version',
+  'version',
+  'deletedat',
+  'createdat',
+  'updatedat',
+  'dateadded',
+  'datemodified',
+  'id',
+  'itemid',
+  'paperid',
+  'userid',
+  'projectid',
+  'scopeid',
+  // First-class DB column aliases & relation keys
+  'abstract',
+  'journal',
+  'journalabbr',
+  'numberofpages',
+  'arxiv',
+  'arxivid',
+  'openaccesspdfurl',
+  'pdfurl',
+  'fileurl',
+  'year',
+  'publicationdate',
+  'accessedat',
+  'itemtype',
+  'license',
+  'citekey',
+  'citationcount',
+  'referencecount',
+  'authority',
+  'authors',
+  'creators',
+  'contributors',
+  'tags',
+  'keywords',
+  'labels',
+  'notes',
+  'attachments',
+  'collections',
+  'collectionid',
+  'collectionids',
+  'extra',
+  'extrafields',
+]);
+
+export const INTERNAL_EXTRA_KEYS = INTERNAL_AND_DEDICATED_METADATA_KEYS;
+
+export function isAllowedZoteroExtraKey(rawKey: string): boolean {
+  const trimmed = rawKey.trim();
+  if (!trimmed || trimmed.startsWith('_')) return false;
+  const normalized = trimmed.toLowerCase().replace(/[\s_-]+/g, '');
+  return !INTERNAL_AND_DEDICATED_METADATA_KEYS.has(normalized);
+}
+
+/**
  * Formats the extra metadata field for inspector display.
  */
-export function formatExtraDisplay(paper: Item): string {
-  if (typeof paper.extra === 'string' && paper.extra.trim()) {
-    const trimmed = paper.extra.trim();
-    if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-      return trimmed.replace(/\r?\n+/g, ', ');
-    }
+export function formatExtraDisplay(item: Item): string {
+  const sanitized = formatAndSanitizeExtraMetadata(
+    item.extra,
+    item.extraFields as Record<string, unknown> | undefined,
+    item,
+  );
+  if (sanitized) {
+    return sanitized.replace(/\r?\n+/g, ', ');
   }
-
-  const fields = paper.extraFields;
-  if (fields && typeof fields === 'object') {
-    const parts: string[] = [];
-    for (const [k, v] of Object.entries(fields)) {
-      if (v !== null && v !== undefined && v !== '' && v !== 0 && v !== '0') {
-        const valStr = typeof v === 'object' ? JSON.stringify(v) : String(v);
-        const keyLabel = k
-          .replace(/([a-z])([A-Z])/g, '$1 $2')
-          .replace(/[_-]+/g, ' ');
-        parts.push(`${keyLabel}: ${valStr}`);
-      }
-    }
-    if (parts.length > 0) return parts.join(', ');
-  }
-
   return '—';
 }
 
 /**
- * Formats and cleans extra metadata text for the Inspector's Extra tab.
+ * Formats and cleans extra metadata text for the Inspector's Extra tab,
+ * stripping internal system/audit state and already-displayed first-class Inspector fields
+ * while preserving genuine Zotero 7 `Extra` lines (`PMID`, `PMCID`, `NIHMSID`, `Original Date`, `tex.ids`, etc.).
  */
 export function formatAndSanitizeExtraMetadata(
   rawExtraMetadata?: string | null,
@@ -250,37 +494,467 @@ export function formatAndSanitizeExtraMetadata(
   associatedPaperItem?: Partial<Item> | null,
 ): string {
   const lines: string[] = [];
+  const seenNormalizedLines = new Set<string>();
+
+  const pushUniqueLine = (rawLine: string) => {
+    const trimmed = rawLine.trim();
+    if (!trimmed) return;
+    const kvMatch = trimmed.match(/^([A-Za-z_][A-Za-z0-9._\s-]{0,40}?)\s*:\s*(.+)$/);
+    if (kvMatch) {
+      const key = kvMatch[1]!.trim();
+      const val = kvMatch[2]!.trim();
+      if (!isAllowedZoteroExtraKey(key) || !isValidValue(val)) {
+        return;
+      }
+    }
+    const norm = trimmed
+      .toLowerCase()
+      .replace(/\s*:\s*/g, ': ')
+      .replace(/\s+/g, ' ');
+    if (!seenNormalizedLines.has(norm)) {
+      seenNormalizedLines.add(norm);
+      lines.push(trimmed);
+    }
+  };
 
   if (typeof rawExtraMetadata === 'string' && rawExtraMetadata.trim()) {
     const trimmed = rawExtraMetadata.trim();
-    if (trimmed.startsWith('{')) {
+    if (trimmed.startsWith('{') && !trimmed.startsWith('{:')) {
       try {
         const parsed = JSON.parse(trimmed);
-        if (parsed && typeof parsed === 'object') {
-          for (const [key, value] of Object.entries(parsed)) {
-            if (value !== null && value !== undefined && value !== '') {
-              lines.push(`${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+            if (isAllowedZoteroExtraKey(key) && isValidValue(value)) {
+              pushUniqueLine(
+                `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`,
+              );
             }
           }
         }
       } catch {
-        lines.push(trimmed);
+        for (const l of trimmed.split(/\r?\n/)) {
+          pushUniqueLine(l);
+        }
       }
     } else {
-      lines.push(trimmed);
+      for (const l of trimmed.split(/\r?\n/)) {
+        pushUniqueLine(l);
+      }
     }
   }
 
-  if (additionalExtraFields && typeof additionalExtraFields === 'object') {
-    for (const [key, value] of Object.entries(additionalExtraFields)) {
-      if (value !== null && value !== undefined && value !== '') {
-        const line = `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`;
-        if (!lines.includes(line)) {
-          lines.push(line);
-        }
+  const effectiveExtraFields =
+    additionalExtraFields ||
+    (associatedPaperItem?.extraFields as Record<string, unknown> | undefined);
+
+  if (effectiveExtraFields && typeof effectiveExtraFields === 'object') {
+    for (const [key, value] of Object.entries(effectiveExtraFields)) {
+      if (key === 'originalDate') continue;
+      if (isAllowedZoteroExtraKey(key) && isValidValue(value)) {
+        pushUniqueLine(
+          `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`,
+        );
       }
     }
   }
 
   return lines.join('\n').trim();
 }
+
+/**
+ * Checks whether an inspector field value is present and not a placeholder/null string.
+ */
+export function isValidValue(val?: unknown): boolean {
+  if (val === undefined || val === null) return false;
+  if (typeof val === 'number') return !isNaN(val) && Number.isFinite(val) && val !== 0;
+  if (typeof val === 'boolean') return true;
+  if (Array.isArray(val)) return val.some((item) => isValidValue(item));
+  if (typeof val === 'object') return Object.keys(val as Record<string, unknown>).length > 0;
+  const s = String(val).trim();
+  if (!s) return false;
+  const lower = s.toLowerCase();
+  if (
+    lower === '0' ||
+    lower === '0000' ||
+    lower === 'n/a' ||
+    lower === 'na' ||
+    lower === 'none' ||
+    lower === 'nil' ||
+    lower === 'null' ||
+    lower === 'undefined' ||
+    lower === '{}' ||
+    lower === '[]' ||
+    lower === '[object object]' ||
+    lower === 'unknown' ||
+    lower.startsWith('unknown ')
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Normalizes a field value into a clean display string, returning empty string for invalid/placeholder values.
+ */
+export function cleanValue(val?: unknown): string {
+  if (!isValidValue(val)) return '';
+  if (Array.isArray(val)) {
+    return val
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (item && typeof item === 'object') {
+          const obj = item as { name?: string; firstName?: string; lastName?: string };
+          return (
+            obj.name ||
+            [obj.firstName, obj.lastName].filter(Boolean).join(' ')
+          );
+        }
+        return String(item);
+      })
+      .filter(Boolean)
+      .join(', ');
+  }
+  return String(val).trim();
+}
+
+/**
+ * Extracts a canonical display year (number) or date string from an Item across Zotero Schema v42
+ * (`year`, `publicationDate`, `date`, `issueDate`, `dateDecided`, `dateEnacted`, `filingDate`).
+ */
+export function getItemDisplayDate(
+  item?: Partial<Item> | Record<string, unknown> | null,
+): number | string | null {
+  if (!item || typeof item !== 'object') return null;
+  const rec = item as Record<string, unknown>;
+  const ef = (rec.extraFields as Record<string, unknown> | undefined) || {};
+  if (isValidValue(rec.year)) {
+    const num = Number(rec.year);
+    if (!isNaN(num) && num >= 1000 && num <= 2999) return num;
+  }
+
+  const itemType = typeof rec.itemType === 'string' ? rec.itemType : undefined;
+  const preferredDateField = getDateFieldForType(itemType);
+  const preferredVal =
+    preferredDateField && preferredDateField !== 'date'
+      ? rec[preferredDateField] ?? ef[preferredDateField]
+      : undefined;
+
+  const dateSource =
+    preferredVal ||
+    rec.publicationDate ||
+    rec.date ||
+    rec.issueDate ||
+    rec.dateDecided ||
+    rec.dateEnacted ||
+    rec.filingDate ||
+    ef.publicationDate ||
+    ef.date ||
+    ef.issueDate ||
+    ef.dateDecided ||
+    ef.dateEnacted ||
+    ef.filingDate;
+
+  if (isValidValue(dateSource)) {
+    const match = String(dateSource).match(/\b(1[7-9]\d{2}|20\d{2})\b/);
+    if (match) return parseInt(match[1], 10);
+    return String(dateSource).trim();
+  }
+  return null;
+}
+
+/**
+ * All Zotero Schema v42 field keys promoted from `extraFields` / `metadata` onto top-level `Item`
+ * during `mapBackendItemToPaper`. Automatically derived from `ALL_ZOTERO_SCHEMA_FIELDS`.
+ */
+export const ALL_ZOTERO_PROMOTE_KEYS: readonly string[] = Array.from(ALL_ZOTERO_SCHEMA_FIELDS).filter(
+  (k) => k !== 'title' && k !== 'extra',
+);
+
+const PUBLISHER_CANDIDATE_KEYS = [
+  'publisher',
+  'university',
+  'institution',
+  'issuingAuthority',
+  'authority',
+  'court',
+  'legislativeBody',
+  'company',
+  'organization',
+  'repository',
+  'distributor',
+  'studio',
+  'network',
+  'label',
+] as const;
+
+const DATE_CANDIDATE_KEYS = [
+  'publicationDate',
+  'date',
+  'issueDate',
+  'dateDecided',
+  'dateEnacted',
+  'filingDate',
+] as const;
+
+function pickFirstValidField(
+  rec: Record<string, unknown>,
+  ef: Record<string, unknown>,
+  keys: readonly string[],
+): unknown {
+  for (const k of keys) {
+    if (isValidValue(rec[k])) return rec[k];
+  }
+  for (const k of keys) {
+    if (isValidValue(ef[k])) return ef[k];
+  }
+  return undefined;
+}
+
+/**
+ * Step 1 of `mapBackendItemToPaper`: Merges `raw.metadata`, `raw.extraFields`, and top-level `raw`
+ * into a single normalized partial record while promoting all Zotero Schema v42 keys.
+ */
+function mergeRawItemPartials(rec: Record<string, unknown>): {
+  mapped: Record<string, unknown>;
+  ef: Record<string, unknown>;
+} {
+  const rawMetadata =
+    rec.metadata && typeof rec.metadata === 'object' && !Array.isArray(rec.metadata)
+      ? (rec.metadata as Record<string, unknown>)
+      : {};
+  const rawExtraFields =
+    rec.extraFields && typeof rec.extraFields === 'object' && !Array.isArray(rec.extraFields)
+      ? (rec.extraFields as Record<string, unknown>)
+      : {};
+  const ef: Record<string, unknown> = { ...rawMetadata, ...rawExtraFields };
+  const mapped: Record<string, unknown> = { ...rawMetadata, ...rec };
+
+  if (Object.keys(ef).length > 0) {
+    mapped.extraFields = { ...ef };
+  }
+
+  for (const k of ALL_ZOTERO_PROMOTE_KEYS) {
+    if (!isValidValue(mapped[k]) && isValidValue(ef[k])) {
+      mapped[k] = ef[k];
+    }
+  }
+
+  return { mapped, ef };
+}
+
+/**
+ * Step 2 of `mapBackendItemToPaper`: Projects Zotero Schema v42 base fields (`title`, `publicationTitle`,
+ * `publisher`, `date`/`year`, `abstract`, `volume`, `pages`, `place`, `authors`) onto top-level `Item` properties.
+ */
+function projectCanonicalBaseFields(
+  mapped: Record<string, unknown>,
+  rec: Record<string, unknown>,
+  ef: Record<string, unknown>,
+): void {
+  mapped.title =
+    getItemDisplayTitle(mapped) || (typeof rec.title === 'string' ? rec.title : '');
+
+  const normalizedAuthors = normalizeAuthors(
+    rec.authors as unknown[],
+    (rec.creators || ef.creators) as Array<{
+      firstName?: string;
+      lastName?: string;
+      name?: string;
+      fullName?: string;
+      creatorType?: string;
+    }>,
+  );
+  if (normalizedAuthors.length > 0 && (!Array.isArray(rec.authors) || rec.authors.length === 0)) {
+    mapped.authors = normalizedAuthors;
+  }
+
+  const resolvedVenue = getPublicationVenue(mapped);
+  if (!isValidValue(rec.publicationTitle) && isValidValue(resolvedVenue)) {
+    mapped.publicationTitle = resolvedVenue;
+  }
+
+  const rawPublisher = pickFirstValidField(rec, ef, PUBLISHER_CANDIDATE_KEYS);
+  if (!isValidValue(rec.publisher) && isValidValue(rawPublisher)) {
+    mapped.publisher = stripLatexMarkup(String(rawPublisher).trim());
+  }
+
+  const displayDate = getItemDisplayDate(mapped);
+  const resolvedYear =
+    typeof displayDate === 'number'
+      ? displayDate
+      : typeof rec.year === 'number' && rec.year > 0
+        ? rec.year
+        : undefined;
+  if (!isValidValue(rec.year) && resolvedYear !== undefined) {
+    mapped.year = resolvedYear;
+  }
+
+  const rawDateStr = pickFirstValidField(rec, ef, DATE_CANDIDATE_KEYS);
+  if (isValidValue(rawDateStr)) {
+    const cleanDate = String(rawDateStr).trim();
+    if (!isValidValue(rec.publicationDate)) mapped.publicationDate = cleanDate;
+    if (!isValidValue(rec.date)) mapped.date = cleanDate;
+  }
+
+  const baseProjections: ReadonlyArray<readonly [string, readonly string[]]> = [
+    ['abstract', ['abstractNote', 'abstract']],
+    ['volume', ['reporterVolume', 'codeVolume']],
+    ['pages', ['firstPage', 'codePages']],
+  ];
+  for (const [targetKey, sourceKeys] of baseProjections) {
+    if (!isValidValue(rec[targetKey])) {
+      const val = pickFirstValidField(rec, ef, sourceKeys);
+      if (isValidValue(val)) {
+        mapped[targetKey] = String(val).trim();
+      }
+    }
+  }
+
+  if (!isValidValue(rec.place) && !isValidValue(ef.place)) {
+    const fallbackPlace = pickFirstValidField(rec, ef, ['repositoryLocation', 'country']);
+    if (isValidValue(fallbackPlace)) {
+      mapped.place = String(fallbackPlace).trim();
+    }
+  }
+}
+
+/**
+ * Declaratively normalizes a raw backend item or Zotero Schema v42 record into a canonical UI `Item`,
+ * composing `mergeRawItemPartials` and `projectCanonicalBaseFields`.
+ */
+export function mapBackendItemToPaper(
+  raw?: Partial<Item> | Record<string, unknown> | null,
+): Item {
+  if (!raw || typeof raw !== 'object') {
+    return {
+      id: '',
+      title: 'Untitled',
+      authors: [],
+      year: 0,
+      createdAt: '',
+      updatedAt: '',
+    } as unknown as Item;
+  }
+
+  const rec = raw as Record<string, unknown>;
+  const { mapped, ef } = mergeRawItemPartials(rec);
+  projectCanonicalBaseFields(mapped, rec, ef);
+  return mapped as unknown as Item;
+}
+
+export const mapBackendPaperToItem = mapBackendItemToPaper;
+
+const EXTRA_KEY_ALIASES: Record<string, readonly string[]> = {
+  doi: ['doi', 'DOI'],
+  citationkey: ['citationKey', 'citeKey'],
+  citekey: ['citationKey', 'citeKey'],
+  arxiv: ['arxivId', 'archiveID', 'archiveId', 'arXiv'],
+  arxivid: ['arxivId', 'archiveID', 'archiveId', 'arXiv'],
+  archiveid: ['archiveID', 'archiveId', 'arxivId'],
+  pmid: ['pmid', 'PMID'],
+  pmcid: ['pmcid', 'PMCID'],
+  isbn: ['isbn', 'ISBN'],
+  issn: ['issn', 'ISSN'],
+  eventplace: ['eventPlace', 'event-place', 'place'],
+  originaldate: ['originalDate', 'original-date'],
+  publisher: ['publisher'],
+  institution: ['institution', 'publisher'],
+  university: ['university', 'publisher'],
+  authority: ['issuingAuthority', 'authority', 'publisher'],
+  issuingauthority: ['issuingAuthority', 'authority', 'publisher'],
+  court: ['court', 'authority', 'publisher'],
+  organization: ['organization', 'publisher'],
+  company: ['company', 'publisher'],
+  containertitle: ['containerTitle', 'publicationTitle'],
+  publicationtitle: ['publicationTitle'],
+  proceedingstitle: ['proceedingsTitle', 'publicationTitle'],
+  booktitle: ['bookTitle', 'publicationTitle'],
+  meetingname: ['meetingName', 'conferenceName', 'publicationTitle'],
+  versionnumber: ['versionNumber', 'version'],
+  version: ['versionNumber', 'version'],
+  patentnumber: ['patentNumber', 'number'],
+  docketnumber: ['docketNumber', 'number'],
+  publiclawnumber: ['publicLawNumber', 'number'],
+  reportnumber: ['reportNumber', 'number'],
+};
+
+/**
+ * Parses Zotero's "Extra" field cheater syntax (both `Key: Value` lines and `{:Key: Value}` blocks)
+ * into a dictionary supporting both exact, lowercase, and canonical field lookups.
+ */
+export function parseZoteroExtraField(extra?: unknown): Record<string, string> {
+  const result: Record<string, string> = {};
+  if (!extra) return result;
+
+  const setKey = (rawKey: string, rawVal: string) => {
+    const k = rawKey.trim();
+    const v = rawVal.trim();
+    if (!k || !isValidValue(v)) return;
+    result[k] = v;
+    const lower = k.toLowerCase();
+    result[lower] = v;
+    const collapsed = lower.replace(/[\s_-]+/g, '');
+    result[collapsed] = v;
+    const aliases = EXTRA_KEY_ALIASES[collapsed];
+    if (aliases) {
+      for (const alias of aliases) {
+        if (!result[alias]) result[alias] = v;
+        if (!result[alias.toLowerCase()]) result[alias.toLowerCase()] = v;
+      }
+    }
+  };
+
+  if (typeof extra === 'object' && !Array.isArray(extra)) {
+    for (const [k, v] of Object.entries(extra as Record<string, unknown>)) {
+      if (v !== null && v !== undefined && isValidValue(v)) {
+        setKey(k, String(v));
+      }
+    }
+    return result;
+  }
+
+  if (typeof extra !== 'string') return result;
+  const trimmed = extra.trim();
+  if (!trimmed) return result;
+
+  // 1. Parse JSON if formatted as JSON object
+  if (trimmed.startsWith('{') && !trimmed.startsWith('{:')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === 'object') {
+        for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+          if (v !== null && v !== undefined && isValidValue(v)) {
+            setKey(k, String(v));
+          }
+        }
+        return result;
+      }
+    } catch {
+      // Fall through to line-by-line Zotero Extra parsing
+    }
+  }
+
+  // 2. Parse inline {:Key: Value} cheater syntax blocks
+  const inlineRegex = /\{:([^:}]+):\s*([^}]+)\}/g;
+  let inlineMatch: RegExpExecArray | null;
+  while ((inlineMatch = inlineRegex.exec(trimmed)) !== null) {
+    setKey(inlineMatch[1], inlineMatch[2]);
+  }
+
+  // 3. Parse standard Zotero `Key: Value` lines
+  const lines = trimmed.split(/\r?\n/);
+  for (const line of lines) {
+    const cleanLine = line.replace(/\{:[^:}]+:[^}]+\}/g, '').trim();
+    if (!cleanLine) continue;
+    const match = cleanLine.match(/^([A-Za-z][A-Za-z0-9\s_-]{0,40}?)\s*:\s*(.+)$/);
+    if (match) {
+      setKey(match[1], match[2]);
+    }
+  }
+
+  return result;
+}
+
+
+
+

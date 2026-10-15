@@ -193,7 +193,7 @@ interface JupyterNotebook {
         type: cell.cell_type, // 'markdown' or 'code'
         source: Array.isArray(cell.source) ? cell.source.join('') : cell.source || '',
         executionCount: cell.execution_count,
-        outputs: (cell.outputs || []).map((out) => {
+        outputs: (cell.outputs || []).map((out): { type: 'text'; text: string } | { type: 'image'; src: string } | null => {
           if (out.text) {
             return {
               type: 'text',
@@ -215,7 +215,7 @@ interface JupyterNotebook {
             };
           }
           return null;
-        }).filter(Boolean),
+        }).filter((o): o is { type: 'text'; text: string } | { type: 'image'; src: string } => o !== null),
       }));
     } catch {
       return null;
@@ -373,7 +373,7 @@ interface JupyterNotebook {
           ) : isNotebook && parsedNotebook ? (
             /* ── Jupyter Notebook View ── */
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-              {parsedNotebook.map((cell: any, idx: number) => (
+              {parsedNotebook.map((cell, idx: number) => (
                 <div
                   key={cell.id}
                   className="rounded-md border border-border/80 bg-card overflow-hidden text-xs"
@@ -404,7 +404,7 @@ interface JupyterNotebook {
                       <span className="text-10 font-mono text-muted-foreground/70 uppercase">
                         Output:
                       </span>
-                      {cell.outputs.map((out: any, oIdx: number) => (
+                      {cell.outputs.map((out, oIdx: number) => (
                         <div key={oIdx}>
                           {out.type === 'image' ? (
                             <img

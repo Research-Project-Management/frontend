@@ -12,13 +12,17 @@ import {
 import {
   DEFAULT_WORK_ITEM_STATES,
   type WorkItemMutationInput,
+  type Item,
+  type Project,
 } from '@/features/projects/project-id/work-items/types/work-item.types';
+import { normalizeStates } from '@/features/projects/project-id/work-items/utils/work-item.utils';
+import type { YourWorkItem } from '../../schemas/your-work.schema';
 import { useProjectDetails } from '@/features/projects/shell/hooks/use-project';
 
 export interface WorkItemDialogModalProps {
   workItemId: string;
   projectId: string;
-  initialWorkItem?: any;
+  initialWorkItem?: Item | YourWorkItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -41,13 +45,13 @@ export function WorkItemDialogModal({
 
   const fetchedWorkItem = (projectWorkItems?.workItems || projectWorkItems?.items || []).find((t: { id?: string }) => t.id === workItemId);
   const workItem = fetchedWorkItem || initialWorkItem;
-  const pDetails = projectDetails as (typeof projectDetails & { workItemColumns?: any[]; members?: any[] }) | undefined;
-  const columns =
-    projectWorkItems?.columns && projectWorkItems.columns.length > 0
-      ? projectWorkItems.columns
-      : Array.isArray(pDetails?.workItemColumns)
-        ? pDetails.workItemColumns
-        : DEFAULT_WORK_ITEM_STATES;
+  const pDetails = projectDetails as (typeof projectDetails & { workItemColumns?: Array<{ id: string; name: string; [key: string]: unknown }>; members?: Array<{ id?: string; userId?: string; [key: string]: unknown }> }) | undefined;
+  const rawColumns = projectWorkItems?.columns && projectWorkItems.columns.length > 0
+    ? projectWorkItems.columns
+    : Array.isArray(pDetails?.workItemColumns)
+      ? pDetails.workItemColumns
+      : DEFAULT_WORK_ITEM_STATES;
+  const columns = normalizeStates(rawColumns);
   const members = pDetails?.members || [];
 
   const invalidateWorkspaceData = useCallback(() => {
@@ -101,10 +105,10 @@ export function WorkItemDialogModal({
     <WorkItemDialog
       open={open}
       onOpenChange={onOpenChange}
-      card={workItem}
+      card={workItem as unknown as Partial<Item>}
       columns={columns}
       members={members}
-      project={pDetails?.project || pDetails || (workItem?.project ? { id: projectId, ...workItem.project } : { id: projectId })}
+      project={pDetails?.project as Project | undefined || (pDetails as unknown as Project) || undefined}
       onSave={handleSave}
       onDelete={handleDelete}
       onDuplicate={handleDuplicate}

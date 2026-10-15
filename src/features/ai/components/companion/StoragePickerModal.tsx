@@ -107,9 +107,9 @@ export function StoragePickerModal({
       const list = res?.files || (Array.isArray(res) ? res : []);
       const f = list.filter((item: StorageItem) => item.isFolder);
       setRootFolders(f);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[StoragePickerModal] Failed to load root folders:', err);
-      setFoldersError(err?.message || 'Failed to load folders');
+      setFoldersError(err instanceof Error ? err.message : 'Failed to load folders');
     } finally {
       setFoldersLoading(false);
     }
@@ -133,9 +133,9 @@ export function StoragePickerModal({
       });
       const list = res?.files || (Array.isArray(res) ? res : []);
       setItems(list);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[StoragePickerModal] Failed to load files:', err);
-      setError(err?.message || 'Failed to load storage files');
+      setError(err instanceof Error ? err.message : 'Failed to load storage files');
     } finally {
       setLoading(false);
     }

@@ -3,8 +3,8 @@
 import { useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
-import { CitationService } from '../data/citation/citation.service';
-import type { Item, CslStyle } from '../types/library.types';
+import { CitationService } from '@/features/library/data/citation/citation.service';
+import type { Item, CslStyle } from '@/features/library/types/library.types';
 
 export interface UseQuickCopyOptions {
   scopeId?: string;
@@ -77,9 +77,12 @@ export function useQuickCopyShortcuts({
         } else {
           toast.error('Failed to copy to clipboard', { id: toastId });
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         toast.error('Citation copy failed', {
-          description: err?.message || 'Could not contact citation formatting engine',
+          description:
+            err instanceof Error
+              ? err.message
+              : 'Could not contact citation formatting engine',
           id: toastId,
         });
       }
@@ -126,9 +129,12 @@ export function useQuickCopyShortcuts({
         } else {
           toast.error('Failed to copy to clipboard', { id: toastId });
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         toast.error('In-text citation copy failed', {
-          description: err?.message || 'Could not contact citation formatting engine',
+          description:
+            err instanceof Error
+              ? err.message
+              : 'Could not contact citation formatting engine',
           id: toastId,
         });
       }

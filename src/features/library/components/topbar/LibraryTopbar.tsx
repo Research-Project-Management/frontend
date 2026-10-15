@@ -62,14 +62,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/
 import { LibraryFilterPopover } from './LibraryFilterPopover';
 import { LibraryDisplayPopover, type LibraryDisplayOptions } from './LibraryDisplayPopover';
 import { TopbarSearch } from './TopbarSearch';
-import {
-  useLibrarySidebarStore,
-  useLibraryViewStore,
-  useLibraryModalStore,
-  useLibraryUIStore,
-} from '../../store/library-ui.store';
-import { useLibraryPermissions } from '../../store/selectors';
-import type { Item } from '../../types/library.types';
+import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
+import { useLibraryPermissions } from '@/features/library/store/selectors';
+import type { Item } from '@/features/library/types/library.types';
 
 export interface BreadcrumbItem {
   id?: string;
@@ -155,18 +150,15 @@ export function LibraryTopbar({
   className,
 }: TopbarProps) {
   const onImportFromUser = propOnImportFromUser || onImportFromPersonal;
-  const {
-    isSidebarOpen,
-    toggleSidebar,
-    isInspectorOpen,
-    toggleInspector,
-    activeScope,
-  } = useLibrarySidebarStore();
+  const isSidebarOpen = useLibraryUIStore((s) => s.isSidebarOpen);
+  const toggleSidebar = useLibraryUIStore((s) => s.toggleSidebar);
+  const isInspectorOpen = useLibraryUIStore((s) => s.isInspectorOpen);
+  const toggleInspector = useLibraryUIStore((s) => s.toggleInspector);
+  const activeScope = useLibraryUIStore((s) => s.activeScope);
   const handleToggleSidebar = onToggleSidebar || toggleSidebar;
   const { canEditItem } = useLibraryPermissions();
   const isEffectiveCanEdit = canEdit && canEditItem;
-  const activeItemId = useLibraryViewStore((s) => s.activeItemId);
-  const openModal = useLibraryModalStore((s) => s.openModal);
+  const openModal = useLibraryUIStore((s) => s.openModal);
   const storeDisplayOptions = useLibraryUIStore((s) => s.displayOptions);
   const setStoreDisplayOptions = useLibraryUIStore((s) => s.setDisplayOptions);
 
@@ -234,7 +226,7 @@ export function LibraryTopbar({
       <div className="flex items-center gap-2.5 min-w-0 shrink-0 mr-2">
         {showSidebarToggle && !isSidebarOpen && (
           <div className="flex items-center gap-1.5 -ml-1 mr-0.5">
-            <Tooltip delayDuration={700}>
+            <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   type="button"
@@ -251,7 +243,6 @@ export function LibraryTopbar({
                 side="bottom"
                 align="start"
                 sideOffset={6}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
               >
                 Expand sidebar
               </TooltipContent>
@@ -284,32 +275,40 @@ export function LibraryTopbar({
                     <ChevronRight className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                   )}
                   {!isLast && onNavigateCrumb ? (
-                    <button
-                      type="button"
-                      className="flex items-center gap-1.5 h-7 px-1.5 rounded-md text-13 font-medium text-foreground hover:bg-muted/60 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 select-none text-left relative before:absolute before:-inset-1.5 md:before:hidden"
-                      onClick={() => onNavigateCrumb(crumb.id)}
-                    >
-                      {idx === 0 && Icon && (
-                        <Icon className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-                      )}
-                      <span
-                        className="text-13 tracking-tight truncate max-w-[120px] sm:max-w-[180px] font-medium text-foreground"
-                        title={crumb.name}
-                      >
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex items-center gap-1.5 h-7 px-1.5 rounded-md text-13 font-medium text-foreground hover:bg-muted/60 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 select-none text-left relative before:absolute before:-inset-1.5 md:before:hidden"
+                          onClick={() => onNavigateCrumb(crumb.id)}
+                        >
+                          {idx === 0 && Icon && (
+                            <Icon className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                          )}
+                          <span className="text-13 tracking-tight truncate max-w-[120px] sm:max-w-[180px] font-medium text-foreground">
+                            {crumb.name}
+                          </span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" sideOffset={6}>
                         {crumb.name}
-                      </span>
-                    </button>
+                      </TooltipContent>
+                    </Tooltip>
                   ) : (
                     <div className="flex items-center gap-2 h-7 px-1 min-w-0 select-none shrink-0">
                       {idx === 0 && Icon && (
                         <Icon className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                       )}
-                      <h1
-                        className="text-13 font-medium tracking-tight text-foreground truncate max-w-[200px] sm:max-w-[320px]"
-                        title={crumb.name}
-                      >
-                        {crumb.name}
-                      </h1>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <h1 className="text-13 font-medium tracking-tight text-foreground truncate max-w-[200px] sm:max-w-[320px]">
+                            {crumb.name}
+                          </h1>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" sideOffset={6}>
+                          {crumb.name}
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                   )}
                 </React.Fragment>
@@ -566,7 +565,6 @@ export function LibraryTopbar({
                 side="bottom"
                 align="end"
                 sideOffset={6}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
               >
                 Expand panel
               </TooltipContent>

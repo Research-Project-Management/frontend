@@ -38,7 +38,7 @@ import {
 import { ArchiveCard } from '../components/archived/ArchiveCard';
 import { DeletePermanentModal } from '../components/archived/DeletePermanentModal';
 import { ArchivedEmptyState } from '../components/archived/ArchivedEmptyState';
-import { ArchiveService } from '@/features/projects/project-id/work-items/services/archive.service';
+import { ArchiveService } from '@/features/projects/project-id/work-items/api/work-item.api';
 import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
 import { ViewService } from '@/features/projects/project-id/views/services/view.service';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
@@ -166,7 +166,7 @@ export function ArchivePage() {
     queryFn: async () => {
       if (!currentProjectId) return [] as WorkItemViewItem[];
       const res = await ViewService.getViews(currentProjectId);
-      return (res || []).filter((v: any) => v.archivedAt || v.isArchived);
+      return (res || []).filter((v: WorkItemViewItem) => { const item = v as unknown as { archivedAt?: string; isArchived?: boolean }; return Boolean(item.archivedAt || item.isArchived); });
     },
     enabled: Boolean(currentProjectId),
   });

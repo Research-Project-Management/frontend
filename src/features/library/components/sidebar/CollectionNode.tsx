@@ -7,7 +7,7 @@ import { Folder, ChevronRight } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import type { TreeNode, CollectionActionHandlers } from './sidebar.types';
-import type { Collection } from '../../types/library.types';
+import type { Collection } from '@/features/library/types/library.types';
 import { getValidMoveTargets } from './tree-helpers';
 import { CollectionContextMenu } from './CollectionContextMenu';
 
@@ -176,7 +176,7 @@ export const CollectionNode = memo(function CollectionNode({
               />
 
               {hasChildren && (
-                <Tooltip delayDuration={700}>
+                <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       type="button"
@@ -202,7 +202,6 @@ export const CollectionNode = memo(function CollectionNode({
                     align="start"
                     sideOffset={6}
                     alignOffset={2}
-                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
                   >
                     {effectiveIsOpen ? 'Collapse' : 'Expand'}
                   </TooltipContent>

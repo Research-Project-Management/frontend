@@ -23,18 +23,18 @@ import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Label } from '@/shared/components/ui/label';
 import { Badge } from '@/shared/components/ui/badge';
-import type { Item } from '../../types/library.types';
+import type { Item } from '@/features/library/types/library.types';
 import {
   ALL_ITEM_TYPES_FLAT,
   FIELD_LABELS,
   getItemTypeDefinition,
   humanizeFieldName,
   SchemaFieldDefinition,
-} from '../../types';
+} from '@/features/library/types';
 import {
   useItemTypeConversion,
   type TypeConversionPreview,
-} from '../../data';
+} from '@/features/library/data';
 import { cn } from '@/shared/lib/utils';
 
 export type TypeConversionItemLike = {
@@ -42,6 +42,7 @@ export type TypeConversionItemLike = {
   itemType?: string;
   projectId?: string | null;
   title?: string;
+  version?: number;
   [key: string]: unknown;
 };
 
@@ -147,8 +148,8 @@ export function TypeConversionModal({
 
   const preservedFieldDetails = useMemo(() => {
     const list = preview?.preservedFields ?? [];
-    const projected = (preview?.projectedItem ?? {}) as Record<string, unknown>;
-    const current = (currentItem ?? {}) as unknown as Record<string, unknown>;
+    const projected: Record<string, unknown> = preview?.projectedItem ? { ...preview.projectedItem } : {};
+    const current: Record<string, unknown> = currentItem ? { ...currentItem } : {};
 
     return list.map((fieldKey) => {
       const val = projected[fieldKey] ?? current[fieldKey];
@@ -180,7 +181,17 @@ export function TypeConversionModal({
   }, [droppedWithValues]);
 
   // ── Column 3: New Available Fields Calculations ────────────────────────────
-  const newAvailableFields = useMemo(() => {
+  const newAvailableFields = useMemo((): SchemaFieldDefinition[] => {
+    // 1. Prefer authoritative Backend preview.newAvailableFields when provided
+    if (Array.isArray(preview?.newAvailableFields) && preview.newAvailableFields.length > 0) {
+      return preview.newAvailableFields.map((f) => ({
+        field: f.field,
+        label: f.label || resolveFieldLabel(f.field),
+        type: (f.type as SchemaFieldDefinition['type']) || 'text',
+        category: (f.category as SchemaFieldDefinition['category']) || 'core',
+      }));
+    }
+
     if (!targetTypeDef?.fields) return [];
     const preservedSet = new Set((preview?.preservedFields ?? []).map((f) => f.toLowerCase()));
     const mappedTargetSet = new Set(mappedFields.map((m) => m.toField.toLowerCase()));
@@ -193,7 +204,7 @@ export function TypeConversionModal({
       'datemodified',
     ]);
 
-    const projected = (preview?.projectedItem ?? {}) as Record<string, unknown>;
+    const projected: Record<string, unknown> = preview?.projectedItem ? { ...preview.projectedItem } : {};
 
     return targetTypeDef.fields.filter((f: SchemaFieldDefinition) => {
       const lower = f.field.toLowerCase();
@@ -204,7 +215,7 @@ export function TypeConversionModal({
       if (existingVal !== undefined && existingVal !== null && existingVal !== '') return false;
       return true;
     });
-  }, [targetTypeDef, preview?.preservedFields, mappedFields, preview?.projectedItem]);
+  }, [preview?.newAvailableFields, targetTypeDef, preview?.preservedFields, mappedFields, preview?.projectedItem]);
 
   // ── Confirm Handler ────────────────────────────────────────────────────────
   const handleConfirm = async () => {
@@ -213,12 +224,13 @@ export function TypeConversionModal({
       const result = await convertAsync({
         itemId,
         targetType,
-        expectedVersion: (currentItem as unknown as { version?: number })?.version,
+        expectedVersion: currentItem?.version,
         retainUnmappedInExtra: retainUnmapped,
       });
-      const resAny = result as unknown as { item?: Item; paper?: Item; data?: Item };
-      const updatedItem = resAny?.item ?? resAny?.paper ?? resAny?.data ?? (result as unknown as Item);
-      onSuccess?.(updatedItem);
+      const updatedItem = result?.item ?? result?.paper;
+      if (updatedItem) {
+        onSuccess?.(updatedItem);
+      }
       onOpenChange(false);
     } catch {
       // Toast notification is managed by hook

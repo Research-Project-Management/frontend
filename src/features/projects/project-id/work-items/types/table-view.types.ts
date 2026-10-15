@@ -15,7 +15,7 @@ import {
 } from '@/shared/components/icons';
 import type {
   Item,
-  Column as ColumnType,
+  Column,
   ProjectMember,
   BaseWorkItemViewProps,
   WorkItemCardHandlers,
@@ -63,8 +63,8 @@ export interface TablePropertyConfig {
 export interface TableViewProps extends BaseWorkItemViewProps, WorkItemCardHandlers {
   items?: Item[];
   itemsByColumnId?: Map<string, Item[]> | Record<string, Item[]>;
-  columns: ColumnType[];
-  projectStates?: ColumnType[];
+  columns: Column[];
+  projectStates?: Column[];
   projectId?: string;
   members?: ProjectMember[];
   selectedIds?: string[];
@@ -78,7 +78,6 @@ export interface TableViewProps extends BaseWorkItemViewProps, WorkItemCardHandl
 export interface TableColumnPropertiesPopoverProps {
   visibleProperties: Record<TablePropertyKey, boolean>;
   onToggleProperty: (key: TablePropertyKey) => void;
-  onResetProperties?: () => void;
   compact?: boolean;
 }
 

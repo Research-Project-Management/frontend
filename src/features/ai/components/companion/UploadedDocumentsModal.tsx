@@ -121,9 +121,9 @@ export function UploadedDocumentsModal({
       const targetScope = projectId && projectId !== 'all' ? projectId : undefined;
       const res = await fetchDocuments(targetScope);
       setDocuments(Array.isArray(res) ? res : []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[UploadedDocumentsModal] Failed to load documents:', err);
-      setError(err?.message || 'Failed to load uploaded documents');
+      setError(err instanceof Error ? err.message : 'Failed to load uploaded documents');
     } finally {
       setLoading(false);
     }
@@ -153,8 +153,8 @@ export function UploadedDocumentsModal({
         const targetScope = projectId === 'all' || !projectId ? 'me' : projectId;
         await uploadDocument(targetScope, file);
         successCount++;
-      } catch (err: any) {
-        toast.error('Failed to upload ' + file.name + ': ' + (err?.message || 'Upload error'));
+      } catch (err: unknown) {
+        toast.error('Failed to upload ' + file.name + ': ' + (err instanceof Error ? err.message : 'Upload error'));
       }
     }
 
@@ -182,8 +182,8 @@ export function UploadedDocumentsModal({
         return next;
       });
       toast.success('Deleted "' + doc.title + '"');
-    } catch (err: any) {
-      toast.error('Failed to delete document: ' + (err?.message || 'Error'));
+    } catch (err: unknown) {
+      toast.error('Failed to delete document: ' + (err instanceof Error ? err.message : 'Error'));
     } finally {
       setDeletingId(null);
     }

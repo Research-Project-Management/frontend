@@ -1,1 +1,1 @@
-export { default } from '@/features/editor/ui/shell/EditorSkeleton';
+export { default } from '@/features/editor/core/shell/EditorSkeleton';

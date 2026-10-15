@@ -1,5 +1,5 @@
-﻿import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
-import { MANUSCRIPTS_API_BASE } from '@/features/editor/sdk/manuscript/base';
+import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
+import { MANUSCRIPTS_API_BASE } from '@/features/editor/core';
 import type { Page, CreatePageInput, CreatePageResponse } from '../types/page.types';
 
 export const PageService = {

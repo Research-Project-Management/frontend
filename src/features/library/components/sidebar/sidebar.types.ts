@@ -1,4 +1,4 @@
-import type { Collection } from '../../types/library.types';
+import type { Collection } from '@/features/library/types/library.types';
 
 export type TreeNode = Collection & { children: TreeNode[] };
 

@@ -7,7 +7,7 @@ import {
   type NotificationBundle,
 } from '@/features/editor/domain/collaboration/notification-digest';
 import { notificationBundlerService } from '@/features/editor/sdk/manuscript.service';
-import { notificationBundlerKeys } from '@/features/editor/ui/sidebar/review/hooks/useNotificationBundler';
+import { notificationBundlerKeys } from '@/features/editor/subsystems/review';
 import * as api from '@/shared/lib/api';
 
 describe('Notification Bundling (10-Minute Digest - Overleaf Parity)', () => {

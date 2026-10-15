@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -13,7 +12,6 @@ import {
   TagsService,
   NotesService,
   StateService,
-  ItemTypesService,
   SavedSearchesService,
   RelationsService,
   type ItemStateData,
@@ -36,18 +34,30 @@ import type {
   UpdateCollectionDTO,
   Note,
   SavedSearch,
-} from '../../types/library.types';
-import { updateLibrarySchemaRegistry } from '../../types';
-import { itemKeys, libraryKeys, invalidateCollections } from '../query-keys';
+} from '@/features/library/types/library.types';
+import { updateLibrarySchemaRegistry } from '@/features/library/types';
+import {
+  itemKeys,
+  libraryKeys,
+  collectionKeys,
+  tagKeys,
+  noteKeys,
+  savedSearchKeys,
+  relationKeys,
+  invalidateCollections,
+} from '@/features/library/data/query-keys';
 
-export { itemKeys, invalidateCollections };
+export {
+  itemKeys,
+  collectionKeys,
+  tagKeys,
+  noteKeys,
+  savedSearchKeys,
+  relationKeys,
+  invalidateCollections,
+};
 
 // ── COLLECTIONS QUERY KEYS & HOOKS ───────────────────────────────────────────
-
-export const collectionKeys = {
-  all: (scopeId?: string) => libraryKeys.collections(scopeId),
-  byId: (scopeId?: string, collectionId?: string) => libraryKeys.collection(scopeId, collectionId),
-};
 
 export function useLibraryCountsQuery(scopeId?: string) {
   const targetScope = scopeId || 'user';
@@ -58,20 +68,21 @@ export function useLibraryCountsQuery(scopeId?: string) {
   });
 }
 
-export type UseCollectionsScopeInput = string | { scopeId?: string; projectId?: string };
+export type UseCollectionsScopeInput = string | { scopeId?: string; projectId?: string; enabled?: boolean };
 
 export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
   const scopeId = typeof scopeIdOrOptions === 'string'
     ? scopeIdOrOptions
     : (scopeIdOrOptions?.scopeId || scopeIdOrOptions?.projectId || 'user');
+  const explicitEnabled = typeof scopeIdOrOptions === 'object' ? scopeIdOrOptions?.enabled : undefined;
 
   const queryClient = useQueryClient();
 
   const collectionsQuery = useQuery({
     queryKey: collectionKeys.all(scopeId),
     queryFn: () => getCollections(scopeId),
-    enabled: true,
-    select: (data) => data.collections || [],
+    enabled: (explicitEnabled ?? true) && Boolean(scopeId),
+    select: (data) => (Array.isArray(data) ? data : (data?.collections || [])),
   });
 
   const createMutation = useMutation({
@@ -91,9 +102,9 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
       invalidateCollections(queryClient, scopeId);
       toast.success('Collection created', { id: 'collection-mutation' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to create collection', {
-        description: err?.message || 'Please check the name and try again.',
+        description: err.message || 'Please check the name and try again.',
         id: 'collection-mutation',
       });
     },
@@ -117,7 +128,7 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
     },
     onMutate: async (data) => {
       await queryClient.cancelQueries({ queryKey: collectionKeys.all(scopeId) });
-      const previousCollections = queryClient.getQueryData<any>(collectionKeys.all(scopeId));
+      const previousCollections = queryClient.getQueryData<Collection[] | { collections: Collection[] }>(collectionKeys.all(scopeId));
 
       if (previousCollections) {
         const updateList = (cols: Collection[]) =>
@@ -145,12 +156,12 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
 
       return { previousCollections };
     },
-    onError: (err: any, _variables, context) => {
+    onError: (err: Error, _variables, context) => {
       if (context?.previousCollections) {
         queryClient.setQueryData(collectionKeys.all(scopeId), context.previousCollections);
       }
       toast.error('Failed to update collection', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'collection-mutation',
       });
     },
@@ -171,9 +182,9 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
         id: 'collection-mutation',
       });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to delete collection', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'collection-mutation',
       });
     },
@@ -219,11 +230,9 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
 export function useCollectionsQuery(scopeId?: string) {
   const targetScope = scopeId || 'user';
   return useQuery({
-    queryKey: libraryKeys.collectionsList(targetScope),
-    queryFn: async () => {
-      const res = await CollectionsService.getAll(targetScope);
-      return res?.collections || [];
-    },
+    queryKey: libraryKeys.collections(targetScope),
+    queryFn: () => getCollections(targetScope),
+    select: (data) => (Array.isArray(data) ? data : (data?.collections || [])),
     staleTime: 1000 * 60,
   });
 }
@@ -249,9 +258,9 @@ export function useCreateCollectionMutation(scopeId?: string) {
       invalidateCollections(queryClient, effectiveScope);
       toast.success('Collection created', { id: 'collection-create' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to create collection', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'collection-create',
       });
     },
@@ -273,9 +282,9 @@ export function useDetachItemFromCollectionMutation(scopeId?: string) {
         id: 'detach-item',
       });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to remove item from collection', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
       });
     },
   });
@@ -297,9 +306,9 @@ export function useBatchDetachItemsMutation(scopeId?: string) {
         id: 'batch-detach-items',
       });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to remove items from collection', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
       });
     },
   });
@@ -310,9 +319,13 @@ export function useBatchDetachItemsMutation(scopeId?: string) {
 export function useViewItems(
   scopeId?: string,
   view: 'all' | 'recent' | 'unfiled' | 'trash' | 'my-publications' | 'publications' = 'all',
-  search?: string,
+  searchOrOptions?: string | { search?: string; enabled?: boolean },
+  options?: { enabled?: boolean },
 ) {
   const targetScope = scopeId || 'user';
+  const search = typeof searchOrOptions === 'string' ? searchOrOptions : searchOrOptions?.search;
+  const enabled =
+    (typeof searchOrOptions === 'object' ? searchOrOptions?.enabled : options?.enabled) ?? true;
   return useQuery({
     queryKey: itemKeys.byView(targetScope, view, search),
     queryFn: ({ signal }) =>
@@ -324,7 +337,7 @@ export function useViewItems(
         },
         { signal },
       ),
-    enabled: true,
+    enabled,
     select: (data) => {
       const items: Item[] = data?.items || [];
       const meta = (data?.meta || data?.pagination || null) as CursorPaginationMeta | null;
@@ -569,9 +582,12 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
           description: `Moved ${ids.length} item(s) to target collection.`,
           id: toastId,
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         toast.error('Failed to move items', {
-          description: err?.message || 'Could not move selected documents.',
+          description:
+            err instanceof Error
+              ? err.message
+              : 'Could not move selected documents.',
           id: toastId,
         });
       }
@@ -599,7 +615,7 @@ export function useItemTypes(scopeIdOrOptions?: string | { scopeId?: string; pro
     queryFn: async () => {
       const res = await ItemsService.getItemTypes(sid);
       if (res) {
-        updateLibrarySchemaRegistry(res as unknown as Parameters<typeof updateLibrarySchemaRegistry>[0]);
+        updateLibrarySchemaRegistry(res);
       }
       return res;
     },
@@ -627,28 +643,42 @@ export function useItemTypes(scopeIdOrOptions?: string | { scopeId?: string; pro
  * - Infinite query: { pages: [{ items: Item[] }], pageParams: [] }
  * - Raw array: Item[]
  */
-function patchItemInCacheData(oldData: any, targetId: string, patch: Partial<Item>): any {
-  if (!oldData) return oldData;
-  if (Array.isArray(oldData.items)) {
+function patchItemInCacheData(
+  oldData: unknown,
+  targetId: string,
+  patch: Partial<Item>,
+): unknown {
+  if (!oldData || typeof oldData !== 'object') return oldData;
+  const data = oldData as {
+    items?: Item[];
+    pages?: Array<{ items?: Item[] }>;
+  };
+  if (Array.isArray(data.items)) {
     return {
-      ...oldData,
-      items: oldData.items.map((it: Item) => (it.id === targetId ? { ...it, ...patch } : it)),
+      ...data,
+      items: data.items.map((it: Item) =>
+        it.id === targetId ? { ...it, ...patch } : it,
+      ),
     };
   }
-  if (Array.isArray(oldData.pages)) {
+  if (Array.isArray(data.pages)) {
     return {
-      ...oldData,
-      pages: oldData.pages.map((page: any) => {
+      ...data,
+      pages: data.pages.map((page) => {
         if (!page || !Array.isArray(page.items)) return page;
         return {
           ...page,
-          items: page.items.map((it: Item) => (it.id === targetId ? { ...it, ...patch } : it)),
+          items: page.items.map((it: Item) =>
+            it.id === targetId ? { ...it, ...patch } : it,
+          ),
         };
       }),
     };
   }
   if (Array.isArray(oldData)) {
-    return oldData.map((it: Item) => (it.id === targetId ? { ...it, ...patch } : it));
+    return (oldData as Item[]).map((it: Item) =>
+      it.id === targetId ? { ...it, ...patch } : it,
+    );
   }
   return oldData;
 }
@@ -764,14 +794,14 @@ export function useItemState(scopeId?: string, itemId?: string | null) {
   };
 }
 
-export function useTrash(scopeId?: string) {
+export function useTrash(scopeId: string = 'user', options?: { enabled?: boolean }) {
   const queryClient = useQueryClient();
   const effectiveScope = scopeId || 'user';
 
   const trashQuery = useQuery({
     queryKey: itemKeys.trash(effectiveScope),
     queryFn: ({ signal }) => ItemsService.getAll(effectiveScope, { view: 'trash' }, { signal }),
-    enabled: true,
+    enabled: (options?.enabled ?? true) && Boolean(scopeId),
     select: (data): Item[] => {
       if (Array.isArray(data?.items)) return data.items;
       if (Array.isArray(data)) return data as Item[];
@@ -790,9 +820,9 @@ export function useTrash(scopeId?: string) {
       });
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to restore item', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'trash-mutation-toast',
       });
     },
@@ -807,9 +837,9 @@ export function useTrash(scopeId?: string) {
       });
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to delete item', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'trash-mutation-toast',
       });
     },
@@ -832,9 +862,9 @@ export function useTrash(scopeId?: string) {
       queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
       invalidateCollections(queryClient, effectiveScope);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to empty trash', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'trash-mutation-toast',
       });
     },
@@ -878,8 +908,8 @@ export function useItem(id?: string, scopeId?: string) {
 export interface LibraryItemsQueryResult {
   items: Item[];
   total: number;
-  meta: any;
-  pagination: any;
+  meta: Record<string, unknown> | CursorPaginationMeta | null;
+  pagination: Record<string, unknown> | CursorPaginationMeta | null;
   hasNextPage: boolean;
   nextCursor?: string | null;
 }
@@ -978,7 +1008,7 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
         // 1. Direct cache update for detail view
         queryClient.setQueryData(
           itemKeys.byId(effectiveScope, targetId),
-          (old: any) => patchSingleItemCache(old, patchData),
+          (old: unknown) => patchSingleItemCache(old, patchData),
         );
 
         // 2. Direct cache patch for all active item lists (instant update, zero table flicker)
@@ -1003,13 +1033,13 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
         toast.success('Item updated', { id: 'item-update' });
       }
     },
-    onError: (err: any, variables) => {
+    onError: (err: Error, variables) => {
       const targetId = variables?.id || variables?.itemId;
       if (targetId) {
         queryClient.invalidateQueries({ queryKey: itemKeys.byId(effectiveScope, targetId) });
       }
       toast.error('Failed to update item', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'item-update',
       });
     },
@@ -1046,21 +1076,22 @@ export function useToggleStarItemMutation(scopeId?: string) {
       // Optimistically update detail cache
       queryClient.setQueryData(
         itemKeys.byId(effectiveScope, id),
-        (old: any) => patchSingleItemCache(old, { isStarred }),
+        (old: unknown) => patchSingleItemCache(old, { isStarred }),
       );
 
       // Optimistically update state cache
       queryClient.setQueryData(
         itemKeys.state(effectiveScope, id),
-        (old: any) => {
-          if (!old) return { isStarred };
-          return { ...old, isStarred };
+        (old: unknown) => {
+          const s = old as Record<string, unknown> | undefined;
+          if (!s) return { isStarred };
+          return { ...s, isStarred };
         },
       );
 
       return { previousLists, previousItem, previousState };
     },
-    onError: (err: any, variables, context) => {
+    onError: (err: Error, variables, context) => {
       // Rollback to snapshots
       if (context?.previousLists) {
         for (const [key, data] of context.previousLists) {
@@ -1116,9 +1147,9 @@ export function useDeleteLibraryItemsMutation(scopeId?: string) {
       invalidateCollections(queryClient, effectiveScope);
       toast.success(`Moved ${ids.length} ${ids.length === 1 ? 'item' : 'items'} to trash`, { id: 'item-delete' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to delete items', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'item-delete',
       });
     },
@@ -1145,9 +1176,9 @@ export function useBatchRestoreItemsMutation(scopeId?: string) {
       invalidateCollections(queryClient, effectiveScope);
       toast.success(`Restored ${ids.length} ${ids.length === 1 ? 'item' : 'items'}`, { id: 'item-restore' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to restore items', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'item-restore',
       });
     },
@@ -1170,9 +1201,9 @@ export function useBatchPurgeItemsMutation(scopeId?: string) {
       invalidateCollections(queryClient, effectiveScope);
       toast.success(`Permanently deleted ${ids.length} ${ids.length === 1 ? 'item' : 'items'}`, { id: 'item-purge' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to permanently delete items', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'item-purge',
       });
     },
@@ -1197,11 +1228,6 @@ export type { ItemMetadataSourceItem, ItemMetadataSourcesResponse } from './cata
 
 // ── TAGS QUERY HOOKS ──────────────────────────────────────────────────────────
 
-export const tagKeys = {
-  all: ['tags'] as const,
-  list: (scopeId?: string) => libraryKeys.tags(scopeId),
-};
-
 export function useTags(scopeId?: string) {
   const queryClient = useQueryClient();
   const effectiveScope = scopeId || 'user';
@@ -1218,12 +1244,12 @@ export function useTags(scopeId?: string) {
       TagsService.create(effectiveScope, name, color, type),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: libraryKeys.all });
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       toast.success('Tag created', { id: 'tag-mutation' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to create tag', {
-        description: err?.message || 'Please check the name and try again.',
+        description: err.message || 'Please check the name and try again.',
         id: 'tag-mutation',
       });
     },
@@ -1233,12 +1259,12 @@ export function useTags(scopeId?: string) {
     mutationFn: (tagId: string) => TagsService.delete(effectiveScope, tagId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: libraryKeys.all });
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       toast.success('Tag deleted', { id: 'tag-mutation' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to delete tag', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'tag-mutation',
       });
     },
@@ -1248,12 +1274,12 @@ export function useTags(scopeId?: string) {
     mutationFn: () => TagsService.deleteAutomatic(effectiveScope),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: libraryKeys.all });
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       toast.success(`Removed ${data?.count ?? 0} automatic tag(s)`, { id: 'tag-mutation' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to delete automatic tags', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'tag-mutation',
       });
     },
@@ -1277,15 +1303,6 @@ export function useTags(scopeId?: string) {
 
 // ── NOTES QUERY HOOKS ─────────────────────────────────────────────────────────
 
-export const noteKeys = {
-  all: (scopeId?: string) => [...libraryKeys.all, 'notes', scopeId || 'user'] as const,
-  lists: () => [...libraryKeys.all, 'notes'] as const,
-  list: (scopeId?: string, itemId?: string) =>
-    libraryKeys.notes(scopeId, itemId),
-  detail: (scopeId?: string, id?: string) =>
-    [...libraryKeys.all, 'notes', scopeId || 'user', 'detail', id || 'none'] as const,
-};
-
 export function useNotes(scopeId?: string, itemId?: string) {
   const queryClient = useQueryClient();
 
@@ -1301,14 +1318,19 @@ export function useNotes(scopeId?: string, itemId?: string) {
   const createMutation = useMutation({
     mutationFn: (dto: CreateNoteDTO) =>
       NotesService.create(scopeId, { ...dto, itemId: dto.itemId !== undefined ? dto.itemId : itemId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, itemId) });
+    onSuccess: (_data, dto) => {
+      const targetItemId = (dto.itemId !== undefined ? dto.itemId : itemId) ?? undefined;
+      queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, targetItemId) });
       queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
+      if (targetItemId) {
+        queryClient.invalidateQueries({ queryKey: itemKeys.byId(scopeId, targetItemId) });
+      }
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
       toast.success('Note saved', { id: 'note-mutation-toast' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to create note', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'note-mutation-toast',
       });
     },
@@ -1329,9 +1351,9 @@ export function useNotes(scopeId?: string, itemId?: string) {
       queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
       toast.success('Note updated', { id: 'note-mutation-toast' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to update note', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'note-mutation-toast',
       });
     },
@@ -1343,11 +1365,15 @@ export function useNotes(scopeId?: string, itemId?: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, itemId) });
       queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
+      if (itemId) {
+        queryClient.invalidateQueries({ queryKey: itemKeys.byId(scopeId, itemId) });
+      }
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
       toast.success('Note deleted', { id: 'note-mutation-toast' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to delete note', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'note-mutation-toast',
       });
     },
@@ -1383,13 +1409,6 @@ export function useNotes(scopeId?: string, itemId?: string) {
 
 // ── SAVED SEARCHES QUERY HOOKS ────────────────────────────────────────────────
 
-export const savedSearchKeys = {
-  all: (scopeId?: string) => libraryKeys.savedSearches(scopeId),
-  byId: (scopeId: string | undefined, id: string) => [...libraryKeys.savedSearches(scopeId), id] as const,
-  results: (scopeId: string | undefined, id: string, params?: Record<string, any>) =>
-    [...libraryKeys.savedSearches(scopeId), id, 'results', params] as const,
-};
-
 export const invalidateSavedSearches = (qc: QueryClient, scopeId?: string) => {
   qc.invalidateQueries({ queryKey: savedSearchKeys.all(scopeId) });
 };
@@ -1411,9 +1430,9 @@ export function useSavedSearches(scopeId?: string) {
       invalidateSavedSearches(queryClient, effectiveScope);
       toast.success('Smart collection created', { id: 'saved-search-mutation' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to create smart collection', {
-        description: err?.message || 'Please check your conditions and try again.',
+        description: err.message || 'Please check your conditions and try again.',
         id: 'saved-search-mutation',
       });
     },
@@ -1429,9 +1448,9 @@ export function useSavedSearches(scopeId?: string) {
       });
       toast.success('Smart collection updated', { id: 'saved-search-mutation' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to update smart collection', {
-        description: err?.message,
+        description: err.message,
         id: 'saved-search-mutation',
       });
     },
@@ -1443,9 +1462,9 @@ export function useSavedSearches(scopeId?: string) {
       invalidateSavedSearches(queryClient, effectiveScope);
       toast.success('Smart collection deleted', { id: 'saved-search-mutation' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to delete smart collection', {
-        description: err?.message,
+        description: err.message,
         id: 'saved-search-mutation',
       });
     },
@@ -1498,18 +1517,18 @@ export function useSavedSearchResults(
 
 // ── RELATIONS QUERY HOOKS ─────────────────────────────────────────────────────
 
-export const relationKeys = {
-  all: (scopeId?: string, itemId?: string) =>
-    ['relations', scopeId || 'global', itemId] as const,
-};
-
 export function useRelations(
-  scopeIdOrOptions?: string | { scopeId?: string; projectId?: string },
+  scopeIdOrOptions?: string | { scopeId?: string; projectId?: string; enabled?: boolean },
   itemId?: string,
+  options?: { enabled?: boolean },
 ) {
   const scopeId = typeof scopeIdOrOptions === 'string'
     ? scopeIdOrOptions
-    : (scopeIdOrOptions?.scopeId || scopeIdOrOptions?.projectId || 'global');
+    : (scopeIdOrOptions?.scopeId || scopeIdOrOptions?.projectId || 'user');
+  const explicitEnabled =
+    (typeof scopeIdOrOptions === 'object' ? scopeIdOrOptions?.enabled : undefined) ??
+    options?.enabled ??
+    true;
 
   const queryClient = useQueryClient();
   const effectiveItemId = itemId || '';
@@ -1517,7 +1536,7 @@ export function useRelations(
   const relationsQuery = useQuery({
     queryKey: relationKeys.all(scopeId, effectiveItemId),
     queryFn: () => RelationsService.getRelated(scopeId || '', effectiveItemId),
-    enabled: Boolean(effectiveItemId && effectiveItemId !== 'user'),
+    enabled: explicitEnabled && Boolean(effectiveItemId && effectiveItemId !== 'user'),
     select: (data) => ({
       items: data.relatedItems || [],
       total: data.total || 0,
@@ -1555,9 +1574,9 @@ export function useRelations(
         { id: 'relation-mutation' },
       );
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to link references', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'relation-mutation',
       });
     },
@@ -1577,9 +1596,9 @@ export function useRelations(
       }
       toast.success('Reference unlinked', { id: 'relation-mutation' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to unlink reference', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'relation-mutation',
       });
     },
@@ -1627,8 +1646,14 @@ export interface TypeConversionPreview {
   mappedFields: FieldMappingChange[];
   droppedFields: DroppedField[];
   creatorChanges: CreatorRoleChange[];
-  projectedItem: Record<string, any>;
-  unmappedRetained: Record<string, any>;
+  newAvailableFields?: Array<{
+    field: string;
+    label: string;
+    category?: string;
+    type?: string;
+  }>;
+  projectedItem: Record<string, unknown>;
+  unmappedRetained: Record<string, unknown>;
   hasLoss: boolean;
 }
 
@@ -1652,9 +1677,9 @@ export function useItemTypeConversion(scopeId?: string) {
         targetType,
         retainUnmappedInExtra,
       ).then((res: unknown): TypeConversionPreview => (res as { preview?: TypeConversionPreview; data?: TypeConversionPreview })?.preview ?? (res as { data?: TypeConversionPreview })?.data ?? (res as TypeConversionPreview)),
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Preview failed', {
-        description: err?.message || 'Failed to preview type conversion.',
+        description: err.message || 'Failed to preview type conversion.',
         id: 'type-conversion-preview',
       });
     },
@@ -1693,9 +1718,9 @@ export function useItemTypeConversion(scopeId?: string) {
         });
       }
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Conversion failed', {
-        description: err?.message || 'Could not convert item type.',
+        description: err.message || 'Could not convert item type.',
         id: 'type-conversion',
       });
     },

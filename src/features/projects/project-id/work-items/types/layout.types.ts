@@ -55,58 +55,48 @@ export interface DisplayPopoverProps {
 
 export interface WorkItemViewContainerProps {
   viewMode: string;
-  isArchivedEmpty?: boolean;
-  isProjectEmpty?: boolean;
-  onDisableArchived?: () => void;
-  onCreateItemFromEmpty?: () => void;
+  isArchivedEmpty: boolean;
+  isProjectEmpty: boolean;
+  onDisableArchived: () => void;
+  onCreateItemFromEmpty: () => void;
   isReadOnly?: boolean;
   projectId: string;
-  activeFilteredItems?: Item[];
-  items?: Item[];
-  itemsByColumnId: Map<string, Item[]> | Record<string, Item[]>;
-  visibleColumns?: Column[];
+  activeFilteredItems: Item[];
+  itemsByColumnId: Map<string, Item[]>;
+  visibleColumns: Column[];
   columns: Column[];
-  projectStates?: Column[];
   displayOptions: DisplayOptions;
   currentUserId?: string | null;
-  currentUserAvatar?: string;
   members: ProjectMember[];
   labelMap?: Map<string, { id: string; name: string; color?: string }>;
   selectedIds: string[];
   onToggleSelect: (id: string) => void;
   onSelectAll: ((ids?: string[]) => void) | (() => void);
-  onOpenAddDialog?: (
+  onOpenAddDialog: (
     columnIdOrOptions: string | { columnId?: string; title?: string; dueDate?: string; lane?: { subGroupBy?: string; laneId?: string } },
     titleArg?: string,
     extraArg?: string | { subGroupBy?: string; laneId?: string }
   ) => void;
-  onAddCard?: (columnId: string, title?: string, dueDate?: string) => void;
-  onOpenEditDialog?: (card: Item) => void;
-  onEditCard?: (item: Item) => void;
-  onDeleteCard?: (item?: Item) => void;
-  onDuplicateCard?: (card: Item) => void;
-  onJoinCard?: (card: Item) => void;
-  onLeaveCard?: (card: Item) => void;
+  onOpenEditDialog: (card: Item) => void;
+  onDeleteCard: (card: Item) => void;
+  onDuplicateCard: (card: Item) => void;
+  onJoinCard: (card: Item) => void;
+  onLeaveCard: (card: Item) => void;
   onMoveCard: (
     workItemId: string,
     newColumnId: string,
     laneData?: { subGroupBy?: string; laneId?: string }
   ) => void;
-  onReorderCard?: (workItemId: string, newColumnId: string, rank: number) => void;
-  onQuickUpdateItem?: (itemId: string, data: Partial<Item>) => void;
-  onQuickUpdateItemFromCard?: (item: { id: string } & Partial<Item>) => void;
-  onUpdateItem?: (id: string, data: Partial<Item>) => void;
-  onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
-  onAssignExistingItemsToDate?: (
+  onReorderCard: (workItemId: string, newColumnId: string, rank: number) => void;
+  onQuickUpdateItem: (itemId: string, data: Partial<Item>) => void;
+  onQuickUpdateItemFromCard: (item: { id: string } & Partial<Item>) => void;
+  onAssignExistingItemsToDate: (
     itemIds: string[],
     dueDate: string,
     quiet?: boolean,
     startDate?: string | null
   ) => void;
-  updateDisplayProperty?: (property: DisplayPropertyKey, value: boolean) => void;
-  hasActiveFilters?: boolean;
-  searchQuery?: string;
-  onResetFilters?: () => void;
+  updateDisplayProperty: (property: DisplayPropertyKey, value: boolean) => void;
 }
 
 export interface AnalyticsDrawerProps {

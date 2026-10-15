@@ -1,11 +1,10 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { HistoryService } from '../api/work-item.api';
+import { HistoryService } from '@/features/projects/project-id/work-items/api/work-item.api';
 
 export const historyKeys = {
   activity: (id: string) => ['work-item-activity', id] as const,
-  workItemActivity: (id: string) => ['work-item-activity', id] as const,
 };
 
 export const useActivityLogs = (id: string) =>
@@ -24,5 +23,3 @@ export const useActivityLogs = (id: string) =>
     },
     enabled: Boolean(id),
   });
-
-export const useWorkItemActivityLogs = useActivityLogs;

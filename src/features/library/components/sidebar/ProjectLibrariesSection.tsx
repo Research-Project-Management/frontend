@@ -2,20 +2,29 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, ChevronRight, Folder, Search, Files } from 'lucide-react';
+import { Users, ChevronRight, Folder, Files } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import type { TreeNode, CollectionActionHandlers } from './sidebar.types';
-import type { Collection, LibraryScope, ProjectRole } from '../../types';
-import type { SavedSearch } from '../../types/saved-searches.types';
+import type { Collection, LibraryScope, ProjectRole } from '@/features/library/types';
+import type { SavedSearch } from '@/features/library/types/saved-searches.types';
 import { CollectionTree } from './CollectionTree';
 import { SidebarNavItem } from './SidebarNavItem';
-import { SavedSearchContextMenu } from './SavedSearchContextMenu';
-import { parseEmojiPrefix } from '../../utils/academic-text';
-import { getLibraryPermissions } from '../../domain/library-permissions.policy';
+import { SavedSearchListSection } from './SavedSearchListSection';
+import { getLibraryPermissions } from '@/features/library/domain/library-permissions.policy';
+
+export interface ProjectLike {
+  id: string;
+  name?: string;
+  role?: string;
+  yourRole?: string;
+  permissions?: Partial<import('@/features/library/types').LibraryPermissions> | string[] | Record<string, unknown>;
+  effectivePermissions?: string[];
+  [key: string]: unknown;
+}
 
 interface ProjectLibrariesSectionProps extends CollectionActionHandlers {
-  projects: any[];
+  projects: ProjectLike[];
   activeScope: LibraryScope;
   currentUserId?: string;
   basePath: string;
@@ -39,60 +48,29 @@ interface ProjectLibrariesSectionProps extends CollectionActionHandlers {
   onDuplicateSavedSearch?: (savedSearch: SavedSearch) => void;
   onDeleteSavedSearch?: (id: string) => void;
   pathname?: string;
-  duplicateCount?: number;
   renamingSavedSearchId?: string | null;
   renameSavedSearchValue?: string;
 }
 
 /**
- * Safely resolves the current user's role across the 4 canonical project roles:
- * 'owner' | 'coordinator' | 'contributor' | 'reviewer'.
- * The owner is matched when owner = userId (project.userId / createdById / ownerId).
+ * Reads the Backend-authoritative role ('yourRole' | 'role') provided on the project summary DTO.
+ * Never guesses roles by inspecting ownerId/createdById/members[] on the client.
  */
 export function resolveProjectRole(
-  project: any,
-  currentUserId?: string,
+  project: ProjectLike | null | undefined,
+  _currentUserId?: string,
 ): ProjectRole {
-  if (!currentUserId || !project) return 'reviewer';
+  if (!project) return 'reviewer';
 
-  // 1. Owner = userId check
-  const isOwner =
-    project.userId === currentUserId ||
-    project.createdById === currentUserId ||
-    project.ownerId === currentUserId ||
-    project.createdBy?.id === currentUserId;
-
-  if (isOwner) {
-    return 'owner';
-  }
-
-  // 2. Direct server-provided yourRole check
-  const rawYourRole = project.yourRole;
-  if (rawYourRole) {
-    const norm = String(rawYourRole).toLowerCase();
-    if (norm === 'owner' || norm === 'admin') return 'owner';
+  const rawServerRole = project.yourRole || project.role;
+  if (rawServerRole) {
+    const norm = String(rawServerRole).trim().toLowerCase();
+    if (norm === 'owner') return 'owner';
     if (norm === 'coordinator') return 'coordinator';
-    if (norm === 'contributor' || norm === 'member') return 'contributor';
+    if (norm === 'contributor') return 'contributor';
     if (norm === 'reviewer') return 'reviewer';
   }
 
-  // 3. Find matching member in project.members array
-  const member = (project.members || []).find(
-    (m: any) =>
-      m.userId === currentUserId ||
-      m.user?.id === currentUserId ||
-      m.id === currentUserId,
-  );
-
-  if (member?.role) {
-    const norm = String(member.role).toLowerCase();
-    if (norm === 'owner' || norm === 'admin') return 'owner';
-    if (norm === 'coordinator') return 'coordinator';
-    if (norm === 'contributor' || norm === 'member') return 'contributor';
-    if (norm === 'reviewer') return 'reviewer';
-  }
-
-  // 4. Default to least privilege
   return 'reviewer';
 }
 
@@ -135,7 +113,6 @@ export function ProjectLibrariesSection({
   renamingSavedSearchId,
   renameSavedSearchValue = '',
   pathname = '',
-  duplicateCount,
 }: ProjectLibrariesSectionProps) {
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
 
@@ -158,7 +135,7 @@ export function ProjectLibrariesSection({
           </span>
         </button>
 
-        <Tooltip delayDuration={700}>
+        <Tooltip>
           <TooltipTrigger asChild>
             <button
               type="button"
@@ -184,7 +161,6 @@ export function ProjectLibrariesSection({
             align="start"
             sideOffset={6}
             alignOffset={2}
-            className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
           >
             {isProjectsExpanded ? 'Collapse' : 'Expand'}
           </TooltipContent>
@@ -216,8 +192,12 @@ export function ProjectLibrariesSection({
                         type: 'project',
                         id: project.id,
                         projectId: project.id,
-                        name: project.name,
+                        name: project.name || '',
                         role,
+                        ...(project.permissions ? { permissions: project.permissions } : {}),
+                        ...(project.effectivePermissions
+                          ? { effectivePermissions: project.effectivePermissions }
+                          : {}),
                       });
                     }}
                     className={cn(
@@ -271,62 +251,23 @@ export function ProjectLibrariesSection({
                         />
                       )}
 
-                      {savedSearches && savedSearches.length > 0 && (
-                        <div className="my-1 flex flex-col gap-0.5">
-                          <div className="px-6 py-1 text-11 font-medium text-foreground flex items-center justify-between">
-                            <span>Saved Searches</span>
-                          </div>
-                          {savedSearches.map((ss) => {
-                            const isSSActive =
-                              currentFilter === 'saved-search' && currentSavedSearchId === ss.id;
-                            const isRenaming = renamingSavedSearchId === ss.id;
-                            const { label: cleanName } = parseEmojiPrefix(ss.name);
-
-                            if (isRenaming) {
-                              return (
-                                <div
-                                  key={ss.id}
-                                  className="relative z-10 flex h-8 w-full items-center pr-2 min-w-0 gap-2.5 pl-6"
-                                >
-                                  <Search className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-                                  <input
-                                    autoFocus
-                                    value={renameSavedSearchValue}
-                                    onChange={(e) => onRenameSavedSearchValueChange?.(e.target.value)}
-                                    onBlur={() => onSubmitRenameSavedSearch?.(ss.id)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') onSubmitRenameSavedSearch?.(ss.id);
-                                      if (e.key === 'Escape') onSubmitRenameSavedSearch?.('__cancel__');
-                                    }}
-                                    className="h-7 w-full min-w-0 rounded-md border border-border bg-background px-2 text-13 font-normal focus:outline-none focus:ring-1 focus:ring-ring shadow-none text-foreground"
-                                  />
-                                </div>
-                              );
-                            }
-
-                            return (
-                              <SidebarNavItem
-                                key={ss.id}
-                                href={`${basePath}?filter=saved-search&savedSearchId=${ss.id}`}
-                                icon={Search}
-                                label={cleanName}
-                                isActive={isSSActive}
-                                navId={navId}
-                                onClick={onLinkClick}
-                                action={
-                                  <SavedSearchContextMenu
-                                    savedSearch={ss as SavedSearch}
-                                    onEdit={onEditSavedSearch || (() => {})}
-                                    onRename={(id, name) => onStartRenameSavedSearch?.(id, name)}
-                                    onDuplicate={onDuplicateSavedSearch || (() => {})}
-                                    onDelete={onDeleteSavedSearch || (() => {})}
-                                  />
-                                }
-                              />
-                            );
-                          })}
-                        </div>
-                      )}
+                      <SavedSearchListSection
+                        savedSearches={savedSearches as SavedSearch[] | undefined}
+                        basePath={basePath}
+                        navId={navId}
+                        currentFilter={currentFilter ?? null}
+                        currentSavedSearchId={currentSavedSearchId}
+                        isActiveScope={isProjectActive}
+                        onItemClick={onLinkClick}
+                        onEditSavedSearch={onEditSavedSearch}
+                        onStartRenameSavedSearch={onStartRenameSavedSearch}
+                        onSubmitRenameSavedSearch={onSubmitRenameSavedSearch}
+                        onRenameSavedSearchValueChange={onRenameSavedSearchValueChange}
+                        onDuplicateSavedSearch={onDuplicateSavedSearch}
+                        onDeleteSavedSearch={onDeleteSavedSearch}
+                        renamingSavedSearchId={renamingSavedSearchId}
+                        renameSavedSearchValue={renameSavedSearchValue}
+                      />
 
                       {/* Project Duplicate Items Nav Item (Zotero Group Library parity) */}
                       <div className="my-1 flex flex-col gap-0.5">

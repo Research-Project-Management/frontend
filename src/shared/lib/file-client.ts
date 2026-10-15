@@ -236,7 +236,14 @@ export function uploadFileWithDetails(
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
-          const response = JSON.parse(xhr.responseText) as Record<string, any>;
+          interface UploadRawPayload {
+            url?: string;
+            path?: string;
+            id?: string;
+            data?: UploadRawPayload;
+            file?: { id?: string; url?: string };
+          }
+          const response = JSON.parse(xhr.responseText) as UploadRawPayload;
           const payloadData = response.data || response;
           const rawUrl =
             payloadData.url ||
@@ -254,23 +261,31 @@ export function uploadFileWithDetails(
         try {
           const rawText = xhr.responseText;
           if (rawText) {
-            const errRes: any = JSON.parse(rawText);
+            const errRes = JSON.parse(rawText) as Record<string, unknown> | string;
             if (typeof errRes === 'string') {
               errorMsg = errRes;
             } else if (errRes && typeof errRes === 'object') {
               if (errRes.message) {
                 if (Array.isArray(errRes.message)) {
                   errorMsg = errRes.message
-                    .map((m: any) => (typeof m === 'object' && m !== null ? m.message || JSON.stringify(m) : String(m)))
+                    .map((m: unknown) =>
+                      typeof m === 'object' && m !== null && 'message' in m
+                        ? String((m as { message?: unknown }).message ?? '')
+                        : typeof m === 'object' && m !== null
+                          ? JSON.stringify(m)
+                          : String(m)
+                    )
                     .join(', ');
                 } else if (typeof errRes.message === 'object' && errRes.message !== null) {
-                  errorMsg = errRes.message.message || errRes.message.error || JSON.stringify(errRes.message);
+                  const mObj = errRes.message as Record<string, unknown>;
+                  errorMsg = String(mObj.message || mObj.error || JSON.stringify(errRes.message));
                 } else {
                   errorMsg = String(errRes.message);
                 }
               } else if (errRes.error) {
                 if (typeof errRes.error === 'object' && errRes.error !== null) {
-                  errorMsg = errRes.error.message || errRes.error.error || JSON.stringify(errRes.error);
+                  const eObj = errRes.error as Record<string, unknown>;
+                  errorMsg = String(eObj.message || eObj.error || JSON.stringify(errRes.error));
                 } else {
                   errorMsg = String(errRes.error);
                 }

@@ -1,12 +1,14 @@
 'use client';
 
+import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { RelationService } from '../api/work-item.api';
+import { RelationService } from '@/features/projects/project-id/work-items/api/work-item.api';
+import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
+import { extractNormalizedEdges, wouldCauseCycle } from '@/features/projects/project-id/work-items/utils/cpm-graph';
+import { workItemToast } from './use-work-item-toast';
 
 export const relationKeys = {
   item: (id: string) => ['work-item-relations', id] as const,
-  workItem: (id: string) => ['work-item-relations', id] as const,
 };
 
 export const useRelations = (id: string) =>
@@ -16,11 +18,20 @@ export const useRelations = (id: string) =>
     enabled: Boolean(id),
   });
 
-export const useWorkItemRelations = useRelations;
+export interface AddRelationVariables {
+  id?: string;
+  itemId?: string;
+  workItemId?: string;
+  targetId?: string;
+  targetWorkItemId?: string;
+  type: 'blocks' | 'blocked_by' | 'relates_to' | 'duplicate_of';
+  successMessage?: string;
+  silent?: boolean;
+}
 
 export const useAddRelationMutation = () => {
   const queryClient = useQueryClient();
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: ({
       id,
       itemId,
@@ -28,14 +39,7 @@ export const useAddRelationMutation = () => {
       targetId,
       targetWorkItemId,
       type,
-    }: {
-      id?: string;
-      itemId?: string;
-      workItemId?: string;
-      targetId?: string;
-      targetWorkItemId?: string;
-      type: 'blocks' | 'blocked_by' | 'relates_to' | 'duplicate_of';
-    }) => {
+    }: AddRelationVariables) => {
       const sourceId = (id || itemId || workItemId) ?? '';
       const target = (targetId || targetWorkItemId) ?? '';
       return RelationService.addRelation(sourceId, { targetWorkItemId: target, targetId: target, type });
@@ -48,9 +52,54 @@ export const useAddRelationMutation = () => {
       if (target) {
         queryClient.invalidateQueries({ queryKey: relationKeys.item(target) });
       }
+      if (!vars.silent) {
+        workItemToast.success(vars.successMessage || 'Created dependency relation', 'relation');
+      }
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to add relation', { id: 'work-item-relation' }),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to add relation', 'relation'),
   });
+
+  const createDependencyWithCycleCheck = useCallback(
+    (
+      fromId: string,
+      toId: string,
+      items: Item[],
+      options?: {
+        type?: 'blocks' | 'blocked_by' | 'relates_to' | 'duplicate_of';
+        onSuccess?: () => void;
+      },
+    ) => {
+      const currentEdges = extractNormalizedEdges(items);
+      if (wouldCauseCycle(fromId, toId, currentEdges)) {
+        workItemToast.error(
+          'Cannot create dependency: circular dependency detected',
+          'Cannot create dependency: circular dependency detected',
+          'relation',
+        );
+        return;
+      }
+
+      mutation.mutate(
+        {
+          id: fromId,
+          workItemId: fromId,
+          targetId: toId,
+          targetWorkItemId: toId,
+          type: options?.type ?? 'blocks',
+          successMessage: 'Created dependency relation',
+        },
+        {
+          onSuccess: () => options?.onSuccess?.(),
+        },
+      );
+    },
+    [mutation],
+  );
+
+  return {
+    ...mutation,
+    createDependencyWithCycleCheck,
+  };
 };
 
 export const useRemoveRelationMutation = () => {
@@ -84,6 +133,7 @@ export const useRemoveRelationMutation = () => {
         queryClient.invalidateQueries({ queryKey: relationKeys.item(target) });
       }
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to remove relation', { id: 'work-item-relation' }),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to remove relation', 'relation'),
   });
 };
+

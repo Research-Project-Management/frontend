@@ -73,19 +73,20 @@ export function LibraryPickerModal({
     const targetScope = projectId && isProjectScope(projectId) ? projectId : 'user';
 
     libraryServices.collections.getAll(targetScope)
-      .then((res: any) => {
+      .then((res) => {
         if (!isMounted) return;
+        const resObj = res as unknown as { collections?: Collection[]; data?: { collections?: Collection[] } | Collection[] } | Collection[];
         const list =
-          res?.collections ||
-          res?.data?.collections ||
-          (Array.isArray(res?.data) ? res.data : null) ||
-          (Array.isArray(res) ? res : []);
+          (!Array.isArray(resObj) && resObj?.collections) ||
+          (!Array.isArray(resObj) && !Array.isArray(resObj?.data) && resObj?.data?.collections) ||
+          (!Array.isArray(resObj) && Array.isArray(resObj?.data) ? resObj.data : null) ||
+          (Array.isArray(resObj) ? resObj : []);
         setCollections(list);
         setCollectionsError(null);
       })
-      .catch((err: any) => {
+      .catch((err: unknown) => {
         console.error('[LibraryPickerModal] Failed to load collections:', err);
-        if (isMounted) setCollectionsError(err?.message || 'Failed to load collections');
+        if (isMounted) setCollectionsError(err instanceof Error ? err.message : 'Failed to load collections');
       })
       .finally(() => {
         if (isMounted) setCollectionsLoading(false);

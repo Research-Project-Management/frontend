@@ -1,29 +1,25 @@
 'use client';
 
 import React from 'react';
-import { useAssignedWork } from '../hooks/use-assigned-work';
-import { AssignedWorkItemList } from '../components/assigned/AssignedWorkItemList';
+import { useYourWorkContext } from '../context/your-work.context';
+import { YourWorkItemList } from '../components/shared/YourWorkItemList';
 import { YourWorkPageLayout } from '../components/shared/YourWorkPageLayout';
 
 export function AssignedPage() {
-  const { state } = useAssignedWork();
-  const { allWorkItems, assignedWorkItems, workItemProjectMap, isLoading, isError, error } = state;
+  const { assigned, workItemProjectMap, isLoading, isError, error, openWorkItem } =
+    useYourWorkContext();
 
   return (
-    <YourWorkPageLayout
-      isLoading={isLoading}
-      isError={isError}
-      error={error}
-      allWorkItems={allWorkItems}
-      renderList={(handleOpenItem) => (
-        <AssignedWorkItemList
-          workItems={assignedWorkItems}
-          onWorkItemClick={handleOpenItem}
-          workItemProjectMap={workItemProjectMap}
-        />
-      )}
-    />
+    <YourWorkPageLayout isLoading={isLoading} isError={isError} error={error}>
+      <YourWorkItemList
+        variant="assigned"
+        workItems={assigned}
+        onWorkItemClick={openWorkItem}
+        workItemProjectMap={workItemProjectMap}
+      />
+    </YourWorkPageLayout>
   );
 }
 
 export default AssignedPage;
+

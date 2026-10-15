@@ -5,8 +5,8 @@ import { Check } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
-import type { Priority } from '../../types/work-item.types';
-import { PRIORITY_CONFIG } from '../../types/work-item.types';
+import type { Priority } from '@/features/projects/project-id/work-items/types/work-item.types';
+import { PRIORITY_CONFIG } from '@/features/projects/project-id/work-items/types/work-item.types';
 import {
   UrgentPriorityBoxIcon,
   HighPriorityBoxIcon,
@@ -28,7 +28,7 @@ export {
 
 export const NonePriorityIcon = NonePriorityTriggerIcon;
 
-import type { PriorityPopoverProps } from '../../types/picker.types';
+import type { PriorityPopoverProps } from '@/features/projects/project-id/work-items/types/picker.types';
 
 export type { PriorityPopoverProps };
 

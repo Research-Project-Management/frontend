@@ -2,37 +2,38 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
-import Topbar from '../components/layout/Topbar';
-import { FilterPillsBar } from '../components/filters/FilterPillsBar';
-import { BulkActionBar } from '../components/layout/BulkActionBar';
+import Topbar from '@/features/projects/project-id/work-items/components/layout/Topbar';
+import { FilterPillsBar } from '@/features/projects/project-id/work-items/components/filters/FilterPillsBar';
+import { BulkActionBar } from '@/features/projects/project-id/work-items/components/layout/BulkActionBar';
 import {
   WorkItemModals,
   ModalState,
-} from '../components/layout/WorkItemModals';
-import { WorkItemViewContainer } from '../components/layout/WorkItemViewContainer';
+} from '@/features/projects/project-id/work-items/components/layout/WorkItemModals';
+import { WorkItemViewContainer } from '@/features/projects/project-id/work-items/components/layout/WorkItemViewContainer';
 import {
   useProject,
   useBulkUpdate,
   useBulkDelete,
   useWorkItemSelection,
-} from '../hooks/use-work-item';
+} from '@/features/projects/project-id/work-items/hooks/use-work-item';
 import {
   useBulkArchive,
   useBulkRestore,
   useArchivedItems,
-} from '../hooks/use-archive';
-import { useWorkItemGrouping } from '../hooks/use-work-item-grouping';
+} from '@/features/projects/project-id/work-items/hooks/use-archive';
+import { useWorkItemGrouping } from '@/features/projects/project-id/work-items/hooks/use-work-item-grouping';
 import {
   ItemHelpers,
   resolveStateId,
-} from '../utils/work-item.utils';
-import { useTopbar } from '../hooks/use-topbar';
-import { useRealtimeWorkItems } from '../hooks/use-realtime';
+  buildGroupMoveUpdates,
+} from '@/features/projects/project-id/work-items/utils/work-item.utils';
+import { useTopbar } from '@/features/projects/project-id/work-items/hooks/use-topbar';
+import { useRealtimeWorkItems } from '@/features/projects/project-id/work-items/hooks/use-realtime';
 import type {
   Item,
   ItemMutationInput,
   Priority,
-} from '../types/work-item.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 import { Button } from '@/shared/components/ui/button';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useAuth } from '@/features/auth/hooks/use-auth';
@@ -42,7 +43,6 @@ import { WorkItemsIcon } from '@/shared/components/icons';
 export interface WorkItemPageProps {
   isReadOnly?: boolean;
 }
-export type PageProps = WorkItemPageProps;
 
 const EMPTY_ITEMS: Item[] = [];
 
@@ -250,6 +250,22 @@ export function WorkItemPage({
     };
   }, [columns, searchParams, pathname, router]);
 
+  // Deep link auto-open via ?itemId= or ?item=
+  useEffect(() => {
+    const requestedItemId = searchParams.get('itemId') || searchParams.get('item');
+    if (!requestedItemId || allItems.length === 0) return;
+
+    const matchedItem = allItems.find(
+      (item) =>
+        item.id === requestedItemId ||
+        (item.identifier && item.identifier.toLowerCase() === requestedItemId.toLowerCase())
+    );
+
+    if (matchedItem) {
+      setModal({ type: 'detail', card: matchedItem });
+    }
+  }, [searchParams, allItems]);
+
   // ── 6. Action Handlers ─────────────────────────────────────────────────────
   const handleOpenAddDialog = useCallback((
     columnIdOrOptions: string | { columnId?: string; title?: string; dueDate?: string; lane?: { subGroupBy?: string; laneId?: string } },
@@ -321,54 +337,15 @@ export function WorkItemPage({
   ) => {
     if (!workItemId || !newColumnId) return;
 
-    if (effectiveGroupBy === 'priority') {
-      projectActions.updateWorkItem({
-        workItemId,
-        id: workItemId,
-        projectId,
-        priority: (newColumnId === 'none' ? 'none' : newColumnId) as Priority,
-      });
-      return;
-    }
-    if (effectiveGroupBy === 'assignee') {
-      projectActions.updateWorkItem({
-        workItemId,
-        id: workItemId,
-        projectId,
-        assigneeId: newColumnId === '__unassigned__' ? null : newColumnId,
-      });
-      return;
-    }
-    if (effectiveGroupBy === 'labels') {
-      projectActions.updateWorkItem({
-        workItemId,
-        id: workItemId,
-        projectId,
-        labels: newColumnId === '__no_label__' ? [] : [newColumnId],
-      });
-      return;
-    }
-    if (effectiveGroupBy === 'none') {
-      return;
-    }
+    const updates = buildGroupMoveUpdates(effectiveGroupBy, newColumnId, laneData);
+    if (!updates) return;
 
-    const updatePayload: Partial<Item> = { columnId: newColumnId };
-    if (laneData?.subGroupBy && laneData?.laneId) {
-      if (laneData.subGroupBy === 'priority') {
-        updatePayload.priority = (laneData.laneId === 'none' ? 'none' : laneData.laneId) as Priority;
-      } else if (laneData.subGroupBy === 'assignee') {
-        updatePayload.assigneeId = laneData.laneId === '__unassigned__' ? null : laneData.laneId;
-      } else if (laneData.subGroupBy === 'labels') {
-        updatePayload.labels = laneData.laneId === '__no_label__' ? [] : [laneData.laneId];
-      }
-    }
-
-    if (Object.keys(updatePayload).length > 1) {
+    if (effectiveGroupBy !== 'state' || Object.keys(updates).length > 1) {
       projectActions.updateWorkItem({
         workItemId,
         id: workItemId,
         projectId,
-        ...updatePayload,
+        ...updates,
       });
     } else {
       projectActions.moveWorkItem({
@@ -383,33 +360,6 @@ export function WorkItemPage({
   const handleReorderCard = useCallback((workItemId: string, newColumnId: string, rank: number) => {
     if (!workItemId) return;
 
-    if (effectiveGroupBy === 'priority') {
-      projectActions.updateWorkItem({
-        workItemId,
-        id: workItemId,
-        projectId,
-        priority: (newColumnId === 'none' ? 'none' : newColumnId) as Priority,
-      });
-      return;
-    }
-    if (effectiveGroupBy === 'assignee') {
-      projectActions.updateWorkItem({
-        workItemId,
-        id: workItemId,
-        projectId,
-        assigneeId: newColumnId === '__unassigned__' ? null : newColumnId,
-      });
-      return;
-    }
-    if (effectiveGroupBy === 'labels') {
-      projectActions.updateWorkItem({
-        workItemId,
-        id: workItemId,
-        projectId,
-        labels: newColumnId === '__no_label__' ? [] : [newColumnId],
-      });
-      return;
-    }
     if (effectiveGroupBy === 'none') {
       const targetItem = displayItems.find((i) => i.id === workItemId);
       if (targetItem) {
@@ -421,6 +371,17 @@ export function WorkItemPage({
           projectId,
         });
       }
+      return;
+    }
+
+    const updates = buildGroupMoveUpdates(effectiveGroupBy, newColumnId);
+    if (updates && effectiveGroupBy !== 'state') {
+      projectActions.updateWorkItem({
+        workItemId,
+        id: workItemId,
+        projectId,
+        ...updates,
+      });
       return;
     }
 
@@ -678,7 +639,6 @@ export function WorkItemPage({
           columns={columns}
           displayOptions={displayOptions}
           currentUserId={currentUser?.id}
-          currentUserAvatar={currentUser?.avatar ?? undefined}
           members={members}
           labelMap={labelMap}
           selectedIds={selectedIds}

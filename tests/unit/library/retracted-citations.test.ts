@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { buildRetractedCitationMap } from '@/features/editor/domain/citation/retracted-citations';
-import { runLatexLinter } from '@/features/editor/domain/latex/latex-linter';
+import { buildRetractedCitationMap } from '@/features/editor/subsystems/citation/model/retracted-citations';
+import { runLatexLinter } from '@/features/editor/subsystems/diagnostics/linter/latex-linter';
 import {
   isItemRetracted,
   getRetractionInfo,
   parseRetractionReasonParts,
-} from '@/features/library/utils/retraction';
+} from '@/features/library/domain/retraction';
 
 const retractedItem = {
   title: 'Wakefield MMR',

@@ -5,12 +5,12 @@ import {
   usePdfSearch,
   buildPdfSearchRegex,
   escapePdfSearchRegExp,
-} from '@/features/editor/ui/preview/hooks/usePdfSearch';
-import { PdfFindBar } from '@/features/editor/ui/preview/PdfFindBar';
+} from '@/features/editor/subsystems/compiler';
+import { PdfFindBar } from '@/features/editor/subsystems/compiler';
 import {
   editorCommandBus,
   setActiveEditorEngine,
-} from '@/features/editor/coordinators/command-bus';
+} from '@/features/editor/core';
 
 describe('Phase 11: In-Document PDF Text Search & Selection Layer Sync (Overleaf Parity)', () => {
   beforeEach(() => {

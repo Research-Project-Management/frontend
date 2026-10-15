@@ -31,7 +31,7 @@ export interface NotificationMessageOpts {
   inviterName?: string;
   inviterEmail?: string;
   actionUrl?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface NotificationItem {

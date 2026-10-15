@@ -1,4 +1,4 @@
-import type { Collection } from '../../types/library.types';
+import type { Collection } from '@/features/library/types/library.types';
 import type { TreeNode } from './sidebar.types';
 
 /**
@@ -114,3 +114,12 @@ export function filterCollections(cols: Collection[], searchQuery: string): Coll
 
   return cols.filter((c) => matchingIds.has(c.id));
 }
+
+export {
+  buildCollectionTree,
+  getDescendantCollectionIds,
+  getCollectionBreadcrumbPath,
+  canMoveCollection,
+  type CollectionHierarchyNode,
+} from '@/features/library/domain/collection-tree.domain';
+

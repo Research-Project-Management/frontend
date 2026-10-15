@@ -18,3 +18,39 @@ export * from './search.types';
 export * from './state.types';
 export * from './tags.types';
 export * from './batch-upload.types';
+export type {
+  ReaderDocument,
+  ReaderAnnotation,
+  ReaderNote,
+  CopilotCitation,
+  CopilotMessage,
+  QuickPrompt,
+  StreamPaperOptions,
+  AnnotationFormData,
+  NoteFormData,
+  ChatMessageFormData,
+} from './reader.types';
+export {
+  annotationRectSchema,
+  annotationTypeSchema,
+  readerAnnotationSchema,
+  createAnnotationSchema,
+  updateAnnotationSchema,
+  readerNoteSchema,
+  readerDocumentSchema,
+  documentReadingStateSchema,
+  documentSectionSchema,
+  documentFigureSchema,
+  documentTableSchema,
+  documentFormulaSchema,
+  documentReferenceSchema,
+  documentFulltextSchema,
+  readerAiCitationSchema,
+  readerAiMessageSchema,
+  readerQuickPromptSchema,
+  annotationFormSchema,
+  noteFormSchema,
+  chatMessageFormSchema,
+} from './reader.schema';
+
+

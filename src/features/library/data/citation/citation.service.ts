@@ -1,14 +1,26 @@
 import * as api from "@/shared/lib/api";
 import { logger } from "@/shared/lib/utils";
-import type { FormattedCitation, CslStyle, ReferenceData, CslStyleMetadata, ExportBundleResponse } from '../../types/library.types';
-import { cleanDoi } from '../../domain/identifiers';
-import { isProjectScope } from '../../domain/item-url';
+import type { FormattedCitation, CslStyle, ReferenceData, CslStyleMetadata, ExportBundleResponse } from '@/features/library/types/library.types';
+import { isProjectScope } from '@/features/library/domain/item-url';
 
 export type { ReferenceData, CslStyleMetadata };
 
+function getCitationUrl(scopeId?: string, suffix = ''): string {
+  const base = isProjectScope(scopeId)
+    ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/citation`
+    : `/api/v1/library/citation`;
+  return suffix ? `${base}/${suffix}` : base;
+}
+
+function getExportsUrl(scopeId?: string, suffix = ''): string {
+  const base = isProjectScope(scopeId)
+    ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/exports`
+    : `/api/v1/library/exports`;
+  return suffix ? `${base}/${suffix}` : base;
+}
 function extractReferenceData(response: unknown): ReferenceData | null {
   if (!response || typeof response !== 'object') return null;
-  const res = response as Record<string, any>;
+  const res = response as Record<string, unknown>;
   if (res.found === false) return null;
   const candidate = (res.metadata || res.work || res.data || res) as Partial<ReferenceData> | undefined;
   if (!candidate || typeof candidate !== 'object') return null;
@@ -22,8 +34,8 @@ export async function fetchReferenceByDoi(
   doi: string,
   _scopeId?: string,
 ): Promise<ReferenceData | null> {
-  const normalizedDoi = cleanDoi(doi);
-  if (!normalizedDoi) {
+  const rawDoi = typeof doi === 'string' ? doi.trim() : '';
+  if (!rawDoi) {
     throw new Error('Invalid DOI provided');
   }
 
@@ -32,26 +44,31 @@ export async function fetchReferenceByDoi(
   try {
     const referenceResponse = await api.apiPost<unknown>(
       resolveUrl,
-      { doi: normalizedDoi },
+      { doi: rawDoi, query: rawDoi },
       { silent: true },
     );
     return extractReferenceData(referenceResponse);
-  } catch (error: any) {
-    if (error?.statusCode === 404 || error?.response?.status === 404) {
+  } catch (error: unknown) {
+    const err = error as { statusCode?: number; response?: { status?: number } };
+    if (err?.statusCode === 404 || err?.response?.status === 404) {
       return null;
     }
     // Fallback: GET by encoded DOI
     try {
-      const doiUrl = `/api/v1/library/citation/doi/${encodeURIComponent(normalizedDoi)}`;
+      const doiUrl = `/api/v1/library/citation/doi/${encodeURIComponent(rawDoi)}`;
       const fallback = await api.apiGet<unknown>(
         doiUrl,
         { silent: true },
       );
       return extractReferenceData(fallback);
-    } catch (fallbackError: any) {
+    } catch (fallbackError: unknown) {
+      const fbErr = fallbackError as {
+        statusCode?: number;
+        response?: { status?: number };
+      };
       if (
-        fallbackError?.statusCode === 404 ||
-        fallbackError?.response?.status === 404
+        fbErr?.statusCode === 404 ||
+        fbErr?.response?.status === 404
       ) {
         return null;
       }
@@ -92,7 +109,7 @@ export async function searchReferences(
       return response as ReferenceData[];
     }
     return [];
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.warn('Academic work search failed', { query: trimmedQuery, error });
     return [];
   }
@@ -102,12 +119,22 @@ export async function resolveAcademicWork(
   query: string,
   scopeId?: string,
 ): Promise<ReferenceData | null> {
-  const normalizedDoi = cleanDoi(query);
-  if (normalizedDoi) {
-    return fetchReferenceByDoi(normalizedDoi, scopeId);
+  const trimmed = typeof query === 'string' ? query.trim() : '';
+  if (!trimmed) return null;
+
+  try {
+    const referenceResponse = await api.apiPost<unknown>(
+      `/api/v1/library/citation/resolve`,
+      { query: trimmed },
+      { silent: true },
+    );
+    const resolved = extractReferenceData(referenceResponse);
+    if (resolved) return resolved;
+  } catch {
+    // Fall back to searchReferences below if direct resolution returns 404/error
   }
 
-  const results = await searchReferences(query, scopeId);
+  const results = await searchReferences(trimmed, scopeId);
   return results.length > 0 ? results[0] : null;
 }
 
@@ -128,7 +155,7 @@ export const CitationService = {
   ) => {
     const projectQuery = isProjectScope(scopeId) ? `&projectId=${encodeURIComponent(scopeId!)}` : '';
     return api.apiGet<FormattedCitation>(
-      `/api/v1/library/citation/items/${encodeURIComponent(itemId)}/citation?style=${encodeURIComponent(style)}&index=${index}${projectQuery}`,
+      `${getCitationUrl(scopeId, 'items')}/${encodeURIComponent(itemId)}/citation?style=${encodeURIComponent(style)}&index=${index}${projectQuery}`,
     );
   },
 
@@ -137,8 +164,8 @@ export const CitationService = {
    */
   getStyles: (scopeId?: string) => {
     const projectQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
-    return api.apiGet<import('../../types/library.types').StyleSummary[]>(
-      `/api/v1/library/citation/styles${projectQuery}`,
+    return api.apiGet<import('@/features/library/types/library.types').StyleSummary[]>(
+      `${getCitationUrl(scopeId, 'styles')}${projectQuery}`,
     );
   },
 
@@ -183,7 +210,7 @@ export const CitationService = {
       bibliographyHtml?: string;
       citations: Array<{ paperId: string; itemId?: string; citation: FormattedCitation }>;
     }>(
-      `/api/v1/library/citation/batch-items`,
+      getCitationUrl(scopeId, 'batch-items'),
       {
         itemIds,
         paperIds: itemIds,
@@ -199,7 +226,7 @@ export const CitationService = {
    */
   formatRawItem: (
     _scopeId: string | undefined,
-    item: Record<string, any>,
+    item: Record<string, unknown>,
     styleId: string = 'apa-7th',
     index: number = 1,
   ) =>
@@ -214,7 +241,7 @@ export const CitationService = {
    */
   formatRawBatch: (
     _scopeId: string | undefined,
-    items: Record<string, any>[],
+    items: Record<string, unknown>[],
     styleId: string = 'apa-7th',
   ) =>
     api.apiPost<{
@@ -245,7 +272,7 @@ export const ExportService = {
       options?.projectId ||
       (isProjectScope(scopeId) ? scopeId : undefined);
     return api.apiPost<{ content: string; filename: string; itemCount: number }>(
-      `/api/v1/library/exports`,
+      getExportsUrl(scopeId),
       {
         ...options,
         ...(projectId ? { projectId } : {}),
@@ -257,8 +284,14 @@ export const ExportService = {
    * Export citations by specific citation keys in BibTeX format (POST /exports/citations/bibtex)
    */
   exportByCitationKeys: (scopeId?: string, keys: string[] = []) =>
-    api.apiPost<{ bibtex: string; count: number }>(
-      `/api/v1/library/exports/citations/bibtex`,
+    api.apiPost<{
+      content: string;
+      bibtex: string;
+      count: number;
+      foundKeys?: string[];
+      missingKeys?: string[];
+    }>(
+      getExportsUrl(scopeId, 'citations/bibtex'),
       {
         keys,
         ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
@@ -271,16 +304,16 @@ export const ExportService = {
   exportBibtex: (scopeId?: string, collectionId?: string) => {
     const projectQuery = isProjectScope(scopeId) ? `&projectId=${encodeURIComponent(scopeId!)}` : '';
     return api.apiGet<{ bibtex: string; total: number; filename: string }>(
-      `/api/v1/library/exports?format=bibtex&collectionId=${encodeURIComponent(collectionId || '')}${projectQuery}`,
+      `${getExportsUrl(scopeId)}?format=bibtex&collectionId=${encodeURIComponent(collectionId || '')}${projectQuery}`,
     );
   },
 
   /**
    * Export full bundle containing BibTeX and associated file metadata
    */
-  exportBundle: (_scopeId?: string, collectionId?: string) =>
+  exportBundle: (scopeId?: string, collectionId?: string) =>
     api.apiGet<ExportBundleResponse>(
-      `/api/v1/library/exports/${encodeURIComponent(collectionId || '')}/export-bundle`,
+      `${getExportsUrl(scopeId)}/${encodeURIComponent(collectionId || '')}/export-bundle`,
     ),
 
   /**
@@ -289,7 +322,7 @@ export const ExportService = {
   exportAnnotatedPdf: (scopeId?: string, itemId?: string) => {
     const projectQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
     return api.apiGet<{ filename: string; mimeType: string; base64: string }>(
-      `/api/v1/library/exports/items/${encodeURIComponent(itemId || '')}/annotated-pdf${projectQuery}`,
+      `${getExportsUrl(scopeId)}/items/${encodeURIComponent(itemId || '')}/annotated-pdf${projectQuery}`,
     );
   },
 
@@ -298,28 +331,77 @@ export const ExportService = {
    */
   downloadAnnotatedPdf: async (scopeId?: string, itemId?: string, fallbackFilename?: string) => {
     const projectQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
-    const res = await api.apiGet<{ filename: string; mimeType: string; base64: string }>(
-      `/api/v1/library/exports/items/${encodeURIComponent(itemId || '')}/annotated-pdf${projectQuery}`,
-    );
-    if (!res || !res.base64) {
-      throw new Error('Failed to generate annotated PDF: No content received');
+    const endpoint = `${getExportsUrl(scopeId)}/items/${encodeURIComponent(itemId || '')}/annotated-pdf${projectQuery}`;
+
+    let blob: Blob;
+    let resolvedFilename = fallbackFilename || 'annotated-document.pdf';
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/pdf, application/json',
+        },
+      });
+
+      const contentType = response.headers.get('content-type') || '';
+      if (response.ok && contentType.includes('application/pdf')) {
+        const disposition = response.headers.get('content-disposition');
+        if (disposition) {
+          const filenameMatch = disposition.match(/filename\*?=['"]?(?:UTF-\d['"]*)?([^;\r\n"']*)['"]?;?/i);
+          if (filenameMatch?.[1]) {
+            resolvedFilename = decodeURIComponent(filenameMatch[1]);
+          }
+        }
+        blob = await response.blob();
+      } else {
+        const res: { filename?: string; mimeType?: string; base64?: string } = response.ok
+          ? ((await response.json()) as { filename?: string; mimeType?: string; base64?: string })
+          : await api.apiGet<{ filename: string; mimeType: string; base64: string }>(endpoint);
+        if (!res || !res.base64) {
+          throw new Error('Failed to generate annotated PDF: No content received');
+        }
+        if (res.filename) {
+          resolvedFilename = res.filename;
+        }
+        const byteCharacters = atob(res.base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        blob = new Blob([byteArray], { type: res.mimeType || 'application/pdf' });
+      }
+    } catch {
+      const res = await api.apiGet<{ filename: string; mimeType: string; base64: string }>(endpoint);
+      if (!res || !res.base64) {
+        throw new Error('Failed to generate annotated PDF: No content received');
+      }
+      if (res.filename) {
+        resolvedFilename = res.filename;
+      }
+      const byteCharacters = atob(res.base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      blob = new Blob([byteArray], { type: res.mimeType || 'application/pdf' });
     }
-    const byteCharacters = atob(res.base64);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: res.mimeType || 'application/pdf' });
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = res.filename || fallbackFilename || 'annotated-document.pdf';
+    a.download = resolvedFilename;
     document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    return res;
+    try {
+      a.click();
+    } finally {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+    return { filename: resolvedFilename, mimeType: 'application/pdf' };
   },
 };
 

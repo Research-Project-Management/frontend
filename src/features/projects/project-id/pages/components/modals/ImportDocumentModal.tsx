@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -20,7 +20,7 @@ import {
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/core';
 import { pageKeys } from '../../hooks/use-page';
 
 interface ImportDocumentModalProps {

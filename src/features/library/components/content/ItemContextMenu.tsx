@@ -25,9 +25,9 @@ import {
   ContextMenuSubTrigger,
   ContextMenuShortcut,
 } from '@/shared/components/ui/context-menu';
-import { libraryServices } from '../../data/library-services';
-import { useLibraryUIStore } from '../../store/library-ui.store';
-import type { Item, Collection, CslStyle } from '../../types';
+import { libraryServices } from '@/features/library/data/library-services';
+import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
+import type { Item, Collection, CslStyle } from '@/features/library/types';
 
 export interface ItemContextMenuProps {
   children: React.ReactNode;
@@ -67,34 +67,34 @@ export function ItemContextMenu({
     Boolean(typeof item.rating === 'number' && item.rating > 0);
 
   const handleCopyBibliography = async (style: CslStyle = 'apa') => {
-    const toastId = toast.loading(`Đang tạo trích dẫn (${style.toUpperCase()})...`);
+    const toastId = toast.loading(`Formatting citation (${style.toUpperCase()})...`);
     try {
       const res = await libraryServices.citations.formatCitation(scopeId, item.id, style);
       const text = res.bibliography || res.inText || '';
       if (text) {
         await copyToClipboard(text);
-        toast.success(`Đã sao chép trích dẫn (${style.toUpperCase()})`, { id: toastId });
+        toast.success(`Copied citation (${style.toUpperCase()})`, { id: toastId });
       } else {
-        toast.error('Không thể tạo trích dẫn', { id: toastId });
+        toast.error('Failed to format citation. Please try again.', { id: toastId });
       }
-    } catch (err: any) {
-      toast.error('Sao chép trích dẫn thất bại', { description: err?.message, id: toastId });
+    } catch (err: unknown) {
+      toast.error('Failed to format citation. Please try again.', { description: err instanceof Error ? err.message : String(err), id: toastId });
     }
   };
 
   const handleCopyInTextCitation = async (style: CslStyle = 'apa') => {
-    const toastId = toast.loading(`Đang tạo trích dẫn trong bài (${style.toUpperCase()})...`);
+    const toastId = toast.loading(`Formatting in-text citation (${style.toUpperCase()})...`);
     try {
       const res = await libraryServices.citations.formatCitation(scopeId, item.id, style);
       const text = res.inText || res.citation || '';
       if (text) {
         await copyToClipboard(text);
-        toast.success(`Đã sao chép trích dẫn trong bài (${style.toUpperCase()})`, { id: toastId });
+        toast.success(`Copied in-text citation (${style.toUpperCase()})`, { id: toastId });
       } else {
-        toast.error('Không thể tạo trích dẫn trong bài', { id: toastId });
+        toast.error('Failed to format citation. Please try again.', { id: toastId });
       }
-    } catch (err: any) {
-      toast.error('Sao chép trích dẫn thất bại', { description: err?.message, id: toastId });
+    } catch (err: unknown) {
+      toast.error('Failed to format citation. Please try again.', { description: err instanceof Error ? err.message : String(err), id: toastId });
     }
   };
 
@@ -193,9 +193,10 @@ export function ItemContextMenu({
 
             <ContextMenuItem
               onClick={() => {
-                if (item.citationKey) {
-                  copyToClipboard(item.citationKey);
-                  toast.success(`Copied: ${item.citationKey}`, { id: 'library-clipboard' });
+                const effectiveCiteKey = (item.citationKey || item.key)?.trim();
+                if (effectiveCiteKey) {
+                  copyToClipboard(effectiveCiteKey);
+                  toast.success(`Copied: ${effectiveCiteKey}`, { id: 'library-clipboard' });
                 } else {
                   toast.info('Item does not have a citation key', { id: 'library-clipboard' });
                 }
@@ -217,7 +218,7 @@ export function ItemContextMenu({
                       Add to Collection
                     </ContextMenuSubTrigger>
                     <ContextMenuSubContent className="w-44 text-12 shadow-raised-200 max-h-56 overflow-y-auto p-1">
-                      {collections.map((col: any) => (
+                      {collections.map((col: Collection) => (
                         <ContextMenuItem
                           key={col.id}
                           onClick={() => {

@@ -116,8 +116,8 @@ export const removeProjectMemberApi = (projectId: string, userId: string) =>
 export const transferOwnershipApi = (projectId: string, newOwnerId: string) =>
   apiPost<{
     message: string;
-    previousOwner: any;
-    newOwner: any;
+    previousOwner: ProjectMember;
+    newOwner: ProjectMember;
   }>(`/api/projects/${projectId}/transfer-ownership`, { newOwnerId });
 
 // ── Project State API ─────────────────────────────────────────────────────────

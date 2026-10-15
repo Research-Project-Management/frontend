@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { ExternalLink, Copy, CheckCircle2 } from 'lucide-react';
 import type { Item } from '@/features/library/types/library.types';
-import { SchemaFieldDefinition } from '../../../types';
+import { SchemaFieldDefinition } from '@/features/library/types';
+import { isValidValue } from '@/features/library/domain/metadata';
 import { InlineField } from './InlineField';
 import {
   Tooltip,
@@ -13,7 +14,8 @@ import {
 
 export interface DynamicInspectorFieldProps {
   fieldDef: SchemaFieldDefinition;
-  paper: Item;
+  item?: Item;
+  paper?: Item;
   val: string;
   displayDoi: string;
   copiedKey: string | null;
@@ -22,31 +24,6 @@ export interface DynamicInspectorFieldProps {
   onCopy: (text: string, label: string) => void;
 }
 
-function isValidValue(val?: unknown): boolean {
-  if (val === null || val === undefined) return false;
-  if (typeof val === 'number') return !isNaN(val) && Number.isFinite(val) && val !== 0;
-  if (typeof val === 'boolean') return true;
-  if (typeof val === 'string') {
-    const str = val.trim();
-    if (!str) return false;
-    const lower = str.toLowerCase();
-    return (
-      lower !== '0' &&
-      lower !== '0000' &&
-      lower !== 'null' &&
-      lower !== 'undefined' &&
-      lower !== 'n/a' &&
-      lower !== 'na' &&
-      lower !== 'none' &&
-      lower !== 'nil' &&
-      lower !== '{}' &&
-      lower !== '[]' &&
-      lower !== '[object object]' &&
-      lower !== 'unknown'
-    );
-  }
-  return false;
-}
 
 /** Check if a string represents an external link / URL */
 function isUrlLike(str?: string | null): boolean {
@@ -74,6 +51,7 @@ function toValidUrl(str: string): string {
 
 export function DynamicInspectorField({
   fieldDef,
+  item,
   paper,
   val,
   displayDoi,
@@ -118,12 +96,16 @@ export function DynamicInspectorField({
 
   return (
     <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5 group">
-      <span
-        className="text-muted-foreground text-right font-medium select-none pr-1 text-11 leading-normal whitespace-nowrap truncate"
-        title={fieldDef.label}
-      >
-        {fieldDef.label}
-      </span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="text-muted-foreground text-right font-medium select-none pr-1 text-11 leading-normal whitespace-nowrap truncate">
+            {fieldDef.label}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" align="start" sideOffset={6}>
+          {fieldDef.label}
+        </TooltipContent>
+      </Tooltip>
       <div className="flex items-center gap-1 min-w-0 w-full">
         <InlineField
           value={val}
@@ -138,7 +120,7 @@ export function DynamicInspectorField({
         {/* DOI Quick Action */}
         {isDoi && displayDoi && (
           <div className="flex items-center shrink-0">
-            <Tooltip delayDuration={300}>
+            <Tooltip>
               <TooltipTrigger asChild>
                 <a
                   href={`https://doi.org/${displayDoi}`}
@@ -155,7 +137,6 @@ export function DynamicInspectorField({
                 align="start"
                 sideOffset={6}
                 alignOffset={2}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
               >
                 Open DOI
               </TooltipContent>
@@ -166,7 +147,7 @@ export function DynamicInspectorField({
         {/* Citation Key Quick Action */}
         {isCitationKey && isValidValue(currentVal) && (
           <div className="invisible group-hover:visible group-focus-within:visible max-md:visible flex items-center shrink-0">
-            <Tooltip delayDuration={300}>
+            <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
@@ -186,7 +167,6 @@ export function DynamicInspectorField({
                 align="start"
                 sideOffset={6}
                 alignOffset={2}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
               >
                 Copy citation key
               </TooltipContent>
@@ -197,7 +177,7 @@ export function DynamicInspectorField({
         {/* PubMed Quick Action */}
         {(fieldDef.field.toLowerCase() === 'pmid' || fieldDef.field.toLowerCase() === 'pmcid') && currentVal && (
           <div className="flex items-center shrink-0">
-            <Tooltip delayDuration={300}>
+            <Tooltip>
               <TooltipTrigger asChild>
                 <a
                   href={
@@ -218,7 +198,6 @@ export function DynamicInspectorField({
                 align="start"
                 sideOffset={6}
                 alignOffset={2}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
               >
                 Open in PubMed
               </TooltipContent>
@@ -229,7 +208,7 @@ export function DynamicInspectorField({
         {/* arXiv Quick Action */}
         {(fieldDef.field.toLowerCase() === 'arxivid' || fieldDef.field.toLowerCase() === 'arxiv') && currentVal && (
           <div className="flex items-center shrink-0">
-            <Tooltip delayDuration={300}>
+            <Tooltip>
               <TooltipTrigger asChild>
                 <a
                   href={`https://arxiv.org/abs/${encodeURIComponent(currentVal.replace(/^arxiv:/i, ''))}`}
@@ -246,7 +225,6 @@ export function DynamicInspectorField({
                 align="start"
                 sideOffset={6}
                 alignOffset={2}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
               >
                 Open in arXiv
               </TooltipContent>
@@ -262,7 +240,7 @@ export function DynamicInspectorField({
           fieldDef.field.toLowerCase() !== 'arxiv' &&
           hasLink && (
             <div className="flex items-center shrink-0">
-              <Tooltip delayDuration={300}>
+              <Tooltip>
                 <TooltipTrigger asChild>
                   <a
                     href={toValidUrl(currentVal)}
@@ -279,7 +257,6 @@ export function DynamicInspectorField({
                   align="start"
                   sideOffset={6}
                   alignOffset={2}
-                  className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
                 >
                   Open {fieldDef.label.toLowerCase()} link
                 </TooltipContent>

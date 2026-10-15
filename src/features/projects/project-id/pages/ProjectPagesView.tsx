@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/core';
 import { projectPagesQueryOptions, usePageActions, pageKeys } from './hooks/use-page';
 import { useProjects, useProject } from '@/features/projects/shell/hooks/use-project';
 import { Topbar } from './components/layout/Topbar';
@@ -99,7 +99,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
         for (const l of page.labels) {
           if (!l) continue;
           if (typeof l === 'string') {
-            const matched = projectLabels.find((pl: any) => pl.id === l || pl.name === l);
+            const matched = projectLabels.find((pl: { id?: string; name?: string }) => pl.id === l || pl.name === l);
             const id = matched?.id || l;
             const name = matched?.name || l;
             const color = matched?.color || '#3b82f6';

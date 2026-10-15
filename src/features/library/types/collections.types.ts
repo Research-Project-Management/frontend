@@ -49,6 +49,7 @@ export const reorderCollectionsSchema = z.object({
     z.object({
       id: z.string(),
       parentId: z.string().nullable().optional(),
+      orderIndex: z.number().int().optional(),
     }),
   ),
 });

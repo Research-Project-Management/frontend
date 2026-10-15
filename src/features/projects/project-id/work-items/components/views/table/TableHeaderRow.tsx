@@ -9,18 +9,13 @@ import {
   type TableSortOrder,
   TABLE_PROPERTIES,
   DEFAULT_COLUMN_WIDTHS,
-} from '../../../types/table-view.types';
+} from '@/features/projects/project-id/work-items/types/table-view.types';
 import { TableColumnPropertiesPopover } from './TableColumnPropertiesPopover';
 
 export interface TableHeaderRowProps {
   visibleProperties: Record<TablePropertyKey, boolean>;
   columnWidths?: Record<string, number>;
-  onResizeColumn?: (key: string, width: number) => void;
   onToggleProperty?: (key: TablePropertyKey) => void;
-  onResetProperties?: () => void;
-  isAllSelected: boolean;
-  isSomeSelected: boolean;
-  onToggleSelectAll: () => void;
   sortField?: TableSortField;
   sortOrder?: TableSortOrder;
   onSort?: (field: TableSortField) => void;
@@ -29,12 +24,7 @@ export interface TableHeaderRowProps {
 export function TableHeaderRow({
   visibleProperties,
   columnWidths,
-  onResizeColumn,
   onToggleProperty,
-  onResetProperties,
-  isAllSelected,
-  isSomeSelected,
-  onToggleSelectAll,
   sortField,
   sortOrder,
   onSort,
@@ -132,7 +122,6 @@ export function TableHeaderRow({
           <TableColumnPropertiesPopover
             visibleProperties={visibleProperties}
             onToggleProperty={onToggleProperty}
-            onResetProperties={onResetProperties}
             compact
           />
         )}

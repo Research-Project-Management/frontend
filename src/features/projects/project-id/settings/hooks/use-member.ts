@@ -122,7 +122,7 @@ export function useMembers(projectId: string) {
         { projectId, userId },
         {
           onSuccess: () => toast.success('Member removed from project', { id: 'settings-member' }),
-          onError: (err: any) => toast.error(err?.message || 'Failed to remove member', { id: 'settings-member' }),
+          onError: (err: unknown) => toast.error(err instanceof Error ? err.message : 'Failed to remove member', { id: 'settings-member' }),
         },
       );
     },

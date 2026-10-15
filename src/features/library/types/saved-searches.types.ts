@@ -16,6 +16,11 @@ export const savedSearchOperatorSchema = z.enum([
   'isInTheLast',
   'isPresent',
   'isAbsent',
+  'greater_than',
+  'less_than',
+  'equals',
+  'not_equals',
+  'between',
 ]);
 
 export const savedSearchScopeOptionsSchema = z.object({
@@ -126,3 +131,161 @@ export type SavedSearchResultsResponse = z.infer<
 export type SavedSearchPreviewResponse = z.infer<
   typeof savedSearchPreviewResponseSchema
 >;
+
+function isConditionGroup(
+  node: SavedSearchCondition | SavedSearchConditionGroup,
+): node is SavedSearchConditionGroup {
+  return 'conditions' in node && Array.isArray(node.conditions);
+}
+
+function extractItemFieldValues(item: Record<string, unknown>, field: string): unknown[] {
+  const normalizedField = field.trim();
+  if (normalizedField === 'hasFile') {
+    const fileCount =
+      typeof item.fileCount === 'number'
+        ? item.fileCount
+        : Array.isArray(item.attachments)
+          ? item.attachments.length
+          : 0;
+    const hasFile = Boolean(item.hasFile || item.pdfUrl || fileCount > 0);
+    return [hasFile, String(hasFile)];
+  }
+  if (normalizedField === 'hasNotes') {
+    const noteCount =
+      typeof item.noteCount === 'number'
+        ? item.noteCount
+        : Array.isArray(item.notes)
+          ? item.notes.length
+          : 0;
+    const hasNotes = Boolean(item.hasNotes || noteCount > 0);
+    return [hasNotes, String(hasNotes)];
+  }
+  if (normalizedField === 'tag' || normalizedField === 'tags') {
+    const tags = Array.isArray(item.tags) ? item.tags : [];
+    return tags
+      .map((t) =>
+        typeof t === 'string'
+          ? t
+          : t && typeof t === 'object' && 'name' in t
+            ? String((t as { name: unknown }).name)
+            : '',
+      )
+      .filter(Boolean);
+  }
+  if (normalizedField === 'authors' || normalizedField === 'creator' || normalizedField === 'creators') {
+    const creators = Array.isArray(item.creators) ? item.creators : [];
+    const authors = Array.isArray(item.authors) ? item.authors : [];
+    const extracted: string[] = [];
+    for (const c of [...creators, ...authors]) {
+      if (typeof c === 'string') {
+        extracted.push(c);
+      } else if (c && typeof c === 'object') {
+        const obj = c as Record<string, unknown>;
+        const full = [obj.firstName, obj.lastName, obj.fullName, obj.name]
+          .filter((v) => typeof v === 'string' && v.trim())
+          .join(' ');
+        if (full) extracted.push(full);
+      }
+    }
+    return extracted;
+  }
+  const raw = item[normalizedField];
+  if (Array.isArray(raw)) return raw;
+  if (raw === undefined || raw === null) return [];
+  return [raw];
+}
+
+export function evaluateSavedSearchCondition(
+  item: Record<string, unknown>,
+  condition: SavedSearchCondition,
+): boolean {
+  const values = extractItemFieldValues(item, condition.field);
+  const op = condition.operator;
+  const target = condition.value;
+
+  if (op === 'isPresent') {
+    return values.some((v) => v !== null && v !== undefined && String(v).trim() !== '');
+  }
+  if (op === 'isAbsent') {
+    return (
+      values.length === 0 ||
+      values.every((v) => v === null || v === undefined || String(v).trim() === '')
+    );
+  }
+
+  const targetStr = target !== undefined && target !== null ? String(target).trim().toLowerCase() : '';
+  const targetNum = typeof target === 'number' ? target : Number(target);
+
+  switch (op) {
+    case 'is':
+    case 'equals':
+      return values.some((v) => String(v).trim().toLowerCase() === targetStr);
+    case 'isNot':
+    case 'not_equals':
+      return values.every((v) => String(v).trim().toLowerCase() !== targetStr);
+    case 'contains':
+      return values.some((v) => String(v).toLowerCase().includes(targetStr));
+    case 'doesNotContain':
+      return values.every((v) => !String(v).toLowerCase().includes(targetStr));
+    case 'beginsWith':
+      return values.some((v) => String(v).trim().toLowerCase().startsWith(targetStr));
+    case 'endsWith':
+      return values.some((v) => String(v).trim().toLowerCase().endsWith(targetStr));
+    case 'isGreaterThan':
+    case 'greater_than':
+      return values.some((v) => {
+        const num = typeof v === 'number' ? v : Number(v);
+        return !Number.isNaN(num) && !Number.isNaN(targetNum) && num > targetNum;
+      });
+    case 'isLessThan':
+    case 'less_than':
+      return values.some((v) => {
+        const num = typeof v === 'number' ? v : Number(v);
+        return !Number.isNaN(num) && !Number.isNaN(targetNum) && num < targetNum;
+      });
+    case 'isBetween':
+    case 'between': {
+      let min = NaN;
+      let max = NaN;
+      if (Array.isArray(target) && target.length >= 2) {
+        min = Number(target[0]);
+        max = Number(target[1]);
+      } else if (target && typeof target === 'object') {
+        const range = target as Record<string, unknown>;
+        min = Number(range.min ?? range.from ?? range.start);
+        max = Number(range.max ?? range.to ?? range.end);
+      }
+      if (Number.isNaN(min) || Number.isNaN(max)) return false;
+      return values.some((v) => {
+        const num = typeof v === 'number' ? v : Number(v);
+        return !Number.isNaN(num) && num >= min && num <= max;
+      });
+    }
+    default:
+      return false;
+  }
+}
+
+export function evaluateSavedSearch(
+  item: Record<string, unknown>,
+  group: SavedSearchConditionGroup,
+): boolean {
+  if (!group.conditions || group.conditions.length === 0) return true;
+  const evalNode = (node: SavedSearchCondition | SavedSearchConditionGroup): boolean =>
+    isConditionGroup(node)
+      ? evaluateSavedSearch(item, node)
+      : evaluateSavedSearchCondition(item, node);
+
+  if (group.conjunction === 'OR') {
+    return group.conditions.some(evalNode);
+  }
+  return group.conditions.every(evalNode);
+}
+
+export function filterItemsBySavedSearch<T extends Record<string, unknown>>(
+  items: T[],
+  group: SavedSearchConditionGroup,
+): T[] {
+  return items.filter((item) => evaluateSavedSearch(item, group));
+}
+

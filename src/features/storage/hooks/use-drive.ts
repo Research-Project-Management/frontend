@@ -2,6 +2,7 @@
 
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { storageKeys } from '../constants/storage.keys';
+import type { StorageResponse } from '../types/storage.types';
 import {
   getAllFiles,
   getMyFiles,
@@ -65,7 +66,7 @@ export const useWorkspaceFiles = useDriveFiles;
 
 function createInfiniteStorageQuery(
   getKey: (scopeId?: string) => readonly unknown[],
-  fetcher: (scopeId?: string, params?: FileQueryParams) => Promise<any>,
+  fetcher: (scopeId?: string, params?: FileQueryParams) => Promise<StorageResponse>,
 ) {
   return function useInfiniteStorage(
     scopeId?: string,
@@ -183,7 +184,7 @@ export const useBatchStarItems = () => {
 export const useUpdateFileMetadata = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ fileId, metaData }: { fileId: string; metaData: Record<string, any> }) =>
+    mutationFn: ({ fileId, metaData }: { fileId: string; metaData: Record<string, unknown> }) =>
       updateFileMetadata(fileId, metaData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: storageKeys.all });

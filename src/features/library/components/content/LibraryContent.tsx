@@ -9,23 +9,20 @@ import {
   useCollectionsQuery,
   useDetachItemFromCollectionMutation,
   useSavedSearchResults,
-} from '../../data';
+} from '@/features/library/data';
 import { ContentSkeleton } from './ContentSkeleton';
 import { ItemTable } from './ItemTable';
 import LibraryEmptyState from './LibraryEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { BatchBar } from './BatchBar';
-import {
-  useLibraryModalStore,
-  useLibraryUIStore,
-} from '../../store/library-ui.store';
-import { useProcessModalStore, cleanFilenameToTitle } from '../../store/process-modal.store';
-import { useQuickCopyShortcuts } from '../../hooks/use-quick-copy';
-import { useLibraryBatchCoordinator } from '../../hooks/useLibraryBatchCoordinator';
-import { useLibraryNavigation } from '../../hooks/useLibraryNavigation';
-import type { Item, Collection } from '../../types';
-import type { LibraryOrderBy } from '../topbar/LibraryDisplayPopover';
+import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
+import { useProcessModalStore, cleanFilenameToTitle } from '@/features/library/store/process-modal.store';
+import { useQuickCopyShortcuts } from '@/features/library/hooks/use-quick-copy';
+import { useLibraryBatchCoordinator } from '@/features/library/hooks/useLibraryBatchCoordinator';
+import { useLibraryNavigation } from '@/features/library/hooks/useLibraryNavigation';
+import { itemSchema, type Item, type Collection } from '@/features/library/types';
+import type { LibraryOrderBy } from '@/features/library/components/topbar/LibraryDisplayPopover';
 
 /** Fields requested from the server for the list view — kept at module scope to avoid inline array allocation. */
 const ITEM_LIST_FIELDS = [
@@ -53,8 +50,8 @@ function getVisiblePages(currentPage: number, totalPages: number): (number | 'el
 }
 
 /** Maps generic library order-by fields to the saved search results API sortBy contract. */
-const mapOrderByToSavedSearchSortBy = (
-  orderBy?: LibraryOrderBy,
+export const mapOrderByToSavedSearchSortBy = (
+  orderBy?: LibraryOrderBy | string,
 ): 'dateAdded' | 'year' | 'title' | 'creator' | 'updatedAt' | undefined => {
   if (!orderBy) return undefined;
   switch (orderBy) {
@@ -100,7 +97,7 @@ export function LibraryContent({
     propSavedSearchId || (nav.filterParam === 'saved-search' ? nav.savedSearchId : null);
   const isSavedSearchView = Boolean(effectiveSavedSearchId);
 
-  const openModal = useLibraryModalStore((s) => s.openModal);
+  const openModal = useLibraryUIStore((s) => s.openModal);
   const displayOptions = useLibraryUIStore((s) => s.displayOptions);
   const setDisplayOptions = useLibraryUIStore((s) => s.setDisplayOptions);
   const processingItems = useProcessModalStore((s) => s.processingItems);
@@ -178,7 +175,7 @@ export function LibraryContent({
 
   const items: Item[] = useMemo(() => {
     if (isSavedSearchView) {
-      return (savedSearchQuery.data?.items as unknown as Item[]) || [];
+      return savedSearchQuery.data?.items || [];
     }
     return data?.items || [];
   }, [isSavedSearchView, savedSearchQuery.data?.items, data?.items]);
@@ -204,7 +201,7 @@ export function LibraryContent({
       .filter((p) => !p.itemId || !existingIds.has(p.itemId))
       .map((p) => {
         const title = p.extractedTitle || cleanFilenameToTitle(p.fileName);
-        return {
+        return itemSchema.parse({
           id: p.id,
           title,
           itemType: 'journalArticle',
@@ -227,7 +224,7 @@ export function LibraryContent({
           _processingStatus: p.status,
           _processingProgress: p.progress,
           _processingError: p.error,
-        } as unknown as Item;
+        });
       });
   }, [isTrash, isSavedSearchView, processingItems, scopeId, collectionId, items]);
 
@@ -312,6 +309,9 @@ export function LibraryContent({
     [collectionId, detachMutation, displayedItems],
   );
 
+  const { setSorting } = nav;
+  const { clearSelection } = batchCoordinator;
+
   const handleSortChange = useCallback(
     (columnKey: string, direction: 'asc' | 'desc') => {
       setDisplayOptions((prev) => ({
@@ -319,10 +319,10 @@ export function LibraryContent({
         orderBy: columnKey as LibraryOrderBy,
         orderDirection: direction,
       }));
-      nav.setSorting(columnKey as LibraryOrderBy, direction);
-      batchCoordinator.clearSelection();
+      setSorting(columnKey as LibraryOrderBy, direction);
+      clearSelection();
     },
-    [setDisplayOptions, nav, batchCoordinator],
+    [setDisplayOptions, setSorting, clearSelection],
   );
 
   if (isLoading) {

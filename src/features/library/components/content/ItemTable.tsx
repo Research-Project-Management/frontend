@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
-import { useLibraryUIStore } from '../../store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
 import {
   useToggleStarItemMutation,
   useDeleteLibraryItemsMutation,
@@ -15,16 +15,16 @@ import {
   libraryServices,
   itemKeys,
   invalidateCollections,
-} from '../../data';
+} from '@/features/library/data';
 import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
   type LibraryDisplayOptions,
   type LibraryOrderBy,
-} from '../topbar/LibraryDisplayPopover';
-import { sortLibraryItems } from '../../utils/sort-items';
+} from '@/features/library/components/topbar/LibraryDisplayPopover';
+import { sortLibraryItems } from '@/features/library/domain/sort-items.domain';
 import { ItemTableHeader } from './ItemTableHeader';
 import { ItemTableRow } from './ItemTableRow';
-import type { Item } from '../../types/library.types';
+import type { Item } from '@/features/library/types/library.types';
 
 export interface ItemTableProps {
   items: Item[];
@@ -71,7 +71,6 @@ export const ItemTable = React.memo(function ItemTable({
   const queryClient = useQueryClient();
 
   // Store actions
-  const selectOnly = useLibraryUIStore((s) => s.selectOnly);
   const selectAll = useLibraryUIStore((s) => s.selectAll);
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
   const toggleSelect = useLibraryUIStore((s) => s.toggleSelect);
@@ -79,6 +78,7 @@ export const ItemTable = React.memo(function ItemTable({
   const activeItemId = useLibraryUIStore((s) => s.activeItemId);
   const storeDisplayOptions = useLibraryUIStore((s) => s.displayOptions);
   const setStoreDisplayOptions = useLibraryUIStore((s) => s.setDisplayOptions);
+  const openModal = useLibraryUIStore((s) => s.openModal);
 
   // Granular Boolean Selector: Does NOT re-render ItemTable when selectedIds count increments (O(1) row isolation)
   const isAllSelected = useLibraryUIStore(
@@ -124,23 +124,9 @@ export const ItemTable = React.memo(function ItemTable({
     [propOnMoveToCollection, scopeId, queryClient],
   );
 
-  // Sorting state
-  const [sortColumn, setSortColumn] = useState<string | null>(
-    displayOptions?.orderBy || 'year',
-  );
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(
-    displayOptions?.orderDirection || 'desc',
-  );
-
-  // Synchronize internal sort with displayOptions when updated from Topbar Popover
-  React.useEffect(() => {
-    if (displayOptions?.orderBy) {
-      setSortColumn(displayOptions.orderBy);
-    }
-    if (displayOptions?.orderDirection) {
-      setSortDirection(displayOptions.orderDirection);
-    }
-  }, [displayOptions?.orderBy, displayOptions?.orderDirection]);
+  // Sorting state derived directly from displayOptions
+  const sortColumn = displayOptions?.orderBy || 'createdAt';
+  const sortDirection: 'asc' | 'desc' = displayOptions?.orderDirection || 'desc';
 
   // Track last selected index for Shift + Click range selection
   const lastSelectedIndexRef = useRef<number | null>(null);
@@ -173,10 +159,6 @@ export const ItemTable = React.memo(function ItemTable({
     let nextDir: 'asc' | 'desc' = 'desc';
     if (sortColumn === columnKey) {
       nextDir = sortDirection === 'asc' ? 'desc' : 'asc';
-      setSortDirection(nextDir);
-    } else {
-      setSortColumn(columnKey);
-      setSortDirection('desc');
     }
     if (onSortChange) {
       // Server-sort mode: let the parent (LibraryContent) own the store update
@@ -368,10 +350,7 @@ export const ItemTable = React.memo(function ItemTable({
       const ids = rawIds.filter((id) => !processingIds.has(id));
       if (ids.length > 0) {
         if (isTrash) {
-          if (window.confirm(`Permanently delete ${ids.length} selected item(s)? This action cannot be undone.`)) {
-            ids.forEach((id) => handlePurge(id));
-            clearSelection();
-          }
+          openModal('DELETE_ITEMS', { itemIds: ids, permanent: true });
         } else if (onDetachItem && collectionId && !e.shiftKey) {
           // Zotero 7: In collection, Delete removes from collection without deleting paper from library
           ids.forEach((id) => onDetachItem(id));
@@ -507,7 +486,7 @@ export const ItemTable = React.memo(function ItemTable({
             clearSelection();
           }
         }}
-        className="flex-1 w-full overflow-auto text-13 focus:outline-none pb-4"
+        className="flex-1 w-full overflow-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden text-13 focus:outline-none pb-4"
       >
         <table className="w-full min-w-[640px] table-fixed text-left border-collapse">
           <colgroup>
@@ -549,6 +528,7 @@ export const ItemTable = React.memo(function ItemTable({
                   key={item.id}
                   item={item}
                   index={virtualRow.index}
+                  scopeId={scopeId}
                   isLast={isLast}
                   columns={columns}
                   density={displayOptions.density}

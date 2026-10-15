@@ -15,8 +15,8 @@ import type {
   Item,
   Column,
   Filters,
-} from '../types/work-item.types';
-import type { WorkItemFilterQuery } from '../types/filter.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
+import type { WorkItemFilterQuery } from '@/features/projects/project-id/work-items/types/filter.types';
 import { ItemHelpers, resolveStateId, inferStateGroup } from './work-item.utils';
 
 export type { WorkItemFilterQuery };
@@ -196,9 +196,22 @@ export function tokenizeText(text?: string | null): string[] {
   }
   clean = clean.replace(/[^a-z0-9\s_-]/g, ' ');
 
-  const tokens = clean.split(/\s+/).filter((t) => t.length > 0);
+  const rawTokens = clean.split(/\s+/).filter((t) => t.length > 0);
+  const tokens: string[] = [];
+  for (const t of rawTokens) {
+    tokens.push(t);
+    if (t.includes('-') || t.includes('_')) {
+      const subParts = t.split(/[-_]+/);
+      for (const sub of subParts) {
+        if (sub.length > 0 && sub !== t) {
+          tokens.push(sub);
+        }
+      }
+    }
+  }
   return tokens;
 }
+
 
 /**
  * Binary search to find the index of the first string in sortedKeys that is >= prefix.
@@ -248,11 +261,13 @@ export interface InvertedIndexStore {
   dueDateOverdueBitset: FastBitset;
   dueDateTodayBitset: FastBitset;
   dueDateThisWeekBitset: FastBitset;
+  dueDateNextWeekBitset: FastBitset;
   dueDateThisMonthBitset: FastBitset;
   dueDateNoDateBitset: FastBitset;
   // Start date categories
   startDateTodayBitset: FastBitset;
   startDateThisWeekBitset: FastBitset;
+  startDateNextWeekBitset: FastBitset;
   startDateThisMonthBitset: FastBitset;
   startDateNoDateBitset: FastBitset;
   // Created at categories
@@ -265,10 +280,13 @@ export interface InvertedIndexStore {
   updatedAtThisWeekBitset: FastBitset;
   updatedAtThisMonthBitset: FastBitset;
   updatedAtThisYearBitset: FastBitset;
-  // Subscribers & Work items
+  // Subscribers, Mentions & Work items
   subscriberMap: Map<string, FastBitset>;
+  mentionMap: Map<string, FastBitset>;
   workItemMap: Map<string, FastBitset>;
 }
+
+const MENTION_BRACKET_REGEX = /@\[([^\]]+)\]\(([^)]+)\)/g;
 
 // ============================================================================
 // 4. WORK ITEM FILTER ENGINE CLASS
@@ -280,9 +298,9 @@ export class WorkItemFilterEngine {
   private readonly indexStore: InvertedIndexStore;
 
   constructor(items: Item[], columns: Column[] = []) {
-    this.items = items;
-    this.size = items.length;
-    this.indexStore = this.buildInvertedIndex(items, columns);
+    this.items = Array.isArray(items) ? items : [];
+    this.size = this.items.length;
+    this.indexStore = this.buildInvertedIndex(this.items, columns);
   }
 
   private buildInvertedIndex(items: Item[], columns: Column[]): InvertedIndexStore {
@@ -295,6 +313,8 @@ export class WorkItemFilterEngine {
     const dayOfWeek = (now.getDay() + 6) % 7; // Monday = 0
     const weekStart = todayStart - dayOfWeek * 24 * 60 * 60 * 1000;
     const weekEnd = weekStart + 7 * 24 * 60 * 60 * 1000 - 1;
+    const nextWeekStart = weekEnd + 1;
+    const nextWeekEnd = nextWeekStart + 7 * 24 * 60 * 60 * 1000 - 1;
 
     // Month boundaries
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
@@ -309,7 +329,7 @@ export class WorkItemFilterEngine {
     for (const col of columns) {
       const id = resolveStateId(col);
       if (id) {
-        const group = col.group || inferStateGroup(id, col.title || '');
+        const group = col.group || inferStateGroup(id, col.title || col.name || '');
         colGroupMap.set(id, group);
       }
     }
@@ -334,11 +354,13 @@ export class WorkItemFilterEngine {
     const dueDateOverdueBitset = new FastBitset(size);
     const dueDateTodayBitset = new FastBitset(size);
     const dueDateThisWeekBitset = new FastBitset(size);
+    const dueDateNextWeekBitset = new FastBitset(size);
     const dueDateThisMonthBitset = new FastBitset(size);
     const dueDateNoDateBitset = new FastBitset(size);
 
     const startDateTodayBitset = new FastBitset(size);
     const startDateThisWeekBitset = new FastBitset(size);
+    const startDateNextWeekBitset = new FastBitset(size);
     const startDateThisMonthBitset = new FastBitset(size);
     const startDateNoDateBitset = new FastBitset(size);
 
@@ -353,6 +375,7 @@ export class WorkItemFilterEngine {
     const updatedAtThisYearBitset = new FastBitset(size);
 
     const subscriberMap = new Map<string, FastBitset>();
+    const mentionMap = new Map<string, FastBitset>();
     const workItemMap = new Map<string, FastBitset>();
 
     const getOrCreateBitset = (map: Map<string, FastBitset>, key: string): FastBitset => {
@@ -366,44 +389,104 @@ export class WorkItemFilterEngine {
 
     for (let i = 0; i < size; i++) {
       const item = items[i];
-      if (!item) continue;
+      if (!item || typeof item !== 'object') continue;
 
-      // 1. State
-      if (item.columnId) {
-        getOrCreateBitset(stateMap, item.columnId).set(i);
-        const group = colGroupMap.get(item.columnId) || inferStateGroup(item.columnId, '');
-        if (group) {
-          getOrCreateBitset(stateGroupMap, group).set(i);
+      const rawItem = item as Record<string, unknown>;
+
+      // 1. State & State Group (supports columnId, stateId, legacy string state, or state object)
+      const stateObj = item.state && typeof item.state === 'object' ? item.state : null;
+      const legacyStateStr = typeof rawItem.state === 'string' ? rawItem.state : undefined;
+      const stateId =
+        item.columnId ||
+        (typeof rawItem.stateId === 'string' ? rawItem.stateId : undefined) ||
+        stateObj?.id ||
+        legacyStateStr ||
+        '';
+      const stateName = stateObj?.name || '';
+
+      if (stateId) {
+        getOrCreateBitset(stateMap, stateId).set(i);
+      }
+      if (stateObj?.id && stateObj.id !== stateId) {
+        getOrCreateBitset(stateMap, stateObj.id).set(i);
+      }
+      if (stateName) {
+        getOrCreateBitset(stateMap, stateName).set(i);
+      }
+
+      const resolvedGroup =
+        item.stateGroup ||
+        stateObj?.group ||
+        (stateId ? colGroupMap.get(stateId) : undefined) ||
+        (stateId || stateName ? inferStateGroup(stateId, stateName) : undefined);
+
+      if (resolvedGroup) {
+        getOrCreateBitset(stateGroupMap, resolvedGroup).set(i);
+      }
+
+      const isTerminalState =
+        Boolean(item.completed) ||
+        resolvedGroup === 'completed' ||
+        resolvedGroup === 'cancelled';
+
+      // 2. Priority
+      const priority = (typeof item.priority === 'string' && item.priority ? item.priority : 'none').toLowerCase();
+      getOrCreateBitset(priorityMap, priority).set(i);
+
+      // 3. Assignee (supports primary assigneeId, assignee object, assigneeIds[], assignees[])
+      const itemAssigneeIds = new Set<string>();
+      const primaryAssigneeId = ItemHelpers.resolveAssigneeId(item);
+      if (primaryAssigneeId) itemAssigneeIds.add(primaryAssigneeId);
+
+      if (Array.isArray(item.assigneeIds)) {
+        for (const aId of item.assigneeIds) {
+          if (typeof aId === 'string' && aId) itemAssigneeIds.add(aId);
+        }
+      }
+      if (Array.isArray(item.assignees)) {
+        for (const a of item.assignees) {
+          if (typeof a === 'string' && a) {
+            itemAssigneeIds.add(a);
+          } else if (a && typeof a === 'object') {
+            const uId = (a as { id?: string; userId?: string }).id || (a as { id?: string; userId?: string }).userId;
+            if (typeof uId === 'string' && uId) itemAssigneeIds.add(uId);
+          }
         }
       }
 
-      // 2. Priority
-      const priority = item.priority || 'none';
-      getOrCreateBitset(priorityMap, priority).set(i);
-
-      // 3. Assignee
-      const assigneeId = ItemHelpers.resolveAssigneeId(item);
-      if (assigneeId) {
-        getOrCreateBitset(assigneeMap, assigneeId).set(i);
+      if (itemAssigneeIds.size > 0) {
+        for (const aId of itemAssigneeIds) {
+          getOrCreateBitset(assigneeMap, aId).set(i);
+        }
       } else {
         unassignedBitset.set(i);
       }
 
       // 4. Author / CreatedBy
-      const author = item.authorId || (item as { createdBy?: string }).createdBy;
+      const author =
+        item.authorId ||
+        (typeof rawItem.createdBy === 'string' ? rawItem.createdBy : undefined) ||
+        (item.author && typeof item.author === 'object' ? item.author.id : undefined);
       if (author) {
         getOrCreateBitset(authorMap, author).set(i);
       }
 
-      // 5. Labels
+      // 5. Labels (supports labels[], labelIds[])
       if (Array.isArray(item.labels)) {
         for (const l of item.labels) {
-          if (typeof l === 'string') {
+          if (typeof l === 'string' && l) {
             getOrCreateBitset(labelMap, l).set(i);
           } else if (l && typeof l === 'object') {
             const lbl = l as { id?: string; name?: string };
             if (lbl.id) getOrCreateBitset(labelMap, lbl.id).set(i);
             if (lbl.name) getOrCreateBitset(labelMap, lbl.name).set(i);
+          }
+        }
+      }
+      if (Array.isArray(rawItem.labelIds)) {
+        for (const lId of rawItem.labelIds) {
+          if (typeof lId === 'string' && lId) {
+            getOrCreateBitset(labelMap, lId).set(i);
           }
         }
       }
@@ -440,9 +523,9 @@ export class WorkItemFilterEngine {
       if (!item.dueDate) {
         dueDateNoDateBitset.set(i);
       } else {
-        const dueTime = typeof item.dueDate === 'number' ? item.dueDate : Date.parse(item.dueDate);
+        const dueTime = typeof item.dueDate === 'number' ? item.dueDate : Date.parse(String(item.dueDate));
         if (!isNaN(dueTime)) {
-          if (dueTime < todayStart && !item.completed) {
+          if (dueTime < todayStart && !isTerminalState) {
             dueDateOverdueBitset.set(i);
           }
           if (dueTime >= todayStart && dueTime <= todayEnd) {
@@ -450,6 +533,9 @@ export class WorkItemFilterEngine {
           }
           if (dueTime >= weekStart && dueTime <= weekEnd) {
             dueDateThisWeekBitset.set(i);
+          }
+          if (dueTime >= nextWeekStart && dueTime <= nextWeekEnd) {
+            dueDateNextWeekBitset.set(i);
           }
           if (dueTime >= monthStart && dueTime <= monthEnd) {
             dueDateThisMonthBitset.set(i);
@@ -461,17 +547,18 @@ export class WorkItemFilterEngine {
       if (!item.startDate) {
         startDateNoDateBitset.set(i);
       } else {
-        const startTime = typeof item.startDate === 'number' ? item.startDate : Date.parse(item.startDate);
+        const startTime = typeof item.startDate === 'number' ? item.startDate : Date.parse(String(item.startDate));
         if (!isNaN(startTime)) {
           if (startTime >= todayStart && startTime <= todayEnd) startDateTodayBitset.set(i);
           if (startTime >= weekStart && startTime <= weekEnd) startDateThisWeekBitset.set(i);
+          if (startTime >= nextWeekStart && startTime <= nextWeekEnd) startDateNextWeekBitset.set(i);
           if (startTime >= monthStart && startTime <= monthEnd) startDateThisMonthBitset.set(i);
         }
       }
 
       // 10. Created at
       if (item.createdAt) {
-        const cTime = typeof item.createdAt === 'number' ? item.createdAt : Date.parse(item.createdAt);
+        const cTime = typeof item.createdAt === 'number' ? item.createdAt : Date.parse(String(item.createdAt));
         if (!isNaN(cTime)) {
           if (cTime >= todayStart && cTime <= todayEnd) createdAtTodayBitset.set(i);
           if (cTime >= weekStart && cTime <= weekEnd) createdAtThisWeekBitset.set(i);
@@ -482,7 +569,7 @@ export class WorkItemFilterEngine {
 
       // 11. Updated at
       if (item.updatedAt) {
-        const uTime = typeof item.updatedAt === 'number' ? item.updatedAt : Date.parse(item.updatedAt);
+        const uTime = typeof item.updatedAt === 'number' ? item.updatedAt : Date.parse(String(item.updatedAt));
         if (!isNaN(uTime)) {
           if (uTime >= todayStart && uTime <= todayEnd) updatedAtTodayBitset.set(i);
           if (uTime >= weekStart && uTime <= weekEnd) updatedAtThisWeekBitset.set(i);
@@ -491,20 +578,56 @@ export class WorkItemFilterEngine {
         }
       }
 
-      // 12. Subscribers
+      // 12. Subscribers (supports subscriberIds[] and subscribers[])
       if (Array.isArray(item.subscriberIds)) {
         for (const subId of item.subscriberIds) {
-          getOrCreateBitset(subscriberMap, subId).set(i);
+          if (typeof subId === 'string' && subId) {
+            getOrCreateBitset(subscriberMap, subId).set(i);
+          }
+        }
+      }
+      if (Array.isArray(rawItem.subscribers)) {
+        for (const sub of rawItem.subscribers) {
+          if (typeof sub === 'string' && sub) {
+            getOrCreateBitset(subscriberMap, sub).set(i);
+          } else if (sub && typeof sub === 'object') {
+            const subId = (sub as { id?: string; userId?: string }).id || (sub as { id?: string; userId?: string }).userId;
+            if (typeof subId === 'string' && subId) {
+              getOrCreateBitset(subscriberMap, subId).set(i);
+            }
+          }
         }
       }
 
-      // 13. Work Items (Id & Identifier)
+      // 13. Mentions (@[User Name](userId) or explicit mentions array)
+      if (Array.isArray(rawItem.mentions)) {
+        for (const m of rawItem.mentions) {
+          if (typeof m === 'string' && m) {
+            getOrCreateBitset(mentionMap, m).set(i);
+          } else if (m && typeof m === 'object' && typeof (m as { id?: string }).id === 'string') {
+            getOrCreateBitset(mentionMap, (m as { id: string }).id).set(i);
+          }
+        }
+      }
+      const fullText = `${item.title || ''} ${item.description || ''} ${item.content || ''}`;
+      if (fullText.includes('@')) {
+        MENTION_BRACKET_REGEX.lastIndex = 0;
+        let match: RegExpExecArray | null;
+        while ((match = MENTION_BRACKET_REGEX.exec(fullText)) !== null) {
+          const mentionedName = match[1]?.trim().toLowerCase();
+          const mentionedId = match[2]?.trim();
+          if (mentionedId) getOrCreateBitset(mentionMap, mentionedId).set(i);
+          if (mentionedName) getOrCreateBitset(mentionMap, mentionedName).set(i);
+        }
+      }
+
+      // 14. Work Items (Id & Identifier)
       if (item.id) getOrCreateBitset(workItemMap, item.id).set(i);
       if (item.identifier) getOrCreateBitset(workItemMap, item.identifier).set(i);
 
-      // 14. Text tokens (Title, Identifier, and Sequence Number)
+      // 15. Text tokens (Title, Identifier, and Sequence Number)
       const textToTokenize = `${item.title || ''} ${item.identifier || ''} ${
-        item.sequenceNumber ? `plo-${item.sequenceNumber}` : ''
+        item.sequenceNumber ? `flux-${item.sequenceNumber}` : ''
       }`;
       const tokens = tokenizeText(textToTokenize);
       for (const t of tokens) {
@@ -535,10 +658,12 @@ export class WorkItemFilterEngine {
       dueDateOverdueBitset,
       dueDateTodayBitset,
       dueDateThisWeekBitset,
+      dueDateNextWeekBitset,
       dueDateThisMonthBitset,
       dueDateNoDateBitset,
       startDateTodayBitset,
       startDateThisWeekBitset,
+      startDateNextWeekBitset,
       startDateThisMonthBitset,
       startDateNoDateBitset,
       createdAtTodayBitset,
@@ -550,6 +675,7 @@ export class WorkItemFilterEngine {
       updatedAtThisMonthBitset,
       updatedAtThisYearBitset,
       subscriberMap,
+      mentionMap,
       workItemMap,
     };
   }
@@ -564,9 +690,17 @@ export class WorkItemFilterEngine {
     const matched = new FastBitset(this.size).setAll();
 
     // 1. State filter (OR within selected states, AND with matched)
-    if (filters.state && filters.state.length > 0) {
+    const stateFilters = [
+      ...(filters.state || []),
+      ...(typeof filters.columnId === 'string'
+        ? [filters.columnId]
+        : Array.isArray(filters.columnId)
+          ? filters.columnId
+          : []),
+    ];
+    if (stateFilters.length > 0) {
       const stateUnion = new FastBitset(this.size);
-      for (const stateId of filters.state) {
+      for (const stateId of stateFilters) {
         const b = this.indexStore.stateMap.get(stateId);
         if (b) stateUnion.orInPlace(b);
       }
@@ -587,16 +721,24 @@ export class WorkItemFilterEngine {
     if (filters.priority && filters.priority.length > 0) {
       const priorityUnion = new FastBitset(this.size);
       for (const p of filters.priority) {
-        const b = this.indexStore.priorityMap.get(p);
+        const b = this.indexStore.priorityMap.get(String(p).toLowerCase());
         if (b) priorityUnion.orInPlace(b);
       }
       matched.andInPlace(priorityUnion);
     }
 
     // 4. Assignee filter (supports specific users and unassigned)
-    if (filters.assignees && filters.assignees.length > 0) {
+    const assigneeFilters = [
+      ...(filters.assignees || []),
+      ...(typeof filters.assigneeId === 'string'
+        ? [filters.assigneeId]
+        : Array.isArray(filters.assigneeId)
+          ? filters.assigneeId
+          : []),
+    ];
+    if (assigneeFilters.length > 0) {
       const assigneeUnion = new FastBitset(this.size);
-      for (const uid of filters.assignees) {
+      for (const uid of assigneeFilters) {
         if (uid === '__unassigned__' || uid === 'unassigned') {
           assigneeUnion.orInPlace(this.indexStore.unassignedBitset);
         } else {
@@ -627,17 +769,56 @@ export class WorkItemFilterEngine {
       matched.andInPlace(labelUnion);
     }
 
-    // 7. Due Date filter
+    // 7. Due Date filter (preset options + custom ISO date or range)
     if (filters.due_date && filters.due_date.length > 0 && !filters.due_date.includes('all')) {
       const dueUnion = new FastBitset(this.size);
       for (const option of filters.due_date) {
         if (option === 'overdue') dueUnion.orInPlace(this.indexStore.dueDateOverdueBitset);
         else if (option === 'today') dueUnion.orInPlace(this.indexStore.dueDateTodayBitset);
         else if (option === 'this_week') dueUnion.orInPlace(this.indexStore.dueDateThisWeekBitset);
+        else if (option === 'next_week') dueUnion.orInPlace(this.indexStore.dueDateNextWeekBitset);
         else if (option === 'this_month') dueUnion.orInPlace(this.indexStore.dueDateThisMonthBitset);
         else if (option === 'no_date') dueUnion.orInPlace(this.indexStore.dueDateNoDateBitset);
+        else if (option.includes('..')) {
+          const [fromStr, toStr] = option.split('..');
+          const fromMs = fromStr ? Date.parse(fromStr) : -Infinity;
+          const toMs = toStr ? Date.parse(toStr) + (toStr.length <= 10 ? 86399999 : 0) : Infinity;
+          for (let i = 0; i < this.size; i++) {
+            const dStr = this.items[i]?.dueDate;
+            if (!dStr) continue;
+            const dMs = Date.parse(String(dStr));
+            if (!isNaN(dMs) && dMs >= fromMs && dMs <= toMs) {
+              dueUnion.set(i);
+            }
+          }
+        } else if (/^\d{4}-\d{2}-\d{2}/.test(option)) {
+          const targetDay = option.slice(0, 10);
+          for (let i = 0; i < this.size; i++) {
+            const dStr = this.items[i]?.dueDate;
+            if (dStr && String(dStr).slice(0, 10) === targetDay) {
+              dueUnion.set(i);
+            }
+          }
+        }
       }
       matched.andInPlace(dueUnion);
+    }
+
+    // 7b. Explicit dueDateRange object filter
+    if (filters.dueDateRange && (filters.dueDateRange.from || filters.dueDateRange.to)) {
+      const rangeBitset = new FastBitset(this.size);
+      const fromMs = filters.dueDateRange.from ? Date.parse(filters.dueDateRange.from) : -Infinity;
+      const toRaw = filters.dueDateRange.to;
+      const toMs = toRaw ? Date.parse(toRaw) + (toRaw.length <= 10 ? 86399999 : 0) : Infinity;
+      for (let i = 0; i < this.size; i++) {
+        const dStr = this.items[i]?.dueDate;
+        if (!dStr) continue;
+        const dMs = Date.parse(String(dStr));
+        if (!isNaN(dMs) && dMs >= fromMs && dMs <= toMs) {
+          rangeBitset.set(i);
+        }
+      }
+      matched.andInPlace(rangeBitset);
     }
 
     // 8. Parent filter
@@ -646,6 +827,8 @@ export class WorkItemFilterEngine {
       for (const p of filters.parent) {
         if (p === '__none__' || p === 'parent:none') {
           parentUnion.orInPlace(this.indexStore.noParentBitset);
+        } else if (p === '__has_parent__' || p === 'parent:any') {
+          parentUnion.orInPlace(this.indexStore.hasParentBitset);
         } else {
           const b = this.indexStore.parentMap.get(p);
           if (b) parentUnion.orInPlace(b);
@@ -666,6 +849,9 @@ export class WorkItemFilterEngine {
       }
       matched.andInPlace(attachUnion);
     }
+    if (filters.hasAttachment === true) {
+      matched.andInPlace(this.indexStore.hasAttachmentsBitset);
+    }
 
     // 10. Work Items (Direct ID / Identifier match)
     const filtersObj = filters as unknown as Record<string, string[] | undefined>;
@@ -673,7 +859,7 @@ export class WorkItemFilterEngine {
       ...(filters.work_items || []),
       ...(filtersObj.sub_work_items || []),
       ...(filtersObj.item || []),
-      ...(filtersObj.items || []),
+      ...(filters.items || []),
     ];
     if (activeWorkItemFilterIds.length > 0) {
       const itemUnion = new FastBitset(this.size);
@@ -690,6 +876,7 @@ export class WorkItemFilterEngine {
       for (const option of filters.start_date) {
         if (option === 'today') startUnion.orInPlace(this.indexStore.startDateTodayBitset);
         else if (option === 'this_week') startUnion.orInPlace(this.indexStore.startDateThisWeekBitset);
+        else if (option === 'next_week') startUnion.orInPlace(this.indexStore.startDateNextWeekBitset);
         else if (option === 'this_month') startUnion.orInPlace(this.indexStore.startDateThisMonthBitset);
         else if (option === 'no_date') startUnion.orInPlace(this.indexStore.startDateNoDateBitset);
       }
@@ -732,10 +919,35 @@ export class WorkItemFilterEngine {
       matched.andInPlace(subUnion);
     }
 
-    // 15. Fast-Text Search via Token Inverted Index (Binary Search O(log K + M))
-    const searchTrimmed = searchQuery.trim();
-    if (searchTrimmed) {
-      const searchTokens = tokenizeText(searchTrimmed);
+    // 15. Mentions filter (checks indexed @[Name](id) mentions and plain @handle / assignee fallback)
+    if (filters.mentions && filters.mentions.length > 0) {
+      const mentionUnion = new FastBitset(this.size);
+      for (const mentionTarget of filters.mentions) {
+        const b =
+          this.indexStore.mentionMap.get(mentionTarget) ||
+          this.indexStore.mentionMap.get(mentionTarget.toLowerCase());
+        if (b) {
+          mentionUnion.orInPlace(b);
+        }
+        // Fallback scan for plain @userId or @username in text
+        const lowerTarget = mentionTarget.toLowerCase();
+        for (let i = 0; i < this.size; i++) {
+          if (mentionUnion.get(i)) continue;
+          const it = this.items[i];
+          if (!it) continue;
+          const text = `${it.title || ''} ${it.description || ''} ${it.content || ''}`.toLowerCase();
+          if (text.includes(`@${lowerTarget}`) || text.includes(`(${lowerTarget})`)) {
+            mentionUnion.set(i);
+          }
+        }
+      }
+      matched.andInPlace(mentionUnion);
+    }
+
+    // 16. Fast-Text Search via Token Inverted Index (Binary Search O(log K + M))
+    const effectiveSearch = (searchQuery || filters.search || '').trim();
+    if (effectiveSearch) {
+      const searchTokens = tokenizeText(effectiveSearch);
       for (const token of searchTokens) {
         const tokenUnion = new FastBitset(this.size);
 
@@ -766,3 +978,17 @@ export class WorkItemFilterEngine {
     return result;
   }
 }
+
+/**
+ * Convenience functional wrapper around WorkItemFilterEngine.
+ */
+export function filterItems(
+  items: Item[],
+  filters: Partial<Filters> = {},
+  searchQuery: string = '',
+  columns: Column[] = []
+): Item[] {
+  const engine = new WorkItemFilterEngine(items, columns);
+  return engine.executeFilter(filters, searchQuery);
+}
+

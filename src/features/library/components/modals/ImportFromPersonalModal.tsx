@@ -23,9 +23,9 @@ import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
-import { useViewItems, useCollections, libraryServices } from '../../data';
-import { formatCreatorCompact, normalizeAuthors } from '../../domain/creators';
-import type { Item, Collection } from '../../types/library.types';
+import { useViewItems, useCollections, libraryServices } from '@/features/library/data';
+import { formatCreatorCompact, normalizeAuthors } from '@/features/library/domain/creators';
+import type { Item, Collection } from '@/features/library/types/library.types';
 
 interface ImportFromPersonalModalProps {
   open: boolean;
@@ -94,9 +94,13 @@ export default function ImportFromPersonalModal({
       const q = search.trim().toLowerCase();
       list = list.filter((it) => {
         const titleMatch = it.title?.toLowerCase().includes(q);
-        const authorMatch = it.authors?.some((a: any) => {
+        const authorMatch = it.authors?.some((a: unknown) => {
           if (typeof a === 'string') return a.toLowerCase().includes(q);
-          return `${a?.firstName || ''} ${a?.lastName || ''}`.toLowerCase().includes(q);
+          if (a && typeof a === 'object') {
+            const authorObj = a as { firstName?: string; lastName?: string; name?: string };
+            return `${authorObj.firstName || ''} ${authorObj.lastName || ''} ${authorObj.name || ''}`.toLowerCase().includes(q);
+          }
+          return false;
         });
         const yearMatch = it.year?.toString().includes(q);
         const doiMatch = it.doi?.toLowerCase().includes(q);
@@ -148,9 +152,9 @@ export default function ImportFromPersonalModal({
       setSelectedIds([]);
       onSuccess?.();
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error('Failed to import references', {
-        description: err?.message,
+        description: err instanceof Error ? err.message : String(err),
         id: 'import-personal-refs',
       });
     } finally {

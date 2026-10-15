@@ -250,7 +250,7 @@ export function WorkItemVerticalStackIllustration({ className }: TIllustrationAs
   );
 }
 
-import type { EmptyStateProps, WorkItemsEmptyStateProps } from '../../types/layout.types';
+import type { EmptyStateProps, WorkItemsEmptyStateProps } from '@/features/projects/project-id/work-items/types/layout.types';
 
 export type { EmptyStateProps, WorkItemsEmptyStateProps };
 

@@ -120,7 +120,7 @@ export interface FolderPathResponse {
 }
 
 export const getFolderPath = (folderId: string): Promise<FolderPathResponse> => {
-  return apiGet<any>(`/api/files/folder-path?folderId=${encodeURIComponent(folderId)}`).then((res) => {
+  return apiGet<FolderPathResponse | Array<{ id: string; name: string }>>(`/api/files/folder-path?folderId=${encodeURIComponent(folderId)}`).then((res) => {
     if (Array.isArray(res)) {
       return { path: res };
     }
@@ -168,7 +168,7 @@ export const checkDuplicateFile = (
   filename?: string,
   parentId: string | null = null,
 ) => {
-  return getAllFiles(scopeId, parentId).then((data: any) => {
+  return getAllFiles(scopeId, parentId).then((data: StorageResponse & { items?: StorageItem[] }) => {
     const files: StorageItem[] = data?.files || data?.items || [];
     const existingFile = files.find(
       (item) => !item.isFolder && item.filename === filename,
@@ -187,6 +187,6 @@ export const shareItem = (itemId: string, userId: string, permission: 'view' | '
   return apiPut(`/api/files/${itemId}/share`, { userId, permission });
 };
 
-export const updateFileMetadata = (itemId: string, metaData: Record<string, any>) => {
+export const updateFileMetadata = (itemId: string, metaData: Record<string, unknown>) => {
   return apiPut(`/api/files/${itemId}`, { metaData });
 };

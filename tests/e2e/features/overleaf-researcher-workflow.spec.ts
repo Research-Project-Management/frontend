@@ -93,7 +93,7 @@ test.describe('Overleaf Researcher End-to-End Workflow Suite', () => {
     await expect(editor.wordCountDialog).toBeVisible();
     await expect(editor.wordCountDialog.getByRole('cell', { name: 'Words in text' })).toBeVisible();
     await expect(editor.wordCountDialog.getByRole('cell', { name: 'Words in headers' })).toBeVisible();
-    await expect(editor.wordCountDialog.locator('text=%TC:ignore').first()).toBeVisible();
+    await expect(editor.wordCountDialog.locator('text=/%TC:(ignore|incbib)/').first()).toBeVisible();
 
     // 3. Close dialog
     await editor.wordCountDialog.locator('button:has-text("Close")').first().click();

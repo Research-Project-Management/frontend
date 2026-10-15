@@ -20,12 +20,13 @@ import type {
   RelatedItem,
   SchemaItemTypeDefinition,
   ItemFieldDefinition,
-} from '../../types/library.types';
-import type { ItemAttachment } from '../../types/attachments.types';
-import { getItemFileUrl, getPaperFileUrl, isProjectScope } from '../../domain/item-url';
-import { AttachmentsService } from '../extraction/extraction.service';
+} from '@/features/library/types/library.types';
+import type { ItemAttachment } from '@/features/library/types/attachments.types';
+import { getItemFileUrl, getPaperFileUrl, isProjectScope } from '@/features/library/domain/item-url';
+import { mapBackendItemToPaper, mapBackendPaperToItem } from '@/features/library/domain/metadata';
+import { AttachmentsService } from '@/features/library/data/extraction/extraction.service';
 
-export { isProjectScope, getItemFileUrl, getPaperFileUrl };
+export { isProjectScope, getItemFileUrl, getPaperFileUrl, mapBackendItemToPaper, mapBackendPaperToItem };
 export type {
   TagWithCount,
   ItemStateData,
@@ -34,26 +35,12 @@ export type {
   SavedSearchConditionGroup,
 };
 
-// ── Payload sanitization ──────────────────────────────────────────────────────
-const DISALLOWED_PAYLOAD_KEYS = new Set([
-  '__proto__',
-  'constructor',
-  'prototype',
-  'isAdmin',
-  'secretRole',
-  'randomInjectedField',
-  'role',
-  'roles',
-  'permissions',
-  'password',
-  'token',
-]);
-
+// ── Payload serialization helper ──────────────────────────────────────────────
 /**
  * Prepares payload for API dispatch by stripping undefined values, functions,
- * prototype pollution, unauthorized injection keys, and client-only transient state flags.
- * The Backend Server (CreateItemDto, UpdateItemDto, ItemValidatorService)
- * is the authoritative validator for allowed bibliographic fields and types.
+ * and client-only transient state flags (prefixed with `_`).
+ * Security & mass-assignment enforcement are strictly owned by the Backend's
+ * NestJS ValidationPipe (`whitelist: true`) and Guards.
  */
 export function sanitizeItemPayload(data: Record<string, unknown>): Record<string, unknown> {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
@@ -62,9 +49,7 @@ export function sanitizeItemPayload(data: Record<string, unknown>): Record<strin
     if (
       value !== undefined &&
       typeof value !== 'function' &&
-      !key.startsWith('_') &&
-      !DISALLOWED_PAYLOAD_KEYS.has(key) &&
-      !/^(?:isAdmin|secret|injected)/i.test(key)
+      !key.startsWith('_')
     ) {
       cleaned[key] = value;
     }
@@ -180,11 +165,31 @@ export const fetchPdfBlob = async (
 };
 
 // ── Scope URL helper ────────────────────────────────────────────────────────
+function getCollectionsUrl(scopeId?: string, suffix = ''): string {
+  const base = isProjectScope(scopeId)
+    ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/collections`
+    : `/api/v1/library/collections`;
+  return suffix ? `${base}/${suffix}` : base;
+}
+
+function getSavedSearchesUrl(scopeId?: string, suffix = ''): string {
+  const base = isProjectScope(scopeId)
+    ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/saved-searches`
+    : `/api/v1/library/saved-searches`;
+  return suffix ? `${base}/${suffix}` : base;
+}
 function getItemUrl(scopeId?: string, suffix = ''): string {
   const base = isProjectScope(scopeId)
     ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/items`
     : `/api/v1/library/items`;
   return suffix ? `${base}/${suffix}` : base;
+}
+
+function unwrapItemResponse(res: unknown): Item & { item: Item; paper: Item } {
+  const obj = res && typeof res === 'object' ? (res as Record<string, unknown>) : {};
+  const rawItem = ((obj.item || obj.paper || obj.data || res) ?? {}) as Item;
+  const item = mapBackendItemToPaper(rawItem);
+  return { ...item, item, paper: item };
 }
 
 // ── 1. ItemsService ───────────────────────────────────────────────────────────
@@ -204,7 +209,19 @@ export const ItemsService = {
   },
 
   getCounts: (scopeId?: string) => {
-    return api.apiGet<{ total: number; unfiled: number; starred: number; trash: number }>(
+    return api.apiGet<{
+      total: number;
+      unfiled: number;
+      starred: number;
+      trash: number;
+      itemTypes?: Record<string, number>;
+      byItemType?: Record<string, number>;
+      role?: import('@/features/library/types/core.types').ProjectRole;
+      yourRole?: import('@/features/library/types/core.types').ProjectRole;
+      permissions?: Partial<import('@/features/library/types/core.types').LibraryPermissions> | string[];
+      effectivePermissions?: string[];
+      permissionOverrides?: Record<string, boolean>;
+    }>(
       getItemUrl(scopeId, 'counts'),
     );
   },
@@ -219,37 +236,42 @@ export const ItemsService = {
       limit?: number;
       cursor?: string;
       fields?: readonly string[] | string[] | string;
-      [key: string]: any;
+      [key: string]: unknown;
     },
     options?: { signal?: AbortSignal },
   ) => {
     const rawParams = params as Record<string, unknown> | undefined;
     const rawTag = rawParams?.tag;
-    const formattedParams = params
+    const rawCollectionIds = rawParams?.collectionIds;
+    const formattedParams: Record<string, string | number | boolean | null | undefined> | undefined = params
       ? {
-          ...params,
+          ...(params as Record<string, string | number | boolean | null | undefined>),
+          collectionIds: Array.isArray(rawCollectionIds)
+            ? rawCollectionIds.join(',')
+            : (rawCollectionIds as string | undefined),
           fields: Array.isArray(params.fields)
             ? params.fields.join(',')
-            : params.fields,
+            : (params.fields as string | undefined),
           tag: Array.isArray(rawTag)
             ? rawTag.join(',')
             : (rawTag as string | undefined) ||
-              (Array.isArray(params.tags) ? params.tags.join(',') : params.tags),
+              (Array.isArray(params.tags) ? params.tags.join(',') : (params.tags as string | undefined)),
           tags: Array.isArray(params.tags)
             ? params.tags.join(',')
-            : params.tags,
+            : (params.tags as string | undefined),
         }
       : undefined;
     return api.apiGet<PaginatedItemsResponse>(
       getItemUrl(scopeId),
       {
-        params: formattedParams as unknown as Record<string, string | number | boolean | null | undefined>,
+        params: formattedParams,
         signal: options?.signal,
       },
     ).then((res) => {
-      const items: Item[] = Array.isArray(res)
+      const rawItems: Item[] = Array.isArray(res)
         ? res
         : res?.items || [];
+      const items = rawItems.map((it) => mapBackendItemToPaper(it));
       const meta = (res?.pagination || res?.meta) as CursorPaginationMeta | undefined;
       const total =
         meta?.totalCount ??
@@ -268,17 +290,7 @@ export const ItemsService = {
   getById: (scopeId: string, itemId: string) =>
     api.apiGet<Item | { item?: Item; paper?: Item }>(
       getItemUrl(scopeId, encodeURIComponent(itemId)),
-    ).then((res) => {
-      const item: Item =
-        res && typeof res === 'object' && 'item' in res && res.item
-          ? (res.item as Item)
-          : (res as Item);
-      return {
-        ...item,
-        item,
-        paper: item,
-      };
-    }),
+    ).then(unwrapItemResponse),
 
   getMetadataSources: (scopeId: string | undefined, itemId: string) =>
     api.apiGet<ItemMetadataSourcesResponse>(
@@ -286,15 +298,16 @@ export const ItemsService = {
     ),
 
   getByCollection: (scopeId: string, collectionId: string, search?: string) =>
-    api.apiGet<any>(
+    api.apiGet<Record<string, unknown> | Item[]>(
       getItemUrl(scopeId),
       { params: { collectionId, ...(search ? { search } : {}) } },
     ).then((res) => {
-      const papers: Item[] = Array.isArray(res)
+      const rawPapers: Item[] = Array.isArray(res)
         ? res
-        : res?.items || res?.papers || res?.data || [];
+        : (((res as Record<string, unknown>)?.items || (res as Record<string, unknown>)?.papers || (res as Record<string, unknown>)?.data || []) as Item[]);
+      const papers = rawPapers.map((it) => mapBackendItemToPaper(it));
       return {
-        collection: res?.collection,
+        collection: res && !Array.isArray(res) ? (res as Record<string, unknown>).collection : undefined,
         items: papers,
         papers,
         data: papers,
@@ -306,13 +319,10 @@ export const ItemsService = {
     if (collectionId) {
       payload.collectionId = collectionId;
     }
-    return api.apiPost<any>(
+    return api.apiPost<Record<string, unknown>>(
       getItemUrl(scopeId),
       payload,
-    ).then((res) => {
-      const item = ((res?.item || res?.paper || res?.data || res) ?? {}) as Item;
-      return { ...item, item, paper: item };
-    });
+    ).then(unwrapItemResponse);
   },
 
   update: async (
@@ -333,31 +343,16 @@ export const ItemsService = {
       getItemUrl(scopeId, encodeURIComponent(itemId)),
       payload,
     );
-    const item = (((res as Record<string, unknown>)?.item || (res as Record<string, unknown>)?.paper || (res as Record<string, unknown>)?.data || res) ?? {}) as Item;
-    return { ...item, item, paper: item };
+    return unwrapItemResponse(res);
   },
 
-  patch: async (
+  patch: (
     scopeId: string,
     itemId: string,
     data: Partial<Item>,
     expectedVersion?: number,
-  ): Promise<Item & { item: Item; paper: Item }> => {
-    const payload = sanitizeItemPayload(data as Record<string, unknown>);
-    const resolvedVersion =
-      expectedVersion ??
-      (data as { expectedVersion?: number })?.expectedVersion ??
-      data.version;
-    if (resolvedVersion !== undefined && typeof resolvedVersion === 'number') {
-      payload.expectedVersion = resolvedVersion;
-    }
-    const res = await api.apiPatch<Record<string, unknown>>(
-      getItemUrl(scopeId, encodeURIComponent(itemId)),
-      payload,
-    );
-    const item = (((res as Record<string, unknown>)?.item || (res as Record<string, unknown>)?.paper || (res as Record<string, unknown>)?.data || res) ?? {}) as Item;
-    return { ...item, item, paper: item };
-  },
+  ): Promise<Item & { item: Item; paper: Item }> =>
+    ItemsService.update(scopeId, itemId, data, expectedVersion),
 
   replace: async (
     scopeId: string,
@@ -373,8 +368,7 @@ export const ItemsService = {
       getItemUrl(scopeId, encodeURIComponent(itemId)),
       payload,
     );
-    const item = (((res as Record<string, unknown>)?.item || (res as Record<string, unknown>)?.paper || (res as Record<string, unknown>)?.data || res) ?? {}) as Item;
-    return { ...item, item, paper: item };
+    return unwrapItemResponse(res);
   },
 
   delete: (scopeId: string, itemId: string) =>
@@ -386,11 +380,11 @@ export const ItemsService = {
     const versionQuery = expectedVersion !== undefined
       ? `?expectedVersion=${encodeURIComponent(String(expectedVersion))}`
       : '';
-    return api.apiPost<any>(
+    return api.apiPost<Record<string, unknown>>(
       getItemUrl(scopeId, `${encodeURIComponent(itemId)}/restore${versionQuery}`),
       {},
     ).then((res) => {
-      const item = res?.item || res?.paper || res?.data || res;
+      const { item } = unwrapItemResponse(res);
       return { success: true, data: item, item, paper: item };
     });
   },
@@ -469,7 +463,7 @@ export const ItemsService = {
     ),
 
   getItemTypes: (_scopeId?: string) =>
-    api.apiGet<any>(
+    api.apiGet<Record<string, unknown>>(
       `/api/v1/library/item-types`,
       { rawEnvelope: true },
     ),
@@ -496,9 +490,11 @@ export const ItemsService = {
     targetType: string,
     retainUnmappedInExtra: boolean = true,
   ) =>
-    api.apiPost<{ success: boolean; preview: unknown; data: unknown }>(
-      getItemUrl(scopeId, `${encodeURIComponent(itemId)}/convert-type/preview`),
-      { targetType, retainUnmappedInExtra },
+    ItemsService.previewConvertType(
+      scopeId,
+      itemId,
+      targetType,
+      retainUnmappedInExtra,
     ),
 
   convertType: (
@@ -514,15 +510,15 @@ export const ItemsService = {
     ),
 
   reindexItem: (scopeId: string | undefined, itemId: string) =>
-    api.apiPost<{ success: boolean; data?: any }>(
+    api.apiPost<{ success: boolean; data?: unknown }>(
       getItemUrl(scopeId, `${encodeURIComponent(itemId)}/reindex`),
       {},
     ).then((res) => res?.data || res || { success: true }),
 
   getFulltext: (scopeId: string | undefined, itemId: string) =>
-    api.apiGet<any>(
+    api.apiGet<Record<string, unknown>>(
       getItemUrl(scopeId, `${encodeURIComponent(itemId)}/fulltext`),
-    ).then((res) => res?.data || res || null).catch(() => null),
+    ).then((res) => (res as { data?: unknown })?.data || res || null).catch(() => null),
 
   getItemFileUrl,
   getPaperFileUrl,
@@ -535,6 +531,49 @@ export const ItemsService = {
 
   fetchPdfBlob: (url: string, signal?: AbortSignal) =>
     fetchPdfBlob(url, signal),
+
+  markMyPublication: (scopeId: string, itemId: string) =>
+    ItemsService.setMyPublication(scopeId, itemId, true),
+
+  unmarkMyPublication: (scopeId: string, itemId: string) =>
+    ItemsService.setMyPublication(scopeId, itemId, false),
+
+  reResolveMetadata: (
+    scopeId: string | undefined,
+    itemId: string,
+    body?: Record<string, unknown>,
+  ) =>
+    api.apiPost<{ success: boolean; data?: unknown; item?: Item }>(
+      getItemUrl(scopeId, `${encodeURIComponent(itemId)}/re-resolve`),
+      body || {},
+    ),
+
+  parseCitations: (scopeId: string | undefined, rawCitations: string) =>
+    api.apiPost<{
+      success: boolean;
+      count: number;
+      references: Record<string, unknown>[];
+      citations: Record<string, unknown>[];
+    }>(
+      getItemUrl(scopeId, 'citations/parse'),
+      { rawCitations, citations: rawCitations },
+    ),
+
+  getRelated: (scopeId: string | undefined, itemId: string) =>
+    RelationsService.getRelated(scopeId, itemId),
+
+  linkRelated: (
+    scopeId: string | undefined,
+    itemId: string,
+    targetItemId: string | string[],
+    relationType?: string,
+  ) => RelationsService.link(scopeId, itemId, targetItemId, relationType),
+
+  unlinkRelated: (
+    scopeId: string | undefined,
+    itemId: string,
+    targetItemId: string,
+  ) => RelationsService.unlink(scopeId, itemId, targetItemId),
 
   setMyPublication: (scopeId: string, itemId: string, isMyPublication: boolean) =>
     isMyPublication
@@ -554,7 +593,7 @@ export interface ItemMetadataSourceItem {
   format?: string | null;
   fetchedAt: string;
   createdAt: string;
-  rawPayload?: any;
+  rawPayload?: unknown;
 }
 
 export interface ItemMetadataSourcesResponse {
@@ -570,7 +609,7 @@ export const ItemService = ItemsService;
 export const CollectionsService = {
   getAll: (scopeId?: string) =>
     api.apiGet<{ collections: Collection[] }>(
-      `/api/v1/library/collections`,
+      getCollectionsUrl(scopeId),
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined }
     ),
 
@@ -580,7 +619,7 @@ export const CollectionsService = {
    */
   getTree: (scopeId?: string) =>
     api.apiGet<{ tree: Collection[] }>(
-      `/api/v1/library/collections/tree`,
+      getCollectionsUrl(scopeId, 'tree'),
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined }
     ),
 
@@ -588,28 +627,28 @@ export const CollectionsService = {
     const effectiveScope = collectionId ? scopeId : undefined;
     const effectiveId = collectionId || scopeId || '';
     return api.apiGet<{ collection: Collection }>(
-      `/api/v1/library/collections/${encodeURIComponent(effectiveId)}`,
+      getCollectionsUrl(effectiveScope, encodeURIComponent(effectiveId)),
       { params: isProjectScope(effectiveScope) ? { projectId: effectiveScope } : undefined },
     );
   },
 
   create: (scopeId: string | undefined, data: CreateCollectionDTO) =>
     api.apiPost<{ collection: Collection }>(
-      `/api/v1/library/collections`,
+      getCollectionsUrl(scopeId),
       data,
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined }
     ),
 
   update: (scopeId: string | undefined, collectionId: string, data: UpdateCollectionDTO) =>
     api.apiPut<{ collection: Collection }>(
-      `/api/v1/library/collections/${encodeURIComponent(collectionId)}`,
+      getCollectionsUrl(scopeId, encodeURIComponent(collectionId)),
       data,
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
   delete: (scopeId: string | undefined, collectionId: string, strategy?: "cascade" | "move-to-parent" | "orphan") =>
     api.apiDelete(
-      `/api/v1/library/collections/${encodeURIComponent(collectionId)}`,
+      getCollectionsUrl(scopeId, encodeURIComponent(collectionId)),
       {
         params: {
           ...(strategy ? { strategy } : {}),
@@ -620,21 +659,20 @@ export const CollectionsService = {
 
   moveItems: (scopeId: string | undefined, collectionId: string, itemIds: string[]) =>
     api.apiPost<{ message: string; count: number; targetCollectionId: string | null }>(
-      `/api/v1/library/collections/${encodeURIComponent(collectionId)}/move-items`,
+      getCollectionsUrl(scopeId, `${encodeURIComponent(collectionId)}/move-items`),
       { itemIds, paperIds: itemIds },
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined }
     ),
 
   movePapers: (scopeId: string | undefined, collectionId: string, paperIds: string[]) =>
-    api.apiPost<{ message: string; count: number; targetCollectionId: string | null }>(
-      `/api/v1/library/collections/${encodeURIComponent(collectionId)}/move-items`,
-      { itemIds: paperIds, paperIds },
-      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined }
-    ),
+    CollectionsService.moveItems(scopeId, collectionId, paperIds),
 
-  reorder: (scopeId: string | undefined, collections: Array<{ id: string; parentId?: string | null }>) =>
+  reorder: (
+    scopeId: string | undefined,
+    collections: Array<{ id: string; parentId?: string | null; orderIndex?: number }>,
+  ) =>
     api.apiPatch<{ collections: Collection[] }>(
-      `/api/v1/library/collections/reorder`,
+      getCollectionsUrl(scopeId, 'reorder'),
       { collections },
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
@@ -649,7 +687,7 @@ export const CollectionsService = {
     itemIds: string[],
   ) =>
     api.apiPost<{ count: number; collectionId: string }>(
-      `/api/v1/library/collections/${encodeURIComponent(collectionId)}/items`,
+      getCollectionsUrl(scopeId, `${encodeURIComponent(collectionId)}/items`),
       { itemIds },
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined }
     ),
@@ -658,13 +696,19 @@ export const CollectionsService = {
    * Remove a single item from a collection without deleting the item
    * Backed by DELETE /collections/:collectionId/items/:itemId
    */
+  removeItem: (
+    scopeId: string | undefined,
+    collectionId: string,
+    itemId: string,
+  ) => CollectionsService.detachItem(scopeId, collectionId, itemId),
+
   detachItem: (
     scopeId: string | undefined,
     collectionId: string,
     itemId: string,
   ) =>
     api.apiDelete<{ detached: boolean }>(
-      `/api/v1/library/collections/${encodeURIComponent(collectionId)}/items/${encodeURIComponent(itemId)}`,
+      getCollectionsUrl(scopeId, `${encodeURIComponent(collectionId)}/items/${encodeURIComponent(itemId)}`),
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
@@ -678,11 +722,15 @@ export const CollectionsService = {
     itemIds: string[],
   ) =>
     api.apiPost<{ success: boolean; count: number }>(
-      `/api/v1/library/collections/${encodeURIComponent(collectionId)}/items/bulk-detach`,
+      getCollectionsUrl(scopeId, `${encodeURIComponent(collectionId)}/items/bulk-detach`),
       { itemIds },
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
+  getItemCollections: (scopeId: string | undefined, itemId: string) =>
+    api.apiGet<{ success?: boolean; collections: Collection[] }>(
+      getItemUrl(scopeId, `${encodeURIComponent(itemId)}/collections`),
+    ).then((res) => res?.collections || (Array.isArray(res) ? res : [])),
   exportBibtex: (scopeId: string | undefined, collectionId: string) => {
     const projectQuery = isProjectScope(scopeId) ? `&projectId=${encodeURIComponent(scopeId!)}` : '';
     return api.apiGet<{ bibtex: string; total: number; filename: string }>(
@@ -716,7 +764,7 @@ export const TagsService = {
     const basePath = isProject
       ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/tags`
       : `/api/v1/library/tags`;
-    const raw = await api.apiGet<any>(basePath);
+    const raw = await api.apiGet<TagWithCount[] | { data: TagWithCount[] }>(basePath);
     if (Array.isArray(raw)) return raw;
     if (raw && typeof raw === 'object' && Array.isArray(raw.data)) {
       return raw.data;
@@ -734,7 +782,7 @@ export const TagsService = {
     const basePath = isProject
       ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/tags`
       : `/api/v1/library/tags`;
-    const raw = await api.apiPost<any>(
+    const raw = await api.apiPost<TagWithCount | { data: TagWithCount }>(
       basePath,
       {
         name,
@@ -743,7 +791,7 @@ export const TagsService = {
         ...(isProject ? { projectId: scopeId } : {}),
       },
     );
-    return raw?.data || raw;
+    return (raw && 'data' in raw && raw.data ? raw.data : raw) as TagWithCount;
   },
 
   update: async (
@@ -755,11 +803,19 @@ export const TagsService = {
     const basePath = isProject
       ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/tags`
       : `/api/v1/library/tags`;
-    const raw = await api.apiPatch<any>(
+    const raw = await api.apiPatch<TagWithCount | { data: TagWithCount }>(
       `${basePath}/${encodeURIComponent(tagId)}`,
       data,
     );
-    return raw?.data || raw;
+    return (raw && 'data' in raw && raw.data ? raw.data : raw) as TagWithCount;
+  },
+
+  updateColor: async (
+    scopeId: string | undefined,
+    tagId: string,
+    color: string,
+  ): Promise<TagWithCount> => {
+    return TagsService.update(scopeId, tagId, { color });
   },
 
   delete: async (scopeId: string | undefined, tagId: string): Promise<void> => {
@@ -767,7 +823,7 @@ export const TagsService = {
     const basePath = isProject
       ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/tags`
       : `/api/v1/library/tags`;
-    await api.apiDelete<any>(
+    await api.apiDelete<unknown>(
       `${basePath}/${encodeURIComponent(tagId)}`,
     );
   },
@@ -779,12 +835,12 @@ export const TagsService = {
     const basePath = isProject
       ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/tags`
       : `/api/v1/library/tags`;
-    const raw = await api.apiDelete<any>(
+    const raw = await api.apiDelete<{ count?: number; data?: { count: number } }>(
       `${basePath}/automatic`,
     );
-    return raw?.data || raw || { count: 0 };
-  },
+    return raw?.data || (raw && typeof raw.count === 'number' ? { count: raw.count } : { count: 0 });
 
+  },
   assignToItem: async (
     scopeId: string | undefined,
     tagId: string,
@@ -794,7 +850,7 @@ export const TagsService = {
     const basePath = isProject
       ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/tags`
       : `/api/v1/library/tags`;
-    await api.apiPost<any>(
+    await api.apiPost<unknown>(
       `${basePath}/${encodeURIComponent(tagId)}/items/${encodeURIComponent(itemId)}`,
       {},
     );
@@ -809,7 +865,7 @@ export const TagsService = {
     const basePath = isProject
       ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/tags`
       : `/api/v1/library/tags`;
-    await api.apiDelete<any>(
+    await api.apiDelete<unknown>(
       `${basePath}/${encodeURIComponent(tagId)}/items/${encodeURIComponent(itemId)}`,
     );
   },
@@ -839,6 +895,17 @@ function getNotesBasePath(scopeId?: string): string {
     : `/api/v1/library/notes`;
 }
 
+function unwrapNoteResponse(
+  raw: Note | { success?: boolean; data?: Note; note?: Note; literatureNote?: Note },
+): Note {
+  if (raw && typeof raw === 'object') {
+    if ('data' in raw && raw.data) return raw.data;
+    if ('note' in raw && raw.note) return raw.note;
+    if ('literatureNote' in raw && raw.literatureNote) return raw.literatureNote;
+  }
+  return raw as Note;
+}
+
 export const NotesService = {
   /**
    * List notes, optionally filtered by itemId
@@ -850,15 +917,12 @@ export const NotesService = {
     if (isProject) params.set('projectId', scopeId);
     const queryString = params.toString() ? `?${params.toString()}` : '';
     const basePath = getNotesBasePath(scopeId);
-    const raw = await api.apiGet<any>(`${basePath}${queryString}`);
+    const raw = await api.apiGet<Note[] | { success?: boolean; data?: Note[]; notes?: Note[] }>(`${basePath}${queryString}`);
 
-    if (raw && typeof raw === 'object' && raw.success && Array.isArray(raw.data)) {
-      return raw.data;
-    }
     if (Array.isArray(raw)) {
       return raw;
     }
-    return raw?.data || raw?.notes || [];
+    return (raw && typeof raw === 'object' ? (raw.data || raw.notes) : []) || [];
   },
 
   /**
@@ -866,14 +930,10 @@ export const NotesService = {
    */
   get: async (scopeId: string | undefined, id: string): Promise<Note> => {
     const basePath = getNotesBasePath(scopeId);
-    const raw = await api.apiGet<any>(
+    const raw = await api.apiGet<Note | { success?: boolean; data?: Note; note?: Note }>(
       `${basePath}/${encodeURIComponent(id)}`,
     );
-
-    if (raw && typeof raw === 'object' && raw.success && raw.data) {
-      return raw.data;
-    }
-    return raw?.data || raw?.note || raw;
+    return unwrapNoteResponse(raw);
   },
 
   /**
@@ -882,18 +942,14 @@ export const NotesService = {
   create: async (scopeId: string | undefined, dto: CreateNoteDTO): Promise<Note> => {
     const isProject = isProjectScope(scopeId);
     const basePath = getNotesBasePath(scopeId);
-    const raw = await api.apiPost<any>(
+    const raw = await api.apiPost<Note | { success?: boolean; data?: Note; note?: Note }>(
       basePath,
       {
         ...dto,
         ...(isProject ? { projectId: scopeId } : {}),
       },
     );
-
-    if (raw && typeof raw === 'object' && raw.success && raw.data) {
-      return raw.data;
-    }
-    return raw?.data || raw?.note || raw;
+    return unwrapNoteResponse(raw);
   },
 
   /**
@@ -906,18 +962,14 @@ export const NotesService = {
     dto: UpdateNoteDTO,
   ): Promise<Note> => {
     const basePath = getNotesBasePath(scopeId);
-    const raw = await api.apiPatch<any>(
+    const raw = await api.apiPatch<Note | { success?: boolean; data?: Note; note?: Note }>(
       `${basePath}/${encodeURIComponent(id)}`,
       {
         ...dto,
         expectedVersion,
       },
     );
-
-    if (raw && typeof raw === 'object' && raw.success && raw.data) {
-      return raw.data;
-    }
-    return raw?.data || raw?.note || raw;
+    return unwrapNoteResponse(raw);
   },
 
   /**
@@ -932,7 +984,7 @@ export const NotesService = {
     const versionQuery = expectedVersion !== undefined
       ? `?expectedVersion=${encodeURIComponent(String(expectedVersion))}`
       : '';
-    const raw = await api.apiDelete<any>(
+    const raw = await api.apiDelete<{ deleted?: boolean; data?: { deleted: boolean } }>(
       `${basePath}/${encodeURIComponent(id)}${versionQuery}`,
     );
 
@@ -940,6 +992,31 @@ export const NotesService = {
       return { deleted: Boolean(raw.deleted) };
     }
     return raw?.data || { deleted: true };
+  },
+
+  /**
+   * Extract and compile notes from PDF annotations for an item
+   * Backed by POST /api/v1/library/notes/items/:itemId/from-annotations
+   */
+  extractFromAnnotations: async (
+    scopeId: string | undefined,
+    itemId: string,
+    options?: { noteId?: string; tagColor?: boolean; includeComments?: boolean },
+  ): Promise<Note> => {
+    const basePath = getNotesBasePath(scopeId);
+    const raw = await api.apiPost<Note | { success?: boolean; data?: Note; note?: Note }>(
+      `${basePath}/items/${encodeURIComponent(itemId)}/from-annotations`,
+      options || {},
+    );
+    return unwrapNoteResponse(raw);
+  },
+
+  extractNotes: async (
+    scopeId: string | undefined,
+    itemId: string,
+    options?: { noteId?: string; tagColor?: boolean; includeComments?: boolean },
+  ): Promise<Note> => {
+    return NotesService.extractFromAnnotations(scopeId, itemId, options);
   },
 };
 
@@ -1067,7 +1144,7 @@ export const ItemTypesService = {
   },
 
   getSchemaSnapshot: () => {
-    return api.apiGet<any>('/api/v1/library/item-types/schema');
+    return api.apiGet<Record<string, unknown>>('/api/v1/library/item-types/schema');
   },
 
   getItemType: (itemType: string) => {
@@ -1080,6 +1157,23 @@ export const ItemTypesService = {
     return api.apiGet<ItemTypeFieldsResponse>(
       `/api/v1/library/item-types/${encodeURIComponent(itemType)}/fields`,
     );
+  },
+
+  getItemTypeCreatorTypes: (itemType: string) => {
+    return api.apiGet<{
+      success: boolean;
+      itemType: string;
+      primaryCreatorType: string;
+      creatorTypes: string[];
+    }>(`/api/v1/library/item-types/${encodeURIComponent(itemType)}/creator-types`);
+  },
+
+  getItemTypeCslMapping: (itemType: string) => {
+    return api.apiGet<{
+      success: boolean;
+      itemType: string;
+      cslType: string;
+    }>(`/api/v1/library/item-types/${encodeURIComponent(itemType)}/csl`);
   },
 
   validateItem: (itemType: string, payload: Record<string, unknown>) => {
@@ -1095,19 +1189,19 @@ export const ItemTypesService = {
 export const SavedSearchesService = {
   getAll: (scopeId?: string) =>
     api.apiGet<SavedSearch[]>(
-      `/api/v1/library/saved-searches`,
+      getSavedSearchesUrl(scopeId),
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
   getById: (scopeId: string | undefined, id: string) =>
     api.apiGet<SavedSearch>(
-      `/api/v1/library/saved-searches/${encodeURIComponent(id)}`,
+      getSavedSearchesUrl(scopeId, encodeURIComponent(id)),
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
   create: (scopeId: string | undefined, data: CreateSavedSearchInput) =>
     api.apiPost<SavedSearch>(
-      `/api/v1/library/saved-searches`,
+      getSavedSearchesUrl(scopeId),
       {
         ...data,
         ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
@@ -1117,20 +1211,20 @@ export const SavedSearchesService = {
 
   update: (scopeId: string | undefined, id: string, data: UpdateSavedSearchInput) =>
     api.apiPatch<SavedSearch>(
-      `/api/v1/library/saved-searches/${encodeURIComponent(id)}`,
+      getSavedSearchesUrl(scopeId, encodeURIComponent(id)),
       data,
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
   delete: (scopeId: string | undefined, id: string) =>
     api.apiDelete<{ success: boolean; id: string }>(
-      `/api/v1/library/saved-searches/${encodeURIComponent(id)}`,
+      getSavedSearchesUrl(scopeId, encodeURIComponent(id)),
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
   preview: (scopeId: string | undefined, conditions: SavedSearchConditionGroup) =>
     api.apiPost<SavedSearchPreviewResponse>(
-      `/api/v1/library/saved-searches/preview`,
+      getSavedSearchesUrl(scopeId, 'preview'),
       {
         conditions,
         ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
@@ -1149,7 +1243,7 @@ export const SavedSearchesService = {
     },
   ) =>
     api.apiGet<SavedSearchResultsResponse>(
-      `/api/v1/library/saved-searches/${encodeURIComponent(id)}/results`,
+      getSavedSearchesUrl(scopeId, `${encodeURIComponent(id)}/results`),
       {
         params: {
           ...params,

@@ -79,7 +79,7 @@ export function EditModal({
       setStatus((page.status as PageStatus) || 'published');
       setDescription(page.description || '');
       const existingLabelIds = (page.labels || [])
-        .map((l: any) => (typeof l === 'string' ? l : l.id))
+        .map((l: string | { id?: string }) => (typeof l === 'string' ? l : l.id))
         .filter(Boolean);
       setSelectedLabelIds(existingLabelIds);
       setLabelSearch('');
@@ -131,8 +131,8 @@ export function EditModal({
 
       toast.success('Page updated', { id: 'project-page-action' });
       setIsOpen(false);
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to update page', { id: 'project-page-action' });
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update page', { id: 'project-page-action' });
     } finally {
       setIsSaving(false);
     }

@@ -17,6 +17,9 @@ import {
   Circle,
   FolderGit2,
   Layers,
+  UserCheck,
+  PlusSquare,
+  Inbox,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { ProjectAvatar } from "@/shared/components/icons";
@@ -61,9 +64,33 @@ const PRIORITY_BADGES: Record<
   },
 };
 
+export type YourWorkListVariant = 'assigned' | 'created' | 'subscribed';
+
+const VARIANT_DEFAULTS: Record<
+  YourWorkListVariant,
+  { title: string; emptyMessage: string; emptyIcon: React.ElementType }
+> = {
+  assigned: {
+    title: 'Work items assigned to you',
+    emptyMessage: 'No work items assigned to you.',
+    emptyIcon: UserCheck,
+  },
+  created: {
+    title: 'Work items created by you',
+    emptyMessage: 'No work items created by you.',
+    emptyIcon: PlusSquare,
+  },
+  subscribed: {
+    title: 'Work items subscribed & watching',
+    emptyMessage: 'No work items subscribed.',
+    emptyIcon: Inbox,
+  },
+};
+
 export interface YourWorkItemListProps {
-  title: string;
-  workItems?: YourWorkItem[] | any[];
+  variant?: YourWorkListVariant;
+  title?: string;
+  workItems?: YourWorkItem[];
   onWorkItemClick?: (workItemId: string) => void;
   workItemProjectMap?: ProjectMap;
   emptyMessage?: string;
@@ -72,14 +99,19 @@ export interface YourWorkItemListProps {
 }
 
 export function YourWorkItemList({
-  title,
+  variant,
+  title: propTitle,
   workItems = [],
   onWorkItemClick,
   workItemProjectMap = {},
-  emptyMessage = 'No work items found.',
-  emptyIcon: EmptyIcon = CheckSquare,
+  emptyMessage: propEmptyMessage,
+  emptyIcon: propEmptyIcon,
   className,
 }: YourWorkItemListProps) {
+  const variantConfig = variant ? VARIANT_DEFAULTS[variant] : undefined;
+  const title = propTitle ?? variantConfig?.title ?? 'Work items';
+  const emptyMessage = propEmptyMessage ?? variantConfig?.emptyMessage ?? 'No work items found.';
+  const EmptyIcon = propEmptyIcon ?? variantConfig?.emptyIcon ?? CheckSquare;
   const actualOnClick = onWorkItemClick ?? (() => {});
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,10 +142,10 @@ export function YourWorkItemList({
 
   // Grouping by State Group
   const stateGroups = useMemo(() => {
-    const map = new Map<StateGroup, any[]>();
+    const map = new Map<StateGroup, YourWorkItem[]>();
     filteredWorkItems.forEach((item) => {
       let colName = item.columnId;
-      const cols = item.project?.workItemColumns;
+      const cols = (item.project as { workItemColumns?: Array<{ id?: string; name?: string; title?: string }> } | undefined)?.workItemColumns;
       if (Array.isArray(cols)) {
         const matched = (cols as Array<Record<string, unknown>>).find(
           (c) => c.id === item.columnId,
@@ -122,7 +154,7 @@ export function YourWorkItemList({
           colName = String(matched.title || matched.name);
         }
       }
-      const group = inferStateGroup(item.columnId, colName);
+      const group = inferStateGroup(item.columnId, colName || '');
       if (!map.has(group)) map.set(group, []);
       map.get(group)!.push(item);
     });
@@ -147,7 +179,7 @@ export function YourWorkItemList({
         name: string;
         identifier: string | null;
         avatar?: string | null;
-        items: any[];
+        items: YourWorkItem[];
       }
     >();
 
@@ -425,7 +457,7 @@ export function YourWorkItemList({
 }
 
 interface WorkItemRowProps {
-  item: any;
+  item: YourWorkItem;
   onWorkItemClick: (workItemId: string) => void;
   workItemProjectMap: ProjectMap;
   showProjectBadge: boolean;
@@ -441,8 +473,9 @@ const WorkItemRow = React.memo(function WorkItemRow({
 }: WorkItemRowProps) {
   const workItemId = item.id;
   const projectInfo = getWorkItemProject(item, workItemProjectMap);
-  const isDone = item.columnId === 'done' || item.completed || item.stateGroup === 'completed' || item.state?.group === 'completed';
-  const isCancelled = item.columnId === 'cancelled' || item.columnId === 'cancel' || item.stateGroup === 'cancelled' || item.state?.group === 'cancelled';
+  const extra = item as unknown as { stateGroup?: string; state?: { group?: string; id?: string } };
+  const isDone = item.columnId === 'done' || item.completed || extra.stateGroup === 'completed' || extra.state?.group === 'completed';
+  const isCancelled = item.columnId === 'cancelled' || item.columnId === 'cancel' || extra.stateGroup === 'cancelled' || extra.state?.group === 'cancelled';
   const isOverdue =
     item.dueDate && new Date(item.dueDate) < new Date() && !isDone && !isCancelled;
   const priorityKey = item.priority || 'none';
@@ -451,7 +484,7 @@ const WorkItemRow = React.memo(function WorkItemRow({
   const childCount = item.childWorkItemCount ?? (item.childWorkItems?.length ?? 0);
   const childDone =
     item.childWorkItemCompletedCount ??
-    (item.childWorkItems?.filter((s: any) => s.completed || s.columnId === 'done').length ?? 0);
+    (item.childWorkItems?.filter((s) => s.completed || s.columnId === 'done').length ?? 0);
 
   const resolvedIdentifier =
     item.identifier ||
@@ -462,7 +495,7 @@ const WorkItemRow = React.memo(function WorkItemRow({
   const assigneeObj = typeof item.assignee === 'object' ? item.assignee : null;
 
   let colName = item.columnId;
-  const cols = item.project?.workItemColumns;
+  const cols = (item.project as { workItemColumns?: Array<{ id?: string; name?: string; title?: string }> } | undefined)?.workItemColumns;
   if (Array.isArray(cols)) {
     const matched = (cols as Array<Record<string, unknown>>).find(
       (c) => c.id === item.columnId,
@@ -471,18 +504,18 @@ const WorkItemRow = React.memo(function WorkItemRow({
       colName = String(matched.title || matched.name);
     }
   }
-  const stateGroup = item.stateGroup || item.state?.group || inferStateGroup(item.columnId, colName);
+  const stateGroup = extra.stateGroup || extra.state?.group || inferStateGroup(item.columnId, colName || '');
   const stateConfig = STATE_GROUP_CONFIG[stateGroup as StateGroup];
 
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={() => onWorkItemClick(workItemId)}
+      onClick={() => onWorkItemClick(workItemId || '')}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          onWorkItemClick(workItemId);
+          onWorkItemClick(workItemId || '');
         }
       }}
       className="w-full flex items-center gap-3 px-3.5 py-1.5 min-h-8 bg-card hover:bg-muted focus-visible:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors text-left group cursor-pointer"

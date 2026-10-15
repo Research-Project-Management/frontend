@@ -3,25 +3,25 @@
 import React from 'react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
-import { useWorkItemModal } from '../../hooks/use-work-item-modal';
-import { WorkItemModalHost } from './WorkItemModalHost';
+import { useOptionalYourWorkContext } from '../../context/your-work.context';
 
 export interface YourWorkPageLayoutProps {
   isLoading: boolean;
   isError?: boolean;
-  error?: any;
-  allWorkItems?: any[];
-  renderList: (handleOpenItem: (id: string, projectId?: string) => void) => React.ReactNode;
+  error?: Error | null;
+  children?: React.ReactNode;
+  renderList?: (handleOpenItem: (id: string, projectId?: string) => void) => React.ReactNode;
 }
 
 export function YourWorkPageLayout({
   isLoading,
   isError = false,
   error = null,
-  allWorkItems = [],
+  children,
   renderList,
 }: YourWorkPageLayoutProps) {
-  const { selectedWorkItem, handleOpenWorkItem, handleCloseWorkItem } = useWorkItemModal(allWorkItems);
+  const context = useOptionalYourWorkContext();
+  const handleOpenWorkItem = context?.openWorkItem ?? (() => {});
 
   if (isLoading) {
     return (
@@ -47,10 +47,10 @@ export function YourWorkPageLayout({
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-6">
-      {renderList(handleOpenWorkItem)}
-      <WorkItemModalHost selectedWorkItem={selectedWorkItem} onClose={handleCloseWorkItem} />
+      {renderList ? renderList(handleOpenWorkItem) : children}
     </div>
   );
 }
 
 export default YourWorkPageLayout;
+

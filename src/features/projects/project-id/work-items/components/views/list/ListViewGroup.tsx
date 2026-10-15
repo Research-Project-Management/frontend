@@ -8,8 +8,8 @@ import { cn } from '@/shared/lib/utils';
 import { StatusIcon } from '@/shared/components/icons';
 import { GroupCheckbox } from './GroupCheckbox';
 import { SortableItemRow } from './SortableItemRow';
-import type { ListViewGroupProps } from '../../../types/list-view.types';
-import { EMPTY_ARRAY } from '../../../utils/list.utils';
+import type { ListViewGroupProps } from '@/features/projects/project-id/work-items/types/list-view.types';
+import { EMPTY_ARRAY } from '@/features/projects/project-id/work-items/utils/list.utils';
 
 export const ListViewGroup = ({
   group,
@@ -30,7 +30,6 @@ export const ListViewGroup = ({
   displayOptions,
   members = EMPTY_ARRAY,
   currentUserId,
-  currentUserAvatar,
   selectedIds = EMPTY_ARRAY,
   onToggleSelect,
   onSelectAll,
@@ -190,7 +189,6 @@ export const ListViewGroup = ({
                   displayOptions={displayOptions}
                   members={members}
                   currentUserId={currentUserId}
-                  currentUserAvatar={currentUserAvatar}
                   isReadOnly={isReadOnly}
                   isChildrenExpanded={expandedChildParentIds?.has(item.id)}
                   onToggleExpandChildren={onToggleExpandChildren}

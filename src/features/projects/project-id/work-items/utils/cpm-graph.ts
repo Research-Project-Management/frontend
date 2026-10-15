@@ -13,13 +13,13 @@
  * - High-speed binary search coordinate resolver ($O(\log C)$ replacing $O(C)$ linear scan).
  */
 
-import type { Item } from '../types/work-item.types';
+import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
 import type {
   CpmDependencyType,
   CpmEdge,
   CpmTaskNode,
   CpmAnalysisResult,
-} from '../types/cpm.types';
+} from '@/features/projects/project-id/work-items/types/cpm.types';
 
 export type {
   CpmDependencyType,
@@ -33,6 +33,15 @@ export type {
  */
 export function parseDateOnly(dateStr?: string | null): Date | null {
   if (!dateStr) return null;
+  const parts = dateStr.slice(0, 10).split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+      return new Date(year, month, day, 0, 0, 0, 0);
+    }
+  }
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return null;
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -72,26 +81,33 @@ export function extractNormalizedEdges(items: Item[]): CpmEdge[] {
     if (!Array.isArray(relations) || relations.length === 0) continue;
 
     for (const rel of relations) {
-      const type = rel?.type;
+      const rawType = rel?.type;
       const targetId = rel?.targetWorkItemId || rel?.targetId;
-      if (!type || !targetId || !validIds.has(targetId) || item.id === targetId) continue;
+      if (!rawType || !targetId || !validIds.has(targetId) || item.id === targetId) continue;
 
+      const type = String(rawType).toLowerCase();
       let fromId: string;
       let toId: string;
       let depType: CpmDependencyType;
 
       switch (type) {
         case 'blocks':
+        case 'finish_to_start':
+        case 'fs':
+        case 'precedes':
           fromId = item.id;
           toId = targetId;
           depType = 'FS';
           break;
         case 'blocked_by':
+        case 'succeeds':
           fromId = targetId;
           toId = item.id;
           depType = 'FS';
           break;
         case 'starts_before':
+        case 'start_to_start':
+        case 'ss':
           fromId = item.id;
           toId = targetId;
           depType = 'SS';
@@ -102,6 +118,8 @@ export function extractNormalizedEdges(items: Item[]): CpmEdge[] {
           depType = 'SS';
           break;
         case 'finishes_before':
+        case 'finish_to_finish':
+        case 'ff':
           fromId = item.id;
           toId = targetId;
           depType = 'FF';
@@ -110,6 +128,12 @@ export function extractNormalizedEdges(items: Item[]): CpmEdge[] {
           fromId = targetId;
           toId = item.id;
           depType = 'FF';
+          break;
+        case 'start_to_finish':
+        case 'sf':
+          fromId = item.id;
+          toId = targetId;
+          depType = 'SF';
           break;
         default:
           continue;
@@ -232,7 +256,6 @@ export function computeTopologicalSort(
  */
 export function analyzeCriticalPath(items: Item[]): CpmAnalysisResult {
   const nodes = new Map<string, CpmTaskNode>();
-  const itemMap = new Map<string, Item>(items.map((i) => [i.id, i]));
   const itemIds = items.map((i) => i.id);
 
   // 1. Initialize node records
@@ -325,10 +348,12 @@ export function analyzeCriticalPath(items: Item[]): CpmAnalysisResult {
         maxPredFinish = Math.max(maxPredFinish, predNode.earliestStart);
       } else if (pred.type === 'FF') {
         maxPredFinish = Math.max(maxPredFinish, predNode.earliestFinish - node.durationDays);
+      } else if (pred.type === 'SF') {
+        maxPredFinish = Math.max(maxPredFinish, predNode.earliestStart - node.durationDays);
       }
     }
 
-    node.earliestStart = maxPredFinish;
+    node.earliestStart = Math.max(0, maxPredFinish);
     node.earliestFinish = node.earliestStart + node.durationDays;
   }
 
@@ -367,6 +392,8 @@ export function analyzeCriticalPath(items: Item[]): CpmAnalysisResult {
           minSuccStart = Math.min(minSuccStart, succNode.latestStart + node.durationDays);
         } else if (depType === 'FF') {
           minSuccStart = Math.min(minSuccStart, succNode.latestFinish);
+        } else if (depType === 'SF') {
+          minSuccStart = Math.min(minSuccStart, succNode.latestFinish + node.durationDays);
         }
       }
 
@@ -398,16 +425,22 @@ export function analyzeCriticalPath(items: Item[]): CpmAnalysisResult {
     }
   }
 
-  // Identify critical edges (edges connecting two critical nodes where EF(u) === ES(v))
+  // Identify critical edges (edges connecting two critical nodes where constraint is tight)
   for (const edge of edges) {
     const fromNode = nodes.get(edge.fromId);
     const toNode = nodes.get(edge.toId);
     if (fromNode?.isCritical && toNode?.isCritical) {
-      if (Math.abs(fromNode.earliestFinish - toNode.earliestStart) <= 0.001) {
+      const isTight =
+        (edge.type === 'FS' && Math.abs(fromNode.earliestFinish - toNode.earliestStart) <= 0.001) ||
+        (edge.type === 'SS' && Math.abs(fromNode.earliestStart - toNode.earliestStart) <= 0.001) ||
+        (edge.type === 'FF' && Math.abs(fromNode.earliestFinish - toNode.earliestFinish) <= 0.001) ||
+        (edge.type === 'SF' && Math.abs(fromNode.earliestStart - toNode.earliestFinish) <= 0.001);
+      if (isTight) {
         criticalEdges.add(`${edge.fromId}->${edge.toId}`);
       }
     }
   }
+
 
   return {
     nodes,

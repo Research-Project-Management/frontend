@@ -25,7 +25,6 @@ export interface ItemRowProps {
   displayOptions?: DisplayOptions;
   members?: ProjectMember[];
   currentUserId?: string | null;
-  currentUserAvatar?: string;
   isDragging?: boolean;
   isReadOnly?: boolean;
   isChildrenExpanded?: boolean;
@@ -76,7 +75,6 @@ export interface ListViewGroupProps {
   displayOptions?: DisplayOptions;
   members?: ProjectMember[];
   currentUserId?: string | null;
-  currentUserAvatar?: string;
   selectedIds?: string[];
   onToggleSelect?: (id: string) => void;
   onSelectAll?: (ids: string[]) => void;

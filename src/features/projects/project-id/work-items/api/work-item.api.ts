@@ -29,7 +29,7 @@ import type {
   AttachPaperInput,
   AttachFileInput,
   AttachLinkInput,
-} from '../types/work-item.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -94,6 +94,13 @@ export interface ProjectAnalyticsDistribution {
   }>;
 }
 
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+const unwrapItem = (res: { workItem?: Item; item?: Item }): { workItem: Item; item: Item } => {
+  const item = (res.workItem || res.item) as Item;
+  return { workItem: item, item };
+};
+
 // ── Unified API Client ──────────────────────────────────────────────────────
 
 export const workItemApi = {
@@ -110,17 +117,11 @@ export const workItemApi = {
       return response?.data || response?.workItems || [];
     },
 
-    getById: async (id: string): Promise<{ workItem: Item; item: Item }> => {
-      const res = await apiGet<{ workItem: Item; item?: Item }>(`/api/work-items/${id}`);
-      const item = res.workItem || res.item;
-      return { workItem: item, item };
-    },
+    getById: async (id: string): Promise<{ workItem: Item; item: Item }> =>
+      unwrapItem(await apiGet<{ workItem: Item; item?: Item }>(`/api/work-items/${id}`)),
 
-    create: async ({ projectId, ...data }: CreateItemInput & { projectId: string }): Promise<{ workItem: Item; item: Item }> => {
-      const res = await apiPost<{ workItem: Item; item?: Item }>(`/api/projects/${projectId}/work-items`, data);
-      const item = res.workItem || res.item;
-      return { workItem: item, item };
-    },
+    create: async ({ projectId, ...data }: CreateItemInput & { projectId: string }): Promise<{ workItem: Item; item: Item }> =>
+      unwrapItem(await apiPost<{ workItem: Item; item?: Item }>(`/api/projects/${projectId}/work-items`, data)),
 
     update: async ({
       id,
@@ -129,9 +130,7 @@ export const workItemApi = {
       ...data
     }: { id?: string; workItemId?: string; projectId?: string } & UpdateItemInput): Promise<{ workItem: Item; item: Item }> => {
       const targetId = id || workItemId || '';
-      const res = await apiPut<{ workItem: Item; item?: Item }>(`/api/work-items/${targetId}`, data);
-      const item = res.workItem || res.item;
-      return { workItem: item, item };
+      return unwrapItem(await apiPut<{ workItem: Item; item?: Item }>(`/api/work-items/${targetId}`, data));
     },
 
     delete: (id: string) =>
@@ -144,22 +143,16 @@ export const workItemApi = {
       projectId,
     }: { id?: string; workItemId?: string; itemId?: string; projectId: string }): Promise<{ workItem: Item; item: Item }> => {
       const targetId = id || workItemId || itemId || '';
-      const res = await apiPost<{ workItem: Item; item?: Item; message?: string }>(`/api/work-items/${targetId}/duplicate`, { projectId });
-      const item = res.workItem || res.item;
-      return { workItem: item, item };
+      return unwrapItem(
+        await apiPost<{ workItem: Item; item?: Item; message?: string }>(`/api/work-items/${targetId}/duplicate`, { projectId }),
+      );
     },
 
-    createChild: async (id: string, data: CreateSubItemInput): Promise<{ workItem: Item; item: Item }> => {
-      const res = await apiPost<{ workItem: Item; item?: Item }>(`/api/work-items/${id}/children`, data);
-      const item = res.workItem || res.item;
-      return { workItem: item, item };
-    },
+    createChild: async (id: string, data: CreateSubItemInput): Promise<{ workItem: Item; item: Item }> =>
+      unwrapItem(await apiPost<{ workItem: Item; item?: Item }>(`/api/work-items/${id}/children`, data)),
 
-    convertToRoot: async (id: string): Promise<{ workItem: Item; item: Item }> => {
-      const res = await apiPost<{ workItem: Item; item?: Item; message?: string }>(`/api/work-items/${id}/convert-to-root`);
-      const item = res.workItem || res.item;
-      return { workItem: item, item };
-    },
+    convertToRoot: async (id: string): Promise<{ workItem: Item; item: Item }> =>
+      unwrapItem(await apiPost<{ workItem: Item; item?: Item; message?: string }>(`/api/work-items/${id}/convert-to-root`)),
 
     reorder: ({
       projectId,
@@ -477,13 +470,13 @@ export const workItemApi = {
       apiPost<{ message: string; workItem?: Item; item?: Item }>(`/api/work-items/${id}/archive`),
 
     archiveWorkItem: (id: string) =>
-      apiPost<{ message: string; workItem?: Item; item?: Item }>(`/api/work-items/${id}/archive`),
+      workItemApi.archive.archive(id),
 
     restore: (id: string) =>
       apiPost<{ message: string; workItem?: Item; item?: Item }>(`/api/work-items/${id}/restore`),
 
     restoreWorkItem: (id: string) =>
-      apiPost<{ message: string; workItem?: Item; item?: Item }>(`/api/work-items/${id}/restore`),
+      workItemApi.archive.restore(id),
 
     bulkArchive: (ids: string[], projectId?: string) => {
       const payload = { workItemIds: ids, ids, ...(projectId && { projectId }) };
@@ -503,7 +496,7 @@ export const workItemApi = {
       apiGet<ArchivedItemsResponse | Item[]>(`/api/work-items/projects/${projectId}/archived`),
 
     getArchivedWorkItems: (projectId: string) =>
-      apiGet<ArchivedItemsResponse | Item[]>(`/api/work-items/projects/${projectId}/archived`),
+      workItemApi.archive.getArchived(projectId),
   },
 
   // ── 10. Analytics ─────────────────────────────────────────────────────────
@@ -515,6 +508,7 @@ export const workItemApi = {
 
 // ── Aliases & Backward Compatibility ─────────────────────────────────────────
 export const CoreService = workItemApi.items;
+export const WorkItemService = workItemApi.items;
 export const StateService = workItemApi.states;
 export const AssignmentService = workItemApi.assignments;
 export const RelationService = workItemApi.relations;
@@ -522,6 +516,7 @@ export const LabelService = workItemApi.labels;
 export const CommentService = workItemApi.comments;
 export const AttachmentService = workItemApi.attachments;
 export const HistoryService = workItemApi.history;
+export const ActivityService = workItemApi.history;
 export const ArchiveService = workItemApi.archive;
 export const AnalyticsService = workItemApi.analytics;
 
@@ -561,7 +556,5 @@ export const AVAILABLE_LABEL_COLORS = [
 ];
 
 export const DEFAULT_LABEL_COLOR = "#4bce97";
-
-export const fetchLabels = workItemApi.labels.list;
 
 export default workItemApi;

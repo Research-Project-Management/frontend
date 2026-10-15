@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/shared/components/ui/dropdown-menu";
-import type { SavedSearch } from '../../types/saved-searches.types';
+import type { SavedSearch } from '@/features/library/types/saved-searches.types';
 
 export interface SavedSearchContextMenuProps {
   savedSearch: SavedSearch;

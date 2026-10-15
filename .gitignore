@@ -6,6 +6,7 @@ node_modules/
 # Production / Build Output
 .next/
 .archive/
+.backup/
 out/
 build/
 dist/

@@ -18,3 +18,20 @@ export {
   LIBRARY_DOMAINS,
   getDomainEndpoint,
 } from './data/library-services';
+export { readerService, ReaderService } from './data/reader/reader.service';
+
+// ── Shared Data & Store Exports ───────────────────────────────────────────────
+export * from './data/query-keys';
+export {
+  useLibraryItemDetailQuery,
+  useUpdateLibraryItemMutation,
+  useRelations,
+  useCollections,
+  useRetraction,
+  useItemTypes,
+} from './data';
+export * from './store/library-ui.store';
+export * from './store/reader.store';
+export { ReaderPage } from './pages/ReaderPage';
+export { ModernLibraryPage } from './pages/LibraryPage';
+

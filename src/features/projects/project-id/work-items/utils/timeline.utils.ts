@@ -1,15 +1,20 @@
-import type { Item, Priority } from '../types/work-item.types';
+import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
 import type {
   TimelineZoom,
   TimelineColumn,
   TimelineTier1Group,
   TimelineBarData,
-  DepLineType,
   DependencyLine,
-} from '../types/timeline-view.types';
-import { getPixelForTimeBinarySearch } from './cpm-graph';
+} from '@/features/projects/project-id/work-items/types/timeline-view.types';
+import {
+  getPixelForTimeBinarySearch,
+  parseDateOnly,
+  calculateTaskDuration,
+  extractNormalizedEdges,
+} from './cpm-graph';
+import { EMPTY_ARRAY } from './work-item.utils';
 
-export const EMPTY_ARRAY: never[] = [];
+export { EMPTY_ARRAY, parseDateOnly };
 
 export const ROW_HEIGHT = 36;
 export const BAR_HEIGHT = 22;
@@ -41,21 +46,6 @@ export function formatToDateStr(targetDate: Date): string {
   const month = String(targetDate.getMonth() + 1).padStart(2, '0');
   const day = String(targetDate.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-}
-
-export function parseDateOnly(dateStr?: string | null): Date | null {
-  if (!dateStr) return null;
-  const parts = dateStr.slice(0, 10).split('-');
-  if (parts.length < 3) {
-    const parsed = new Date(dateStr);
-    if (isNaN(parsed.getTime())) return null;
-    parsed.setHours(0, 0, 0, 0);
-    return parsed;
-  }
-  const year = parseInt(parts[0], 10);
-  const month = parseInt(parts[1], 10) - 1;
-  const day = parseInt(parts[2], 10);
-  return new Date(year, month, day, 0, 0, 0, 0);
 }
 
 export function formatTimelineDisplayDate(dateStr?: string | null): string {
@@ -113,10 +103,7 @@ export function calculateDuration(
     return { days: 0, label: '' };
   }
 
-  const effectiveStart = start || due!;
-  const effectiveDue = due || start!;
-  const diffMs = effectiveDue.getTime() - effectiveStart.getTime();
-  const diffDays = Math.max(1, Math.round(diffMs / 86400000) + 1);
+  const diffDays = calculateTaskDuration(startDate || dueDate, dueDate || startDate);
 
   if (diffDays === 1) return { days: 1, label: '1 day' };
   if (diffDays === 7) return { days: 7, label: '1 week' };
@@ -442,120 +429,68 @@ export function computeDependencyLines(
 ): DependencyLine[] {
   const lines: DependencyLine[] = [];
   const itemMap = new Map<string, Item>(items.map((t) => [t.id, t]));
-  const seenEdges = new Set<string>();
+  const normalizedEdges = extractNormalizedEdges(items);
 
-  const FS_TYPES = new Set(['blocks', 'blocked_by']);
-  const SS_TYPES = new Set(['starts_before', 'starts_after']);
-  const FF_TYPES = new Set(['finishes_before', 'finishes_after']);
+  for (const edge of normalizedEdges) {
+    const { fromId: predId, toId: succId, type: depType } = edge;
 
-  for (const fromItem of items) {
-    const relations =
-      (fromItem.relations as Array<{ targetWorkItemId?: string; targetId?: string; type?: string }>) ||
-      [];
-    if (!Array.isArray(relations) || relations.length === 0) continue;
+    const predItem = itemMap.get(predId);
+    const succItem = itemMap.get(succId);
+    const predBar = barDataMap.get(predId);
+    const succBar = barDataMap.get(succId);
+    const predY = rowYMap.get(predId);
+    const succY = rowYMap.get(succId);
 
-    const fromBar = barDataMap.get(fromItem.id);
-    const fromY = rowYMap.get(fromItem.id);
-    if (!fromBar || fromY === undefined || !fromBar.hasDates) continue;
-
-    for (const rel of relations) {
-      const relType = rel?.type;
-      const targetId = rel?.targetWorkItemId || rel?.targetId;
-      if (!relType || !targetId || fromItem.id === targetId) continue;
-
-      let predId: string;
-      let succId: string;
-      let depType: DepLineType;
-
-      switch (relType) {
-        case 'blocks':
-          predId = fromItem.id;
-          succId = targetId;
-          depType = 'FS';
-          break;
-        case 'blocked_by':
-          predId = targetId;
-          succId = fromItem.id;
-          depType = 'FS';
-          break;
-        case 'starts_before':
-          predId = fromItem.id;
-          succId = targetId;
-          depType = 'SS';
-          break;
-        case 'starts_after':
-          predId = targetId;
-          succId = fromItem.id;
-          depType = 'SS';
-          break;
-        case 'finishes_before':
-          predId = fromItem.id;
-          succId = targetId;
-          depType = 'FF';
-          break;
-        case 'finishes_after':
-          predId = targetId;
-          succId = fromItem.id;
-          depType = 'FF';
-          break;
-        default:
-          continue;
-      }
-
-      const edgeKey = `${predId}->${succId}:${depType}`;
-      if (seenEdges.has(edgeKey)) continue;
-      seenEdges.add(edgeKey);
-
-      const predItem = itemMap.get(predId);
-      const succItem = itemMap.get(succId);
-      const predBar = barDataMap.get(predId);
-      const succBar = barDataMap.get(succId);
-      const predY = rowYMap.get(predId);
-      const succY = rowYMap.get(succId);
-
-      if (!predItem || !succItem || !predBar || !succBar || predY === undefined || succY === undefined) {
-        continue;
-      }
-      if (!predBar.hasDates || !succBar.hasDates) continue;
-
-      let fromX: number;
-      let toX: number;
-      let violated: boolean;
-
-      const predStart = parseDateOnly(predItem.startDate);
-      const predDue = parseDateOnly(predItem.dueDate);
-      const succStart = parseDateOnly(succItem.startDate);
-      const succDue = parseDateOnly(succItem.dueDate);
-
-      if (depType === 'FS') {
-        fromX = predBar.pixelLeft + predBar.pixelWidth;
-        toX = succBar.pixelLeft;
-        violated = !!(succStart && predDue && succStart < predDue);
-      } else if (depType === 'SS') {
-        fromX = predBar.pixelLeft;
-        toX = succBar.pixelLeft;
-        violated = !!(succStart && predStart && succStart < predStart);
-      } else {
-        fromX = predBar.pixelLeft + predBar.pixelWidth;
-        toX = succBar.pixelLeft + succBar.pixelWidth;
-        violated = !!(succDue && predDue && succDue < predDue);
-      }
-
-      const isCritical = criticalEdges?.has(`${predId}->${succId}`) ?? false;
-
-      lines.push({
-        fromItemId: predId,
-        toItemId: succId,
-        fromX,
-        fromY: predY,
-        toX,
-        toY: succY,
-        type: depType,
-        violated,
-        isCritical,
-      });
+    if (!predItem || !succItem || !predBar || !succBar || predY === undefined || succY === undefined) {
+      continue;
     }
+    if (!predBar.hasDates || !succBar.hasDates) continue;
+
+    let fromX: number;
+    let toX: number;
+    let violated: boolean;
+
+    const predStart = parseDateOnly(predItem.startDate);
+    const predDue = parseDateOnly(predItem.dueDate);
+    const succStart = parseDateOnly(succItem.startDate);
+    const succDue = parseDateOnly(succItem.dueDate);
+
+    if (depType === 'FS') {
+      fromX = predBar.pixelLeft + predBar.pixelWidth;
+      toX = succBar.pixelLeft;
+      violated = !!(succStart && predDue && succStart < predDue);
+    } else if (depType === 'SS') {
+      fromX = predBar.pixelLeft;
+      toX = succBar.pixelLeft;
+      violated = !!(succStart && predStart && succStart < predStart);
+    } else if (depType === 'SF') {
+      fromX = predBar.pixelLeft;
+      toX = succBar.pixelLeft + succBar.pixelWidth;
+      violated = !!(succDue && predStart && succDue < predStart);
+    } else {
+      fromX = predBar.pixelLeft + predBar.pixelWidth;
+      toX = succBar.pixelLeft + succBar.pixelWidth;
+      violated = !!(succDue && predDue && succDue < predDue);
+    }
+
+    const isCritical = criticalEdges?.has(`${predId}->${succId}`) ?? false;
+    const status = violated ? 'violated' : isCritical ? 'critical' : 'normal';
+
+    lines.push({
+      fromItemId: predId,
+      toItemId: succId,
+      fromX,
+      fromY: predY,
+      toX,
+      toY: succY,
+      type: depType,
+      dependencyType: depType,
+      status,
+      violated,
+      isCritical,
+    });
   }
 
   return lines;
 }
+

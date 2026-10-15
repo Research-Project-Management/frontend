@@ -39,7 +39,6 @@ export interface ProjectLabelItem {
   id: string;
   name: string;
   color?: string;
-  [key: string]: any;
 }
 
 interface CreateModalProps {

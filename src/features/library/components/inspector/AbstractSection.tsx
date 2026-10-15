@@ -7,35 +7,28 @@ import { cn } from "@/shared/lib/utils";
 
 interface AbstractSectionProps {
   item?: Item;
-  /** @deprecated Use item instead */
-  paper?: Item;
   onUpdateItem?: (data: Partial<Item>) => void;
-  /** @deprecated Use onUpdateItem instead */
-  onUpdatePaper?: (data: Partial<Item>) => void;
   hideHeader?: boolean;
   canEdit?: boolean;
 }
 
-function getAbstractValue(p: Item): string {
-  const item = p as Item & {
+function getAbstractValue(item: Item): string {
+  const typedItem = item as Item & {
     abstractNote?: string;
   };
-  return item.abstract || item.abstractNote || '';
+  return typedItem.abstract || typedItem.abstractNote || '';
 }
 
 export default function AbstractSection({
-  item: propItem,
-  paper: propPaper,
+  item,
   onUpdateItem,
-  onUpdatePaper,
   hideHeader = false,
   canEdit = true,
 }: AbstractSectionProps) {
-  const item = propItem || propPaper;
   const currentAbstract = item ? getAbstractValue(item) : '';
   const [draft, setDraft] = useState(currentAbstract);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const handleUpdate = onUpdateItem || onUpdatePaper;
+  const handleUpdate = onUpdateItem;
 
   // On item change, initialize draft directly from backend canonical abstract
   useEffect(() => {
@@ -73,7 +66,7 @@ export default function AbstractSection({
         handleUpdate({
           abstract: trimmed || undefined,
           abstractNote: trimmed || undefined,
-        } as unknown as Partial<Item>);
+        });
       }
     }
   }, [draft, item, handleUpdate]);
@@ -98,7 +91,7 @@ export default function AbstractSection({
           rows={2}
           value={draft}
           placeholder={canEdit ? "Add abstract..." : "No abstract"}
-          aria-label="Paper abstract summary"
+          aria-label="Item abstract summary"
           readOnly={!canEdit}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}

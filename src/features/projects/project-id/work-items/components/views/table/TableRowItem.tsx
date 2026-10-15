@@ -24,32 +24,32 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import { StatusIcon } from '@/shared/components/icons';
-import { useCopyItemText } from '../../../hooks/use-work-item';
-import { ItemHelpers, resolveColumnId } from '../../../utils/work-item.utils';
-import { MemberPopover, AvatarStack } from '../../pickers/MemberPicker';
-import { SingleDatePopover } from '../../pickers/DatePicker';
-import { PriorityPopover } from '../../pickers/PriorityPicker';
-import { LabelPopover } from '../../pickers/LabelPicker';
+import { useCopyItemText } from '@/features/projects/project-id/work-items/hooks/use-work-item';
+import { ItemHelpers, resolveColumnId } from '@/features/projects/project-id/work-items/utils/work-item.utils';
+import { MemberPopover, AvatarStack } from '@/features/projects/project-id/work-items/components/pickers/MemberPicker';
+import { SingleDatePopover } from '@/features/projects/project-id/work-items/components/pickers/DatePicker';
+import { PriorityPopover } from '@/features/projects/project-id/work-items/components/pickers/PriorityPicker';
+import { LabelPopover } from '@/features/projects/project-id/work-items/components/pickers/LabelPicker';
 import type {
   Item,
-  Column as ColumnType,
+  Column,
   ProjectMember,
   Priority,
-} from '../../../types/work-item.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 import {
   type TablePropertyKey,
   TABLE_PROPERTIES,
   DEFAULT_COLUMN_WIDTHS,
-} from '../../../types/table-view.types';
+} from '@/features/projects/project-id/work-items/types/table-view.types';
 import {
   formatTableDate,
   isDateOverdue,
-} from '../../../utils/table.utils';
+} from '@/features/projects/project-id/work-items/utils/table.utils';
 
 export interface TableRowItemProps {
   item: Item;
-  columns: ColumnType[];
-  projectStates?: ColumnType[];
+  columns: Column[];
+  projectStates?: Column[];
   visibleProperties: Record<TablePropertyKey, boolean>;
   columnWidths?: Record<string, number>;
   isSelected: boolean;
@@ -126,21 +126,12 @@ export const TableRowItem = React.memo(function TableRowItem({
     }
   };
 
-  // State resolution
-  const currentColumn = useMemo(() => {
-    if (item.state && typeof item.state === 'object') {
-      return {
-        id: item.state.id,
-        title: item.state.name,
-        name: item.state.name,
-        group: item.state.group,
-        color: item.state.color,
-        accentColor: item.state.color,
-        slug: item.state.name,
-      };
-    }
-    return stateList.find((c) => resolveColumnId(c) === item.columnId);
-  }, [item.state, item.columnId, stateList]);
+  // State & metadata resolution
+  const itemMeta = useMemo(
+    () => ItemHelpers.resolveItemMeta(item, columns, projectStates),
+    [item, columns, projectStates]
+  );
+  const currentColumn = itemMeta.resolvedState;
 
   // Assignee resolution
   const resolvedAssignees = ItemHelpers.resolveAssignees(item, members);
@@ -170,12 +161,9 @@ export const TableRowItem = React.memo(function TableRowItem({
   // Sub-items count
   const childCount =
     item.childWorkItemCount ?? item.childWorkItems?.length ?? 0;
-  const attachmentsCount = ItemHelpers.countAttachments(item.attachments);
+  const { attachmentsCount, isCancelled } = itemMeta;
 
   const isOverdue = isDateOverdue(item.dueDate, item.completed);
-  const stateMatch = columns.find((c) => resolveColumnId(c) === item.columnId);
-  const stateGroup = stateMatch?.group || item.stateGroup || item.state?.group;
-  const isCancelled = stateGroup === 'cancelled' || item.columnId === 'cancelled' || item.columnId === 'cancel';
   const formattedDue = formatTableDate(item.dueDate);
   const formattedStart = formatTableDate(item.startDate);
   const formattedCreated = formatTableDate(item.createdAt);
@@ -194,7 +182,7 @@ export const TableRowItem = React.memo(function TableRowItem({
     e.stopPropagation();
     const url =
       typeof window !== 'undefined'
-        ? `${window.location.origin}/projects/${projectId}/work-items?itemId=${item.id}`
+        ? `${window.location.origin}/projects/${projectId}/work-items?itemId=${item.identifier || item.id}`
         : '';
     if (url) {
       copyItemText(url, 'Link copied to clipboard');

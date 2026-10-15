@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatCitationSnippet } from '@/features/editor/domain/citation/citation-formatter';
+import { formatCitationSnippet } from '@/features/editor/subsystems/citation/model/citation-formatter';
 
 describe('Search Parity: File Tree Filtering Logic', () => {
   interface MockTreeItem {

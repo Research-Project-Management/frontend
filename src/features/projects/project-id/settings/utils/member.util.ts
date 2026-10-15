@@ -5,9 +5,16 @@ export type ProjectMemberSortField = 'name' | 'displayName' | 'email' | 'role' |
 /**
  * Normalizes raw project members into typed ProjectMemberItem array.
  */
-export function normalizeProjectMembers(rawMembers: any[], fallbackCreatedAt?: string): ProjectMemberItem[] {
+export function normalizeProjectMembers(rawMembers: unknown[], fallbackCreatedAt?: string): ProjectMemberItem[] {
   if (!Array.isArray(rawMembers)) return [];
-  return rawMembers.map((m) => {
+  return (rawMembers as Array<Record<string, unknown>>).map((raw) => {
+    const m = (raw || {}) as {
+      id?: string;
+      userId?: string;
+      role?: string;
+      joinedAt?: string;
+      user?: { id?: string; name?: string; email?: string; avatar?: string };
+    };
     const u = m.user || {};
     const memberUserId = u.id || m.userId || '';
     return {

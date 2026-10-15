@@ -170,7 +170,7 @@ export default function HomePage({
 
   // File collection from paginated response
   const files = useMemo(
-    () => (activeQuery.data?.pages.flatMap((page: any) => page.files || []) || []) as StorageItem[],
+    () => (activeQuery.data?.pages.flatMap((page: { files?: StorageItem[] }) => page.files || []) || []) as StorageItem[],
     [activeQuery.data?.pages],
   );
 

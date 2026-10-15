@@ -27,8 +27,8 @@ import type {
   Column,
   Priority,
   ProjectMember,
-} from '../../types/work-item.types';
-import { PRIORITY_CONFIG } from '../../types/work-item.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
+import { PRIORITY_CONFIG } from '@/features/projects/project-id/work-items/types/work-item.types';
 import { addDays, format, endOfWeek } from 'date-fns';
 
 const PRIORITY_ICONS: Record<Priority, React.ElementType> = {
@@ -39,9 +39,73 @@ const PRIORITY_ICONS: Record<Priority, React.ElementType> = {
   none: CircleOff,
 };
 
-import type { BulkActionBarProps } from '../../types/layout.types';
+import type { BulkActionBarProps } from '@/features/projects/project-id/work-items/types/layout.types';
 
 export type { BulkActionBarProps };
+
+function BulkConfirmDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  confirmLabel,
+  loadingLabel,
+  onConfirm,
+  isUpdating,
+  destructive = false,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description: string;
+  confirmLabel: string;
+  loadingLabel: string;
+  onConfirm: () => void;
+  isUpdating: boolean;
+  destructive?: boolean;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-full max-w-md p-6 gap-4 rounded-md border border-border bg-background shadow-raised-200">
+        <DialogHeader className="text-left space-y-1.5">
+          <DialogTitle className="text-16 font-semibold text-foreground">
+            {title}
+          </DialogTitle>
+          <DialogDescription className="text-13 text-foreground/70 mt-1.5 leading-normal">
+            {description}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex items-center justify-end gap-2 pt-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            disabled={isUpdating}
+            className="relative h-8 px-3 text-12 font-medium rounded-md cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant={destructive ? 'destructive' : 'outline'}
+            size="sm"
+            onClick={() => {
+              onOpenChange(false);
+              onConfirm();
+            }}
+            disabled={isUpdating}
+            className={
+              destructive
+                ? 'relative h-8 px-3.5 text-12 font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden'
+                : 'relative h-8 px-3.5 text-12 font-medium rounded-md bg-background border border-border hover:bg-muted text-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden'
+            }
+          >
+            {isUpdating ? loadingLabel : confirmLabel}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export const BulkActionBar: React.FC<BulkActionBarProps> = ({
   selectedIds = [],
@@ -54,7 +118,6 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
   onUpdateAssignee,
   onUpdateDueDate,
   onAddLabel,
-  onRemoveLabel,
   onClearLabels,
   onDeleteSelected,
   onArchiveSelected,
@@ -342,116 +405,39 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
         </Button>
       </div>
 
-      {/* Restore Confirmation Dialog */}
-      <Dialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
-        <DialogContent className="w-full max-w-md p-6 gap-4 rounded-md border border-border bg-background shadow-raised-200">
-          <DialogHeader className="text-left space-y-1.5">
-            <DialogTitle className="text-16 font-semibold text-foreground">
-              Restore {count} Work Items?
-            </DialogTitle>
-            <DialogDescription className="text-13 text-foreground/70 mt-1.5 leading-normal">
-              These {count} work items will be restored to your active board and list views.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex items-center justify-end gap-2 pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setRestoreDialogOpen(false)}
-              disabled={isUpdating}
-              className="relative h-8 px-3 text-12 font-medium rounded-md cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setRestoreDialogOpen(false);
-                onRestoreSelected?.();
-              }}
-              disabled={isUpdating}
-              className="relative h-8 px-3.5 text-12 font-medium rounded-md bg-background border border-border hover:bg-muted text-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
-            >
-              {isUpdating ? 'Restoring...' : `Restore ${count} Items`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <BulkConfirmDialog
+        open={restoreDialogOpen}
+        onOpenChange={setRestoreDialogOpen}
+        title={`Restore ${count} Work Items?`}
+        description={`These ${count} work items will be restored to your active board and list views.`}
+        confirmLabel={`Restore ${count} Items`}
+        loadingLabel="Restoring..."
+        onConfirm={() => onRestoreSelected?.()}
+        isUpdating={isUpdating}
+      />
 
-      {/* Archive Confirmation Dialog */}
-      <Dialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
-        <DialogContent className="w-full max-w-md p-6 gap-4 rounded-md border border-border bg-background shadow-raised-200">
-          <DialogHeader className="text-left space-y-1.5">
-            <DialogTitle className="text-16 font-semibold text-foreground">
-              Archive {count} Work Items?
-            </DialogTitle>
-            <DialogDescription className="text-13 text-foreground/70 mt-1.5 leading-normal">
-              These {count} work items will be safely archived and hidden from active views. You can view or restore them at any time.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex items-center justify-end gap-2 pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setArchiveDialogOpen(false)}
-              disabled={isUpdating}
-              className="relative h-8 px-3 text-12 font-medium rounded-md cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setArchiveDialogOpen(false);
-                onArchiveSelected?.();
-              }}
-              disabled={isUpdating}
-              className="relative h-8 px-3.5 text-12 font-medium rounded-md bg-background border border-border hover:bg-muted text-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
-            >
-              {isUpdating ? 'Archiving...' : `Archive ${count} Items`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <BulkConfirmDialog
+        open={archiveDialogOpen}
+        onOpenChange={setArchiveDialogOpen}
+        title={`Archive ${count} Work Items?`}
+        description={`These ${count} work items will be safely archived and hidden from active views. You can view or restore them at any time.`}
+        confirmLabel={`Archive ${count} Items`}
+        loadingLabel="Archiving..."
+        onConfirm={() => onArchiveSelected?.()}
+        isUpdating={isUpdating}
+      />
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="w-full max-w-md p-6 gap-4 rounded-md border border-border bg-background shadow-raised-200">
-          <DialogHeader className="text-left space-y-1.5">
-            <DialogTitle className="text-16 font-semibold text-foreground">
-              Delete {count} Work Items?
-            </DialogTitle>
-            <DialogDescription className="text-13 text-foreground/70 mt-1.5 leading-normal">
-              Are you sure you want to delete these {count} work items? This action will move them to trash.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex items-center justify-end gap-2 pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setDeleteDialogOpen(false)}
-              disabled={isUpdating}
-              className="relative h-8 px-3 text-12 font-medium rounded-md cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                setDeleteDialogOpen(false);
-                onDeleteSelected();
-              }}
-              disabled={isUpdating}
-              className="relative h-8 px-3.5 text-12 font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
-            >
-              {isUpdating ? 'Deleting...' : `Delete ${count} Items`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <BulkConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title={`Delete ${count} Work Items?`}
+        description={`Are you sure you want to delete these ${count} work items? This action will move them to trash.`}
+        confirmLabel={`Delete ${count} Items`}
+        loadingLabel="Deleting..."
+        onConfirm={onDeleteSelected}
+        isUpdating={isUpdating}
+        destructive
+      />
     </>,
     document.body
   );

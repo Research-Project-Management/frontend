@@ -13,20 +13,31 @@ import {
 import { toast } from 'sonner';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { ArchivalTag } from '@/shared/components/ui/archival-tag';
-import { isItemRetracted } from '../../utils/retraction';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
+import { isItemRetracted } from '@/features/library/domain/retraction';
 import { cn } from '@/shared/lib/utils';
 import {
   useIsItemSelected,
   useIsActiveItem,
-} from '../../store/selectors';
-import { useLibraryUIStore } from '../../store/library-ui.store';
+} from '@/features/library/store/selectors';
+import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
 import { ItemContextMenu } from './ItemContextMenu';
-import type { Item, Collection } from '../../types/library.types';
-import { cleanAcademicText, formatAcademicAuthors } from '../../utils/academic-text';
+import type { Item, Collection } from '@/features/library/types/library.types';
+import { cleanAcademicText, formatAcademicAuthors } from '@/features/library/domain/academic-text';
+import {
+  getItemDisplayTitle,
+  getItemDisplayDate,
+  getPublicationVenue,
+} from '@/features/library/domain/metadata';
 
 export interface ItemTableRowProps {
   item: Item;
   index: number;
+  scopeId?: string;
   columns: Record<string, boolean>;
   density?: 'comfortable' | 'compact';
   isTrash?: boolean;
@@ -52,6 +63,7 @@ export interface ItemTableRowProps {
 export const ItemTableRow = React.memo(function ItemTableRow({
   item,
   index,
+  scopeId,
   isLast = false,
   columns,
   density = 'comfortable',
@@ -71,12 +83,11 @@ export const ItemTableRow = React.memo(function ItemTableRow({
 
   // Granular Selectors - 60 FPS Re-render Barrier (True O(1))
   const isSelected = useIsItemSelected(item.id);
-  const isActive = useIsActiveItem(item.id);
-  const isRowActive = isActive;
-  const isHighlighted = isSelected || isRowActive;
+  const isRowActive = useIsActiveItem(item.id);
   const toggleSelect = useLibraryUIStore((s) => s.toggleSelect);
+  const openModal = useLibraryUIStore((s) => s.openModal);
 
-  const cleanTitle = cleanAcademicText(item.title) || 'Untitled';
+  const cleanTitle = cleanAcademicText(getItemDisplayTitle(item) || item.title) || 'Untitled';
   const authorTooltip = React.useMemo(() => {
     const raw =
       item.authors && item.authors.length > 0
@@ -139,6 +150,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
   return (
     <ItemContextMenu
       item={item}
+      scopeId={scopeId}
       isTrash={isTrash}
       collections={collections}
       onToggleStar={!isProcessing && onToggleStar ? handleToggleStarContextMenu : undefined}
@@ -241,46 +253,58 @@ export const ItemTableRow = React.memo(function ItemTableRow({
               />
             </div>
             {isProcessing && processingStatus === 'FAILED' && (
-              <span
-                title={processingError || 'Extraction failed'}
-                className="inline-flex items-center shrink-0"
-              >
-                <AlertCircle className="size-3.5 text-destructive shrink-0" strokeWidth={1.5} />
-              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center shrink-0">
+                    <AlertCircle className="size-3.5 text-destructive shrink-0" strokeWidth={1.5} />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{processingError || 'Extraction failed'}</TooltipContent>
+              </Tooltip>
             )}
             {isRetracted && (
-              <span
-                title="This item has been retracted"
-                className="inline-flex items-center shrink-0"
-              >
-                <ShieldAlert className="size-3.5 text-destructive shrink-0" strokeWidth={1.5} />
-              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center shrink-0">
+                    <ShieldAlert className="size-3.5 text-destructive shrink-0" strokeWidth={1.5} />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>This item has been retracted</TooltipContent>
+              </Tooltip>
             )}
             {hasAttachment && (
-              <span
-                title={`${attachmentCount} attachment(s)`}
-                className="inline-flex items-center shrink-0"
-              >
-                <Paperclip className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center shrink-0">
+                    <Paperclip className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{`${attachmentCount} attachment(s)`}</TooltipContent>
+              </Tooltip>
             )}
             {hasNotes && (
-              <span
-                title={`${noteCount} note(s)`}
-                className="inline-flex items-center shrink-0"
-              >
-                <StickyNote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center shrink-0">
+                    <StickyNote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{`${noteCount} note(s)`}</TooltipContent>
+              </Tooltip>
             )}
-            <span
-              className={cn(
-                'truncate text-13 font-normal text-foreground',
-                isProcessing && 'font-medium',
-              )}
-              title={cleanTitle}
-            >
-              {cleanTitle}
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className={cn(
+                    'truncate text-13 font-normal text-foreground',
+                    isProcessing && 'font-medium',
+                  )}
+                >
+                  {cleanTitle}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{cleanTitle}</TooltipContent>
+            </Tooltip>
           </div>
         </td>
 
@@ -293,8 +317,21 @@ export const ItemTableRow = React.memo(function ItemTableRow({
               item.authors[0] === 'Processing metadata...' ||
               item.authors[0] === 'Uploading raw file...') ? (
               <span className="text-foreground text-12 italic">Extracting authors...</span>
+            ) : authorTooltip ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="block truncate">
+                    {formatAcademicAuthors(
+                      item.authors && item.authors.length > 0
+                        ? item.authors
+                        : item.creators,
+                    )}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{authorTooltip}</TooltipContent>
+              </Tooltip>
             ) : (
-              <span title={authorTooltip}>
+              <span className="block truncate">
                 {formatAcademicAuthors(
                   item.authors && item.authors.length > 0
                     ? item.authors
@@ -308,9 +345,14 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         {/* Year */}
         {columns.year !== false && (
           <td className="px-2 h-8 py-0 align-middle text-center text-13 font-mono tabular-nums text-foreground font-normal">
-            {(item.year && item.year > 0 ? item.year : null) ||
-              (item.publicationDate || item.date || '').match(/\b(1[7-9]\d{2}|20\d{2})\b/)?.[1] ||
-              '-'}
+            {(() => {
+              const displayDate = getItemDisplayDate(item);
+              if (typeof displayDate === 'number') return displayDate;
+              if (typeof displayDate === 'string') {
+                return displayDate.match(/\b(1[7-9]\d{2}|20\d{2})\b/)?.[1] || displayDate;
+              }
+              return '-';
+            })()}
           </td>
         )}
 
@@ -320,14 +362,25 @@ export const ItemTableRow = React.memo(function ItemTableRow({
             {isProcessing && !item.publicationTitle ? (
               <span className="text-foreground text-12 italic">Recognizing venue...</span>
             ) : (
-              <span title={cleanAcademicText(item.publicationTitle || item.journal || item.publisher || '')}>
-                {cleanAcademicText(
-                  item.publicationTitle ||
-                  item.journal ||
-                  item.publisher ||
-                  ''
-                ) || '-'}
-              </span>
+              (() => {
+                const venueText = cleanAcademicText(
+                  getPublicationVenue(item) ||
+                    item.publicationTitle ||
+                    item.journal ||
+                    item.publisher ||
+                    '',
+                );
+                return venueText ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="block truncate">{venueText}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>{venueText}</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <span>-</span>
+                );
+              })()
             )}
           </td>
         )}
@@ -386,34 +439,40 @@ export const ItemTableRow = React.memo(function ItemTableRow({
               </span>
               <div className="hidden group-hover:flex items-center gap-1 shrink-0 ml-1">
                 {onRestore && (
-                  <button
-                    type="button"
-                    title="Restore reference"
-                    aria-label="Restore reference"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRestore(item.id);
-                    }}
-                    className="size-6 rounded flex items-center justify-center hover:bg-muted text-foreground transition-colors cursor-pointer"
-                  >
-                    <RotateCcw className="size-3.5" />
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Restore reference"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRestore(item.id);
+                        }}
+                        className="size-6 rounded flex items-center justify-center hover:bg-muted text-foreground transition-colors cursor-pointer"
+                      >
+                        <RotateCcw className="size-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Restore reference</TooltipContent>
+                  </Tooltip>
                 )}
                 {onPurge && (
-                  <button
-                    type="button"
-                    title="Permanently delete reference"
-                    aria-label="Permanently delete reference"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (window.confirm('Permanently delete this reference? This action cannot be undone.')) {
-                        onPurge(item.id);
-                      }
-                    }}
-                    className="size-6 rounded flex items-center justify-center hover:bg-destructive/15 text-foreground hover:text-destructive transition-colors cursor-pointer"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Permanently delete reference"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openModal('DELETE_ITEMS', { itemIds: [item.id], permanent: true });
+                        }}
+                        className="size-6 rounded flex items-center justify-center hover:bg-destructive/15 text-foreground hover:text-destructive transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Permanently delete reference</TooltipContent>
+                  </Tooltip>
                 )}
               </div>
             </div>

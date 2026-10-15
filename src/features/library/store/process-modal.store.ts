@@ -3,8 +3,8 @@ import type {
   ProcessingFileItem,
   ProcessModalState,
   ProcessBatchUploadOptions,
-} from '../types/batch-upload.types';
-import { executeBatchUpload, cleanFilenameToTitle } from '../data/batch-upload.service';
+} from '@/features/library/types/batch-upload.types';
+import { executeBatchUpload, cleanFilenameToTitle } from '@/features/library/data/batch-upload.service';
 
 export { cleanFilenameToTitle };
 export type { ProcessModalState, ProcessingFileItem, ProcessBatchUploadOptions };

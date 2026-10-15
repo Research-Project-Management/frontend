@@ -12,19 +12,16 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/
 import {
   useCollections,
   useItems,
-  useLibraryCountsQuery,
-  useDuplicateGroups,
-  useRetraction,
   useSavedSearches,
-} from '../../data';
-import { useLibrarySidebarStore } from '../../store/library-ui.store';
-import { useLibraryPermissions } from '../../store/selectors';
+} from '@/features/library/data';
+import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
+import { useLibraryPermissions } from '@/features/library/store/selectors';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 
-import CreateCollectionModal from '../modals/CreateCollectionModal';
-import TrashModal from '../modals/TrashModal';
-import type { SavedSearch } from '../../types/saved-searches.types';
+import CreateCollectionModal from '@/features/library/components/modals/CreateCollectionModal';
+import TrashModal from '@/features/library/components/modals/TrashModal';
+import type { SavedSearch } from '@/features/library/types/saved-searches.types';
 
 import { buildTree, filterCollections } from './tree-helpers';
 import { useSidebarResize } from './useSidebarResize';
@@ -33,7 +30,7 @@ import { SidebarHeader } from './SidebarHeader';
 import { SidebarResizer } from './SidebarResizer';
 import { CollectionTree } from './CollectionTree';
 import { SidebarSystemNav } from './SidebarSystemNav';
-import { ProjectLibrariesSection, resolveProjectRole } from './ProjectLibrariesSection';
+import { ProjectLibrariesSection, resolveProjectRole, type ProjectLike } from './ProjectLibrariesSection';
 
 /**
  * LibrarySidebar Zone
@@ -48,19 +45,19 @@ export function LibrarySidebar() {
   const router = useRouter();
   const id = useId();
 
-  const activeScope = useLibrarySidebarStore((s) => s.activeScope);
-  const setActiveScope = useLibrarySidebarStore((s) => s.setActiveScope);
-  const isSidebarOpen = useLibrarySidebarStore((s) => s.isSidebarOpen);
-  const setSidebarOpen = useLibrarySidebarStore((s) => s.setSidebarOpen);
-  const sidebarWidth = useLibrarySidebarStore((s) => s.sidebarWidth);
-  const setSidebarWidth = useLibrarySidebarStore((s) => s.setSidebarWidth);
-  const toggleSidebar = useLibrarySidebarStore((s) => s.toggleSidebar);
-  const openModal = useLibrarySidebarStore((s) => s.openModal);
+  const activeScope = useLibraryUIStore((s) => s.activeScope);
+  const setActiveScope = useLibraryUIStore((s) => s.setActiveScope);
+  const isSidebarOpen = useLibraryUIStore((s) => s.isSidebarOpen);
+  const setSidebarOpen = useLibraryUIStore((s) => s.setSidebarOpen);
+  const sidebarWidth = useLibraryUIStore((s) => s.sidebarWidth);
+  const setSidebarWidth = useLibraryUIStore((s) => s.setSidebarWidth);
+  const toggleSidebar = useLibraryUIStore((s) => s.toggleSidebar);
+  const openModal = useLibraryUIStore((s) => s.openModal);
   const effectiveScopeId = activeScope.type === 'project' ? activeScope.id : 'user';
 
   const userCollectionService = useCollections('user');
   const projectCollectionService = useCollections(
-    activeScope.type === 'project' ? activeScope.id : undefined,
+    activeScope.type === 'project' ? activeScope.id : '',
   );
   const collectionService =
     activeScope.type === 'project' ? projectCollectionService : userCollectionService;
@@ -91,23 +88,32 @@ export function LibrarySidebar() {
 
   const { canManageCollections } = useLibraryPermissions();
 
-  // Synchronize active project role with server-provided project list
+  // Synchronize active project role and permissions with server-provided project list
   useEffect(() => {
-    if (activeScope.type === 'project' && currentUserId && projects && projects.length > 0) {
-      const currentProject = projects.find((p: any) => p.id === activeScope.id);
+    if (activeScope.type === 'project' && projects && projects.length > 0) {
+      const currentProject = projects.find((p: ProjectLike) => p.id === activeScope.id);
       if (currentProject) {
         const accurateRole = resolveProjectRole(currentProject, currentUserId);
-        if (accurateRole !== activeScope.role) {
+        const serverPerms = currentProject.permissions;
+        const serverEffective = Array.isArray(currentProject.effectivePermissions)
+          ? (currentProject.effectivePermissions as string[])
+          : undefined;
+        if (
+          accurateRole !== activeScope.role ||
+          serverPerms !== activeScope.permissions ||
+          serverEffective !== activeScope.effectivePermissions
+        ) {
           setActiveScope({
             ...activeScope,
             role: accurateRole,
+            ...(serverPerms ? { permissions: serverPerms } : {}),
+            ...(serverEffective ? { effectivePermissions: serverEffective } : {}),
           });
         }
       }
     }
   }, [activeScope, currentUserId, projects, setActiveScope]);
 
-  const { stats: retractionStats } = useRetraction(effectiveScopeId);
   const {
     savedSearches,
     createSavedSearch,
@@ -146,31 +152,6 @@ export function LibrarySidebar() {
     setRenameSavedSearchValue('');
   };
   const { actions: itemActions } = useItems({ scopeId: effectiveScopeId, enabled: false });
-  const { data: countsData } = useLibraryCountsQuery(effectiveScopeId);
-  const { data: duplicateData } = useDuplicateGroups(effectiveScopeId);
-
-  const unfiledCount = countsData?.unfiled ?? 0;
-  const starredCount = countsData?.starred ?? 0;
-  const duplicateCount = useMemo(() => {
-    if (!duplicateData) return 0;
-    if (Array.isArray(duplicateData)) return duplicateData.length;
-    if (typeof duplicateData === 'object') {
-      const obj = duplicateData as Record<string, unknown>;
-      if (Array.isArray(obj.groups)) return obj.groups.length;
-      if (Array.isArray(obj.duplicateGroups)) return obj.duplicateGroups.length;
-    }
-    return 0;
-  }, [duplicateData]);
-
-  const systemStats = useMemo(
-    () => ({
-      unfiledCount,
-      starredCount,
-      duplicateCount,
-      retractedCount: retractionStats?.retractedCount,
-    }),
-    [unfiledCount, starredCount, duplicateCount, retractionStats?.retractedCount],
-  );
 
   const userCollections = useMemo(
     () => userCollectionService.state.collections ?? [],
@@ -286,7 +267,7 @@ export function LibrarySidebar() {
                   </span>
                 </Link>
 
-                <Tooltip delayDuration={700}>
+                <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       type="button"
@@ -312,7 +293,6 @@ export function LibrarySidebar() {
                     align="start"
                     sideOffset={6}
                     alignOffset={2}
-                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
                   >
                     {isLibraryExpanded ? 'Collapse' : 'Expand'}
                   </TooltipContent>
@@ -330,8 +310,6 @@ export function LibrarySidebar() {
                     navId={id}
                     savedSearches={savedSearches}
                     currentSavedSearchId={currentSavedSearchId}
-                    stats={systemStats}
-                    retractedCount={retractionStats?.retractedCount}
                     onDropItems={(ids, targetColId) => itemActions.batchMoveItems(ids, targetColId)}
                     onSelectUserScope={() => {
                       setActiveScope({
@@ -424,7 +402,6 @@ export function LibrarySidebar() {
                 renamingSavedSearchId={renamingSavedSearchId}
                 renameSavedSearchValue={renameSavedSearchValue}
                 pathname={pathname}
-                duplicateCount={duplicateCount}
               />
             </nav>
           </LayoutGroup>

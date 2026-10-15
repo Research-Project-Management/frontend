@@ -38,6 +38,7 @@ import {
   ProjectAvatar,
 } from '@/shared/components/icons';
 import { useProjects } from '../hooks/use-project';
+import type { Project } from '../types/project.types';
 import { useFavorites } from '../hooks/use-favorites';
 import { useProject } from '@/features/projects/project-id/work-items/hooks/use-work-item';
 
@@ -71,7 +72,7 @@ const MODULE_ORDER: ProjectModuleKey[] = [
   'settings',
 ];
 
-const modulesConfig: Record<ProjectModuleKey, { label: string; icon: React.ComponentType<any>; path: string }> = {
+const modulesConfig: Record<ProjectModuleKey, { label: string; icon: React.ComponentType<{ className?: string }>; path: string }> = {
   'overview': { label: 'Overview', icon: Compass, path: 'overview' },
   'work-items': { label: 'Work items', icon: WorkItemsIcon, path: 'work-items' },
   'pages': { label: 'Pages', icon: FileText, path: 'pages' },
@@ -82,7 +83,7 @@ const modulesConfig: Record<ProjectModuleKey, { label: string; icon: React.Compo
 
 type NavItem = {
   label: string;
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<{ className?: string }>;
   to: string;
   exact?: boolean;
 };
@@ -193,7 +194,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   };
 
   // ── Project Item Renderer ──────────────────────────────────────────────────
-  const renderProjectItem = (project: any, keyPrefix = '') => {
+  const renderProjectItem = (project: Project, keyPrefix = '') => {
     const projId = project.id || '';
     const isOpen = expandedProjects.has(projId);
     const projectModules = project.modules ?? [];

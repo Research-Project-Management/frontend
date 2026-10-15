@@ -9,16 +9,24 @@ import {
   RetractionService,
   type IngestionProgressResponse,
 } from './ingestion.service';
-import { CitationService } from '../citation/citation.service';
+import { CitationService } from '@/features/library/data/citation/citation.service';
 import type {
   UnifiedIngestionPayload,
   UnifiedIngestionResponse,
   IngestionRunSnapshotResponse,
   UrlCapturePreviewResponse,
-} from '../../types';
-import type { FlagRetractionInput } from '../../types/library.types';
-import { itemKeys, libraryKeys } from '../query-keys';
+} from '@/features/library/types';
+import type { FlagRetractionInput, ReferenceData } from '@/features/library/types/library.types';
+import {
+  itemKeys,
+  libraryKeys,
+  ingestKeys,
+  curationKeys,
+  retractionKeys,
+  invalidateCollections,
+} from '@/features/library/data/query-keys';
 
+export { ingestKeys, curationKeys, retractionKeys };
 export type { IngestionProgressResponse };
 
 export interface ProcessModalState {
@@ -30,12 +38,6 @@ export interface ProcessModalState {
   isComplete: boolean;
   error: string | null;
 }
-
-export const ingestKeys = {
-  all: (scopeId?: string) => libraryKeys.ingestion(scopeId),
-  status: (scopeId?: string, runId?: string) =>
-    libraryKeys.ingestionRun(scopeId, runId),
-};
 
 export function useIngestProgress(scopeId: string = 'user') {
   const queryClient = useQueryClient();
@@ -93,12 +95,15 @@ export function useIngestProgress(scopeId: string = 'user') {
             pollRef.current?.(runId);
           }, 1500);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (activeRunIdRef.current !== runId) return;
         setModalState((prev) => ({
           ...prev,
           isComplete: true,
-          error: err?.message || 'Error tracking import progress.',
+          error:
+            err instanceof Error
+              ? err.message
+              : 'Error tracking import progress.',
         }));
         stopPolling();
       }
@@ -210,9 +215,9 @@ export function useUrlCapture(scopeId?: string) {
         id: 'capture-url',
       });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Import confirmation failed', {
-        description: err?.message || 'Could not save captured URL to library.',
+        description: err.message || 'Could not save captured URL to library.',
         id: 'capture-url',
       });
     },
@@ -254,9 +259,9 @@ export function useIngestion(scopeId?: string) {
         });
       }
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Ingestion failed', {
-        description: err?.message || 'Unable to submit document for processing.',
+        description: err.message || 'Unable to submit document for processing.',
         id: 'ingest-submit',
       });
     },
@@ -272,30 +277,31 @@ export function useIngestion(scopeId?: string) {
 
 export function useResolveIdentifier(scopeId?: string) {
   const resolveMutation = useMutation<
-    any,
+    Awaited<ReturnType<typeof CitationService.resolve>>,
     Error,
     { query: string }
   >({
     mutationFn: ({ query }) =>
       CitationService.resolve(query, scopeId),
     onSuccess: (res) => {
-      if (res?.metadata?.title) {
+      const resolved = res as (ReferenceData & { metadata?: { title?: string }; provider?: string }) | null;
+      if (resolved?.title || resolved?.metadata?.title) {
         toast.success('Metadata resolved', {
-          description: `Resolved via ${res.provider || 'identifier'}.`,
+          description: `Resolved via ${resolved.provider || 'identifier'}.`,
           id: 'resolve-identifier',
         });
       }
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Resolution failed', {
-        description: err?.message || 'Could not resolve identifier.',
+        description: err.message || 'Could not resolve identifier.',
         id: 'resolve-identifier',
       });
     },
   });
 
   const resolveDoiMutation = useMutation<
-    any,
+    Awaited<ReturnType<typeof CitationService.resolveDoi>>,
     Error,
     { doi: string }
   >({
@@ -308,9 +314,9 @@ export function useResolveIdentifier(scopeId?: string) {
         });
       }
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Resolution failed', {
-        description: err?.message || 'Could not resolve DOI.',
+        description: err.message || 'Could not resolve DOI.',
         id: 'resolve-identifier',
       });
     },
@@ -324,12 +330,284 @@ export function useResolveIdentifier(scopeId?: string) {
   };
 }
 
-// ── Curation & Duplicates Queries ─────────────────────────────────────────────
+// ── Identifier / Link Ingestion & Polling Orchestration ───────────────────────
 
-export const curationKeys = {
-  duplicates: (scopeId?: string) => libraryKeys.duplicates(scopeId),
-  integrity: (scopeId?: string) => ['library', 'curation', scopeId || 'user', 'integrity'] as const,
-};
+import {
+  cleanDoi,
+  extractArxivId,
+  extractPmid,
+  cleanIsbn,
+} from '@/features/library/domain/identifiers';
+
+export function buildIdentifierIngestionPayload(
+  rawInput: string,
+  options?: { collectionId?: string; title?: string },
+): UnifiedIngestionPayload {
+  const raw = rawInput.trim();
+  const targetCollectionId = options?.collectionId || undefined;
+  const userTitle = options?.title?.trim() || undefined;
+  const overrides = userTitle ? { title: userTitle } : undefined;
+
+  if (raw.startsWith('@')) {
+    return {
+      source: 'bibtex',
+      content: raw,
+      collectionId: targetCollectionId,
+      ...(overrides ? { overrides } : {}),
+    } as UnifiedIngestionPayload;
+  }
+  if (raw.startsWith('TY  -')) {
+    return {
+      source: 'ris',
+      content: raw,
+      collectionId: targetCollectionId,
+      ...(overrides ? { overrides } : {}),
+    } as UnifiedIngestionPayload;
+  }
+
+  // 1. Check arXiv first (including arxiv.org/abs/..., arxiv.org/pdf/..., 10.48550/arXiv..., (arXiv:...))
+  const arxivCandidate = extractArxivId(raw);
+  if (
+    arxivCandidate &&
+    (/arxiv/i.test(raw) || /^\(?\[?(?:arxiv:\s*)?(\d{4}\.\d{4,5}|[a-z-]+\/\d{7})/i.test(raw))
+  ) {
+    return { source: 'arxiv', arxivId: arxivCandidate, collectionId: targetCollectionId, overrides };
+  }
+
+  // 2. Check PubMed URL or PMID string
+  const pmidCandidate = extractPmid(raw);
+  if (pmidCandidate) {
+    return { source: 'pmid', pmid: pmidCandidate, collectionId: targetCollectionId, overrides };
+  }
+
+  // 3. Check DOI (including doi.org, dx.doi.org, nature/zenodo/biorxiv/plos DOI URLs, or 10.NNNN/...)
+  const doiCandidate = cleanDoi(raw);
+  if (doiCandidate && /^10\.\d{4,9}\//.test(doiCandidate)) {
+    return { source: 'doi', doi: doiCandidate, collectionId: targetCollectionId, overrides };
+  }
+
+  // 4. Check ISBN-10 / ISBN-13 (including ISBN-10 ending with X and hyphenated/spaced formats)
+  const isbnCandidate = cleanIsbn(raw);
+  if (isbnCandidate) {
+    return { source: 'isbn', isbn: isbnCandidate, collectionId: targetCollectionId, overrides };
+  }
+
+  return { source: 'url', url: raw, collectionId: targetCollectionId, overrides };
+}
+
+export interface TrackedIdentifierIngestionOptions {
+  scopeId: string;
+  rawInput: string;
+  title?: string;
+  collectionId?: string;
+  queryClient: QueryClient;
+  onCloseModal: () => void;
+  onAddProvisionalItem: (item: {
+    id: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    scopeId: string;
+    collectionId?: string;
+    status: 'PROCESSING';
+    progress: number;
+    extractedTitle: string;
+    createdAt: string;
+  }) => void;
+  onDismissProvisionalItem: (id: string) => void;
+}
+
+/**
+ * Submits an identifier/URL/BibTeX/RIS payload and orchestrates fast-path completion,
+ * background polling, provisional item display, and scoped cache synchronization.
+ */
+export async function executeTrackedIdentifierIngestion({
+  scopeId,
+  rawInput,
+  title,
+  collectionId,
+  queryClient,
+  onCloseModal,
+  onAddProvisionalItem,
+  onDismissProvisionalItem,
+}: TrackedIdentifierIngestionOptions): Promise<void> {
+  const raw = rawInput.trim();
+  if (!raw) return;
+
+  const targetCollectionId = collectionId || undefined;
+  const userTitle = title?.trim() || undefined;
+  const ingestionPayload = buildIdentifierIngestionPayload(raw, {
+    collectionId: targetCollectionId,
+    title: userTitle,
+  });
+
+  const toastId = toast.loading('Adding reference...', { id: 'add-identifier' });
+  const provisionalId = `provisional-link-${Date.now()}`;
+  let provisionalAdded = false;
+
+  const syncLibraryQueries = async () => {
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: itemKeys.all(scopeId) }),
+      queryClient.refetchQueries({ queryKey: itemKeys.counts(scopeId) }),
+      targetCollectionId
+        ? queryClient.refetchQueries({
+            queryKey: itemKeys.byCollection(scopeId, targetCollectionId),
+          })
+        : Promise.resolve(),
+    ]);
+    invalidateCollections(queryClient, scopeId);
+  };
+
+  try {
+    const ingestRes = await IngestionService.ingest(scopeId, ingestionPayload);
+    const ingestData = ingestRes?.data;
+    const runId = ingestData?.runId;
+    const initialStatus = (ingestData?.status || '').toUpperCase();
+    const isAlreadyDone =
+      initialStatus === 'COMPLETED' ||
+      initialStatus === 'SUCCEEDED' ||
+      initialStatus === 'READY' ||
+      Boolean(ingestData?.deduplicated);
+
+    const itemObj = ingestData?.item as Record<string, unknown> | undefined;
+    let finalTitle = userTitle || (typeof itemObj?.title === 'string' ? itemObj.title : '');
+
+    if (isAlreadyDone || !runId) {
+      await syncLibraryQueries();
+      toast.success(
+        ingestData?.deduplicated ? 'Reference already in library' : 'Document imported',
+        {
+          description: finalTitle
+            ? `"${finalTitle}" is ready in your library.`
+            : 'Successfully added to your library.',
+          id: toastId,
+        },
+      );
+      onCloseModal();
+      return;
+    }
+
+    const startTime = Date.now();
+    const modalWaitTimeoutMs = 3500;
+    const maxTotalWaitMs = 60000;
+    const pollIntervalMs = 700;
+    let modalClosed = false;
+
+    while (Date.now() - startTime < maxTotalWaitMs) {
+      await new Promise((r) => setTimeout(r, pollIntervalMs));
+
+      if (!modalClosed && Date.now() - startTime >= modalWaitTimeoutMs) {
+        modalClosed = true;
+        onCloseModal();
+        provisionalAdded = true;
+        onAddProvisionalItem({
+          id: provisionalId,
+          fileName: userTitle || raw,
+          fileSize: 0,
+          mimeType: 'text/html',
+          scopeId,
+          collectionId: targetCollectionId,
+          status: 'PROCESSING',
+          progress: 50,
+          extractedTitle: userTitle || raw,
+          createdAt: new Date().toISOString(),
+        });
+        toast.loading('Processing document in background...', {
+          id: toastId,
+          description: 'Extracting metadata. Your library will update automatically once ready.',
+        });
+      }
+
+      try {
+        const runStatus = await IngestionService.getRunStatus(scopeId, runId);
+        const statusPayload = runStatus as {
+          data?: {
+            status?: string;
+            title?: string;
+            itemId?: string;
+            lastError?: string;
+            errorMessage?: string;
+          };
+          status?: string;
+          title?: string;
+          itemId?: string;
+          lastError?: string;
+          errorMessage?: string;
+        } | null;
+
+        const statusData = statusPayload?.data || statusPayload;
+        const currentStatus = (statusData?.status || '').toUpperCase();
+
+        if (
+          currentStatus === 'COMPLETED' ||
+          currentStatus === 'SUCCEEDED' ||
+          currentStatus === 'READY'
+        ) {
+          if (statusData?.title && statusData.title !== 'Uploaded Document') {
+            finalTitle = statusData.title;
+          }
+
+          await syncLibraryQueries();
+
+          if (provisionalAdded) {
+            onDismissProvisionalItem(provisionalId);
+          }
+
+          toast.success('Document imported', {
+            description: finalTitle
+              ? `"${finalTitle}" has been added to your library.`
+              : 'Successfully added to your library.',
+            id: toastId,
+          });
+
+          if (!modalClosed) {
+            onCloseModal();
+          }
+          return;
+        }
+
+        if (
+          currentStatus === 'FAILED_FINAL' ||
+          currentStatus === 'FAILED_RETRYABLE' ||
+          currentStatus === 'CANCELLED' ||
+          currentStatus === 'FAILED'
+        ) {
+          const failError =
+            statusData?.lastError || statusData?.errorMessage || 'Extraction failed';
+          throw new Error(failError);
+        }
+      } catch (pollErr: unknown) {
+        const pollErrMsg = pollErr instanceof Error ? pollErr.message : String(pollErr);
+        if (
+          pollErrMsg.includes('Extraction failed') ||
+          pollErrMsg.includes('failed permanently')
+        ) {
+          throw pollErr;
+        }
+      }
+    }
+
+    await syncLibraryQueries();
+    if (provisionalAdded) {
+      onDismissProvisionalItem(provisionalId);
+    }
+    if (!modalClosed) onCloseModal();
+    toast.info('Ingestion queued', {
+      description: 'Document is taking longer than usual to process. It will appear once finished.',
+      id: toastId,
+    });
+  } catch (err: unknown) {
+    if (provisionalAdded) {
+      onDismissProvisionalItem(provisionalId);
+    }
+    toast.error('Import failed', {
+      description: err instanceof Error ? err.message : 'Could not import reference.',
+      id: toastId,
+    });
+  }
+}
+
+// ── Curation & Duplicates Queries ─────────────────────────────────────────────
 
 export function useDuplicateGroups(scopeId?: string) {
   return useQuery({
@@ -355,25 +633,25 @@ export function useMergeDuplicates(scopeId?: string) {
       sourcePaperIds?: string[];
       masterId?: string;
       duplicateIds?: string[];
-      fieldSelections?: Record<string, any>;
+      fieldSelections?: Record<string, unknown>;
     }) => {
       const effectiveMasterId = masterId || masterPaperId || '';
       const effectiveSourceIds = duplicateIds || sourcePaperIds || [];
       return QualityService.mergePapers(effectiveScope, effectiveMasterId, effectiveSourceIds, fieldSelections);
     },
-    onSuccess: (response: any) => {
+    onSuccess: (response: Awaited<ReturnType<typeof QualityService.mergePapers>>) => {
       queryClient.invalidateQueries({ queryKey: curationKeys.duplicates(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: curationKeys.integrity(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      const count = response.mergedCount ?? response.data?.mergedCount ?? 1;
+      const count = response.data?.mergedCount ?? 1;
       toast.success('Duplicates merged', {
         description: `Consolidated ${count} duplicate record(s) into master. Notes and citations preserved.`,
         id: 'library-merge',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error('Merge failed', {
-        description: error?.message || 'Unable to consolidate duplicate records.',
+        description: error.message || 'Unable to consolidate duplicate records.',
         id: 'library-merge',
       });
     },
@@ -390,15 +668,10 @@ export function useLibraryIntegrity(scopeId?: string) {
 
 // ── Retraction Queries ────────────────────────────────────────────────────────
 
-export const retractionKeys = {
-  all: (scopeId?: string) => libraryKeys.retractions(scopeId),
-  stats: (scopeId?: string) => [...libraryKeys.retractions(scopeId), 'stats'] as const,
-  items: (scopeId?: string) => [...libraryKeys.retractions(scopeId), 'items'] as const,
-};
-
 export const invalidateRetraction = (qc: QueryClient, scopeId?: string) => {
   qc.invalidateQueries({ queryKey: retractionKeys.all(scopeId) });
-  qc.invalidateQueries({ queryKey: libraryKeys.all });
+  qc.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
+  qc.invalidateQueries({ queryKey: itemKeys.counts(scopeId) });
 };
 
 /**
@@ -415,7 +688,7 @@ export function useRetractedItems(scopeId?: string, enabled = true) {
   });
 }
 
-export function useRetraction(scopeId?: string) {
+export function useRetraction(scopeId?: string, options?: { includeItems?: boolean }) {
   const queryClient = useQueryClient();
   const effectiveScope = scopeId || 'user';
 
@@ -426,7 +699,10 @@ export function useRetraction(scopeId?: string) {
     staleTime: 1000 * 60 * 60,
   });
 
-  const itemsQuery = useRetractedItems(effectiveScope);
+  const itemsQuery = useRetractedItems(
+    effectiveScope,
+    (options?.includeItems ?? true) && Boolean(effectiveScope),
+  );
 
   const checkItemMutation = useMutation({
     mutationFn: (itemId: string) => RetractionService.checkItem(effectiveScope, itemId),
@@ -450,8 +726,8 @@ export function useRetraction(scopeId?: string) {
         });
       }
     },
-    onError: (err: any) => {
-      toast.error('Check failed', { description: err?.message, id: 'retraction-check' });
+    onError: (err: Error) => {
+      toast.error('Check failed', { description: err.message, id: 'retraction-check' });
     },
   });
 
@@ -471,8 +747,8 @@ export function useRetraction(scopeId?: string) {
         });
       }
     },
-    onError: (err: any) => {
-      toast.error('Library scan failed', { description: err?.message, id: 'retraction-scan' });
+    onError: (err: Error) => {
+      toast.error('Library scan failed', { description: err.message, id: 'retraction-scan' });
     },
   });
 
@@ -483,8 +759,8 @@ export function useRetraction(scopeId?: string) {
       invalidateRetraction(queryClient, scopeId);
       toast.warning('Item flagged as retracted', { id: 'retraction-flag' });
     },
-    onError: (err: any) => {
-      toast.error('Failed to flag item', { description: err?.message, id: 'retraction-flag' });
+    onError: (err: Error) => {
+      toast.error('Failed to flag item', { description: err.message, id: 'retraction-flag' });
     },
   });
 
@@ -494,8 +770,8 @@ export function useRetraction(scopeId?: string) {
       invalidateRetraction(queryClient, scopeId);
       toast.success('Retraction flag removed', { id: 'retraction-flag' });
     },
-    onError: (err: any) => {
-      toast.error('Failed to remove flag', { description: err?.message, id: 'retraction-flag' });
+    onError: (err: Error) => {
+      toast.error('Failed to remove flag', { description: err.message, id: 'retraction-flag' });
     },
   });
 

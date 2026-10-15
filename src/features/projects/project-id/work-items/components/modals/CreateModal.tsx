@@ -15,7 +15,6 @@ import { Form } from "@/shared/components/ui/form";
 import { Loader2, Paperclip } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { cn } from "@/shared/lib/utils";
-import { useUpload } from "@/shared/hooks/use-upload";
 
 import type {
   Item,
@@ -23,45 +22,41 @@ import type {
   ItemMutationInput,
   Priority,
   ProjectMember,
-  Label,
-  AttachPageItem,
-  AttachPaperItem,
-  AttachFileItem,
-  AttachLinkItem,
-} from '../../types/work-item.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 import {
   resolveColumnId,
   resolveStateId,
   normalizeStates,
   ItemHelpers,
   DEFAULT_STATES,
-} from '../../utils/work-item.utils';
-import { useLabelsQuery } from '../../hooks/use-label';
+} from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import { useWatch } from 'react-hook-form';
 import {
-  useItemForm,
+  useWorkItemForm,
   useProjectStates,
   useProjectDetails,
   useProjectItems,
   type CreateWorkItemFormData,
-} from '../../hooks/use-work-item';
+} from '@/features/projects/project-id/work-items/hooks/use-work-item';
 
 import {
   Attachments,
   type AttachCenterData,
 } from './Attachments';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
+import { StatePopover } from '@/features/projects/project-id/work-items/components/pickers/StatePicker';
+import { MemberPopover } from '@/features/projects/project-id/work-items/components/pickers/MemberPicker';
+import { LabelPopover } from '@/features/projects/project-id/work-items/components/pickers/LabelPicker';
+import { PriorityPopover } from '@/features/projects/project-id/work-items/components/pickers/PriorityPicker';
+import { SingleDatePopover } from '@/features/projects/project-id/work-items/components/pickers/DatePicker';
+import { ParentItemPopover } from '@/features/projects/project-id/work-items/components/pickers/ParentPicker';
+import { ProjectSelectorPopover } from '@/features/projects/project-id/work-items/components/pickers/ProjectPicker';
+import type { CreateModalProps } from '@/features/projects/project-id/work-items/types/modal.types';
 import {
-  StatePopover,
-  MemberPopover,
-  LabelPopover,
-  PriorityPopover,
-  SingleDatePopover,
-  ParentItemPopover,
-  ProjectSelectorPopover,
-} from './Popovers';
-import type { CreateModalProps } from '../../types/modal.types';
-import { EMPTY_ATTACHMENTS as DEFAULT_EMPTY_ATTACHMENTS } from '../../utils/modal.utils';
+  EMPTY_ATTACHMENTS as DEFAULT_EMPTY_ATTACHMENTS,
+  normalizeAttachments,
+  createAttachmentHandlers,
+} from '@/features/projects/project-id/work-items/utils/modal.utils';
 
 export type { CreateModalProps };
 
@@ -143,16 +138,6 @@ export function CreateModal({
     return [];
   }, [isDifferentProject, remoteItemsData, availableItems]);
 
-  const { uploadFile } = useUpload();
-  const { data: rawLabels } = useLabelsQuery(currentProjectId, 'work-item');
-
-  const projectLabels = useMemo(() => {
-    if (Array.isArray(rawLabels)) return rawLabels;
-    const labelsRecord = rawLabels as { labels?: Label[] } | undefined;
-    if (Array.isArray(labelsRecord?.labels)) return labelsRecord.labels;
-    return [];
-  }, [rawLabels]);
-
   const defaultColumnId = useMemo(() => {
     if (initialData?.columnId) return initialData.columnId;
     if (Array.isArray(effectiveColumns) && effectiveColumns.length > 0) {
@@ -163,7 +148,7 @@ export function CreateModal({
   }, [initialData?.columnId, effectiveColumns]);
 
   // React Hook Form Integration (Skills: react-hook-form, formcfg-default-values, sub-usewatch-over-watch)
-  const workItemForm = useItemForm({
+  const workItemForm = useWorkItemForm({
     defaultColumnId,
     initialValues: {
       columnId: initialData?.columnId || defaultColumnId,
@@ -249,21 +234,6 @@ export function CreateModal({
     return pagesCount + papersCount + filesCount + linksCount;
   }, [attachments]);
 
-  // Normalize attachments input
-  const normalizeAttachments = useCallback((raw: unknown): AttachCenterData => {
-    if (!raw) return { pages: [], papers: [], files: [], links: [] };
-    if (Array.isArray(raw)) {
-      return { pages: [], papers: [], files: raw as AttachFileItem[], links: [] };
-    }
-    const obj = raw as Partial<AttachCenterData>;
-    return {
-      pages: Array.isArray(obj.pages) ? obj.pages : [],
-      papers: Array.isArray(obj.papers) ? obj.papers : [],
-      files: Array.isArray(obj.files) ? obj.files : [],
-      links: Array.isArray(obj.links) ? obj.links : [],
-    };
-  }, []);
-
   // Form Reset
   const resetForm = useCallback((resetProperties = true) => {
     if (resetProperties) {
@@ -340,128 +310,26 @@ export function CreateModal({
 
     // Default clean state
     resetToDefaults();
-  }, [open, initialData, defaultColumnId, normalizeAttachments, restoreFromDraft, resetToDefaults]);
+  }, [open, initialData, defaultColumnId, restoreFromDraft, resetToDefaults]);
 
-  const handleAttachPage = (page: { pageId: string; title: string }) => {
-    setAttachments((prev) => ({
-      ...prev,
-      pages: [
-        ...(prev.pages || []),
-        {
-          id: page.pageId,
-          pageId: page.pageId,
-          title: page.title,
-          addedAt: new Date().toISOString(),
-        } as AttachPageItem,
-      ],
-    }));
-    setShowAttachCenter(true);
-  };
-
-  const handleDetachPage = (pageId: string) => {
-    setAttachments((prev) => ({
-      ...prev,
-      pages: (prev.pages || []).filter(
-        (p) => (p as typeof p & { pageId?: string }).pageId !== pageId && p.id !== pageId
-      ),
-    }));
-  };
-
-  const handleAttachPaper = (paper: {
-    paperId: string;
-    title: string;
-    doi?: string;
-    citationKey?: string;
-  }) => {
-    setAttachments((prev) => ({
-      ...prev,
-      papers: [
-        ...(prev.papers || []),
-        {
-          id: paper.paperId,
-          title: paper.title,
-          doi: paper.doi,
-          citationKey: paper.citationKey,
-          addedAt: new Date().toISOString(),
-        } as AttachPaperItem,
-      ],
-    }));
-    setShowAttachCenter(true);
-  };
-
-  const handleDetachPaper = (paperId: string) => {
-    setAttachments((prev) => ({
-      ...prev,
-      papers: (prev.papers || []).filter(
-        (p) => (p as typeof p & { paperId?: string }).paperId !== paperId && p.id !== paperId
-      ),
-    }));
-  };
-
-  const handleAttachFile = (file: {
-    name: string;
-    url: string;
-    size?: number;
-    type?: string;
-    fileId?: string;
-  }) => {
-    const newFile: AttachFileItem = {
-      id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      name: file.name,
-      url: file.url,
-      size: file.size ? `${Math.round(file.size / 1024)} KB` : undefined,
-      type: file.type,
-      createdAt: new Date().toISOString(),
-      ...(file.fileId ? { fileId: file.fileId } : {}),
-    };
-    setAttachments((prev) => ({
-      ...prev,
-      files: [...(prev.files || []), newFile],
-    }));
-    setShowAttachCenter(true);
-  };
-
-  const handleDetachFile = (fileId: string) => {
-    setAttachments((prev) => ({
-      ...prev,
-      files: (prev.files || []).filter((f) => f.id !== fileId),
-    }));
-  };
-
-  const handleAttachLink = (link: { title: string; url: string }) => {
-    setAttachments((prev) => ({
-      ...prev,
-      links: [
-        ...(prev.links || []),
-        {
-          title: link.title,
-          url: link.url,
-          addedAt: new Date().toISOString(),
-        } as AttachLinkItem,
-      ],
-    }));
-    setShowAttachCenter(true);
-  };
-
-  const handleDetachLink = (linkIndex: number) => {
-    setAttachments((prev) => ({
-      ...prev,
-      links: (prev.links || []).filter((_, idx) => idx !== linkIndex),
-    }));
-  };
-
-  const handleRenameAttachment = (attachmentId: string, newName: string) => {
-    setAttachments((prev) => ({
-      ...prev,
-      files: (prev.files || []).map((a) =>
-        a.id === attachmentId ? { ...a, name: newName } : a
-      ),
-    }));
-  };
-
-  const handleRemoveAttachment = (attachmentId: string) => {
-    handleDetachFile(attachmentId);
-  };
+  const {
+    handleAttachPage,
+    handleDetachPage,
+    handleAttachPaper,
+    handleDetachPaper,
+    handleAttachFile,
+    handleDetachFile,
+    handleAttachLink,
+    handleDetachLink,
+    handleRenameAttachment,
+    handleRemoveAttachment,
+  } = useMemo(
+    () =>
+      createAttachmentHandlers(setAttachments, () => {
+        setShowAttachCenter(true);
+      }),
+    [setAttachments],
+  );
 
   // Submit Handler
   const onValidSubmit = async (formData: CreateWorkItemFormData) => {

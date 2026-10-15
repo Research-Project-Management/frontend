@@ -1,5 +1,5 @@
-import type { AttachFileItem } from '../types/work-item.types';
-import type { ItemAttachment } from '../types/attachment.types';
+import type { AttachFileItem } from '@/features/projects/project-id/work-items/types/work-item.types';
+import type { ItemAttachment } from '@/features/projects/project-id/work-items/types/attachment.types';
 
 export function getAttachmentTypeLabel(attachment: ItemAttachment | AttachFileItem): string {
   const name = attachment.name?.trim() || '';

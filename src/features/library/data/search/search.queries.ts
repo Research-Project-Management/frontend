@@ -5,14 +5,9 @@ import {
   SearchService,
   type SearchItemsParams,
 } from './search.service';
+import { searchKeys } from '@/features/library/data/query-keys';
 
-export const searchKeys = {
-  all: ['library', 'search'] as const,
-  items: (scopeId?: string, params?: SearchItemsParams) =>
-    [...searchKeys.all, 'items', scopeId || 'user', params] as const,
-  anchors: (scopeId?: string, attachmentId?: string, term?: string, pageIndex?: number) =>
-    [...searchKeys.all, 'anchors', scopeId || 'user', attachmentId || 'none', term || '', pageIndex ?? 'all'] as const,
-};
+export { searchKeys };
 
 export function useLibrarySearch(
   params: SearchItemsParams,

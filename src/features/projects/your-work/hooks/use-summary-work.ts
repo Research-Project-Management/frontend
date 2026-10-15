@@ -1,86 +1,81 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useYourWork } from './use-your-work-base';
-import { useOptionalYourWorkContext } from '../context/your-work.context';
+import { useYourWorkContext } from '../context/your-work.context';
 
 export function useSummaryWork() {
-  const context = useOptionalYourWorkContext();
-  const base = useYourWork();
-
-  const source = context || base;
+  const context = useYourWorkContext();
 
   const state = useMemo(
     () => ({
-      workItems: source.allWorkItems,
-      activities: source.activities,
+      workItems: context.allWorkItems,
+      activities: context.activities,
       categorizedWorkItems: {
-        assigned: source.assigned,
-        created: source.created,
-        subscribed: source.subscribed,
-        statusBreakdown: source.statusBreakdown,
-        priorityBreakdown: source.priorityBreakdown,
+        assigned: context.assigned,
+        created: context.created,
+        subscribed: context.subscribed,
+        statusBreakdown: context.statusBreakdown,
+        priorityBreakdown: context.priorityBreakdown,
       },
-      statusBreakdown: source.statusBreakdown,
-      subscribedStatusBreakdown: source.subscribedStatusBreakdown,
-      priorityBreakdown: source.priorityBreakdown,
-      projectBreakdown: source.projectBreakdown,
-      workItemProjectMap: source.workItemProjectMap,
-      userData: source.userData,
-      selectedProjectId: context?.selectedProjectId || null,
-      selectedProject: context?.selectedProject || null,
-      totalCounts: context?.totalCounts || {
-        assigned: source.assigned.length,
-        created: source.created.length,
-        subscribed: source.subscribed.length,
-        activity: source.activities.length,
-      },
-      isLoading: source.isLoading,
-      isLoadingYourWork: source.isLoadingYourWork,
-      isLoadingWorkItems: source.isLoadingWorkItems,
-      isLoadingProjects: source.isLoadingProjects,
-      isRefetching: source.isRefetching,
-      isError: source.isError,
-      error: source.error,
-      isEmpty: source.isEmpty,
+      statusBreakdown: context.statusBreakdown,
+      subscribedStatusBreakdown: context.subscribedStatusBreakdown,
+      priorityBreakdown: context.priorityBreakdown,
+      projectBreakdown: context.projectBreakdown,
+      workItemProjectMap: context.workItemProjectMap,
+      userData: context.userData,
+      selectedProjectId: context.selectedProjectId,
+      selectedProject: context.selectedProject,
+      totalCounts: context.totalCounts,
+      isLoading: context.isLoading,
+      isLoadingYourWork: context.isLoadingYourWork,
+      isLoadingWorkItems: context.isLoadingWorkItems,
+      isLoadingProjects: context.isLoadingProjects,
+      isRefetching: context.isRefetching,
+      isError: context.isError,
+      error: context.error,
+      isEmpty: context.isEmpty,
     }),
     [
-      source.allWorkItems,
-      source.activities,
-      source.assigned,
-      source.created,
-      source.subscribed,
-      source.statusBreakdown,
-      source.subscribedStatusBreakdown,
-      source.priorityBreakdown,
-      source.projectBreakdown,
-      source.workItemProjectMap,
-      source.userData,
-      source.isLoading,
-      source.isLoadingYourWork,
-      source.isLoadingWorkItems,
-      source.isLoadingProjects,
-      source.isRefetching,
-      source.isError,
-      source.error,
-      source.isEmpty,
-      context?.selectedProjectId,
-      context?.selectedProject,
-      context?.totalCounts,
+      context.allWorkItems,
+      context.activities,
+      context.assigned,
+      context.created,
+      context.subscribed,
+      context.statusBreakdown,
+      context.subscribedStatusBreakdown,
+      context.priorityBreakdown,
+      context.projectBreakdown,
+      context.workItemProjectMap,
+      context.userData,
+      context.selectedProjectId,
+      context.selectedProject,
+      context.totalCounts,
+      context.isLoading,
+      context.isLoadingYourWork,
+      context.isLoadingWorkItems,
+      context.isLoadingProjects,
+      context.isRefetching,
+      context.isError,
+      context.error,
+      context.isEmpty,
     ],
   );
 
   const actions = useMemo(
     () => ({
-      refetch: source.refetch,
-      invalidate: source.invalidate,
-      selectProject: (projectId: string | null) => {
-        if (context?.setSelectedProjectId) {
-          context.setSelectedProjectId(projectId);
-        }
-      },
+      refetch: context.refetch,
+      invalidate: context.invalidate,
+      selectProject: context.setSelectedProjectId,
+      openWorkItem: context.openWorkItem,
+      closeWorkItem: context.closeWorkItem,
     }),
-    [source.refetch, source.invalidate, context],
+    [
+      context.refetch,
+      context.invalidate,
+      context.setSelectedProjectId,
+      context.openWorkItem,
+      context.closeWorkItem,
+    ],
   );
 
   return useMemo(
@@ -93,4 +88,3 @@ export function useSummaryWork() {
 }
 
 export default useSummaryWork;
-

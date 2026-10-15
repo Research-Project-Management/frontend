@@ -63,7 +63,7 @@ export function SidebarHeader({
             }}
             className="h-full text-12 font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-foreground/50 placeholder:font-normal transition-opacity duration-200 pl-7 pr-7 text-foreground"
           />
-          <Tooltip delayDuration={700}>
+          <Tooltip>
             <TooltipTrigger asChild>
               <button
                 type="button"
@@ -89,7 +89,7 @@ export function SidebarHeader({
 
           <div className="flex items-center gap-0.5 shrink-0">
             {/* Search collections toggle button */}
-            <Tooltip delayDuration={700}>
+            <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
@@ -107,7 +107,7 @@ export function SidebarHeader({
 
             {/* New collection button */}
             {canManageCollections && (
-              <Tooltip delayDuration={700}>
+              <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
@@ -126,7 +126,7 @@ export function SidebarHeader({
 
             {/* New saved search button */}
             {canManageCollections && onOpenCreateSavedSearch && (
-              <Tooltip delayDuration={700}>
+              <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
@@ -144,7 +144,7 @@ export function SidebarHeader({
             )}
 
             {/* Toggle / Collapse Sidebar Button */}
-            <Tooltip delayDuration={700}>
+            <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"

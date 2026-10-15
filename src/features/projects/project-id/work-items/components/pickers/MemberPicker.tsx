@@ -6,8 +6,8 @@ import { Button } from '@/shared/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
-import { ItemHelpers } from '../../utils/work-item.utils';
-import type { ProjectMember } from '../../types/work-item.types';
+import { ItemHelpers } from '@/features/projects/project-id/work-items/utils/work-item.utils';
+import type { ProjectMember } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export function AssigneeUserIcon({ className }: { className?: string }) {
   return <Users className={cn('size-3.5 shrink-0 text-foreground', className)} />;
@@ -63,7 +63,7 @@ export function AvatarStack({
   );
 }
 
-import type { MemberPopoverProps } from '../../types/picker.types';
+import type { MemberPopoverProps } from '@/features/projects/project-id/work-items/types/picker.types';
 
 export type { MemberPopoverProps };
 

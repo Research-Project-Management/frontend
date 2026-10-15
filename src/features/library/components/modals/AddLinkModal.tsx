@@ -12,7 +12,7 @@ import { Label } from '@/shared/components/ui/label';
 import {
   addLinkSchema,
   type AddLinkFormValues,
-} from '../../types';
+} from '@/features/library/types';
 
 export interface AddLinkData {
   url: string;
@@ -21,13 +21,13 @@ export interface AddLinkData {
   filename?: string;
   mimeType?: string;
   size?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface AddLinkModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: AddLinkData) => Promise<any> | void;
+  onSubmit: (data: AddLinkData) => Promise<unknown> | void;
   isPending?: boolean;
 }
 

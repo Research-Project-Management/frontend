@@ -22,15 +22,15 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-import type { Item, Column } from '../types/work-item.types';
+import type { Item, Column } from '@/features/projects/project-id/work-items/types/work-item.types';
 import type {
   ItemCardLabel,
   CardMetadataItem,
   UseKanbanOptions,
   UseCardOptions,
-} from '../types/kanban-view.types';
-import { resolveColumnId, getItemBucketKey } from '../utils/work-item.utils';
-import { ItemHelpers } from '../utils/work-item.utils';
+} from '@/features/projects/project-id/work-items/types/kanban-view.types';
+import { resolveColumnId, getItemBucketKey } from '@/features/projects/project-id/work-items/utils/work-item.utils';
+import { ItemHelpers } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 
 export type {
   ItemCardLabel,

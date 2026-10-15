@@ -17,13 +17,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/components/ui/popover";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { FilterFunnelIcon } from "@/shared/components/icons";
-import { SingleDatePopover } from "@/features/projects/project-id/work-items/components/modals/Popovers";
+import { SingleDatePopover } from "@/features/projects/project-id/work-items/components/pickers/DatePicker";
 import { useQueryClient } from '@tanstack/react-query';
-import { useTags, type TagWithCount, itemKeys, useItems, useItemTypes, libraryKeys } from '../../data';
-import type { Item } from '../../types/library.types';
-import { ALL_ITEM_TYPES_FLAT, LIBRARY_ITEM_TYPES, mapRegistryItemTypes } from '../../types';
+import { useTags, type TagWithCount, itemKeys, useLibraryCountsQuery, useItemTypes, libraryKeys } from '@/features/library/data';
+import type { Item } from '@/features/library/types/library.types';
+import { ALL_ITEM_TYPES_FLAT, LIBRARY_ITEM_TYPES, mapRegistryItemTypes } from '@/features/library/types';
 
 // ── Checkbox Component (DESIGN.md Flat Precision) ───────────────────────────
 function FilterCheckbox({ checked }: { checked: boolean }) {
@@ -173,8 +173,8 @@ export function LibraryFilterPopover({
   const queryClient = useQueryClient();
 
   const scopeId = propScopeId || propProjectId || 'user';
-  const { data: allItemsFromHook } = useItems({ scopeId, enabled: !items });
   const [isOpen, setIsOpen] = useState(false);
+  const { data: counts } = useLibraryCountsQuery(scopeId);
 
   // Search input query at the very top of popover
   const [searchQuery, setSearchQuery] = useState('');
@@ -406,55 +406,68 @@ export function LibraryFilterPopover({
       .sort((a, b) => b.match.score - a.match.score);
   }, [searchQuery]);
 
-  // ── Dynamic Item Types from user's papers (Dynamic Facets) ────────────────
+  // ── Dynamic Item Types from Backend Facet Counts (or prop/cache fallback) ──
   const dynamicTypes = useMemo(() => {
-    // 1. Gather all raw items from props, hook, or query cache fallback
-    const hookItems: Item[] = Array.isArray(allItemsFromHook)
-      ? allItemsFromHook
-      : Array.isArray((allItemsFromHook as { items?: Item[] })?.items)
-        ? ((allItemsFromHook as { items: Item[] }).items)
-        : [];
+    const existingTypeMap = new Map<string, { canonicalKey: string; count: number }>();
 
-    let sourceItems: Item[] = Array.isArray(items) && items.length > 0 ? items : hookItems;
-    if (!sourceItems || sourceItems.length === 0) {
-      const targetScope = scopeId || 'user';
-      const cacheKeys = [
-        itemKeys.all(targetScope),
-        itemKeys.all('user'),
-        ['items', targetScope],
-        ['items', 'user'],
-        libraryKeys.items(targetScope),
-      ];
-      for (const k of cacheKeys) {
-        const raw = queryClient.getQueryData<any>(k);
-        if (Array.isArray(raw) && raw.length > 0) {
-          sourceItems = raw;
-          break;
-        } else if (raw && Array.isArray(raw.items) && raw.items.length > 0) {
-          sourceItems = raw.items;
-          break;
-        } else if (raw && Array.isArray(raw.papers) && raw.papers.length > 0) {
-          sourceItems = raw.papers;
-          break;
+    // 1. Authoritative Backend facet counts (`counts.itemTypes` or `counts.byItemType` from GET /library/items/counts)
+    const serverTypeCounts = counts?.itemTypes || counts?.byItemType;
+    if (serverTypeCounts && typeof serverTypeCounts === 'object') {
+      for (const [rawType, rawCount] of Object.entries(serverTypeCounts)) {
+        const trimmed = rawType.trim();
+        const count = Number(rawCount) || 0;
+        if (trimmed && count > 0) {
+          const lower = trimmed.toLowerCase();
+          const prev = existingTypeMap.get(lower);
+          if (prev) {
+            prev.count += count;
+          } else {
+            existingTypeMap.set(lower, { canonicalKey: trimmed, count });
+          }
         }
       }
     }
 
-    // 2. Count / collect unique item types existing in user's library
-    // lowerKey -> { canonicalKey: string; count: number }
-    const existingTypeMap = new Map<string, { canonicalKey: string; count: number }>();
-    if (Array.isArray(sourceItems) && sourceItems.length > 0) {
-      for (const item of sourceItems) {
-        if (!item || item.deletedAt) continue;
-        const raw = item.itemType || item.type;
-        if (raw && typeof raw === 'string' && raw.trim()) {
-          const trimmed = raw.trim();
-          const lower = trimmed.toLowerCase();
-          const existing = existingTypeMap.get(lower);
-          if (existing) {
-            existing.count += 1;
-          } else {
-            existingTypeMap.set(lower, { canonicalKey: trimmed, count: 1 });
+    // 2. Fallback to passed `items` prop or already-cached items (without triggering a full-catalog network fetch)
+    if (existingTypeMap.size === 0) {
+      let sourceItems: Item[] = Array.isArray(items) && items.length > 0 ? items : [];
+      if (!sourceItems || sourceItems.length === 0) {
+        const targetScope = scopeId || 'user';
+        const cacheKeys = [
+          itemKeys.all(targetScope),
+          itemKeys.all('user'),
+          ['items', targetScope],
+          ['items', 'user'],
+          libraryKeys.items(targetScope),
+        ];
+        for (const k of cacheKeys) {
+          const raw = queryClient.getQueryData<Item[] | { items?: Item[]; papers?: Item[] }>(k);
+          if (Array.isArray(raw) && raw.length > 0) {
+            sourceItems = raw;
+            break;
+          } else if (raw && 'items' in raw && Array.isArray(raw.items) && raw.items.length > 0) {
+            sourceItems = raw.items;
+            break;
+          } else if (raw && 'papers' in raw && Array.isArray(raw.papers) && raw.papers.length > 0) {
+            sourceItems = raw.papers;
+            break;
+          }
+        }
+      }
+
+      if (Array.isArray(sourceItems) && sourceItems.length > 0) {
+        for (const item of sourceItems) {
+          if (!item || item.deletedAt) continue;
+          const raw = item.itemType || item.type;
+          if (raw && typeof raw === 'string' && raw.trim()) {
+            const trimmed = raw.trim();
+            const lower = trimmed.toLowerCase();
+            const existing = existingTypeMap.get(lower);
+            if (existing) {
+              existing.count += 1;
+            } else {
+              existingTypeMap.set(lower, { canonicalKey: trimmed, count: 1 });
+            }
           }
         }
       }
@@ -468,8 +481,6 @@ export function LibraryFilterPopover({
       }
     }
 
-    // If user has no items or no types present in library, show NO types
-    // (Never show all 35 schema types for the user to pick when none exist)
     if (existingTypeMap.size === 0) {
       return [];
     }
@@ -498,7 +509,7 @@ export function LibraryFilterPopover({
 
     // Sort alphabetically by label
     return options.sort((a, b) => a.label.localeCompare(b.label));
-  }, [items, allItemsFromHook, scopeId, queryClient, itemTypes, serverItemTypes]);
+  }, [counts, items, scopeId, queryClient, itemTypes, serverItemTypes]);
 
   const matchingTypeItems = useMemo(() => {
     return dynamicTypes
@@ -560,35 +571,33 @@ export function LibraryFilterPopover({
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                size={activeCount > 0 ? "sm" : "icon"}
-                className={cn(
-                  "rounded-md border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors shrink-0 select-none inline-flex items-center",
-                  activeCount > 0 ? "h-8 px-2.5 gap-1.5 border-primary/50 text-primary" : "size-8",
-                  isOpen && "bg-muted",
-                  className
-                )}
-                aria-label={activeCount > 0 ? `Filter (${activeCount} active)` : "Filter"}
-              >
-                <FilterFunnelIcon className={cn("size-4 shrink-0", activeCount > 0 ? "text-primary" : "text-foreground")} />
-                {activeCount > 0 && (
-                  <span className="text-12 font-medium font-mono tabular-nums leading-none">
-                    {activeCount}
-                  </span>
-                )}
-              </Button>
-            </PopoverTrigger>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" sideOffset={6} className="text-12">
-            {activeCount > 0 ? `Filter (${activeCount} active)` : 'Filter'}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              size={activeCount > 0 ? "sm" : "icon"}
+              className={cn(
+                "rounded-md border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors shrink-0 select-none inline-flex items-center",
+                activeCount > 0 ? "h-8 px-2.5 gap-1.5 border-primary/50 text-primary" : "size-8",
+                isOpen && "bg-muted",
+                className
+              )}
+              aria-label={activeCount > 0 ? `Filter (${activeCount} active)` : "Filter"}
+            >
+              <FilterFunnelIcon className={cn("size-4 shrink-0", activeCount > 0 ? "text-primary" : "text-foreground")} />
+              {activeCount > 0 && (
+                <span className="text-12 font-medium font-mono tabular-nums leading-none">
+                  {activeCount}
+                </span>
+              )}
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={6}>
+          {activeCount > 0 ? `Filter (${activeCount} active)` : 'Filter'}
+        </TooltipContent>
+      </Tooltip>
 
       <PopoverContent
         align="end"
@@ -855,17 +864,21 @@ export function LibraryFilterPopover({
                 </div>
                 <div className="flex items-center gap-1.5">
                   {hasDateFilter && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleClearDate();
-                      }}
-                      className="text-12 text-foreground underline cursor-pointer px-1 py-0.5 rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                      title="Clear date filter"
-                    >
-                      Clear
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleClearDate();
+                          }}
+                          className="text-12 text-foreground underline cursor-pointer px-1 py-0.5 rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        >
+                          Clear
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>Clear date filter</TooltipContent>
+                    </Tooltip>
                   )}
                   {yearOpen ? (
                     <ChevronUp className="size-3.5 text-foreground shrink-0" />

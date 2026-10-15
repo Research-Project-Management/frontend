@@ -10,9 +10,3 @@ export const getYourWork = (scopeId?: string, signal?: AbortSignal): Promise<You
   return apiGet(`/api/analytics/your-work${query}`, { signal });
 };
 
-/**
- * Calls backend ActivityController.getWorkspaceActivityFeed
- * Endpoint: GET /api/activity/feed
- */
-export const getActivityFeed = (_scopeId?: string, signal?: AbortSignal) =>
-  apiGet('/api/activity/feed', { signal });

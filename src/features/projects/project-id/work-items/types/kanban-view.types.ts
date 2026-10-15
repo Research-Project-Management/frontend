@@ -2,7 +2,7 @@ import type React from 'react';
 import type { LucideIcon } from 'lucide-react';
 import type {
   Item,
-  Column as ColumnType,
+  Column,
   ProjectMember,
   DisplayOptions,
   BaseWorkItemViewProps,
@@ -25,7 +25,7 @@ export type CardMetadataItem = {
 export interface UseKanbanOptions {
   items?: Item[];
   workItems?: Item[];
-  columns: ColumnType[];
+  columns: Column[];
   onMoveCard?: (cardId: string, targetColumnId: string, laneData?: { subGroupBy?: string; laneId?: string }) => void;
   onReorderCard?: (workItemId: string, targetColumnId: string, rank: number) => void;
   isReadOnly?: boolean;
@@ -37,7 +37,7 @@ export interface UseKanbanOptions {
 export interface UseCardOptions {
   card: Item;
   isReadOnly?: boolean;
-  columns?: ColumnType[];
+  columns?: Column[];
   onMoveCard?: (cardId: string, newColumnId: string) => void;
   labelMap?: Map<string, ItemCardLabel>;
   currentUserId?: string | null;
@@ -58,8 +58,8 @@ export interface SwimlaneDef {
 
 export interface CardProps {
   card: Item;
-  columns?: ColumnType[];
-  projectStates?: ColumnType[];
+  columns?: Column[];
+  projectStates?: Column[];
   displayOptions?: DisplayOptions;
   labelMap?: Map<string, ItemCardLabel>;
   currentUserId?: string | null;
@@ -79,10 +79,10 @@ export interface CardProps {
 }
 
 export interface ColumnProps extends BaseWorkItemViewProps, Partial<WorkItemCardHandlers> {
-  column: ColumnType;
+  column: Column;
   cards: Item[];
-  columns?: ColumnType[];
-  projectStates?: ColumnType[];
+  columns?: Column[];
+  projectStates?: Column[];
   droppableId?: string;
   laneId?: string;
   subGroupBy?: string;
@@ -94,8 +94,8 @@ export interface ColumnProps extends BaseWorkItemViewProps, Partial<WorkItemCard
 export interface BoardViewProps extends BaseWorkItemViewProps, Partial<WorkItemCardHandlers> {
   items?: Item[];
   itemsByColumnId?: Map<string, Item[]>;
-  columns: ColumnType[];
-  projectStates?: ColumnType[];
+  columns: Column[];
+  projectStates?: Column[];
   labelMap?: Map<string, ItemCardLabel>;
   onAddCard?: (columnId: string, title?: string, swimlaneData?: { subGroupBy?: string; laneId?: string }) => void;
   onMoveCard?: (itemId: string, newColumnId: string, laneData?: { subGroupBy?: string; laneId?: string }) => void;

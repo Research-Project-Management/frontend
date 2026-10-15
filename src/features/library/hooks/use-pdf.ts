@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { libraryServices } from '../data';
+import { libraryServices } from '@/features/library/data';
 import { getErrorMessage } from "@/shared/lib/utils";
 
 export interface UsePdfReturn {

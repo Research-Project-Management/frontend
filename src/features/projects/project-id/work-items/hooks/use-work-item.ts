@@ -1,15 +1,14 @@
 'use client';
 
 import { useMemo, useCallback } from 'react';
-import { toast } from 'sonner';
 import type {
   Project,
   ProjectMember,
   Priority,
   Label,
-} from '../types/work-item.types';
-import { DEFAULT_STATES } from '../types/work-item.types';
-import { normalizeStates, resolveItemId } from '../utils/work-item.utils';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
+import { DEFAULT_STATES } from '@/features/projects/project-id/work-items/types/work-item.types';
+import { normalizeStates, resolveItemId } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import { useLabelsQuery } from './use-label';
 
 // Re-export all sub-hooks and schemas for 100% backward compatibility
@@ -17,6 +16,7 @@ export * from './use-work-items-query';
 export * from './use-work-item-crud';
 export * from './use-work-item-form';
 export * from './use-work-item-selection';
+export * from './use-work-item-toast';
 
 import {
   useProjectItems,
@@ -35,7 +35,7 @@ import {
 
 // ── Composite Project Work-Item Hook (useProject) ───────────────────────────
 
-import type { UseProjectOptions } from '../types/hook.types';
+import type { UseProjectOptions } from '@/features/projects/project-id/work-items/types/hook.types';
 
 export type { UseProjectOptions };
 
@@ -203,29 +203,17 @@ export function useProject({ projectId }: UseProjectOptions) {
         ids: itemIds,
         data,
         projectId,
-      })
-        .then(() => {
-          if (!quiet) {
-            toast.success(
-              itemIds.length === 1
-                ? 'Work item added to calendar'
-                : `${itemIds.length} work items added to calendar`,
-              { id: 'work-item-bulk' }
-            );
-          } else {
-            toast.dismiss('work-item-bulk');
-          }
-        })
-        .catch((err: unknown) => {
-          toast.error(err instanceof Error ? err.message : 'Failed to update work items', { id: 'work-item-bulk' });
-        });
+        quiet,
+        successMessage:
+          itemIds.length === 1
+            ? 'Work item added to calendar'
+            : `${itemIds.length} work items added to calendar`,
+      }).catch(() => {
+        // Error toast and rollback are handled by useBulkUpdate
+      });
     },
     [bulkMutAsync, projectId],
   );
-
-  const notifyAnalyticsComingSoon = useCallback(() => {
-    toast.info('Analytics is coming soon', { id: 'work-item-info' });
-  }, []);
 
   const actions = useMemo(
     () => ({
@@ -239,29 +227,16 @@ export function useProject({ projectId }: UseProjectOptions) {
       bulk: bulkAction,
       refetch: refetchAction,
 
-      // Item Action Aliases
-      createItem: createAction,
-      updateItem: updateAction,
-      moveItem: moveAction,
-      deleteItem: deleteAction,
-      duplicateItem: duplicateAction,
-      bulkUpdateItems: bulkAction,
-      reorderItem: reorderAction,
-
-      // Work Item Action Aliases
+      // Domain Work Item Actions
       createWorkItem: createAction,
       updateWorkItem: updateAction,
       moveWorkItem: moveAction,
       deleteWorkItem: deleteAction,
+      deleteItem: deleteAction,
       duplicateWorkItem: duplicateAction,
-      bulkUpdateWorkItems: bulkAction,
       reorderWorkItem: reorderAction,
       createSubWorkItem: createSubItemAction,
-
-      assignItemsToDate: assignItemsToDateAction,
       assignWorkItemsToDate: assignItemsToDateAction,
-
-      notifyAnalyticsComingSoon,
     }),
     [
       createAction,
@@ -274,14 +249,10 @@ export function useProject({ projectId }: UseProjectOptions) {
       bulkAction,
       refetchAction,
       assignItemsToDateAction,
-      notifyAnalyticsComingSoon,
     ]
   );
 
   return { state, actions };
 }
 
-export const useItemsProject = useProject;
-export const useWorkItemProject = useProject;
-export const useWorkItems = useProject;
 export default useProject;

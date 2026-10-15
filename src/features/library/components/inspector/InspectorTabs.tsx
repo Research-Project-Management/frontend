@@ -11,10 +11,11 @@ import {
   Network,
   Quote,
   PanelRight,
+  Sparkles,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import type { InspectorSectionId } from '../../store/library-ui.store';
+import type { InspectorSectionId } from '@/features/library/store/library-ui.store';
 
 export type InspectorTabKey = InspectorSectionId;
 
@@ -32,6 +33,7 @@ export interface InspectorTabsProps {
   noteCount?: number;
   isInspectorOpen?: boolean;
   onToggleInspector?: () => void;
+  showAiCopilot?: boolean;
   className?: string;
 }
 
@@ -46,6 +48,7 @@ export function InspectorTabs({
   noteCount = 0,
   isInspectorOpen = true,
   onToggleInspector,
+  showAiCopilot = false,
   className,
 }: InspectorTabsProps) {
   const tabs: TabItem[] = [
@@ -53,6 +56,7 @@ export function InspectorTabs({
     { id: 'abstract', label: 'Abstract', icon: AlignLeft },
     { id: 'files', label: 'Attachments', icon: Paperclip, badge: attachmentCount },
     { id: 'notes', label: 'Notes', icon: StickyNote, badge: noteCount },
+    ...(showAiCopilot ? [{ id: 'ai' as const, label: 'Paper AI Copilot', icon: Sparkles }] : []),
     { id: 'collections', label: 'Collections', icon: FolderTree },
     { id: 'tags', label: 'Tags', icon: Tag },
     { id: 'relations', label: 'Related', icon: Network },
@@ -80,7 +84,7 @@ export function InspectorTabs({
               <PanelRight className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="left" sideOffset={6} className="text-12 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm">
+          <TooltipContent side="left" sideOffset={6}>
             {isInspectorOpen ? 'Collapse inspector' : 'Expand inspector'}
           </TooltipContent>
         </Tooltip>
@@ -115,11 +119,7 @@ export function InspectorTabs({
                   <Icon className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent
-                side="left"
-                sideOffset={6}
-                className="text-12 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground"
-              >
+              <TooltipContent side="left" sideOffset={6}>
                 {tab.label}
                 {tab.badge !== undefined && tab.badge > 0 ? ` (${tab.badge})` : ''}
               </TooltipContent>

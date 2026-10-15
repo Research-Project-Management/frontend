@@ -3,25 +3,21 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import {
-  useLibraryModalStore,
-  useLibraryViewStore,
-  useLibrarySidebarStore,
-} from '../../store/library-ui.store';
-import { useProcessModalStore } from '../../store/process-modal.store';
+import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
+import { useProcessModalStore } from '@/features/library/store/process-modal.store';
 import {
   useCreateCollectionMutation,
   useCollectionsQuery,
   useDeleteLibraryItemsMutation,
   useBatchPurgeItemsMutation,
   useSavedSearches,
+  executeTrackedIdentifierIngestion,
   itemKeys,
   libraryKeys,
-  invalidateCollections,
-} from '../../data';
-import { IngestionService, QualityService } from '../../data/ingestion/ingestion.service';
-import type { CollectionFormValues, UnifiedIngestionPayload } from '../../types';
+} from '@/features/library/data';
+import { QualityService } from '@/features/library/data/ingestion/ingestion.service';
+import type { CollectionFormValues, Item, CreateSavedSearchInput } from '@/features/library/types';
+import type { SavedSearch } from '@/features/library/types/saved-searches.types';
 
 const CreateCollectionModal = dynamic(() => import('./CreateCollectionModal'), { ssr: false });
 const CreateSavedSearchModal = dynamic(() => import('./CreateSavedSearchModal'), { ssr: false });
@@ -39,16 +35,30 @@ const ProcessModal = dynamic(() => import('./ProcessModal'), { ssr: false });
 /**
  * LibraryModals Container
  * Mounts all modal dialogs once at the workspace root.
- * Listens to `useLibraryModalStore` so no component has to drill modal props.
+ * Listens to `useLibraryUIStore` so no component has to drill modal props.
  */
 export function LibraryModals({ scopeId }: { scopeId?: string }) {
   const queryClient = useQueryClient();
-  const activeModal = useLibraryModalStore((s) => s.activeModal);
-  const modalProps = useLibraryModalStore((s) => s.modalProps);
-  const payload = modalProps;
-  const closeModal = useLibraryModalStore((s) => s.closeModal);
-  const clearSelection = useLibraryViewStore((s) => s.clearSelection);
-  const activeScope = useLibrarySidebarStore((s) => s.activeScope);
+  const activeModal = useLibraryUIStore((s) => s.activeModal);
+  const modalProps = useLibraryUIStore((s) => s.modalProps);
+  const payload = modalProps as {
+    item?: Item;
+    items?: Item[];
+    duplicates?: Item[];
+    targetType?: string;
+    collectionId?: string;
+    parentId?: string | null;
+    parentCollectionId?: string | null;
+    itemIds?: string[];
+    permanent?: boolean;
+    files?: File[];
+    initialFiles?: File[];
+    savedSearch?: SavedSearch | null;
+    [key: string]: unknown;
+  };
+  const closeModal = useLibraryUIStore((s) => s.closeModal);
+  const clearSelection = useLibraryUIStore((s) => s.clearSelection);
+  const activeScope = useLibraryUIStore((s) => s.activeScope);
   const effectiveScope = scopeId || (activeScope.type === 'project' ? activeScope.id : 'user');
 
   // Process Modal State & Handlers
@@ -94,10 +104,8 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
   const handleDeleteItems = async () => {
     if (itemIdsToDelete.length === 0) return;
     if (isPermanentDelete) {
-      // Permanent purge (called from Trash view)
       await purgeItemsMutation.mutateAsync(itemIdsToDelete);
     } else {
-      // Soft delete → move to trash
       await deleteItemsMutation.mutateAsync(itemIdsToDelete);
     }
     clearSelection();
@@ -115,201 +123,17 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
     const raw = (data.url || '').trim();
     if (!raw) return;
 
-    let ingestionPayload: UnifiedIngestionPayload;
-    const targetCollectionId = payload?.collectionId || undefined;
-    const userTitle = data.title?.trim() || undefined;
-    const overrides = userTitle ? { title: userTitle } : undefined;
-
-    if (raw.startsWith('10.') || raw.includes('doi.org/')) {
-      const doi = raw.replace(/^https?:\/\/doi\.org\//i, '').trim();
-      ingestionPayload = { source: 'doi', doi, collectionId: targetCollectionId, overrides };
-    } else if (raw.toLowerCase().startsWith('arxiv:') || /^\d{4}\.\d{4,5}/.test(raw)) {
-      const arxivId = raw.replace(/^arxiv:/i, '').trim();
-      ingestionPayload = { source: 'arxiv', arxivId, collectionId: targetCollectionId, overrides };
-    } else if (raw.toLowerCase().startsWith('pmid:') || /^\d{7,9}$/.test(raw)) {
-      const pmid = raw.replace(/^pmid:/i, '').trim();
-      ingestionPayload = { source: 'pmid', pmid, collectionId: targetCollectionId, overrides };
-    } else if (
-      raw.toLowerCase().startsWith('isbn:') ||
-      /^(97(8|9))?\d{9}(\d|X)$/i.test(raw.replace(/[-\s]/g, ''))
-    ) {
-      const isbn = raw.replace(/^isbn:/i, '').trim();
-      ingestionPayload = { source: 'isbn', isbn, collectionId: targetCollectionId, overrides };
-    } else if (raw.startsWith('@')) {
-      ingestionPayload = { source: 'bibtex', content: raw, collectionId: targetCollectionId, ...(overrides ? { overrides } : {}) } as UnifiedIngestionPayload;
-    } else if (raw.startsWith('TY  -')) {
-      ingestionPayload = { source: 'ris', content: raw, collectionId: targetCollectionId, ...(overrides ? { overrides } : {}) } as UnifiedIngestionPayload;
-    } else {
-      ingestionPayload = { source: 'url', url: raw, collectionId: targetCollectionId, overrides };
-    }
-
     setIsSubmittingLink(true);
-    const toastId = toast.loading('Adding reference...', { id: 'add-identifier' });
-    const provisionalId = `provisional-link-${Date.now()}`;
-    let provisionalAdded = false;
-
-    // Helper to thoroughly refetch and sync all relevant library queries
-    const syncLibraryQueries = async () => {
-      await Promise.all([
-        queryClient.refetchQueries({ queryKey: itemKeys.all(effectiveScope) }),
-        queryClient.refetchQueries({ queryKey: ['library', 'items'] }),
-        queryClient.refetchQueries({ queryKey: itemKeys.counts(effectiveScope) }),
-        targetCollectionId
-          ? queryClient.refetchQueries({
-              queryKey: itemKeys.byCollection(effectiveScope, targetCollectionId),
-            })
-          : Promise.resolve(),
-      ]);
-      invalidateCollections(queryClient, effectiveScope);
-      queryClient.invalidateQueries({ queryKey: libraryKeys.all });
-    };
-
     try {
-      const ingestRes = await IngestionService.ingest(effectiveScope, ingestionPayload);
-      const ingestData = ingestRes?.data;
-      const runId = ingestData?.runId;
-      const initialStatus = (ingestData?.status || '').toUpperCase();
-      const isAlreadyDone =
-        initialStatus === 'COMPLETED' ||
-        initialStatus === 'SUCCEEDED' ||
-        initialStatus === 'READY' ||
-        Boolean(ingestData?.deduplicated);
-
-      const itemObj = ingestData?.item as Record<string, unknown> | undefined;
-      let finalTitle = userTitle || (typeof itemObj?.title === 'string' ? itemObj.title : '');
-
-      if (isAlreadyDone || !runId) {
-        // Fast path: already completed or deduplicated
-        await syncLibraryQueries();
-        toast.success(ingestData?.deduplicated ? 'Reference already in library' : 'Document imported', {
-          description: finalTitle
-            ? `"${finalTitle}" is ready in your library.`
-            : 'Successfully added to your library.',
-          id: toastId,
-        });
-        closeModal();
-        return;
-      }
-
-      // Asynchronous ingestion: Poll run status until backend BullMQ worker completes
-      const startTime = Date.now();
-      const modalWaitTimeoutMs = 3500; // Hold modal open with button spinner for fast imports (up to 3.5s)
-      const maxTotalWaitMs = 60000;    // Allow background worker up to 60s total
-      let modalClosed = false;
-
-      while (Date.now() - startTime < maxTotalWaitMs) {
-        await new Promise((r) => setTimeout(r, 700));
-
-        // If taking longer than modalWaitTimeoutMs, close modal and place provisional item in table
-        if (!modalClosed && Date.now() - startTime >= modalWaitTimeoutMs) {
-          modalClosed = true;
-          closeModal();
-          provisionalAdded = true;
-          addProcessingItem({
-            id: provisionalId,
-            fileName: userTitle || raw,
-            fileSize: 0,
-            mimeType: 'text/html',
-            scopeId: effectiveScope,
-            collectionId: targetCollectionId,
-            status: 'PROCESSING',
-            progress: 50,
-            extractedTitle: userTitle || raw,
-            createdAt: new Date().toISOString(),
-          });
-          toast.loading('Processing document in background...', {
-            id: toastId,
-            description: 'Extracting metadata. Your library will update automatically once ready.',
-          });
-        }
-
-        try {
-          const runStatus = await IngestionService.getRunStatus(effectiveScope, runId);
-          const statusPayload = runStatus as {
-            data?: {
-              status?: string;
-              title?: string;
-              itemId?: string;
-              lastError?: string;
-              errorMessage?: string;
-            };
-            status?: string;
-            title?: string;
-            itemId?: string;
-            lastError?: string;
-            errorMessage?: string;
-          } | null;
-
-          const statusData = statusPayload?.data || statusPayload;
-          const currentStatus = (statusData?.status || '').toUpperCase();
-
-          if (
-            currentStatus === 'COMPLETED' ||
-            currentStatus === 'SUCCEEDED' ||
-            currentStatus === 'READY'
-          ) {
-            if (statusData?.title && statusData.title !== 'Uploaded Document') {
-              finalTitle = statusData.title;
-            }
-
-            // Refetch library data before clearing provisional item or closing modal
-            await syncLibraryQueries();
-
-            if (provisionalAdded) {
-              dismissProcessingItem(provisionalId);
-            }
-
-            toast.success('Document imported', {
-              description: finalTitle
-                ? `"${finalTitle}" has been added to your library.`
-                : 'Successfully added to your library.',
-              id: toastId,
-            });
-
-            if (!modalClosed) {
-              closeModal();
-            }
-            return;
-          }
-
-          if (
-            currentStatus === 'FAILED_FINAL' ||
-            currentStatus === 'FAILED_RETRYABLE' ||
-            currentStatus === 'CANCELLED' ||
-            currentStatus === 'FAILED'
-          ) {
-            const failError =
-              statusData?.lastError || statusData?.errorMessage || 'Extraction failed';
-            throw new Error(failError);
-          }
-        } catch (pollErr: any) {
-          if (
-            pollErr?.message?.includes('Extraction failed') ||
-            pollErr?.message?.includes('failed permanently')
-          ) {
-            throw pollErr;
-          }
-          // Continue polling on transient errors
-        }
-      }
-
-      // If loop exceeded 60s, do a final sync
-      await syncLibraryQueries();
-      if (provisionalAdded) {
-        dismissProcessingItem(provisionalId);
-      }
-      if (!modalClosed) closeModal();
-      toast.info('Ingestion queued', {
-        description: 'Document is taking longer than usual to process. It will appear once finished.',
-        id: toastId,
-      });
-    } catch (err: unknown) {
-      if (provisionalAdded) {
-        dismissProcessingItem(provisionalId);
-      }
-      toast.error('Import failed', {
-        description: err instanceof Error ? err.message : 'Could not import reference.',
-        id: toastId,
+      await executeTrackedIdentifierIngestion({
+        scopeId: effectiveScope,
+        rawInput: raw,
+        title: data.title,
+        collectionId: payload?.collectionId,
+        queryClient,
+        onCloseModal: closeModal,
+        onAddProvisionalItem: addProcessingItem,
+        onDismissProvisionalItem: dismissProcessingItem,
       });
     } finally {
       setIsSubmittingLink(false);
@@ -326,8 +150,8 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
   const isMergeOpen = activeModal === 'MERGE_DUPLICATES';
   const mergeDuplicates = payload?.items || payload?.duplicates || [];
   const handleMergeDuplicates = async (
-    masterPaper: any,
-    mergedFields: any,
+    masterPaper: Item,
+    mergedFields: Record<string, unknown>,
     duplicateIdsToDelete: string[],
   ) => {
     await QualityService.mergePapers(
@@ -338,6 +162,14 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
     );
     queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
     queryClient.invalidateQueries({ queryKey: libraryKeys.duplicates(effectiveScope) });
+    clearSelection();
+    closeModal();
+  };
+
+  const handleDismissDuplicates = async (itemIds: string[]) => {
+    await QualityService.dismissDuplicates(effectiveScope, itemIds);
+    queryClient.invalidateQueries({ queryKey: libraryKeys.duplicates(effectiveScope) });
+    queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
     clearSelection();
     closeModal();
   };
@@ -398,7 +230,6 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           projectName={activeScope?.name || 'Project'}
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-            queryClient.invalidateQueries({ queryKey: ['library', 'items'] });
             queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) });
             closeModal();
           }}
@@ -414,7 +245,6 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           scopeId={effectiveScope}
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-            queryClient.invalidateQueries({ queryKey: ['library', 'items'] });
             queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) });
             closeModal();
           }}
@@ -428,6 +258,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           duplicates={mergeDuplicates}
           scopeId={effectiveScope}
           onMerge={handleMergeDuplicates}
+          onDismissDuplicate={handleDismissDuplicates}
         />
       )}
 
@@ -440,7 +271,6 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           initialFiles={payload?.files || payload?.initialFiles || []}
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-            queryClient.invalidateQueries({ queryKey: ['items', effectiveScope] });
             closeModal();
           }}
         />
@@ -462,7 +292,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           onOpenChange={(open) => !open && closeModal()}
           savedSearch={payload?.savedSearch || null}
           scopeId={effectiveScope}
-          onSubmit={async (data: any) => {
+          onSubmit={async (data: CreateSavedSearchInput) => {
             if (payload?.savedSearch?.id) {
               await updateSavedSearch({
                 id: payload.savedSearch.id,

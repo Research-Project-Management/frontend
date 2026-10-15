@@ -20,8 +20,8 @@ export function useFileDownload() {
       const streamUrl = resolveStreamUrl(urlOrFileId);
       if (!streamUrl) throw new Error('Invalid file URL or ID');
       downloadFile(streamUrl, filename);
-    } catch (err: any) {
-      setError(err);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setIsDownloading(false);
     }

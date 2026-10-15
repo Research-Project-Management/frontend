@@ -6,23 +6,19 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import { Trash2 } from 'lucide-react';
-import { LibraryTopbar, type BreadcrumbItem } from '../components/topbar/LibraryTopbar';
-import { LibraryContent } from '../components/content/LibraryContent';
-import { LibraryInspector } from '../components/inspector/LibraryInspector';
+import { LibraryTopbar, type BreadcrumbItem } from '@/features/library/components/topbar/LibraryTopbar';
+import { LibraryContent, mapOrderByToSavedSearchSortBy } from '@/features/library/components/content/LibraryContent';
+import { LibraryInspector } from '@/features/library/components/inspector/LibraryInspector';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
-import { useLibraryNavigation } from '../hooks/useLibraryNavigation';
+import { useLibraryNavigation } from '@/features/library/hooks/useLibraryNavigation';
 
 const LibraryModals = dynamic(
-  () => import('../components/modals/LibraryModals').then((m) => m.LibraryModals),
+  () => import('@/features/library/components/modals/LibraryModals').then((m) => m.LibraryModals),
   { ssr: false }
 );
-import {
-  useLibrarySidebarStore,
-  useLibraryModalStore,
-  useLibraryUIStore,
-} from '../store/library-ui.store';
-import { useLibraryPermissions } from '../store/selectors';
-import { useProcessModalStore } from '../store/process-modal.store';
+import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
+import { useLibraryPermissions } from '@/features/library/store/selectors';
+import { useProcessModalStore } from '@/features/library/store/process-modal.store';
 import {
   useCollectionsQuery,
   useSavedSearches,
@@ -33,9 +29,9 @@ import {
   libraryServices,
   libraryKeys,
   invalidateCollections,
-} from '../data';
-import { formatItemTypeLabel } from '../domain/metadata';
-import { parseEmojiPrefix } from '../utils/academic-text';
+} from '@/features/library/data';
+import { formatItemTypeLabel } from '@/features/library/domain/metadata';
+import { parseEmojiPrefix } from '@/features/library/domain/academic-text';
 
 interface LibraryPageProps {
   scopeId?: string;
@@ -44,7 +40,17 @@ interface LibraryPageProps {
   title?: string;
 }
 
-
+const FILTER_TITLE_MAP: Record<string, string> = {
+  'my-publications': 'My Publications',
+  publications: 'My Publications',
+  retracted: 'Retracted Items',
+  starred: 'Starred Items',
+  unfiled: 'Unfiled Items',
+  trash: 'Trash',
+  duplicates: 'Duplicate Items',
+  recent: 'Recently Read',
+  'recently-read': 'Recently Read',
+};
 
 /**
  * Modern Workspace Engine Library Page
@@ -59,8 +65,8 @@ export function ModernLibraryPage({
   const nav = useLibraryNavigation();
   const queryClient = useQueryClient();
   const params = useParams() as { collectionId?: string; projectId?: string };
-  const activeScope = useLibrarySidebarStore((s) => s.activeScope);
-  const openModal = useLibraryModalStore((s) => s.openModal);
+  const activeScope = useLibraryUIStore((s) => s.activeScope);
+  const openModal = useLibraryUIStore((s) => s.openModal);
   const setActiveItem = useLibraryUIStore((s) => s.setActiveItem);
   const selectOnly = useLibraryUIStore((s) => s.selectOnly);
   const setIsInspectorOpen = useLibraryUIStore((s) => s.setIsInspectorOpen);
@@ -74,25 +80,12 @@ export function ModernLibraryPage({
   const effectiveCollectionId =
     propCollectionId || params?.collectionId || undefined;
 
-  const isUserScope = activeScope.type === 'user';
   const { canEditItem: canEdit } = useLibraryPermissions();
 
   const isSavedSearchView = nav.isSavedSearchView;
   const effectiveView = view || (nav.filterParam && nav.filterParam !== 'saved-search' ? nav.filterParam : undefined);
 
-  const filterTitleMap: Record<string, string> = {
-    'my-publications': 'My Publications',
-    publications: 'My Publications',
-    retracted: 'Retracted Items',
-    starred: 'Starred Items',
-    unfiled: 'Unfiled Items',
-    trash: 'Trash',
-    duplicates: 'Duplicate Items',
-    recent: 'Recently Read',
-    'recently-read': 'Recently Read',
-  };
-
-  const resolvedTitle = title || (effectiveView ? filterTitleMap[effectiveView] : undefined);
+  const resolvedTitle = title || (effectiveView ? FILTER_TITLE_MAP[effectiveView] : undefined);
 
   // Warm up dynamic item types schema from backend authoritative registry
   useItemTypes(effectiveScopeId);
@@ -106,9 +99,18 @@ export function ModernLibraryPage({
     ? savedSearches.find((s) => s.id === nav.savedSearchId)
     : undefined;
 
+  const effectiveOrderBy = nav.orderBy || displayOptions?.orderBy;
+  const effectiveOrderDirection = nav.orderDirection || displayOptions?.orderDirection;
+
   const savedSearchResults = useSavedSearchResults(
     effectiveScopeId,
     isSavedSearchView && nav.savedSearchId ? nav.savedSearchId : null,
+    {
+      page: nav.page,
+      limit: 50,
+      sortBy: mapOrderByToSavedSearchSortBy(effectiveOrderBy),
+      sortOrder: effectiveOrderDirection,
+    },
   );
 
   // Deep linking: auto-select item and open inspector if ?item=... or ?selected=... is in URL
@@ -139,15 +141,15 @@ export function ModernLibraryPage({
     if (!currentCollection) return undefined;
 
     const crumbs: BreadcrumbItem[] = [{ name: rootName }];
-    const chain: any[] = [];
-    let curr: any = currentCollection;
+    const chain: NonNullable<typeof currentCollection>[] = [];
+    let curr: typeof currentCollection | undefined = currentCollection;
     const visited = new Set<string>();
     while (curr && !visited.has(curr.id)) {
       visited.add(curr.id);
       chain.unshift(curr);
       if (curr.parentId) {
         const parentId: string = curr.parentId;
-        curr = collections.find((c: any) => c.id === parentId);
+        curr = collections.find((c) => c.id === parentId);
       } else {
         break;
       }
@@ -222,7 +224,7 @@ export function ModernLibraryPage({
   };
 
   const isTrash = view === 'trash';
-  const { state: trashState, actions: trashActions } = useTrash(effectiveScopeId);
+  const { state: trashState, actions: trashActions } = useTrash(effectiveScopeId, { enabled: isTrash });
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
 
   // Opens the confirmation dialog instead of using window.confirm.

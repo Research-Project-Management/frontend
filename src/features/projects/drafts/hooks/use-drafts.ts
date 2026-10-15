@@ -6,6 +6,7 @@ import type {
   CreateDraftInput,
   UpdateDraftInput,
   PublishDraftInput,
+  PublishDraftResponse,
 } from '../types/draft.types';
 
 export const draftKeys = {
@@ -41,8 +42,8 @@ export const useCreateDraft = () => {
       toast.success('Draft saved');
       queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to save draft');
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to save draft');
     },
   });
 };
@@ -58,8 +59,8 @@ export const useUpdateDraft = () => {
       queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
       queryClient.invalidateQueries({ queryKey: draftKeys.detail(id) });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to update draft');
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to update draft');
     },
   });
 };
@@ -73,8 +74,8 @@ export const useDuplicateDraft = () => {
       toast.success(`Created copy: ${data.title}`);
       queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to duplicate draft');
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to duplicate draft');
     },
   });
 };
@@ -85,15 +86,15 @@ export const usePublishDraft = () => {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: PublishDraftInput }) =>
       DraftService.publishDraft(id, input),
-    onSuccess: (data: any) => {
+    onSuccess: (data: PublishDraftResponse) => {
       const itemIdentifier =
-        data?.workItem?.identifier || data?.item?.identifier || (data?.workItem?.id || data?.item?.id ? `#${(data.workItem?.id || data.item?.id).slice(0, 6)}` : 'Work item');
+        data?.workItem?.identifier || data?.item?.identifier || (data?.workItem?.id || data?.item?.id ? `#${(data.workItem?.id || data.item?.id)?.slice(0, 6)}` : 'Work item');
       toast.success(`Published as ${itemIdentifier}`);
       queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to move draft to project');
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to move draft to project');
     },
   });
 };
@@ -107,8 +108,8 @@ export const useDeleteDraft = () => {
       toast.success('Draft deleted');
       queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to delete draft');
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete draft');
     },
   });
 };

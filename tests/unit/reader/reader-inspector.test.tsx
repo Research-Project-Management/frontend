@@ -1,8 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
-import { ReaderInspector } from '@/features/reader/components/inspector/ReaderInspector';
-import { Panel } from '@/features/reader/components/Panel';
+import { ReaderInspector } from '@/features/library/components/inspector/ReaderInspector';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
@@ -16,8 +15,18 @@ const createTestClient = () =>
     },
   });
 
-vi.mock('@/features/reader/data/reader.queries', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/features/reader/data/reader.queries')>();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  useParams: () => ({}),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+vi.mock('@/features/library/data/reader/reader.queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/library/data/reader/reader.queries')>();
   return {
     ...actual,
     useReaderItem: vi.fn().mockReturnValue({
@@ -89,12 +98,12 @@ vi.mock('@/features/library', async (importOriginal) => {
   };
 });
 
-describe('ReaderInspector Cloned Component Parity', () => {
+describe('ReaderInspector Shared LibraryInspector Parity', () => {
   afterEach(() => {
     cleanup();
   });
 
-  it('renders ReaderInspector with title and inspector tabs', () => {
+  it('renders ReaderInspector with title and inspector tabs including Paper AI Copilot', () => {
     const testItem = {
       id: 'test-paper-1',
       title: 'Attention Is All You Need',
@@ -123,29 +132,9 @@ describe('ReaderInspector Cloned Component Parity', () => {
     // Inspector Tabs panel bar exists
     const panelBar = screen.getByRole('complementary', { name: /inspector panel bar/i });
     expect(panelBar).toBeDefined();
-  });
 
-  it('renders Panel wrapper delegating to ReaderInspector', () => {
-    const testItem = {
-      id: 'test-paper-1',
-      title: 'Attention Is All You Need',
-      itemType: 'journalArticle',
-    } as any;
-
-    render(
-      <QueryClientProvider client={createTestClient()}>
-        <TooltipProvider>
-          <Panel
-            item={testItem}
-            paper={testItem}
-            scopeId="user"
-          />
-        </TooltipProvider>
-      </QueryClientProvider>
-    );
-
-    const titleInput = screen.getByRole('textbox', { name: /document title/i });
-    expect(titleInput).toBeDefined();
-    expect((titleInput as HTMLInputElement).value).toBe('Attention Is All You Need');
+    // Paper AI Copilot section header and tab button both exist in Reader mode
+    const aiCopilotButtons = screen.getAllByRole('button', { name: /paper ai copilot/i });
+    expect(aiCopilotButtons.length).toBeGreaterThanOrEqual(2);
   });
 });

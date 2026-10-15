@@ -2,7 +2,7 @@ import type {
   DisplayPropertyKey,
   GroupByOption,
   OrderByOption,
-} from '../types/work-item.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export const DISPLAY_PROPERTY_ITEMS: Array<{ key: DisplayPropertyKey; label: string }> = [
   { key: 'id', label: 'ID' },

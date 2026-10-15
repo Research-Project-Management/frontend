@@ -7,7 +7,7 @@ import {
   NonePriorityBoxIcon,
 } from '@/shared/components/icons';
 import { cn } from '@/shared/lib/utils';
-import type { Priority } from '../types/work-item.types';
+import type { Priority } from '@/features/projects/project-id/work-items/types/work-item.types';
 import { ItemHelpers } from './work-item.utils';
 
 export function renderPriorityIcon(priority?: Priority, className?: string) {
@@ -33,12 +33,5 @@ export function formatTableDate(dateStr?: string | null): string | null {
 
 export function isDateOverdue(dateStr?: string | null, completed?: boolean): boolean {
   if (!dateStr || completed) return false;
-  try {
-    const d = new Date(dateStr);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return d < today;
-  } catch {
-    return false;
-  }
+  return ItemHelpers.checkOverdue(dateStr);
 }

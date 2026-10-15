@@ -5,13 +5,10 @@ import type {
   ProjectMember,
   ItemMutationInput,
   Relation,
+  ModalState,
 } from './work-item.types';
 
-export type ModalState =
-  | { type: 'idle' }
-  | { type: 'create'; initialData?: Partial<Item> }
-  | { type: 'detail'; card: Item; item?: Item }
-  | { type: 'delete'; item: Item };
+export type { ModalState };
 
 export interface WorkItemModalsProps {
   modal: ModalState;
@@ -24,15 +21,11 @@ export interface WorkItemModalsProps {
   isSaving: boolean;
   isDeleting: boolean;
   isReadOnly?: boolean;
-  onSaveItem?: (data: ItemMutationInput) => void | Promise<void>;
-  onDeleteItem?: () => void | Promise<void>;
-  onDuplicateItem?: () => void | Promise<void>;
-  onSubmitCreate?: (data: ItemMutationInput & { createMore?: boolean }) => void | Promise<void>;
-  onCreateItem?: (data: ItemMutationInput & { createMore?: boolean }) => Promise<void>;
-  onSaveCard?: (data: ItemMutationInput) => Promise<void>;
-  onDeleteCard?: () => void;
-  onConfirmDelete?: () => void;
-  onDuplicateCard?: () => void;
+  onCreateItem: (data: ItemMutationInput & { createMore?: boolean }) => Promise<void> | void;
+  onSaveCard: (data: ItemMutationInput) => Promise<void> | void;
+  onDeleteCard: () => void;
+  onConfirmDelete: () => Promise<void> | void;
+  onDuplicateCard: () => void;
   // Analytics
   isAnalyticsOpen?: boolean;
   onCloseAnalytics?: () => void;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CoreService, StateService } from '../api/work-item.api';
+import { CoreService, StateService } from '@/features/projects/project-id/work-items/api/work-item.api';
 import {
   projectKeys,
   fetchProject,
@@ -43,8 +43,6 @@ export const useProjectItems = (projectId: string) =>
   });
 
 export const useProjectWorkItems = useProjectItems;
-export const useWorkItem = useProjectItems;
-export const useItems = useProjectItems;
 
 export const useAllItems = () =>
   useQuery({
@@ -52,8 +50,6 @@ export const useAllItems = () =>
     queryFn: () => CoreService.getItems(),
     enabled: true,
   });
-
-export const useAllWorkItems = useAllItems;
 
 export const useProjectDetails = (projectId: string) =>
   useQuery({

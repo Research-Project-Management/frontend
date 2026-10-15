@@ -19,7 +19,7 @@ export function usePreview(item: StorageItem | null) {
 
   useEffect(() => {
     if (item) {
-      setDescription(item.metaData?.description || '');
+      setDescription(typeof item.metaData?.description === 'string' ? item.metaData.description : '');
       setIsSaved(true);
     } else {
       setDescription('');

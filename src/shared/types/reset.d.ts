@@ -9,7 +9,7 @@ interface JSON {
    * Converts a JavaScript Object Notation (JSON) string into an object.
    * Returns `unknown` to enforce explicit type narrowing or validation.
    */
-  parse(text: string, reviver?: (this: any, key: string, value: any) => any): unknown;
+  parse(text: string, reviver?: (this: unknown, key: string, value: unknown) => unknown): unknown;
 }
 
 interface Body {
@@ -30,7 +30,7 @@ interface Array<T> {
    */
   filter<S extends T>(
     predicate: BooleanConstructor,
-    thisArg?: any,
+    thisArg?: unknown,
   ): Array<Exclude<S, Falsy>>;
 }
 
@@ -45,7 +45,7 @@ interface ReadonlyArray<T> {
    */
   filter<S extends T>(
     predicate: BooleanConstructor,
-    thisArg?: any,
+    thisArg?: unknown,
   ): ReadonlyArray<Exclude<S, Falsy>>;
 }
 

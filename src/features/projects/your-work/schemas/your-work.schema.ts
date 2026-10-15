@@ -114,7 +114,7 @@ export const yourWorkSummaryResponseSchema = z.object({
   created: z.array(yourWorkItemSchema).optional().default([]),
   subscribed: z.array(yourWorkItemSchema).optional().default([]),
   activity: z.array(yourWorkActivityEventSchema).optional().default([]),
-  recent: z.array(z.any()).optional().default([]),
+  recent: z.array(yourWorkItemSchemaType).optional().default([]),
   stateGroupBreakdown: z.record(z.string(), z.number()).optional(),
   subscribedStateGroupBreakdown: z.record(z.string(), z.number()).optional(),
   priorityBreakdown: z.record(z.string(), z.number()).optional(),
@@ -124,6 +124,7 @@ export const yourWorkSummaryResponseSchema = z.object({
   success: z.boolean().optional(),
 });
 
+export type YourWorkRecentItem = z.infer<typeof yourWorkItemSchemaType>;
 export type YourWorkActivityEvent = z.infer<typeof yourWorkActivityEventSchema>;
 export type ProjectWorkloadBreakdown = z.infer<typeof projectWorkloadBreakdownSchema>;
 export type UserProfileData = z.infer<typeof userProfileDataSchema>;

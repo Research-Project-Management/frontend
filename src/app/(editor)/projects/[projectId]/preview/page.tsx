@@ -13,13 +13,14 @@ import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-
-import { useCompileStore } from '@/features/editor/store/compiler.store';
-import { useLayoutStore } from '@/features/editor/store/layout.store';
+import {
+  editorCommandBus,
+  useCompileStore,
+  useLayoutStore,
+} from '@/features/editor/core';
 
 const PdfViewer = dynamic(
-  () => import('@/features/editor/ui/preview/PdfViewer').then((mod) => mod.PdfViewer),
+  () => import('@/features/editor/subsystems/compiler').then((mod) => mod.PdfViewer),
   { ssr: false }
 );
 

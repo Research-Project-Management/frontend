@@ -9,9 +9,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/
 import { Calendar } from '@/shared/components/ui/calendar';
 import type { DateRange } from 'react-day-picker';
 import { cn } from '@/shared/lib/utils';
-import { ItemHelpers } from '../../utils/work-item.utils';
+import { ItemHelpers } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 
-import type { DatePopoverProps, SingleDatePopoverProps } from '../../types/picker.types';
+import type { DatePopoverProps, SingleDatePopoverProps } from '@/features/projects/project-id/work-items/types/picker.types';
 
 export type { DatePopoverProps, SingleDatePopoverProps };
 

@@ -1,43 +1,36 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useRouter, useParams, usePathname } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 
 import type {
-  Item,
-  Column,
   Project,
   Priority,
   DisplayOptions,
   DueDateFilterOption,
   DisplayPropertyKey,
   Filters,
-  ProjectMember,
-  GroupByOption,
-  SubGroupByOption,
-  OrderByOption,
-  OrderDirection,
-} from '../types/work-item.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 import {
   DEFAULT_DISPLAY_OPTIONS,
   DEFAULT_FILTERS,
-} from '../types/work-item.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 import type {
   ViewMode,
   AssigneeFilterOption,
   UseTopbarOptions,
-} from '../types/topbar.types';
+} from '@/features/projects/project-id/work-items/types/topbar.types';
 import {
   ITEMS_VIEW_STORAGE_KEY,
-  DISPLAY_OPTIONS_STORAGE_KEY,
   VALID_MODES,
   getDisplayOptionsStorageKey,
   getInitialDisplayOptions,
   PRIORITY_WEIGHT,
-} from '../utils/topbar.utils';
+  countActiveFilters,
+} from '@/features/projects/project-id/work-items/utils/topbar.utils';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
-import { ItemHelpers, resolveStateId } from '../utils/work-item.utils';
-import { WorkItemFilterEngine } from '../utils/work-item-filter-engine';
+import { ItemHelpers, resolveStateId } from '@/features/projects/project-id/work-items/utils/work-item.utils';
+import { WorkItemFilterEngine } from '@/features/projects/project-id/work-items/utils/work-item-filter-engine';
 
 export type { ViewMode, AssigneeFilterOption, UseTopbarOptions };
 
@@ -57,7 +50,6 @@ export function useTopbar({
   const items = propItems || propWorkItems || [];
   const { projectId } = useParams() as { projectId: string };
   const router = useRouter();
-  const pathname = usePathname();
   const { projects = [] } = useProjects();
 
 
@@ -90,52 +82,6 @@ export function useTopbar({
       } catch {}
     }
   }, [projectId]);
-
-  // Sync userProperties into mode and display options on initial load
-  useEffect(() => {
-    if (userProperties) {
-      const prefs = userProperties.preferences as Record<string, unknown> | undefined;
-      const savedMode = prefs?.viewMode as ViewMode | undefined;
-      if (savedMode && VALID_MODES.includes(savedMode)) {
-        setModeState((prev) => (prev !== savedMode ? savedMode : prev));
-      }
-      const beDisplayProps = userProperties.displayProperties as Record<string, boolean> | undefined;
-      const beDisplayFilters = userProperties.displayFilters as Record<string, unknown> | undefined;
-
-      if (
-        (beDisplayProps && Object.keys(beDisplayProps).length > 0) ||
-        (beDisplayFilters && Object.keys(beDisplayFilters).length > 0)
-      ) {
-        const rawGroupBy = beDisplayFilters?.groupBy ?? beDisplayFilters?.group_by;
-        const rawSubGroupBy = beDisplayFilters?.subGroupBy ?? beDisplayFilters?.sub_group_by;
-        const rawOrderBy = beDisplayFilters?.orderBy ?? beDisplayFilters?.order_by;
-        const rawOrderDirection = beDisplayFilters?.orderDirection ?? beDisplayFilters?.order_direction;
-        const rawShowEmpty = beDisplayFilters?.showEmptyGroups ?? beDisplayFilters?.show_empty_groups;
-        const rawShowChild = beDisplayFilters?.showChildWorkItems ?? beDisplayFilters?.show_child_work_items;
-
-        setDisplayOptionsState((prev: DisplayOptions): DisplayOptions => {
-          const defaultGb: GroupByOption = ((savedMode || mode) === 'table' || (savedMode || mode) === 'timeline') ? 'none' : 'state';
-          const nextGroupBy = ((rawGroupBy && rawGroupBy !== 'null' && rawGroupBy !== '')
-            ? (rawGroupBy === 'state' && ((savedMode || mode) === 'table' || (savedMode || mode) === 'timeline') ? 'none' : rawGroupBy)
-            : (prev.groupBy || defaultGb)) as GroupByOption;
-          let nextSubGroupBy = ((rawSubGroupBy && rawSubGroupBy !== 'null' && rawSubGroupBy !== '') ? rawSubGroupBy : (prev.subGroupBy || 'none')) as SubGroupByOption;
-          if (nextSubGroupBy === nextGroupBy) {
-            nextSubGroupBy = 'none';
-          }
-          return {
-            ...prev,
-            ...(beDisplayProps ? { properties: { ...prev.properties, ...beDisplayProps } } : {}),
-            groupBy: nextGroupBy,
-            subGroupBy: nextSubGroupBy,
-            ...(rawOrderBy ? { orderBy: rawOrderBy as OrderByOption } : {}),
-            ...(rawOrderDirection ? { orderDirection: rawOrderDirection as OrderDirection } : {}),
-            ...(rawShowEmpty !== undefined ? { showEmptyGroups: Boolean(rawShowEmpty) } : {}),
-            ...(rawShowChild !== undefined ? { showChildWorkItems: Boolean(rawShowChild) } : {}),
-          };
-        });
-      }
-    }
-  }, [userProperties]);
 
   // ── Unified Filter State ──────────────────────────────────────────────────
   const [localFilters, setFilters] = useState<Filters>(() => ({
@@ -173,22 +119,7 @@ export function useTopbar({
         localStorage.setItem(storageKey, JSON.stringify(options));
       } catch {}
     }
-    if (projectId) {
-      const { properties, ...displayFilters } = options;
-      updateProperties({
-        displayProperties: properties as Record<string, unknown>,
-        displayFilters: {
-          ...displayFilters,
-          group_by: displayFilters.groupBy,
-          sub_group_by: displayFilters.subGroupBy,
-          order_by: displayFilters.orderBy,
-          order_direction: displayFilters.orderDirection,
-          show_empty_groups: displayFilters.showEmptyGroups,
-          show_child_work_items: displayFilters.showChildWorkItems,
-        } as Record<string, unknown>,
-      });
-    }
-  }, [projectId, storageKey, updateProperties]);
+  }, [storageKey]);
 
   const updateDisplayProperty = useCallback((key: DisplayPropertyKey, value: boolean) => {
     setDisplayOptionsState((prev) => {
@@ -366,25 +297,7 @@ export function useTopbar({
   }, [assignees, filters.assignees]);
 
   // Total active filter counts across all criteria
-  const totalFilters = useMemo(() => {
-    return (
-      filters.state.length +
-      filters.state_group.length +
-      filters.priority.length +
-      filters.assignees.length +
-      filters.mentions.length +
-      filters.created_by.length +
-      filters.labels.length +
-      filters.attach.length +
-      (filters.work_items?.length ?? 0) +
-      filters.parent.length +
-      filters.due_date.length +
-      filters.start_date.length +
-      filters.created_at.length +
-      filters.updated_at.length +
-      (filters.subscribers?.length ?? 0)
-    );
-  }, [filters]);
+  const totalFilters = useMemo(() => countActiveFilters(filters), [filters]);
 
   // ── Filter Mutation Actions ───────────────────────────────────────────────
   const toggleFilterItem = useCallback(
@@ -557,9 +470,7 @@ export function useTopbar({
       toggleFilterItem,
       removeFilterItem,
       clearAllFilters,
-      // Legacy Compatible Actions
-      setColumnFilter: setCols,
-      setAssigneeFilter: setUsers,
+      // Filter Actions
       setSelectedColumnIds: setCols,
       setSelectedAssigneeIds: setUsers,
       toggleColumnFilter: toggleCol,

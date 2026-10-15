@@ -27,7 +27,7 @@ import {
   getBannerGradient,
   isProjectPrivate,
 } from '../../utils/projects-page.util';
-import type { Project } from '../../types/project.types';
+import type { Project, ProjectMember } from '../../types/project.types';
 
 export type CardProps = {
   project: Project;
@@ -51,7 +51,7 @@ export const Card = React.memo(function Card({ project, onArchive, onManageTags 
 
   // Find lead from members or creator
   const leadMember = project.members?.find(
-    (m: any) => m.role === 'owner' || m.role === 'lead'
+    (m: ProjectMember) => m.role === 'owner' || m.role === 'lead'
   );
   const leadUser =
     leadMember?.user ||
@@ -278,13 +278,13 @@ export const Card = React.memo(function Card({ project, onArchive, onManageTags 
               </div>
             ) : membersList.length > 0 ? (
               <div className="flex -space-x-1.5 overflow-hidden">
-                {(Array.isArray(membersList) ? membersList : []).slice(0, 3).map((m: any, idx: number) => {
-                  const u = m.user || {};
+                {(Array.isArray(membersList) ? membersList : []).slice(0, 3).map((m: ProjectMember, idx: number) => {
+                  const u = m.user;
                   return (
-                    <Avatar key={u.id || idx} className="size-4.5 border border-background shrink-0">
-                      <AvatarImage src={u.avatar} alt={u.name} />
+                    <Avatar key={u?.id || idx} className="size-4.5 border border-background shrink-0">
+                      <AvatarImage src={u?.avatar || undefined} alt={u?.name} />
                       <AvatarFallback className="text-10 bg-muted font-medium">
-                        {u.name ? u.name.charAt(0).toUpperCase() : 'U'}
+                        {u?.name ? u.name.charAt(0).toUpperCase() : 'U'}
                       </AvatarFallback>
                     </Avatar>
                   );

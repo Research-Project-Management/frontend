@@ -438,9 +438,9 @@ export const ListView = React.memo(function ListView({
                   exit={{ opacity: 0, x: -10, transition: { duration: 0.15 } }}
                   transition={{ duration: 0.2 }}
                   draggable={!isReadOnly && !item.isFolder && !!onDragStartFile}
-                  onDragStart={(e: any) => {
+                  onDragStart={(e: unknown) => {
                     if (!isReadOnly && !item.isFolder && onDragStartFile) {
-                      onDragStartFile(item, e);
+                      onDragStartFile(item, e as React.DragEvent);
                     }
                   }}
                   {...createFolderDropHandlers(item, isReadOnly, onDropOnFolder, setDragOverFolderId)}

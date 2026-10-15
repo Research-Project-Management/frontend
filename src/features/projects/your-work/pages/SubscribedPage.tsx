@@ -1,29 +1,25 @@
 'use client';
 
 import React from 'react';
-import { useSubscribedWork } from '../hooks/use-subscribed-work';
-import { SubscribedWorkItemList } from '../components/subscribed/SubscribedWorkItemList';
+import { useYourWorkContext } from '../context/your-work.context';
+import { YourWorkItemList } from '../components/shared/YourWorkItemList';
 import { YourWorkPageLayout } from '../components/shared/YourWorkPageLayout';
 
 export function SubscribedPage() {
-  const { state } = useSubscribedWork();
-  const { allWorkItems, subscribedWorkItems, workItemProjectMap, isLoading, isError, error } = state;
+  const { subscribed, workItemProjectMap, isLoading, isError, error, openWorkItem } =
+    useYourWorkContext();
 
   return (
-    <YourWorkPageLayout
-      isLoading={isLoading}
-      isError={isError}
-      error={error}
-      allWorkItems={allWorkItems}
-      renderList={(handleOpenItem) => (
-        <SubscribedWorkItemList
-          workItems={subscribedWorkItems}
-          onWorkItemClick={handleOpenItem}
-          workItemProjectMap={workItemProjectMap}
-        />
-      )}
-    />
+    <YourWorkPageLayout isLoading={isLoading} isError={isError} error={error}>
+      <YourWorkItemList
+        variant="subscribed"
+        workItems={subscribed}
+        onWorkItemClick={openWorkItem}
+        workItemProjectMap={workItemProjectMap}
+      />
+    </YourWorkPageLayout>
   );
 }
 
 export default SubscribedPage;
+

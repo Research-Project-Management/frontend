@@ -13,32 +13,20 @@ import {
   TableIcon,
   TimelineIcon,
 } from "@/shared/components/icons";
-import type {
-  Item,
-  Column,
-  Priority,
-  DisplayOptions,
-  DueDateFilterOption,
-  DisplayPropertyKey,
-  Filters,
-  ProjectMember,
-} from '../../types/work-item.types';
 import { Button } from '@/shared/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from "@/shared/lib/utils";
-import type { AssigneeFilterOption, ViewMode, TopbarProps } from '../../types/topbar.types';
+import type { AssigneeFilterOption, ViewMode, TopbarProps } from '@/features/projects/project-id/work-items/types/topbar.types';
+import { countActiveFilters } from '@/features/projects/project-id/work-items/utils/topbar.utils';
 import { DisplayPopover } from './DisplayPopover';
-import { FilterDropdown } from '../filters/FilterDropdown';
+import { FilterDropdown } from '@/features/projects/project-id/work-items/components/filters/FilterDropdown';
 import { Switcher } from '@/features/projects/project-id/components/layout/Switcher';
 
 export type { AssigneeFilterOption, ViewMode, TopbarProps };
 
 export function Topbar({
-  projectId,
   project,
-  projectModules: propProjectModules,
   showArchived = false,
-  onToggleArchived,
   title = 'Work Items',
   icon,
   Icon: PropIcon,
@@ -47,12 +35,12 @@ export function Topbar({
   viewMode,
   onViewChange,
   columns,
-  selectedColumnIds,
+  selectedColumnIds = [],
   onColumnFilterChange,
   onToggleColumn,
   assignees,
   members,
-  selectedAssigneeIds,
+  selectedAssigneeIds = [],
   onAssigneeFilterChange,
   onToggleAssignee,
   selectedPriorities = [],
@@ -71,7 +59,6 @@ export function Topbar({
   onDisplayOpenChange,
   onOpenAnalytics,
   onAddItem,
-  isLoading = false,
   isReadOnly = false,
   className,
 }: TopbarProps) {
@@ -79,7 +66,6 @@ export function Topbar({
   const HeaderIcon = icon || PropIcon || WorkItemsIcon;
 
   const handleAdd = onAddItem || (() => {});
-  const effectiveModules = propProjectModules || project?.modules || ['work-items', 'pages'];
 
   const handleToggleCol = useCallback((colId: string) => {
     if (onToggleColumn) {
@@ -87,7 +73,7 @@ export function Topbar({
     } else if (propOnToggleFilter) {
       propOnToggleFilter('state', colId);
     } else {
-      onColumnFilterChange(
+      onColumnFilterChange?.(
         selectedColumnIds.includes(colId)
           ? selectedColumnIds.filter((id) => id !== colId)
           : [...selectedColumnIds, colId]
@@ -101,7 +87,7 @@ export function Topbar({
     } else if (propOnToggleFilter) {
       propOnToggleFilter('assignees', userId);
     } else {
-      onAssigneeFilterChange(
+      onAssigneeFilterChange?.(
         selectedAssigneeIds.includes(userId)
           ? selectedAssigneeIds.filter((id) => id !== userId)
           : [...selectedAssigneeIds, userId]
@@ -112,10 +98,12 @@ export function Topbar({
   const totalActiveFilters =
     propTotalActiveFilters !== undefined
       ? propTotalActiveFilters
-      : selectedColumnIds.length +
-        selectedAssigneeIds.length +
-        selectedPriorities.length +
-        (dueDateFilter !== 'all' ? 1 : 0);
+      : propFilters
+        ? countActiveFilters(propFilters)
+        : selectedColumnIds.length +
+          selectedAssigneeIds.length +
+          selectedPriorities.length +
+          (dueDateFilter !== 'all' ? 1 : 0);
 
   const handleClearAll = () => {
     if (onClearAllFilters) {
@@ -176,7 +164,7 @@ export function Topbar({
                       type="button"
                       role="tab"
                       aria-selected={isSelected}
-                      onClick={() => onViewChange(v.id)}
+                      onClick={() => onViewChange?.(v.id)}
                       className={cn(
                         'relative size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden',
                         isSelected ? 'text-foreground' : 'text-foreground hover:bg-background/40',
@@ -217,25 +205,7 @@ export function Topbar({
             onTogglePriority={onTogglePriority || ((p) => propOnToggleFilter?.('priority', p))}
             dueDateFilter={dueDateFilter}
             onDueDateFilterChange={onDueDateFilterChange || (() => {})}
-            totalActiveFilters={
-              propFilters
-                ? (propFilters.state.length +
-                  propFilters.state_group.length +
-                  propFilters.priority.length +
-                  propFilters.assignees.length +
-                  propFilters.mentions.length +
-                  propFilters.created_by.length +
-                  propFilters.labels.length +
-                  (propFilters.subscribers?.length ?? 0) +
-                  propFilters.attach.length +
-                  propFilters.work_items.length +
-                  propFilters.parent.length +
-                  propFilters.due_date.length +
-                  propFilters.start_date.length +
-                  propFilters.created_at.length +
-                  propFilters.updated_at.length)
-                : totalActiveFilters
-            }
+            totalActiveFilters={propFilters ? countActiveFilters(propFilters) : totalActiveFilters}
             onClearAll={handleClearAll}
             filters={propFilters}
             onToggleFilter={propOnToggleFilter}

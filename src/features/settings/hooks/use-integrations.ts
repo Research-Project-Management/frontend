@@ -59,15 +59,30 @@ export function useIntegrations() {
     mutationFn: async (provider: IntegrationProvider) => {
       const { authUrl } = await integrationService.getAuthUrl(provider);
       const result = await openOAuthPopup(provider, authUrl);
-      if (!result.success && !result.cancelled) {
+      if (result.success) {
+        return result;
+      }
+      // Cross-Origin-Opener-Policy on providers like GitHub clears window.opener,
+      // causing popup.close() to trigger the closed-window poll without postMessage.
+      // Verify actual backend connection status before treating as cancelled.
+      const statuses = await integrationService.getStatuses().catch(() => []);
+      const matched = statuses.find((s) => s.provider === provider);
+      if (matched && matched.status === 'connected' && !matched.needsReconnect) {
+        return { success: true };
+      }
+      if (!result.cancelled) {
         throw new Error('OAuth authorization did not complete successfully.');
       }
       return result;
     },
     onSuccess: (result, provider) => {
+      queryClient.invalidateQueries({ queryKey: INTEGRATIONS_QUERY_KEY });
+      if (provider === 'github') {
+        queryClient.invalidateQueries({ queryKey: ['github-repos'] });
+        queryClient.invalidateQueries({ queryKey: ['github-link'] });
+      }
       if (result.success) {
         toast.success(`Successfully connected ${provider.toUpperCase()}!`);
-        queryClient.invalidateQueries({ queryKey: INTEGRATIONS_QUERY_KEY });
       }
     },
     onError: (err: unknown) => {

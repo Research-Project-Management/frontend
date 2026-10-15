@@ -12,6 +12,8 @@ import type {
   Filters,
 } from './work-item.types';
 
+export type { ViewMode, FilterState };
+
 export type AssigneeFilterOption = {
   id: string;
   name: string;

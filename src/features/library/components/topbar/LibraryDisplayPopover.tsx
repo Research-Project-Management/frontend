@@ -12,14 +12,19 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
 import { cn } from "@/shared/lib/utils";
 export type {
   LibraryColumnKey,
   LibraryOrderBy,
   LibraryDisplayOptions,
-} from '../../types/display.types';
-export { DEFAULT_LIBRARY_DISPLAY_OPTIONS } from '../../types/display.types';
-import type { LibraryDisplayOptions, LibraryColumnKey, LibraryOrderBy } from '../../types/display.types';
+} from '@/features/library/types/display.types';
+export { DEFAULT_LIBRARY_DISPLAY_OPTIONS } from '@/features/library/types/display.types';
+import type { LibraryDisplayOptions, LibraryColumnKey, LibraryOrderBy } from '@/features/library/types/display.types';
 
 export interface LibraryDisplayPopoverProps {
   options: LibraryDisplayOptions;
@@ -150,12 +155,14 @@ export function LibraryDisplayPopover({
 
           {columnsOpen && (
             <div className="flex flex-wrap items-center gap-1 pt-1 px-0.5 select-none">
-              <span
-                className="h-6 px-2 text-11 font-medium rounded-md bg-primary text-primary-foreground border border-primary select-none inline-flex items-center justify-center cursor-default"
-                title="Primary column (always visible)"
-              >
-                Title
-              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="h-6 px-2 text-11 font-medium rounded-md bg-primary text-primary-foreground border border-primary select-none inline-flex items-center justify-center cursor-default">
+                    Title
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Primary column (always visible)</TooltipContent>
+              </Tooltip>
               {COLUMN_ITEMS.map((item) => {
                 const isSelected = Boolean(columns[item.key]);
                 return (
@@ -193,19 +200,27 @@ export function LibraryDisplayPopover({
             </button>
 
             <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={toggleOrderDirection}
-                className="p-0.5 text-foreground hover:bg-muted rounded cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden"
-                title={orderDirection === 'asc' ? 'Ascending (A to Z / Low to High)' : 'Descending (Z to A / High to Low)'}
-                aria-label="Toggle sort direction"
-              >
-                {orderDirection === 'asc' ? (
-                  <ArrowUpNarrowWide className="size-3.5 text-foreground shrink-0" />
-                ) : (
-                  <ArrowDownNarrowWide className="size-3.5 text-foreground shrink-0" />
-                )}
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={toggleOrderDirection}
+                    className="p-0.5 text-foreground hover:bg-muted rounded cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden"
+                    aria-label="Toggle sort direction"
+                  >
+                    {orderDirection === 'asc' ? (
+                      <ArrowUpNarrowWide className="size-3.5 text-foreground shrink-0" />
+                    ) : (
+                      <ArrowDownNarrowWide className="size-3.5 text-foreground shrink-0" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {orderDirection === 'asc'
+                    ? 'Ascending (A to Z / Low to High)'
+                    : 'Descending (Z to A / High to Low)'}
+                </TooltipContent>
+              </Tooltip>
 
               <button
                 type="button"

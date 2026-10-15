@@ -110,7 +110,7 @@ export default function StickyPage() {
                   {state.activeId
                     ? (() => {
                         const sticky = state.items.find(
-                          (n: any) => n.id === state.activeId,
+                          (n: Sticky) => n.id === state.activeId,
                         );
                         return sticky ? (
                           <div className="w-[240px] h-[340px] rotate-1 scale-105 cursor-grabbing">

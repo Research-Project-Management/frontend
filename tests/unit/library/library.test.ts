@@ -19,16 +19,15 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
   });
 
   describe('sanitizeItemPayload (Client Boundary Filter)', () => {
-    it('should strip disallowed / injection keys from payload', () => {
+    it('should strip client-internal underscore keys and functions from payload', () => {
       const rawPayload = {
         title: 'Deep Learning',
         doi: '10.1145/12345',
         itemType: 'journalArticle',
         expectedVersion: 3,
-        __proto__: { polluted: true },
-        isAdmin: true,
-        secretRole: 'superadmin',
-        randomInjectedField: 'harmful',
+        _isProcessing: true,
+        _optimisticId: 'temp-1',
+        onClick: () => {},
       };
 
       const cleaned = sanitizeItemPayload(rawPayload);
@@ -37,9 +36,9 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       expect(cleaned).toHaveProperty('doi', '10.1145/12345');
       expect(cleaned).toHaveProperty('itemType', 'journalArticle');
       expect(cleaned).toHaveProperty('expectedVersion', 3);
-      expect(cleaned).not.toHaveProperty('isAdmin');
-      expect(cleaned).not.toHaveProperty('secretRole');
-      expect(cleaned).not.toHaveProperty('randomInjectedField');
+      expect(cleaned).not.toHaveProperty('_isProcessing');
+      expect(cleaned).not.toHaveProperty('_optimisticId');
+      expect(cleaned).not.toHaveProperty('onClick');
     });
 
     it('should strip undefined values but preserve null/false/0', () => {
@@ -156,7 +155,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
   });
 
   describe('QualityService (Duplicate Detection)', () => {
-    it('should pass projectId query parameter when workspaceId is specified', async () => {
+    it('should route to project curation duplicates endpoint when workspaceId is specified', async () => {
       vi.mocked(api.apiGet).mockResolvedValueOnce([
         {
           clusterId: 'doi-10-1038',
@@ -172,7 +171,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       const res = await QualityService.getDuplicates('workspace-42');
 
       expect(api.apiGet).toHaveBeenCalledWith(
-        '/api/v1/library/curation/duplicates?projectId=workspace-42',
+        '/api/v1/projects/workspace-42/library/curation/duplicates',
       );
       expect(res.duplicateGroups).toHaveLength(1);
       expect(res.duplicateGroups[0].matchType).toBe('DOI');

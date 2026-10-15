@@ -1,11 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Check } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { Item } from '@/features/library/types/library.types';
-import type { TypeConversionPreview } from '../../../data';
-import { SchemaItemTypeDefinition, ALL_ITEM_TYPES_FLAT } from '../../../types';
+import { libraryKeys, itemKeys, type TypeConversionPreview } from '@/features/library/data';
+import {
+  SchemaItemTypeDefinition,
+  ALL_ITEM_TYPES_FLAT,
+  getTitleFieldForType,
+} from '@/features/library/types';
+import { cleanValue, getItemDisplayTitle } from '@/features/library/domain/metadata';
+import { buildInspectorFieldPatch } from '@/features/library/domain/item-field-schema';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,15 +22,17 @@ import {
 import dynamic from 'next/dynamic';
 import { InlineTextarea } from './InlineTextarea';
 
-const TypeConversionModal = dynamic(() => import('../../modals/TypeConversionModal'), { ssr: false });
+const TypeConversionModal = dynamic(() => import('@/features/library/components/modals/TypeConversionModal'), { ssr: false });
 
 export interface GeneralFieldsProps {
-  paper: Item;
+  item?: Item;
+  paper?: Item;
   currentItemType: string;
   selectableItemTypes: Array<{ value: string; label: string }>;
   typeDefinition: SchemaItemTypeDefinition;
   canEdit?: boolean;
   scopeId?: string;
+  onUpdateItem?: (data: Partial<Item>) => void;
   onUpdatePaper?: (data: Partial<Item>) => void;
   previewAsync: (params: {
     itemId: string;
@@ -39,37 +48,51 @@ export interface GeneralFieldsProps {
   }) => Promise<unknown>;
 }
 
-function cleanValue(val?: unknown): string {
-  if (val === null || val === undefined) return '';
-  return String(val).trim();
-}
 
-export function GeneralFields({
-  paper,
-  currentItemType,
-  selectableItemTypes,
-  typeDefinition,
-  canEdit = true,
-  scopeId,
-  onUpdatePaper,
-  previewAsync,
-  convertAsync,
-}: GeneralFieldsProps) {
+export function GeneralFields(props: GeneralFieldsProps) {
+  const queryClient = useQueryClient();
+  const item = props.item || props.paper;
+  const onUpdateItem = props.onUpdateItem || props.onUpdatePaper;
+  const {
+    currentItemType,
+    selectableItemTypes,
+    typeDefinition,
+    canEdit = true,
+    scopeId,
+    previewAsync,
+    convertAsync,
+  } = props;
+
   const [isConversionDialogOpen, setIsConversionDialogOpen] = useState(false);
   const [targetConversionType, setTargetConversionType] = useState<string>('');
   const [previewData, setPreviewData] = useState<TypeConversionPreview | null>(null);
+
+  if (!item) return null;
 
   const effectiveItemTypes =
     selectableItemTypes && selectableItemTypes.length > 0
       ? selectableItemTypes
       : ALL_ITEM_TYPES_FLAT;
 
+  const mappedTitleKey = getTitleFieldForType(currentItemType);
+  const titleFieldDef = typeDefinition?.fields?.find(
+    (f) => f.field === mappedTitleKey || f.baseField === 'title',
+  );
+  const titleLabel = titleFieldDef?.label || 'Title';
+  const displayTitleValue = cleanValue(getItemDisplayTitle(item) || item.title);
+
   const handleTitleChange = (val: string) => {
     const trimmed = val.replace(/\r?\n+/g, ' ').trim();
-    onUpdatePaper?.({
-      ...(paper.itemType ? { itemType: paper.itemType } : {}),
-      title: trimmed || undefined,
-    });
+    const patch = buildInspectorFieldPatch(
+      item,
+      mappedTitleKey || 'title',
+      trimmed,
+    );
+    patch.title = trimmed || undefined;
+    if (mappedTitleKey && mappedTitleKey !== 'title') {
+      patch[mappedTitleKey] = trimmed || undefined;
+    }
+    onUpdateItem?.(patch);
   };
 
   return (
@@ -79,7 +102,6 @@ export function GeneralFields({
         <span
           className="text-muted-foreground text-right font-medium select-none pr-1 text-11 leading-normal whitespace-nowrap truncate"
           id="label-item-type"
-          title="Item Type"
         >
           Item Type
         </span>
@@ -149,12 +171,11 @@ export function GeneralFields({
         <span
           className="text-muted-foreground text-right font-medium select-none pr-1 pt-1 text-11 leading-normal whitespace-nowrap truncate"
           id="label-title"
-          title="Title"
         >
-          Title
+          {titleLabel}
         </span>
         <InlineTextarea
-          value={cleanValue(paper.title)}
+          value={displayTitleValue}
           ariaLabel="Item Title"
           onSave={handleTitleChange}
           className="font-normal text-foreground text-13 leading-normal"
@@ -168,12 +189,17 @@ export function GeneralFields({
         <TypeConversionModal
           open={isConversionDialogOpen}
           onOpenChange={setIsConversionDialogOpen}
-          paper={paper}
+          paper={item}
           targetType={targetConversionType}
           scopeId={scopeId}
           initialPreview={previewData}
-          onSuccess={(updatedPaper: Item) => {
-            onUpdatePaper?.(updatedPaper);
+          onSuccess={(updatedItem: Item) => {
+            const targetScope = scopeId || item.projectId || 'user';
+            if (updatedItem?.id) {
+              queryClient.setQueryData(libraryKeys.item(targetScope, updatedItem.id), updatedItem);
+            }
+            queryClient.invalidateQueries({ queryKey: libraryKeys.item(targetScope, item.id) });
+            queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
           }}
         />
       )}

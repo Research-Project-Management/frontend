@@ -2,14 +2,15 @@
 
 import { useState, useCallback } from 'react';
 import { getWorkItemProjectId } from '../utils/your-work.util';
+import type { YourWorkItem } from '../schemas/your-work.schema';
 
 export interface SelectedWorkItemState {
   workItemId: string;
   projectId: string;
-  workItem?: any;
+  workItem?: YourWorkItem;
 }
 
-export function useWorkItemModal(workItems: any[] = []) {
+export function useWorkItemModal(workItems: YourWorkItem[] = []) {
   const [selectedWorkItem, setSelectedWorkItem] = useState<SelectedWorkItemState | null>(null);
 
   const handleOpenWorkItem = useCallback(

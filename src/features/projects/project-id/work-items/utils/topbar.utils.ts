@@ -4,8 +4,9 @@ import type {
   Priority,
   GroupByOption,
   SubGroupByOption,
-} from '../types/work-item.types';
-import { DEFAULT_DISPLAY_OPTIONS } from '../types/work-item.types';
+  Filters,
+} from '@/features/projects/project-id/work-items/types/work-item.types';
+import { DEFAULT_DISPLAY_OPTIONS } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export const ITEMS_VIEW_STORAGE_KEY = 'flux:work-items-view-mode';
 export const DISPLAY_OPTIONS_STORAGE_KEY = 'flux:work-item-display-options';
@@ -65,3 +66,23 @@ export const PRIORITY_WEIGHT: Record<Priority, number> = {
   low: 1,
   none: 0,
 };
+
+export function countActiveFilters(filters: Filters): number {
+  return (
+    filters.state.length +
+    filters.state_group.length +
+    filters.priority.length +
+    filters.assignees.length +
+    filters.mentions.length +
+    filters.created_by.length +
+    filters.labels.length +
+    filters.attach.length +
+    (filters.work_items?.length ?? 0) +
+    filters.parent.length +
+    filters.due_date.length +
+    filters.start_date.length +
+    filters.created_at.length +
+    filters.updated_at.length +
+    (filters.subscribers?.length ?? 0)
+  );
+}

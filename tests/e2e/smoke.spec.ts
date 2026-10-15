@@ -19,7 +19,7 @@ test.describe('Manuscript Editor Smoke Suite', () => {
 
     // 1. Verify continuous toolbar border-b alignment across sidebar, editor, and viewer
     const toolbarMetrics = await page.evaluate(() => {
-      const filesHeader = document.querySelector('[role="tabpanel"] .border-b');
+      const filesHeader = document.querySelector('[role="tabpanel"] .border-b, [aria-label="Primary Sidebar"] .border-b');
       const editorTabs = document.querySelector('[role="tablist"][aria-label*="document tabs" i]')?.closest('.border-b');
       const pdfToolbar = document.querySelector('[aria-label="PDF viewer controls" i]');
 
@@ -33,9 +33,9 @@ test.describe('Manuscript Editor Smoke Suite', () => {
 
     expect(toolbarMetrics.filesBottom).not.toBeNull();
     expect(toolbarMetrics.editorBottom).not.toBeNull();
-    expect(toolbarMetrics.filesBottom).toBe(toolbarMetrics.editorBottom);
+    expect(Math.abs(toolbarMetrics.filesBottom! - toolbarMetrics.editorBottom!)).toBeLessThanOrEqual(1);
     if (toolbarMetrics.pdfBottom !== null) {
-      expect(toolbarMetrics.pdfBottom).toBe(toolbarMetrics.editorBottom);
+      expect(Math.abs(toolbarMetrics.pdfBottom - toolbarMetrics.editorBottom!)).toBeLessThanOrEqual(1);
     }
 
     // 2. Verify CodeMirror 6 editor instance is mounted

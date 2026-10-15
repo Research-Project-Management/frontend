@@ -10,15 +10,15 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { StatusIcon } from '@/shared/components/icons';
-import { ItemHelpers, resolveColumnId } from '../../utils/work-item.utils';
+import { ItemHelpers, resolveColumnId, buildWorkItemTree } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import type {
   Item,
   Priority,
-} from '../../types/work-item.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 
 // Subcomponents, types, and constants
-export * from '../../types/table-view.types';
-export * from '../../utils/table.utils';
+export * from '@/features/projects/project-id/work-items/types/table-view.types';
+export * from '@/features/projects/project-id/work-items/utils/table.utils';
 export * from './table/TableColumnPropertiesPopover';
 export * from './table/TableHeaderRow';
 export * from './table/TableGroupHeader';
@@ -35,8 +35,8 @@ import {
   DEFAULT_VISIBLE_PROPERTIES,
   DEFAULT_COLUMN_WIDTHS,
   type TableViewProps,
-} from '../../types/table-view.types';
-import { renderPriorityIcon } from '../../utils/table.utils';
+} from '@/features/projects/project-id/work-items/types/table-view.types';
+import { renderPriorityIcon } from '@/features/projects/project-id/work-items/utils/table.utils';
 import { TableHeaderRow } from './table/TableHeaderRow';
 import { TableGroupHeader } from './table/TableGroupHeader';
 import { TableGroupRowList } from './table/TableGroupRowList';
@@ -60,7 +60,6 @@ export function TableView({
   isReadOnly = false,
   selectedIds: propSelectedIds,
   onToggleSelect: rawOnToggleSelect,
-  onSelectAll: rawOnSelectAll,
   onToggleDisplayProperty,
 }: TableViewProps) {
   // ── A. Column Visibility (Synchronized with displayOptions.properties) ─────
@@ -131,10 +130,6 @@ export function TableView({
     [visibleProperties, onToggleDisplayProperty]
   );
 
-  const handleResetProperties = useCallback(() => {
-    // Reset properties to default
-  }, []);
-
   // ── B. Multi-Select Handling ───────────────────────────────────────────────
   const [localSelectedIds, setLocalSelectedIds] = useState<string[]>([]);
   const selectedIds = propSelectedIds ?? localSelectedIds;
@@ -151,17 +146,6 @@ export function TableView({
     },
     [rawOnToggleSelect]
   );
-
-  const handleSelectAll = useCallback(() => {
-    const allIds = items.map((i) => i.id);
-    const isAll = items.length > 0 && selectedIds.length === items.length;
-
-    if (rawOnSelectAll) {
-      rawOnSelectAll(isAll ? [] : allIds);
-    } else {
-      setLocalSelectedIds(isAll ? [] : allIds);
-    }
-  }, [items, selectedIds, rawOnSelectAll]);
 
   // ── D. Sorting ─────────────────────────────────────────────────────────────
   const [sortField, setSortField] = useState<TableSortField>('identifier');
@@ -438,72 +422,8 @@ export function TableView({
   const showChildWorkItems = displayOptions?.showChildWorkItems ?? true;
 
   const buildTreeRows = useCallback(
-    (sortedList: Item[]): Array<{
-      item: Item;
-      isSubItem: boolean;
-      hasChildren: boolean;
-      isChildrenExpanded: boolean;
-    }> => {
-      if (!showChildWorkItems) {
-        return sortedList
-          .filter((item) => !item.parentId && !item.parentItemId && !item.parentWorkItemId)
-          .map((item) => ({
-            item,
-            isSubItem: false,
-            hasChildren: false,
-            isChildrenExpanded: true,
-          }));
-      }
-
-      const itemMap = new Map<string, Item>();
-      sortedList.forEach((it) => itemMap.set(it.id, it));
-
-      const childrenByParentId = new Map<string, Item[]>();
-      const rootItems: Item[] = [];
-
-      sortedList.forEach((it) => {
-        const pId = it.parentId || it.parentItemId || it.parentWorkItemId;
-        if (pId && itemMap.has(pId)) {
-          const arr = childrenByParentId.get(pId) || [];
-          arr.push(it);
-          childrenByParentId.set(pId, arr);
-        } else {
-          rootItems.push(it);
-        }
-      });
-
-      const result: Array<{
-        item: Item;
-        isSubItem: boolean;
-        hasChildren: boolean;
-        isChildrenExpanded: boolean;
-      }> = [];
-      const visited = new Set<string>();
-
-      const appendItemAndChildren = (it: Item, depth: number) => {
-        if (visited.has(it.id)) return;
-        visited.add(it.id);
-
-        const children = childrenByParentId.get(it.id) || [];
-        const hasChildren = children.length > 0;
-        const isChildrenExpanded = !collapsedParentIds.has(it.id);
-
-        result.push({
-          item: it,
-          isSubItem: depth > 0,
-          hasChildren,
-          isChildrenExpanded,
-        });
-
-        if (hasChildren && isChildrenExpanded) {
-          children.forEach((child) => appendItemAndChildren(child, depth + 1));
-        }
-      };
-
-      rootItems.forEach((root) => appendItemAndChildren(root, 0));
-
-      return result;
-    },
+    (sortedList: Item[]) =>
+      buildWorkItemTree(sortedList, { showChildWorkItems, collapsedParentIds }),
     [showChildWorkItems, collapsedParentIds]
   );
 
@@ -511,9 +431,6 @@ export function TableView({
     () => buildTreeRows(flatSortedItems),
     [buildTreeRows, flatSortedItems]
   );
-
-  const isAllSelected = items.length > 0 && selectedIds.length === items.length;
-  const isSomeSelected = selectedIds.length > 0 && selectedIds.length < items.length;
 
   const defaultColId = useMemo(() => {
     const defaultCol = columns.find((c) => c.isDefault) || columns[0];
@@ -534,10 +451,6 @@ export function TableView({
             <TableHeaderRow
               visibleProperties={visibleProperties}
               onToggleProperty={handleToggleProperty}
-              onResetProperties={handleResetProperties}
-              isAllSelected={isAllSelected}
-              isSomeSelected={isSomeSelected}
-              onToggleSelectAll={handleSelectAll}
               sortField={sortField}
               sortOrder={sortOrder}
               onSort={handleSort}

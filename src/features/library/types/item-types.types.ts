@@ -227,9 +227,9 @@ export const ITEM_TYPE_CATEGORIES = ITEM_TYPE_GROUPS;
  */
 export const BASE_FIELD_MAPPINGS: Record<string, Record<string, string>> = {
   // academic
-  journalArticle: { publicationTitle: 'publicationTitle' },
+  journalArticle: {},
   conferencePaper: { publicationTitle: 'proceedingsTitle' },
-  preprint: { publicationTitle: 'repository', number: 'archiveID', type: 'genre' },
+  preprint: { type: 'genre', publisher: 'repository', number: 'archiveID' },
   thesis: { type: 'thesisType', publisher: 'university' },
   report: { number: 'reportNumber', type: 'reportType', publisher: 'institution' },
   dataset: {
@@ -304,58 +304,26 @@ export const BASE_FIELD_MAPPINGS: Record<string, Record<string, string>> = {
   interview: { medium: 'interviewMedium' },
 };
 
-export const REVERSE_BASE_FIELD_MAPPINGS: Record<string, Record<string, string>> = {
-  journalArticle: { publicationTitle: 'publicationTitle' },
-  conferencePaper: { proceedingsTitle: 'publicationTitle' },
-  bookSection: { bookTitle: 'publicationTitle' },
-  preprint: { repository: 'publicationTitle', archiveID: 'number', genre: 'type' },
-  dataset: {
-    repository: 'publisher',
-    identifier: 'number',
-    repositoryLocation: 'place',
-    format: 'medium',
-  },
-  dictionaryEntry: { dictionaryTitle: 'publicationTitle' },
-  encyclopediaArticle: { encyclopediaTitle: 'publicationTitle' },
-  thesis: { thesisType: 'type', university: 'publisher' },
-  report: { reportNumber: 'number', reportType: 'type', institution: 'publisher' },
-  manuscript: { manuscriptType: 'type', institution: 'publisher' },
-  webpage: { websiteTitle: 'publicationTitle', websiteType: 'type' },
-  blogPost: { blogTitle: 'publicationTitle' },
-  forumPost: { forumTitle: 'publicationTitle', postType: 'type' },
-  computerProgram: { company: 'publisher' },
-  patent: {
-    issuingAuthority: 'authority',
-    patentNumber: 'number',
-    issueDate: 'date',
-    priorityDate: 'originalDate',
-    legalStatus: 'status',
-  },
-  statute: { nameOfAct: 'title', publicLawNumber: 'number', dateEnacted: 'date' },
-  bill: { billNumber: 'number', codeVolume: 'volume', legislativeBody: 'authority' },
-  case: {
-    caseName: 'title',
-    court: 'authority',
-    dateDecided: 'date',
-    docketNumber: 'number',
-    reporterVolume: 'volume',
-    firstPage: 'pages',
-  },
-  hearing: { documentNumber: 'number', legislativeBody: 'authority' },
-  artwork: { artworkMedium: 'medium' },
-  audioRecording: { audioRecordingFormat: 'medium', label: 'publisher' },
-  videoRecording: { videoRecordingFormat: 'medium', studio: 'publisher' },
-  film: { distributor: 'publisher', genre: 'type', videoRecordingFormat: 'medium' },
-  radioBroadcast: { programTitle: 'publicationTitle', episodeNumber: 'number', network: 'publisher' },
-  tvBroadcast: { programTitle: 'publicationTitle', episodeNumber: 'number', network: 'publisher' },
-  podcast: { episodeNumber: 'number', audioFileType: 'medium' },
-  presentation: { presentationType: 'type', sessionTitle: 'publicationTitle' },
-  standard: { organization: 'authority' },
-  map: { mapType: 'type' },
-  interview: { interviewMedium: 'medium' },
-  letter: { letterType: 'type' },
-  email: { subject: 'title' },
-};
+export function deriveReverseBaseFieldMappings(
+  baseMappings: Record<string, Record<string, string>>,
+): Record<string, Record<string, string>> {
+  const reverse: Record<string, Record<string, string>> = {};
+  for (const [itemType, mapping] of Object.entries(baseMappings)) {
+    const inverted: Record<string, string> = {};
+    for (const [baseField, concreteField] of Object.entries(mapping)) {
+      if (concreteField) {
+        inverted[concreteField] = baseField;
+      }
+    }
+    if (Object.keys(inverted).length > 0) {
+      reverse[itemType] = inverted;
+    }
+  }
+  return reverse;
+}
+
+export const REVERSE_BASE_FIELD_MAPPINGS: Record<string, Record<string, string>> =
+  deriveReverseBaseFieldMappings(BASE_FIELD_MAPPINGS);
 
 /**
  * All 37 Zotero creator roles (en-US, schema v42).
@@ -468,23 +436,59 @@ export const DEFAULT_BIBLIOGRAPHIC_FIELDS: SchemaFieldDefinition[] = [
 ];
 
 /**
+ * Exact creator role lists for all 37 Zotero Schema v42 bibliographic item types,
+ * in canonical Zotero schema order (index 0 is always the primary creator role).
+ */
+export const ITEM_TYPE_CREATOR_ROLES_MAP: Record<string, readonly string[]> = {
+  artwork: ['artist', 'contributor'],
+  audioRecording: ['performer', 'originalCreator', 'composer', 'wordsBy', 'translator', 'contributor'],
+  bill: ['sponsor', 'cosponsor', 'contributor'],
+  blogPost: ['author', 'translator', 'commenter', 'contributor'],
+  book: ['author', 'contributor', 'editor', 'translator', 'seriesEditor'],
+  bookSection: ['author', 'contributor', 'editor', 'bookAuthor', 'translator', 'seriesEditor'],
+  case: ['author', 'counsel', 'contributor'],
+  computerProgram: ['programmer', 'contributor'],
+  conferencePaper: ['author', 'contributor', 'editor', 'translator', 'seriesEditor'],
+  dataset: ['author', 'contributor'],
+  dictionaryEntry: ['author', 'contributor', 'editor', 'translator', 'seriesEditor'],
+  document: ['author', 'contributor', 'editor', 'translator', 'reviewedAuthor'],
+  email: ['author', 'translator', 'contributor', 'recipient'],
+  encyclopediaArticle: ['author', 'contributor', 'editor', 'translator', 'seriesEditor'],
+  film: ['director', 'producer', 'scriptwriter', 'castMember', 'host', 'guest', 'narrator', 'translator', 'contributor'],
+  forumPost: ['author', 'contributor'],
+  hearing: ['contributor'],
+  instantMessage: ['author', 'contributor', 'recipient'],
+  interview: ['interviewee', 'contributor', 'interviewer', 'translator'],
+  journalArticle: ['author', 'contributor', 'editor', 'translator', 'reviewedAuthor'],
+  letter: ['author', 'recipient', 'contributor', 'translator'],
+  magazineArticle: ['author', 'contributor', 'translator', 'reviewedAuthor'],
+  manuscript: ['author', 'contributor', 'translator'],
+  map: ['cartographer', 'contributor', 'seriesEditor'],
+  newspaperArticle: ['author', 'contributor', 'translator', 'reviewedAuthor'],
+  patent: ['inventor', 'attorneyAgent', 'contributor'],
+  podcast: ['podcaster', 'guest', 'producer', 'executiveProducer', 'seriesCreator', 'director', 'scriptwriter', 'castMember', 'translator', 'contributor'],
+  preprint: ['author', 'contributor', 'editor', 'translator', 'reviewedAuthor'],
+  presentation: ['presenter', 'chair', 'organizer', 'contributor', 'translator'],
+  radioBroadcast: ['creator', 'host', 'guest', 'producer', 'executiveProducer', 'seriesCreator', 'director', 'scriptwriter', 'castMember', 'translator', 'contributor'],
+  report: ['author', 'editor', 'contributor', 'translator', 'seriesEditor'],
+  standard: ['author', 'editor', 'contributor'],
+  statute: ['author', 'contributor'],
+  thesis: ['author', 'contributor'],
+  tvBroadcast: ['director', 'producer', 'executiveProducer', 'seriesCreator', 'scriptwriter', 'castMember', 'host', 'guest', 'narrator', 'translator', 'contributor'],
+  videoRecording: ['creator', 'director', 'producer', 'scriptwriter', 'executiveProducer', 'castMember', 'host', 'guest', 'narrator', 'translator', 'contributor'],
+  webpage: ['author', 'contributor', 'translator'],
+};
+
+/**
  * Returns the primary creator role for an item type per Zotero Schema v42.
  */
 export function getPrimaryCreatorType(itemType?: string | null): string {
   if (!itemType) return 'author';
-  if (LIBRARY_ITEM_TYPES?.[itemType]?.primaryCreatorType) {
-    return LIBRARY_ITEM_TYPES[itemType].primaryCreatorType;
+  const canonical = normalizeCanonicalItemType(itemType);
+  if (LIBRARY_ITEM_TYPES?.[canonical]?.primaryCreatorType) {
+    return LIBRARY_ITEM_TYPES[canonical].primaryCreatorType;
   }
-  if (itemType === 'interview') return 'interviewee';
-  if (itemType === 'letter' || itemType === 'email') return 'recipient';
-  if (itemType === 'podcast') return 'podcaster';
-  if (itemType === 'film' || itemType === 'videoRecording') return 'director';
-  if (itemType === 'computerProgram') return 'programmer';
-  if (itemType === 'patent') return 'inventor';
-  if (itemType === 'presentation') return 'presenter';
-  if (itemType === 'map') return 'cartographer';
-  if (itemType === 'artwork') return 'artist';
-  return 'author';
+  return ITEM_TYPE_CREATOR_ROLES_MAP[canonical]?.[0] || ITEM_TYPE_CREATOR_ROLES_MAP[itemType]?.[0] || 'author';
 }
 
 const MONO_FIELD_KEYS = new Set([
@@ -509,14 +513,68 @@ const MONO_FIELD_KEYS = new Set([
   'numPages',
 ]);
 
+const FIELD_CATEGORY_BY_LOWER_KEY: Record<string, NonNullable<SchemaFieldDefinition['category']>> = {
+  title: 'core',
+  casename: 'core',
+  nameofact: 'core',
+  subject: 'core',
+  abstractnote: 'core',
+  shorttitle: 'core',
+  publicationtitle: 'venue',
+  publisher: 'venue',
+  place: 'venue',
+  university: 'venue',
+  institution: 'venue',
+  conferencename: 'venue',
+  meetingname: 'venue',
+  booktitle: 'venue',
+  proceedingstitle: 'venue',
+  websitetitle: 'venue',
+  blogtitle: 'venue',
+  forumtitle: 'venue',
+  dictionarytitle: 'venue',
+  encyclopediatitle: 'venue',
+  programtitle: 'venue',
+  sessiontitle: 'venue',
+  court: 'venue',
+  issuingauthority: 'venue',
+  organization: 'venue',
+  company: 'venue',
+  repository: 'venue',
+  distributor: 'venue',
+  studio: 'venue',
+  network: 'venue',
+  label: 'venue',
+  doi: 'identifiers',
+  isbn: 'identifiers',
+  issn: 'identifiers',
+  pmid: 'identifiers',
+  pmcid: 'identifiers',
+  archiveid: 'identifiers',
+  patentnumber: 'identifiers',
+  docketnumber: 'identifiers',
+  publiclawnumber: 'identifiers',
+  billnumber: 'identifiers',
+  documentnumber: 'identifiers',
+  citationkey: 'identifiers',
+  url: 'identifiers',
+  archive: 'archive',
+  archivelocation: 'archive',
+  librarycatalog: 'archive',
+  callnumber: 'archive',
+  extra: 'extra',
+  rights: 'extra',
+};
+
 export function buildStaticFieldsForType(itemType: string): SchemaFieldDefinition[] {
   const keys = ITEM_TYPE_FIELDS_MAP[itemType] || [];
+  const reverseMap = REVERSE_BASE_FIELD_MAPPINGS[itemType] || {};
   return keys.map((field, idx) => {
     const fieldName = String(field);
     const fieldLower = fieldName.toLowerCase();
     return {
       field: fieldName,
-      label: FIELD_LABELS[fieldName] || fieldName.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()),
+      label: FIELD_LABELS[fieldName] || humanizeFieldName(fieldName),
       type: fieldLower.includes('date')
         ? 'date'
         : fieldName === 'url'
@@ -524,20 +582,9 @@ export function buildStaticFieldsForType(itemType: string): SchemaFieldDefinitio
           : fieldName === 'abstractNote' || fieldName === 'extra'
             ? 'textarea'
             : 'text',
-      category:
-        ['title', 'abstractnote', 'shorttitle'].includes(fieldLower)
-          ? 'core'
-          : ['publicationtitle', 'publisher', 'place', 'university', 'institution', 'conferencename', 'booktitle', 'proceedingstitle', 'websitetitle', 'repository'].includes(fieldLower)
-            ? 'venue'
-            : ['doi', 'isbn', 'issn', 'pmid', 'pmcid', 'archiveid', 'patentnumber', 'citationkey', 'url'].includes(fieldLower)
-              ? 'identifiers'
-              : ['archive', 'archivelocation', 'librarycatalog', 'callnumber'].includes(fieldLower)
-                ? 'archive'
-                : fieldName === 'extra' || fieldName === 'rights'
-                  ? 'extra'
-                  : 'publication',
+      category: FIELD_CATEGORY_BY_LOWER_KEY[fieldLower] || 'publication',
       mono: MONO_FIELD_KEYS.has(fieldName),
-      baseField: BASE_FIELD_MAPPINGS[itemType]?.[fieldName],
+      baseField: reverseMap[fieldName] || BASE_FIELD_MAPPINGS[itemType]?.[fieldName],
       order: idx + 1,
     };
   });
@@ -546,9 +593,10 @@ export function buildStaticFieldsForType(itemType: string): SchemaFieldDefinitio
 export const LIBRARY_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> = {};
 export const FIELD_DEFINITIONS: Record<string, SchemaFieldDefinition> = {};
 
-// Pre-populate statically with all official Zotero Schema v42 fields
+// Pre-populate statically with all official Zotero Schema v42 fields & creator roles
 for (const t of ALL_ITEM_TYPES_FLAT) {
-  const primaryRole = getPrimaryCreatorType(t.value);
+  const roleKeys = ITEM_TYPE_CREATOR_ROLES_MAP[t.value] || ['author', 'contributor', 'editor', 'translator'];
+  const primaryRole = roleKeys[0] || 'author';
   const group = ITEM_TYPE_GROUPS.find((g) => g.types.some((ty) => ty.value === t.value));
   const category = (group?.id ?? 'documents') as SchemaItemTypeDefinition['category'];
   const typeFields = buildStaticFieldsForType(t.value);
@@ -558,12 +606,11 @@ for (const t of ALL_ITEM_TYPES_FLAT) {
     label: t.label,
     category,
     primaryCreatorType: primaryRole,
-    creatorTypes: [
-      { creatorType: primaryRole, label: ALL_CREATOR_TYPES[primaryRole] || 'Author', primary: true },
-      { creatorType: 'contributor', label: 'Contributor' },
-      { creatorType: 'editor', label: 'Editor' },
-      { creatorType: 'translator', label: 'Translator' },
-    ],
+    creatorTypes: roleKeys.map((roleKey, idx) => ({
+      creatorType: roleKey,
+      label: ALL_CREATOR_TYPES[roleKey] || humanizeFieldName(roleKey),
+      ...(idx === 0 ? { primary: true } : {}),
+    })),
     fields: typeFields.length > 0 ? typeFields : DEFAULT_BIBLIOGRAPHIC_FIELDS,
     isBibliographic: true,
     isSpecial: false,
@@ -588,14 +635,29 @@ for (const f of DEFAULT_BIBLIOGRAPHIC_FIELDS) {
  * Dynamically updates the in-memory schema registry with live data received
  * from backend GET /api/v1/library/item-types.
  */
-export function updateLibrarySchemaRegistry(data: unknown): void {
+interface SchemaRegistryPayload {
+  baseFieldMappings?: Record<string, Record<string, string>>;
+  reverseBaseFieldMappings?: Record<string, Record<string, string>>;
+  creatorRoles?: Record<string, string>;
+  cslTypeMap?: Record<string, string>;
+  itemTypes?: unknown;
+  data?: unknown;
+}
+
+export function updateLibrarySchemaRegistry(
+  data: unknown,
+  options?: { persist?: boolean },
+): void {
   if (!data) return;
+  const shouldPersist = options?.persist ?? true;
 
   // Handle case where data is directly an array of item types
   if (Array.isArray(data)) {
     const mapped = mapRegistryItemTypes(data);
     updateCachedFields(mapped);
-    saveSchemaCache(data);
+    if (shouldPersist) {
+      saveSchemaCache(data);
+    }
     for (const def of mapped) {
       LIBRARY_ITEM_TYPES[def.itemType] = def;
       ITEM_TYPE_LABELS[def.itemType] = def.label;
@@ -609,10 +671,14 @@ export function updateLibrarySchemaRegistry(data: unknown): void {
   }
 
   if (typeof data !== 'object') return;
-  const payload = data as Record<string, any>;
+  const payload = data as SchemaRegistryPayload;
 
   if (payload.baseFieldMappings) {
     Object.assign(BASE_FIELD_MAPPINGS, payload.baseFieldMappings);
+    Object.assign(
+      REVERSE_BASE_FIELD_MAPPINGS,
+      deriveReverseBaseFieldMappings(BASE_FIELD_MAPPINGS),
+    );
   }
   if (payload.reverseBaseFieldMappings) {
     Object.assign(REVERSE_BASE_FIELD_MAPPINGS, payload.reverseBaseFieldMappings);
@@ -628,7 +694,9 @@ export function updateLibrarySchemaRegistry(data: unknown): void {
   if (Array.isArray(rawTypes)) {
     const mapped = mapRegistryItemTypes(rawTypes);
     updateCachedFields(mapped);
-    saveSchemaCache(payload);
+    if (shouldPersist) {
+      saveSchemaCache(payload);
+    }
     for (const def of mapped) {
       LIBRARY_ITEM_TYPES[def.itemType] = def;
       ITEM_TYPE_LABELS[def.itemType] = def.label;
@@ -641,12 +709,38 @@ export function updateLibrarySchemaRegistry(data: unknown): void {
   }
 }
 
-// Synchronously hydrate from client cache if present
+// Synchronously hydrate from client cache if present (without re-writing localStorage)
 if (typeof window !== 'undefined') {
   const cached = loadSchemaCache();
   if (cached) {
-    updateLibrarySchemaRegistry(cached);
+    updateLibrarySchemaRegistry(cached, { persist: false });
   }
+}
+
+const CSL_TO_ZOTERO_TYPE_ALIASES: Record<string, string> = {
+  'article-journal': 'journalArticle',
+  'paper-conference': 'conferencePaper',
+  'chapter': 'bookSection',
+  'post-weblog': 'blogPost',
+  'entry-dictionary': 'dictionaryEntry',
+  'entry-encyclopedia': 'encyclopediaArticle',
+  'article-magazine': 'magazineArticle',
+  'article-newspaper': 'newspaperArticle',
+  'motion_picture': 'film',
+  'legal_case': 'case',
+  'software': 'computerProgram',
+  'speech': 'presentation',
+  'legislation': 'statute',
+};
+
+export function normalizeCanonicalItemType(itemType?: string | null): string {
+  if (!itemType) return 'journalArticle';
+  const trimmed = itemType.trim();
+  if (LIBRARY_ITEM_TYPES[trimmed]) return trimmed;
+  if (CSL_TO_ZOTERO_TYPE_ALIASES[trimmed]) return CSL_TO_ZOTERO_TYPE_ALIASES[trimmed];
+  const lower = trimmed.toLowerCase();
+  if (CSL_TO_ZOTERO_TYPE_ALIASES[lower]) return CSL_TO_ZOTERO_TYPE_ALIASES[lower];
+  return trimmed;
 }
 
 /**
@@ -655,15 +749,16 @@ if (typeof window !== 'undefined') {
  */
 export function getItemTypeDefinition(itemType?: string | null): SchemaItemTypeDefinition | null {
   if (!itemType) return null;
-  if (LIBRARY_ITEM_TYPES[itemType]) {
-    return LIBRARY_ITEM_TYPES[itemType];
+  const canonical = normalizeCanonicalItemType(itemType);
+  if (LIBRARY_ITEM_TYPES[canonical]) {
+    return LIBRARY_ITEM_TYPES[canonical];
   }
 
-  const label = ITEM_TYPE_LABELS[itemType] || itemType.replace(/([A-Z])/g, ' $1').trim();
-  const primaryCreatorType = getPrimaryCreatorType(itemType);
+  const label = ITEM_TYPE_LABELS[canonical] || canonical.replace(/([A-Z])/g, ' $1').trim();
+  const primaryCreatorType = getPrimaryCreatorType(canonical);
 
   const fallbackDef: SchemaItemTypeDefinition = {
-    itemType,
+    itemType: canonical,
     label,
     category: 'academic',
     primaryCreatorType,
@@ -674,8 +769,8 @@ export function getItemTypeDefinition(itemType?: string | null): SchemaItemTypeD
       { creatorType: 'translator', label: 'Translator' },
     ],
     fields:
-      buildStaticFieldsForType(itemType).length > 0
-        ? buildStaticFieldsForType(itemType)
+      buildStaticFieldsForType(canonical).length > 0
+        ? buildStaticFieldsForType(canonical)
         : DEFAULT_BIBLIOGRAPHIC_FIELDS,
     isBibliographic: true,
     isSpecial: false,
@@ -688,9 +783,30 @@ export function getItemTypeDefinition(itemType?: string | null): SchemaItemTypeD
  * Checks whether a creator role is valid for a given item type per Zotero Schema v42.
  */
 export function isValidCreatorType(itemType: string, creatorType: string): boolean {
-  const def = LIBRARY_ITEM_TYPES[itemType];
+  const canonical = normalizeCanonicalItemType(itemType);
+  const def = LIBRARY_ITEM_TYPES[canonical];
   if (!def) return creatorType === 'author' || creatorType === 'contributor' || creatorType === 'editor';
   return def.creatorTypes.some((c) => c.creatorType === creatorType);
+}
+
+/**
+ * Determines the type-specific title field for an item type based on Schema v42 baseFieldMappings
+ * (e.g., `case` -> `caseName`, `statute` -> `nameOfAct`, `email` -> `subject`).
+ */
+export function getTitleFieldForType(itemType?: string | null): string {
+  if (!itemType) return 'title';
+  const canonical = normalizeCanonicalItemType(itemType);
+  return BASE_FIELD_MAPPINGS[canonical]?.title || 'title';
+}
+
+/**
+ * Determines the type-specific date field for an item type based on Schema v42 baseFieldMappings
+ * (e.g., `case` -> `dateDecided`, `statute` -> `dateEnacted`, `patent` -> `issueDate`).
+ */
+export function getDateFieldForType(itemType?: string | null): string {
+  if (!itemType) return 'date';
+  const canonical = normalizeCanonicalItemType(itemType);
+  return BASE_FIELD_MAPPINGS[canonical]?.date || 'date';
 }
 
 /**
@@ -698,34 +814,26 @@ export function isValidCreatorType(itemType: string, creatorType: string): boole
  */
 export function getVenueFieldForType(itemType?: string | null): string {
   if (!itemType) return 'publicationTitle';
-  const mapping = BASE_FIELD_MAPPINGS[itemType];
+  const canonical = normalizeCanonicalItemType(itemType);
+  const mapping = BASE_FIELD_MAPPINGS[canonical];
+  if (canonical === 'presentation') return 'meetingName';
   if (mapping?.publicationTitle) {
     return mapping.publicationTitle;
   }
-  const def = LIBRARY_ITEM_TYPES[itemType];
-  if (def?.fields.some((f) => f.field === 'publicationTitle')) {
-    return 'publicationTitle';
-  }
-  if (itemType === 'conferencePaper') return 'proceedingsTitle';
-  if (itemType === 'bookSection') return 'bookTitle';
-  if (itemType === 'preprint' || itemType === 'dataset') return 'repository';
-  if (itemType === 'dictionaryEntry') return 'dictionaryTitle';
-  if (itemType === 'encyclopediaArticle') return 'encyclopediaTitle';
-  return 'publicationTitle';
-}
-
-/**
- * Determines the type-specific publisher/institution field for an item type.
- */
-export function getPublisherFieldForType(itemType?: string | null): string {
-  if (!itemType) return 'publisher';
-  const mapping = BASE_FIELD_MAPPINGS[itemType];
   if (mapping?.publisher) {
     return mapping.publisher;
   }
-  if (itemType === 'thesis') return 'university';
-  if (itemType === 'report') return 'institution';
-  return 'publisher';
+  if (mapping?.authority) {
+    return mapping.authority;
+  }
+  return 'publicationTitle';
+}
+
+export function getPublisherFieldForType(itemType?: string | null): string {
+  if (!itemType) return 'publisher';
+  const canonical = normalizeCanonicalItemType(itemType);
+  const mapping = BASE_FIELD_MAPPINGS[canonical];
+  return mapping?.publisher || mapping?.authority || 'publisher';
 }
 
 /**

@@ -36,10 +36,10 @@ export function isTokenValid(token: string | null | undefined): boolean {
 
     if (!decodedStr) return false;
 
-    const payload = JSON.parse(decodedStr) as Record<string, any> | null;
+    const payload = JSON.parse(decodedStr) as { exp?: unknown } | null;
     if (!payload || typeof payload !== 'object') return false;
 
-    const exp = (payload as Record<string, any>).exp;
+    const exp = payload.exp;
     if (typeof exp === 'number') {
       const nowSeconds = Math.floor(Date.now() / 1000);
       // Give a 10-second grace window for minor clock skew

@@ -132,8 +132,8 @@ export function DocumentLibraryModal({
     try {
       const docs = await fetchDocuments(projectId);
       setDocuments(docs);
-    } catch (err: any) {
-      toast.error('Failed to load documents: ' + (err?.message || 'Network error'));
+    } catch (err: unknown) {
+      toast.error('Failed to load documents: ' + (err instanceof Error ? err.message : 'Network error'));
     } finally {
       setIsLoading(false);
     }
@@ -182,8 +182,8 @@ export function DocumentLibraryModal({
       setDocuments((prev) => prev.filter((d) => d.id !== docId));
       removeSource(docId);
       toast.success(`Đã xóa tài liệu "${title}" thành công`);
-    } catch (err: any) {
-      toast.error('Lỗi khi xóa tài liệu: ' + (err?.message || 'Unknown error'));
+    } catch (err: unknown) {
+      toast.error('Lỗi khi xóa tài liệu: ' + (err instanceof Error ? err.message : 'Unknown error'));
     } finally {
       setIsDeletingId(null);
     }
@@ -226,8 +226,8 @@ export function DocumentLibraryModal({
           size: res.size || file.size,
           sourceType: 'upload',
         });
-      } catch (err: any) {
-        toast.error(`Lỗi khi tải ${file.name}: ${err?.message || 'Upload error'}`);
+      } catch (err: unknown) {
+        toast.error(`Lỗi khi tải ${file.name}: ${err instanceof Error ? err.message : 'Upload error'}`);
       }
     }
 

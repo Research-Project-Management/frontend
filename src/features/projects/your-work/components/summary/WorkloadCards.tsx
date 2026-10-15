@@ -1,21 +1,14 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { cn } from "@/shared/lib/utils";
 import { getWorkloadStates, type WorkloadStateItem } from '../../utils/workload.util';
 
 export interface WorkloadCardsProps {
   statusBreakdown?: Record<string, number>;
-  assignedWorkItems?: any[];
-  onWorkItemClick?: (workItemId: string) => void;
-  workItemProjectMap?: Record<string, { id: string; name: string }>;
 }
 
 export const WorkloadCards = React.memo<WorkloadCardsProps>(function WorkloadCards({
   statusBreakdown = {},
-  assignedWorkItems,
-  onWorkItemClick,
-  workItemProjectMap,
 }: WorkloadCardsProps) {
   const workloadStates = useMemo(() => getWorkloadStates(statusBreakdown), [statusBreakdown]);
 
@@ -50,3 +43,4 @@ export const WorkloadCards = React.memo<WorkloadCardsProps>(function WorkloadCar
 });
 
 export default WorkloadCards;
+

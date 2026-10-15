@@ -68,6 +68,7 @@ Let $|\\psi\\rangle$ be a pure state in Hilbert space $\\mathcal{H}$.
 export const MOCK_PAGE = {
   id: 'page-paper-001',
   title: 'main.tex',
+  content: INITIAL_LATEX_CONTENT,
   docContent: INITIAL_LATEX_CONTENT,
   projectId: 'proj-academic-001',
   isMain: true,
@@ -103,20 +104,57 @@ export const MOCK_WORD_COUNT = {
   },
 };
 
+export function buildMockValidPdfBase64(lines: string[] = ['Quantum Foundations Manuscript']): string {
+  const escapedLines = lines.map((l) => l.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)'));
+  const textOps = escapedLines
+    .map((txt, idx) => `BT /F1 12 Tf 72 ${740 - idx * 24} Td (${txt}) Tj ET`)
+    .join('\n');
+  const stream = `${textOps}\n`;
+  const objs = [
+    `1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n`,
+    `2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n`,
+    `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n`,
+    `4 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}endstream\nendobj\n`,
+    `5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n`,
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets: number[] = [0];
+  for (const obj of objs) {
+    offsets.push(pdf.length);
+    pdf += obj;
+  }
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n`;
+  for (let i = 1; i <= objs.length; i++) {
+    pdf += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return Buffer.from(pdf, 'utf-8').toString('base64');
+}
+
+export const MOCK_VALID_PDF_BASE64 = buildMockValidPdfBase64([
+  'Quantum State Estimation',
+  'Dr. Alan Turing',
+  '1 Introduction',
+  'Recent developments in quantum information demonstrate notable advantages.',
+]);
+
 export const MOCK_COMPILE_SUCCESS = {
   success: true,
+  pdf: MOCK_VALID_PDF_BASE64,
   pdfUrl: '/mock-assets/paper-preview.pdf',
   synctexUrl: '/mock-assets/paper.synctex.gz',
   issues: [],
   logs: [
     'This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024)',
     'Output written on main.pdf (1 page, 32150 bytes).',
-  ],
+  ].join('\n'),
   durationMs: 980,
 };
 
 export const MOCK_COMPILE_WITH_WARNING = {
   success: true,
+  pdf: MOCK_VALID_PDF_BASE64,
   pdfUrl: '/mock-assets/paper-preview.pdf',
   issues: [
     {
@@ -129,7 +167,7 @@ export const MOCK_COMPILE_WITH_WARNING = {
   logs: [
     'Underfull \\hbox (badness 10000) in paragraph at lines 12--14',
     'Output written on main.pdf (1 page, 32150 bytes).',
-  ],
+  ].join('\n'),
 };
 
 export const MOCK_SUGGESTIONS = [

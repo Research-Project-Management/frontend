@@ -3,6 +3,11 @@
 import React from 'react';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import { Checkbox } from '@/shared/components/ui/checkbox';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
 
 export interface ItemTableHeaderProps {
   columns: Record<string, boolean>;
@@ -46,31 +51,37 @@ export function ItemTableHeader({
           className="px-3 h-8 py-0 align-middle font-medium select-none text-left bg-background border-b border-border"
         >
           <div className="flex items-center gap-2 w-full">
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelectAll();
-              }}
-              onKeyDown={(e) => {
-                if (e.key === ' ' || e.key === 'Enter') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onSelectAll();
-                }
-              }}
-              title={isAllSelected ? 'Deselect all' : 'Select all'}
-              aria-label={isAllSelected ? 'Deselect all' : 'Select all'}
-              className="flex items-center justify-center shrink-0 cursor-pointer rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-            >
-              <Checkbox
-                checked={isAllSelected}
-                tabIndex={-1}
-                aria-hidden="true"
-                className="size-3.5 border-border data-[state=checked]:border-primary pointer-events-none"
-              />
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectAll();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === ' ' || e.key === 'Enter') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onSelectAll();
+                    }
+                  }}
+                  aria-label={isAllSelected ? 'Deselect all' : 'Select all'}
+                  className="flex items-center justify-center shrink-0 cursor-pointer rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                >
+                  <Checkbox
+                    checked={isAllSelected}
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    className="size-3.5 border-border data-[state=checked]:border-primary pointer-events-none"
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isAllSelected ? 'Deselect all' : 'Select all'}
+              </TooltipContent>
+            </Tooltip>
             <button
               type="button"
               onClick={() => onSort('title')}

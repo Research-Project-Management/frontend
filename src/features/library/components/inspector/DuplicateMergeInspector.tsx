@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   GitMerge,
   Check,
@@ -20,17 +20,17 @@ import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { Switch } from '@/shared/components/ui/switch';
 import { Label } from '@/shared/components/ui/label';
-import {
-  inspectItemDifferences,
-  aggregateItemAssets,
-  type ItemFieldDiff,
-  type FieldOptionValue,
-} from '../../domain/diff';
-import type { Item } from '../../types/library.types';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { type ItemFieldDiff } from '@/features/library/domain/diff';
+import { getItemDisplayTitle, getItemDisplayDate } from '@/features/library/domain/metadata';
+import { normalizeAuthors } from '@/features/library/domain/creators';
+import { useDuplicateMergeState } from '@/features/library/hooks/useDuplicateMergeState';
+import type { Item } from '@/features/library/types/library.types';
 import { cn } from '@/shared/lib/utils';
 
 export interface DuplicateMergeInspectorProps {
   items: Item[];
+  recommendedMasterId?: string;
   scopeId?: string;
   canEdit?: boolean;
   onClose?: () => void;
@@ -45,6 +45,7 @@ export interface DuplicateMergeInspectorProps {
 
 export function DuplicateMergeInspector({
   items = [],
+  recommendedMasterId,
   scopeId,
   canEdit = true,
   onClose,
@@ -52,80 +53,28 @@ export function DuplicateMergeInspector({
   onMerge,
   onDismiss,
 }: DuplicateMergeInspectorProps) {
-  // Master record ID
-  const [selectedMasterId, setSelectedMasterId] = useState<string>(items[0]?.id || '');
-  // Field override selections
-  const [fieldOverrides, setFieldOverrides] = useState<Record<string, unknown>>({});
-  // Conflict-only filter
-  const [showConflictsOnly, setShowConflictsOnly] = useState<boolean>(false);
+  const {
+    selectedMasterId,
+    fieldOverrides,
+    effectiveItemType,
+    getEffectiveMergeSelections,
+    showConflictsOnly,
+    setShowConflictsOnly,
+    masterPaper,
+    inspection,
+    assetsSummary,
+    itemTypes,
+    hasTypeMismatch,
+    visibleFields,
+    handleSelectMaster,
+    handleSelectFieldValue,
+    handleAutoRecommend,
+  } = useDuplicateMergeState(items, recommendedMasterId);
+
   // Loading states
   const [isMerging, setIsMerging] = useState<boolean>(false);
   const [isDismissing, setIsDismissing] = useState<boolean>(false);
 
-  // Sync master when items change
-  useEffect(() => {
-    if (items.length > 0) {
-      if (!items.some((i) => i.id === selectedMasterId)) {
-        setSelectedMasterId(items[0].id);
-        setFieldOverrides({});
-      }
-    }
-  }, [items, selectedMasterId]);
-
-  const masterPaper = useMemo(
-    () => items.find((p) => p.id === selectedMasterId) || items[0],
-    [items, selectedMasterId],
-  );
-
-  const inspection = useMemo(
-    () => inspectItemDifferences(items, selectedMasterId),
-    [items, selectedMasterId],
-  );
-
-  const assetsSummary = useMemo(() => aggregateItemAssets(items), [items]);
-
-  const itemTypes = useMemo(() => {
-    return Array.from(new Set(items.map((i) => i.itemType).filter(Boolean)));
-  }, [items]);
-  const hasTypeMismatch = itemTypes.length > 1;
-
-  const visibleFields = useMemo(() => {
-    if (!showConflictsOnly) return inspection.fields;
-    return inspection.fields.filter((f) => f.hasConflict);
-  }, [inspection.fields, showConflictsOnly]);
-
-  const handleSelectMaster = (newMasterId: string) => {
-    setSelectedMasterId(newMasterId);
-    setFieldOverrides({});
-  };
-
-  const handleSelectFieldValue = (fieldKey: string, option: FieldOptionValue) => {
-    setFieldOverrides((prev) => {
-      const masterVal = masterPaper ? (masterPaper as Record<string, unknown>)[fieldKey] : undefined;
-      if (option.rawValue === masterVal) {
-        const copy = { ...prev };
-        delete copy[fieldKey];
-        return copy;
-      }
-      return {
-        ...prev,
-        [fieldKey]: option.rawValue,
-      };
-    });
-  };
-
-  const handleAutoRecommend = () => {
-    const newOverrides: Record<string, unknown> = {};
-    for (const field of inspection.fields) {
-      if (field.hasConflict && field.recommendedItemId !== selectedMasterId) {
-        const bestOpt = field.options.find((o) => o.itemId === field.recommendedItemId);
-        if (bestOpt && !bestOpt.isEmpty) {
-          newOverrides[field.key] = bestOpt.rawValue;
-        }
-      }
-    }
-    setFieldOverrides(newOverrides);
-  };
 
   const handleConfirmMerge = async () => {
     if (!masterPaper || !canEdit) return;
@@ -135,7 +84,7 @@ export function DuplicateMergeInspector({
         .filter((p) => p.id !== masterPaper.id)
         .map((p) => p.id);
 
-      await onMerge(masterPaper, fieldOverrides, duplicateIdsToDelete);
+      await onMerge(masterPaper, getEffectiveMergeSelections(), duplicateIdsToDelete);
     } finally {
       setIsMerging(false);
     }
@@ -189,26 +138,34 @@ export function DuplicateMergeInspector({
 
         <div className="flex items-center gap-1 shrink-0">
           {onOpenModal && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onOpenModal}
-              className="size-7 text-foreground hover:bg-muted"
-              title="Open full-screen comparison workbench"
-            >
-              <Maximize2 className="size-3.5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onOpenModal}
+                  className="size-7 text-foreground hover:bg-muted"
+                >
+                  <Maximize2 className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Open full-screen comparison workbench</TooltipContent>
+            </Tooltip>
           )}
           {onClose && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="size-7 text-foreground hover:bg-muted"
-              title="Close duplicate inspector"
-            >
-              <X className="size-3.5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClose}
+                  className="size-7 text-foreground hover:bg-muted"
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Close duplicate inspector</TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -219,7 +176,7 @@ export function DuplicateMergeInspector({
           <Button
             size="sm"
             onClick={handleConfirmMerge}
-            disabled={isMerging || !masterPaper || hasTypeMismatch}
+            disabled={isMerging || !masterPaper}
             className="w-full h-8 text-12 font-medium gap-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             {isMerging ? (
@@ -237,9 +194,11 @@ export function DuplicateMergeInspector({
           <div className="flex items-start gap-2 p-2.5 rounded-md border border-warning/30 bg-warning/10 text-warning text-11">
             <AlertTriangle className="size-3.5 shrink-0 mt-0.5 text-warning" />
             <div className="space-y-0.5">
-              <p className="font-medium">Items of different types cannot be merged</p>
+              <p className="font-medium">
+                Cross-type duplicate detected ({itemTypes.join(' → ')})
+              </p>
               <p className="text-10 text-foreground leading-normal">
-                Selected items have different item types ({itemTypes.join(', ')}). In accordance with Zotero standards, change their item types to match before merging.
+                Merging will unify all records into the selected Item Type ({effectiveItemType}).
               </p>
             </div>
           </div>
@@ -247,17 +206,21 @@ export function DuplicateMergeInspector({
 
         <div className="flex items-center justify-between gap-2 pt-0.5">
           {inspection.conflictCount > 0 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleAutoRecommend}
-              className="h-6 px-1.5 text-11 text-primary hover:text-primary hover:bg-primary/10 gap-1 rounded-sm"
-              title="Auto-select most complete values"
-            >
-              <Check className="size-3" />
-              <span>Recommend Best</span>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleAutoRecommend}
+                  className="h-6 px-1.5 text-11 text-primary hover:text-primary hover:bg-primary/10 gap-1 rounded-sm"
+                >
+                  <Check className="size-3" />
+                  <span>Recommend Best</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Auto-select most complete values</TooltipContent>
+            </Tooltip>
           ) : (
             <span className="text-11 text-foreground flex items-center gap-1 font-mono">
               <Check className="size-3 text-success" />
@@ -283,7 +246,7 @@ export function DuplicateMergeInspector({
       </div>
 
       {/* ── 3. Scrollable Workbench ── */}
-      <div className="flex-1 overflow-y-auto min-h-0 divide-y divide-border">
+      <div className="flex-1 overflow-y-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden min-h-0 divide-y divide-border">
         {/* Step 1: Master Record Selector */}
         <div className="p-3 space-y-2">
           <div className="flex items-center justify-between text-11">
@@ -294,11 +257,15 @@ export function DuplicateMergeInspector({
           <div className="space-y-1.5">
             {items.map((item, idx) => {
               const isMaster = item.id === selectedMasterId;
-              const authorStr = Array.isArray(item.authors)
-                ? item.authors.join(', ')
-                : typeof item.authors === 'string'
-                  ? item.authors
-                  : 'Unknown Author';
+              const resolvedAuthors = normalizeAuthors(item.authors, item.creators);
+              const authorStr =
+                resolvedAuthors.length > 0
+                  ? resolvedAuthors.join(', ')
+                  : typeof item.authors === 'string' && item.authors
+                    ? item.authors
+                    : 'Unknown Author';
+              const displayTitle = getItemDisplayTitle(item) || item.title || 'Untitled Item';
+              const displayYear = item.year || getItemDisplayDate(item);
 
               return (
                 <div
@@ -327,12 +294,12 @@ export function DuplicateMergeInspector({
                   </div>
 
                   <p className="text-12 font-medium text-foreground line-clamp-1 leading-snug">
-                    {item.title || 'Untitled Item'}
+                    {displayTitle}
                   </p>
 
                   <div className="flex items-center gap-2 mt-1 text-10 text-foreground truncate">
                     <span className="truncate">{authorStr}</span>
-                    {item.year && <span>• {item.year}</span>}
+                    {displayYear && <span>• {displayYear}</span>}
                   </div>
                 </div>
               );
@@ -470,22 +437,26 @@ export function DuplicateMergeInspector({
       {/* ── 4. Footer ── */}
       {onDismiss && (
         <div className="p-3 border-t border-border bg-background shrink-0 flex items-center justify-between">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleDismiss}
-            disabled={isDismissing || isMerging}
-            className="h-7 px-2 text-11 font-medium text-foreground hover:bg-muted gap-1.5"
-            title="Mark as false positive duplicate"
-          >
-            {isDismissing ? (
-              <Loader2 className="size-3 animate-spin" />
-            ) : (
-              <Split className="size-3" />
-            )}
-            <span>Not Duplicates</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleDismiss}
+                disabled={isDismissing || isMerging}
+                className="h-7 px-2 text-11 font-medium text-foreground hover:bg-muted gap-1.5"
+              >
+                {isDismissing ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <Split className="size-3" />
+                )}
+                <span>Not Duplicates</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Mark as false positive duplicate</TooltipContent>
+          </Tooltip>
 
           <span className="text-10 text-foreground">
             {inspection.conflictCount} conflict(s)

@@ -1,4 +1,4 @@
-export type CpmDependencyType = 'FS' | 'SS' | 'FF';
+export type CpmDependencyType = 'FS' | 'SS' | 'FF' | 'SF';
 
 export interface CpmEdge {
   fromId: string;

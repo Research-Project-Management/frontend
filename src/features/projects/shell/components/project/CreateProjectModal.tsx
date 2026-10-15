@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch, type FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form } from '@/shared/components/ui/form';
 import { toast } from 'sonner';
@@ -276,7 +276,7 @@ export function CreateProjectModal({
     }, 200);
   };
 
-  const onInvalidStep1 = (formErrors: any) => {
+  const onInvalidStep1 = (formErrors: FieldErrors<CreateProjectFormValues>) => {
     if (formErrors.name) {
       nameInputRef.current?.focus();
     } else if (formErrors.identifier) {
@@ -302,8 +302,8 @@ export function CreateProjectModal({
         modules: initialModules,
       },
       {
-        onSuccess: (res: any) => {
-          const proj: Project = res?.project || res?.data || res;
+        onSuccess: (res: unknown) => {
+          const proj: Project = ((res as { project?: Project; data?: Project })?.project || (res as { project?: Project; data?: Project })?.data || res) as Project;
           setCreatedProject(proj);
           if (proj?.modules && Array.isArray(proj.modules)) {
             setActiveModules(proj.modules);

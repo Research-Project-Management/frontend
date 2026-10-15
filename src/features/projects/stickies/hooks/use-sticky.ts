@@ -11,6 +11,17 @@ import {
 import type { Sticky, StickyColor } from "../types/sticky.types";
 import { uuidv7 } from "../utils/sticky.utils";
 
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object') {
+    const resData = (err as { response?: { data?: { message?: string } } }).response?.data;
+    if (resData?.message && typeof resData.message === 'string') return resData.message;
+    if ('message' in err && typeof (err as { message?: unknown }).message === 'string') {
+      return (err as { message: string }).message;
+    }
+  }
+  return fallback;
+}
+
 export const useSticky = (
   options?: { enabled?: boolean },
 ) => {
@@ -73,11 +84,11 @@ export const useSticky = (
       });
       toast.success("Sticky added", { id: "sticky-action" });
     },
-    onError: (err: any, _variables, context) => {
+    onError: (err: unknown, _variables, context) => {
       // 3. Rollback: If backend rejects (e.g. 422 empty draft note), revert to previous snapshot
       queryClient.setQueryData(fullQueryKey, context?.previous);
       toast.error(
-        err?.response?.data?.message || err?.message || "Failed to add sticky",
+        getErrorMessage(err, "Failed to add sticky"),
         { id: "sticky-action" },
       );
     },
@@ -112,10 +123,10 @@ export const useSticky = (
         );
       });
     },
-    onError: (err: any, _variables, context) => {
+    onError: (err: unknown, _variables, context) => {
       queryClient.setQueryData(fullQueryKey, context?.previous);
       toast.error(
-        err?.response?.data?.message || err?.message || "Update failed",
+        getErrorMessage(err, "Update failed"),
         { id: "sticky-action" },
       );
     },
@@ -134,10 +145,10 @@ export const useSticky = (
     onSuccess: () => {
       toast.success("Sticky deleted", { id: "sticky-action" });
     },
-    onError: (err: any, _variables, context) => {
+    onError: (err: unknown, _variables, context) => {
       queryClient.setQueryData(fullQueryKey, context?.previous);
       toast.error(
-        err?.response?.data?.message || err?.message || "Failed to delete sticky",
+        getErrorMessage(err, "Failed to delete sticky"),
         { id: "sticky-action" },
       );
     },
@@ -160,10 +171,10 @@ export const useSticky = (
         queryClient.setQueryData<Sticky[]>(fullQueryKey, res.stickies);
       }
     },
-    onError: (err: any, _variables, context) => {
+    onError: (err: unknown, _variables, context) => {
       queryClient.setQueryData(fullQueryKey, context?.previous);
       toast.error(
-        err?.response?.data?.message || err?.message || "Reorder failed",
+        getErrorMessage(err, "Reorder failed"),
         { id: "sticky-action" },
       );
     },

@@ -11,6 +11,7 @@ import {
 import { buildResponseWidgetsFromActions } from '../components/chat/response-widgets';
 import { useChatMode } from './use-chat-mode';
 import { libraryServices } from '@/features/library/data/library-services';
+import type { Item } from '@/features/library/types';
 
 export function mergeAgentAction(current: AgentAction[], action: AgentAction): AgentAction[] {
   // If the action is finishing or updating a currently calling tool
@@ -129,13 +130,13 @@ export function useChat() {
       .then((session) => {
         setSessionTitle(session.title || 'Chat');
         setMessages(
-          session.messages.map((m: any) => ({
+          session.messages.map((m) => ({
             role: m.role,
             content: m.content,
             attachments:
               m.attachments ||
               (m.role === 'user' && Array.isArray(m.sources) && m.sources.length > 0
-                ? m.sources
+                ? (m.sources as unknown as MessageAttachment[])
                 : undefined),
             sources: m.role === 'assistant' ? m.sources : undefined,
             widgets: m.widgets,
@@ -225,12 +226,13 @@ export function useChat() {
 
     preloadedCollectionRef.current = collectionId;
     libraryServices.items.getByCollection('me', collectionId)
-      .then((res: any) => {
-        const papers: any[] = Array.isArray(res) ? res : res?.papers || [];
+      .then((res) => {
+        const resObj = res as unknown as Item[] | { papers?: Item[]; items?: Item[] };
+        const papers: Item[] = Array.isArray(resObj) ? resObj : resObj?.papers || resObj?.items || [];
         const indexedPapers = papers.filter(
-          (paper: any) => paper.ragStatus === 'indexed' && paper.ragDocId,
+          (paper): paper is Item & { ragDocId: string } => paper.ragStatus === 'indexed' && Boolean(paper.ragDocId),
         );
-        indexedPapers.forEach((paper: any) => addSource(paper.ragDocId!, paper.title));
+        indexedPapers.forEach((paper) => addSource(paper.ragDocId, paper.title));
 
         if (indexedPapers.length > 0) {
           setFluxDataEnabled(true);

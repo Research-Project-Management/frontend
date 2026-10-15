@@ -26,7 +26,6 @@ import {
   PanelRight,
   Link2,
   ArrowRight,
-  User,
   Loader2,
 } from "lucide-react";
 import { useParams } from "next/navigation";
@@ -35,31 +34,23 @@ import { cn } from "@/shared/lib/utils";
 
 import type {
   Item,
-  Column,
   ItemMutationInput,
   Priority,
   Relation,
   SubItem,
-  Project,
-  ProjectMember,
-  Label,
-  AttachPageItem,
-  AttachPaperItem,
-  AttachLinkItem,
-} from '../../types/work-item.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 import {
   resolveColumnId,
   resolveStateId,
   ItemHelpers,
-} from "../../utils/work-item.utils";
-import { StatusIcon } from "@/shared/components/icons";
+} from "@/features/projects/project-id/work-items/utils/work-item.utils";
 import {
   useComments,
   useAddComment,
   useUpdateComment,
   useReactComment,
   useDeleteComment,
-} from "../../hooks/use-comment";
+} from "@/features/projects/project-id/work-items/hooks/use-comment";
 import {
   useCreateSubItem,
   useConvertSubItemToRoot,
@@ -67,38 +58,38 @@ import {
   useCopyItemText,
   useUpdateItem,
   useDeleteItem,
-} from "../../hooks/use-work-item";
-import { useActivityLogs } from "../../hooks/use-history";
-import { useLabelsQuery } from "../../hooks/use-label";
-import { useUploadFilesWithToast, useWorkItemAttachments } from "../../hooks/use-attachment";
+} from "@/features/projects/project-id/work-items/hooks/use-work-item";
+import { useActivityLogs } from "@/features/projects/project-id/work-items/hooks/use-history";
+import { useWorkItemAttachments } from "@/features/projects/project-id/work-items/hooks/use-attachment";
 import {
   useRelations,
   useAddRelationMutation,
   useRemoveRelationMutation,
-} from "../../hooks/use-relation";
-import { useArchiveItem, useRestoreItem } from "../../hooks/use-archive";
+} from "@/features/projects/project-id/work-items/hooks/use-relation";
+import { useArchiveItem, useRestoreItem } from "@/features/projects/project-id/work-items/hooks/use-archive";
 import {
   useSubscribeItemMutation,
   useUnsubscribeItemMutation,
-} from "../../hooks/use-assignment";
+} from "@/features/projects/project-id/work-items/hooks/use-assignment";
 
-import { Activities, type ActivityEntry } from "./Activities";
-import { Attachments, type ItemAttachment, type AttachCenterData } from "./Attachments";
-import {
-  MemberPopover,
-  LabelPopover,
-  DatePopover,
-  PriorityPopover,
-  ParentItemPopover,
-} from "./Popovers";
+import { Activities } from "./Activities";
+import { Attachments, type AttachCenterData } from "./Attachments";
+import { StatePopover } from "@/features/projects/project-id/work-items/components/pickers/StatePicker";
+import { MemberPopover } from "@/features/projects/project-id/work-items/components/pickers/MemberPicker";
+import { LabelPopover } from "@/features/projects/project-id/work-items/components/pickers/LabelPicker";
+import { DatePopover } from "@/features/projects/project-id/work-items/components/pickers/DatePicker";
+import { PriorityPopover } from "@/features/projects/project-id/work-items/components/pickers/PriorityPicker";
+import { ParentItemPopover } from "@/features/projects/project-id/work-items/components/pickers/ParentPicker";
 import { Relations } from "./Relations";
-import type { DetailModalProps } from "../../types/modal.types";
+import type { DetailModalProps } from "@/features/projects/project-id/work-items/types/modal.types";
 import {
   EMPTY_ATTACHMENTS,
   normalizeAttachments,
+  createAttachmentHandlers,
+  buildActivityEntries,
   formatMetaDate,
   getTimeAgo,
-} from "../../utils/modal.utils";
+} from "@/features/projects/project-id/work-items/utils/modal.utils";
 
 export type { DetailModalProps };
 
@@ -124,15 +115,6 @@ export function DetailModal({
   const copyItemText = useCopyItemText();
   const convertSubItemToRoot = useConvertSubItemToRoot();
   const { notifySubItemAdded } = useSubItemNotification();
-  const uploadFilesWithToast = useUploadFilesWithToast();
-  const { data: rawLabels } = useLabelsQuery(currentProjectId, 'work-item');
-
-  const projectLabels = useMemo(() => {
-    if (Array.isArray(rawLabels)) return rawLabels;
-    const labelsRecord = rawLabels as { labels?: Label[] } | undefined;
-    if (Array.isArray(labelsRecord?.labels)) return labelsRecord.labels;
-    return [];
-  }, [rawLabels]);
 
   const firstColumnId = resolveStateId(columns[0]);
 
@@ -141,8 +123,6 @@ export function DetailModal({
 
   // Collapsible Sections
   const [showProperties, setShowProperties] = useState(true);
-  const [showDetails, setShowDetails] = useState(true);
-  const [showProjectStructure, setShowProjectStructure] = useState(true);
 
   // Core fields
   const [title, setTitle] = useState("");
@@ -164,25 +144,22 @@ export function DetailModal({
   const [isAutosaving, setIsAutosaving] = useState(false);
   const [copiedIdentifier, setCopiedIdentifier] = useState(false);
   const commentTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [subItems, setSubItems] = useState<SubItem[]>([]);
   const [newSubItemTitle, setNewSubItemTitle] = useState("");
   const [completed, setCompleted] = useState(false);
   const [attachments, setAttachments] = useState<AttachCenterData>(EMPTY_ATTACHMENTS);
-  const [commentFocusToken, setCommentFocusToken] = useState(0);
   const [commentCaretPosition, setCommentCaretPosition] = useState(0);
   const initialSnapshotRef = useRef("");
   const autosaveSignatureRef = useRef("");
   const autosaveReadyRef = useRef(false);
 
   // Popover States
+  const [openStatePopover, setOpenStatePopover] = useState(false);
   const [openPriorityPopover, setOpenPriorityPopover] = useState(false);
   const [openMemberPopover, setOpenMemberPopover] = useState(false);
   const [openLabelPopover, setOpenLabelPopover] = useState(false);
   const [openDatePopover, setOpenDatePopover] = useState(false);
   const [openParentPopover, setOpenParentPopover] = useState(false);
-  const [openAttachmentPopover, setOpenAttachmentPopover] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
   const [copiedGit, setCopiedGit] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -228,7 +205,6 @@ export function DetailModal({
   const authorName = rawCard?.author?.name || rawCard?.creator?.name || rawCard?.createdByName || currentUser?.name || 'Member';
   const createdAtFormatted = formatMetaDate(rawCard?.createdAt) || formatMetaDate(new Date().toISOString());
   const updatedAtFormatted = formatMetaDate(rawCard?.updatedAt);
-  const completedAtFormatted = rawCard?.completedAt ? formatMetaDate(rawCard.completedAt) : (completed ? 'Completed' : null);
   const descriptionLastEdited = getTimeAgo(rawCard?.updatedAt || rawCard?.createdAt);
 
   const handleToggleSubscribe = async () => {
@@ -283,12 +259,12 @@ export function DetailModal({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (
+          openStatePopover ||
           openPriorityPopover ||
           openMemberPopover ||
           openLabelPopover ||
           openDatePopover ||
-          openParentPopover ||
-          openAttachmentPopover
+          openParentPopover
         ) {
           return;
         }
@@ -299,17 +275,29 @@ export function DetailModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
     open,
+    openStatePopover,
     openPriorityPopover,
     openMemberPopover,
     openLabelPopover,
     openDatePopover,
     openParentPopover,
-    openAttachmentPopover,
     onOpenChange,
   ]);
 
   useEffect(() => {
     if (!open) return;
+
+    const effectiveAssigneeIds = card
+      ? (Array.isArray(card.assigneeIds) && card.assigneeIds.length > 0
+        ? card.assigneeIds
+        : Array.isArray(card.assignees) && card.assignees.length > 0
+        ? card.assignees.map((a) => a.id).filter(Boolean)
+        : card.assigneeId
+        ? [card.assigneeId]
+        : card.assignee?.id
+        ? [card.assignee.id]
+        : [])
+      : [];
 
     if (card) {
       setTitle(card.title ?? "");
@@ -331,18 +319,8 @@ export function DetailModal({
       );
       setCompleted(card.completed || false);
       setAttachments(normalizeAttachments(card.attachments));
-
-      const initialAssigneeIds = Array.isArray(card.assigneeIds) && card.assigneeIds.length > 0
-        ? card.assigneeIds
-        : Array.isArray(card.assignees) && card.assignees.length > 0
-        ? card.assignees.map((a) => a.id).filter(Boolean)
-        : card.assigneeId
-        ? [card.assigneeId]
-        : card.assignee?.id
-        ? [card.assignee.id]
-        : [];
-      setAssigneeIds(initialAssigneeIds);
-      setAssigneeId(initialAssigneeIds[0] ?? null);
+      setAssigneeIds(effectiveAssigneeIds);
+      setAssigneeId(effectiveAssigneeIds[0] ?? null);
     } else {
       setTitle("");
       setDescription("");
@@ -364,17 +342,6 @@ export function DetailModal({
     setCommentText("");
     setCommentCaretPosition(0);
     setShowDetailActivity(false);
-    const initialAssigneeIds = card
-      ? (Array.isArray(card.assigneeIds) && card.assigneeIds.length > 0
-        ? card.assigneeIds
-        : Array.isArray(card.assignees) && card.assignees.length > 0
-        ? card.assignees.map((a) => a.id).filter(Boolean)
-        : card.assigneeId
-        ? [card.assigneeId]
-        : card.assignee?.id
-        ? [card.assignee.id]
-        : [])
-      : [];
     initialSnapshotRef.current = ItemHelpers.createSnapshot({
       title: card?.title || "",
       content: card?.description || card?.content || "",
@@ -386,8 +353,8 @@ export function DetailModal({
       labels: Array.isArray(card?.labels)
         ? ItemHelpers.uniqueLabels(card.labels as (string | { id?: string; name?: string; color?: string; [key: string]: unknown })[])
         : [],
-      assigneeId: initialAssigneeIds[0] ?? null,
-      assigneeIds: initialAssigneeIds,
+      assigneeId: effectiveAssigneeIds[0] ?? null,
+      assigneeIds: effectiveAssigneeIds,
       parentId: card?.parentId || null,
       completed: card?.completed || false,
       attachments: normalizeAttachments(card?.attachments),
@@ -542,14 +509,10 @@ export function DetailModal({
   };
 
   const handleCopyGitBranch = () => {
-    const branchSlug = (title || card?.title || 'task')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .substring(0, 40);
-    const branchName = card?.identifier
-      ? `${card.identifier.toLowerCase()}-${branchSlug}`
-      : `feature/${branchSlug}`;
+    const branchName = ItemHelpers.formatGitBranch({
+      title: title || card?.title,
+      identifier: card?.identifier,
+    });
     copyItemText(branchName, `Copied git branch: ${branchName}`);
     setCopiedGit(true);
     setTimeout(() => setCopiedGit(false), 2000);
@@ -557,8 +520,11 @@ export function DetailModal({
 
   const handleCopyLink = () => {
     if (typeof window !== 'undefined') {
-      const url = window.location.href;
-      copyItemText(url, 'Copied link to clipboard');
+      const origin = window.location.origin;
+      const permalink = currentProjectId
+        ? `${origin}/projects/${currentProjectId}/work-items?itemId=${card?.identifier || card?.id || ''}`
+        : window.location.href;
+      copyItemText(permalink, 'Copied link to clipboard');
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
     }
@@ -607,177 +573,30 @@ export function DetailModal({
     }
   };
 
-  // Attach Center Actions
-  const handleAttachFiles = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    const fileList = Array.from(files);
-    try {
-      const results = await uploadFilesWithToast(fileList, {
-        showSuccessToast: false,
-        errorMessage: 'Failed to upload attachment',
-      });
-      const newAttachments: ItemAttachment[] = results.map(
-        ({ file: f, url: uploadedUrl, fileId }) => ({
-          id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-          name: f.name,
-          type: f.type,
-          size: `${Math.round(f.size / 1024)} KB`,
-          createdAt: new Date().toISOString(),
-          url: uploadedUrl || URL.createObjectURL(f),
-          ...(fileId ? { fileId } : {}),
-        }),
-      );
-      const updated: AttachCenterData = {
-        ...attachments,
-        files: [...(attachments.files || []), ...newAttachments],
-      };
+  const updateAttachmentsAndSave = useCallback(
+    (updater: (prev: AttachCenterData) => AttachCenterData) => {
+      const updated = updater(attachments);
       setAttachments(updated);
-      setOpenAttachmentPopover(false);
       safeSave({ ...currentPayload, attachments: updated });
-    } catch {}
-  };
+    },
+    [attachments, currentPayload, safeSave],
+  );
 
-  const handleAttachPage = (page: { pageId: string; title: string }) => {
-    const updated: AttachCenterData = {
-      ...attachments,
-      pages: [
-        ...(attachments.pages || []),
-        {
-          id: page.pageId,
-          pageId: page.pageId,
-          title: page.title,
-          addedAt: new Date().toISOString(),
-        } as AttachPageItem,
-      ],
-    };
-    setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated });
-  };
-
-  const handleDetachPage = (pageId: string) => {
-    const updated: AttachCenterData = {
-      ...attachments,
-      pages: (attachments.pages || []).filter(
-        (p: { pageId?: string; id?: string }) => (p.pageId || p.id) !== pageId
-      ),
-    };
-    setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated });
-  };
-
-  const handleAttachPaper = (paper: {
-    paperId: string;
-    title: string;
-    doi?: string;
-    citationKey?: string;
-  }) => {
-    const updated: AttachCenterData = {
-      ...attachments,
-      papers: [
-        ...(attachments.papers || []),
-        {
-          id: paper.paperId,
-          paperId: paper.paperId,
-          title: paper.title,
-          doi: paper.doi,
-          citationKey: paper.citationKey,
-          addedAt: new Date().toISOString(),
-        } as AttachPaperItem,
-      ],
-    };
-    setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated });
-  };
-
-  const handleDetachPaper = (paperId: string) => {
-    const updated: AttachCenterData = {
-      ...attachments,
-      papers: (attachments.papers || []).filter(
-        (p: { paperId?: string; id?: string }) => (p.paperId || p.id) !== paperId
-      ),
-    };
-    setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated });
-  };
-
-  const handleAttachFile = (file: {
-    name: string;
-    url: string;
-    size?: number;
-    type?: string;
-    fileId?: string;
-  }) => {
-    const newFile: ItemAttachment = {
-      id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      name: file.name,
-      url: file.url,
-      size: file.size ? `${Math.round(file.size / 1024)} KB` : undefined,
-      type: file.type,
-      createdAt: new Date().toISOString(),
-      ...(file.fileId ? { fileId: file.fileId } : {}),
-    };
-    const updated: AttachCenterData = {
-      ...attachments,
-      files: [...(attachments.files || []), newFile],
-    };
-    setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated });
-  };
-
-  const handleDetachFile = (fileId: string) => {
-    const fileToRemove = (attachments.files || []).find((f) => f.id === fileId);
-    if (fileToRemove?.url?.startsWith('blob:')) {
-      try {
-        URL.revokeObjectURL(fileToRemove.url);
-      } catch {}
-    }
-    const updated: AttachCenterData = {
-      ...attachments,
-      files: (attachments.files || []).filter((f) => f.id !== fileId),
-    };
-    setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated });
-  };
-
-  const handleAttachLink = (link: { title: string; url: string }) => {
-    const updated: AttachCenterData = {
-      ...attachments,
-      links: [
-        ...(attachments.links || []),
-        {
-          title: link.title,
-          url: link.url,
-          addedAt: new Date().toISOString(),
-        } as AttachLinkItem,
-      ],
-    };
-    setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated });
-  };
-
-  const handleDetachLink = (linkIndex: number) => {
-    const updated: AttachCenterData = {
-      ...attachments,
-      links: (attachments.links || []).filter((_, idx) => idx !== linkIndex),
-    };
-    setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated });
-  };
-
-  const handleRenameAttachment = (attachmentId: string, newName: string) => {
-    const updated: AttachCenterData = {
-      ...attachments,
-      files: (attachments.files || []).map((a) =>
-        a.id === attachmentId ? { ...a, name: newName } : a
-      ),
-    };
-    setAttachments(updated);
-    safeSave({ ...currentPayload, attachments: updated });
-  };
-
-  const handleRemoveAttachment = (attachmentId: string) => {
-    handleDetachFile(attachmentId);
-  };
+  const {
+    handleAttachPage,
+    handleDetachPage,
+    handleAttachPaper,
+    handleDetachPaper,
+    handleAttachFile,
+    handleDetachFile,
+    handleAttachLink,
+    handleDetachLink,
+    handleRenameAttachment,
+    handleRemoveAttachment,
+  } = useMemo(
+    () => createAttachmentHandlers(updateAttachmentsAndSave),
+    [updateAttachmentsAndSave],
+  );
 
   // Comment Actions
   const handleSaveComment = (text: string) => {
@@ -805,148 +624,14 @@ export function DetailModal({
     return ItemHelpers.calculateProgressRollup(subItems);
   }, [subItems]);
 
-  const visibleActivities = useMemo<ActivityEntry[]>(() => {
-    const commentsRecord = itemComments as { comments?: Array<Record<string, unknown>>; data?: Array<Record<string, unknown>> } | undefined;
-    const commentsList: Array<Record<string, unknown>> = Array.isArray(itemComments)
-      ? (itemComments as Array<Record<string, unknown>>)
-      : Array.isArray(commentsRecord?.comments)
-      ? commentsRecord.comments
-      : Array.isArray(commentsRecord?.data)
-      ? commentsRecord.data
-      : [];
-
-    const commentEntries: ActivityEntry[] = commentsList.map((c) => {
-      let reactionEmoji: string | undefined = undefined;
-      const cReactions = c.reactions;
-      if (cReactions) {
-        if (typeof cReactions === 'object' && !Array.isArray(cReactions)) {
-          const activeEmojis = Object.entries(cReactions as Record<string, unknown>)
-            .filter(([_, uids]) => Array.isArray(uids) && uids.length > 0)
-            .map(([emoji]) => emoji);
-          if (activeEmojis.length > 0) {
-            reactionEmoji = activeEmojis.join(' ');
-          }
-        } else if (Array.isArray(cReactions) && cReactions.length > 0) {
-          const first = cReactions[0] as { emoji?: string } | string | undefined;
-          reactionEmoji = typeof first === 'object' && first ? first.emoji : (first as string | undefined);
-        }
-      }
-
-      const authorObj = c.author as { name?: string; avatar?: string } | undefined;
-      const cCreatedAt = typeof c.createdAt === 'string' ? c.createdAt : undefined;
-
-      return {
-        id: (c.id as string) || `c_${Math.random()}`,
-        kind: 'comment',
-        author: authorObj?.name || 'User',
-        avatarUrl: authorObj?.avatar,
-        authorInitials: ItemHelpers.getInitials(authorObj?.name),
-        content: (c.content as string) || '',
-        timestamp: ItemHelpers.formatActivityTime(cCreatedAt),
-        createdAt: cCreatedAt ? new Date(cCreatedAt).getTime() : Date.now(),
-        reactionEmoji,
-        permissions: {
-          canEdit: true,
-          canDelete: true,
-        },
-      };
-    });
-
-    const activityRecord = itemActivity as {
-      activity?: Array<Record<string, unknown>>;
-      activities?: Array<Record<string, unknown>>;
-      data?: Array<Record<string, unknown>>;
-    } | undefined;
-    const activityList: Array<Record<string, unknown>> = Array.isArray(itemActivity)
-      ? (itemActivity as Array<Record<string, unknown>>)
-      : Array.isArray(activityRecord?.activity)
-      ? activityRecord.activity
-      : Array.isArray(activityRecord?.activities)
-      ? activityRecord.activities
-      : Array.isArray(activityRecord?.data)
-      ? activityRecord.data
-      : [];
-
-    const logEntries: ActivityEntry[] = activityList.map((a) => {
-      const userObj = a.user as { name?: string; avatar?: string } | undefined;
-      const authorObj = a.author as { name?: string; avatar?: string } | undefined;
-      const authorName = userObj?.name || authorObj?.name;
-      const aCreatedAt = typeof a.createdAt === 'string' ? a.createdAt : undefined;
-
-      return {
-        id: (a.id as string) || `log_${Math.random()}`,
-        kind: 'activity',
-        author: authorName || 'System',
-        avatarUrl: userObj?.avatar || authorObj?.avatar,
-        authorInitials: ItemHelpers.getInitials(authorName),
-        content: (a.message as string) || (a.action as string) || 'updated this item',
-        timestamp: ItemHelpers.formatActivityTime(aCreatedAt),
-        createdAt: aCreatedAt ? new Date(aCreatedAt).getTime() : Date.now(),
-      };
-    });
-
-    return [...commentEntries, ...logEntries].sort(
-      (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
-    );
-  }, [itemComments, itemActivity]);
+  const visibleActivities = useMemo(
+    () => buildActivityEntries(itemComments, itemActivity),
+    [itemComments, itemActivity],
+  );
 
   // Modern Action Button Style
   const actionBtnClass =
     'h-8 px-2.5 text-12 font-medium rounded-md bg-background hover:bg-muted text-foreground border border-border flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 relative before:absolute before:-inset-1 md:before:hidden';
-
-  const renderStatusSelector = () => {
-    const activeCol = columns.find((c) => resolveColumnId(c) === columnId);
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild disabled={isReadOnly}>
-          <button
-            type="button"
-            className={cn(
-              'h-8 px-2.5 text-12 font-medium rounded-md bg-background hover:bg-muted text-foreground border border-border flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 outline-none relative before:absolute before:-inset-1 md:before:hidden',
-              isReadOnly && 'opacity-60 cursor-not-allowed'
-            )}
-          >
-            <StatusIcon
-              id={columnId}
-              title={activeCol?.title || activeCol?.name}
-              group={activeCol?.group}
-              color={activeCol?.color || activeCol?.accentColor}
-              className="size-3.5 shrink-0"
-            />
-            <span>{activeCol?.title || columnId}</span>
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" sideOffset={4} className="w-44 p-1 text-xs z-100 rounded-md border border-border bg-popover shadow-overlay">
-          {columns.map((col) => {
-            const cId = resolveColumnId(col);
-            const isCurrent = columnId === cId;
-            return (
-              <DropdownMenuItem
-                key={cId}
-                onClick={() => handleColumnChange(cId)}
-                className={cn(
-                  'flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium text-foreground transition-colors hover:bg-muted cursor-pointer text-left',
-                  isCurrent && 'bg-muted text-foreground font-semibold'
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <StatusIcon
-                    id={cId}
-                    title={col.title || col.name}
-                    group={col.group}
-                    color={col.color || col.accentColor}
-                    className="size-3.5 shrink-0"
-                  />
-                  <span className="truncate">{col.title}</span>
-                </div>
-                {isCurrent && <Check className="size-3.5 shrink-0 text-foreground" />}
-              </DropdownMenuItem>
-            );
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  };
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -1196,7 +881,17 @@ export function DetailModal({
                     {/* Status */}
                     <div className="grid grid-cols-[84px_1fr] items-center gap-2 h-8">
                       <span className="text-muted-foreground text-11 font-medium select-none">Status</span>
-                      <div className="flex items-center min-w-0">{renderStatusSelector()}</div>
+                      <div className="flex items-center min-w-0">
+                        <StatePopover
+                          open={openStatePopover}
+                          onOpenChange={setOpenStatePopover}
+                          columnId={columnId}
+                          setColumnId={handleColumnChange}
+                          columns={columns}
+                          actionBtnClass={actionBtnClass}
+                          isReadOnly={isReadOnly}
+                        />
+                      </div>
                     </div>
 
                     {/* Priority */}
@@ -1577,7 +1272,6 @@ export function DetailModal({
                 onDeleteComment={handleDeleteComment}
                 onReactComment={handleReactComment}
                 attachmentLinks={(attachments.files || []).map((item) => ({ name: item.name, url: item.url }))}
-                commentFocusToken={commentFocusToken}
                 commentCaretPosition={commentCaretPosition}
                 onCommentCaretChange={setCommentCaretPosition}
                 canComment={canComment}
@@ -1601,5 +1295,4 @@ export function DetailModal({
   return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }
 
-export const WorkItemDetailModal = DetailModal;
 export default DetailModal;

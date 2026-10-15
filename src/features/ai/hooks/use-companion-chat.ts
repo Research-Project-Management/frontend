@@ -198,8 +198,8 @@ export function useCompanionChat() {
             }
           }, 1800);
         }
-      } catch (err: any) {
-        if (err?.name === 'AbortError') return;
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') return;
         console.error('[CompanionChat] Stream error:', err);
         toast.error('Failed to get AI response');
         // Revert user message on complete failure

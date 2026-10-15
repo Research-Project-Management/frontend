@@ -4,7 +4,7 @@ import React, { Suspense, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
-import EditorSkeleton from '@/features/editor/ui/shell/EditorSkeleton';
+import EditorSkeleton from '@/features/editor/core/shell/EditorSkeleton';
 
 export default function EditorLayout({
   children,

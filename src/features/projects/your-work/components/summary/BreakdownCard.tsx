@@ -1,21 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { cn } from "@/shared/lib/utils";
-
-export interface BreakdownItem {
-  key?: string;
-  label: string;
-  count: number;
-  color: string;
-}
-
-export interface BreakdownCardProps {
-  title: string;
-  items: BreakdownItem[];
-  total: number;
-  className?: string;
-}
 
 export function EmptyIllustration({ className }: { className?: string }) {
   return (
@@ -88,13 +74,71 @@ export function EmptyIllustration({ className }: { className?: string }) {
   );
 }
 
+export interface BreakdownTooltipItem {
+  label: string;
+  count: number;
+  hex: string;
+}
+
+export interface BreakdownTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: BreakdownTooltipItem }>;
+  total: number;
+  labelSuffix?: string;
+  countSuffix?: string;
+  dotClassName?: string;
+}
+
+export function BreakdownTooltip({
+  active,
+  payload,
+  total,
+  labelSuffix = '',
+  countSuffix = '',
+  dotClassName = 'size-2 rounded-full shrink-0',
+}: BreakdownTooltipProps) {
+  if (!active || !payload || !payload.length) return null;
+  const data = payload[0].payload;
+  const percentage = total > 0 ? Math.round((data.count / total) * 100) : 0;
+
+  return (
+    <div className="rounded-md bg-popover px-2.5 py-1.5 text-12 text-popover-foreground border border-border shadow-overlay">
+      <div className="flex items-center gap-1.5 font-medium">
+        <span
+          className={dotClassName}
+          style={{ backgroundColor: data.hex }}
+        />
+        <span>{data.label}{labelSuffix}</span>
+      </div>
+      <div className="mt-1 text-11 text-muted-foreground flex items-center gap-1">
+        <span className="font-medium text-foreground tabular-nums">
+          {data.count}{countSuffix}
+        </span>
+        <span>({percentage}%)</span>
+      </div>
+    </div>
+  );
+}
+
+export interface BreakdownCardProps {
+  title: string;
+  isEmpty: boolean;
+  emptyText?: string;
+  className?: string;
+  children: (isMounted: boolean) => React.ReactNode;
+}
+
 export function BreakdownCard({
   title,
-  items,
-  total,
+  isEmpty,
+  emptyText = 'No work item assigned yet',
   className,
+  children,
 }: BreakdownCardProps) {
-  const isEmpty = total === 0 || items.every((i) => (i.count || 0) === 0);
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
@@ -102,60 +146,16 @@ export function BreakdownCard({
         {title}
       </h3>
 
-      <div className="rounded-md bg-muted/40 p-5 min-h-[170px] flex flex-col justify-center">
+      <div className="rounded-md bg-muted/40 p-5 min-h-[290px] flex flex-col justify-center">
         {isEmpty ? (
-          <div className="flex flex-col items-center justify-center py-4 text-center">
+          <div className="flex flex-col items-center justify-center py-6 text-center">
             <EmptyIllustration />
             <span className="text-12 text-muted-foreground mt-3 font-normal">
-              No work item assigned yet
+              {emptyText}
             </span>
           </div>
         ) : (
-          <div className="space-y-4">
-            {/* Stacked Horizontal Progress Bar */}
-            <div className="h-2 w-full bg-muted rounded-full overflow-hidden flex gap-0.5">
-              {items.map((item) => {
-                if (item.count <= 0) return null;
-                const pct = Math.max((item.count / total) * 100, 2);
-                return (
-                  <div
-                    key={item.key || item.label}
-                    style={{ width: `${pct}%` }}
-                    className={cn('h-full transition-all duration-300', item.color)}
-                    title={`${item.label}: ${item.count} (${((item.count / total) * 100).toFixed(0)}%)`}
-                  />
-                );
-              })}
-            </div>
-
-            {/* Breakdown Item Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-              {items.map((item) => {
-                const percentage = total > 0 ? Math.round((item.count / total) * 100) : 0;
-                return (
-                  <div
-                    key={item.key || item.label}
-                    className="p-2.5 rounded-md bg-background/80 flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-2 min-w-0 pr-1">
-                      <span className={cn('size-2 rounded-full shrink-0', item.color)} />
-                      <span className="text-12 font-medium text-muted-foreground truncate">
-                        {item.label}
-                      </span>
-                    </div>
-                    <div className="flex items-baseline gap-1 shrink-0">
-                      <span className="text-12 font-medium text-foreground tabular-nums">
-                        {item.count}
-                      </span>
-                      <span className="text-10 text-muted-foreground tabular-nums">
-                        ({percentage}%)
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          children(isMounted)
         )}
       </div>
     </div>
@@ -163,3 +163,5 @@ export function BreakdownCard({
 }
 
 export default BreakdownCard;
+
+

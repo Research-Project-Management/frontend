@@ -1,15 +1,15 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useLibrarySidebarStore } from '../../store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
 
 /**
  * Custom hook for smooth left-border drag resizing of the Inspector panel.
  * Constrained between min 300px and max 640px.
  */
 export function useInspectorResize() {
-  const inspectorWidth = useLibrarySidebarStore((s) => s.inspectorWidth);
-  const setInspectorWidth = useLibrarySidebarStore((s) => s.setInspectorWidth);
+  const inspectorWidth = useLibraryUIStore((s) => s.inspectorWidth);
+  const setInspectorWidth = useLibraryUIStore((s) => s.setInspectorWidth);
 
   const [isDragging, setIsDragging] = useState(false);
   const startXRef = useRef(0);

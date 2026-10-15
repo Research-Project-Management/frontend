@@ -92,7 +92,7 @@ export function useTopbar({
     toast.promise(uploadPromise, {
       loading: `Uploading ${file.name}...`,
       success: `${file.name} uploaded successfully`,
-      error: (err: any) => err?.message || `Failed to upload ${file.name}`,
+      error: (err: unknown) => (err instanceof Error ? err.message : undefined) || `Failed to upload ${file.name}`,
     });
     
     // Await the single upload promise so sequential uploads in loop wait for completion

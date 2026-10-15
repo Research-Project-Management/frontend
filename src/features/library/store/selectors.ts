@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { useLibraryUIStore } from './library-ui.store';
-import { getLibraryPermissions } from '../domain/library-permissions.policy';
-import type { LibraryPermissions } from '../types/core.types';
+import { resolveEffectiveLibraryPermissions } from '@/features/library/domain/library-permissions.policy';
+import { useLibraryCountsQuery } from '@/features/library/data/catalog/catalog.queries';
+import type { LibraryPermissions } from '@/features/library/types/core.types';
 
 /**
  * Granular Selectors - Performance Optimization Engine
@@ -33,6 +34,9 @@ export const useViewMode = () =>
 export const useActiveScope = () =>
   useLibraryUIStore((state) => state.activeScope);
 
+export const useDisplayOptions = () =>
+  useLibraryUIStore((state) => state.displayOptions);
+
 export const useIsSidebarOpen = (): boolean =>
   useLibraryUIStore((state) => state.isSidebarOpen);
 
@@ -58,5 +62,23 @@ export const useModalProps = () =>
 // ── Permission & Capability Selectors ─────────────────────────────────────────
 export const useLibraryPermissions = (): LibraryPermissions => {
   const activeScope = useLibraryUIStore((state) => state.activeScope);
-  return useMemo(() => getLibraryPermissions(activeScope), [activeScope]);
+  const effectiveScopeId = activeScope.type === 'project' ? activeScope.id : 'user';
+  const { data: countsData } = useLibraryCountsQuery(effectiveScopeId);
+
+  return useMemo(
+    () =>
+      resolveEffectiveLibraryPermissions(
+        activeScope,
+        countsData
+          ? {
+              role: countsData.role || countsData.yourRole,
+              permissions: countsData.permissions,
+              effectivePermissions: countsData.effectivePermissions,
+              permissionOverrides: countsData.permissionOverrides,
+            }
+          : null,
+      ),
+    [activeScope, countsData],
+  );
 };
+

@@ -1,16 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Plus, Minus, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Minus, Check, ChevronDown, ChevronUp, Building2, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import type { Item, CreatorCredit } from '@/features/library/types/library.types';
-import { normalizeAuthors, splitAuthorString, parseCreatorName } from '../../../domain/creators';
+import { normalizeAuthors, splitAuthorString, parseCreatorName, isInstitutionName } from '@/features/library/domain/creators';
+import { cleanValue } from '@/features/library/domain/metadata';
 import {
   ALL_CREATOR_TYPES,
   getPrimaryCreatorType,
   type SchemaItemTypeDefinition,
-} from '../../../types/item-types.types';
+} from '@/features/library/types/item-types.types';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,84 +34,48 @@ export interface CreatorEntry {
 }
 
 export interface CreatorFieldsProps {
-  paper: Item;
+  item?: Item;
+  paper?: Item;
   typeDefinition: SchemaItemTypeDefinition;
   canEdit?: boolean;
+  onUpdateItem?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
   onUpdatePaper?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
 }
 
 const MAX_COLLAPSED_AUTHORS = 3;
 
-const SECONDARY_CREATOR_ROLES = new Set([
-  'editor',
-  'contributor',
-  'translator',
-  'serieseditor',
-  'reviewedauthor',
-  'castmember',
-  'guest',
-  'commenter',
-  'cosponsor',
-  'sponsor',
-  'producer',
-  'executiveproducer',
-  'scriptwriter',
-  'wordsby',
-  'interviewer',
-  'interviewee',
-  'recipient',
-  'counsel',
-  'attorneyagent',
-]);
-
-/** Filter out empty, null, undefined, or junk placeholder string values */
-function cleanValue(val?: unknown): string {
-  if (val === null || val === undefined) return '';
-  const str = String(val).trim();
-  const lower = str.toLowerCase();
-  if (
-    !str ||
-    lower === 'null' ||
-    lower === 'undefined' ||
-    lower === 'n/a' ||
-    lower === 'na' ||
-    lower === 'none' ||
-    lower === 'nil' ||
-    lower === '{}' ||
-    lower === '[]' ||
-    lower === '[object object]' ||
-    lower === '0000' ||
-    lower === 'unknown'
-  ) {
-    return '';
-  }
-  return str;
-}
 
 /** Parse & sanitize creators array into structured list */
-export function parseCreators(paper: Item): CreatorEntry[] {
-  const rawCreators = paper.creators && paper.creators.length > 0
-    ? paper.creators
-    : paper.contributors;
+export function parseCreators(item: Item): CreatorEntry[] {
+  const rawCreators = item.creators && item.creators.length > 0
+    ? item.creators
+    : item.contributors;
   if (Array.isArray(rawCreators) && rawCreators.length > 0) {
     const parsedCreators: CreatorEntry[] = [];
     for (const rawCreatorItem of rawCreators) {
       const creatorType = rawCreatorItem.creatorType || 'author';
-      const fieldMode = rawCreatorItem.fieldMode ?? 0;
-      const shortName = cleanValue(rawCreatorItem.shortName || undefined);
-      let creatorName = cleanValue(rawCreatorItem.name || rawCreatorItem.fullName);
       const firstName = cleanValue(
         rawCreatorItem.firstName || (rawCreatorItem as Record<string, unknown>).given,
       );
       const lastName = cleanValue(
         rawCreatorItem.lastName || (rawCreatorItem as Record<string, unknown>).family,
       );
+      const shortName = cleanValue(rawCreatorItem.shortName || undefined);
+      let creatorName = cleanValue(rawCreatorItem.name || rawCreatorItem.fullName);
       if (!creatorName && (firstName || lastName)) {
         creatorName = [lastName, firstName].filter(Boolean).join(', ');
       }
 
+      const isSingleFieldInstitution =
+        rawCreatorItem.fieldMode === 1 ||
+        (rawCreatorItem.fieldMode === undefined &&
+          !firstName &&
+          Boolean(creatorName || lastName) &&
+          isInstitutionName(creatorName || lastName));
+      const fieldMode = isSingleFieldInstitution ? 1 : (rawCreatorItem.fieldMode ?? 0);
+
       if (creatorName) {
-        // If creator is marked as institution (fieldMode === 1), do NOT split by 'and' or commas
+        // If creator is marked as institution (fieldMode === 1), do NOT split by 'and', '&', or commas
         const splitNameParts = fieldMode === 1 ? [creatorName] : splitAuthorString(creatorName);
         if (splitNameParts.length > 1) {
           for (const authorPart of splitNameParts) {
@@ -118,9 +83,9 @@ export function parseCreators(paper: Item): CreatorEntry[] {
             parsedCreators.push({
               creatorType,
               name: authorPart,
-              fieldMode: 0,
-              firstName: parsed.firstName || undefined,
-              lastName: parsed.lastName || undefined,
+              fieldMode: parsed.isInstitution ? 1 : 0,
+              firstName: parsed.isInstitution ? undefined : (parsed.firstName || undefined),
+              lastName: parsed.isInstitution ? authorPart : (parsed.lastName || undefined),
             });
           }
         } else {
@@ -128,8 +93,8 @@ export function parseCreators(paper: Item): CreatorEntry[] {
             creatorType,
             name: creatorName,
             fieldMode,
-            firstName: firstName || undefined,
-            lastName: lastName || undefined,
+            firstName: fieldMode === 1 ? undefined : (firstName || undefined),
+            lastName: fieldMode === 1 ? (lastName || creatorName) : (lastName || undefined),
             shortName: shortName || undefined,
           });
         }
@@ -138,7 +103,7 @@ export function parseCreators(paper: Item): CreatorEntry[] {
           creatorType,
           name: '',
           fieldMode,
-          firstName: firstName || undefined,
+          firstName: fieldMode === 1 ? undefined : (firstName || undefined),
           lastName: lastName || undefined,
           shortName: shortName || undefined,
         });
@@ -148,12 +113,12 @@ export function parseCreators(paper: Item): CreatorEntry[] {
   }
 
   const normalizedAuthorList = normalizeAuthors(
-    paper.authors,
-    paper.creators,
-    paper.contributors,
+    item.authors,
+    item.creators,
+    item.contributors,
   );
   if (normalizedAuthorList.length > 0) {
-    const defaultRole = getPrimaryCreatorType(paper.itemType) || 'author';
+    const defaultRole = getPrimaryCreatorType(item.itemType) || 'author';
     return normalizedAuthorList.map((authorName) => ({
       creatorType: defaultRole,
       name: authorName || '',
@@ -240,17 +205,16 @@ export function toItemCreators(creatorEntries: CreatorEntry[]): CreatorCredit[] 
   });
 }
 
-export function CreatorFields({
-  paper,
-  typeDefinition,
-  canEdit = true,
-  onUpdatePaper,
-}: CreatorFieldsProps) {
+export function CreatorFields(props: CreatorFieldsProps) {
+  const item = props.item || props.paper;
+  const onUpdateItem = props.onUpdateItem || props.onUpdatePaper;
+  const { typeDefinition, canEdit = true } = props;
+
   const [isAuthorsExpanded, setIsAuthorsExpanded] = useState(false);
   const [focusAuthorIndex, setFocusAuthorIndex] = useState<number | null>(null);
   const authorInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const currentItemType = paper.itemType || 'journalArticle';
+  const currentItemType = item?.itemType || 'journalArticle';
 
   const primaryRole = useMemo(() => {
     return (typeDefinition?.primaryCreatorType || getPrimaryCreatorType(currentItemType) || 'author').toLowerCase();
@@ -271,20 +235,22 @@ export function CreatorFields({
     return list;
   }, [typeDefinition]);
 
-  const [localCreators, setLocalCreators] = useState<CreatorEntry[]>(() => parseCreators(paper));
+  const [localCreators, setLocalCreators] = useState<CreatorEntry[]>(() => (item ? parseCreators(item) : []));
 
-  const paperId = paper.id;
-  const paperCreators = paper.creators;
-  const paperContributors = paper.contributors;
-  const paperAuthors = paper.authors;
+  const itemId = item?.id;
+  const itemCreators = item?.creators;
+  const itemContributors = item?.contributors;
+  const itemAuthors = item?.authors;
 
   useEffect(() => {
-    setLocalCreators(parseCreators(paper));
-  }, [paper, paperId, paperCreators, paperContributors, paperAuthors]);
+    if (item) {
+      setLocalCreators(parseCreators(item));
+    }
+  }, [item, itemId, itemCreators, itemContributors, itemAuthors]);
 
   useEffect(() => {
     setIsAuthorsExpanded(false);
-  }, [paperId]);
+  }, [itemId]);
 
   useEffect(() => {
     if (focusAuthorIndex !== null && authorInputRefs.current[focusAuthorIndex]) {
@@ -297,9 +263,7 @@ export function CreatorFields({
   const isAuthorRole = useCallback(
     (role?: string) => {
       const r = (role || 'author').trim().toLowerCase();
-      if (r === 'author' || r === 'bookauthor') return true;
-      if (SECONDARY_CREATOR_ROLES.has(r)) return false;
-      return r === primaryRole;
+      return r === primaryRole || r === 'author' || r === 'bookauthor';
     },
     [primaryRole],
   );
@@ -334,7 +298,8 @@ export function CreatorFields({
   /** Sync updated creators to parent mutation */
   const syncCreatorsToParent = useCallback(
     (updatedCreators: CreatorEntry[]) => {
-      const originalCreators = parseCreators(paper);
+      if (!item) return;
+      const originalCreators = parseCreators(item);
       if (areCreatorsEqual(updatedCreators, originalCreators)) {
         return;
       }
@@ -348,10 +313,10 @@ export function CreatorFields({
         .map((creatorItem) => creatorItem.name.trim())
         .filter(Boolean);
       const finalAuthors = primaryCreatorNames.length ? primaryCreatorNames : allCreatorNames;
-      if (onUpdatePaper) {
-        onUpdatePaper(
+      if (onUpdateItem) {
+        onUpdateItem(
           {
-            ...(paper.itemType ? { itemType: paper.itemType } : {}),
+            ...(item.itemType ? { itemType: item.itemType } : {}),
             authors: finalAuthors.length ? finalAuthors : undefined,
             creators: updatedCreators.length ? toItemCreators(updatedCreators) : undefined,
             silent: true,
@@ -360,7 +325,7 @@ export function CreatorFields({
         );
       }
     },
-    [paper, typeDefinition.primaryCreatorType, currentItemType, onUpdatePaper],
+    [item, typeDefinition.primaryCreatorType, currentItemType, onUpdateItem],
   );
 
   const handleUpdateCreatorType = (targetIndex: number, newCreatorType: string) => {
@@ -372,6 +337,34 @@ export function CreatorFields({
     }
     const updatedCreators = [...localCreators];
     updatedCreators[targetIndex] = { ...currentCreator, creatorType: newCreatorType };
+    setLocalCreators(updatedCreators);
+    syncCreatorsToParent(updatedCreators);
+  };
+
+  const handleToggleFieldMode = (targetIndex: number) => {
+    const currentCreator = localCreators[targetIndex];
+    if (!currentCreator) return;
+    const nextFieldMode = currentCreator.fieldMode === 1 ? 0 : 1;
+    const trimmedName = currentCreator.name.trim();
+    const updatedCreators = [...localCreators];
+
+    if (nextFieldMode === 1) {
+      updatedCreators[targetIndex] = {
+        ...currentCreator,
+        fieldMode: 1,
+        firstName: undefined,
+        lastName: trimmedName || undefined,
+      };
+    } else {
+      const parsed = trimmedName ? parseCreatorName(trimmedName) : { firstName: '', lastName: '' };
+      updatedCreators[targetIndex] = {
+        ...currentCreator,
+        fieldMode: 0,
+        firstName: parsed.firstName || undefined,
+        lastName: parsed.lastName || undefined,
+        shortName: undefined,
+      };
+    }
     setLocalCreators(updatedCreators);
     syncCreatorsToParent(updatedCreators);
   };
@@ -402,6 +395,7 @@ export function CreatorFields({
   const renderCreatorRow = (creatorEntry: CreatorEntry, originalIndex: number) => {
     const roleLabel =
       ALL_CREATOR_TYPES[creatorEntry.creatorType] || creatorEntry.creatorType || 'Author';
+    const isSingleField = creatorEntry.fieldMode === 1;
 
     return (
       <div
@@ -412,20 +406,24 @@ export function CreatorFields({
         <div className="flex items-center justify-end min-w-0 pr-1">
           {canEdit ? (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="w-full min-h-7 h-auto flex items-center justify-end pr-1 rounded-md text-11 leading-normal font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary/20 select-none text-right truncate"
-                  aria-label={`Change role for ${roleLabel.toLowerCase()} ${originalIndex + 1}`}
-                >
-                  <span
-                    className="truncate whitespace-nowrap leading-normal"
-                    title={roleLabel}
-                  >
-                    {roleLabel}
-                  </span>
-                </button>
-              </DropdownMenuTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-full min-h-7 h-auto flex items-center justify-end pr-1 rounded-md text-11 leading-normal font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary/20 select-none text-right truncate"
+                      aria-label={`Change role for ${roleLabel.toLowerCase()} ${originalIndex + 1}`}
+                    >
+                      <span className="truncate whitespace-nowrap leading-normal">
+                        {roleLabel}
+                      </span>
+                    </button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="start" sideOffset={6}>
+                  {roleLabel}
+                </TooltipContent>
+              </Tooltip>
               <DropdownMenuContent
                 align="start"
                 className="min-w-[170px] p-1.5 rounded-md shadow-raised-200 border border-border bg-popover text-popover-foreground space-y-0.5"
@@ -452,12 +450,16 @@ export function CreatorFields({
             </DropdownMenu>
           ) : (
             <div className="w-full min-h-7 h-auto flex items-center justify-end pr-1 text-11 leading-normal font-medium text-muted-foreground select-text text-right truncate">
-              <span
-                className="truncate whitespace-nowrap leading-normal"
-                title={roleLabel}
-              >
-                {roleLabel}
-              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="truncate whitespace-nowrap leading-normal">
+                    {roleLabel}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="start" sideOffset={6}>
+                  {roleLabel}
+                </TooltipContent>
+              </Tooltip>
             </div>
           )}
         </div>
@@ -473,7 +475,7 @@ export function CreatorFields({
                 type="text"
                 value={creatorEntry.name}
                 placeholder={
-                  creatorEntry.fieldMode === 1
+                  isSingleField
                     ? 'Institution or organization name'
                     : `${roleLabel} name`
                 }
@@ -482,7 +484,7 @@ export function CreatorFields({
                   const inputValue = changeEvent.target.value;
                   // Only split multi-authors if NOT in institutional single-field mode
                   if (
-                    creatorEntry.fieldMode !== 1 &&
+                    !isSingleField &&
                     (inputValue.includes(';') ||
                       /\s+and\s+/i.test(inputValue) ||
                       inputValue.includes('\n'))
@@ -524,8 +526,8 @@ export function CreatorFields({
               />
 
               {/* Optional Short Name / Acronym when in single-field institutional mode */}
-              {creatorEntry.fieldMode === 1 && (
-                <Tooltip delayDuration={300}>
+              {isSingleField && (
+                <Tooltip>
                   <TooltipTrigger asChild>
                     <input
                       type="text"
@@ -549,17 +551,51 @@ export function CreatorFields({
                     align="start"
                     sideOffset={6}
                     alignOffset={2}
-                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
                   >
                     Short name
                   </TooltipContent>
                 </Tooltip>
               )}
 
-
-              {/* Action Buttons (Add, Remove) - visible on hover on desktop, always visible on mobile */}
+              {/* Action Buttons (Mode Toggle, Add, Remove) - visible on hover on desktop, always visible on mobile */}
               <div className="invisible group-hover:visible max-md:visible flex items-center gap-0.5 shrink-0">
-                <Tooltip delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleFieldMode(originalIndex)}
+                      className={cn(
+                        'size-6 flex items-center justify-center rounded-md transition-colors cursor-pointer focus-visible:outline-none relative before:absolute before:-inset-2 md:before:hidden',
+                        isSingleField
+                          ? 'text-primary bg-primary/10 hover:bg-primary/20'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+                      )}
+                      aria-label={
+                        isSingleField
+                          ? `Switch ${roleLabel.toLowerCase()} ${originalIndex + 1} to two fields (person)`
+                          : `Switch ${roleLabel.toLowerCase()} ${originalIndex + 1} to single field (institution)`
+                      }
+                    >
+                      {isSingleField ? (
+                        <Building2 className="size-3.5 shrink-0" aria-hidden="true" strokeWidth={1.5} />
+                      ) : (
+                        <User className="size-3.5 shrink-0" aria-hidden="true" strokeWidth={1.5} />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    align="start"
+                    sideOffset={6}
+                    alignOffset={2}
+                  >
+                    {isSingleField
+                      ? 'Switch to two fields (last, first)'
+                      : 'Switch to single field (institution)'}
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       type="button"
@@ -575,14 +611,13 @@ export function CreatorFields({
                     align="start"
                     sideOffset={6}
                     alignOffset={2}
-                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
                   >
                     Add {roleLabel.toLowerCase()}
                   </TooltipContent>
                 </Tooltip>
 
                 {localCreators.length > 1 && (
-                  <Tooltip delayDuration={300}>
+                  <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         type="button"
@@ -598,7 +633,6 @@ export function CreatorFields({
                       align="start"
                       sideOffset={6}
                       alignOffset={2}
-                      className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
                     >
                       Remove {roleLabel.toLowerCase()}
                     </TooltipContent>
@@ -626,32 +660,36 @@ export function CreatorFields({
       {localCreators.length === 0 ? (
         canEdit ? (
           <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5">
-            <span
-              className="text-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate"
-              title={typeDefinition.creatorTypes[0]?.label || 'Author'}
-            >
-              {typeDefinition.creatorTypes[0]?.label || 'Author'}
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate">
+                  {typeDefinition.creatorTypes[0]?.label || 'Author'}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" align="start" sideOffset={6}>
+                {typeDefinition.creatorTypes[0]?.label || 'Author'}
+              </TooltipContent>
+            </Tooltip>
             <input
               type="text"
               aria-label="Author"
               onBlur={(blurEvent) => {
                 const trimmedValue = blurEvent.target.value.trim();
                 const existingAuthors = normalizeAuthors(
-                  paper.authors,
-                  paper.creators,
-                  paper.contributors,
+                  item?.authors,
+                  item?.creators,
+                  item?.contributors,
                 );
                 if (
                   trimmedValue &&
                   (!existingAuthors.length || existingAuthors[0] !== trimmedValue)
                 ) {
-                  if (onUpdatePaper) {
+                  if (onUpdateItem) {
                     const primaryRoleDef =
                       typeDefinition.primaryCreatorType ||
                       getPrimaryCreatorType(currentItemType) ||
                       'author';
-                    onUpdatePaper(
+                    onUpdateItem(
                       {
                         authors: [trimmedValue],
                         creators: [
@@ -674,20 +712,20 @@ export function CreatorFields({
                 if (keyboardEvent.key === 'Enter') {
                   const trimmedValue = (keyboardEvent.target as HTMLInputElement).value.trim();
                   const existingAuthors = normalizeAuthors(
-                    paper.authors,
-                    paper.creators,
-                    paper.contributors,
+                    item?.authors,
+                    item?.creators,
+                    item?.contributors,
                   );
                   if (
                     trimmedValue &&
                     (!existingAuthors.length || existingAuthors[0] !== trimmedValue)
                   ) {
-                    if (onUpdatePaper) {
+                    if (onUpdateItem) {
                       const primaryRoleDef =
                         typeDefinition.primaryCreatorType ||
                         getPrimaryCreatorType(currentItemType) ||
                         'author';
-                      onUpdatePaper(
+                      onUpdateItem(
                         {
                           authors: [trimmedValue],
                           creators: [

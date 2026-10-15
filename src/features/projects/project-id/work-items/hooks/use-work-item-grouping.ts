@@ -1,15 +1,15 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { Item, Column, DisplayOptions, ProjectMember, Label } from '../types/work-item.types';
+import type { Item, Column, DisplayOptions, ProjectMember, Label } from '@/features/projects/project-id/work-items/types/work-item.types';
 import {
   resolveColumnId,
   getItemBucketKey,
   PRIORITY_THEME_COLORS,
   GROUP_DEFAULT_COLORS,
-} from '../utils/work-item.utils';
+} from '@/features/projects/project-id/work-items/utils/work-item.utils';
 
-import type { UseWorkItemGroupingOptions } from '../types/hook.types';
+import type { UseWorkItemGroupingOptions } from '@/features/projects/project-id/work-items/types/hook.types';
 
 export type { UseWorkItemGroupingOptions };
 

@@ -252,7 +252,7 @@ const illustrationStyles = `
 export interface PlaneErrorStateProps {
   title?: string;
   description?: string;
-  error?: Error | { message?: string; digest?: string; [key: string]: any } | string | null;
+  error?: Error | { message?: string; digest?: string; [key: string]: unknown } | string | null;
   /** @deprecated Error states do not render buttons per project design standards */
   reset?: () => void;
   resetLabel?: string;

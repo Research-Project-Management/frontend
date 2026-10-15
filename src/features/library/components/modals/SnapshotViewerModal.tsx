@@ -3,7 +3,7 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
-import { ExternalLink, Download, Globe, X } from 'lucide-react';
+import { ExternalLink, Download, Globe } from 'lucide-react';
 
 interface SnapshotViewerModalProps {
   open: boolean;

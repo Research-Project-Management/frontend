@@ -13,7 +13,7 @@ import { cn } from "@/shared/lib/utils";
 import {
   useNotificationSettings,
   useUpdateNotificationSettings,
-} from "@/features/editor/ui/sidebar/review/hooks/useNotificationBundler";
+} from "@/features/editor/subsystems/review";
 
 export function NotificationsTab() {
   const { data: bundlingSettings } = useNotificationSettings();

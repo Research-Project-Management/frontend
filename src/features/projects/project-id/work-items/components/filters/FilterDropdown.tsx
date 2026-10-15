@@ -32,11 +32,11 @@ import type {
   DueDateFilterOption,
   Filters,
   ProjectMember,
-} from '../../types/work-item.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 import {
   resolveStateId,
-} from '../../utils/work-item.utils';
-import type { AssigneeFilterOption } from '../../hooks/use-topbar';
+} from '@/features/projects/project-id/work-items/utils/work-item.utils';
+import type { AssigneeFilterOption } from '@/features/projects/project-id/work-items/hooks/use-topbar';
 
 import {
   StatusIcon,
@@ -156,10 +156,180 @@ function SubmenuSearchBar({
   );
 }
 
+function MemberFilterSubmenu({
+  icon: Icon,
+  label,
+  hasActive,
+  searchValue,
+  onSearchChange,
+  searchPlaceholder = 'Search...',
+  users,
+  isSelected,
+  onSelectUser,
+  showUnassigned = false,
+  isUnassignedSelected = false,
+  onSelectUnassigned,
+  showEmptyMessage = false,
+}: {
+  icon: React.ElementType;
+  label: string;
+  hasActive: boolean;
+  searchValue: string;
+  onSearchChange: (val: string) => void;
+  searchPlaceholder?: string;
+  users: AssigneeFilterOption[];
+  isSelected: (userId: string) => boolean;
+  onSelectUser: (userId: string) => void;
+  showUnassigned?: boolean;
+  isUnassignedSelected?: boolean;
+  onSelectUnassigned?: () => void;
+  showEmptyMessage?: boolean;
+}) {
+  const q = searchValue.toLowerCase().trim();
+  const filteredUsers = users.filter((u) => !q || (u.name || '').toLowerCase().includes(q));
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
+        <Icon className="size-4 shrink-0 text-foreground" />
+        <span>{label}</span>
+        {hasActive && (
+          <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
+        )}
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-60 overflow-y-auto">
+        <SubmenuSearchBar
+          value={searchValue}
+          onChange={onSearchChange}
+          placeholder={searchPlaceholder}
+        />
+        {showUnassigned && onSelectUnassigned && (
+          <DropdownMenuItem
+            onSelect={(e) => {
+              e.preventDefault();
+              onSelectUnassigned();
+            }}
+            className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <User className="size-4 text-foreground shrink-0" />
+              <span>Unassigned</span>
+            </div>
+            {isUnassignedSelected && <Check className="size-3.5 text-foreground shrink-0" />}
+          </DropdownMenuItem>
+        )}
+        {showEmptyMessage && filteredUsers.length === 0 ? (
+          <div className="px-3 py-2 text-12 text-foreground/60 text-center">
+            No members found
+          </div>
+        ) : (
+          filteredUsers.map((user) => {
+            const active = isSelected(user.id);
+            return (
+              <DropdownMenuItem
+                key={user.id}
+                onSelect={(e) => {
+                  e.preventDefault();
+                  onSelectUser(user.id);
+                }}
+                className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {user.avatar ? (
+                    <Avatar className="size-4 shrink-0">
+                      <AvatarImage src={user.avatar} />
+                      <AvatarFallback className="text-9">
+                        {(user.name || 'U').slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <div className="size-4 rounded-full bg-muted flex items-center justify-center text-9 font-medium shrink-0">
+                      {(user.name || 'U').slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="truncate">{user.name}</span>
+                </div>
+                {active && <Check className="size-3.5 text-foreground shrink-0" />}
+              </DropdownMenuItem>
+            );
+          })
+        )}
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+  );
+}
+
+function DateFilterSubmenu({
+  icon: Icon,
+  label,
+  hasActive,
+  searchValue,
+  onSearchChange,
+  options,
+  isSelected,
+  onSelectOption,
+  widthClass = 'w-48',
+}: {
+  icon: React.ElementType;
+  label: string;
+  hasActive: boolean;
+  searchValue: string;
+  onSearchChange: (val: string) => void;
+  options: ReadonlyArray<{ id: string; label: string }>;
+  isSelected: (id: string) => boolean;
+  onSelectOption: (id: string) => void;
+  widthClass?: string;
+}) {
+  const q = searchValue.toLowerCase().trim();
+  const filteredOptions = options.filter((opt) => !q || opt.label.toLowerCase().includes(q));
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted [&>svg:last-child]:hidden">
+        <Icon className="size-4 shrink-0 text-foreground" />
+        <span>{label}</span>
+        {hasActive && (
+          <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
+        )}
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className={`${widthClass} p-1 rounded-md border-border bg-popover text-12 shadow-overlay`}>
+        <SubmenuSearchBar
+          value={searchValue}
+          onChange={onSearchChange}
+          placeholder="Search..."
+        />
+        {filteredOptions.map((opt) => {
+          const active = isSelected(opt.id);
+          return (
+            <DropdownMenuItem
+              key={opt.id}
+              onSelect={(e) => {
+                e.preventDefault();
+                onSelectOption(opt.id);
+              }}
+              className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
+            >
+              <span>{opt.label}</span>
+              {active && <Check className="size-3.5 text-foreground shrink-0" />}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+  );
+}
+
+const CREATED_UPDATED_DATE_OPTIONS = [
+  { id: 'today', label: 'Today' },
+  { id: 'this_week', label: 'This week' },
+  { id: 'this_month', label: 'This month' },
+  { id: 'this_year', label: 'This year' },
+] as const;
+
 // ── Filter Dropdown Props & Configuration ───────────────────────────────────
 
-import type { FilterDropdownProps } from '../../types/layout.types';
-import type { FilterItemConfig } from '../../types/filter.types';
+import type { FilterDropdownProps } from '@/features/projects/project-id/work-items/types/layout.types';
+import type { FilterItemConfig } from '@/features/projects/project-id/work-items/types/filter.types';
 
 export type { FilterDropdownProps, FilterItemConfig };
 
@@ -183,10 +353,10 @@ const FILTER_ITEMS: FilterItemConfig[] = [
 
 export function FilterDropdown({
   items = [],
-  columns,
+  columns = [],
   selectedColumnIds = [],
   onToggleColumn,
-  assignees,
+  assignees = [],
   members,
   selectedAssigneeIds = [],
   onToggleAssignee,
@@ -194,11 +364,9 @@ export function FilterDropdown({
   onTogglePriority,
   dueDateFilter,
   onDueDateFilterChange,
-  totalActiveFilters,
-  onClearAll,
+  totalActiveFilters = 0,
   filters,
   onToggleFilter,
-  onRemoveFilter,
 }: FilterDropdownProps) {
   const [filterQuery, setFilterQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -584,131 +752,36 @@ export function FilterDropdown({
 
         {/* 7. Assignees (Submenu with Search & Avatars) */}
         {filteredItems.some((i) => i.id === 'assignees') && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
-              <Users className="size-4 shrink-0 text-foreground" />
-              <span>Assignees</span>
-              {(filters?.assignees.length ?? selectedAssigneeIds.length) > 0 && (
-                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
-              )}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-60 overflow-y-auto">
-              <SubmenuSearchBar
-                value={getSubSearch('assignees')}
-                onChange={(v) => setSubSearchVal('assignees', v)}
-                placeholder="Search..."
-              />
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  handleToggle('assignees', '__unassigned__');
-                }}
-                className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <User className="size-4 text-foreground shrink-0" />
-                  <span>Unassigned</span>
-                </div>
-                {(isItemActive('assignees', '__unassigned__') ||
-                  isItemActive('assignees', 'unassigned')) && (
-                  <Check className="size-3.5 text-foreground shrink-0" />
-                )}
-              </DropdownMenuItem>
-
-              {assignees
-                .filter((user) => {
-                  const q = getSubSearch('assignees').toLowerCase().trim();
-                  if (!q) return true;
-                  return user.name.toLowerCase().includes(q);
-                })
-                .map((user) => {
-                  const isSelected = isItemActive('assignees', user.id);
-                  return (
-                    <DropdownMenuItem
-                      key={user.id}
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        handleToggle('assignees', user.id);
-                      }}
-                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        {user.avatar ? (
-                          <Avatar className="size-4 shrink-0">
-                            <AvatarImage src={user.avatar} />
-                            <AvatarFallback className="text-9">
-                              {(user.name || 'U').slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                        ) : (
-                          <div className="size-4 rounded-full bg-muted flex items-center justify-center text-9 font-medium shrink-0">
-                            {(user.name || 'U').slice(0, 1)}
-                          </div>
-                        )}
-                        <span className="truncate">{user.name}</span>
-                      </div>
-                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
-                    </DropdownMenuItem>
-                  );
-                })}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          <MemberFilterSubmenu
+            icon={Users}
+            label="Assignees"
+            hasActive={(filters?.assignees.length ?? selectedAssigneeIds.length) > 0}
+            searchValue={getSubSearch('assignees')}
+            onSearchChange={(v) => setSubSearchVal('assignees', v)}
+            users={assignees}
+            isSelected={(id) => isItemActive('assignees', id)}
+            onSelectUser={(id) => handleToggle('assignees', id)}
+            showUnassigned
+            isUnassignedSelected={
+              isItemActive('assignees', '__unassigned__') || isItemActive('assignees', 'unassigned')
+            }
+            onSelectUnassigned={() => handleToggle('assignees', '__unassigned__')}
+          />
         )}
 
         {/* 7b. Subscribers (Submenu — same member pool as Assignees) */}
         {filteredItems.some((i) => i.id === 'subscribers') && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
-              <User className="size-4 shrink-0 text-foreground" />
-              <span>Subscribers</span>
-              {(filters?.subscribers?.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
-              )}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-60 overflow-y-auto">
-              <SubmenuSearchBar
-                value={getSubSearch('subscribers')}
-                onChange={(v) => setSubSearchVal('subscribers', v)}
-                placeholder="Search members..."
-              />
-              {assignees
-                .filter((user) => {
-                  const q = getSubSearch('subscribers').toLowerCase().trim();
-                  if (!q) return true;
-                  return user.name.toLowerCase().includes(q);
-                })
-                .map((user) => {
-                  const isSelected = isItemActive('subscribers', user.id);
-                  return (
-                    <DropdownMenuItem
-                      key={user.id}
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        handleToggle('subscribers', user.id);
-                      }}
-                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        {user.avatar ? (
-                          <Avatar className="size-4 shrink-0">
-                            <AvatarImage src={user.avatar} />
-                            <AvatarFallback className="text-9">
-                              {(user.name || 'U').slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                        ) : (
-                          <div className="size-4 rounded-full bg-muted flex items-center justify-center text-9 font-medium shrink-0">
-                            {(user.name || 'U').slice(0, 1)}
-                          </div>
-                        )}
-                        <span className="truncate">{user.name}</span>
-                      </div>
-                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
-                    </DropdownMenuItem>
-                  );
-                })}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          <MemberFilterSubmenu
+            icon={User}
+            label="Subscribers"
+            hasActive={(filters?.subscribers?.length ?? 0) > 0}
+            searchValue={getSubSearch('subscribers')}
+            onSearchChange={(v) => setSubSearchVal('subscribers', v)}
+            searchPlaceholder="Search members..."
+            users={assignees}
+            isSelected={(id) => isItemActive('subscribers', id)}
+            onSelectUser={(id) => handleToggle('subscribers', id)}
+          />
         )}
 
         {/* 8. Priority (Submenu with Search & Signal Bar Icons) */}
@@ -767,68 +840,17 @@ export function FilterDropdown({
 
         {/* 9. Mentions (Submenu with Search & Avatars) */}
         {filteredItems.some((i) => i.id === 'mentions') && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
-              <AtSign className="size-4 shrink-0 text-foreground" />
-              <span>Mentions</span>
-              {(filters?.mentions.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
-              )}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-56 overflow-y-auto">
-              <SubmenuSearchBar
-                value={getSubSearch('mentions')}
-                onChange={(v) => setSubSearchVal('mentions', v)}
-                placeholder="Search..."
-              />
-              {(() => {
-                const q = getSubSearch('mentions').toLowerCase().trim();
-                const filteredMembers = membersList.filter((user) => {
-                  if (!q) return true;
-                  return user.name.toLowerCase().includes(q);
-                });
-
-                if (filteredMembers.length === 0) {
-                  return (
-                    <div className="px-3 py-2 text-12 text-foreground/60 text-center">
-                      No members found
-                    </div>
-                  );
-                }
-
-                return filteredMembers.map((user) => {
-                  const isSelected = isItemActive('mentions', user.id);
-                  return (
-                    <DropdownMenuItem
-                      key={user.id}
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        handleToggle('mentions', user.id);
-                      }}
-                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        {user.avatar ? (
-                          <Avatar className="size-4 shrink-0">
-                            <AvatarImage src={user.avatar} />
-                            <AvatarFallback className="text-9">
-                              {(user.name || 'U').slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                        ) : (
-                          <div className="size-4 rounded-full bg-muted flex items-center justify-center text-9 font-medium shrink-0">
-                            {(user.name || 'U').slice(0, 1).toUpperCase()}
-                          </div>
-                        )}
-                        <span className="truncate">{user.name}</span>
-                      </div>
-                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
-                    </DropdownMenuItem>
-                  );
-                });
-              })()}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          <MemberFilterSubmenu
+            icon={AtSign}
+            label="Mentions"
+            hasActive={(filters?.mentions.length ?? 0) > 0}
+            searchValue={getSubSearch('mentions')}
+            onSearchChange={(v) => setSubSearchVal('mentions', v)}
+            users={membersList}
+            isSelected={(id) => isItemActive('mentions', id)}
+            onSelectUser={(id) => handleToggle('mentions', id)}
+            showEmptyMessage
+          />
         )}
 
         {/* 10. Label (Submenu with Search) */}
@@ -878,7 +900,8 @@ export function FilterDropdown({
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         )}
-        {/* 12. Attach (replacing Module, Submenu with Search) */}
+
+        {/* 12. Attach (Submenu with Search) */}
         {filteredItems.some((i) => i.id === 'attach') && (
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
@@ -934,255 +957,87 @@ export function FilterDropdown({
 
         {/* 13. Start date (Submenu with Search) */}
         {filteredItems.some((i) => i.id === 'start-date') && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted [&>svg:last-child]:hidden">
-              <CalendarClock className="size-4 shrink-0 text-foreground" />
-              <span>Start date</span>
-              {(filters?.start_date.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
-              )}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
-              <SubmenuSearchBar
-                value={getSubSearch('start-date')}
-                onChange={(v) => setSubSearchVal('start-date', v)}
-                placeholder="Search..."
-              />
-              {(
-                [
-                  { id: 'today', label: 'Today' },
-                  { id: 'this_week', label: 'This week' },
-                  { id: 'this_month', label: 'This month' },
-                  { id: 'next_week', label: 'Next week' },
-                  { id: 'no_date', label: 'No start date' },
-                ] as const
-              )
-                .filter((d) => {
-                  const q = getSubSearch('start-date').toLowerCase().trim();
-                  if (!q) return true;
-                  return d.label.toLowerCase().includes(q);
-                })
-                .map((d) => {
-                  const isSelected = isItemActive('start_date', d.id);
-                  return (
-                    <DropdownMenuItem
-                      key={d.id}
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        handleToggle('start_date', d.id);
-                      }}
-                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
-                    >
-                      <span>{d.label}</span>
-                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
-                    </DropdownMenuItem>
-                  );
-                })}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          <DateFilterSubmenu
+            icon={CalendarClock}
+            label="Start date"
+            hasActive={(filters?.start_date.length ?? 0) > 0}
+            searchValue={getSubSearch('start-date')}
+            onSearchChange={(v) => setSubSearchVal('start-date', v)}
+            options={[
+              { id: 'today', label: 'Today' },
+              { id: 'this_week', label: 'This week' },
+              { id: 'this_month', label: 'This month' },
+              { id: 'next_week', label: 'Next week' },
+              { id: 'no_date', label: 'No start date' },
+            ]}
+            isSelected={(id) => isItemActive('start_date', id)}
+            onSelectOption={(id) => handleToggle('start_date', id)}
+          />
         )}
 
         {/* 14. Due date (Submenu with Search) */}
         {filteredItems.some((i) => i.id === 'due-date') && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted [&>svg:last-child]:hidden">
-              <Calendar className="size-4 shrink-0 text-foreground" />
-              <span>Due date</span>
-              {(filters?.due_date.length ?? (dueDateFilter !== 'all' ? 1 : 0)) > 0 && (
-                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
-              )}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-52 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
-              <SubmenuSearchBar
-                value={getSubSearch('due-date')}
-                onChange={(v) => setSubSearchVal('due-date', v)}
-                placeholder="Search..."
-              />
-              {(
-                [
-                  { id: 'all', label: 'All Due Dates' },
-                  { id: 'overdue', label: 'Overdue' },
-                  { id: 'this_week', label: 'Due this week' },
-                  { id: 'today', label: 'Due today' },
-                  { id: 'this_month', label: 'Due this month' },
-                  { id: 'no_date', label: 'No due date' },
-                ] as Array<{ id: DueDateFilterOption | 'today' | 'this_month'; label: string }>
-              )
-                .filter((opt) => {
-                  const q = getSubSearch('due-date').toLowerCase().trim();
-                  if (!q) return true;
-                  return opt.label.toLowerCase().includes(q);
-                })
-                .map((opt) => {
-                  const isSelected = isItemActive('due_date', opt.id);
-                  return (
-                    <DropdownMenuItem
-                      key={opt.id}
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        handleToggle('due_date', opt.id);
-                      }}
-                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
-                    >
-                      <span>{opt.label}</span>
-                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
-                    </DropdownMenuItem>
-                  );
-                })}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          <DateFilterSubmenu
+            icon={Calendar}
+            label="Due date"
+            hasActive={(filters?.due_date.length ?? (dueDateFilter && dueDateFilter !== 'all' ? 1 : 0)) > 0}
+            searchValue={getSubSearch('due-date')}
+            onSearchChange={(v) => setSubSearchVal('due-date', v)}
+            widthClass="w-52"
+            options={[
+              { id: 'all', label: 'All Due Dates' },
+              { id: 'overdue', label: 'Overdue' },
+              { id: 'this_week', label: 'Due this week' },
+              { id: 'today', label: 'Due today' },
+              { id: 'this_month', label: 'Due this month' },
+              { id: 'no_date', label: 'No due date' },
+            ]}
+            isSelected={(id) => isItemActive('due_date', id)}
+            onSelectOption={(id) => handleToggle('due_date', id as DueDateFilterOption)}
+          />
         )}
 
         {/* 15. Created at (Submenu with Search) */}
         {filteredItems.some((i) => i.id === 'created-at') && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted [&>svg:last-child]:hidden">
-              <Calendar className="size-4 shrink-0 text-foreground" />
-              <span>Created at</span>
-              {(filters?.created_at.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
-              )}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
-              <SubmenuSearchBar
-                value={getSubSearch('created-at')}
-                onChange={(v) => setSubSearchVal('created-at', v)}
-                placeholder="Search..."
-              />
-              {['Today', 'This week', 'This month', 'This year']
-                .filter((d) => {
-                  const q = getSubSearch('created-at').toLowerCase().trim();
-                  if (!q) return true;
-                  return d.toLowerCase().includes(q);
-                })
-                .map((d) => {
-                  const val = d.toLowerCase().replace(' ', '_');
-                  const isSelected = isItemActive('created_at', val);
-                  return (
-                    <DropdownMenuItem
-                      key={d}
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        handleToggle('created_at', val);
-                      }}
-                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
-                    >
-                      <span>{d}</span>
-                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
-                    </DropdownMenuItem>
-                  );
-                })}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          <DateFilterSubmenu
+            icon={Calendar}
+            label="Created at"
+            hasActive={(filters?.created_at.length ?? 0) > 0}
+            searchValue={getSubSearch('created-at')}
+            onSearchChange={(v) => setSubSearchVal('created-at', v)}
+            options={CREATED_UPDATED_DATE_OPTIONS}
+            isSelected={(id) => isItemActive('created_at', id)}
+            onSelectOption={(id) => handleToggle('created_at', id)}
+          />
         )}
 
         {/* 16. Updated at (Submenu with Search) */}
         {filteredItems.some((i) => i.id === 'updated-at') && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted [&>svg:last-child]:hidden">
-              <Calendar className="size-4 shrink-0 text-foreground" />
-              <span>Updated at</span>
-              {(filters?.updated_at.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
-              )}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border bg-popover text-12 shadow-overlay">
-              <SubmenuSearchBar
-                value={getSubSearch('updated-at')}
-                onChange={(v) => setSubSearchVal('updated-at', v)}
-                placeholder="Search..."
-              />
-              {['Today', 'This week', 'This month', 'This year']
-                .filter((d) => {
-                  const q = getSubSearch('updated-at').toLowerCase().trim();
-                  if (!q) return true;
-                  return d.toLowerCase().includes(q);
-                })
-                .map((d) => {
-                  const val = d.toLowerCase().replace(' ', '_');
-                  const isSelected = isItemActive('updated_at', val);
-                  return (
-                    <DropdownMenuItem
-                      key={d}
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        handleToggle('updated_at', val);
-                      }}
-                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
-                    >
-                      <span>{d}</span>
-                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
-                    </DropdownMenuItem>
-                  );
-                })}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          <DateFilterSubmenu
+            icon={Calendar}
+            label="Updated at"
+            hasActive={(filters?.updated_at.length ?? 0) > 0}
+            searchValue={getSubSearch('updated-at')}
+            onSearchChange={(v) => setSubSearchVal('updated-at', v)}
+            options={CREATED_UPDATED_DATE_OPTIONS}
+            isSelected={(id) => isItemActive('updated_at', id)}
+            onSelectOption={(id) => handleToggle('updated_at', id)}
+          />
         )}
 
         {/* 17. Created by (Submenu with Search & Avatars) */}
         {filteredItems.some((i) => i.id === 'created-by') && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
-              <UserCircle className="size-4 shrink-0 text-foreground" />
-              <span>Created by</span>
-              {(filters?.created_by.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-foreground shrink-0 ml-auto mr-1" />
-              )}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-overlay max-h-56 overflow-y-auto">
-              <SubmenuSearchBar
-                value={getSubSearch('created-by')}
-                onChange={(v) => setSubSearchVal('created-by', v)}
-                placeholder="Search..."
-              />
-              {(() => {
-                const q = getSubSearch('created-by').toLowerCase().trim();
-                const filteredMembers = membersList.filter((user) => {
-                  if (!q) return true;
-                  return user.name.toLowerCase().includes(q);
-                });
-
-                if (filteredMembers.length === 0) {
-                  return (
-                    <div className="px-3 py-2 text-12 text-foreground/60 text-center">
-                      No members found
-                    </div>
-                  );
-                }
-
-                return filteredMembers.map((user) => {
-                  const isSelected = isItemActive('created_by', user.id);
-                  return (
-                    <DropdownMenuItem
-                      key={user.id}
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        handleToggle('created_by', user.id);
-                      }}
-                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        {user.avatar ? (
-                          <Avatar className="size-4 shrink-0">
-                            <AvatarImage src={user.avatar} />
-                            <AvatarFallback className="text-9">
-                              {(user.name || 'U').slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                        ) : (
-                          <div className="size-4 rounded-full bg-muted flex items-center justify-center text-9 font-medium shrink-0">
-                            {(user.name || 'U').slice(0, 1).toUpperCase()}
-                          </div>
-                        )}
-                        <span className="truncate">{user.name}</span>
-                      </div>
-                      {isSelected && <Check className="size-3.5 text-foreground shrink-0" />}
-                    </DropdownMenuItem>
-                  );
-                });
-              })()}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          <MemberFilterSubmenu
+            icon={UserCircle}
+            label="Created by"
+            hasActive={(filters?.created_by.length ?? 0) > 0}
+            searchValue={getSubSearch('created-by')}
+            onSearchChange={(v) => setSubSearchVal('created-by', v)}
+            users={membersList}
+            isSelected={(id) => isItemActive('created_by', id)}
+            onSelectUser={(id) => handleToggle('created_by', id)}
+            showEmptyMessage
+          />
         )}
       </DropdownMenuContent>
     </DropdownMenu>

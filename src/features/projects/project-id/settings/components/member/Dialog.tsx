@@ -21,7 +21,7 @@ interface CandidateUser {
 interface AddMemberDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  workspace?: any;
+  workspace?: unknown;
   existingMemberIds: Set<string>;
   onAdd: (userIds: string[], role: ProjectRole) => Promise<void>;
   isLoading?: boolean;
@@ -68,10 +68,10 @@ export function AddMemberDialog({
     debounceTimerRef.current = setTimeout(async () => {
       try {
         const queryParams = new URLSearchParams({ query: trimmed });
-        const res = await apiGet<any>(`/api/users/search?${queryParams.toString()}`);
+        const res = await apiGet<CandidateUser[] | { users?: CandidateUser[] }>(`/api/users/search?${queryParams.toString()}`);
         const rawUsers = Array.isArray(res) ? res : res?.users || [];
-        const mapped: CandidateUser[] = rawUsers.map((u: any) => ({
-          id: u.id,
+        const mapped: CandidateUser[] = rawUsers.map((u: Partial<CandidateUser>) => ({
+          id: u.id || '',
           name: u.name || 'User',
           email: u.email || '',
           avatar: u.avatar || null,

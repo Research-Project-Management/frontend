@@ -11,8 +11,8 @@ import {
   Folder,
   Library,
 } from 'lucide-react';
-import { useRelations, useViewItems, useCollections } from '../../data';
-import { useLibraryViewStore } from '../../store/library-ui.store';
+import { useRelations, useViewItems, useCollections } from '@/features/library/data';
+import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Input } from '@/shared/components/ui/input';
@@ -21,7 +21,6 @@ import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-  TooltipProvider,
 } from '@/shared/components/ui/tooltip';
 import {
   Dialog,
@@ -30,9 +29,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/shared/components/ui/dialog';
-import type { Item, RelatedItem } from '@/features/library/types/library.types';
+import type { Item, RelatedItem, Collection } from '@/features/library/types/library.types';
 import { cn } from '@/shared/lib/utils';
-import { cleanAcademicText, formatAcademicAuthors } from '../../utils/academic-text';
+import { cleanAcademicText } from '@/features/library/domain/academic-text';
 
 interface VenueBearingItem {
   journal?: string;
@@ -53,9 +52,11 @@ function getPublicationVenue(item?: VenueBearingItem | null): string {
 }
 
 interface RelatedSectionProps {
-  paper: Item;
+  item?: Item;
+  paper?: Item;
   scopeId?: string;
   projectId?: string;
+  onSelectItem?: (itemId: string) => void;
   onSelectPaper?: (paperId: string) => void;
   hideHeader?: boolean;
   forceAdding?: boolean;
@@ -64,34 +65,36 @@ interface RelatedSectionProps {
   canEdit?: boolean;
 }
 
-export default function RelatedSection({
-  paper,
-  scopeId,
-  projectId,
-  onSelectPaper,
-  hideHeader = false,
-  forceAdding = false,
-  isAddOpen,
-  onAddOpenChange,
-  canEdit = true,
-}: RelatedSectionProps) {
+export default function RelatedSection(props: RelatedSectionProps) {
+  const item = props.item || props.paper;
+  const onSelectItem = props.onSelectItem || props.onSelectPaper;
+  const {
+    scopeId,
+    projectId,
+    hideHeader = false,
+    forceAdding = false,
+    isAddOpen,
+    onAddOpenChange,
+    canEdit = true,
+  } = props;
+
   const activeScopeId =
     scopeId ||
     projectId ||
-    paper.projectId ||
+    item?.projectId ||
     'user';
-
-  const { relatedItems, isLoading, link, unlink, isLinking } = useRelations(
-    activeScopeId,
-    paper.id || '',
-  );
-  const { data: allItemsRes } = useViewItems(activeScopeId, 'all');
-  const collectionsState = useCollections(activeScopeId);
-  const collections = collectionsState?.state?.collections || [];
 
   const [internalAddOpen, setInternalAddOpen] = useState(false);
   const isModalOpen = isAddOpen !== undefined ? isAddOpen : internalAddOpen;
   const setModalOpen = onAddOpenChange || setInternalAddOpen;
+
+  const { relatedItems, isLoading, link, unlink, isLinking } = useRelations(
+    activeScopeId,
+    item?.id || '',
+  );
+  const { data: allItemsRes } = useViewItems(activeScopeId, 'all', { enabled: isModalOpen });
+  const collectionsState = useCollections(activeScopeId);
+  const collections = collectionsState?.state?.collections || [];
 
   useEffect(() => {
     if (forceAdding && canEdit) {
@@ -127,26 +130,26 @@ export default function RelatedSection({
 
   const relatedList: RelatedItem[] = relatedItems;
 
-  const selectOnly = useLibraryViewStore((s) => s.selectOnly);
-  const handlePaperClick = useCallback(
+  const selectOnly = useLibraryUIStore((s) => s.selectOnly);
+  const handleItemClick = useCallback(
     (targetId: string) => {
-      if (onSelectPaper) {
-        onSelectPaper(targetId);
+      if (onSelectItem) {
+        onSelectItem(targetId);
       } else {
         selectOnly(targetId);
       }
     },
-    [onSelectPaper, selectOnly],
+    [onSelectItem, selectOnly],
   );
 
 
-  // Filter available items for linking (excluding current paper & already linked papers)
+  // Filter available items for linking (excluding current item & already linked items)
   const availableItems = useMemo(() => {
     const all = allItemsRes?.items || [];
     const linkedIdSet = new Set(relatedList.map((r) => r.id));
 
     return all.filter((targetItem: Item) => {
-      if (!targetItem?.id || targetItem.id === paper.id) return false;
+      if (!targetItem?.id || targetItem.id === item?.id) return false;
       if (linkedIdSet.has(targetItem.id)) return false;
 
       // Filter by Collection if selected in left sidebar
@@ -182,7 +185,7 @@ export default function RelatedSection({
 
       return true;
     });
-  }, [allItemsRes?.items, relatedList, paper.id, selectedCollectionFilter, searchQuery]);
+  }, [allItemsRes?.items, relatedList, item?.id, selectedCollectionFilter, searchQuery]);
 
   const handleToggleSelect = (id: string) => {
     setSelectedTargetIds((prev) => {
@@ -245,12 +248,15 @@ export default function RelatedSection({
     }
   };
 
-  // No empty state rendered when there are no related items
-  if (!isLoading && relatedList.length === 0 && !isModalOpen) {
+  if (!isLoading && relatedList.length === 0 && !isModalOpen && !canEdit) {
     return null;
   }
 
-  const currentPaperCleanTitle = cleanAcademicText(paper.title) || 'Current Reference';
+  if (!item) {
+    return null;
+  }
+
+  const currentPaperCleanTitle = cleanAcademicText(item.title) || 'Current Reference';
 
   return (
     <div className="flex flex-col gap-2 text-12 min-w-0">
@@ -281,89 +287,105 @@ export default function RelatedSection({
         </div>
       )}
 
+      {/* Empty state with inline Add action */}
+      {!isLoading && relatedList.length === 0 && canEdit && (
+        <div className="pt-0.5 px-1.5">
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="inline-flex items-center gap-1 text-11 text-foreground hover:text-foreground/80 transition-colors cursor-pointer py-0.5"
+          >
+            <Plus className="size-3" strokeWidth={1.5} />
+            Add related item
+          </button>
+        </div>
+      )}
+
       {/* Relations list in Inspector */}
       {!isLoading && relatedList.length > 0 && (
-        <TooltipProvider delayDuration={700}>
-          <div className="flex flex-col gap-2">
-            {relatedList.map((item) => {
-              const cleanTitle = cleanAcademicText(item.title) || 'Untitled Item';
+        <div className="flex flex-col gap-2">
+          {relatedList.map((relItem) => {
+            const cleanTitle = cleanAcademicText(relItem.title) || 'Untitled Item';
 
-              return (
-                <div
-                  key={item.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => handlePaperClick(item.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handlePaperClick(item.id);
-                    }
-                  }}
-                  className="group relative flex items-start gap-2 p-2 rounded-md border border-border/70 bg-card hover:bg-muted/50 hover:border-border transition-all cursor-pointer select-none"
-                  title={cleanTitle}
-                >
-                  {/* Left document icon - neutral, does not change color on hover */}
-                  <div className="size-6 rounded bg-muted/60 text-foreground flex items-center justify-center shrink-0 mt-0.5">
-                    <FileText className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                  </div>
-
-                  {/* Main reference info - paper title only */}
-                  <div className="min-w-0 flex-1 pr-1">
-                    <p className="font-medium text-12 text-foreground leading-snug line-clamp-2">
-                      {cleanTitle}
-                    </p>
-                  </div>
-
-                  {/* Top-right action controls - pushed to the right, clean neutral colors */}
-                  <div
-                    className="flex items-center gap-0.5 shrink-0 ml-auto -mt-0.5"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {/* Open DOI */}
-                    {item.doi && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <a
-                            href={`https://doi.org/${encodeURIComponent(item.doi)}`}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            className="size-6 flex items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
-                            aria-label={`Open DOI: ${item.doi}`}
-                          >
-                            <ExternalLink className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                          </a>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" align="end" sideOffset={4} className="text-12 px-2 py-1">
-                          Open DOI
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-
-                    {/* Unlink */}
-                    {canEdit && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={(e) => handleUnlink(item.id, e)}
-                            className="size-6 flex items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
-                            aria-label="Unlink reference"
-                          >
-                            <X className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" align="end" sideOffset={4} className="text-12 px-2 py-1">
-                          Unlink reference
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
+            return (
+              <div
+                key={relItem.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleItemClick(relItem.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleItemClick(relItem.id);
+                  }
+                }}
+                className="group relative flex items-start gap-2 p-2 rounded-md border border-border/70 bg-card hover:bg-muted/50 hover:border-border transition-all cursor-pointer select-none"
+              >
+                {/* Left document icon - neutral, does not change color on hover */}
+                <div className="size-6 rounded bg-muted/60 text-foreground flex items-center justify-center shrink-0 mt-0.5">
+                  <FileText className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                 </div>
-              );
-            })}
-          </div>
-        </TooltipProvider>
+
+                {/* Main reference info - paper title only */}
+                <div className="min-w-0 flex-1 pr-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <p className="font-medium text-12 text-foreground leading-snug line-clamp-2">
+                        {cleanTitle}
+                      </p>
+                    </TooltipTrigger>
+                    <TooltipContent>{cleanTitle}</TooltipContent>
+                  </Tooltip>
+                </div>
+
+                {/* Top-right action controls - pushed to the right, clean neutral colors */}
+                <div
+                  className="flex items-center gap-0.5 shrink-0 ml-auto -mt-0.5"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Open DOI */}
+                  {relItem.doi && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <a
+                          href={`https://doi.org/${encodeURIComponent(relItem.doi)}`}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="size-6 flex items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
+                          aria-label={`Open DOI: ${relItem.doi}`}
+                        >
+                          <ExternalLink className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                        </a>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" align="end" sideOffset={4}>
+                        Open DOI
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+
+                  {/* Unlink */}
+                  {canEdit && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={(e) => handleUnlink(relItem.id, e)}
+                          className="size-6 flex items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
+                          aria-label="Unlink reference"
+                        >
+                          <X className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" align="end" sideOffset={4}>
+                        Unlink reference
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* Two-Column Master-Detail "Add Related Items" Dialog */}
@@ -379,12 +401,14 @@ export default function RelatedSection({
             </DialogTitle>
             <DialogDescription className="text-11 text-foreground leading-normal flex items-center gap-1.5 min-w-0">
               <span className="shrink-0 text-foreground">Linking with:</span>
-              <span
-                className="font-medium text-foreground truncate max-w-[500px]"
-                title={currentPaperCleanTitle}
-              >
-                &ldquo;{currentPaperCleanTitle}&rdquo;
-              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="font-medium text-foreground truncate max-w-[500px]">
+                    &ldquo;{currentPaperCleanTitle}&rdquo;
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{currentPaperCleanTitle}</TooltipContent>
+              </Tooltip>
             </DialogDescription>
           </DialogHeader>
 
@@ -422,38 +446,41 @@ export default function RelatedSection({
                 </button>
 
                 {/* Individual Collections */}
-                {collections.map((col: any) => {
+                {collections.map((col: Collection) => {
                   const isSelected = selectedCollectionFilter === col.id;
                   const count = collectionCounts[col.id] || 0;
 
                   return (
-                    <button
-                      key={col.id}
-                      type="button"
-                      aria-pressed={isSelected}
-                      onClick={() => setSelectedCollectionFilter(col.id)}
-                      className={cn(
-                        'text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none shrink-0 sm:shrink sm:w-full',
-                        isSelected
-                          ? 'bg-muted text-foreground font-medium shadow-2xs'
-                          : 'text-foreground hover:bg-muted/40 font-normal',
-                      )}
-                      title={col.name}
-                      aria-label={`${col.name} (${count} items)`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
-                        <Folder
-                          className="size-3.5 shrink-0 text-foreground"
-                          strokeWidth={1.5}
-                        />
-                        <span className="truncate">{col.name}</span>
-                      </div>
-                      {count > 0 && (
-                        <span className="text-10 font-mono text-foreground tabular-nums shrink-0 ml-1">
-                          {count}
-                        </span>
-                      )}
-                    </button>
+                    <Tooltip key={col.id}>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          aria-pressed={isSelected}
+                          onClick={() => setSelectedCollectionFilter(col.id)}
+                          className={cn(
+                            'text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none shrink-0 sm:shrink sm:w-full',
+                            isSelected
+                              ? 'bg-muted text-foreground font-medium shadow-2xs'
+                              : 'text-foreground hover:bg-muted/40 font-normal',
+                          )}
+                          aria-label={`${col.name} (${count} items)`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
+                            <Folder
+                              className="size-3.5 shrink-0 text-foreground"
+                              strokeWidth={1.5}
+                            />
+                            <span className="truncate">{col.name}</span>
+                          </div>
+                          {count > 0 && (
+                            <span className="text-10 font-mono text-foreground tabular-nums shrink-0 ml-1">
+                              {count}
+                            </span>
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{col.name}</TooltipContent>
+                    </Tooltip>
                   );
                 })}
               </div>
@@ -477,15 +504,19 @@ export default function RelatedSection({
                     className="w-full h-8.5 pl-9 pr-9 text-13 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/35 focus:bg-background focus:border-border text-foreground placeholder:text-foreground/50 outline-none transition-all shadow-none"
                   />
                   {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-1 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors rounded-md"
-                      title="Clear search"
-                      aria-label="Clear search"
-                    >
-                      <X className="size-3.5" strokeWidth={1.5} />
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery('')}
+                          className="absolute right-1 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors rounded-md"
+                          aria-label="Clear search"
+                        >
+                          <X className="size-3.5" strokeWidth={1.5} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>Clear search</TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
               </div>
@@ -557,15 +588,19 @@ export default function RelatedSection({
 
                             {/* Title only */}
                             <div className="min-w-0 flex-1">
-                              <p
-                                className={cn(
-                                  'text-13 leading-snug line-clamp-1 break-words',
-                                  isChecked ? 'font-medium text-primary' : 'font-normal text-foreground',
-                                )}
-                                title={cleanTitle}
-                              >
-                                {cleanTitle}
-                              </p>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <p
+                                    className={cn(
+                                      'text-13 leading-snug line-clamp-1 break-words',
+                                      isChecked ? 'font-medium text-primary' : 'font-normal text-foreground',
+                                    )}
+                                  >
+                                    {cleanTitle}
+                                  </p>
+                                </TooltipTrigger>
+                                <TooltipContent>{cleanTitle}</TooltipContent>
+                              </Tooltip>
                             </div>
 
                             {/* Right: Year Badge */}

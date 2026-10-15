@@ -28,7 +28,7 @@ import {
   getLibraryPermissions,
   getScopeTarget,
 } from '@/features/library/domain/library-permissions.policy';
-import { formatAcademicAuthors } from '@/features/library/utils/academic-text';
+import { formatAcademicAuthors } from '@/features/library/domain/academic-text';
 
 describe('Library Domain Layer — Pure Functional Logic', () => {
   describe('Creators Domain (creators.ts)', () => {
@@ -370,7 +370,7 @@ describe('Library Domain Layer — Pure Functional Logic', () => {
 
   describe('Library Sorting Utility (sort-items.ts)', () => {
     it('should pin processing items to the top regardless of sort direction', async () => {
-      const { sortLibraryItems } = await import('@/features/library/utils/sort-items');
+      const { sortLibraryItems } = await import('@/features/library/domain/sort-items.domain');
       const items: any[] = [
         { id: '1', title: 'Beta', year: 2020 },
         { id: '2', title: 'Alpha', year: 2024, _isProcessing: true },
@@ -383,7 +383,7 @@ describe('Library Domain Layer — Pure Functional Logic', () => {
     });
 
     it('should sort regular items alphabetically and numerically', async () => {
-      const { sortLibraryItems } = await import('@/features/library/utils/sort-items');
+      const { sortLibraryItems } = await import('@/features/library/domain/sort-items.domain');
       const items: any[] = [
         { id: '1', title: 'Charlie', year: 2020 },
         { id: '2', title: 'Alpha', year: 2024 },
@@ -397,7 +397,7 @@ describe('Library Domain Layer — Pure Functional Logic', () => {
     });
 
     it('should correctly handle author and date aliases', async () => {
-      const { sortLibraryItems } = await import('@/features/library/utils/sort-items');
+      const { sortLibraryItems } = await import('@/features/library/domain/sort-items.domain');
       const items: any[] = [
         { id: '1', authors: ['Knuth'], createdAt: '2024-01-01' },
         { id: '2', authors: ['Einstein'], createdAt: '2024-05-01' },
@@ -410,7 +410,7 @@ describe('Library Domain Layer — Pure Functional Logic', () => {
     });
 
     it('should correctly handle publication and dateDeleted aliases', async () => {
-      const { sortLibraryItems } = await import('@/features/library/utils/sort-items');
+      const { sortLibraryItems } = await import('@/features/library/domain/sort-items.domain');
       const items: any[] = [
         { id: '1', title: 'Paper 1', publicationTitle: 'Nature', deletedAt: '2026-03-01' },
         { id: '2', title: 'Paper 2', publicationTitle: 'ACM Computing', deletedAt: '2026-05-01' },
@@ -520,5 +520,132 @@ describe('Library Domain Layer — Pure Functional Logic', () => {
       expect(target.projectId).toBe('proj-789');
       expect(target.itemsApiUrl).toBe('/api/v1/projects/proj-789/library/items');
     });
+
+    it('should fall back non-canonical legacy roles (admin, editor, member) to read-only reviewer permissions', () => {
+      for (const nonCanonicalRole of ['admin', 'editor', 'member', 'viewer', undefined]) {
+        const perms = getLibraryPermissions({
+          type: 'project',
+          id: 'proj-legacy',
+          projectId: 'proj-legacy',
+          name: 'Legacy Test',
+          role: nonCanonicalRole as any,
+        });
+        expect(perms.canRead).toBe(true);
+        expect(perms.canExport).toBe(true);
+        expect(perms.canCreateItem).toBe(false);
+        expect(perms.canEditItem).toBe(false);
+        expect(perms.canDeleteItem).toBe(false);
+        expect(perms.canManageCollections).toBe(false);
+        expect(perms.canImport).toBe(false);
+      }
+    });
+  });
+
+  describe('Declarative Schema & Export Mappings (item-types.types.ts, citations.ts, diff.ts)', () => {
+    it('should derive REVERSE_BASE_FIELD_MAPPINGS automatically from BASE_FIELD_MAPPINGS', async () => {
+      const {
+        BASE_FIELD_MAPPINGS,
+        REVERSE_BASE_FIELD_MAPPINGS,
+        deriveReverseBaseFieldMappings,
+        getPrimaryCreatorType,
+        getVenueFieldForType,
+        getPublisherFieldForType,
+        buildStaticFieldsForType,
+      } = await import('@/features/library/types/item-types.types');
+
+      const recomputed = deriveReverseBaseFieldMappings(BASE_FIELD_MAPPINGS);
+      expect(REVERSE_BASE_FIELD_MAPPINGS).toEqual(recomputed);
+      expect(REVERSE_BASE_FIELD_MAPPINGS.bookSection?.bookTitle).toBe('publicationTitle');
+      expect(REVERSE_BASE_FIELD_MAPPINGS.thesis?.university).toBe('publisher');
+
+      expect(getPrimaryCreatorType('artwork')).toBe('artist');
+      expect(getPrimaryCreatorType('computerProgram')).toBe('programmer');
+      expect(getPrimaryCreatorType('journalArticle')).toBe('author');
+
+      expect(getVenueFieldForType('conferencePaper')).toBe('proceedingsTitle');
+      expect(getVenueFieldForType('preprint')).toBe('repository');
+      expect(getPublisherFieldForType('thesis')).toBe('university');
+      expect(getPublisherFieldForType('patent')).toBe('issuingAuthority');
+      expect(getPublisherFieldForType('computerProgram')).toBe('company');
+
+      // Ensure buildStaticFieldsForType maps all Zotero Schema v42 fields declaratively
+      const patentFields = buildStaticFieldsForType('patent').map((f) => f.field);
+      expect(patentFields).toContain('patentNumber');
+      expect(patentFields).toContain('issuingAuthority');
+      expect(patentFields).not.toContain('issue');
+
+      // Ensure InfoSection declarative descriptors handle citationCount, referenceCount, and DOI without hardcoded allowlists
+      const { resolveInspectorFieldValue, buildInspectorFieldPatch } = await import(
+        '@/features/library/domain/item-field-schema'
+      );
+      const audioItem: any = {
+        id: 'aud-1',
+        itemType: 'audioRecording',
+        citationCount: 42,
+        referenceCount: 15,
+      };
+      expect(resolveInspectorFieldValue(audioItem, 'citationCount')).toBe('42');
+      expect(resolveInspectorFieldValue(audioItem, 'referenceCount')).toBe('15');
+      expect(buildInspectorFieldPatch(audioItem, 'citationCount', '99')).toMatchObject({
+        citationCount: 99,
+        itemType: 'audioRecording',
+      });
+    });
+
+    it('should export consistent BibTeX, RIS, CSL-JSON, and formatted citations via ITEM_TYPE_EXPORT_SPEC and formatCitation', async () => {
+      const {
+        ITEM_TYPE_EXPORT_SPEC,
+        resolveExportSpec,
+        toBibTeXEntry,
+        formatRis,
+        formatCslJson,
+        formatCitation,
+      } = await import('@/features/library/domain/citations');
+      const { buildFallbackCitation } = await import('@/features/library/hooks/useLibraryBatchCoordinator');
+
+      expect(ITEM_TYPE_EXPORT_SPEC.conferencepaper).toEqual({
+        bibtexType: 'inproceedings',
+        risType: 'CONF',
+        cslType: 'paper-conference',
+      });
+
+      const thesisItem: any = {
+        id: 'th-1',
+        title: 'Foundations of Distributed Graph Systems',
+        itemType: 'thesis',
+        authors: ['Ada Lovelace'],
+        year: 2025,
+        university: 'Oxford University',
+        doi: '10.1000/ox.2025',
+      };
+
+      expect(resolveExportSpec(thesisItem).bibtexType).toBe('phdthesis');
+      expect(toBibTeXEntry(thesisItem)).toContain('@phdthesis{');
+      expect(formatRis(thesisItem)).toContain('TY  - THES');
+      const csl = formatCslJson(thesisItem);
+      expect(csl.type).toBe('thesis');
+
+      // Verify buildFallbackCitation delegates identically to formatCitation
+      expect(buildFallbackCitation(thesisItem, 'apa')).toBe(formatCitation(thesisItem, 'apa'));
+      expect(buildFallbackCitation(thesisItem, 'ieee')).toBe(formatCitation(thesisItem, 'ieee'));
+    });
+
+    it('should resolve item field values declaratively across FIELD_ALIAS_MAP in diff.ts', async () => {
+      const { resolveItemFieldValue } = await import('@/features/library/domain/diff');
+
+      expect(resolveItemFieldValue({ creators: [{ name: 'Turing' }] }, 'authors')).toEqual([
+        { name: 'Turing' },
+      ]);
+      expect(resolveItemFieldValue({ proceedingsTitle: 'NeurIPS 2025' }, 'publicationTitle')).toBe(
+        'NeurIPS 2025',
+      );
+      expect(resolveItemFieldValue({ abstractNote: 'Test summary' }, 'abstract')).toBe(
+        'Test summary',
+      );
+      expect(resolveItemFieldValue({ DOI: '10.1234/abc' }, 'doi')).toBe('10.1234/abc');
+      expect(resolveItemFieldValue({ archiveID: '2501.00001' }, 'arxivId')).toBe('2501.00001');
+      expect(resolveItemFieldValue({ date: '2025-05-01' }, 'publicationDate')).toBe('2025-05-01');
+    });
   });
 });
+

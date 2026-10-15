@@ -21,7 +21,7 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
   const navigateToSection = useStorageUIStore((s) => s.navigateToSection);
 
   // Storage-specific navigation
-  const storageItems: { label: string; icon: any; section: StorageSection }[] = [
+  const storageItems: { label: string; icon: React.ComponentType<{ className?: string }>; section: StorageSection }[] = [
     { label: 'Home', icon: Home, section: 'home' },
     { label: 'All Files', icon: Folder, section: 'my-files' },
     { label: 'Shared', icon: Users, section: 'shared' },

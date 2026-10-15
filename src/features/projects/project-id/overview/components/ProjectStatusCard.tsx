@@ -91,8 +91,8 @@ export function ProjectStatusCard({
     try {
       await deleteUpdateMutation.mutateAsync(updateId);
       toast.success('Status update deleted', { id: 'project-status-update' });
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to delete status update', { id: 'project-status-update' });
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete status update', { id: 'project-status-update' });
     }
   };
 

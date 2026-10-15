@@ -3,12 +3,15 @@
 import React, { useState, useRef } from 'react';
 import { Tag, MinusCircle, Plus } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
 import type { Item } from '@/features/library/types/library.types';
-import { normalizeTags, cleanSingleFrontendTag } from '../../domain/metadata';
+import { normalizeTags, cleanSingleFrontendTag } from '@/features/library/domain/metadata';
 
 interface TagsSectionProps {
+  item?: Item;
+  paper?: Item;
+  onUpdateItem?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
   onUpdatePaper?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
-  paper: Item;
   onUpdateTags?: (tags: string[]) => void;
   hideHeader?: boolean;
   forceAdding?: boolean;
@@ -64,51 +67,61 @@ function TagItemInput({
       </div>
 
       {/* Synchronized with InfoSection's InlineField input style */}
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            handleBlur();
-            inputRef.current?.blur();
-          } else if (e.key === 'Escape') {
-            setValue(tag);
-            inputRef.current?.blur();
-          }
-        }}
-        className="flex-1 min-w-0 h-6 bg-transparent text-foreground px-1.5 py-0.5 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none text-xs font-normal focus:outline-none focus-visible:outline-none font-sans cursor-pointer focus:cursor-text"
-        title={tag}
-      />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <input
+            ref={inputRef}
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleBlur();
+                inputRef.current?.blur();
+              } else if (e.key === 'Escape') {
+                setValue(tag);
+                inputRef.current?.blur();
+              }
+            }}
+            className="flex-1 min-w-0 h-6 bg-transparent text-foreground px-1.5 py-0.5 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none text-xs font-normal focus:outline-none focus-visible:outline-none font-sans cursor-pointer focus:cursor-text"
+          />
+        </TooltipTrigger>
+        <TooltipContent side="top">{tag}</TooltipContent>
+      </Tooltip>
 
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove(tag);
-        }}
-        className="size-5 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer invisible group-hover:visible max-md:visible focus-visible:visible relative before:absolute before:-inset-2.5 md:before:hidden"
-        title={`Remove tag "${tag}"`}
-        aria-label={`Remove tag "${tag}"`}
-      >
-        <MinusCircle className="size-3.5 text-foreground shrink-0" />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(tag);
+            }}
+            className="size-5 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer invisible group-hover:visible max-md:visible focus-visible:visible relative before:absolute before:-inset-2.5 md:before:hidden"
+            aria-label={`Remove tag "${tag}"`}
+          >
+            <MinusCircle className="size-3.5 text-foreground shrink-0" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">{`Remove tag "${tag}"`}</TooltipContent>
+      </Tooltip>
     </div>
   );
 }
 
-export default function TagsSection({
-  paper,
-  onUpdateTags,
-  onUpdatePaper,
-  hideHeader = false,
-  forceAdding = false,
-  onCancelAdding,
-  canEdit = true,
-}: TagsSectionProps) {
+export default function TagsSection(props: TagsSectionProps) {
+  const item = props.item || props.paper;
+  const onUpdateItem = props.onUpdateItem || props.onUpdatePaper;
+  const {
+    onUpdateTags,
+    hideHeader = false,
+    forceAdding = false,
+    onCancelAdding,
+    canEdit = true,
+  } = props;
+
   const [newTag, setNewTag] = useState('');
   const [isAdding, setIsAdding] = useState(forceAdding && canEdit);
   const newTagInputRef = useRef<HTMLInputElement>(null);
@@ -119,11 +132,11 @@ export default function TagsSection({
     }
   }, [forceAdding, canEdit]);
 
-  const tags: string[] = React.useMemo(() => normalizeTags(paper), [paper]);
+  const tags: string[] = React.useMemo(() => (item ? normalizeTags(item) : []), [item]);
 
   const saveTags = (updatedTags: string[]) => {
     if (onUpdateTags) onUpdateTags(updatedTags);
-    if (onUpdatePaper) onUpdatePaper({ tags: updatedTags, silent: true }, { silent: true });
+    if (onUpdateItem) onUpdateItem({ tags: updatedTags, silent: true }, { silent: true });
   };
 
   const handleAddTag = () => {
@@ -153,7 +166,7 @@ export default function TagsSection({
     saveTags(Array.from(new Set(updated)));
   };
 
-  if (tags.length === 0 && !isAdding && hideHeader) {
+  if (tags.length === 0 && !isAdding && hideHeader && !canEdit) {
     return null;
   }
 
@@ -163,16 +176,34 @@ export default function TagsSection({
         <div className="flex items-center justify-between pb-1 px-1.5">
           <h3 className="text-12 font-medium text-foreground">Tags</h3>
           {canEdit && (
-            <button
-              type="button"
-              onClick={() => setIsAdding(true)}
-              className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
-              title="Add tag"
-              aria-label="Add tag"
-            >
-              <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setIsAdding(true)}
+                  className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
+                  aria-label="Add tag"
+                >
+                  <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Add tag</TooltipContent>
+            </Tooltip>
           )}
+        </div>
+      )}
+
+      {/* Empty state inline Add action */}
+      {tags.length === 0 && !isAdding && canEdit && (
+        <div className="pt-0.5 px-1.5">
+          <button
+            type="button"
+            onClick={() => setIsAdding(true)}
+            className="inline-flex items-center gap-1 text-11 text-foreground hover:text-foreground/80 transition-colors cursor-pointer py-0.5"
+          >
+            <Plus className="size-3" strokeWidth={1.5} />
+            Add tag
+          </button>
         </div>
       )}
 
@@ -213,19 +244,23 @@ export default function TagsSection({
             }}
             className="flex-1 min-w-0 h-6 bg-background text-foreground px-1.5 py-0.5 rounded-md border border-primary focus:ring-1 focus:ring-primary outline-none text-xs font-normal focus:outline-none focus-visible:outline-none font-sans"
           />
-          <button
-            type="button"
-            onClick={() => {
-              setIsAdding(false);
-              setNewTag('');
-              onCancelAdding?.();
-            }}
-            className="size-5 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-2.5 md:before:hidden"
-            title="Cancel"
-            aria-label="Cancel adding tag"
-          >
-            <MinusCircle className="size-3.5 text-foreground shrink-0" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAdding(false);
+                  setNewTag('');
+                  onCancelAdding?.();
+                }}
+                className="size-5 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-2.5 md:before:hidden"
+                aria-label="Cancel adding tag"
+              >
+                <MinusCircle className="size-3.5 text-foreground shrink-0" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Cancel</TooltipContent>
+          </Tooltip>
         </div>
       )}
     </div>

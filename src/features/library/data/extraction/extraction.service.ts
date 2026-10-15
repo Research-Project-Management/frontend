@@ -2,8 +2,8 @@ import * as api from "@/shared/lib/api";
 import { getEffectiveBaseUrl } from "@/shared/lib/api";
 import { API_BASE_URL } from '@/config/env';
 import { getAuthToken } from "@/shared/lib/token-storage";
-import type { AttachmentDto } from "../../types/library.types";
-import { isProjectScope } from '../../domain/item-url';
+import type { AttachmentDto } from "@/features/library/types/library.types";
+import { isProjectScope } from '@/features/library/domain/item-url';
 
 export type { AttachmentDto };
 
@@ -687,7 +687,34 @@ export const UploadService = {
   computeSha256: computeFileSha256,
 };
 
+
+export const ExtractionTelemetryService = {
+  getTelemetry: () =>
+    api.apiGet<{
+      status: string;
+      architecture: string;
+      version: string;
+      flags: Record<string, unknown>;
+      metrics: Record<string, unknown>;
+    }>('/api/v1/library/extraction/telemetry'),
+
+  benchmark: (data: { base64Pdf?: string; filename?: string }) =>
+    api.apiPost<{
+      success: boolean;
+      benchmark: {
+        executionLatencyMs: number;
+        baselineLegacyLatencyMs: number;
+        estimatedSpeedupRatio: string;
+        engineUsed: string;
+        isSelfSufficient: boolean;
+        qualityScore: number;
+      };
+      extractedMetadata: Record<string, unknown>;
+    }>('/api/v1/library/extraction/benchmark', data),
+};
+
 export const ExtractionService = {
+  telemetry: ExtractionTelemetryService,
   attachments: AttachmentsService,
   upload: UploadService,
 };

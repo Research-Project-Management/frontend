@@ -7,14 +7,10 @@ import {
   AttachmentsService,
   type AttachmentDto,
 } from './extraction.service';
-import type { ItemAttachment } from '../../types/library.types';
-import { itemKeys, libraryKeys } from '../query-keys';
+import type { ItemAttachment } from '@/features/library/types/library.types';
+import { itemKeys, libraryKeys, attachmentKeys } from '@/features/library/data/query-keys';
 
-// ── Query Keys ────────────────────────────────────────────────────────────────
-export const attachmentKeys = {
-  byItem: (scopeId?: string, itemId?: string) =>
-    libraryKeys.attachments(scopeId, itemId),
-};
+export { attachmentKeys };
 
 // ── useAttachments ────────────────────────────────────────────────────────────
 /**
@@ -44,11 +40,19 @@ export function useAttachments(
       queryClient.invalidateQueries({
         queryKey: attachmentKeys.byItem(scopeId, itemId),
       });
+      if (itemId) {
+        queryClient.invalidateQueries({
+          queryKey: itemKeys.byId(scopeId, itemId),
+        });
+      }
+      queryClient.invalidateQueries({
+        queryKey: itemKeys.all(scopeId),
+      });
       toast.success('Attachment added', { id: 'attachment-mutation' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to add attachment', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'attachment-mutation',
       });
     },
@@ -64,11 +68,19 @@ export function useAttachments(
       queryClient.invalidateQueries({
         queryKey: attachmentKeys.byItem(scopeId, effectiveItemId),
       });
+      if (effectiveItemId) {
+        queryClient.invalidateQueries({
+          queryKey: itemKeys.byId(scopeId, effectiveItemId),
+        });
+      }
+      queryClient.invalidateQueries({
+        queryKey: itemKeys.all(scopeId),
+      });
       toast.success('Attachment deleted', { id: 'attachment-mutation' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to delete attachment', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'attachment-mutation',
       });
     },
@@ -86,9 +98,9 @@ export function useAttachments(
       });
       toast.success('Web Snapshot captured', { id: 'snapshot-mutation' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to capture snapshot', {
-        description: err?.message || 'Please verify the URL is accessible.',
+        description: err.message || 'Please verify the URL is accessible.',
         id: 'snapshot-mutation',
       });
     },
@@ -106,9 +118,9 @@ export function useAttachments(
       });
       toast.success('Set as primary document', { id: 'primary-attachment-mutation' });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Failed to set primary document', {
-        description: err?.message || 'Please try again.',
+        description: err.message || 'Please try again.',
         id: 'primary-attachment-mutation',
       });
     },
@@ -163,9 +175,9 @@ export function useRenameAttachment(scopeId?: string) {
         id: 'attachment-rename',
       });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Rename failed', {
-        description: err?.message || 'Could not rename file.',
+        description: err.message || 'Could not rename file.',
         id: 'attachment-rename',
       });
     },
@@ -188,9 +200,9 @@ export function useBatchRenameAttachments(scopeId?: string) {
         id: 'batch-attachment-rename',
       });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Batch rename failed', {
-        description: err?.message || 'Could not rename files.',
+        description: err.message || 'Could not rename files.',
         id: 'batch-attachment-rename',
       });
     },
@@ -208,9 +220,9 @@ export function useReExtractAttachment(scopeId: string = 'user') {
         id: 're-extract-attachment',
       });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast.error('Re-extraction failed', {
-        description: err?.message || 'Could not queue extraction.',
+        description: err.message || 'Could not queue extraction.',
         id: 're-extract-attachment',
       });
     },

@@ -3,8 +3,8 @@
 import React, { memo, useMemo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { SubItem } from '../../../types/work-item.types';
-import type { SortableItemRowProps } from '../../../types/list-view.types';
+import type { SubItem } from '@/features/projects/project-id/work-items/types/work-item.types';
+import type { SortableItemRowProps } from '@/features/projects/project-id/work-items/types/list-view.types';
 import { ItemRow } from './ItemRow';
 import { ChildItemRow, ChildItemQuickAdd } from './ChildItemRow';
 

@@ -3,7 +3,7 @@ import {
   extractPdfBookmarks,
   extractOutlineFromContent,
   parseDocumentOutline,
-} from '@/features/editor/domain/pdf/pdf-outline';
+} from '@/features/editor/subsystems/compiler/synctex/pdf-outline';
 
 describe('pdf-outline.util', () => {
   describe('extractPdfBookmarks', () => {

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { libraryServices, useCollections } from '../../data';
-import type { MoveToTrashTarget } from '../modals/TrashModal';
-import type { Collection, CollectionInput } from '../../types/library.types';
+import { libraryServices, useCollections } from '@/features/library/data';
+import type { MoveToTrashTarget } from '@/features/library/components/modals/TrashModal';
+import type { Collection, CollectionInput } from '@/features/library/types/library.types';
 
 interface UseCollectionActionsParams {
   collectionService: ReturnType<typeof useCollections>;
@@ -127,13 +127,16 @@ export function useCollectionActions({
       a.href = url;
       a.download = filename;
       document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      try {
+        a.click();
+      } finally {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
       const count = res?.total;
       toast.success(count ? `Exported ${count} items to ${filename}` : `Exported to ${filename}`, { id: toastId });
-    } catch (err: any) {
-      toast.error('Failed to export BibTeX', { description: err?.message, id: toastId });
+    } catch (err: unknown) {
+      toast.error('Failed to export BibTeX', { description: err instanceof Error ? err.message : String(err), id: toastId });
     }
   };
 
@@ -152,12 +155,15 @@ export function useCollectionActions({
       a.href = url;
       a.download = filename;
       document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      try {
+        a.click();
+      } finally {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
       toast.success(`Exported bundle with ${data?.totalPapers ?? 0} items and ${data?.totalFiles ?? 0} files`, { id: toastId });
-    } catch (err: any) {
-      toast.error('Failed to export bundle', { description: err?.message, id: toastId });
+    } catch (err: unknown) {
+      toast.error('Failed to export bundle', { description: err instanceof Error ? err.message : String(err), id: toastId });
     }
   };
 

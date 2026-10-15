@@ -4,38 +4,30 @@ import React from 'react';
 import dynamic from 'next/dynamic';
 import { Archive } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
-import { EmptyState } from '../views/EmptyState';
-import type {
-  Item,
-  Column,
-  ProjectMember,
-  DisplayOptions,
-  DisplayPropertyKey,
-  ItemMutationInput,
-} from '../../types/work-item.types';
+import { EmptyState } from '@/features/projects/project-id/work-items/components/views/EmptyState';
 
 const BoardView = dynamic(
-  () => import('../views/BoardView').then((m) => m.BoardView),
+  () => import('@/features/projects/project-id/work-items/components/views/BoardView').then((m) => m.BoardView),
   { ssr: false }
 );
 const ListView = dynamic(
-  () => import('../views/ListView').then((m) => m.ListView),
+  () => import('@/features/projects/project-id/work-items/components/views/ListView').then((m) => m.ListView),
   { ssr: false }
 );
 const CalendarView = dynamic(
-  () => import('../views/CalendarView').then((m) => m.CalendarView),
+  () => import('@/features/projects/project-id/work-items/components/views/CalendarView').then((m) => m.CalendarView),
   { ssr: false }
 );
 const TableView = dynamic(
-  () => import('../views/TableView').then((m) => m.TableView),
+  () => import('@/features/projects/project-id/work-items/components/views/TableView').then((m) => m.TableView),
   { ssr: false }
 );
 const TimelineView = dynamic(
-  () => import('../views/TimelineView').then((m) => m.TimelineView),
+  () => import('@/features/projects/project-id/work-items/components/views/TimelineView').then((m) => m.TimelineView),
   { ssr: false }
 );
 
-import type { WorkItemViewContainerProps } from '../../types/layout.types';
+import type { WorkItemViewContainerProps } from '@/features/projects/project-id/work-items/types/layout.types';
 
 export type { WorkItemViewContainerProps };
 
@@ -53,7 +45,6 @@ export function WorkItemViewContainer({
   columns,
   displayOptions,
   currentUserId,
-  currentUserAvatar,
   members,
   labelMap,
   selectedIds,
@@ -114,7 +105,6 @@ export function WorkItemViewContainer({
           columns={visibleColumns}
           projectStates={columns}
           currentUserId={currentUserId}
-          currentUserAvatar={currentUserAvatar}
           onAddCard={onOpenAddDialog}
           onEditCard={onOpenEditDialog}
           onDeleteCard={onDeleteCard}
@@ -151,7 +141,6 @@ export function WorkItemViewContainer({
           projectStates={columns}
           displayOptions={displayOptions}
           currentUserId={currentUserId}
-          currentUserAvatar={currentUserAvatar}
           projectId={projectId}
           members={members}
           onAddCard={onOpenAddDialog}
@@ -176,7 +165,6 @@ export function WorkItemViewContainer({
           projectStates={columns}
           displayOptions={displayOptions}
           currentUserId={currentUserId}
-          currentUserAvatar={currentUserAvatar}
           projectId={projectId}
           members={members}
           onAddCard={onOpenAddDialog}
@@ -198,7 +186,6 @@ export function WorkItemViewContainer({
           projectStates={columns}
           labelMap={labelMap}
           currentUserId={currentUserId}
-          currentUserAvatar={currentUserAvatar}
           members={members}
           onAddCard={onOpenAddDialog}
           onEditCard={onOpenEditDialog}

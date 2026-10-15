@@ -4,7 +4,7 @@ import { useMemo, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
-import { useLibraryUIStore, useLibraryModalStore } from '../store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
 import {
   useBatchRestoreItemsMutation,
   useBatchDetachItemsMutation,
@@ -12,11 +12,11 @@ import {
   libraryServices,
   itemKeys,
   invalidateCollections,
-} from '../data';
-import { generateCitationKey } from '../domain/citations';
-import { isItemRetracted } from '../utils/retraction';
-import type { Item, Collection, CslStyle } from '../types/library.types';
-import type { LibraryScope } from '../types/core.types';
+} from '@/features/library/data';
+import { generateCitationKey, toBibTeXEntry, formatCitation } from '@/features/library/domain/citations';
+import { isItemRetracted } from '@/features/library/domain/retraction';
+import type { Item, Collection, CslStyle } from '@/features/library/types/library.types';
+import type { LibraryScope } from '@/features/library/types/core.types';
 
 export interface UseLibraryBatchCoordinatorOptions {
   items?: Item[];
@@ -25,6 +25,218 @@ export interface UseLibraryBatchCoordinatorOptions {
   view?: string;
   isTrash?: boolean;
   canEdit?: boolean;
+}
+
+// ── Shared Batch Citation & BibTeX Helpers ────────────────────────────────────
+
+export function buildFallbackCitation(item: Item, style: CslStyle = 'apa'): string {
+  return formatCitation(item, style);
+}
+
+export function buildFallbackBibtex(items: Item[]): string {
+  const usedKeys = new Set<string>();
+  return items
+    .map((item) => {
+      if (item.bibtex && item.bibtex.trim()) {
+        return item.bibtex.trim();
+      }
+      const key = generateCitationKey(item, usedKeys);
+      usedKeys.add(key);
+      return toBibTeXEntry({
+        ...item,
+        title: item.title || 'Untitled',
+        citationKey: item.citationKey || key,
+      });
+    })
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+export async function copyWithToastHelper(
+  text: string,
+  label: string = 'Copied to clipboard',
+) {
+  if (!text || !text.trim()) {
+    toast.error('Nothing to copy', { id: 'library-clipboard' });
+    return;
+  }
+  const ok = await copyToClipboard(text);
+  if (ok) {
+    toast.success(label, { id: 'library-clipboard' });
+  } else {
+    toast.error('Failed to copy to clipboard', { id: 'library-clipboard' });
+  }
+}
+
+export function warnIfRetractedHelper(
+  retractedCount: number,
+  totalSelectedCount: number,
+  actionLabel: string,
+) {
+  if (retractedCount > 0) {
+    toast.warning(
+      `Retraction Alert: ${retractedCount} of ${totalSelectedCount} selected item(s) have been retracted!`,
+      {
+        description: `Proceeding with ${actionLabel}. Please verify validity before citing in your research.`,
+        duration: 6000,
+      },
+    );
+  }
+}
+
+export async function executeCopyMultiCite(
+  items: Item[],
+  scopeId: string,
+  style: CslStyle | 'latex' = 'apa',
+  retractedCount: number = 0,
+) {
+  warnIfRetractedHelper(retractedCount, items.length, 'citation formatting');
+  if (style === 'latex') {
+    const usedKeys = new Set<string>();
+    const keys = items
+      .map((p) => {
+        const k = (p.citationKey || p.key || generateCitationKey(p, usedKeys))?.trim();
+        if (k) usedKeys.add(k);
+        return k;
+      })
+      .filter(Boolean);
+    const citeCmd = `\\cite{${keys.join(', ')}}`;
+    await copyWithToastHelper(citeCmd, `Copied ${citeCmd} to clipboard`);
+    return;
+  }
+
+  const itemIds = items.map((p) => p.id).filter(Boolean);
+  if (itemIds.length > 0) {
+    try {
+      const res = await libraryServices.citations.batchFormat(scopeId, itemIds, style);
+      const text =
+        res.bibliographyText ||
+        res.citations
+          .map((c) => c.citation?.bibliography)
+          .filter(Boolean)
+          .join('\n\n');
+      if (text) {
+        await copyWithToastHelper(
+          text,
+          `Copied ${itemIds.length} citations (${style.toUpperCase()}) to clipboard`,
+        );
+        return;
+      }
+    } catch {
+      toast.error('Failed to format citation. Please try again.');
+      return;
+    }
+  }
+  toast.error('No valid items found to format citation.');
+}
+
+export async function executeCopyInTextCite(
+  items: Item[],
+  scopeId: string,
+  style: CslStyle = 'apa',
+  retractedCount: number = 0,
+) {
+  warnIfRetractedHelper(retractedCount, items.length, 'in-text citation');
+  const itemIds = items.map((p) => p.id).filter(Boolean);
+  if (itemIds.length > 0) {
+    try {
+      const res = await libraryServices.citations.batchFormat(scopeId, itemIds, style);
+      const text =
+        res.combinedInText ||
+        res.citations.map((c) => c.citation?.inText).filter(Boolean).join('; ');
+      if (text) {
+        await copyWithToastHelper(text, `Copied in-text citation (${itemIds.length} items)`);
+        return;
+      }
+    } catch {
+      toast.error('Failed to format citation. Please try again.');
+      return;
+    }
+  }
+  toast.error('No valid items found to format citation.');
+}
+
+export async function executeExportAllBibtex(
+  items: Item[],
+  scopeId: string,
+  selectedCount: number,
+  retractedCount: number = 0,
+) {
+  warnIfRetractedHelper(retractedCount, items.length, 'BibTeX export');
+  const itemIds = items.map((p) => p.id).filter(Boolean);
+  if (itemIds.length === 0) return;
+
+  try {
+    const res = await libraryServices.exports.exportLibrary(scopeId, {
+      format: 'bibtex',
+      itemIds,
+    });
+    if (res?.content) {
+      await copyWithToastHelper(
+        res.content,
+        `Copied BibTeX for ${selectedCount} reference(s) to clipboard`,
+      );
+      return;
+    }
+  } catch (err) {
+    console.warn('Backend BibTeX export failed', err);
+  }
+
+  const fallbackBib = buildFallbackBibtex(items);
+  if (fallbackBib) {
+    await copyWithToastHelper(fallbackBib, `Copied BibTeX for ${selectedCount} reference(s) to clipboard`);
+  } else {
+    toast.error('Unable to export BibTeX for selected items', { id: 'library-clipboard' });
+  }
+}
+
+export async function executeDownloadBibFile(
+  items: Item[],
+  scopeId: string,
+  selectedCount: number,
+  retractedCount: number = 0,
+) {
+  warnIfRetractedHelper(retractedCount, items.length, 'BibTeX download');
+  const itemIds = items.map((p) => p.id).filter(Boolean);
+  if (itemIds.length === 0) return;
+
+  let bibtexContent: string | null = null;
+  let downloadFilename = `references-selected-${selectedCount}.bib`;
+
+  try {
+    const res = await libraryServices.exports.exportLibrary(scopeId, {
+      format: 'bibtex',
+      itemIds,
+    });
+    if (res?.content) {
+      bibtexContent = res.content;
+      if (res.filename) downloadFilename = res.filename;
+    }
+  } catch (err) {
+    console.warn('Backend BibTeX export failed', err);
+  }
+
+  if (!bibtexContent) {
+    bibtexContent = buildFallbackBibtex(items) || null;
+  }
+
+  if (!bibtexContent) {
+    toast.error('Unable to generate BibTeX file for download', { id: 'library-clipboard' });
+    return;
+  }
+
+  const blob = new Blob([bibtexContent], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = downloadFilename;
+  document.body.appendChild(link);
+  try {
+    link.click();
+  } finally {
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
 }
 
 /**
@@ -54,7 +266,7 @@ export function useLibraryBatchCoordinator({
   const selectOnly = useLibraryUIStore((s) => s.selectOnly);
   const selectAll = useLibraryUIStore((s) => s.selectAll);
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
-  const openModal = useLibraryModalStore((s) => s.openModal);
+  const openModal = useLibraryUIStore((s) => s.openModal);
 
   // ── Batch Mutations ──────────────────────────────────────────────────────────
   const restoreMutation = useBatchRestoreItemsMutation(effectiveScope);
@@ -75,8 +287,8 @@ export function useLibraryBatchCoordinator({
       new Set(
         selectedItems
           .filter(
-            (item: any) =>
-              item._isProcessing ||
+            (item: Item & { _isProcessing?: boolean }) =>
+              Boolean(item._isProcessing) ||
               item.id.startsWith('temp-') ||
               item.id.startsWith('provisional-'),
           )
@@ -88,7 +300,7 @@ export function useLibraryBatchCoordinator({
   const isAllProcessingSelected =
     selectedItems.length > 0 &&
     selectedItems.every(
-      (item: any) =>
+      (item: Item & { _isProcessing?: boolean }) =>
         Boolean(item._isProcessing) ||
         item.id.startsWith('temp-') ||
         item.id.startsWith('provisional-'),
@@ -98,38 +310,6 @@ export function useLibraryBatchCoordinator({
   const retractedSelected = useMemo(
     () => selectedItems.filter((i) => isItemRetracted(i)),
     [selectedItems],
-  );
-
-  const warnIfRetractedPresent = useCallback(
-    (actionLabel: string) => {
-      if (retractedSelected.length > 0) {
-        toast.warning(
-          `Retraction Alert: ${retractedSelected.length} of ${selectedItems.length} selected item(s) have been retracted!`,
-          {
-            description: `Proceeding with ${actionLabel}. Please verify validity before citing in your research.`,
-            duration: 6000,
-          },
-        );
-      }
-    },
-    [retractedSelected.length, selectedItems.length],
-  );
-
-  // ── Clipboard Copy Helper ────────────────────────────────────────────────────
-  const copyWithToast = useCallback(
-    async (text: string, label: string = 'Copied to clipboard') => {
-      if (!text || !text.trim()) {
-        toast.error('Nothing to copy', { id: 'library-clipboard' });
-        return;
-      }
-      const ok = await copyToClipboard(text);
-      if (ok) {
-        toast.success(label, { id: 'library-clipboard' });
-      } else {
-        toast.error('Failed to copy to clipboard', { id: 'library-clipboard' });
-      }
-    },
-    [],
   );
 
   // ── Keyboard Shortcuts (Escape to clear) ─────────────────────────────────────
@@ -263,147 +443,31 @@ export function useLibraryBatchCoordinator({
 
   // ── Action: Copy Multi Citation ──────────────────────────────────────────────
   const copyMultiCite = useCallback(
-    async (style: CslStyle | 'latex' = 'apa') => {
-      warnIfRetractedPresent('citation formatting');
-      if (style === 'latex') {
-        const keys = selectedItems
-          .map((p) => (p.citationKey || p.key || generateCitationKey(p))?.trim())
-          .filter(Boolean);
-        const citeCmd = `\\cite{${keys.join(', ')}}`;
-        await copyWithToast(citeCmd, `Copied ${citeCmd} to clipboard`);
-        return;
-      }
-
-      const itemIds = selectedItems.map((p) => p.id).filter(Boolean);
-      if (itemIds.length > 0) {
-        try {
-          const res = await libraryServices.citations.batchFormat(effectiveScope, itemIds, style);
-          const text =
-            res.bibliographyText ||
-            res.citations
-              .map((c) => c.citation?.bibliography)
-              .filter(Boolean)
-              .join('\n\n');
-          if (text) {
-            await copyWithToast(
-              text,
-              `Copied ${itemIds.length} citations (${style.toUpperCase()}) to clipboard`,
-            );
-            return;
-          }
-        } catch {
-          toast.error('Không thể định dạng trích dẫn cho tài liệu đã chọn.');
-          return;
-        }
-      }
-      toast.error('Không tìm thấy tài liệu hợp lệ để tạo trích dẫn.');
-    },
-    [warnIfRetractedPresent, selectedItems, effectiveScope, copyWithToast],
+    (style: CslStyle | 'latex' = 'apa') =>
+      executeCopyMultiCite(selectedItems, effectiveScope, style, retractedSelected.length),
+    [selectedItems, effectiveScope, retractedSelected.length],
   );
 
   // ── Action: Copy In-Text Citation ────────────────────────────────────────────
   const copyInTextCite = useCallback(
-    async (style: CslStyle = 'apa') => {
-      warnIfRetractedPresent('in-text citation');
-      const itemIds = selectedItems.map((p) => p.id).filter(Boolean);
-      if (itemIds.length > 0) {
-        try {
-          const res = await libraryServices.citations.batchFormat(effectiveScope, itemIds, style);
-          const text =
-            res.combinedInText ||
-            res.citations.map((c) => c.citation?.inText).filter(Boolean).join('; ');
-          if (text) {
-            await copyWithToast(text, `Copied in-text citation (${itemIds.length} items)`);
-            return;
-          }
-        } catch {
-          toast.error('Không thể định dạng trích dẫn trong bài cho tài liệu đã chọn.');
-          return;
-        }
-      }
-      toast.error('Không tìm thấy tài liệu hợp lệ để tạo trích dẫn.');
-    },
-    [warnIfRetractedPresent, selectedItems, effectiveScope, copyWithToast],
+    (style: CslStyle = 'apa') =>
+      executeCopyInTextCite(selectedItems, effectiveScope, style, retractedSelected.length),
+    [selectedItems, effectiveScope, retractedSelected.length],
   );
 
   // ── Action: Export BibTeX to Clipboard ───────────────────────────────────────
-  const exportAllBibtex = useCallback(async () => {
-    warnIfRetractedPresent('BibTeX export');
-    const itemIds = selectedItems.map((p) => p.id).filter(Boolean);
-    if (itemIds.length === 0) return;
-
-    try {
-      const res = await libraryServices.exports.exportLibrary(effectiveScope, {
-        format: 'bibtex',
-        itemIds,
-      });
-      if (res?.content) {
-        await copyWithToast(
-          res.content,
-          `Copied BibTeX for ${selectedCount} reference(s) to clipboard`,
-        );
-        return;
-      }
-    } catch (err) {
-      console.warn('Backend BibTeX export failed', err);
-    }
-
-    const cachedBib = selectedItems
-      .map((p) => p.bibtex)
-      .filter((b): b is string => Boolean(b && b.trim()))
-      .join('\n\n');
-    if (cachedBib) {
-      await copyWithToast(cachedBib, `Copied BibTeX for ${selectedCount} reference(s) to clipboard`);
-    } else {
-      toast.error('Unable to export BibTeX for selected items', { id: 'library-clipboard' });
-    }
-  }, [warnIfRetractedPresent, selectedItems, effectiveScope, copyWithToast, selectedCount]);
+  const exportAllBibtex = useCallback(
+    () =>
+      executeExportAllBibtex(selectedItems, effectiveScope, selectedCount, retractedSelected.length),
+    [selectedItems, effectiveScope, selectedCount, retractedSelected.length],
+  );
 
   // ── Action: Download BibTeX File ─────────────────────────────────────────────
-  const downloadBibFile = useCallback(async () => {
-    warnIfRetractedPresent('BibTeX download');
-    const itemIds = selectedItems.map((p) => p.id).filter(Boolean);
-    if (itemIds.length === 0) return;
-
-    let bibtexContent: string | null = null;
-    let downloadFilename = `references-selected-${selectedCount}.bib`;
-
-    try {
-      const res = await libraryServices.exports.exportLibrary(effectiveScope, {
-        format: 'bibtex',
-        itemIds,
-      });
-      if (res?.content) {
-        bibtexContent = res.content;
-        if (res.filename) downloadFilename = res.filename;
-      }
-    } catch (err) {
-      console.warn('Backend BibTeX export failed', err);
-    }
-
-    if (!bibtexContent) {
-      bibtexContent =
-        selectedItems
-          .map((p) => p.bibtex)
-          .filter((b): b is string => Boolean(b && b.trim()))
-          .join('\n\n') || null;
-    }
-
-    if (!bibtexContent) {
-      toast.error('Unable to generate BibTeX file for download', { id: 'library-clipboard' });
-      return;
-    }
-
-    const blob = new Blob([bibtexContent], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = downloadFilename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, [warnIfRetractedPresent, selectedItems, selectedCount, effectiveScope]);
+  const downloadBibFile = useCallback(
+    () =>
+      executeDownloadBibFile(selectedItems, effectiveScope, selectedCount, retractedSelected.length),
+    [selectedItems, effectiveScope, selectedCount, retractedSelected.length],
+  );
 
   return {
     // Selection state

@@ -2,26 +2,26 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
-import type { Item, Column, Project, ProjectMember, ItemMutationInput } from '../../types/work-item.types';
+import type { Item, Column, Project, ProjectMember, ItemMutationInput } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 const CreateModal = dynamic(
-  () => import('../modals/CreateModal').then((m) => m.CreateModal),
+  () => import('@/features/projects/project-id/work-items/components/modals/CreateModal').then((m) => m.CreateModal),
   { ssr: false }
 );
 const DetailModal = dynamic(
-  () => import('../modals/DetailModal').then((m) => m.DetailModal),
+  () => import('@/features/projects/project-id/work-items/components/modals/DetailModal').then((m) => m.DetailModal),
   { ssr: false }
 );
 const DeleteModal = dynamic(
-  () => import('../modals/DeleteModal').then((m) => m.DeleteModal),
+  () => import('@/features/projects/project-id/work-items/components/modals/DeleteModal').then((m) => m.DeleteModal),
   { ssr: false }
 );
 const AnalyticsDrawer = dynamic(
-  () => import('../analytics/AnalyticsDrawer').then((m) => m.AnalyticsDrawer),
+  () => import('@/features/projects/project-id/work-items/components/analytics/AnalyticsDrawer').then((m) => m.AnalyticsDrawer),
   { ssr: false }
 );
 
-import type { ModalState, WorkItemModalsProps } from '../../types/modal.types';
+import type { ModalState, WorkItemModalsProps } from '@/features/projects/project-id/work-items/types/modal.types';
 
 export type { ModalState, WorkItemModalsProps };
 

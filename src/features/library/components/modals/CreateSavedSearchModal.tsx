@@ -30,7 +30,6 @@ import {
   Check,
   Search,
   X,
-  Clock,
 } from 'lucide-react';
 import {
   Dialog,
@@ -57,22 +56,23 @@ import {
   PopoverContent,
 } from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
-import { useItemTypes, libraryServices, useCollectionsQuery, useTags } from '../../data';
+import { useItemTypes, libraryServices, useCollectionsQuery, useTags } from '@/features/library/data';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import {
   FIELD_LABELS,
   humanizeFieldName,
   mapRegistryItemTypes,
   ALL_ITEM_TYPES_FLAT,
-} from '../../types';
+  type Collection,
+} from '@/features/library/types';
 import type {
   CreateSavedSearchInput,
   SavedSearchField,
   SavedSearchOperator,
   SavedSearchConditionGroup,
   SavedSearch,
-} from '../../types/saved-searches.types';
-import type { Item } from '../../types/items.types';
+} from '@/features/library/types/saved-searches.types';
+import type { Item } from '@/features/library/types/items.types';
 
 interface ConditionRow {
   id: string;
@@ -618,7 +618,7 @@ export function CreateSavedSearchModal({
   const { data: collections = [] } = useCollectionsQuery(targetScope);
   const { tags = [] } = useTags(targetScope);
   const tagList = useMemo(
-    () => Array.from(new Set(tags.map((t: any) => t.name || t))).filter(Boolean) as string[],
+    () => Array.from(new Set(tags.map((t: { name?: string } | string) => (typeof t === 'string' ? t : t?.name || '')))).filter(Boolean) as string[],
     [tags],
   );
 
@@ -738,6 +738,7 @@ export function CreateSavedSearchModal({
       return;
     }
 
+    let cancelled = false;
     setIsPreviewLoading(true);
 
     debounceRef.current = setTimeout(async () => {
@@ -754,9 +755,11 @@ export function CreateSavedSearchModal({
           }));
 
         if (payloadConditions.length === 0) {
-          setPreviewCount(null);
-          setPreviewSamples([]);
-          setIsPreviewLoading(false);
+          if (!cancelled) {
+            setPreviewCount(null);
+            setPreviewSamples([]);
+            setIsPreviewLoading(false);
+          }
           return;
         }
 
@@ -771,16 +774,21 @@ export function CreateSavedSearchModal({
         };
 
         const res = await libraryServices.savedSearches.preview(targetScope, conditionGroup);
-        setPreviewCount(res.count ?? 0);
-        setPreviewSamples(res.sampleItems || []);
+        if (!cancelled) {
+          setPreviewCount(res.count ?? 0);
+          setPreviewSamples(res.sampleItems || []);
+        }
       } catch {
         // Silently ignore preview errors during active typing
       } finally {
-        setIsPreviewLoading(false);
+        if (!cancelled) {
+          setIsPreviewLoading(false);
+        }
       }
     }, 350);
 
     return () => {
+      cancelled = true;
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [
@@ -893,7 +901,7 @@ export function CreateSavedSearchModal({
           resolvedName = `No ${fieldLabel}`;
         } else if (firstCond.value.trim()) {
           if (firstCond.field === 'collection') {
-            const found = collections.find((c: any) => c.id === firstCond.value);
+            const found = collections.find((c: Collection) => c.id === firstCond.value);
             resolvedName = found ? `Collection: ${found.name}` : `Collection search`;
           } else {
             resolvedName = `${fieldLabel}: ${firstCond.value.trim()}`;
@@ -1211,7 +1219,7 @@ export function CreateSavedSearchModal({
                                     No collections found
                                   </div>
                                 ) : (
-                                  collections.map((col: any) => (
+                                  collections.map((col: Collection) => (
                                     <SelectItem
                                       key={col.id}
                                       value={col.id}
@@ -1439,7 +1447,7 @@ export function CreateSavedSearchModal({
                   <ArrowUpDown className="size-3 text-foreground shrink-0" aria-hidden="true" strokeWidth={1.5} />
                   Sort:
                 </span>
-                <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
+                <Select value={sortBy} onValueChange={(val: 'dateAdded' | 'year' | 'title' | 'creator') => setSortBy(val)}>
                   <SelectTrigger
                     size="sm"
                     aria-label="Sort by field"
@@ -1454,7 +1462,7 @@ export function CreateSavedSearchModal({
                     <SelectItem value="creator" className="text-13 py-1.5 px-2 rounded-sm cursor-pointer">Author</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={sortOrder} onValueChange={(val: any) => setSortOrder(val)}>
+                <Select value={sortOrder} onValueChange={(val: 'asc' | 'desc') => setSortOrder(val)}>
                   <SelectTrigger
                     size="sm"
                     aria-label="Sort direction"

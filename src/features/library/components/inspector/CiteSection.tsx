@@ -1,20 +1,21 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Copy, Check, ChevronDown, Download, ShieldAlert, ExternalLink, Search } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from "@/shared/lib/utils";
+import { cn, copyToClipboard } from "@/shared/lib/utils";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/shared/components/ui/tooltip';
-import { useCslCitation, useCitationStyles } from '../../data';
-import type { Item, CslStyle } from '../../types/library.types';
-import { getPaperCitationKey, getCleanStyleLabel } from '../../domain/citations';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
+import { useCslCitation, useCitationStyles } from '@/features/library/data';
+import type { Item, CslStyle } from '@/features/library/types/library.types';
+import { getCleanStyleLabel } from '@/features/library/domain/citations';
 export { getCleanStyleLabel };
-import CslStyleSearchModal from '../modals/CslStyleSearchModal';
+import CslStyleSearchModal from '@/features/library/components/modals/CslStyleSearchModal';
 import DOMPurify from 'dompurify';
 
 export interface CiteSectionProps {
-  paper: Item;
+  item?: Item;
+  paper?: Item;
   scopeId?: string;
   projectId?: string;
   hideHeader?: boolean;
@@ -39,38 +40,6 @@ export const MORE_FORMATS = [
 export const MORE_POPULAR_STYLES = MORE_FORMATS;
 export const ALL_FORMATS = [...DEFAULT_FORMATS, ...MORE_FORMATS];
 
-/** Robust clipboard copy — tries modern Clipboard API, falls back to execCommand */
-async function copyToClipboard(text: string): Promise<boolean> {
-  if (!text) return false;
-  try {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-    // Fall back to execCommand
-  }
-
-  try {
-    if (typeof document !== 'undefined') {
-      const textArea = document.createElement('textarea');
-      textArea.value = text;
-      textArea.style.position = 'fixed';
-      textArea.style.left = '-9999px';
-      textArea.style.top = '-9999px';
-      textArea.style.opacity = '0';
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      const successful = document.execCommand('copy');
-      document.body.removeChild(textArea);
-      return successful;
-    }
-  } catch {
-    // Ignore fallback errors
-  }
-  return false;
-}
 
 /** Client-side file downloader for .bib and .ris files */
 function downloadFile(filename: string, content: string, mimeType = 'text/plain;charset=utf-8') {
@@ -115,14 +84,16 @@ function sanitizeCslHtml(html?: string): string {
 }
 
 // ─── CiteSection Component ───────────────────────────────────────────────────
-export default function CiteSection({ paper, scopeId, projectId }: CiteSectionProps) {
+export default function CiteSection(props: CiteSectionProps) {
+  const item = props.item || props.paper;
+  const { scopeId, projectId } = props;
   const [activeFormat, setActiveFormat] = useState<CitationFormat>('apa-7th');
   const [copied, setCopied] = useState(false);
   const [copiedInText, setCopiedInText] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [searchedStyle, setSearchedStyle] = useState<{ id: string; label: string } | null>(null);
 
-  const activeScopeId = scopeId || projectId || paper?.projectId || 'user';
+  const activeScopeId = scopeId || projectId || item?.projectId || 'user';
 
   // 1. Backend CSL style registry is the single source of truth for styles
   const { data: serverStyles = [] } = useCitationStyles(activeScopeId);
@@ -154,11 +125,11 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
 
   const { data: cslData, isLoading } = useCslCitation(
     activeScopeId,
-    paper?.id || '',
+    item?.id || '',
     currentCslStyle,
   );
 
-  const rawCiteKey = paper?.citationKey || paper?.key || (paper ? getPaperCitationKey(paper) : '');
+  const rawCiteKey = item?.citationKey || item?.key || item?.id || '';
   const citeKey = useMemo(() => {
     return (rawCiteKey || 'ref').replace(/[^a-zA-Z0-9_-]/g, '');
   }, [rawCiteKey]);
@@ -204,6 +175,16 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
     return cslData?.bibliography || '';
   }, [cslData?.bibliography]);
 
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copyInTextTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      if (copyInTextTimerRef.current) clearTimeout(copyInTextTimerRef.current);
+    };
+  }, []);
+
   const handleCopy = useCallback(async () => {
     const text = getContentToCopy();
     if (!text) return;
@@ -211,7 +192,8 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
     if (success) {
       setCopied(true);
       toast.success('Copied citation to clipboard', { id: 'library-clipboard' });
-      setTimeout(() => setCopied(false), 2000);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
     } else {
       toast.error('Failed to copy', { id: 'library-clipboard' });
     }
@@ -224,7 +206,8 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
     if (success) {
       setCopiedInText(true);
       toast.success('Copied in-text citation to clipboard', { id: 'library-clipboard' });
-      setTimeout(() => setCopiedInText(false), 2000);
+      if (copyInTextTimerRef.current) clearTimeout(copyInTextTimerRef.current);
+      copyInTextTimerRef.current = setTimeout(() => setCopiedInText(false), 2000);
     } else {
       toast.error('Failed to copy', { id: 'library-clipboard' });
     }
@@ -244,7 +227,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
       <div className="flex flex-col gap-2 min-w-0 font-sans select-none">
 
       {/* ⚠️ Citation Guard: Retraction Notice (Zotero Style) */}
-      {(paper.isRetracted || paper.retractionStatus === 'retracted') && (
+      {(item?.isRetracted || item?.retractionStatus === 'retracted') && (
         <div className="p-2 rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-xs flex items-start gap-2 select-none shrink-0 animate-in fade-in duration-200">
           <ShieldAlert className="size-4 text-destructive shrink-0 mt-0.5" strokeWidth={1.5} />
           <div className="flex-1 space-y-1 min-w-0">
@@ -254,9 +237,9 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
             <p className="text-11 text-destructive/90 leading-snug break-words">
               This publication has been flagged as retracted in academic databases. Citing this paper may compromise academic rigor.
             </p>
-            {((paper.retractionDetails?.noticeUrl as string | undefined) || paper.noticeUrl || (paper.doi ? `https://doi.org/${paper.doi}` : undefined)) && (
+            {((item?.retractionDetails?.noticeUrl as string | undefined) || item?.noticeUrl || (item?.doi ? `https://doi.org/${item.doi}` : undefined)) && (
               <a
-                href={((paper.retractionDetails?.noticeUrl as string | undefined) || paper.noticeUrl || `https://doi.org/${paper.doi}`)}
+                href={((item?.retractionDetails?.noticeUrl as string | undefined) || item?.noticeUrl || `https://doi.org/${item?.doi}`)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-11 font-medium text-destructive hover:underline mt-0.5"
@@ -353,27 +336,25 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
               {inTextPreview}
             </span>
           </div>
-          <TooltipProvider delayDuration={700}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={handleCopyInText}
-                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden"
-                  aria-label="Copy in-text citation"
-                >
-                  {copiedInText ? (
-                    <Check className="size-3.5 text-foreground shrink-0" />
-                  ) : (
-                    <Copy className="size-3.5 text-foreground shrink-0" />
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={4} className="text-12 px-2 py-1">
-                Copy in-text citation
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={handleCopyInText}
+                className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0 relative before:absolute before:-inset-2 md:before:hidden"
+                aria-label="Copy in-text citation"
+              >
+                {copiedInText ? (
+                  <Check className="size-3.5 text-foreground shrink-0" />
+                ) : (
+                  <Copy className="size-3.5 text-foreground shrink-0" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={4}>
+              Copy in-text citation
+            </TooltipContent>
+          </Tooltip>
         </div>
       )}
 
@@ -382,54 +363,52 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
         tabIndex={0}
         className="group relative p-2.5 rounded-md border border-border bg-transparent hover:border-border/80 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors min-h-[50px] max-h-56 overflow-y-auto leading-relaxed select-text font-sans text-12 cursor-text"
       >
-        <TooltipProvider delayDuration={700}>
-          <div
-            className={cn(
-              'absolute top-1.5 right-1.5 flex items-center gap-1 z-10 select-none transition-opacity duration-150',
-              copied
-                ? 'opacity-100'
-                : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto max-md:opacity-100 max-md:pointer-events-auto',
-            )}
-          >
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={handleDownload}
-                  disabled={!getContentToCopy()}
-                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none relative before:absolute before:-inset-2 md:before:hidden"
-                  aria-label="Download citation"
-                >
-                  <Download className="size-3.5 text-foreground shrink-0" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={4} className="text-12 px-2 py-1">
-                Download citation
-              </TooltipContent>
-            </Tooltip>
+        <div
+          className={cn(
+            'absolute top-1.5 right-1.5 flex items-center gap-1 z-10 select-none transition-opacity duration-150',
+            copied
+              ? 'opacity-100'
+              : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto max-md:opacity-100 max-md:pointer-events-auto',
+          )}
+        >
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={handleDownload}
+                disabled={!getContentToCopy()}
+                className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none relative before:absolute before:-inset-2 md:before:hidden"
+                aria-label="Download citation"
+              >
+                <Download className="size-3.5 text-foreground shrink-0" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={4}>
+              Download citation
+            </TooltipContent>
+          </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  disabled={!getContentToCopy()}
-                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none relative before:absolute before:-inset-2 md:before:hidden"
-                  aria-label="Copy citation"
-                >
-                  {copied ? (
-                    <Check className="size-3.5 text-foreground shrink-0" />
-                  ) : (
-                    <Copy className="size-3.5 text-foreground shrink-0" />
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={4} className="text-12 px-2 py-1">
-                Copy citation
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        </TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={handleCopy}
+                disabled={!getContentToCopy()}
+                className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none relative before:absolute before:-inset-2 md:before:hidden"
+                aria-label="Copy citation"
+              >
+                {copied ? (
+                  <Check className="size-3.5 text-foreground shrink-0" />
+                ) : (
+                  <Copy className="size-3.5 text-foreground shrink-0" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={4}>
+              Copy citation
+            </TooltipContent>
+          </Tooltip>
+        </div>
 
         <div>
           {isLoading && !cslData ? (

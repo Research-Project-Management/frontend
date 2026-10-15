@@ -33,9 +33,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog';
 import { Checkbox } from '@/shared/components/ui/checkbox';
-import type { Column, Item } from '../../types/work-item.types';
-import { PRIORITY_CONFIG } from '../../types/work-item.types';
-import { resolveStateId, resolveStateColor, formatDate } from '../../utils/work-item.utils';
+import type { Column, Item } from '@/features/projects/project-id/work-items/types/work-item.types';
+import { PRIORITY_CONFIG } from '@/features/projects/project-id/work-items/types/work-item.types';
+import { resolveStateId, resolveStateColor, formatDate } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import {
   DndContext,
   closestCorners,
@@ -55,11 +55,14 @@ import { createPortal } from 'react-dom';
 interface CalendarCardProps {
   card: Item;
   isReadOnly?: boolean;
+  columns?: Column[];
 }
 
-const CalendarCard = memo(function CalendarCard({ card }: CalendarCardProps) {
+const CalendarCard = memo(function CalendarCard({ card, columns }: CalendarCardProps) {
   const priorityConfig = PRIORITY_CONFIG[card.priority || 'none'];
-  const columnColor = resolveStateColor(card.columnId);
+  const stateColumn = columns?.find((c) => c.id === card.columnId);
+  const columnColor = resolveStateColor(stateColumn || card.columnId);
+  const colTitle = stateColumn?.title || stateColumn?.name || card.columnId;
 
   return (
     <div className="rounded-md border border-border bg-card p-3 space-y-2 text-xs w-72 shadow-overlay">
@@ -83,7 +86,7 @@ const CalendarCard = memo(function CalendarCard({ card }: CalendarCardProps) {
       <div className="flex items-center justify-between pt-1 text-11 text-muted-foreground">
         <div className="flex items-center gap-1.5">
           <span className="size-2 rounded-full" style={{ backgroundColor: columnColor }} />
-          <span className="capitalize">{card.columnId}</span>
+          <span className="truncate max-w-[120px]">{colTitle}</span>
         </div>
 
         {(card.startDate || card.dueDate) && (
@@ -124,7 +127,7 @@ type CalendarViewProps = {
   isReadOnly?: boolean;
 };
 
-import type { CalendarLayoutMode } from '../../types/calendar-view.types';
+import type { CalendarLayoutMode } from '@/features/projects/project-id/work-items/types/calendar-view.types';
 import {
   DATE_KEY_FORMAT,
   WEEK_DAY_LABELS,
@@ -132,7 +135,7 @@ import {
   isMidnightDueDate,
   getCalendarDateKey,
   createCalendarDueDate,
-} from '../../utils/calendar.utils';
+} from '@/features/projects/project-id/work-items/utils/calendar.utils';
 
 export type { CalendarLayoutMode };
 export {
@@ -833,6 +836,7 @@ const CalendarDayCell = memo(({
               item={item}
               onOpenCardDetail={onOpenCardDetail}
               isReadOnly={isReadOnly}
+              columns={columns}
             />
           ))}
         </div>
@@ -939,10 +943,12 @@ const CalendarItem = memo(({
   item,
   onOpenCardDetail,
   isReadOnly,
+  columns,
 }: {
   item: Item;
   onOpenCardDetail: (item: Item) => void;
   isReadOnly?: boolean;
+  columns?: Column[];
 }) => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1031,7 +1037,7 @@ const CalendarItem = memo(({
           onOpenAutoFocus={(e: Event) => e.preventDefault()}
         >
           <div className="pointer-events-none">
-            <CalendarCard card={item} isReadOnly={isReadOnly} />
+            <CalendarCard card={item} isReadOnly={isReadOnly} columns={columns} />
           </div>
         </PopoverContent>
       </Popover>

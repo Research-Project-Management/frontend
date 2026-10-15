@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
 import { useYourWorkBase } from '../hooks/use-your-work-base';
+import { useWorkItemModal, type SelectedWorkItemState } from '../hooks/use-work-item-modal';
 import {
   calculateStatusBreakdown,
   calculatePriorityBreakdown,
@@ -10,6 +11,7 @@ import {
 import type {
   YourWorkItem,
   YourWorkActivityEvent,
+  YourWorkRecentItem,
   ProjectWorkloadBreakdown,
   UserProfileData,
 } from '../schemas/your-work.schema';
@@ -21,13 +23,17 @@ export interface YourWorkContextType {
   selectedProjectId: string | null;
   selectedProject: ProjectWorkloadBreakdown | null;
   setSelectedProjectId: (projectId: string | null) => void;
+  // Modal state & handlers
+  selectedWorkItem: SelectedWorkItemState | null;
+  openWorkItem: (workItemId: string, fallbackProjectId?: string) => void;
+  closeWorkItem: () => void;
   // Filtered items & metrics
   allWorkItems: YourWorkItem[];
   assigned: YourWorkItem[];
   created: YourWorkItem[];
   subscribed: YourWorkItem[];
   activities: YourWorkActivityEvent[];
-  recent: any[];
+  recent: YourWorkRecentItem[];
   statusBreakdown: Record<string, number>;
   subscribedStatusBreakdown: Record<string, number>;
   priorityBreakdown: Record<string, number>;
@@ -48,7 +54,7 @@ export interface YourWorkContextType {
   isLoadingProjects: boolean;
   isRefetching: boolean;
   isError: boolean;
-  error: any;
+  error: Error | null;
   isEmpty: boolean;
   refetch: () => Promise<unknown>;
   invalidate: () => void;
@@ -118,6 +124,12 @@ export function YourWorkProvider({ children }: { children: React.ReactNode }) {
     return Array.from(map.values());
   }, [filteredAssigned, filteredCreated, filteredSubscribed]);
 
+  const {
+    selectedWorkItem,
+    handleOpenWorkItem: openWorkItem,
+    handleCloseWorkItem: closeWorkItem,
+  } = useWorkItemModal(filteredAllWorkItems);
+
   // Selected project metadata
   const selectedProject = useMemo(() => {
     if (!selectedProjectId) return null;
@@ -158,6 +170,9 @@ export function YourWorkProvider({ children }: { children: React.ReactNode }) {
       selectedProjectId,
       selectedProject,
       setSelectedProjectId,
+      selectedWorkItem,
+      openWorkItem,
+      closeWorkItem,
       allWorkItems: filteredAllWorkItems,
       assigned: filteredAssigned,
       created: filteredCreated,
@@ -187,6 +202,9 @@ export function YourWorkProvider({ children }: { children: React.ReactNode }) {
       selectedProjectId,
       selectedProject,
       setSelectedProjectId,
+      selectedWorkItem,
+      openWorkItem,
+      closeWorkItem,
       filteredAllWorkItems,
       filteredAssigned,
       filteredCreated,

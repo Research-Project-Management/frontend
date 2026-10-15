@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useConnectivityStore } from '@/features/editor/store/connectivity.store';
-import { useCompileStore } from '@/features/editor/store/compiler.store';
-import { usePageStore } from '@/features/editor/store/editor.store';
-import { sessionCoordinator } from '@/features/editor/coordinators/session.coordinator';
-import { compilerCoordinator } from '@/features/editor/coordinators/compiler.coordinator';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { useConnectivityStore } from '@/features/editor/core';
+import { useCompileStore } from '@/features/editor/subsystems/compiler';
+import { usePageStore } from '@/features/editor/core';
+import { sessionCoordinator } from '@/features/editor/core';
+import { compilerCoordinator } from '@/features/editor/subsystems/compiler';
+import { editorCommandBus } from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
 import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import { LatexCompilerEngine } from '@/features/editor/coordinators/compilation-pipeline';
+import { LatexCompilerEngine } from '@/features/editor/subsystems/compiler';
 
 describe('Phase 8: Offline Durability & Network Disconnect Recovery (Overleaf Parity)', () => {
   beforeEach(() => {

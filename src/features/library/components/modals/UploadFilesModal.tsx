@@ -21,10 +21,10 @@ import {
   SelectItem,
 } from '@/shared/components/ui/select';
 
-import { useCollectionsQuery } from '../../data';
-import { useLibrarySidebarStore } from '../../store/library-ui.store';
-import { useProcessModalStore } from '../../store/process-modal.store';
-import type { Collection } from '../../types';
+import { useCollectionsQuery } from '@/features/library/data';
+import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
+import { useProcessModalStore } from '@/features/library/store/process-modal.store';
+import type { Collection } from '@/features/library/types';
 import { cn } from '@/shared/lib/utils';
 
 export interface UploadFilesModalProps {
@@ -51,7 +51,7 @@ export default function UploadFilesModal({
 
   const { data: collections = [] } = useCollectionsQuery(scopeId);
 
-  const activeScope = useLibrarySidebarStore((s) => s.activeScope);
+  const activeScope = useLibraryUIStore((s) => s.activeScope);
   const rootLibraryName =
     activeScope?.name || (activeScope?.type === 'project' ? 'Project Library' : 'My Library');
 

@@ -41,7 +41,7 @@ export function useUploadNewVersion() {
       queryClient.invalidateQueries({ queryKey: ['drive-files'] });
       queryClient.invalidateQueries({ queryKey: ['storage'] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message || 'Failed to upload new version');
     },
   });
@@ -66,7 +66,7 @@ export function useRevertFileVersion() {
       queryClient.invalidateQueries({ queryKey: ['drive-files'] });
       queryClient.invalidateQueries({ queryKey: ['storage'] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message || 'Failed to revert version');
     },
   });

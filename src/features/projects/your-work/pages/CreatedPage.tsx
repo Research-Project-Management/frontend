@@ -1,29 +1,25 @@
 'use client';
 
 import React from 'react';
-import { useCreatedWork } from '../hooks/use-created-work';
-import { CreatedWorkItemList } from '../components/created/CreatedWorkItemList';
+import { useYourWorkContext } from '../context/your-work.context';
+import { YourWorkItemList } from '../components/shared/YourWorkItemList';
 import { YourWorkPageLayout } from '../components/shared/YourWorkPageLayout';
 
 export function CreatedPage() {
-  const { state } = useCreatedWork();
-  const { allWorkItems, createdWorkItems, workItemProjectMap, isLoading, isError, error } = state;
+  const { created, workItemProjectMap, isLoading, isError, error, openWorkItem } =
+    useYourWorkContext();
 
   return (
-    <YourWorkPageLayout
-      isLoading={isLoading}
-      isError={isError}
-      error={error}
-      allWorkItems={allWorkItems}
-      renderList={(handleOpenItem) => (
-        <CreatedWorkItemList
-          workItems={createdWorkItems}
-          onWorkItemClick={handleOpenItem}
-          workItemProjectMap={workItemProjectMap}
-        />
-      )}
-    />
+    <YourWorkPageLayout isLoading={isLoading} isError={isError} error={error}>
+      <YourWorkItemList
+        variant="created"
+        workItems={created}
+        onWorkItemClick={openWorkItem}
+        workItemProjectMap={workItemProjectMap}
+      />
+    </YourWorkPageLayout>
   );
 }
 
 export default CreatedPage;
+

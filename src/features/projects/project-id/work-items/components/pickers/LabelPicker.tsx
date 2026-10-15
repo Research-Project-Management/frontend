@@ -6,14 +6,14 @@ import { Tag, Search, Check } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
-import { useLabelsQuery } from '../../hooks/use-label';
-import type { Label } from '../../types/work-item.types';
+import { useLabelsQuery } from '@/features/projects/project-id/work-items/hooks/use-label';
+import type { Label } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export function LabelTagIcon({ className }: { className?: string }) {
   return <Tag className={cn('size-3.5 shrink-0 text-foreground', className)} />;
 }
 
-import type { LabelPopoverProps } from '../../types/picker.types';
+import type { LabelPopoverProps } from '@/features/projects/project-id/work-items/types/picker.types';
 
 export type { LabelPopoverProps };
 
@@ -53,7 +53,7 @@ export function LabelPopover({
   }, [labelList, labelSearch]);
 
   const toggleLabel = (labelId: string) => {
-    setLabels((prev) =>
+    setLabels?.((prev) =>
       prev.includes(labelId) ? prev.filter((id) => id !== labelId) : [...prev, labelId]
     );
   };

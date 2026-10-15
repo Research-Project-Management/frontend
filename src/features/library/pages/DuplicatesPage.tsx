@@ -7,39 +7,47 @@ import {
   Layers,
   FileText,
   Calendar,
-  BookOpen,
-  CheckCircle2,
   ExternalLink,
   ChevronRight,
-  ShieldAlert,
   Columns,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
-import { LibraryTopbar } from '../components/topbar/LibraryTopbar';
-import { LibraryInspector } from '../components/inspector/LibraryInspector';
-import { DuplicateMergeInspector } from '../components/inspector/DuplicateMergeInspector';
-import { formatAcademicAuthors } from '../utils/academic-text';
-import { ContentSkeleton } from '../components/content/ContentSkeleton';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { LibraryTopbar } from '@/features/library/components/topbar/LibraryTopbar';
+import { LibraryInspector } from '@/features/library/components/inspector/LibraryInspector';
+import { DuplicateMergeInspector } from '@/features/library/components/inspector/DuplicateMergeInspector';
+import { formatAcademicAuthors } from '@/features/library/domain/academic-text';
+import { ContentSkeleton } from '@/features/library/components/content/ContentSkeleton';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import {
   DuplicatesStackIllustration,
   libraryIllustrationStyles,
-} from '../components/content/LibraryIllustrations';
+} from '@/features/library/components/content/LibraryIllustrations';
 import {
   useDuplicateGroups,
   useMergeDuplicates,
-} from '../data';
-import { useLibrarySidebarStore, useLibraryViewStore } from '../store/library-ui.store';
-import { inspectItemDifferences } from '../domain/diff';
-import { LibraryModals } from '../components/modals/LibraryModals';
-import MergeModal from '../components/modals/MergeModal';
-import type { Item, DuplicateGroup } from '../types/library.types';
+} from '@/features/library/data';
+import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
+import { useLibraryPermissions } from '@/features/library/store/selectors';
+import { inspectItemDifferences } from '@/features/library/domain/diff';
+import { LibraryModals } from '@/features/library/components/modals/LibraryModals';
+import MergeModal from '@/features/library/components/modals/MergeModal';
+import type { Item, DuplicateGroup } from '@/features/library/types/library.types';
 
-function InlineDiffView({ items }: { items: Item[] }) {
-  const diff = useMemo(() => inspectItemDifferences(items, items[0]?.id), [items]);
+function InlineDiffView({
+  items,
+  recommendedMasterId,
+}: {
+  items: Item[];
+  recommendedMasterId?: string;
+}) {
+  const diff = useMemo(
+    () => inspectItemDifferences(items, recommendedMasterId || items[0]?.id),
+    [items, recommendedMasterId],
+  );
 
   return (
     <div className="p-4 bg-muted/20 border-t border-border space-y-2.5">
@@ -138,15 +146,15 @@ function InlineDiffView({ items }: { items: Item[] }) {
  */
 export function DuplicatesPage() {
   const router = useRouter();
-  const activeScope = useLibrarySidebarStore((s) => s.activeScope);
+  const activeScope = useLibraryUIStore((s) => s.activeScope);
   const effectiveScopeId = activeScope.type === 'project' ? activeScope.id : 'user';
 
-  const activeItemId = useLibraryViewStore((s) => s.activeItemId);
-  const setActiveItem = useLibraryViewStore((s) => s.setActiveItem);
-  const setIsInspectorOpen = useLibraryViewStore((s) => s.setIsInspectorOpen);
+  const activeItemId = useLibraryUIStore((s) => s.activeItemId);
+  const setActiveItem = useLibraryUIStore((s) => s.setActiveItem);
+  const { canEditItem: canEdit } = useLibraryPermissions();
 
   // Curation Queries & Mutations
-  const { data, isLoading, isError, error, refetch } = useDuplicateGroups(effectiveScopeId);
+  const { data, isLoading, isError, error } = useDuplicateGroups(effectiveScopeId);
   const mergeMutation = useMergeDuplicates(effectiveScopeId);
 
   // Local state
@@ -154,6 +162,7 @@ export function DuplicatesPage() {
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
   const [expandedDiffGroupKeys, setExpandedDiffGroupKeys] = useState<Set<string>>(new Set());
   const [mergeCluster, setMergeCluster] = useState<Item[] | null>(null);
+  const [mergeRecommendedMasterId, setMergeRecommendedMasterId] = useState<string | undefined>(undefined);
   const [mergeOpen, setMergeOpen] = useState(false);
 
   const rawGroups: DuplicateGroup[] = useMemo(() => {
@@ -205,6 +214,7 @@ export function DuplicatesPage() {
       return;
     }
     setMergeCluster(items);
+    setMergeRecommendedMasterId(group.recommendedMasterId);
     setMergeOpen(true);
   };
 
@@ -219,6 +229,7 @@ export function DuplicatesPage() {
       fieldSelections: Object.keys(mergedFields).length > 0 ? mergedFields : undefined,
     });
     setMergeCluster(null);
+    setMergeRecommendedMasterId(undefined);
     setMergeOpen(false);
   };
 
@@ -227,20 +238,13 @@ export function DuplicatesPage() {
     toast.success('Dismissed duplicate group', { id: 'duplicate-group-action' });
   };
 
-  const isUserScope = activeScope.type === 'user';
-  const canEdit =
-    isUserScope ||
-    activeScope.role === 'owner' ||
-    activeScope.role === 'coordinator' ||
-    activeScope.role === 'contributor';
-
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
       {/* Main Workspace Content */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <LibraryTopbar title="Duplicate Items" showDisplay={false} canEdit={canEdit} />
 
-        <div className="flex-1 overflow-y-auto min-h-0 bg-background/50">
+        <div className="flex-1 overflow-y-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden min-h-0 bg-background/50">
           {isLoading ? (
             <div className="p-6">
               <ContentSkeleton rowCount={8} />
@@ -324,32 +328,44 @@ export function DuplicatesPage() {
                             {items.length} {items.length === 1 ? 'item' : 'items'}
                           </Badge>
                           {hasMismatchedTypes && (
-                            <Badge
-                              variant="outline"
-                              className="text-10 text-warning border-warning/30 bg-warning/10 font-normal h-5 rounded-md"
-                              title="Items in this group have different item types and must match before merging"
-                            >
-                              Type Mismatch
-                            </Badge>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge
+                                  variant="outline"
+                                  className="text-10 text-warning border-warning/30 bg-warning/10 font-normal h-5 rounded-md cursor-default"
+                                >
+                                  Cross-Type Group
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                Cross-Type Group — master type will be unified on merge
+                              </TooltipContent>
+                            </Tooltip>
                           )}
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => toggleInlineDiff(groupKey, e)}
-                            className={cn(
-                              'h-8 px-2.5 text-12 gap-1.5 transition-colors cursor-pointer',
-                              isDiffExpanded
-                                ? 'bg-primary/10 text-primary font-medium'
-                                : 'text-foreground hover:bg-muted',
-                            )}
-                            title="Toggle inline side-by-side diff comparison"
-                          >
-                            <Columns className="size-3.5" />
-                            <span>{isDiffExpanded ? 'Hide Diff' : 'Inline Diff'}</span>
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => toggleInlineDiff(groupKey, e)}
+                                className={cn(
+                                  'h-8 px-2.5 text-12 gap-1.5 transition-colors cursor-pointer',
+                                  isDiffExpanded
+                                    ? 'bg-primary/10 text-primary font-medium'
+                                    : 'text-foreground hover:bg-muted',
+                                )}
+                              >
+                                <Columns className="size-3.5" />
+                                <span>{isDiffExpanded ? 'Hide Diff' : 'Inline Diff'}</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">
+                              Toggle inline side-by-side diff comparison
+                            </TooltipContent>
+                          </Tooltip>
 
                           <Button
                             variant="ghost"
@@ -363,23 +379,28 @@ export function DuplicatesPage() {
                             Dismiss
                           </Button>
                           {canEdit && (
-                            <Button
-                              size="sm"
-                              disabled={hasMismatchedTypes}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenMerge(group);
-                              }}
-                              className="h-8 px-3 text-12 gap-1.5 font-medium shadow-none disabled:opacity-50 cursor-pointer"
-                              title={
-                                hasMismatchedTypes
-                                  ? 'Items of different types cannot be merged'
-                                  : 'Open merge workbench'
-                              }
-                            >
-                              <GitMerge className="h-3.5 w-3.5" />
-                              Merge this group
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex">
+                                  <Button
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenMerge(group);
+                                    }}
+                                    className="h-8 px-3 text-12 gap-1.5 font-medium shadow-none cursor-pointer"
+                                  >
+                                    <GitMerge className="h-3.5 w-3.5" />
+                                    Merge this group
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom">
+                                {hasMismatchedTypes
+                                  ? 'Open merge workbench (cross-type group will be unified)'
+                                  : 'Open merge workbench'}
+                              </TooltipContent>
+                            </Tooltip>
                           )}
                         </div>
                       </div>
@@ -435,20 +456,24 @@ export function DuplicatesPage() {
                               </div>
 
                               <div className="flex items-center gap-2 shrink-0">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    router.push(`/library/papers/${item.id}`);
-                                  }}
-                                  className="size-7 text-foreground hover:bg-muted cursor-pointer"
-                                  title="Open in Reader"
-                                  aria-label="Open in Reader"
-                                >
-                                  <ExternalLink className="h-3.5 w-3.5" />
-                                </Button>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        router.push(`/library/papers/${item.id}`);
+                                      }}
+                                      className="size-7 text-foreground hover:bg-muted cursor-pointer"
+                                      aria-label="Open in Reader"
+                                    >
+                                      <ExternalLink className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">Open in Reader</TooltipContent>
+                                </Tooltip>
                                 <ChevronRight className="h-4 w-4 text-foreground" />
                               </div>
                             </div>
@@ -458,7 +483,10 @@ export function DuplicatesPage() {
 
                       {/* Inline Side-by-Side Diff Workbench */}
                       {isDiffExpanded && (
-                        <InlineDiffView items={items} />
+                        <InlineDiffView
+                          items={items}
+                          recommendedMasterId={group.recommendedMasterId}
+                        />
                       )}
                     </div>
                   );
@@ -474,10 +502,12 @@ export function DuplicatesPage() {
         <div className="hidden md:flex w-80 lg:w-96 xl:w-[420px] h-full shrink-0 flex-col overflow-hidden border-l border-border bg-background">
           <DuplicateMergeInspector
             items={selectedGroupItems}
+            recommendedMasterId={selectedGroup?.recommendedMasterId}
             scopeId={effectiveScopeId}
             canEdit={canEdit}
             onOpenModal={() => {
               setMergeCluster(selectedGroupItems);
+              setMergeRecommendedMasterId(selectedGroup?.recommendedMasterId);
               setMergeOpen(true);
             }}
             onMerge={handleExecuteMerge}
@@ -501,11 +531,31 @@ export function DuplicatesPage() {
           open={mergeOpen}
           onOpenChange={(open: boolean) => {
             setMergeOpen(open);
-            if (!open) setMergeCluster(null);
+            if (!open) {
+              setMergeCluster(null);
+              setMergeRecommendedMasterId(undefined);
+            }
           }}
           duplicates={mergeCluster}
+          recommendedMasterId={mergeRecommendedMasterId}
           scopeId={effectiveScopeId}
           onMerge={handleExecuteMerge}
+          onDismissDuplicate={() => {
+            const matchingGroup = activeGroups.find((g) => {
+              const gItems = (g.papers || g.items || []) as Item[];
+              return gItems.some((it) => mergeCluster.some((mc) => mc.id === it.id));
+            });
+            const groupIdx = matchingGroup ? activeGroups.indexOf(matchingGroup) : -1;
+            const key =
+              matchingGroup?.key ||
+              (groupIdx >= 0 ? `cluster-${groupIdx}` : selectedGroupKey || '');
+            if (key) {
+              handleDismissGroup(key);
+            }
+            setMergeCluster(null);
+            setMergeRecommendedMasterId(undefined);
+            setMergeOpen(false);
+          }}
         />
       )}
     </div>

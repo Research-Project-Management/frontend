@@ -9,14 +9,13 @@ import {
   type TablePropertyKey,
   type TableColumnPropertiesPopoverProps,
   TABLE_PROPERTIES,
-} from '../../../types/table-view.types';
+} from '@/features/projects/project-id/work-items/types/table-view.types';
 
 export type { TableColumnPropertiesPopoverProps };
 
 export function TableColumnPropertiesPopover({
   visibleProperties,
   onToggleProperty,
-  onResetProperties,
   compact = false,
 }: TableColumnPropertiesPopoverProps) {
   const [searchQuery, setSearchQuery] = useState('');

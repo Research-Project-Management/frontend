@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
-import type { ProcessModalState } from '../data/ingestion/ingestion.queries';
+import type { ProcessModalState } from '@/features/library/data/ingestion/ingestion.queries';
 
 export type { ProcessModalState };
 

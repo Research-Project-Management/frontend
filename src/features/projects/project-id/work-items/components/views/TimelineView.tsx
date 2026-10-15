@@ -20,28 +20,25 @@ import {
   NonePriorityBoxIcon,
 } from '@/shared/components/icons';
 import { cn } from "@/shared/lib/utils";
-import { toast } from 'sonner';
-import { RelationService } from '../../api/work-item.api';
-import { ItemHelpers, resolveColumnId, resolveColumnColor } from '../../utils/work-item.utils';
+import { useAddRelationMutation } from '@/features/projects/project-id/work-items/hooks/use-relation';
+import { ItemHelpers, resolveColumnId, resolveColumnColor, buildWorkItemTree } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import { TableHorizontalScrollbar } from './TableView';
 import {
   analyzeCriticalPath,
-  wouldCauseCycle,
-  extractNormalizedEdges,
   getPixelForTimeBinarySearch,
-} from '../../utils/cpm-graph';
+} from '@/features/projects/project-id/work-items/utils/cpm-graph';
 import type {
   Item,
-  Column as ColumnType,
+  Column,
   BaseWorkItemViewProps,
   WorkItemCardHandlers,
   Priority,
   ProjectMember,
-} from '../../types/work-item.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 
 // ── Types & Utilities ───────────────────────────────────────────────────────
-export * from '../../types/timeline-view.types';
-export * from '../../utils/timeline.utils';
+export * from '@/features/projects/project-id/work-items/types/timeline-view.types';
+export * from '@/features/projects/project-id/work-items/utils/timeline.utils';
 
 import type {
   TimelineZoom,
@@ -51,7 +48,7 @@ import type {
   DepLineType,
   DependencyLine,
   TimelineViewProps,
-} from '../../types/timeline-view.types';
+} from '@/features/projects/project-id/work-items/types/timeline-view.types';
 
 import {
   EMPTY_ARRAY,
@@ -76,8 +73,8 @@ import {
   getPixelRange,
   mapItemToBar,
   computeDependencyLines,
-} from '../../utils/timeline.utils';
-import { renderPriorityIcon } from '../../utils/table.utils';
+} from '@/features/projects/project-id/work-items/utils/timeline.utils';
+import { renderPriorityIcon } from '@/features/projects/project-id/work-items/utils/table.utils';
 
 // ============================================================================
 // TOP CONTROLS (ZOOM, TODAY, FULLSCREEN)
@@ -200,7 +197,7 @@ interface TimelineBarProps {
   barData: TimelineBarData;
   columns: TimelineColumn[];
   zoom: TimelineZoom;
-  stateColumn?: ColumnType;
+  stateColumn?: Column;
   rowY: number;
   onEditCard: (item: Item) => void;
   onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
@@ -312,9 +309,7 @@ const TimelineBar = memo(function TimelineBar({
   const showText = visualWidth >= 60;
   const accentColor = resolveColumnColor(stateColumn, item.state?.color || '#0969DA');
 
-  const identifier =
-    item.identifier ||
-    (item.sequenceNumber ? `PLO-${item.sequenceNumber}` : item.id ? `PLO-${item.id.slice(0, 4)}` : '');
+  const identifier = ItemHelpers.resolveIdentifier(item, 'TASK');
   const startFormatted = formatTimelineDisplayDate(item.startDate);
   const dueFormatted = formatTimelineDisplayDate(item.dueDate);
   const dateRangeStr =
@@ -686,11 +681,6 @@ export const TimelineView = memo(function TimelineView({
   onUpdateCard,
   isReadOnly = false,
 }: TimelineViewProps) {
-  // ── Grouping definition (Guaranteed top-of-component scope) ─────────────────
-  const isGrouped = false;
-  const effectiveGroupBy: 'state' | 'priority' | 'assignee' | null =
-    (displayOptions?.groupBy as 'state' | 'priority' | 'assignee' | null) ?? null;
-
   // Zoom state with localStorage persistence (SSR-safe to prevent hydration mismatch)
   const [zoom, setZoom] = useState<TimelineZoom>('week');
 
@@ -739,17 +729,18 @@ export const TimelineView = memo(function TimelineView({
     e.stopPropagation();
     const startX = e.clientX;
     const startWidth = sidebarWidth;
+    let latestWidth = startWidth;
 
     const onMouseMove = (moveEvent: MouseEvent) => {
-      const newWidth = Math.min(650, Math.max(200, startWidth + (moveEvent.clientX - startX)));
-      setSidebarWidth(newWidth);
+      latestWidth = Math.min(650, Math.max(200, startWidth + (moveEvent.clientX - startX)));
+      setSidebarWidth(latestWidth);
     };
 
     const onMouseUp = () => {
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       try {
-        localStorage.setItem('flux:timeline_view:sidebar_width', String(sidebarWidth));
+        localStorage.setItem('flux:timeline_view:sidebar_width', String(latestWidth));
       } catch {}
     };
 
@@ -825,22 +816,6 @@ export const TimelineView = memo(function TimelineView({
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
-  // ── Grouping & Hierarchy Logic ─────────────────────────────────────────────
-  // (isGrouped and effectiveGroupBy defined at top of component)
-
-  const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<Set<string>>(new Set());
-  const toggleGroupCollapse = useCallback((groupKey: string) => {
-    setCollapsedGroupKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(groupKey)) {
-        next.delete(groupKey);
-      } else {
-        next.add(groupKey);
-      }
-      return next;
-    });
-  }, []);
-
   // Sub-items Tree State & Toggle
   const [collapsedParentIds, setCollapsedParentIds] = useState<Set<string>>(new Set());
   const toggleExpandChildren = useCallback((parentId: string) => {
@@ -858,72 +833,8 @@ export const TimelineView = memo(function TimelineView({
   const showChildWorkItems = displayOptions?.showChildWorkItems ?? true;
 
   const buildTreeRows = useCallback(
-    (sortedList: Item[]): Array<{
-      item: Item;
-      isSubItem: boolean;
-      hasChildren: boolean;
-      isChildrenExpanded: boolean;
-    }> => {
-      if (!showChildWorkItems) {
-        return sortedList
-          .filter((item) => !item.parentId && !item.parentItemId && !item.parentWorkItemId)
-          .map((item) => ({
-            item,
-            isSubItem: false,
-            hasChildren: false,
-            isChildrenExpanded: true,
-          }));
-      }
-
-      const itemMap = new Map<string, Item>();
-      sortedList.forEach((it) => itemMap.set(it.id, it));
-
-      const childrenByParentId = new Map<string, Item[]>();
-      const rootItems: Item[] = [];
-
-      sortedList.forEach((it) => {
-        const pId = it.parentId || it.parentItemId || it.parentWorkItemId;
-        if (pId && itemMap.has(pId)) {
-          const arr = childrenByParentId.get(pId) || [];
-          arr.push(it);
-          childrenByParentId.set(pId, arr);
-        } else {
-          rootItems.push(it);
-        }
-      });
-
-      const result: Array<{
-        item: Item;
-        isSubItem: boolean;
-        hasChildren: boolean;
-        isChildrenExpanded: boolean;
-      }> = [];
-      const visited = new Set<string>();
-
-      const appendItemAndChildren = (it: Item, depth: number) => {
-        if (visited.has(it.id)) return;
-        visited.add(it.id);
-
-        const children = childrenByParentId.get(it.id) || [];
-        const hasChildren = children.length > 0;
-        const isChildrenExpanded = !collapsedParentIds.has(it.id);
-
-        result.push({
-          item: it,
-          isSubItem: depth > 0,
-          hasChildren,
-          isChildrenExpanded,
-        });
-
-        if (hasChildren && isChildrenExpanded) {
-          children.forEach((child) => appendItemAndChildren(child, depth + 1));
-        }
-      };
-
-      rootItems.forEach((root) => appendItemAndChildren(root, 0));
-
-      return result;
-    },
+    (sortedList: Item[]) =>
+      buildWorkItemTree(sortedList, { showChildWorkItems, collapsedParentIds }),
     [showChildWorkItems, collapsedParentIds]
   );
 
@@ -932,164 +843,31 @@ export const TimelineView = memo(function TimelineView({
     [projectStates, columns]
   );
 
-  const groups = useMemo(() => {
-    if (!isGrouped) return [];
-
-    if (effectiveGroupBy === 'priority') {
-      const priorityConfigs: Array<{ key: Priority; title: string }> = [
-        { key: 'urgent', title: 'Urgent' },
-        { key: 'high', title: 'High' },
-        { key: 'medium', title: 'Medium' },
-        { key: 'low', title: 'Low' },
-        { key: 'none', title: 'No priority' },
-      ];
-
-      return priorityConfigs.map((p) => {
-        const groupItems = items.filter((item) => (item.priority || 'none') === p.key);
-        return {
-          key: p.key,
-          title: p.title,
-          color: undefined,
-          icon: renderPriorityIcon(p.key),
-          items: groupItems,
-        };
-      });
-    }
-
-    if (effectiveGroupBy === 'assignee') {
-      const memberGroups = (members || []).map((m) => {
-        const mem = m as typeof m & { user?: { id?: string; name?: string } };
-        const userId = mem.userId || mem.user?.id || mem.id || '';
-        const name = mem.name || mem.user?.name || 'Member';
-        const groupItems = items.filter(
-          (item) => ItemHelpers.resolveAssigneeId(item) === userId
-        );
-        return {
-          key: userId,
-          title: name,
-          color: undefined,
-          icon: (
-            <Avatar className="size-4 shrink-0">
-              <AvatarImage src={mem.avatar || mem.user?.avatar} />
-              <AvatarFallback className="text-11 font-mono font-medium bg-muted">
-                {name.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          ),
-          items: groupItems,
-        };
-      });
-
-      const unassignedItems = items.filter((item) => !ItemHelpers.resolveAssigneeId(item));
-      memberGroups.push({
-        key: '__unassigned__',
-        title: 'Unassigned',
-        color: undefined,
-        icon: <User className="size-3.5 shrink-0 text-muted-foreground" />,
-        items: unassignedItems,
-      });
-
-      return memberGroups;
-    }
-
-    // Default: Group by State
-    return stateList.map((col) => {
-      const colId = resolveColumnId(col);
-      const groupItems = items.filter((i) => i.columnId === colId);
-      const colColor = col.color || col.accentColor || '#6B7280';
-      const colTitle = col.title || col.name || 'Group';
-
-      return {
-        key: colId,
-        title: colTitle,
-        color: colColor,
-        icon: (
-          <StatusIcon
-            id={colId}
-            title={colTitle}
-            group={col.group || col.slug || colTitle}
-            color={colColor}
-            className="size-3.5 shrink-0"
-          />
-        ),
-        items: groupItems,
-      };
-    });
-  }, [isGrouped, effectiveGroupBy, items, stateList, members]);
-
   // Flattened vertical layout rows and Y-coordinate mapping for dependency lines
   const { visibleRowElements, rowYMap, totalContentHeight } = useMemo(() => {
     const yMap = new Map<string, number>();
-    const rows: Array<
-      | {
-          type: 'group';
-          key: string;
-          title: string;
-          color?: string;
-          icon?: React.ReactNode;
-          count: number;
-          isExpanded: boolean;
-          y: number;
-        }
-      | {
-          type: 'item';
-          item: Item;
-          isSubItem: boolean;
-          hasChildren: boolean;
-          isChildrenExpanded: boolean;
-          y: number;
-        }
-    > = [];
+    const rows: Array<{
+      type: 'item';
+      item: Item;
+      isSubItem: boolean;
+      hasChildren: boolean;
+      isChildrenExpanded: boolean;
+      y: number;
+    }> = [];
 
     let currentY = 0;
-
-    if (isGrouped) {
-      for (const group of groups) {
-        if (group.items.length === 0 && !displayOptions?.showEmptyGroups) continue;
-        const isExpanded = !collapsedGroupKeys.has(group.key);
-
-        rows.push({
-          type: 'group',
-          key: group.key,
-          title: group.title,
-          color: group.color,
-          icon: group.icon,
-          count: group.items.length,
-          isExpanded,
-          y: currentY,
-        });
-        currentY += GROUP_HEADER_HEIGHT;
-
-        if (isExpanded) {
-          const treeRows = buildTreeRows(group.items);
-          for (const row of treeRows) {
-            yMap.set(row.item.id, currentY + ROW_HEIGHT / 2);
-            rows.push({
-              type: 'item',
-              item: row.item,
-              isSubItem: row.isSubItem,
-              hasChildren: row.hasChildren,
-              isChildrenExpanded: row.isChildrenExpanded,
-              y: currentY,
-            });
-            currentY += ROW_HEIGHT;
-          }
-        }
-      }
-    } else {
-      const treeRows = buildTreeRows(items);
-      for (const row of treeRows) {
-        yMap.set(row.item.id, currentY + ROW_HEIGHT / 2);
-        rows.push({
-          type: 'item',
-          item: row.item,
-          isSubItem: row.isSubItem,
-          hasChildren: row.hasChildren,
-          isChildrenExpanded: row.isChildrenExpanded,
-          y: currentY,
-        });
-        currentY += ROW_HEIGHT;
-      }
+    const treeRows = buildTreeRows(items);
+    for (const row of treeRows) {
+      yMap.set(row.item.id, currentY + ROW_HEIGHT / 2);
+      rows.push({
+        type: 'item',
+        item: row.item,
+        isSubItem: row.isSubItem,
+        hasChildren: row.hasChildren,
+        isChildrenExpanded: row.isChildrenExpanded,
+        y: currentY,
+      });
+      currentY += ROW_HEIGHT;
     }
 
     return {
@@ -1097,7 +875,7 @@ export const TimelineView = memo(function TimelineView({
       rowYMap: yMap,
       totalContentHeight: Math.max(currentY, 400),
     };
-  }, [isGrouped, groups, displayOptions?.showEmptyGroups, collapsedGroupKeys, buildTreeRows, items]);
+  }, [buildTreeRows, items]);
 
   // Compute dependency lines with accurate Y coordinates
   const depLines = useMemo(
@@ -1135,6 +913,7 @@ export const TimelineView = memo(function TimelineView({
   }
 
   const [activeDrag, setActiveDrag] = useState<ActiveConnectionDrag | null>(null);
+  const { createDependencyWithCycleCheck } = useAddRelationMutation();
 
   const handleStartConnect = (
     sourceItemId: string,
@@ -1202,22 +981,9 @@ export const TimelineView = memo(function TimelineView({
               ? currentDrag.hoveredItemId
               : currentDrag.sourceItemId;
 
-          // Prevent circular dependencies prior to API dispatch
-          const currentEdges = extractNormalizedEdges(items);
-          if (wouldCauseCycle(fromId, toId, currentEdges)) {
-            toast.error('Cannot create dependency: circular dependency detected', {
-              id: 'work-item-relation',
-            });
-            return null;
-          }
-
-          RelationService.addRelation(fromId, {
-            targetId: toId,
-            targetWorkItemId: toId,
+          createDependencyWithCycleCheck(fromId, toId, items, {
             type: 'blocks',
-          })
-            .then(() => {
-              toast.success('Created dependency relation', { id: 'work-item-relation' });
+            onSuccess: () => {
               if (onUpdateCard) {
                 const src = items.find((t) => t.id === fromId);
                 if (src) {
@@ -1230,10 +996,8 @@ export const TimelineView = memo(function TimelineView({
                   });
                 }
               }
-            })
-            .catch((err: unknown) => {
-              toast.error((err instanceof Error ? err.message : undefined) || 'Failed to create relation', { id: 'work-item-relation' });
-            });
+            },
+          });
         }
         return null;
       });
@@ -1532,44 +1296,12 @@ export const TimelineView = memo(function TimelineView({
             {/* Unified Rows Container */}
             <div className="relative z-10 flex flex-col">
               {visibleRowElements.map((rowElement) => {
-                if (rowElement.type === 'group') {
-                  return (
-                    <div
-                      key={rowElement.key}
-                      role="row"
-                      onClick={() => toggleGroupCollapse(rowElement.key)}
-                      style={{ height: `${GROUP_HEADER_HEIGHT}px` }}
-                      className="sticky top-[60px] z-25 flex items-center border-b border-border bg-muted/50 hover:bg-muted/70 transition-colors cursor-pointer select-none text-xs font-medium text-foreground w-full"
-                    >
-                      {/* Sticky Left Group Label */}
-                      <div
-                        style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, left: 0 }}
-                        className="sticky left-0 z-26 flex items-center gap-2 px-3 h-full shrink-0 bg-muted/50 border-r border-border"
-                      >
-                        {rowElement.icon}
-                        <span className="font-semibold text-foreground truncate">{rowElement.title}</span>
-                        <span className="rounded-md bg-background border border-border px-1.5 py-0.5 text-11 font-mono font-medium text-muted-foreground tabular-nums">
-                          {rowElement.count}
-                        </span>
-                      </div>
-
-                      {/* Right Timeline Group Fill */}
-                      <div
-                        style={{ width: `${totalTimelineWidth}px` }}
-                        className="h-full shrink-0"
-                      />
-                    </div>
-                  );
-                }
-
                 // Item Row
                 const { item, isSubItem, hasChildren, isChildrenExpanded, y } = rowElement;
                 const stateCol = stateList.find((col) => col.id === item.columnId);
                 const barData = barDataMap.get(item.id) ?? mapItemToBar(item, timelineColumns, zoom);
                 const isConnectTarget = activeDrag?.hoveredItemId === item.id;
-                const identifier =
-                  item.identifier ||
-                  (item.sequenceNumber ? `PLO-${item.sequenceNumber}` : `PLO-${item.id.slice(0, 4)}`);
+                const identifier = ItemHelpers.resolveIdentifier(item, 'TASK');
                 const duration = calculateDuration(item.startDate, item.dueDate);
 
                 return (

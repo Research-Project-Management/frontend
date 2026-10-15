@@ -16,9 +16,24 @@ import {
   type ProjectPermissions,
   type CreateProjectInput,
   type UpdateProjectInput,
+  type ProjectMember,
 } from '../services/project.service';
 
 // ── Types & Context Interfaces ────────────────────────────────────────────────
+
+interface ProjectCacheEntry {
+  isArchived?: boolean;
+  isFavorite?: boolean;
+  project?: {
+    isArchived?: boolean;
+    isFavorite?: boolean;
+    members?: ProjectMember[];
+    [key: string]: unknown;
+  };
+  members?: ProjectMember[];
+  [key: string]: unknown;
+}
+
 
 export interface CreateProjectVariables extends CreateProjectInput {}
 
@@ -94,7 +109,7 @@ export const useUpdateProject = () => {
       const previousOverview = queryClient.getQueryData(projectKeys.overview(newProject.projectId));
 
       if (previousProject) {
-        queryClient.setQueryData(projectKeys.byId(newProject.projectId), (old: any) => ({
+        queryClient.setQueryData(projectKeys.byId(newProject.projectId), (old: ProjectCacheEntry | undefined) => ({
           ...old,
           ...newProject,
           project: old?.project ? { ...old.project, ...newProject } : undefined,
@@ -102,7 +117,7 @@ export const useUpdateProject = () => {
       }
 
       if (previousOverview) {
-        queryClient.setQueryData(projectKeys.overview(newProject.projectId), (old: any) => ({
+        queryClient.setQueryData(projectKeys.overview(newProject.projectId), (old: ProjectCacheEntry | undefined) => ({
           ...old,
           project: { ...(old?.project || {}), ...newProject },
         }));
@@ -140,7 +155,7 @@ export const useArchiveProject = () => {
       await queryClient.cancelQueries({ queryKey: projectKeys.byId(projectId) });
       const previousProject = queryClient.getQueryData(projectKeys.byId(projectId));
 
-      queryClient.setQueryData(projectKeys.byId(projectId), (old: any) => {
+      queryClient.setQueryData(projectKeys.byId(projectId), (old: ProjectCacheEntry | undefined) => {
         if (!old) return old;
         return {
           ...old,
@@ -179,7 +194,7 @@ export const useRestoreProject = () => {
       await queryClient.cancelQueries({ queryKey: projectKeys.byId(projectId) });
       const previousProject = queryClient.getQueryData(projectKeys.byId(projectId));
 
-      queryClient.setQueryData(projectKeys.byId(projectId), (old: any) => {
+      queryClient.setQueryData(projectKeys.byId(projectId), (old: ProjectCacheEntry | undefined) => {
         if (!old) return old;
         return {
           ...old,
@@ -219,7 +234,7 @@ export const useToggleProjectFavorite = () => {
       await queryClient.cancelQueries({ queryKey: projectKeys.byId(projectId) });
       const previousProject = queryClient.getQueryData(projectKeys.byId(projectId));
 
-      queryClient.setQueryData(projectKeys.byId(projectId), (old: any) => {
+      queryClient.setQueryData(projectKeys.byId(projectId), (old: ProjectCacheEntry | undefined) => {
         if (!old) return old;
         return {
           ...old,
@@ -275,10 +290,11 @@ export const useAddProjectMember = () => {
       await queryClient.cancelQueries({ queryKey: projectKeys.byId(projectId) });
       const previousProject = queryClient.getQueryData(projectKeys.byId(projectId));
 
-      queryClient.setQueryData(projectKeys.byId(projectId), (old: any) => {
+      queryClient.setQueryData(projectKeys.byId(projectId), (old: ProjectCacheEntry | undefined) => {
         if (!old) return old;
-        const newMember = {
-          user: { id: userId, name: 'Adding...', email: '' },
+        const newMember: ProjectMember = {
+          userId,
+          user: { id: userId, name: 'Adding...', email: undefined, avatar: undefined },
           role: role || 'contributor',
           joinedAt: new Date().toISOString(),
         };
@@ -323,9 +339,9 @@ export const useUpdateProjectMemberRole = () => {
       await queryClient.cancelQueries({ queryKey: projectKeys.byId(projectId) });
       const previousProject = queryClient.getQueryData(projectKeys.byId(projectId));
 
-      queryClient.setQueryData(projectKeys.byId(projectId), (old: any) => {
+      queryClient.setQueryData(projectKeys.byId(projectId), (old: ProjectCacheEntry | undefined) => {
         if (!old) return old;
-        const updateMembers = (members: any[]) =>
+        const updateMembers = (members: ProjectMember[]) =>
           members.map((m) =>
             m.user?.id === userId || m.userId === userId
               ? { ...m, role: targetRole }
@@ -367,9 +383,9 @@ export const useRemoveProjectMember = () => {
       await queryClient.cancelQueries({ queryKey: projectKeys.byId(projectId) });
       const previousProject = queryClient.getQueryData(projectKeys.byId(projectId));
 
-      queryClient.setQueryData(projectKeys.byId(projectId), (old: any) => {
+      queryClient.setQueryData(projectKeys.byId(projectId), (old: ProjectCacheEntry | undefined) => {
         if (!old) return old;
-        const filterMembers = (members: any[]) =>
+        const filterMembers = (members: ProjectMember[]) =>
           members.filter((m) => m.user?.id !== userId && m.userId !== userId);
 
         return {
@@ -427,13 +443,13 @@ export interface UseProjectsState {
 }
 
 export interface UseProjectsActions {
-  refetch: () => Promise<any>;
-  createProject: (data: CreateProjectInput) => Promise<any>;
-  updateProject: (data: Partial<UpdateProjectInput> & { projectId: string }) => Promise<any>;
-  archiveProject: (projectId: string) => Promise<any>;
-  restoreProject: (projectId: string) => Promise<any>;
-  toggleFavorite: (projectId: string, isFavorite: boolean) => Promise<any>;
-  deleteProject: (projectId: string) => Promise<any>;
+  refetch: () => Promise<unknown>;
+  createProject: (data: CreateProjectInput) => Promise<unknown>;
+  updateProject: (data: Partial<UpdateProjectInput> & { projectId: string }) => Promise<unknown>;
+  archiveProject: (projectId: string) => Promise<unknown>;
+  restoreProject: (projectId: string) => Promise<unknown>;
+  toggleFavorite: (projectId: string, isFavorite: boolean) => Promise<unknown>;
+  deleteProject: (projectId: string) => Promise<unknown>;
 }
 
 export interface UseProjectsReturn {
@@ -544,15 +560,15 @@ export interface UseProjectState {
 }
 
 export interface UseProjectActions {
-  refetch: () => Promise<any>;
-  update: (data: Partial<UpdateProjectInput>) => Promise<any>;
-  archive: () => Promise<any>;
-  restore: () => Promise<any>;
-  toggleFavorite: (isFavorite: boolean) => Promise<any>;
-  delete: () => Promise<any>;
-  addMember: (userId: string, role?: string) => Promise<any>;
-  updateMemberRole: (userId: string, role: string) => Promise<any>;
-  removeMember: (userId: string) => Promise<any>;
+  refetch: () => Promise<unknown>;
+  update: (data: Partial<UpdateProjectInput>) => Promise<unknown>;
+  archive: () => Promise<unknown>;
+  restore: () => Promise<unknown>;
+  toggleFavorite: (isFavorite: boolean) => Promise<unknown>;
+  delete: () => Promise<unknown>;
+  addMember: (userId: string, role?: string) => Promise<unknown>;
+  updateMemberRole: (userId: string, role: string) => Promise<unknown>;
+  removeMember: (userId: string) => Promise<unknown>;
 }
 
 export interface UseProjectReturn {
@@ -565,7 +581,7 @@ export interface UseProjectReturn {
   data?: { project: Project } | Project;
   isLoading: boolean;
   isError: boolean;
-  refetch: () => Promise<any>;
+  refetch: () => Promise<unknown>;
 }
 
 export function useProject(
@@ -697,26 +713,26 @@ export const useProjectDetails = useProject;
 // ── 4. OOP { state, actions } Pattern Hook: useProjectMembers ─────────────────
 
 export interface UseProjectMembersState {
-  readonly members: any[];
+  readonly members: ProjectMember[];
   readonly isLoading: boolean;
   readonly isError: boolean;
 }
 
 export interface UseProjectMembersActions {
-  refetch: () => Promise<any>;
-  addMember: (userId: string, role?: string) => Promise<any>;
-  updateMemberRole: (userId: string, role: string) => Promise<any>;
-  removeMember: (userId: string) => Promise<any>;
+  refetch: () => Promise<unknown>;
+  addMember: (userId: string, role?: string) => Promise<unknown>;
+  updateMemberRole: (userId: string, role: string) => Promise<unknown>;
+  removeMember: (userId: string) => Promise<unknown>;
 }
 
 export interface UseProjectMembersReturn {
   state: UseProjectMembersState;
   actions: UseProjectMembersActions;
-  members: any[];
-  data: any[];
+  members: ProjectMember[];
+  data: ProjectMember[];
   isLoading: boolean;
   isError: boolean;
-  refetch: () => Promise<any>;
+  refetch: () => Promise<unknown>;
 }
 
 export function useProjectMembers(projectId: string): UseProjectMembersReturn {

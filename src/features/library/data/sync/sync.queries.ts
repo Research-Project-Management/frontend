@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { libraryKeys } from '../query-keys';
+import { libraryKeys } from '@/features/library/data/query-keys';
 import { SyncService, type SyncQueryParams } from './sync.service';
 
 export function useSyncVersionQuery(

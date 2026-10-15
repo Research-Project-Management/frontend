@@ -5,16 +5,10 @@ import {
   CitationService,
   ExportService,
 } from './citation.service';
-import type { CslStyle } from '../../types/library.types';
+import type { CslStyle } from '@/features/library/types/library.types';
+import { citationKeys, exportKeys } from '@/features/library/data/query-keys';
 
-export const citationKeys = {
-  all: ['library', 'citation'] as const,
-  styles: (scopeId?: string) => [...citationKeys.all, 'styles', scopeId || 'default'] as const,
-  item: (scopeId?: string, itemId?: string, style: CslStyle = 'apa', index: number = 1) =>
-    [...citationKeys.all, 'item', scopeId || 'default', itemId || 'none', style, index] as const,
-  batch: (scopeId?: string, itemIds: string[] = [], style: CslStyle = 'apa') =>
-    [...citationKeys.all, 'batch', scopeId || 'default', itemIds.join(','), style] as const,
-};
+export { citationKeys, exportKeys };
 
 export function useCitationStyles(scopeId?: string) {
   return useQuery({
@@ -79,14 +73,6 @@ export function useUploadCustomCslStyle() {
     },
   });
 }
-
-export const exportKeys = {
-  all: ['library', 'exports'] as const,
-  collectionBundle: (scopeId?: string, collectionId?: string) =>
-    [...exportKeys.all, 'bundle', scopeId || 'default', collectionId || 'none'] as const,
-  collectionBibtex: (scopeId?: string, collectionId?: string) =>
-    [...exportKeys.all, 'bibtex', scopeId || 'default', collectionId || 'none'] as const,
-};
 
 /**
  * Hook for library export mutations and downloads

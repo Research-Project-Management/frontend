@@ -9,9 +9,42 @@ import { SmilePlus, History } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/g;
+const TOKEN_REGEX = /(@\[[^\]]+\]\([^)]+\)|`[^`]+`)/g;
+const MENTION_MATCH = /^@\[([^\]]+)\]\(([^)]+)\)$/;
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function renderFormattedText(text: string, prefix: string) {
+  if (!text) return null;
+  const parts = text.split(TOKEN_REGEX);
+  return parts.map((part, idx) => {
+    if (!part) return null;
+    const mentionMatch = part.match(MENTION_MATCH);
+    if (mentionMatch) {
+      const name = mentionMatch[1];
+      return (
+        <span
+          key={`${prefix}-mention-${idx}`}
+          className="inline-flex items-center px-1.5 py-0.2 rounded bg-primary/10 text-primary font-medium text-11 align-baseline mx-0.5"
+        >
+          @{name}
+        </span>
+      );
+    }
+    if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+      return (
+        <code
+          key={`${prefix}-code-${idx}`}
+          className="px-1 py-0.5 rounded bg-muted font-mono text-11 text-foreground border border-border/50 mx-0.5"
+        >
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return <span key={`${prefix}-txt-${idx}`}>{part}</span>;
+  });
 }
 
 function renderCommentContent(
@@ -45,7 +78,7 @@ function renderCommentContent(
                 href={matchedAttachmentUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-foreground underline decoration-foreground decoration-1 underline-offset-2 hover:text-foreground"
+                className="text-foreground underline decoration-foreground decoration-1 underline-offset-2 hover:text-foreground font-medium"
               >
                 {segment}
               </a>
@@ -60,14 +93,18 @@ function renderCommentContent(
                   href={part}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-foreground underline decoration-foreground decoration-1 underline-offset-2 hover:text-foreground"
+                  className="text-primary underline decoration-primary decoration-1 underline-offset-2 hover:underline"
                 >
                   {part}
                 </a>
               );
             }
 
-            return <span key={`txt-${lineIndex}-${segmentIndex}-${urlIndex}`}>{part}</span>;
+            return (
+              <React.Fragment key={`fmt-${lineIndex}-${segmentIndex}-${urlIndex}`}>
+                {renderFormattedText(part, `p-${lineIndex}-${segmentIndex}-${urlIndex}`)}
+              </React.Fragment>
+            );
           });
         })}
         {lineIndex < lines.length - 1 ? <br /> : null}
@@ -80,7 +117,7 @@ import type {
   ActivityEntry,
   ActivitiesProps,
   ActivityTab,
-} from '../../types/activity.types';
+} from '@/features/projects/project-id/work-items/types/activity.types';
 
 export type {
   ActivityEntry,

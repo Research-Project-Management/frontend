@@ -27,9 +27,9 @@ import {
   type Filters,
   PRIORITY_CONFIG,
   STATE_GROUP_CONFIG,
-} from '../../types/work-item.types';
-import type { AssigneeFilterOption } from '../../hooks/use-topbar';
-import { resolveStateId } from '../../utils/work-item.utils';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
+import type { AssigneeFilterOption } from '@/features/projects/project-id/work-items/hooks/use-topbar';
+import { resolveStateId } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import { StatusIcon } from '@/shared/components/icons';
 import {
   TextLinesIcon,
@@ -40,14 +40,48 @@ import {
   PriorityMediumIcon,
   PriorityLowIcon,
   PriorityNoneIcon,
-import type { FilterPillsBarProps } from '../../types/layout.types';
-import { DUE_DATE_LABELS, DUE_DATE_QUICK_OPTIONS } from '../../utils/filter.utils';
+} from './FilterDropdown';
+import type { FilterPillsBarProps } from '@/features/projects/project-id/work-items/types/layout.types';
+import { DUE_DATE_LABELS, DUE_DATE_QUICK_OPTIONS } from '@/features/projects/project-id/work-items/utils/filter.utils';
 
 export type { FilterPillsBarProps };
 
+function FilterPill({
+  icon,
+  label,
+  onRemove,
+  removeAriaLabel,
+  className = '',
+  labelClassName = 'max-w-40',
+}: {
+  icon: React.ReactNode;
+  label: React.ReactNode;
+  onRemove: () => void;
+  removeAriaLabel: string;
+  className?: string;
+  labelClassName?: string;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none ${className}`}
+    >
+      {icon}
+      <span className={`truncate font-medium ${labelClassName}`}>{label}</span>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+        aria-label={removeAriaLabel}
+      >
+        <X className="size-3 shrink-0" />
+      </button>
+    </span>
+  );
+}
+
 export function FilterPillsBar({
-  columns,
-  assignees,
+  columns = [],
+  assignees = [],
   items = [],
   totalFiltersCount,
   onClearAll,
@@ -114,18 +148,13 @@ export function FilterPillsBar({
       <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto py-0.5">
         {/* 1. Search Query Pill */}
         {activeSearch && (
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none">
-            <TextLinesIcon className="size-3 text-foreground shrink-0" />
-            <span className="truncate max-w-44 font-medium">&quot;{activeSearch}&quot;</span>
-            <button
-              type="button"
-              onClick={() => onRemoveFilter?.('search')}
-              className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
-              aria-label="Remove search filter"
-            >
-              <X className="size-3 shrink-0" />
-            </button>
-          </span>
+          <FilterPill
+            icon={<TextLinesIcon className="size-3 text-foreground shrink-0" />}
+            label={`"${activeSearch}"`}
+            labelClassName="max-w-44"
+            onRemove={() => onRemoveFilter?.('search')}
+            removeAriaLabel="Remove search filter"
+          />
         )}
 
         {activeStates.map((colId) => {
@@ -134,30 +163,24 @@ export function FilterPillsBar({
           const color = col?.color || col?.accentColor;
 
           return (
-            <span
+            <FilterPill
               key={`state-${colId}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
-            >
-              <StatusIcon
-                id={colId}
-                title={title}
-                group={col?.group}
-                color={color}
-                className="size-3 shrink-0"
-              />
-              <span className="truncate max-w-40 font-medium">{title}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (onRemoveFilter) onRemoveFilter('state', colId);
-                  else onRemoveColumn?.(colId);
-                }}
-                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
-                aria-label={`Remove ${title} filter`}
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            </span>
+              icon={
+                <StatusIcon
+                  id={colId}
+                  title={title}
+                  group={col?.group}
+                  color={color}
+                  className="size-3 shrink-0"
+                />
+              }
+              label={title}
+              onRemove={() => {
+                if (onRemoveFilter) onRemoveFilter('state', colId);
+                else onRemoveColumn?.(colId);
+              }}
+              removeAriaLabel={`Remove ${title} filter`}
+            />
           );
         })}
 
@@ -167,29 +190,17 @@ export function FilterPillsBar({
           const label = config?.label || group;
 
           return (
-            <span
+            <FilterPill
               key={`group-${group}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
-            >
-              <StatusIcon
-                group={group}
-                title={label}
-                className="size-3 shrink-0"
-              />
-              <span className="truncate max-w-40 font-medium">{label}</span>
-              <button
-                type="button"
-                onClick={() => onRemoveFilter?.('state_group', group)}
-                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
-                aria-label={`Remove ${label} group filter`}
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            </span>
+              icon={<StatusIcon group={group} title={label} className="size-3 shrink-0" />}
+              label={label}
+              onRemove={() => onRemoveFilter?.('state_group', group)}
+              removeAriaLabel={`Remove ${label} group filter`}
+            />
           );
         })}
 
-        {/* 4. Priority Pills (Matching screenshot: [ (gray slash circle) None | x ]) */}
+        {/* 4. Priority Pills */}
         {activePriorities.map((priority) => {
           const config = PRIORITY_CONFIG[priority];
           const label = config?.label || priority;
@@ -201,24 +212,17 @@ export function FilterPillsBar({
           else if (priority === 'low') PriorityIcon = <PriorityLowIcon className="size-3 shrink-0" />;
 
           return (
-            <span
+            <FilterPill
               key={`priority-${priority}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none capitalize"
-            >
-              {PriorityIcon}
-              <span className="truncate max-w-40 font-medium">{label}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (onRemoveFilter) onRemoveFilter('priority', priority);
-                  else onRemovePriority?.(priority);
-                }}
-                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
-                aria-label={`Remove priority ${priority} filter`}
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            </span>
+              icon={PriorityIcon}
+              label={label}
+              className="capitalize"
+              onRemove={() => {
+                if (onRemoveFilter) onRemoveFilter('priority', priority);
+                else onRemovePriority?.(priority);
+              }}
+              removeAriaLabel={`Remove priority ${priority} filter`}
+            />
           );
         })}
 
@@ -229,37 +233,31 @@ export function FilterPillsBar({
           const name = isUnassigned ? 'Unassigned' : user?.name || 'User';
 
           return (
-            <span
+            <FilterPill
               key={`user-${userId}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
-            >
-              {isUnassigned ? (
-                <User className="size-3.5 text-foreground shrink-0" />
-              ) : user?.avatar ? (
-                <Avatar className="size-3.5 shrink-0">
-                  <AvatarImage src={user.avatar} />
-                  <AvatarFallback className="text-9">
+              icon={
+                isUnassigned ? (
+                  <User className="size-3.5 text-foreground shrink-0" />
+                ) : user?.avatar ? (
+                  <Avatar className="size-3.5 shrink-0">
+                    <AvatarImage src={user.avatar} />
+                    <AvatarFallback className="text-9">
+                      {name.slice(0, 1).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                ) : (
+                  <div className="size-3.5 rounded-full bg-muted flex items-center justify-center text-9 font-medium shrink-0">
                     {name.slice(0, 1).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-              ) : (
-                <div className="size-3.5 rounded-full bg-muted flex items-center justify-center text-9 font-medium shrink-0">
-                  {name.slice(0, 1).toUpperCase()}
-                </div>
-              )}
-              <span className="truncate max-w-40 font-medium">{name}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (onRemoveFilter) onRemoveFilter('assignees', userId);
-                  else onRemoveAssignee?.(userId);
-                }}
-                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
-                aria-label={`Remove ${name} filter`}
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            </span>
+                  </div>
+                )
+              }
+              label={name}
+              onRemove={() => {
+                if (onRemoveFilter) onRemoveFilter('assignees', userId);
+                else onRemoveAssignee?.(userId);
+              }}
+              removeAriaLabel={`Remove ${name} filter`}
+            />
           );
         })}
 
@@ -268,21 +266,13 @@ export function FilterPillsBar({
           const user = assignees.find((u) => u.id === m);
           const name = user?.name || m;
           return (
-            <span
+            <FilterPill
               key={`mention-${m}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
-            >
-              <AtSign className="size-3 text-foreground shrink-0" />
-              <span className="truncate max-w-40 font-medium">{name}</span>
-              <button
-                type="button"
-                onClick={() => onRemoveFilter?.('mentions', m)}
-                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
-                aria-label={`Remove mention ${name} filter`}
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            </span>
+              icon={<AtSign className="size-3 text-foreground shrink-0" />}
+              label={name}
+              onRemove={() => onRemoveFilter?.('mentions', m)}
+              removeAriaLabel={`Remove mention ${name} filter`}
+            />
           );
         })}
 
@@ -291,21 +281,13 @@ export function FilterPillsBar({
           const user = assignees.find((u) => u.id === cId);
           const name = user?.name || cId;
           return (
-            <span
+            <FilterPill
               key={`created-by-${cId}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
-            >
-              <UserCircle className="size-3.5 text-foreground shrink-0" />
-              <span className="truncate max-w-40 font-medium">{name}</span>
-              <button
-                type="button"
-                onClick={() => onRemoveFilter?.('created_by', cId)}
-                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
-                aria-label={`Remove creator ${name} filter`}
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            </span>
+              icon={<UserCircle className="size-3.5 text-foreground shrink-0" />}
+              label={name}
+              onRemove={() => onRemoveFilter?.('created_by', cId)}
+              removeAriaLabel={`Remove creator ${name} filter`}
+            />
           );
         })}
 
@@ -316,28 +298,22 @@ export function FilterPillsBar({
           const color = info?.color;
 
           return (
-            <span
+            <FilterPill
               key={`lbl-${lbl}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
-            >
-              {color ? (
-                <span
-                  className="size-2 rounded-full shrink-0"
-                  style={{ backgroundColor: color }}
-                />
-              ) : (
-                <Tag className="size-3 text-foreground shrink-0" />
-              )}
-              <span className="truncate max-w-40 font-medium">{displayName}</span>
-              <button
-                type="button"
-                onClick={() => onRemoveFilter?.('labels', lbl)}
-                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
-                aria-label={`Remove label ${displayName} filter`}
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            </span>
+              icon={
+                color ? (
+                  <span
+                    className="size-2 rounded-full shrink-0"
+                    style={{ backgroundColor: color }}
+                  />
+                ) : (
+                  <Tag className="size-3 text-foreground shrink-0" />
+                )
+              }
+              label={displayName}
+              onRemove={() => onRemoveFilter?.('labels', lbl)}
+              removeAriaLabel={`Remove label ${displayName} filter`}
+            />
           );
         })}
 
@@ -347,25 +323,17 @@ export function FilterPillsBar({
           const name = user?.name || 'Subscriber';
 
           return (
-            <span
+            <FilterPill
               key={`sub-${userId}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
-            >
-              <User className="size-3 text-foreground shrink-0" />
-              <span className="truncate max-w-40 font-medium">{name}</span>
-              <button
-                type="button"
-                onClick={() => onRemoveFilter?.('subscribers', userId)}
-                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
-                aria-label={`Remove subscriber ${name} filter`}
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            </span>
+              icon={<User className="size-3 text-foreground shrink-0" />}
+              label={name}
+              onRemove={() => onRemoveFilter?.('subscribers', userId)}
+              removeAriaLabel={`Remove subscriber ${name} filter`}
+            />
           );
         })}
 
-        {/* 10. Attach Pills (Academic Research Attachments) */}
+        {/* 10. Attach Pills */}
         {activeAttach.map((att) => {
           let AttachIcon = <Paperclip className="size-3 text-foreground shrink-0" />;
           let label = 'Has attach';
@@ -383,21 +351,13 @@ export function FilterPillsBar({
             label = 'Links';
           }
           return (
-            <span
+            <FilterPill
               key={`attach-${att}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
-            >
-              {AttachIcon}
-              <span className="truncate max-w-40 font-medium">{label}</span>
-              <button
-                type="button"
-                onClick={() => onRemoveFilter?.('attach', att)}
-                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
-                aria-label={`Remove ${label} filter`}
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            </span>
+              icon={AttachIcon}
+              label={label}
+              onRemove={() => onRemoveFilter?.('attach', att)}
+              removeAriaLabel={`Remove ${label} filter`}
+            />
           );
         })}
 
@@ -406,24 +366,17 @@ export function FilterPillsBar({
           const item = items.find((t: Item) => t.id === tId || t.identifier === tId);
           const label = item?.identifier ? `${item.identifier}: ${item.title}` : item?.title || tId;
           return (
-            <span
+            <FilterPill
               key={`item-${tId}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
-            >
-              <ItemsIcon className="size-3 text-foreground shrink-0" />
-              <span className="truncate max-w-44 font-medium">{label}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  onRemoveFilter?.('items', tId);
-                  onRemoveFilter?.('work_items', tId);
-                }}
-                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
-                aria-label={`Remove ${label} filter`}
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            </span>
+              icon={<ItemsIcon className="size-3 text-foreground shrink-0" />}
+              label={label}
+              labelClassName="max-w-44"
+              onRemove={() => {
+                onRemoveFilter?.('items', tId);
+                onRemoveFilter?.('work_items', tId);
+              }}
+              removeAriaLabel={`Remove ${label} filter`}
+            />
           );
         })}
 
@@ -433,21 +386,14 @@ export function FilterPillsBar({
           const parentItem = items.find((t: Item) => t.id === pId || t.identifier === pId);
           const label = isNoParent ? 'No parent' : `Parent: ${parentItem?.identifier || parentItem?.title || pId}`;
           return (
-            <span
+            <FilterPill
               key={`parent-${pId}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
-            >
-              <ParentBranchIcon className="size-3 text-foreground shrink-0" />
-              <span className="truncate max-w-44 font-medium">{label}</span>
-              <button
-                type="button"
-                onClick={() => onRemoveFilter?.('parent', pId)}
-                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
-                aria-label={`Remove ${label} filter`}
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            </span>
+              icon={<ParentBranchIcon className="size-3 text-foreground shrink-0" />}
+              label={label}
+              labelClassName="max-w-44"
+              onRemove={() => onRemoveFilter?.('parent', pId)}
+              removeAriaLabel={`Remove ${label} filter`}
+            />
           );
         })}
 
@@ -455,24 +401,16 @@ export function FilterPillsBar({
         {activeDueDates.map((d) => {
           const label = DUE_DATE_LABELS[d] || `Due: ${d.replace('_', ' ')}`;
           return (
-            <span
+            <FilterPill
               key={`due-${d}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
-            >
-              <Calendar className="size-3 text-foreground shrink-0" />
-              <span className="truncate max-w-40 font-medium">{label}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (onRemoveFilter) onRemoveFilter('due_date', d);
-                  else onRemoveDueDate?.();
-                }}
-                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
-                aria-label={`Remove due date ${label} filter`}
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            </span>
+              icon={<Calendar className="size-3 text-foreground shrink-0" />}
+              label={label}
+              onRemove={() => {
+                if (onRemoveFilter) onRemoveFilter('due_date', d);
+                else onRemoveDueDate?.();
+              }}
+              removeAriaLabel={`Remove due date ${label} filter`}
+            />
           );
         })}
 
@@ -480,21 +418,13 @@ export function FilterPillsBar({
         {activeStartDates.map((s) => {
           const label = `Start: ${s.replace('_', ' ')}`;
           return (
-            <span
+            <FilterPill
               key={`start-${s}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
-            >
-              <CalendarClock className="size-3 text-foreground shrink-0" />
-              <span className="truncate max-w-40 font-medium">{label}</span>
-              <button
-                type="button"
-                onClick={() => onRemoveFilter?.('start_date', s)}
-                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
-                aria-label={`Remove start date ${label} filter`}
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            </span>
+              icon={<CalendarClock className="size-3 text-foreground shrink-0" />}
+              label={label}
+              onRemove={() => onRemoveFilter?.('start_date', s)}
+              removeAriaLabel={`Remove start date ${label} filter`}
+            />
           );
         })}
 
@@ -502,21 +432,13 @@ export function FilterPillsBar({
         {activeCreatedAt.map((c) => {
           const label = `Created: ${c.replace('_', ' ')}`;
           return (
-            <span
+            <FilterPill
               key={`created-${c}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
-            >
-              <Calendar className="size-3 text-foreground shrink-0" />
-              <span className="truncate max-w-40 font-medium">{label}</span>
-              <button
-                type="button"
-                onClick={() => onRemoveFilter?.('created_at', c)}
-                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
-                aria-label={`Remove created date ${label} filter`}
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            </span>
+              icon={<Calendar className="size-3 text-foreground shrink-0" />}
+              label={label}
+              onRemove={() => onRemoveFilter?.('created_at', c)}
+              removeAriaLabel={`Remove created date ${label} filter`}
+            />
           );
         })}
 
@@ -524,21 +446,13 @@ export function FilterPillsBar({
         {activeUpdatedAt.map((u) => {
           const label = `Updated: ${u.replace('_', ' ')}`;
           return (
-            <span
+            <FilterPill
               key={`updated-${u}`}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
-            >
-              <Calendar className="size-3 text-foreground shrink-0" />
-              <span className="truncate max-w-40 font-medium">{label}</span>
-              <button
-                type="button"
-                onClick={() => onRemoveFilter?.('updated_at', u)}
-                className="text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
-                aria-label={`Remove updated date ${label} filter`}
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            </span>
+              icon={<Calendar className="size-3 text-foreground shrink-0" />}
+              label={label}
+              onRemove={() => onRemoveFilter?.('updated_at', u)}
+              removeAriaLabel={`Remove updated date ${label} filter`}
+            />
           );
         })}
 

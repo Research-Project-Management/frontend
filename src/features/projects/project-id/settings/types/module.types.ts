@@ -5,6 +5,6 @@ export interface ModuleDef {
   id: string;
   label: string;
   desc: string;
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<{ className?: string }> | LucideIcon;
   locked?: boolean;
 }

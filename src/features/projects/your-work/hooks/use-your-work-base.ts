@@ -10,6 +10,7 @@ import {
   type YourWorkItem,
   type YourWorkActivityEvent,
   type YourWorkSummaryResponse,
+  type YourWorkRecentItem,
 } from '../schemas/your-work.schema';
 import {
   createProjectMap,
@@ -81,7 +82,7 @@ export function useYourWork(projectId?: string) {
     [payload],
   );
 
-  const recent: any[] = useMemo(
+  const recent: YourWorkRecentItem[] = useMemo(
     () => payload?.recent || [],
     [payload],
   );

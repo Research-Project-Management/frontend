@@ -218,9 +218,9 @@ export const GridView = React.memo(function GridView({
                     exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
                     transition={{ duration: 0.2 }}
                     draggable={!isReadOnly && !!onDragStartFile}
-                    onDragStart={(e: any) => {
+                    onDragStart={(e: unknown) => {
                       if (!isReadOnly && onDragStartFile) {
-                        onDragStartFile(file, e);
+                        onDragStartFile(file, e as React.DragEvent);
                       }
                     }}
                     className={`group bg-card border rounded-md overflow-hidden hover:border-border hover:bg-muted transition-colors cursor-pointer relative flex flex-col ${

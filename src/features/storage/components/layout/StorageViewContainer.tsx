@@ -7,12 +7,12 @@ import GridView from '../views/GridView';
 import { useViewStore } from '../../store/use-view-store';
 
 import StorageEmptyState from './StorageEmptyState';
-import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
+import { PlaneErrorState, type PlaneErrorStateProps } from '@/shared/components/ui/PlaneErrorState';
 
 export interface StorageViewContainerProps {
   isLoading: boolean;
   isError?: boolean;
-  error?: any;
+  error?: PlaneErrorStateProps['error'];
   viewProps: StorageViewProps;
   searchQuery?: string;
   onClearSearch?: () => void;

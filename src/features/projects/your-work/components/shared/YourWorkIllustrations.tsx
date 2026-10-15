@@ -1,6 +1,10 @@
 'use client';
 
 import React from 'react';
+import {
+  BaseSlabs as IsometricBaseSlabs,
+  ILLUSTRATION_COLOR_TOKEN_MAP,
+} from '@/shared/components/ui/PlaneEmptyState';
 
 export const yourWorkIllustrationStyles = `
   :root, .plane-your-work-illustration, [data-theme='light'] {
@@ -24,89 +28,8 @@ export const yourWorkIllustrationStyles = `
   }
 `;
 
-const ILLUSTRATION_COLOR_TOKEN_MAP = {
-  fill: {
-    primary: 'var(--illustration-fill-primary, #FFFFFF)',
-    secondary: 'var(--illustration-fill-secondary, #F4F5F5)',
-    tertiary: 'var(--illustration-fill-tertiary, #EAEBEB)',
-    quaternary: 'var(--illustration-fill-quaternary, #CFD2D3)',
-  },
-  stroke: {
-    primary: 'var(--illustration-stroke-primary, #CFD2D3)',
-    secondary: 'var(--illustration-stroke-secondary, #8A9093)',
-    tertiary: 'var(--illustration-stroke-tertiary, #1D1F20)',
-  },
-};
-
 export interface TIllustrationAssetProps {
   className?: string;
-}
-
-/**
- * Shared Isometric 3-Tier Base Slab Foundation (Plane.so design system)
- */
-function IsometricBaseSlabs() {
-  return (
-    <>
-      {/* Base Slab 1 (Bottom) - opacity 0.2 */}
-      <g opacity="0.2">
-        <path
-          d="M0.2 143.469C0.2 145.602 1.797 147.729 4.985 149.36L46.039 170.279C52.421 173.53 62.765 173.53 69.148 170.279L155.415 126.325C158.603 124.7 160.2 122.572 160.2 120.439V127.25C160.2 129.384 158.603 131.511 155.415 133.136L69.148 177.091C62.765 180.341 52.421 180.341 46.039 177.091L4.985 156.172C1.791 154.546 0.2 152.413 0.2 150.28V143.469Z"
-          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.secondary}
-          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
-          strokeWidth="0.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M0.2 143.469C0.2 141.336 1.797 139.208 4.985 137.583L91.252 93.629C97.634 90.378 107.978 90.378 114.361 93.629L155.415 114.548C158.609 116.173 160.2 118.306 160.2 120.439C160.2 122.572 158.603 124.7 155.415 126.325L69.148 170.279C62.765 173.53 52.421 173.53 46.039 170.279L4.985 149.36C1.791 147.735 0.2 145.602 0.2 143.469Z"
-          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.primary}
-          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
-          strokeWidth="0.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </g>
-
-      {/* Base Slab 2 (Middle) - opacity 0.6 */}
-      <g opacity="0.6">
-        <path
-          d="M0.2 121.952C0.2 124.085 1.797 126.212 4.985 127.843L46.039 148.762C52.421 152.013 62.765 152.013 69.148 148.762L155.415 104.808C158.603 103.182 160.2 101.055 160.2 98.922V105.733C160.2 107.866 158.603 109.994 155.415 111.619L69.148 155.573C62.765 158.824 52.421 158.824 46.039 155.573L4.985 134.654C1.791 133.029 0.2 130.896 0.2 128.763V121.952Z"
-          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.secondary}
-          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
-          strokeWidth="0.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M0.2 121.952C0.2 119.818 1.797 117.691 4.985 116.066L91.252 72.111C97.634 68.861 107.978 68.861 114.361 72.111L155.415 93.03C158.609 94.656 160.2 96.789 160.2 98.922C160.2 101.055 158.603 103.182 155.415 104.808L69.148 148.762C62.765 152.013 52.421 152.013 46.039 148.762L4.985 127.843C1.791 126.218 0.2 124.085 0.2 121.952Z"
-          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.primary}
-          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
-          strokeWidth="0.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </g>
-
-      {/* Base Slab 3 (Top Platform) */}
-      <path
-        d="M0.2 100.429C0.2 102.562 1.797 104.689 4.985 106.32L46.039 127.239C52.421 130.49 62.765 130.49 69.148 127.239L155.415 83.285C158.603 81.66 160.2 79.532 160.2 77.399V84.21C160.2 86.343 158.603 88.471 155.415 90.096L69.148 134.05C62.765 137.301 52.421 137.301 46.039 134.05L4.985 113.131C1.791 111.506 0.2 109.373 0.2 107.24V100.429Z"
-        fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.secondary}
-        stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
-        strokeWidth="0.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M0.2 100.429C0.2 98.295 1.797 96.168 4.985 94.543L91.252 50.588C97.634 47.338 107.978 47.338 114.361 50.588L155.415 71.508C158.609 73.133 160.2 75.266 160.2 77.399C160.2 79.532 158.603 81.66 155.415 83.285L69.148 127.239C62.765 130.49 52.421 130.49 46.039 127.239L4.985 106.32C1.791 104.695 0.2 102.562 0.2 100.429Z"
-        fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.primary}
-        stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
-        strokeWidth="0.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </>
-  );
 }
 
 /**

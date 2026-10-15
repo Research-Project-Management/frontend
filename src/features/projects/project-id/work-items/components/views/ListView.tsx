@@ -23,12 +23,16 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { createPortal } from 'react-dom';
-import type { Item, SubItem } from '../../types/work-item.types';
-import { resolveColumnId } from '../../utils/work-item.utils';
-import { CoreService } from '../../api/work-item.api';
+import type { Item, SubItem } from '@/features/projects/project-id/work-items/types/work-item.types';
+import { resolveColumnId } from '@/features/projects/project-id/work-items/utils/work-item.utils';
+import {
+  useCreateSubItem,
+  useUpdateItem,
+  useDeleteItem,
+} from '@/features/projects/project-id/work-items/hooks/use-work-item-crud';
 
 // Subcomponents, types, and constants
-export * from '../../types/list-view.types';
+export * from '@/features/projects/project-id/work-items/types/list-view.types';
 export * from './list/GroupCheckbox';
 export * from './list/ChildItemRow';
 export * from './list/ItemRow';
@@ -38,15 +42,15 @@ export * from './list/ListViewGroup';
 import { ItemRow } from './list/ItemRow';
 import { SortableItemRow } from './list/SortableItemRow';
 import { ListViewGroup } from './list/ListViewGroup';
-import type { ListViewProps } from '../../types/list-view.types';
-import { EMPTY_ARRAY } from '../../utils/list.utils';
+import type { ListViewProps } from '@/features/projects/project-id/work-items/types/list-view.types';
+import { EMPTY_ARRAY } from '@/features/projects/project-id/work-items/utils/list.utils';
 
 export const ListView = React.memo(function ListView({
+  projectId,
   itemsByColumnId: propItemsByColumnId,
   columns,
   projectStates,
   currentUserId,
-  currentUserAvatar,
   onAddCard,
   onEditCard,
   onDeleteCard,
@@ -63,6 +67,9 @@ export const ListView = React.memo(function ListView({
   displayOptions,
   members = EMPTY_ARRAY,
 }: ListViewProps) {
+  const createSubItemMutation = useCreateSubItem();
+  const updateItemMutation = useUpdateItem();
+  const deleteItemMutation = useDeleteItem();
   // ── Grouping definition (Guaranteed top-of-component scope) ─────────────────
   const effectiveGroupBy = displayOptions?.groupBy ?? 'state';
 
@@ -259,8 +266,9 @@ export const ListView = React.memo(function ListView({
           });
         } else {
           try {
-            await CoreService.update({
+            await updateItemMutation.mutateAsync({
               id: childItem.id,
+              projectId,
               ...(data.title !== undefined && { title: data.title }),
               ...(data.columnId !== undefined && { columnId: data.columnId }),
               ...(data.completed !== undefined && { completed: data.completed }),
@@ -271,7 +279,7 @@ export const ListView = React.memo(function ListView({
         }
       }
     },
-    [onUpdateItem]
+    [onUpdateItem, updateItemMutation, projectId]
   );
 
   const handleDeleteChildItem = useCallback(
@@ -292,21 +300,23 @@ export const ListView = React.memo(function ListView({
           onDeleteCard((targetChild || { id: childItemId }) as unknown as Item);
         } else {
           try {
-            await CoreService.delete(childItemId);
+            await deleteItemMutation.mutateAsync({ id: childItemId, projectId });
           } catch {
             // Handled
           }
         }
       }
     },
-    [onUpdateItem, onDeleteCard]
+    [onUpdateItem, onDeleteCard, deleteItemMutation, projectId]
   );
 
   const handleAddChildItem = useCallback(
     async (parentItemId: string, title: string) => {
       if (!title.trim()) return;
       try {
-        await CoreService.createSubItem(parentItemId, {
+        await createSubItemMutation.mutateAsync({
+          id: parentItemId,
+          projectId,
           title: title.trim(),
           columnId: defaultUnstartedColumnId,
         });
@@ -331,7 +341,7 @@ export const ListView = React.memo(function ListView({
         }
       }
     },
-    [groups, onUpdateItem, defaultUnstartedColumnId]
+    [groups, onUpdateItem, defaultUnstartedColumnId, createSubItemMutation, projectId]
   );
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -470,7 +480,6 @@ export const ListView = React.memo(function ListView({
                           displayOptions={displayOptions}
                           members={members}
                           currentUserId={currentUserId}
-                          currentUserAvatar={currentUserAvatar}
                           isReadOnly={isReadOnly}
                           isChildrenExpanded={expandedChildParentIds?.has(item.id)}
                           onToggleExpandChildren={handleToggleExpandChildren}
@@ -501,7 +510,6 @@ export const ListView = React.memo(function ListView({
                     displayOptions={displayOptions}
                     members={members}
                     currentUserId={currentUserId}
-                    currentUserAvatar={currentUserAvatar}
                     isReadOnly={isReadOnly}
                     isChildrenExpanded={expandedChildParentIds?.has(item.id)}
                     onToggleExpandChildren={handleToggleExpandChildren}
@@ -587,7 +595,6 @@ export const ListView = React.memo(function ListView({
               displayOptions={displayOptions}
               members={members}
               currentUserId={currentUserId}
-              currentUserAvatar={currentUserAvatar}
               selectedIds={selectedIds}
               onToggleSelect={onToggleSelect}
               onSelectAll={onSelectAll as (ids: string[]) => void}

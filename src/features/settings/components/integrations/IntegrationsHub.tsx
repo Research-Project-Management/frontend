@@ -33,7 +33,7 @@ export function IntegrationsHub() {
     ? integrations.find((i) => i.provider === selectedProvider)
     : null;
 
-  const handleConfigure = React.useCallback((clickedItem: any) => {
+  const handleConfigure = React.useCallback((clickedItem: { provider: string }) => {
     setSelectedProvider(clickedItem.provider);
   }, []);
 

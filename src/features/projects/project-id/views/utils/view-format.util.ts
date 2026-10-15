@@ -6,7 +6,7 @@ export interface FilterBadgeItem {
   color?: string;
 }
 
-export function extractFilterBadges(filters?: Record<string, any>): FilterBadgeItem[] {
+export function extractFilterBadges(filters?: Record<string, unknown>): FilterBadgeItem[] {
   if (!filters || typeof filters !== 'object') return [];
 
   const badges: FilterBadgeItem[] = [];
@@ -15,7 +15,7 @@ export function extractFilterBadges(filters?: Record<string, any>): FilterBadgeI
   if (Array.isArray(filters.priority) && filters.priority.length > 0) {
     badges.push({
       label: 'Priority',
-      value: filters.priority.map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(', '),
+      value: (filters.priority as string[]).map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(', '),
       color: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
     });
   }
@@ -24,7 +24,7 @@ export function extractFilterBadges(filters?: Record<string, any>): FilterBadgeI
   if (Array.isArray(filters.state_group) && filters.state_group.length > 0) {
     badges.push({
       label: 'State',
-      value: filters.state_group.map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(', '),
+      value: (filters.state_group as string[]).map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(', '),
       color: 'bg-primary-subtle text-primary border-primary/30',
     });
   }

@@ -24,7 +24,7 @@ export function useFileUpload() {
         projectId?: string;
         pageId?: string;
         parentId?: string | null;
-        metaData?: Record<string, any>;
+        metaData?: Record<string, unknown>;
       } = {},
     ) => {
       setIsUploading(true);
@@ -50,8 +50,8 @@ export function useFileUpload() {
 
         queryClient.invalidateQueries({ queryKey: storageKeys.all });
         return result;
-      } catch (err: any) {
-        setError(err);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err : new Error(String(err)));
         throw err;
       } finally {
         setIsUploading(false);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import type { UseWorkItemSelectionOptions } from '../types/hook.types';
+import type { UseWorkItemSelectionOptions } from '@/features/projects/project-id/work-items/types/hook.types';
 
 export type { UseWorkItemSelectionOptions };
 

@@ -1,13 +1,11 @@
 'use client';
 
 import React from 'react';
-import { History, Search } from 'lucide-react';
-import { cn } from "@/shared/lib/utils";
+import { History } from 'lucide-react';
 import { SidebarNavItem } from './SidebarNavItem';
 import { SYSTEM_BOTTOM_NAV_ITEMS, type SystemNavStats } from './sidebar-nav.config';
-import { SavedSearchContextMenu } from './SavedSearchContextMenu';
-import { parseEmojiPrefix } from '../../utils/academic-text';
-import type { SavedSearch } from '../../types/saved-searches.types';
+import { SavedSearchListSection } from './SavedSearchListSection';
+import type { SavedSearch } from '@/features/library/types/saved-searches.types';
 
 interface SidebarSystemNavProps {
   basePath: string;
@@ -43,8 +41,6 @@ export function SidebarSystemNav({
   navId,
   savedSearches,
   currentSavedSearchId,
-  retractedCount,
-  stats,
   onDropItems,
   onSelectUserScope: propOnSelectUserScope,
   onSelectPersonalScope,
@@ -66,10 +62,6 @@ export function SidebarSystemNav({
     (pathname === `${basePath}/recently-read` ||
       (pathname === basePath && currentFilter === 'recent-read'));
 
-  const hasSavedSearches = Boolean(
-    isUserScope && savedSearches && savedSearches.length > 0,
-  );
-
   return (
     <>
       {/* 1. Recently Read */}
@@ -86,65 +78,23 @@ export function SidebarSystemNav({
       {children}
 
       {/* 2. Saved Searches (Only rendered when items exist) */}
-      {isUserScope && savedSearches && savedSearches.length > 0 && (
-        <div className="my-1 flex flex-col gap-0.5">
-          <div className="px-6 py-1 text-11 font-medium text-foreground">
-            <span>Saved Searches</span>
-          </div>
-          {savedSearches.map((ss) => {
-            const isSSActive =
-              isUserScope &&
-              currentFilter === 'saved-search' &&
-              currentSavedSearchId === ss.id;
-
-            const isRenaming = renamingSavedSearchId === ss.id;
-            const { label: cleanName } = parseEmojiPrefix(ss.name);
-
-            if (isRenaming) {
-              return (
-                <div
-                  key={ss.id}
-                  className="relative z-10 flex h-8 w-full items-center pr-2 min-w-0 gap-2.5 pl-6"
-                >
-                  <Search className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-                  <input
-                    autoFocus
-                    value={renameSavedSearchValue}
-                    onChange={(e) => onRenameSavedSearchValueChange?.(e.target.value)}
-                    onBlur={() => onSubmitRenameSavedSearch?.(ss.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') onSubmitRenameSavedSearch?.(ss.id);
-                      if (e.key === 'Escape') onSubmitRenameSavedSearch?.('__cancel__');
-                    }}
-                    className="h-7 w-full min-w-0 rounded-md border border-border bg-background px-2 text-13 font-normal focus:outline-none focus:ring-1 focus:ring-ring shadow-none text-foreground"
-                  />
-                </div>
-              );
-            }
-
-            return (
-              <SidebarNavItem
-                key={ss.id}
-                href={`${basePath}?filter=saved-search&savedSearchId=${ss.id}`}
-                icon={Search}
-                label={cleanName}
-                isActive={isSSActive}
-                navId={navId}
-                onClick={onSelectUserScope}
-                action={
-                  <SavedSearchContextMenu
-                    savedSearch={ss as SavedSearch}
-                    onEdit={onEditSavedSearch || (() => {})}
-                    onRename={(id, name) => onStartRenameSavedSearch?.(id, name)}
-                    onDuplicate={onDuplicateSavedSearch || (() => {})}
-                    onDelete={onDeleteSavedSearch || (() => {})}
-                  />
-                }
-              />
-            );
-          })}
-        </div>
-      )}
+      <SavedSearchListSection
+        savedSearches={savedSearches as SavedSearch[] | undefined}
+        basePath={basePath}
+        navId={navId}
+        currentFilter={currentFilter}
+        currentSavedSearchId={currentSavedSearchId}
+        isActiveScope={isUserScope}
+        onItemClick={onSelectUserScope}
+        onEditSavedSearch={onEditSavedSearch}
+        onStartRenameSavedSearch={onStartRenameSavedSearch}
+        onSubmitRenameSavedSearch={onSubmitRenameSavedSearch}
+        onRenameSavedSearchValueChange={onRenameSavedSearchValueChange}
+        onDuplicateSavedSearch={onDuplicateSavedSearch}
+        onDeleteSavedSearch={onDeleteSavedSearch}
+        renamingSavedSearchId={renamingSavedSearchId}
+        renameSavedSearchValue={renameSavedSearchValue}
+      />
 
       {/* 3. System Bottom Filters */}
       <div className="my-1 flex flex-col gap-0.5">

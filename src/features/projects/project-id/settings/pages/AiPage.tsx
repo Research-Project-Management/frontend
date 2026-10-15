@@ -32,7 +32,7 @@ export default function AiPage() {
 
   // Sync from server settings
   useEffect(() => {
-    const ai = (project?.settings as Record<string, any> | undefined)?.ai;
+    const ai = (project?.settings as Record<string, unknown> | undefined)?.ai as Record<string, unknown> | undefined;
     if (ai) {
       if (typeof ai.systemPrompt === 'string') setSystemPrompt(ai.systemPrompt);
       if (typeof ai.selectedModel === 'string') setSelectedModel(ai.selectedModel);
@@ -44,7 +44,7 @@ export default function AiPage() {
   }, [project]);
 
   const hasChanges = useMemo(() => {
-    const ai = (project?.settings as Record<string, any> | undefined)?.ai || {};
+    const ai = ((project?.settings as Record<string, unknown> | undefined)?.ai || {}) as Record<string, unknown>;
     return (
       systemPrompt !== (ai.systemPrompt ?? DEFAULT_SYSTEM_PROMPT) ||
       selectedModel !== (ai.selectedModel ?? 'gemini-1.5-pro') ||

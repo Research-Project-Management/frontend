@@ -338,11 +338,15 @@ export function updateCachedFields(types: unknown[]): void {
   }
 }
 
+let memorySchemaSnapshot: unknown | null | undefined = undefined;
+
 /**
  * Persists the backend schema snapshot to localStorage for 0ms initial render on future loads.
  */
 export function saveSchemaCache(data: unknown): void {
-  if (!isBrowser() || !data) return;
+  if (!data) return;
+  memorySchemaSnapshot = data;
+  if (!isBrowser()) return;
   try {
     window.localStorage.setItem(
       SCHEMA_CACHE_KEY,
@@ -359,29 +363,24 @@ export function saveSchemaCache(data: unknown): void {
 
 /**
  * Retrieves the cached backend schema snapshot from localStorage if available.
+ * Memoized in-memory so multiple callers don't repeatedly read and parse localStorage.
  */
 export function loadSchemaCache(): unknown | null {
+  if (memorySchemaSnapshot !== undefined) {
+    return memorySchemaSnapshot;
+  }
   if (!isBrowser()) return null;
   try {
     const raw = window.localStorage.getItem(SCHEMA_CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Record<string, unknown> | null;
-    return parsed?.data ?? null;
-  } catch {
-    return null;
-  }
-}
-
-// Hydrate immediately at module evaluation time if in browser
-if (isBrowser()) {
-  const cached = loadSchemaCache();
-  if (cached && typeof cached === 'object') {
-    const payload = cached as SchemaCachePayload;
-    const rawTypes =
-      payload.itemTypes ||
-      (Array.isArray(payload.data) ? payload.data : (payload.data as { itemTypes?: SchemaTypeEntry[] })?.itemTypes);
-    if (Array.isArray(rawTypes)) {
-      updateCachedFields(rawTypes);
+    if (!raw) {
+      memorySchemaSnapshot = null;
+      return null;
     }
+    const parsed = JSON.parse(raw) as Record<string, unknown> | null;
+    memorySchemaSnapshot = parsed?.data ?? null;
+    return memorySchemaSnapshot;
+  } catch {
+    memorySchemaSnapshot = null;
+    return null;
   }
 }

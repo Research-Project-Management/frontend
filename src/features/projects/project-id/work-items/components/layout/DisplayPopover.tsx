@@ -12,17 +12,15 @@ import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { cn } from "@/shared/lib/utils";
 import type {
-  DisplayOptions,
-  DisplayPropertyKey,
   GroupByOption,
   OrderByOption,
-} from '../../types/work-item.types';
-import type { DisplayPopoverProps } from '../../types/layout.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
+import type { DisplayPopoverProps } from '@/features/projects/project-id/work-items/types/layout.types';
 import {
   DISPLAY_PROPERTY_ITEMS,
   GROUP_BY_OPTIONS,
   ORDER_BY_OPTIONS,
-} from '../../utils/display.utils';
+} from '@/features/projects/project-id/work-items/utils/display.utils';
 
 export type { DisplayPopoverProps };
 
@@ -45,7 +43,6 @@ export function DisplayPopover({
   const [propertiesOpen, setPropertiesOpen] = useState(true);
   const [groupByOpen, setGroupByOpen] = useState(true);
   const [orderByOpen, setOrderByOpen] = useState(true);
-  const [extraOpen, setExtraOpen] = useState(true);
 
   const handleGroupByChange = (value: GroupByOption) => {
     onDisplayOptionsChange({
@@ -82,9 +79,6 @@ export function DisplayPopover({
       showChildWorkItems: checked,
     });
   };
-
-  // Count active non-default overrides for badge indicator
-  const activePropertyCount = Object.values(properties).filter(Boolean).length;
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>

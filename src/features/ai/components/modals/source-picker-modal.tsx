@@ -164,7 +164,7 @@ export function SourcePickerModal({
       setStorageLoading(true);
       storageFileService
         .getMyFiles()
-        .then((res: any) => {
+        .then((res) => {
           const raw = Array.isArray(res) ? res : res?.files || [];
           const files = raw.filter((f: StorageItem) => !f.isFolder);
           setStorageFiles(files);
@@ -237,8 +237,8 @@ export function SourcePickerModal({
         return next;
       });
       toast.success(`Uploaded ${file.name}`);
-    } catch (err: any) {
-      toast.error(`Failed to upload ${file.name}: ${err?.message || 'Upload error'}`);
+    } catch (err: unknown) {
+      toast.error(`Failed to upload ${file.name}: ${err instanceof Error ? err.message : 'Upload error'}`);
     } finally {
       setIsUploading(false);
     }

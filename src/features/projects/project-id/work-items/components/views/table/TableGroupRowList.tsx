@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import type { TablePropertyKey } from '../../../types/table-view.types';
+import type { Item, Column, ProjectMember } from '@/features/projects/project-id/work-items/types/work-item.types';
+import type { TablePropertyKey } from '@/features/projects/project-id/work-items/types/table-view.types';
 import { TableRowItem } from './TableRowItem';
 
 export interface TableGroupRowListProps {
@@ -13,8 +14,8 @@ export interface TableGroupRowListProps {
     isChildrenExpanded: boolean;
   }>;
   scrollRef: React.RefObject<HTMLDivElement | null>;
-  columns: ColumnType[];
-  projectStates?: ColumnType[];
+  columns: Column[];
+  projectStates?: Column[];
   visibleProperties: Record<TablePropertyKey, boolean>;
   selectedIds: string[];
   onToggleSelect: (id: string) => void;

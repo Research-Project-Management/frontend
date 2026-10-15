@@ -5,16 +5,16 @@ import {
   parseDocumentOutline,
   parseLatexHeadings,
   cleanLatexTitle,
-} from '@/features/editor/domain/pdf/pdf-outline';
+} from '@/features/editor/subsystems/compiler/synctex/pdf-outline';
 import {
   LatexSymbolsIndexCore,
   buildOutlineTree,
   type OutlineItem,
 } from '@/features/editor/domain/latex/latex-symbols-core';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
-import { OutlineTab } from '@/features/editor/ui/sidebar/outline/OutlineTab';
-import { editorCommandBus } from '@/features/editor/coordinators/command-bus';
-import { usePageStore } from '@/features/editor/store/editor.store';
+import { OutlineTab } from '@/features/editor/subsystems/outline';
+import { editorCommandBus } from '@/features/editor/core';
+import { usePageStore } from '@/features/editor/core';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 
 describe('Phase 13: Project Outline & Section Jump Navigation (Overleaf Parity)', () => {

@@ -9,14 +9,18 @@ import { copyToClipboard } from "@/shared/lib/utils";
 import { Button } from '@/shared/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/shared/components/ui/dropdown-menu';
 
-import { libraryServices } from '../../data/library-services';
-import { generateCitationKey } from '../../domain/citations';
-import { useLibrarySidebarStore } from '../../store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
 import { useParams } from 'next/navigation';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
-import type { Collection, Item, CslStyle } from '../../types/library.types';
-import { isItemRetracted } from '../../utils/retraction';
-import type { useLibraryBatchCoordinator } from '../../hooks/useLibraryBatchCoordinator';
+import type { Collection, Item, CslStyle } from '@/features/library/types/library.types';
+import { isItemRetracted } from '@/features/library/domain/retraction';
+import {
+  type useLibraryBatchCoordinator,
+  executeCopyMultiCite,
+  executeCopyInTextCite,
+  executeExportAllBibtex,
+  executeDownloadBibFile,
+} from '@/features/library/hooks/useLibraryBatchCoordinator';
 
 export interface BatchBarProps {
   coordinator?: ReturnType<typeof useLibraryBatchCoordinator>;
@@ -53,7 +57,7 @@ export function BatchBar({
   const effectiveScopeId =
     propsScopeId || propsProjectId || params?.projectId || 'user';
 
-  const activeScope = useLibrarySidebarStore((s) => s.activeScope);
+  const activeScope = useLibraryUIStore((s) => s.activeScope);
   const isProjectScope = activeScope.type === 'project';
   const rootLibraryName = isProjectScope ? (activeScope.name || 'Project') : 'My Library';
 
@@ -70,19 +74,6 @@ export function BatchBar({
   const onBatchRestore = coordinator ? coordinator.batchRestore : propOnBatchRestore;
   const onBatchDetach = coordinator ? coordinator.batchDetach : propOnBatchDetach;
   const onBatchMerge = coordinator ? coordinator.batchMerge : propOnBatchMerge;
-
-  const copyWithToast = async (text: string, label: string = 'Copied to clipboard') => {
-    if (!text || !text.trim()) {
-      toast.error('Nothing to copy', { id: 'library-clipboard' });
-      return;
-    }
-    const ok = await copyToClipboard(text);
-    if (ok) {
-      toast.success(label, { id: 'library-clipboard' });
-    } else {
-      toast.error('Failed to copy to clipboard', { id: 'library-clipboard' });
-    }
-  };
 
   React.useEffect(() => {
     if (coordinator || selectedCount === 0 || !onClearSelection) return;
@@ -111,159 +102,25 @@ export function BatchBar({
     ? coordinator.retractedSelected
     : resolvedItems.filter((i) => isItemRetracted(i));
 
-  const warnIfRetractedPresent = (actionLabel: string) => {
-    if (retractedSelected.length > 0) {
-      toast.warning(
-        `Retraction Alert: ${retractedSelected.length} of ${resolvedItems.length} selected item(s) have been retracted!`,
-        {
-          description: `Proceeding with ${actionLabel}. Please verify validity before citing in your research.`,
-          duration: 6000,
-        },
-      );
-    }
-  };
+  const handleCopyMultiCite = coordinator
+    ? coordinator.copyMultiCite
+    : (style: CslStyle | 'latex' = 'apa') =>
+        executeCopyMultiCite(resolvedItems, effectiveScopeId, style, retractedSelected.length);
 
-  const fallbackCopyMultiCite = async (style: CslStyle | 'latex' = 'apa') => {
-    warnIfRetractedPresent('citation formatting');
-    if (style === 'latex') {
-      const keys = resolvedItems
-        .map((p) => (p.citationKey || p.key || generateCitationKey(p))?.trim())
-        .filter(Boolean);
-      const citeCmd = `\\cite{${keys.join(', ')}}`;
-      await copyWithToast(citeCmd, `Copied ${citeCmd} to clipboard`);
-      return;
-    }
+  const handleCopyInTextCite = coordinator
+    ? coordinator.copyInTextCite
+    : (style: CslStyle = 'apa') =>
+        executeCopyInTextCite(resolvedItems, effectiveScopeId, style, retractedSelected.length);
 
-    const itemIds = resolvedItems.map((p) => p.id).filter(Boolean);
-    if (itemIds.length > 0) {
-      try {
-        const res = await libraryServices.citations.batchFormat(effectiveScopeId, itemIds, style);
-        const text =
-          res.bibliographyText ||
-          res.citations
-            .map((c) => c.citation?.bibliography)
-            .filter(Boolean)
-            .join('\n\n');
-        if (text) {
-          await copyWithToast(
-            text,
-            `Copied ${itemIds.length} citations (${style.toUpperCase()}) to clipboard`,
-          );
-          return;
-        }
-      } catch {
-        toast.error('Không thể định dạng trích dẫn cho tài liệu đã chọn.');
-        return;
-      }
-    }
-    toast.error('Không tìm thấy tài liệu hợp lệ để tạo trích dẫn.');
-  };
+  const handleExportAllBibtex = coordinator
+    ? coordinator.exportAllBibtex
+    : () =>
+        executeExportAllBibtex(resolvedItems, effectiveScopeId, selectedCount, retractedSelected.length);
 
-  const handleCopyMultiCite = coordinator ? coordinator.copyMultiCite : fallbackCopyMultiCite;
-
-  const fallbackCopyInTextCite = async (style: CslStyle = 'apa') => {
-    warnIfRetractedPresent('in-text citation');
-    const itemIds = resolvedItems.map((p) => p.id).filter(Boolean);
-    if (itemIds.length > 0) {
-      try {
-        const res = await libraryServices.citations.batchFormat(effectiveScopeId, itemIds, style);
-        const text =
-          res.combinedInText ||
-          res.citations.map((c) => c.citation?.inText).filter(Boolean).join('; ');
-        if (text) {
-          await copyWithToast(text, `Copied in-text citation (${itemIds.length} items)`);
-          return;
-        }
-      } catch {
-        toast.error('Không thể định dạng trích dẫn trong bài cho tài liệu đã chọn.');
-        return;
-      }
-    }
-    toast.error('Không tìm thấy tài liệu hợp lệ để tạo trích dẫn.');
-  };
-
-  const handleCopyInTextCite = coordinator ? coordinator.copyInTextCite : fallbackCopyInTextCite;
-
-  const fallbackExportAllBibtex = async () => {
-    warnIfRetractedPresent('BibTeX export');
-    const itemIds = resolvedItems.map((p) => p.id).filter(Boolean);
-    if (itemIds.length === 0) return;
-
-    try {
-      const res = await libraryServices.exports.exportLibrary(effectiveScopeId, {
-        format: 'bibtex',
-        itemIds,
-      });
-      if (res?.content) {
-        await copyWithToast(
-          res.content,
-          `Copied BibTeX for ${selectedCount} reference(s) to clipboard`,
-        );
-        return;
-      }
-    } catch (err) {
-      console.warn('Backend BibTeX export failed', err);
-    }
-
-    const cachedBib = resolvedItems
-      .map((p) => p.bibtex)
-      .filter((b): b is string => Boolean(b && b.trim()))
-      .join('\n\n');
-    if (cachedBib) {
-      await copyWithToast(cachedBib, `Copied BibTeX for ${selectedCount} reference(s) to clipboard`);
-    } else {
-      toast.error('Unable to export BibTeX for selected items', { id: 'library-clipboard' });
-    }
-  };
-
-  const handleExportAllBibtex = coordinator ? coordinator.exportAllBibtex : fallbackExportAllBibtex;
-
-  const fallbackDownloadBibFile = async () => {
-    warnIfRetractedPresent('BibTeX download');
-    const itemIds = resolvedItems.map((p) => p.id).filter(Boolean);
-    if (itemIds.length === 0) return;
-
-    let bibtexContent: string | null = null;
-    let downloadFilename = `references-selected-${selectedCount}.bib`;
-
-    try {
-      const res = await libraryServices.exports.exportLibrary(effectiveScopeId, {
-        format: 'bibtex',
-        itemIds,
-      });
-      if (res?.content) {
-        bibtexContent = res.content;
-        if (res.filename) downloadFilename = res.filename;
-      }
-    } catch (err) {
-      console.warn('Backend BibTeX export failed', err);
-    }
-
-    if (!bibtexContent) {
-      bibtexContent =
-        resolvedItems
-          .map((p) => p.bibtex)
-          .filter((b): b is string => Boolean(b && b.trim()))
-          .join('\n\n') || null;
-    }
-
-    if (!bibtexContent) {
-      toast.error('Unable to generate BibTeX file for download', { id: 'library-clipboard' });
-      return;
-    }
-
-    const blob = new Blob([bibtexContent], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = downloadFilename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleDownloadBibFile = coordinator ? coordinator.downloadBibFile : fallbackDownloadBibFile;
+  const handleDownloadBibFile = coordinator
+    ? coordinator.downloadBibFile
+    : () =>
+        executeDownloadBibFile(resolvedItems, effectiveScopeId, selectedCount, retractedSelected.length);
 
   if (!mounted || typeof document === 'undefined') {
     return null;
@@ -286,14 +143,14 @@ export function BatchBar({
             <span className="font-mono tabular-nums">{selectedCount}</span> selected
           </span>
           {retractedSelected.length > 0 && (
-            <Tooltip delayDuration={250}>
+            <Tooltip>
               <TooltipTrigger asChild>
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-10 font-medium bg-destructive/10 text-destructive rounded-md border border-destructive/30 cursor-help">
                   <ShieldAlert className="size-3 text-destructive shrink-0" strokeWidth={1.5} />
                   <span>{retractedSelected.length} retracted</span>
                 </span>
               </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-1 rounded-md border border-destructive/30 bg-popover text-foreground shadow-sm">
+              <TooltipContent side="top" sideOffset={8}>
                 Warning: {retractedSelected.length} selected item(s) have retraction notices
               </TooltipContent>
             </Tooltip>
@@ -303,7 +160,7 @@ export function BatchBar({
         {/* Move To Collection Dropdown */}
         {!isTrash && onBatchMove && (
           <DropdownMenu>
-            <Tooltip delayDuration={250}>
+            <Tooltip>
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -317,7 +174,7 @@ export function BatchBar({
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+              <TooltipContent side="top" sideOffset={8}>
                 {isAllProcessingSelected ? 'Cannot move files while uploading or processing' : 'Move to collection'}
               </TooltipContent>
             </Tooltip>
@@ -354,7 +211,7 @@ export function BatchBar({
 
         {/* Merge Duplicates Button - Contextual: only visible when onBatchMerge is provided and selectedCount >= 2 */}
         {!isTrash && onBatchMerge && selectedCount >= 2 && (
-          <Tooltip delayDuration={250}>
+          <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
@@ -367,7 +224,7 @@ export function BatchBar({
                 <span>Merge {selectedCount} items</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+            <TooltipContent side="top" sideOffset={8}>
               {isAllProcessingSelected ? 'Cannot merge files while uploading or processing' : 'Merge items'}
             </TooltipContent>
           </Tooltip>
@@ -375,7 +232,7 @@ export function BatchBar({
 
         {/* Copy Multi Citation Dropdown */}
         <DropdownMenu>
-          <Tooltip delayDuration={250}>
+          <Tooltip>
             <TooltipTrigger asChild>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -389,7 +246,7 @@ export function BatchBar({
                 </Button>
               </DropdownMenuTrigger>
             </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+            <TooltipContent side="top" sideOffset={8}>
               Copy citation
             </TooltipContent>
           </Tooltip>
@@ -458,7 +315,7 @@ export function BatchBar({
         </DropdownMenu>
 
         {/* Copy All BibTeX */}
-        <Tooltip delayDuration={250}>
+        <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
@@ -470,13 +327,13 @@ export function BatchBar({
               <span>Copy BibTeX</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+          <TooltipContent side="top" sideOffset={8}>
             Copy BibTeX
           </TooltipContent>
         </Tooltip>
 
         {/* Download .bib */}
-        <Tooltip delayDuration={250}>
+        <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
@@ -488,7 +345,7 @@ export function BatchBar({
               <span>Download .bib</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+          <TooltipContent side="top" sideOffset={8}>
             Download BibTeX
           </TooltipContent>
         </Tooltip>
@@ -497,7 +354,7 @@ export function BatchBar({
         {isTrash ? (
           <>
             {onBatchRestore && (
-              <Tooltip delayDuration={250}>
+              <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
@@ -510,13 +367,13 @@ export function BatchBar({
                     <span>Restore</span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+                <TooltipContent side="top" sideOffset={8}>
                   {isAllProcessingSelected ? 'Cannot restore files while uploading or processing' : 'Restore'}
                 </TooltipContent>
               </Tooltip>
             )}
             {onBatchDelete && (
-              <Tooltip delayDuration={250}>
+              <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
@@ -529,7 +386,7 @@ export function BatchBar({
                     <span>Delete permanently</span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+                <TooltipContent side="top" sideOffset={8}>
                   {isAllProcessingSelected ? 'Cannot delete files while uploading or processing' : 'Delete permanently'}
                 </TooltipContent>
               </Tooltip>
@@ -538,7 +395,7 @@ export function BatchBar({
         ) : (
           <>
             {onBatchDetach && (
-              <Tooltip delayDuration={250}>
+              <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
@@ -551,13 +408,13 @@ export function BatchBar({
                     <span>Remove from collection</span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+                <TooltipContent side="top" sideOffset={8}>
                   {isAllProcessingSelected ? 'Cannot remove files while uploading or processing' : 'Remove from collection (keep in library)'}
                 </TooltipContent>
               </Tooltip>
             )}
             {onBatchDelete && (
-              <Tooltip delayDuration={250}>
+              <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
@@ -570,7 +427,7 @@ export function BatchBar({
                     <span>Move to trash</span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+                <TooltipContent side="top" sideOffset={8}>
                   {isAllProcessingSelected ? 'Cannot delete files while uploading or processing' : 'Move to trash'}
                 </TooltipContent>
               </Tooltip>
@@ -579,7 +436,7 @@ export function BatchBar({
         )}
 
         {/* Dismiss selection */}
-        <Tooltip delayDuration={250}>
+        <Tooltip>
           <TooltipTrigger asChild>
             <button
               type="button"
@@ -590,7 +447,7 @@ export function BatchBar({
               <X className="size-3.5 text-foreground shrink-0" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+          <TooltipContent side="top" sideOffset={8}>
             Clear selection (Esc)
           </TooltipContent>
         </Tooltip>

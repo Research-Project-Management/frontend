@@ -3,11 +3,12 @@ import type {
   State,
   StateGroup,
   Item,
-} from "../types/work-item.types";
+} from "@/features/projects/project-id/work-items/types/work-item.types";
 import {
   STATE_GROUPS,
   DEFAULT_STATES,
-} from "../types/work-item.types";
+} from "@/features/projects/project-id/work-items/types/work-item.types";
+import { parseDateOnly } from "./cpm-graph";
 
 // ── 1. Column & State Resolvers ──────────────────────────────────────────────
 
@@ -190,13 +191,25 @@ export const WorkItemHelpers = {
     if (diff < 60) return "Just now";
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return targetDate.toLocaleDateString("vi-VN", { month: "short", day: "numeric" });
+    const day = targetDate.getDate();
+    const month = targetDate.toLocaleDateString("en-US", { month: "short" });
+    const year = targetDate.getFullYear();
+    const currentYear = new Date().getFullYear();
+    if (year === currentYear) {
+      return `${month} ${day}`;
+    }
+    return `${month} ${day}, ${year}`;
   },
 
   formatDate: (val?: string | null | Date): string => {
     if (!val) return "";
-    const targetDate = typeof val === "string" ? new Date(val) : val;
-    if (Number.isNaN(targetDate.getTime())) return "";
+    let targetDate: Date | null = null;
+    if (val instanceof Date) {
+      targetDate = val;
+    } else if (typeof val === "string") {
+      targetDate = parseDateOnly(val) || new Date(val);
+    }
+    if (!targetDate || Number.isNaN(targetDate.getTime())) return "";
     const day = String(targetDate.getDate()).padStart(2, "0");
     const month = String(targetDate.getMonth() + 1).padStart(2, "0");
     const year = targetDate.getFullYear();
@@ -205,6 +218,46 @@ export const WorkItemHelpers = {
       return `${day}/${month}`;
     }
     return `${day}/${month}/${year}`;
+  },
+
+  toBranchSlug: (title?: string | null, identifier?: string | null): string => {
+    let clean = (title || 'task').trim();
+    if (identifier) {
+      const escapedId = identifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      clean = clean.replace(new RegExp(`^\\[?${escapedId}\\]?\\s*[:-]?\\s*`, 'i'), '');
+    }
+    return (
+      clean
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'd')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 40) || 'task'
+    );
+  },
+
+  formatGitBranch: (item: { title?: string | null; identifier?: string | null }): string => {
+    const slug = WorkItemHelpers.toBranchSlug(item.title, item.identifier);
+    return item.identifier ? `${item.identifier.toLowerCase()}-${slug}` : `feature/${slug}`;
+  },
+
+  resolveIdentifier: (
+    item?: { identifier?: string | null; sequenceNumber?: number | null; id?: string | null } | null,
+    fallbackPrefix = 'FLUX'
+  ): string => {
+    if (!item) return '';
+    if (item.identifier?.trim()) return item.identifier.trim();
+    const prefix = (fallbackPrefix || 'FLUX').toUpperCase();
+    if (typeof item.sequenceNumber === 'number' && !isNaN(item.sequenceNumber)) {
+      return `${prefix}-${item.sequenceNumber}`;
+    }
+    if (item.id?.trim()) {
+      return `${prefix}-${item.id.trim().slice(0, 4).toUpperCase()}`;
+    }
+    return '';
   },
 
   formatDateRange: (
@@ -340,7 +393,12 @@ export const WorkItemHelpers = {
   },
 
   resolveAssigneeId: (
-    item: { assignee?: { id?: string } | null; assigneeId?: string | { id?: string } | null } | null | undefined
+    item: {
+      assignee?: { id?: string } | null;
+      assigneeId?: string | { id?: string } | null;
+      assigneeIds?: string[];
+      assignees?: Array<{ id?: string; userId?: string } | string>;
+    } | null | undefined
   ): string | undefined => {
     if (!item) return undefined;
     if (typeof item.assigneeId === "string" && item.assigneeId) {
@@ -351,6 +409,17 @@ export const WorkItemHelpers = {
     }
     if (typeof item.assigneeId === "object" && item.assigneeId !== null && typeof item.assigneeId.id === 'string') {
       return item.assigneeId.id;
+    }
+    if (Array.isArray(item.assigneeIds) && item.assigneeIds.length > 0 && typeof item.assigneeIds[0] === 'string') {
+      return item.assigneeIds[0];
+    }
+    if (Array.isArray(item.assignees) && item.assignees.length > 0) {
+      const first = item.assignees[0];
+      if (typeof first === 'string' && first) return first;
+      if (first && typeof first === 'object') {
+        const uId = first.id || first.userId;
+        if (typeof uId === 'string' && uId) return uId;
+      }
     }
     return undefined;
   },
@@ -402,16 +471,94 @@ export const WorkItemHelpers = {
     const diffDays = (targetDate.getTime() - now.getTime()) / (1000 * 3600 * 24);
     return diffDays >= 0 && diffDays <= daysThreshold;
   },
+
+  resolveItemMeta: (
+    item: Item,
+    columns: Column[] = [],
+    projectStates?: Column[],
+    fallbackColumn?: Column
+  ) => {
+    const stateList = projectStates && projectStates.length > 0 ? projectStates : columns;
+    const resolvedState =
+      item.state && typeof item.state === "object"
+        ? {
+            id: item.state.id,
+            title: item.state.name,
+            name: item.state.name,
+            group: item.state.group,
+            color: item.state.color,
+            accentColor: item.state.color,
+            slug: item.state.name,
+          }
+        : stateList.find((c) => resolveColumnId(c) === item.columnId) || fallbackColumn || stateList[0];
+
+    const colTitle = resolvedState?.title || resolvedState?.name || "Backlog";
+    const currentColor = resolvedState?.color || resolvedState?.accentColor || "#6B7280";
+    const stateGroup = resolvedState?.group || item.stateGroup || item.state?.group || colTitle;
+    const isCancelled = Boolean(
+      stateGroup === "cancelled" || item.columnId === "cancelled" || item.columnId === "cancel"
+    );
+    const isCompleted = Boolean(
+      item.completed ||
+        stateGroup === "completed" ||
+        item.columnId === "done" ||
+        item.columnId === "completed"
+    );
+
+    const rawItem = item as Item & {
+      linkCount?: number;
+      links?: unknown[];
+      attachmentCount?: number;
+      attach?: {
+        links?: unknown[];
+        pages?: Array<{ id: string; title?: string }>;
+        papers?: Array<{ id: string; title?: string }>;
+        files?: Array<{ id: string; name?: string; title?: string }>;
+      };
+    };
+
+    const linksCount =
+      typeof rawItem.linkCount === "number"
+        ? rawItem.linkCount
+        : Array.isArray(rawItem.links)
+          ? rawItem.links.length
+          : (() => {
+              const attachObj = item.attachments || rawItem.attach;
+              if (
+                attachObj &&
+                typeof attachObj === "object" &&
+                "links" in attachObj &&
+                Array.isArray(attachObj.links)
+              ) {
+                return attachObj.links.length;
+              }
+              return 0;
+            })();
+
+    const attachmentsCount =
+      typeof rawItem.attachmentCount === "number"
+        ? rawItem.attachmentCount
+        : WorkItemHelpers.countAttachments(item.attachments || rawItem.attach);
+
+    return {
+      resolvedState,
+      colTitle,
+      currentColor,
+      stateGroup,
+      isCancelled,
+      isCompleted,
+      linksCount,
+      attachmentsCount,
+    };
+  },
 };
 
 export const ItemHelpers = WorkItemHelpers;
-export const Helpers = WorkItemHelpers;
 
 export const getInitials = WorkItemHelpers.getInitials;
 export const formatActivityTime = WorkItemHelpers.formatActivityTime;
 export const formatDate = WorkItemHelpers.formatDate;
 export const formatDateRange = WorkItemHelpers.formatDateRange;
-export const formatWorkItemDate = WorkItemHelpers.formatDate;
 export const checkOverdue = WorkItemHelpers.checkOverdue;
 export const uniqueLabels = WorkItemHelpers.uniqueLabels;
 export const countAttachments = WorkItemHelpers.countAttachments;
@@ -421,14 +568,171 @@ export const resolveAssigneeId = WorkItemHelpers.resolveAssigneeId;
 export const createSnapshot = WorkItemHelpers.createSnapshot;
 export const calculateProgressRollup = WorkItemHelpers.calculateProgressRollup;
 export const isDueSoon = WorkItemHelpers.isDueSoon;
-export const resolveWorkItemColumnColor = resolveColumnColor;
-export const resolveItemColumnColor = resolveColumnColor;
-export const resolveItemColumnId = resolveColumnId;
-export { DEFAULT_STATES, PRIORITY_THEME_COLORS, GROUP_DEFAULT_COLORS } from '../types/work-item.types';
+export const resolveItemMeta = WorkItemHelpers.resolveItemMeta;
+export const toBranchSlug = WorkItemHelpers.toBranchSlug;
+export const formatGitBranch = WorkItemHelpers.formatGitBranch;
+export const resolveIdentifier = WorkItemHelpers.resolveIdentifier;
+export { DEFAULT_STATES, PRIORITY_THEME_COLORS, GROUP_DEFAULT_COLORS } from '@/features/projects/project-id/work-items/types/work-item.types';
+
+export const EMPTY_ARRAY: never[] = [];
+
+export interface WorkItemTreeRow {
+  item: Item;
+  isSubItem: boolean;
+  hasChildren: boolean;
+  isChildrenExpanded: boolean;
+  depth?: number;
+}
+
+export function buildWorkItemTree(
+  sortedList: Item[],
+  options?: {
+    showChildWorkItems?: boolean;
+    collapsedParentIds?: Set<string>;
+    expandedIds?: Set<string>;
+  }
+): WorkItemTreeRow[] {
+  if (!Array.isArray(sortedList) || sortedList.length === 0) return [];
+
+  const showChildWorkItems = options?.showChildWorkItems ?? true;
+  const collapsedParentIds = options?.collapsedParentIds;
+  const expandedIds = options?.expandedIds;
+
+  // Deduplicate items by id while preserving order
+  const uniqueList: Item[] = [];
+  const itemMap = new Map<string, Item>();
+  for (const it of sortedList) {
+    if (!it || !it.id || itemMap.has(it.id)) continue;
+    itemMap.set(it.id, it);
+    uniqueList.push(it);
+  }
+
+  if (!showChildWorkItems) {
+    return uniqueList
+      .filter((item) => {
+        const pId = item.parentId || item.parentItemId || item.parentWorkItemId;
+        return !pId || pId === item.id;
+      })
+      .map((item) => ({
+        item,
+        isSubItem: false,
+        hasChildren: false,
+        isChildrenExpanded: true,
+        depth: 0,
+      }));
+  }
+
+  const childrenByParentId = new Map<string, Item[]>();
+  const rootItems: Item[] = [];
+
+  for (const it of uniqueList) {
+    const pId = it.parentId || it.parentItemId || it.parentWorkItemId;
+    // Self-parenting (pId === it.id) or orphaned parent (!itemMap.has(pId)) promotes to root
+    if (pId && pId !== it.id && itemMap.has(pId)) {
+      const arr = childrenByParentId.get(pId) || [];
+      arr.push(it);
+      childrenByParentId.set(pId, arr);
+    } else {
+      rootItems.push(it);
+    }
+  }
+
+  const result: WorkItemTreeRow[] = [];
+  const visited = new Set<string>();
+
+  const markSubtreeVisited = (parentId: string) => {
+    const kids = childrenByParentId.get(parentId) || [];
+    for (const k of kids) {
+      if (!visited.has(k.id)) {
+        visited.add(k.id);
+        markSubtreeVisited(k.id);
+      }
+    }
+  };
+
+  const appendItemAndChildren = (it: Item, depth: number) => {
+    if (visited.has(it.id)) return;
+    visited.add(it.id);
+
+    const children = (childrenByParentId.get(it.id) || []).filter((c) => !visited.has(c.id));
+    const hasChildren = (childrenByParentId.get(it.id)?.length ?? 0) > 0;
+    const isChildrenExpanded = expandedIds
+      ? expandedIds.has(it.id)
+      : !collapsedParentIds?.has(it.id);
+
+    result.push({
+      item: it,
+      isSubItem: depth > 0,
+      hasChildren,
+      isChildrenExpanded,
+      depth,
+    });
+
+    if (hasChildren) {
+      if (isChildrenExpanded) {
+        children.forEach((child) => appendItemAndChildren(child, depth + 1));
+      } else {
+        // Mark collapsed descendants as visited so they are not erroneously promoted to root
+        markSubtreeVisited(it.id);
+      }
+    }
+  };
+
+  rootItems.forEach((root) => appendItemAndChildren(root, 0));
+
+  // Break any remaining isolated circular parent-child loops (e.g. A -> B -> A) by promoting unvisited cycle entry points
+  for (const it of uniqueList) {
+    if (!visited.has(it.id)) {
+      appendItemAndChildren(it, 0);
+    }
+  }
+
+  return result;
+}
+
+export function buildGroupMoveUpdates(
+  groupBy: string | undefined,
+  targetBucketId: string,
+  laneData?: { subGroupBy?: string; laneId?: string }
+): Partial<Item> | null {
+  if (groupBy === 'none') {
+    return null;
+  }
+
+  const updates: Partial<Item> = {};
+
+  if (groupBy === 'priority') {
+    updates.priority = (targetBucketId === 'none' ? 'none' : targetBucketId) as Item['priority'];
+  } else if (groupBy === 'assignee') {
+    updates.assigneeId = targetBucketId === '__unassigned__' ? null : targetBucketId;
+  } else if (groupBy === 'labels') {
+    updates.labels = targetBucketId === '__no_label__' ? [] : [targetBucketId];
+  } else {
+    updates.columnId = targetBucketId;
+  }
+
+  if (laneData?.subGroupBy && laneData?.laneId && laneData.subGroupBy !== groupBy) {
+    const laneUpdates = buildGroupMoveUpdates(laneData.subGroupBy, laneData.laneId);
+    if (laneUpdates) {
+      Object.assign(updates, laneUpdates);
+    }
+  }
+
+  return updates;
+}
 
 export function getItemBucketKey(item: Item, groupBy?: string): string {
+  const itemRecord = item as Record<string, unknown>;
   if (!groupBy || groupBy === 'state') {
-    return item.columnId || (item as { stateId?: string }).stateId || '';
+    const stateObj = item.state && typeof item.state === 'object' ? item.state : null;
+    const legacyState = typeof itemRecord.state === 'string' ? itemRecord.state : undefined;
+    return (
+      item.columnId ||
+      (typeof itemRecord.stateId === 'string' ? itemRecord.stateId : undefined) ||
+      stateObj?.id ||
+      legacyState ||
+      ''
+    );
   }
   if (groupBy === 'none') {
     return '__all__';
@@ -450,7 +754,6 @@ export function getItemBucketKey(item: Item, groupBy?: string): string {
         : String(first ?? '');
     return firstLabel || '__no_label__';
   }
-  const itemRecord = item as Record<string, unknown>;
   if (groupBy === 'createdBy') {
     const authorId =
       item.authorId ||

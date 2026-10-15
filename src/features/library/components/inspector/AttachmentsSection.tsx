@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import dynamic from 'next/dynamic';
+
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import {
   FileText,
@@ -21,42 +21,27 @@ import {
   Link2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Document, Page, pdfjs } from 'react-pdf';
+import { Document, Page } from 'react-pdf';
 import { setupPdfWorker } from '@/shared/lib/pdfjs-worker';
 
 setupPdfWorker();
 import { Button } from '@/shared/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
-import { getItemFileUrl, getPaperFileUrl } from '../../domain/item-url';
-import { usePdf } from '../../hooks/use-pdf';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { getItemFileUrl } from '@/features/library/domain/item-url';
+import { usePdf } from '@/features/library/hooks/use-pdf';
 import {
   useAttachments,
   useRenameAttachment,
   downloadAnnotatedPdf,
   uploadLibraryAttachment,
-} from '../../data';
-import SnapshotViewerModal from '../modals/SnapshotViewerModal';
-import type { Item, ItemAttachment } from '../../types/library.types';
+} from '@/features/library/data';
+import SnapshotViewerModal from '@/features/library/components/modals/SnapshotViewerModal';
+import type { Item, ItemAttachment } from '@/features/library/types/library.types';
 
 
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
-
-// Use the application-hosted worker. Preview must remain available when a
-// browser blocks third-party scripts or the machine has no Internet access.
-if (
-  typeof window !== 'undefined' &&
-  pdfjs &&
-  typeof pdfjs === 'object' &&
-  'GlobalWorkerOptions' in pdfjs &&
-  pdfjs.GlobalWorkerOptions
-) {
-  try {
-    pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
-  } catch {
-    // Ignore worker assignment error
-  }
-}
 
 interface PdfPagePreviewProps {
   paper: Item;
@@ -64,7 +49,7 @@ interface PdfPagePreviewProps {
   onOpenReader: () => void;
 }
 
-function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
+function PdfPagePreview({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
   const {
     blobUrl: pdfBlobUrl,
     isLoading: pdfLoading,
@@ -180,41 +165,33 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
   );
 }
 
-const PdfPagePreview = dynamic(
-  () => Promise.resolve(PdfViewerInternal),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-60 flex flex-col items-center justify-center gap-2 text-foreground border border-border rounded-md bg-card">
-        <Loader2 className="size-5 animate-spin text-foreground shrink-0" />
-        <span className="text-xs font-medium">Loading preview...</span>
-      </div>
-    ),
-  }
-);
 
 
 interface AttachmentsSectionProps {
-  paper: Item;
+  item?: Item;
+  paper?: Item;
   scopeId?: string;
   projectId?: string;
   onAddAttachment?: () => void;
   isUploading?: boolean;
   hideHeader?: boolean;
+  hidePdfPreview?: boolean;
   canEdit?: boolean;
   onRegisterAdd?: (trigger: () => void) => void;
 }
 
 const EMPTY_ATTACHMENTS: ItemAttachment[] = [];
 
-export default function AttachmentsSection({
-  paper,
+export default function AttachmentsSection(props: AttachmentsSectionProps) {
+  const paper = (props.item || props.paper)!;
+  const {
   scopeId,
   projectId,
   hideHeader = false,
+  hidePdfPreview = false,
   canEdit = true,
   onRegisterAdd,
-}: AttachmentsSectionProps) {
+  } = props;
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -233,6 +210,10 @@ export default function AttachmentsSection({
   const [activeSnapshot, setActiveSnapshot] = useState<{ url: string; title: string; sourceUrl?: string } | null>(null);
   const [isDownloadingAnnotated, setIsDownloadingAnnotated] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [isAddingLink, setIsAddingLink] = useState(false);
+  const [linkUrlInput, setLinkUrlInput] = useState('');
+  const [linkTitleInput, setLinkTitleInput] = useState('');
+  const [isSubmittingLink, setIsSubmittingLink] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const renameAttachmentMutation = useRenameAttachment(rawScopeId);
 
@@ -263,22 +244,30 @@ export default function AttachmentsSection({
         attachmentType: 'supplementary',
       });
     } catch (err) {
-      console.error('Failed to attach file:', err);
+      toast.error('Failed to attach file', {
+        description: err instanceof Error ? err.message : 'Please try again.',
+      });
     } finally {
       setIsUploadingFile(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const handleAddLinkAttachment = async () => {
+  const handleOpenLinkForm = () => {
+    setLinkUrlInput('');
+    setLinkTitleInput('');
+    setIsAddingLink(true);
+  };
+
+  const handleSubmitLinkAttachment = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!paper.id) return;
-    const rawUrl = window.prompt('Enter web link / URL (e.g. https://...):');
-    if (!rawUrl || !rawUrl.trim()) return;
-    const targetUrl = rawUrl.trim();
-    const rawTitle = window.prompt('Enter link label / title (optional):', targetUrl);
-    const linkTitle = (rawTitle && rawTitle.trim()) || targetUrl;
+    const targetUrl = linkUrlInput.trim();
+    if (!targetUrl) return;
+    const linkTitle = linkTitleInput.trim() || targetUrl;
 
     try {
+      setIsSubmittingLink(true);
       await addAttachment({
         itemId: paper.id,
         filename: linkTitle,
@@ -288,8 +277,15 @@ export default function AttachmentsSection({
         linkMode: 'linked_url',
         attachmentType: 'other',
       });
+      setIsAddingLink(false);
+      setLinkUrlInput('');
+      setLinkTitleInput('');
     } catch (err) {
-      console.error('Failed to attach link:', err);
+      toast.error('Failed to attach link', {
+        description: err instanceof Error ? err.message : 'Please check the URL and try again.',
+      });
+    } finally {
+      setIsSubmittingLink(false);
     }
   };
 
@@ -376,9 +372,9 @@ export default function AttachmentsSection({
         `${paper.title || 'document'}-annotated.pdf`,
       );
       toast.success('Annotated PDF downloaded', { id: 'annotated-pdf-download' });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error('Failed to export annotated PDF', {
-        description: err?.message || 'Please verify that annotations exist or try again.',
+        description: err instanceof Error ? err.message : 'Please verify that annotations exist or try again.',
         id: 'annotated-pdf-download',
       });
     } finally {
@@ -400,7 +396,7 @@ export default function AttachmentsSection({
     await captureSnapshot(paper.url);
   };
 
-  if (!paperUrl && otherAttachments.length === 0 && !paper.url) {
+  if (!paperUrl && otherAttachments.length === 0 && !paper.url && !isAddingLink) {
     return (
       <div className="py-2 px-1.5 text-center text-11 text-foreground flex flex-col items-center justify-center gap-1.5 font-sans">
         <input
@@ -411,17 +407,29 @@ export default function AttachmentsSection({
         />
         <span>No attached files or snapshots.</span>
         {canEdit && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            className="h-6 text-11 text-foreground hover:bg-muted px-2 gap-1 cursor-pointer font-normal"
-            disabled={isUploadingFile}
-          >
-            <Plus className="size-3 text-foreground" strokeWidth={1.5} />
-            <span>Upload file</span>
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              className="h-6 text-11 text-foreground hover:bg-muted px-2 gap-1 cursor-pointer font-normal"
+              disabled={isUploadingFile}
+            >
+              <Plus className="size-3 text-foreground" strokeWidth={1.5} />
+              <span>Upload file</span>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleOpenLinkForm}
+              className="h-6 text-11 text-foreground hover:bg-muted px-2 gap-1 cursor-pointer font-normal"
+            >
+              <Link2 className="size-3 text-foreground" strokeWidth={1.5} />
+              <span>Attach link</span>
+            </Button>
+          </div>
         )}
       </div>
     );
@@ -443,21 +451,25 @@ export default function AttachmentsSection({
           </h3>
           {canEdit && (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  disabled={isUploadingFile}
-                  className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
-                  title="Add attachment"
-                  aria-label="Add attachment"
-                >
-                  {isUploadingFile ? (
-                    <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
-                  ) : (
-                    <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                  )}
-                </button>
-              </DropdownMenuTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={isUploadingFile}
+                      className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
+                      aria-label="Add attachment"
+                    >
+                      {isUploadingFile ? (
+                        <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
+                      ) : (
+                        <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                      )}
+                    </button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top">Add attachment</TooltipContent>
+              </Tooltip>
               <DropdownMenuContent align="end" className="w-56 p-1.5 text-xs font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5">
                 <DropdownMenuItem
                   onClick={() => fileInputRef.current?.click()}
@@ -467,7 +479,7 @@ export default function AttachmentsSection({
                   <span>Attach Stored File...</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={handleAddLinkAttachment}
+                  onClick={handleOpenLinkForm}
                   className="gap-2 cursor-pointer"
                 >
                   <Link2 className="size-3.5 text-foreground shrink-0" />
@@ -479,8 +491,52 @@ export default function AttachmentsSection({
         </div>
       )}
 
+      {isAddingLink && (
+        <form
+          onSubmit={handleSubmitLinkAttachment}
+          className="p-2 rounded-md border border-border bg-muted/20 flex flex-col gap-1.5"
+        >
+          <input
+            type="url"
+            required
+            autoFocus
+            value={linkUrlInput}
+            onChange={(e) => setLinkUrlInput(e.target.value)}
+            placeholder="https://example.com/resource"
+            className="h-7 px-2 rounded border border-border bg-background text-11 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          <input
+            type="text"
+            value={linkTitleInput}
+            onChange={(e) => setLinkTitleInput(e.target.value)}
+            placeholder="Label / title (optional)"
+            className="h-7 px-2 rounded border border-border bg-background text-11 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          <div className="flex items-center justify-end gap-1.5 pt-0.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsAddingLink(false)}
+              disabled={isSubmittingLink}
+              className="h-6 px-2 text-11"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={isSubmittingLink || !linkUrlInput.trim()}
+              className="h-6 px-2.5 text-11"
+            >
+              {isSubmittingLink ? 'Saving...' : 'Attach'}
+            </Button>
+          </div>
+        </form>
+      )}
+
       {/* PDF Page Preview Card */}
-      {paperUrl ? (
+      {!hidePdfPreview && paperUrl ? (
         <PdfPagePreview
           paper={paper}
           paperUrl={paperUrl}
@@ -499,16 +555,16 @@ export default function AttachmentsSection({
                 <FileText className="size-4 text-foreground shrink-0" />
               </div>
               <div className="min-w-0 flex-1">
-                <p
+                <Tooltip><TooltipTrigger asChild><p
                   className="text-xs font-medium text-foreground break-all leading-snug"
-                  title={primaryAttachment?.title || paper.filename || (paper.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
+
                 >
                   {primaryAttachment?.title || paper.filename || (paper.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
-                </p>
+                </p></TooltipTrigger><TooltipContent side="top">{primaryAttachment?.title || paper.filename || (paper.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}</TooltipContent></Tooltip>
                 {primaryAttachment?.title && paper.filename && primaryAttachment.title !== paper.filename && (
-                  <p className="text-10 text-foreground truncate" title={paper.filename}>
+                  <Tooltip><TooltipTrigger asChild><p className="text-10 text-foreground truncate">
                     {paper.filename}
-                  </p>
+                  </p></TooltipTrigger><TooltipContent side="top">{paper.filename}</TooltipContent></Tooltip>
                 )}
               </div>
             </div>
@@ -615,14 +671,14 @@ export default function AttachmentsSection({
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-foreground break-all leading-snug" title={att.title || att.filename || att.name}>
+                  <Tooltip><TooltipTrigger asChild><p className="text-xs font-medium text-foreground break-all leading-snug">
                     {att.title || att.filename || att.name}
-                  </p>
+                  </p></TooltipTrigger><TooltipContent side="top">{att.title || att.filename || att.name}</TooltipContent></Tooltip>
                   <p className="text-10 text-foreground flex items-center gap-1.5 truncate">
                     {att.title && (att.filename || att.name) && att.title !== (att.filename || att.name) && (
-                      <span className="truncate max-w-[140px]" title={att.filename || att.name}>
+                      <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[140px]">
                         {att.filename || att.name} •
-                      </span>
+                      </span></TooltipTrigger><TooltipContent side="top">{att.filename || att.name}</TooltipContent></Tooltip>
                     )}
                     {isSnapshot && (
                       <span className="text-foreground font-medium">Snapshot •</span>

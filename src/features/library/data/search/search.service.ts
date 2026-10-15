@@ -1,13 +1,19 @@
 import * as api from "@/shared/lib/api";
-import type { SearchResponse } from "../../types";
-import { isProjectScope } from '../../domain/item-url';
+import type { SearchResponse, SearchSortBy, SearchSortOrder } from "@/features/library/types";
+import { isProjectScope } from '@/features/library/domain/item-url';
 
 export interface SearchItemsParams {
-  query: string;
+  query?: string;
+  q?: string;
   limit?: number;
   cursor?: string;
   collectionId?: string;
   tagId?: string;
+  itemType?: string;
+  yearFrom?: number;
+  yearTo?: number;
+  sortBy?: SearchSortBy;
+  sortOrder?: SearchSortOrder;
 }
 
 export interface PageAnchorMatch {
@@ -26,13 +32,19 @@ export async function searchLibrary(
   params: SearchItemsParams,
   scopeId?: string,
 ): Promise<SearchResponse> {
+  const effectiveQuery = params.query ?? params.q ?? '';
   const queryParams: Record<string, string> = {
-    query: params.query,
+    query: effectiveQuery,
   };
   if (params.limit !== undefined) queryParams.limit = String(params.limit);
   if (params.cursor) queryParams.cursor = params.cursor;
   if (params.collectionId) queryParams.collectionId = params.collectionId;
   if (params.tagId) queryParams.tagId = params.tagId;
+  if (params.itemType) queryParams.itemType = params.itemType;
+  if (params.yearFrom !== undefined) queryParams.yearFrom = String(params.yearFrom);
+  if (params.yearTo !== undefined) queryParams.yearTo = String(params.yearTo);
+  if (params.sortBy) queryParams.sortBy = params.sortBy;
+  if (params.sortOrder) queryParams.sortOrder = params.sortOrder;
   if (isProjectScope(scopeId)) queryParams.projectId = scopeId!;
 
   const basePath = isProjectScope(scopeId)

@@ -79,7 +79,7 @@ export function fromPartial<T>(partial: DeepPartial<T> | Partial<T>): T {
 /**
  * Passes intentionally arbitrary/mock data in tests while preserving target type inference.
  */
-export function fromAny<T = any>(value: any): T {
+export function fromAny<T = unknown>(value: unknown): T {
   return value as T;
 }
 

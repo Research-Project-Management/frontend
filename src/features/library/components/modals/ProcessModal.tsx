@@ -17,7 +17,7 @@ import {
   Loader2,
   X,
 } from 'lucide-react';
-import type { ProcessModalState } from '../../data';
+import type { ProcessModalState } from '@/features/library/data';
 import { cn } from "@/shared/lib/utils";
 
 interface ProcessModalProps {

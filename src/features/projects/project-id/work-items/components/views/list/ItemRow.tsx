@@ -26,18 +26,18 @@ import {
 } from '@/shared/components/ui/dropdown-menu';
 import { StatusIcon } from '@/shared/components/icons';
 import { cn } from '@/shared/lib/utils';
-import { ItemHelpers, resolveColumnId } from '../../../utils/work-item.utils';
-import { PriorityPopover } from '../../pickers/PriorityPicker';
-import { MemberPopover, AvatarStack } from '../../pickers/MemberPicker';
-import { SingleDatePopover } from '../../pickers/DatePicker';
-import { LabelPopover } from '../../pickers/LabelPicker';
-import type { Item, Priority, SubItem } from '../../../types/work-item.types';
-import type { ItemRowProps } from '../../../types/list-view.types';
+import { ItemHelpers, resolveColumnId } from '@/features/projects/project-id/work-items/utils/work-item.utils';
+import { PriorityPopover } from '@/features/projects/project-id/work-items/components/pickers/PriorityPicker';
+import { MemberPopover, AvatarStack } from '@/features/projects/project-id/work-items/components/pickers/MemberPicker';
+import { SingleDatePopover } from '@/features/projects/project-id/work-items/components/pickers/DatePicker';
+import { LabelPopover } from '@/features/projects/project-id/work-items/components/pickers/LabelPicker';
+import type { Item, Priority, SubItem } from '@/features/projects/project-id/work-items/types/work-item.types';
+import type { ItemRowProps } from '@/features/projects/project-id/work-items/types/list-view.types';
 import {
   PRIORITY_THEME_CLASSES,
   formatDueDate,
   EMPTY_ARRAY,
-} from '../../../utils/list.utils';
+} from '@/features/projects/project-id/work-items/utils/list.utils';
 
 export const ItemRow = memo(function ItemRow({
   item,
@@ -92,15 +92,18 @@ export const ItemRow = memo(function ItemRow({
     };
   };
 
-  const linksCount = useMemo(() => {
-    if (typeof rawItem.linkCount === 'number') return rawItem.linkCount;
-    if (Array.isArray(rawItem.links)) return rawItem.links.length;
-    const attachObj = item.attachments || rawItem.attach;
-    if (attachObj && typeof attachObj === 'object' && 'links' in attachObj && Array.isArray(attachObj.links)) {
-      return attachObj.links.length;
-    }
-    return 0;
-  }, [rawItem.links, item.attachments, rawItem.attach, rawItem.linkCount]);
+  const itemMeta = useMemo(
+    () =>
+      ItemHelpers.resolveItemMeta(
+        item,
+        columns,
+        projectStates,
+        !displayOptions?.groupBy || displayOptions.groupBy === 'state' ? currentColumn : undefined
+      ),
+    [item, columns, projectStates, currentColumn, displayOptions?.groupBy]
+  );
+
+  const { linksCount, colTitle, currentColor, stateGroup, isCancelled } = itemMeta;
 
   const priorityKey = (item.priority || 'none').toLowerCase() as Priority;
 
@@ -118,11 +121,7 @@ export const ItemRow = memo(function ItemRow({
   // Overdue and Due Today Calculations for Colorization
   const isOverdue = useMemo(() => {
     if (!item.dueDate || item.completed) return false;
-    const due = new Date(item.dueDate);
-    if (Number.isNaN(due.getTime())) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return due < today;
+    return ItemHelpers.checkOverdue(item.dueDate);
   }, [item.dueDate, item.completed]);
 
   const isDueToday = useMemo(() => {
@@ -169,34 +168,6 @@ export const ItemRow = memo(function ItemRow({
     if (!Array.isArray(item.labels) || item.labels.length === 0) return [];
     return item.labels.filter(Boolean);
   }, [item.labels]);
-
-  const resolvedState = useMemo(() => {
-    if (item.state && typeof item.state === 'object') {
-      return {
-        id: item.state.id,
-        title: item.state.name,
-        name: item.state.name,
-        group: item.state.group,
-        color: item.state.color,
-        accentColor: item.state.color,
-      };
-    }
-    const stateList = projectStates && projectStates.length > 0 ? projectStates : columns;
-    const found = stateList.find((s) => resolveColumnId(s) === item.columnId);
-    if (found) return found;
-    if (!displayOptions?.groupBy || displayOptions.groupBy === 'state') {
-      return currentColumn;
-    }
-    return stateList[0];
-  }, [item.state, item.columnId, projectStates, columns, currentColumn, displayOptions?.groupBy]);
-
-  const colTitle = resolvedState?.title || resolvedState?.name || 'Backlog';
-  const currentColor =
-    resolvedState?.color ||
-    resolvedState?.accentColor ||
-    '#6B7280';
-  const stateGroup = resolvedState?.group || item.stateGroup || item.state?.group || colTitle;
-  const isCancelled = stateGroup === 'cancelled' || item.columnId === 'cancelled' || item.columnId === 'cancel';
 
   return (
     <div

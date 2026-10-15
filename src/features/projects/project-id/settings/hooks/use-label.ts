@@ -45,8 +45,8 @@ export function useCreateProjectLabel(projectId: string) {
       queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
       toast.success(`Label "${newLabel.name}" created`, { id: 'settings-label' });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to create label', { id: 'settings-label' });
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to create label', { id: 'settings-label' });
     },
   });
 }
@@ -67,8 +67,8 @@ export function useUpdateProjectLabel(projectId: string) {
       queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
       toast.success('Label updated', { id: 'settings-label' });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to update label', { id: 'settings-label' });
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to update label', { id: 'settings-label' });
     },
   });
 }
@@ -86,8 +86,8 @@ export function useDeleteProjectLabel(projectId: string) {
       queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
       toast.success('Label deleted', { id: 'settings-label' });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to delete label', { id: 'settings-label' });
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete label', { id: 'settings-label' });
     },
   });
 }
@@ -102,8 +102,8 @@ export function useReorderProjectLabels(projectId: string) {
       queryClient.invalidateQueries({ queryKey: labelKeys.project(projectId) });
       queryClient.invalidateQueries({ queryKey: ['labels'] });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to reorder labels', { id: 'settings-label' });
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to reorder labels', { id: 'settings-label' });
     },
   });
 }
@@ -127,8 +127,8 @@ export function useCreateLabel() {
       queryClient.invalidateQueries({ queryKey: labelKeys.all });
       toast.success(`Label "${newLabel.name}" created`, { id: 'settings-label' });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to create label', { id: 'settings-label' });
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to create label', { id: 'settings-label' });
     },
   });
 }
@@ -143,8 +143,8 @@ export function useUpdateLabel() {
       queryClient.invalidateQueries({ queryKey: labelKeys.all });
       toast.success('Label updated', { id: 'settings-label' });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to update label', { id: 'settings-label' });
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to update label', { id: 'settings-label' });
     },
   });
 }
@@ -158,8 +158,8 @@ export function useDeleteLabel() {
       queryClient.invalidateQueries({ queryKey: labelKeys.all });
       toast.success('Label deleted', { id: 'settings-label' });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to delete label', { id: 'settings-label' });
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete label', { id: 'settings-label' });
     },
   });
 }

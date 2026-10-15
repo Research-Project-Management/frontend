@@ -5,8 +5,8 @@ import { Search, Check } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
-import { resolveColumnId } from '../../utils/work-item.utils';
-import type { Column } from '../../types/work-item.types';
+import { resolveColumnId } from '@/features/projects/project-id/work-items/utils/work-item.utils';
+import type { Column } from '@/features/projects/project-id/work-items/types/work-item.types';
 import {
   StatusIcon,
   BacklogStatusIcon as BacklogStateIcon,
@@ -38,7 +38,7 @@ export function StateItemIcon({ col, className }: { col?: Partial<Column> | null
   );
 }
 
-import type { StatePopoverProps } from '../../types/picker.types';
+import type { StatePopoverProps } from '@/features/projects/project-id/work-items/types/picker.types';
 
 export type { StatePopoverProps };
 

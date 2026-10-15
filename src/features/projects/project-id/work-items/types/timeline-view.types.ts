@@ -1,6 +1,6 @@
 import type {
   Item,
-  Column as ColumnType,
+  Column,
   ProjectMember,
   BaseWorkItemViewProps,
   WorkItemCardHandlers,
@@ -40,7 +40,7 @@ export interface TimelineBarData {
   effectiveDue?: Date;
 }
 
-export type DepLineType = 'FS' | 'SS' | 'FF';
+export type DepLineType = 'FS' | 'SS' | 'FF' | 'SF' | 'violated' | 'critical' | 'normal';
 
 export interface DependencyLine {
   fromItemId: string;
@@ -50,14 +50,16 @@ export interface DependencyLine {
   toX: number;
   toY: number;
   type: DepLineType;
+  dependencyType?: 'FS' | 'SS' | 'FF' | 'SF';
+  status?: 'violated' | 'critical' | 'normal';
   violated: boolean;
   isCritical?: boolean;
 }
 
 export interface TimelineViewProps extends BaseWorkItemViewProps, WorkItemCardHandlers {
   items?: Item[];
-  columns: ColumnType[];
-  projectStates?: ColumnType[];
+  columns: Column[];
+  projectStates?: Column[];
   projectId?: string;
   members?: ProjectMember[];
   onAddCard: (columnId: string, title?: string, dueDate?: string) => void;

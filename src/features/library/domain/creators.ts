@@ -10,6 +10,8 @@
  * standardizing author display.
  */
 
+import { stripLatexMarkup } from './metadata';
+
 export interface ParsedCreator {
   firstName: string;
   lastName: string;
@@ -106,6 +108,8 @@ export const NOISE_AUTHOR_WORDS = new Set([
   'copyright',
   'unknown',
   'none',
+  'null',
+  'undefined',
   'na',
   'nil',
   'etal',
@@ -154,7 +158,7 @@ export function isNoiseAuthorName(raw?: string | null): boolean {
  */
 export function cleanAuthorName(raw?: string | null): string {
   if (!raw || typeof raw !== 'string') return '';
-  let cleaned = raw.trim();
+  let cleaned = stripLatexMarkup(raw.trim());
 
   // Strip emails: e.g. <user@domain.com>
   cleaned = cleaned.replace(/<[^>]+@[^>]+>/g, ' ');
@@ -203,6 +207,37 @@ export function cleanAuthorName(raw?: string | null): string {
 }
 
 const GENERATIONAL_SUFFIX_REGEX = /^(?:Jr\.?|Sr\.?|II|III|IV|V|Esq\.?)$/i;
+
+export const SURNAME_PARTICLES = new Set([
+  'van',
+  'von',
+  'zu',
+  'de',
+  'del',
+  'della',
+  'der',
+  'den',
+  'des',
+  'do',
+  'het',
+  'ter',
+  'ten',
+  'la',
+  'le',
+  'las',
+  'los',
+  'du',
+  'di',
+  'da',
+  'dos',
+  'das',
+  'bin',
+  'ibn',
+  'al',
+  'el',
+  'vander',
+  'vanden',
+]);
 
 /**
  * Splits raw author string by typical delimiter tokens (;, newline, or " and ", " & ")
@@ -262,14 +297,20 @@ export function splitAuthorString(rawInput?: string | null): string[] {
         const isSuffix = GENERATIONAL_SUFFIX_REGEX.test(rawTokens[1]);
         const firstHasSpace = rawTokens[0].includes(' ');
         const secondHasSpace = rawTokens[1].includes(' ');
+        const firstWords = rawTokens[0].split(/\s+/).filter(Boolean);
+        const startsWithParticle =
+          firstWords.length >= 2 && SURNAME_PARTICLES.has(firstWords[0]!.toLowerCase());
+        // Check if first token is a compound surname ("van der Maaten", "de la Fuente", "García Márquez", "Nguyễn Văn")
+        const secondIsSingleGivenOrInitials =
+          !secondHasSpace || /^[A-Z]\.?\s+[A-Z]\.?$/.test(rawTokens[1]);
 
-        if (isSuffix) {
+        if (isSuffix || startsWithParticle) {
           result.push(line.trim());
-        } else if (firstHasSpace && secondHasSpace) {
+        } else if (firstHasSpace && secondHasSpace && !secondIsSingleGivenOrInitials) {
           // "Karen Simonyan, Andrew Zisserman" -> two authors
           result.push(rawTokens[0], rawTokens[1]);
         } else {
-          // "Simonyan, Karen" -> single inverted author
+          // "Simonyan, Karen" or "van der Maaten, Laurens" -> single inverted author
           result.push(line.trim());
         }
         continue;
@@ -311,13 +352,14 @@ export function splitAuthorString(rawInput?: string | null): string[] {
 
 /**
  * Lightweight helper to parse an author input string into firstName / lastName.
- * Handles "LastName, FirstName" or "FirstName LastName", generational suffixes, and institutions.
+ * Handles "LastName, FirstName" or "FirstName LastName", nobiliary particles ("van der Maaten"),
+ * generational suffixes, and institutions.
  */
 export function parseCreatorName(rawName: string): ParsedCreator {
   if (!rawName || typeof rawName !== 'string') {
     return { firstName: '', lastName: '', fullName: '', isInstitution: false };
   }
-  const trimmed = rawName.trim();
+  const trimmed = stripLatexMarkup(rawName.trim());
   if (!trimmed) {
     return { firstName: '', lastName: '', fullName: '', isInstitution: false };
   }
@@ -367,7 +409,11 @@ export function parseCreatorName(rawName: string): ParsedCreator {
     return { firstName: '', lastName: tokens[0], fullName: tokens[0], isInstitution: false };
   }
 
-  const lastName = tokens.pop() || '';
+  const lastParts = [tokens.pop() || ''];
+  while (tokens.length > 1 && SURNAME_PARTICLES.has(tokens[tokens.length - 1].toLowerCase())) {
+    lastParts.unshift(tokens.pop()!);
+  }
+  const lastName = lastParts.join(' ');
   const firstName = tokens.join(' ');
   return {
     firstName,
@@ -385,12 +431,27 @@ export interface RawCreatorLike {
   fullName?: string;
   firstName?: string | null;
   lastName?: string | null;
+  given?: string | null;
+  family?: string | null;
+  fieldMode?: number;
   [key: string]: unknown;
+}
+
+function extractCreatorDisplayName(c: RawCreatorLike): string {
+  if (c.fieldMode === 1) {
+    return stripLatexMarkup((c.name || c.fullName || c.lastName || c.family || '').trim());
+  }
+  if (c.firstName || c.lastName || c.given || c.family) {
+    const first = stripLatexMarkup((c.firstName || c.given || '').trim());
+    const last = stripLatexMarkup((c.lastName || c.family || '').trim());
+    return [first, last].filter(Boolean).join(' ');
+  }
+  return stripLatexMarkup((c.fullName || c.name || '').trim());
 }
 
 /**
  * Extracts and normalizes authors array for UI presentation.
- * Supports string arrays and structured creator objects.
+ * Supports string arrays and structured creator objects (Zotero, CSL-JSON, Mendeley).
  */
 export function normalizeAuthors(
   rawAuthors?: unknown,
@@ -414,21 +475,20 @@ export function normalizeAuthors(
     const list: string[] = [];
     for (const item of rawAuthors) {
       if (typeof item === 'string' && item.trim()) {
-        list.push(item.trim());
-      } else if (item && typeof item === 'object') {
-        if (item.firstName || item.lastName || item.given || item.family) {
-          const first = (item.firstName || item.given || '').trim();
-          const last = (item.lastName || item.family || '').trim();
-          list.push([first, last].filter(Boolean).join(' '));
-        } else {
-          const full = (item.fullName || item.name || '').trim();
-          if (full) list.push(full);
+        const split = splitAuthorString(item);
+        for (const s of split) {
+          const parsed = parseCreatorName(s);
+          const full = (parsed.fullName || s).trim();
+          if (full && !isNoiseAuthorName(full)) list.push(full);
         }
+      } else if (item && typeof item === 'object') {
+        const extracted = extractCreatorDisplayName(item as RawCreatorLike);
+        if (extracted && !isNoiseAuthorName(extracted)) list.push(extracted);
       }
     }
     if (list.length > 0) return list;
   } else if (typeof rawAuthors === 'string' && rawAuthors.trim()) {
-    return splitAuthorString(rawAuthors);
+    return splitAuthorString(rawAuthors).map((s) => parseCreatorName(s).fullName || s);
   }
 
   // 2. Structured creators / contributors
@@ -443,23 +503,34 @@ export function normalizeAuthors(
     for (const rawC of creatorList) {
       if (!rawC) continue;
       if (typeof rawC === 'string') {
-        names.push((rawC as string).trim());
-      } else {
-        const c = rawC as Record<string, any>;
-        if (c.firstName || c.lastName || c.given || c.family) {
-          const first = (c.firstName || c.given || '').trim();
-          const last = (c.lastName || c.family || '').trim();
-          names.push([first, last].filter(Boolean).join(' '));
-        } else {
-          const full = (c.fullName || c.name || '').trim();
-          if (full) names.push(full);
+        const split = splitAuthorString(rawC);
+        for (const s of split) {
+          const parsed = parseCreatorName(s);
+          const full = (parsed.fullName || s).trim();
+          if (full && !isNoiseAuthorName(full)) names.push(full);
         }
+      } else {
+        const extracted = extractCreatorDisplayName(rawC);
+        if (extracted && !isNoiseAuthorName(extracted)) names.push(extracted);
       }
     }
     if (names.length > 0) return names;
   }
 
   return [];
+}
+
+/**
+ * Formats authors into a display string with an optional maxAuthors truncation threshold.
+ */
+export function formatAuthorsText(
+  rawAuthors?: unknown,
+  maxAuthors = 3,
+): string {
+  const list = normalizeAuthors(rawAuthors);
+  if (list.length === 0) return '';
+  if (list.length <= maxAuthors) return list.join(', ');
+  return `${list.slice(0, maxAuthors).join(', ')} et al.`;
 }
 
 /**
@@ -477,3 +548,4 @@ export function formatCreatorCompact(authors?: string[] | null): string {
   if (clean.length === 2) return `${clean[0]} & ${clean[1]}`;
   return `${clean[0]} et al.`;
 }
+

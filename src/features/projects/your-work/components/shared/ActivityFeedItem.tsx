@@ -8,7 +8,7 @@ import { getWorkItemProject, type ProjectMap } from '../../utils/your-work.util'
 import type { YourWorkActivityEvent } from '../../schemas/your-work.schema';
 
 export interface ActivityFeedItemProps {
-  activity: YourWorkActivityEvent | any;
+  activity: YourWorkActivityEvent;
   onWorkItemClick?: (workItemId: string) => void;
   workItemProjectMap?: ProjectMap;
   className?: string;
@@ -41,9 +41,10 @@ export const ActivityFeedItem = React.memo<ActivityFeedItemProps>(function Activ
     if (proj) projectName = proj.name;
   }
 
+  const rawAct = activity as unknown as { actor?: { name?: string }; verb?: string };
   const actorName =
-    activity.actorName || activity.user?.name || activity.actor?.name || 'You';
-  const actionVerb = activity.actionVerb || activity.verb || 'updated';
+    activity.actorName || activity.user?.name || rawAct.actor?.name || 'You';
+  const actionVerb = activity.actionVerb || rawAct.verb || 'updated';
 
   const handleClick = () => {
     if (isWorkItemRelated && activity.itemId) {

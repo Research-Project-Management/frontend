@@ -1,8 +1,8 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { AssignmentService } from '../api/work-item.api';
+import { AssignmentService } from '@/features/projects/project-id/work-items/api/work-item.api';
+import { workItemToast } from './use-work-item-toast';
 
 export const assignmentKeys = {
   eligible: (projectId: string) => ['eligible-assignees', projectId] as const,
@@ -24,13 +24,11 @@ export const useJoinItemMutation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Joined work item', { id: 'work-item-assignment' });
+      workItemToast.success('Joined work item', 'assignment');
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to join work item', { id: 'work-item-assignment' }),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to join work item', 'assignment'),
   });
 };
-
-export const useJoinWorkItemMutation = useJoinItemMutation;
 
 export const useLeaveItemMutation = () => {
   const queryClient = useQueryClient();
@@ -41,13 +39,11 @@ export const useLeaveItemMutation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Left work item', { id: 'work-item-assignment' });
+      workItemToast.success('Left work item', 'assignment');
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to leave work item', { id: 'work-item-assignment' }),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to leave work item', 'assignment'),
   });
 };
-
-export const useLeaveWorkItemMutation = useLeaveItemMutation;
 
 export const useSetAssigneesMutation = () => {
   const queryClient = useQueryClient();
@@ -69,7 +65,7 @@ export const useSetAssigneesMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to update assignees', { id: 'work-item-assignment' }),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to update assignees', 'assignment'),
   });
 };
 
@@ -82,9 +78,9 @@ export const useSubscribeItemMutation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Subscribed to notifications', { id: 'work-item-assignment' });
+      workItemToast.success('Subscribed to notifications', 'assignment');
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to subscribe', { id: 'work-item-assignment' }),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to subscribe', 'assignment'),
   });
 };
 
@@ -97,9 +93,9 @@ export const useUnsubscribeItemMutation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Unsubscribed from notifications', { id: 'work-item-assignment' });
+      workItemToast.success('Unsubscribed from notifications', 'assignment');
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to unsubscribe', { id: 'work-item-assignment' }),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to unsubscribe', 'assignment'),
   });
 };
 
@@ -113,7 +109,7 @@ export const useAssignItemMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to assign item'),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to assign item', 'assignment'),
   });
 };
 
@@ -127,11 +123,9 @@ export const useUnassignItemMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to unassign item'),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to unassign item', 'assignment'),
   });
 };
-
-export const useAddAssigneeMutation = useAssignItemMutation;
 
 export const useRemoveAssigneeMutation = () => {
   const queryClient = useQueryClient();
@@ -143,7 +137,7 @@ export const useRemoveAssigneeMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to remove assignee'),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to remove assignee', 'assignment'),
   });
 };
 
@@ -156,17 +150,8 @@ export const useBulkAssignMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to bulk assign'),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to bulk assign', 'bulk'),
   });
 };
 
-// Aliases for use-work-item-mutations
-export const useAssignItem = useAssignItemMutation;
-export const useUnassignItem = useUnassignItemMutation;
-export const useJoinItem = useJoinItemMutation;
-export const useLeaveItem = useLeaveItemMutation;
-export const useSetAssignees = useSetAssigneesMutation;
-export const useAddAssignee = useAddAssigneeMutation;
-export const useRemoveAssignee = useRemoveAssigneeMutation;
-export const useBulkAssign = useBulkAssignMutation;
 

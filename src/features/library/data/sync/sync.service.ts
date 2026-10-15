@@ -1,5 +1,17 @@
+export interface SyncDiagnosticsResponse {
+  status: string;
+  timestamp: string;
+  resilience: Record<string, unknown>;
+  outbox: {
+    workerId: string;
+    metrics: {
+      dispatches: number;
+    };
+  };
+}
+
 import * as api from "@/shared/lib/api";
-import { isProjectScope } from '../../domain/item-url';
+import { isProjectScope } from '@/features/library/domain/item-url';
 
 export interface SyncVersionResponse {
   version: string;
@@ -16,7 +28,7 @@ export interface SyncChangeItem {
   entityId: string;
   action: 'create' | 'update' | 'delete' | string;
   version: number;
-  data?: any;
+  data?: Record<string, unknown>;
   createdAt: string;
 }
 
@@ -24,6 +36,7 @@ export interface SyncChangesResponse {
   since: string;
   count: number;
   hasMore: boolean;
+  compacted?: boolean;
   changes: SyncChangeItem[];
 }
 
@@ -48,6 +61,7 @@ export interface SyncTombstonesResponse {
 export interface SyncQueryParams {
   since?: string;
   limit?: number;
+  compact?: boolean;
 }
 
 function getSyncUrl(scopeId?: string, suffix = ''): string {
@@ -58,6 +72,9 @@ function getSyncUrl(scopeId?: string, suffix = ''): string {
 }
 
 export const SyncService = {
+  getDiagnostics: (scopeId?: string) =>
+    api.apiGet<SyncDiagnosticsResponse>(getSyncUrl(scopeId, 'diagnostics')),
+
   getVersion: (scopeId?: string) =>
     api.apiGet<SyncVersionResponse>(getSyncUrl(scopeId, 'version')),
 
@@ -66,6 +83,7 @@ export const SyncService = {
       params: {
         since: params?.since ?? '0',
         limit: params?.limit ?? 100,
+        ...(params?.compact !== undefined ? { compact: params.compact } : {}),
       },
     }),
 

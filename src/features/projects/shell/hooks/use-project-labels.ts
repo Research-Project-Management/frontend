@@ -60,8 +60,8 @@ export function useCreateProjectLabel() {
       toast.success(`Tag "${newLabel.name}" created`);
       queryClient.invalidateQueries({ queryKey: projectLabelKeys.userLabels() });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to create tag');
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to create tag');
     },
   });
 }
@@ -80,8 +80,8 @@ export function useUpdateProjectLabel() {
       queryClient.invalidateQueries({ queryKey: projectLabelKeys.userLabels() });
       queryClient.invalidateQueries({ queryKey: projectKeys.all() });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to update tag');
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to update tag');
     },
   });
 }
@@ -99,8 +99,8 @@ export function useDeleteProjectLabel() {
       queryClient.invalidateQueries({ queryKey: projectLabelKeys.userLabels() });
       queryClient.invalidateQueries({ queryKey: projectKeys.all() });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to delete tag');
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete tag');
     },
   });
 }
@@ -120,8 +120,8 @@ export function useAssignProjectLabels() {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: projectLabelKeys.byProject(variables.projectId) });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to update project tags');
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to update project tags');
     },
   });
 }
@@ -140,8 +140,8 @@ export function useRemoveProjectLabel() {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: projectLabelKeys.byProject(variables.projectId) });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to remove tag');
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove tag');
     },
   });
 }

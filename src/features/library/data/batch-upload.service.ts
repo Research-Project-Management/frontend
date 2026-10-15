@@ -9,7 +9,7 @@ import type {
   ProcessModalState,
   ProcessBatchUploadOptions,
   ProcessModalStoreApi,
-} from '../types/batch-upload.types';
+} from '@/features/library/types/batch-upload.types';
 
 export type {
   ProcessingFileItem,
@@ -102,10 +102,10 @@ export async function executeBatchUpload(
   let completedCount = 0;
   let successCount = 0;
   let failCount = 0;
+  const effectiveCollection = collectionId || undefined;
 
   const processFile = async (file: File) => {
     const lowerName = file.name.toLowerCase();
-    const effectiveCollection = collectionId || undefined;
 
     // Set item to UPLOADING
     store.setState((s) => {
@@ -214,21 +214,6 @@ export async function executeBatchUpload(
               : s.state,
           };
         });
-
-        // Await cache refetch so real item is ready in store before provisional removal
-        await queryClient.refetchQueries({ queryKey: itemKeys.all(scopeId) });
-        if (effectiveCollection) {
-          await queryClient.refetchQueries({
-            queryKey: itemKeys.byCollection(scopeId, effectiveCollection),
-          });
-        }
-
-        // Immediately remove from provisional items without lag
-        store.setState((s) => ({
-          processingItems: s.processingItems.filter(
-            (p) => !(p.fileName === file.name && p.fileSize === file.size),
-          ),
-        }));
 
         return;
       }
@@ -397,27 +382,6 @@ export async function executeBatchUpload(
             : s.state,
         };
       });
-
-      // Broadly invalidate all library item and count queries
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['library', 'items'] }),
-        queryClient.invalidateQueries({ queryKey: ['library', 'counts'] }),
-        queryClient.invalidateQueries({ queryKey: ['library', 'collections'] }),
-      ]);
-
-      if (effectiveCollection) {
-        await queryClient.refetchQueries({
-          queryKey: itemKeys.byCollection(scopeId, effectiveCollection),
-        });
-      }
-
-      // Small delay to let the refetched queries settle before clearing the provisional item
-      await new Promise((r) => setTimeout(r, 400));
-      store.setState((s) => ({
-        processingItems: s.processingItems.filter(
-          (p) => !(p.fileName === file.name && p.fileSize === file.size),
-        ),
-      }));
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Processing failed';
       markFileFailed(errorMsg);
@@ -440,12 +404,12 @@ export async function executeBatchUpload(
   // Wait until all files have been completely processed
   await Promise.all(workers);
 
-  // Final synchronization
+  // Single coalesced synchronization after batch completion before removing provisional items
   await Promise.all([
     queryClient.refetchQueries({ queryKey: itemKeys.all(scopeId) }),
     queryClient.refetchQueries({ queryKey: itemKeys.counts(scopeId) }),
-    collectionId
-      ? queryClient.refetchQueries({ queryKey: itemKeys.byCollection(scopeId, collectionId) })
+    effectiveCollection
+      ? queryClient.refetchQueries({ queryKey: itemKeys.byCollection(scopeId, effectiveCollection) })
       : Promise.resolve(),
   ]);
   invalidateCollections(queryClient, scopeId);

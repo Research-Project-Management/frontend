@@ -1,16 +1,17 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { LibraryScope } from '../types/core.types';
+import type { LibraryScope } from '@/features/library/types/core.types';
 import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
   type LibraryDisplayOptions,
-} from '../types/display.types';
+} from '@/features/library/types/display.types';
 
 export type InspectorSectionId =
   | 'info'
   | 'abstract'
   | 'files'
   | 'notes'
+  | 'ai'
   | 'collections'
   | 'tags'
   | 'relations'
@@ -30,6 +31,10 @@ export type LibraryModalType =
   | 'MERGE_DUPLICATES'
   | 'EXPORT_BIBTEX'
   | 'SHARE_COLLECTION'
+  | 'ADD_LINK'
+  | 'IMPORT_FROM_USER'
+  | 'TRASH_CONFIRM'
+  | 'CREATE_SAVED_SEARCH'
   | (string & {});
 
 export interface LibraryUIState {
@@ -44,15 +49,19 @@ export interface LibraryUIState {
   // ── Interaction & Selection State ────────────────────────────────────────────
   selectedIds: Set<string>;
   activeItemId: string | null;
+  activeCollectionId: string | null;
+  activeSavedSearchId: string | null;
   viewMode: ViewMode;
   displayOptions: LibraryDisplayOptions;
 
   // ── Centralized Modal Dialog Bus ─────────────────────────────────────────────
   activeModal: LibraryModalType | null;
-  modalProps: Record<string, any>;
+  modalProps: Record<string, unknown>;
 
   // ── Actions: Scope & Layout ──────────────────────────────────────────────────
   setActiveScope: (scope: LibraryScope) => void;
+  setActiveCollectionId: (collectionId: string | null) => void;
+  setActiveSavedSearchId: (savedSearchId: string | null) => void;
   setSidebarOpen: (isOpen: boolean) => void;
   toggleSidebar: () => void;
   setSidebarWidth: (width: number) => void;
@@ -78,7 +87,7 @@ export interface LibraryUIState {
   setViewMode: (mode: ViewMode) => void;
 
   // ── Actions: Modals ──────────────────────────────────────────────────────────
-  openModal: (modal: LibraryModalType, props?: Record<string, any>) => void;
+  openModal: (modal: LibraryModalType, props?: Record<string, unknown>) => void;
   closeModal: () => void;
 }
 
@@ -99,6 +108,8 @@ export const useLibraryUIStore = create<LibraryUIState>()(
 
       selectedIds: new Set<string>(),
       activeItemId: null,
+      activeCollectionId: null,
+      activeSavedSearchId: null,
       viewMode: 'table',
       displayOptions: DEFAULT_LIBRARY_DISPLAY_OPTIONS,
 
@@ -115,7 +126,33 @@ export const useLibraryUIStore = create<LibraryUIState>()(
         })),
 
       // Layout handlers
-      setActiveScope: (activeScope) => set({ activeScope }),
+      setActiveScope: (activeScope) =>
+        set((state) => {
+          const prevKey = `${state.activeScope.type}:${state.activeScope.id || 'user'}`;
+          const nextKey = `${activeScope.type}:${activeScope.id || 'user'}`;
+          if (prevKey === nextKey) {
+            return { activeScope };
+          }
+          return {
+            activeScope,
+            selectedIds: new Set<string>(),
+            activeItemId: null,
+            activeCollectionId: null,
+            activeSavedSearchId: null,
+          };
+        }),
+
+      setActiveCollectionId: (activeCollectionId) =>
+        set({
+          activeCollectionId,
+          ...(activeCollectionId ? { activeSavedSearchId: null } : {}),
+        }),
+
+      setActiveSavedSearchId: (activeSavedSearchId) =>
+        set({
+          activeSavedSearchId,
+          ...(activeSavedSearchId ? { activeCollectionId: null } : {}),
+        }),
 
       setSidebarOpen: (isSidebarOpen: boolean) => set({ isSidebarOpen }),
 
@@ -180,7 +217,10 @@ export const useLibraryUIStore = create<LibraryUIState>()(
       setViewMode: (viewMode: ViewMode) => set({ viewMode }),
 
       // Modal handlers
-      openModal: (activeModal: LibraryModalType, props: any = {}) =>
+      openModal: (
+        activeModal: LibraryModalType,
+        props: Record<string, unknown> = {},
+      ) =>
         set({
           activeModal,
           modalProps:
@@ -192,7 +232,14 @@ export const useLibraryUIStore = create<LibraryUIState>()(
     {
       name: 'flux_library_sidebar_v1',
       partialize: (state) => ({
-        activeScope: state.activeScope,
+        activeScope: {
+          type: state.activeScope.type,
+          id: state.activeScope.id,
+          name: state.activeScope.name,
+          ...(state.activeScope.type === 'project' && state.activeScope.projectId
+            ? { projectId: state.activeScope.projectId }
+            : {}),
+        } as LibraryScope,
         sidebarWidth: state.sidebarWidth,
         inspectorWidth: state.inspectorWidth,
         displayOptions: state.displayOptions,

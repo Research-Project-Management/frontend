@@ -194,7 +194,7 @@ export function ChatInput({
 
   // Active non-archived projects
   const activeProjects = useMemo(() => {
-    return (projects || []).filter((p: any) => !p.isArchived);
+    return (projects || []).filter((p) => !p.isArchived);
   }, [projects]);
 
   // Auto-resize textarea
@@ -220,7 +220,7 @@ export function ChatInput({
     if (!initialProject && typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem('flux_active_project_id');
-        if (stored && activeProjects.some((p: any) => p.id === stored)) {
+        if (stored && activeProjects.some((p) => p.id === stored)) {
           setSelectedProject(stored);
         }
       } catch {}
@@ -275,8 +275,8 @@ export function ChatInput({
             sourceType: 'upload',
           });
           successCount++;
-        } catch (err: any) {
-          toast.error(`Failed to upload ${file.name}: ${err?.message || 'Upload error'}`);
+        } catch (err: unknown) {
+          toast.error(`Failed to upload ${file.name}: ${err instanceof Error ? err.message : 'Upload error'}`);
         } finally {
           setUploadingFiles((prev) => prev.filter((item) => item.id !== tempId));
         }
@@ -421,7 +421,7 @@ export function ChatInput({
   };
 
   const isAllProjects = selectedProject === 'all' || !selectedProject;
-  const currentProjObj = activeProjects.find((p: any) => p.id === selectedProject);
+  const currentProjObj = activeProjects.find((p) => p.id === selectedProject);
   const currentProjName = isAllProjects
     ? 'All Projects'
     : currentProjObj?.name || 'All Projects';
@@ -530,7 +530,7 @@ export function ChatInput({
                 </div>
               )}
 
-              {!isLoadingProjects && activeProjects.map((proj: any) => {
+              {!isLoadingProjects && activeProjects.map((proj) => {
                 const isSelected = selectedProject === proj.id;
                 return (
                   <button

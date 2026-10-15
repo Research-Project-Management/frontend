@@ -11,9 +11,9 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import { StatusIcon } from '@/shared/components/icons';
-import { resolveColumnId } from '../../../utils/work-item.utils';
-import type { Item, Column } from '../../../types/work-item.types';
-import type { ChildItemRowProps } from '../../../types/list-view.types';
+import { resolveColumnId } from '@/features/projects/project-id/work-items/utils/work-item.utils';
+import type { Item, Column } from '@/features/projects/project-id/work-items/types/work-item.types';
+import type { ChildItemRowProps } from '@/features/projects/project-id/work-items/types/list-view.types';
 
 export const ChildItemRow = ({
   childItem,

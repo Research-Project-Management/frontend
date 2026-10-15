@@ -1,4 +1,6 @@
-import { ItemHelpers } from './work-item.utils';
+import { ItemHelpers, EMPTY_ARRAY } from './work-item.utils';
+
+export { EMPTY_ARRAY };
 
 export const PRIORITY_THEME_CLASSES: Record<string, string> = {
   urgent:
@@ -17,4 +19,3 @@ export function formatDueDate(dateStr?: string | null): string {
   return ItemHelpers.formatDate(dateStr);
 }
 
-export const EMPTY_ARRAY: never[] = [];

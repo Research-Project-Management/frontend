@@ -31,7 +31,7 @@ import {
   extractAndImportZipToProject,
   type ExtractedZipProject,
   type ImportZipProgress,
-} from '@/features/editor/sdk/archive/archive-import';
+} from '@/features/editor/subsystems/explorer';
 
 export interface UploadProjectZipModalProps {
   open: boolean;
@@ -103,9 +103,9 @@ export function UploadProjectZipModal({
 
       setExtractedProject(parsed);
       setProjectName(parsed.name);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[UploadProjectZipModal] Parse error:', err);
-      setParseError(err?.message || 'Failed to read ZIP archive. The file might be corrupted.');
+      setParseError(err instanceof Error ? err.message : 'Failed to read ZIP archive. The file might be corrupted.');
       setExtractedProject(null);
     } finally {
       setIsParsing(false);
@@ -155,6 +155,7 @@ export function UploadProjectZipModal({
       const result = await extractAndImportZipToProject({
         extracted: extractedProject,
         projectName: trimmedName,
+        zipFile: selectedFile ?? undefined,
         onProgress: (p) => setProgress(p),
       });
 
@@ -164,9 +165,9 @@ export function UploadProjectZipModal({
 
       // Navigate to the editor for this project's root document
       router.push(`/editor/${result.rootPageId}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[UploadProjectZipModal] Import failed:', err);
-      toast.error(err?.message || 'Failed to import project files.');
+      toast.error(err instanceof Error ? err.message : 'Failed to import project files.');
       setIsImporting(false);
     }
   };

@@ -17,7 +17,7 @@ export interface GitHubIntegrationStatus {
     accountName?: string;
     accountEmail?: string;
   };
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export const githubImportService = {

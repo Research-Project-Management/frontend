@@ -4,21 +4,24 @@ import React from 'react';
 import { UserStar } from 'lucide-react';
 import YourWorkNavigationBar from '@/features/projects/your-work/components/layout/NavigationBar';
 import ProfileSidebar from '@/features/projects/your-work/components/profile/ProfileSidebar';
-import { YourWorkProvider } from '@/features/projects/your-work/context/your-work.context';
-import { useSummaryWork } from '@/features/projects/your-work/hooks/use-summary-work';
+import { YourWorkProvider, useYourWorkContext } from '@/features/projects/your-work/context/your-work.context';
+import { WorkItemDialogModal } from '@/features/projects/your-work/components/shared/WorkItemDialogModal';
+import ProjectLayout from '@/features/projects/shell/components/ProjectLayout';
 
 function YourWorkLayoutContent({ children }: { children: React.ReactNode }) {
-  const { state, actions } = useSummaryWork();
   const {
-    categorizedWorkItems,
+    assigned,
+    created,
+    subscribed,
     activities,
     projectBreakdown,
     userData,
     selectedProjectId,
+    setSelectedProjectId,
     totalCounts,
-  } = state;
-
-  const items = categorizedWorkItems || { assigned: [], created: [], subscribed: [] };
+    selectedWorkItem,
+    closeWorkItem,
+  } = useYourWorkContext();
 
   return (
     <div className="h-full flex min-h-0 overflow-hidden bg-background">
@@ -38,9 +41,9 @@ function YourWorkLayoutContent({ children }: { children: React.ReactNode }) {
         {/* Tabs Bar */}
         <YourWorkNavigationBar
           counts={{
-            assigned: selectedProjectId ? items.assigned.length : totalCounts.assigned,
-            created: selectedProjectId ? items.created.length : totalCounts.created,
-            subscribed: selectedProjectId ? items.subscribed.length : totalCounts.subscribed,
+            assigned: selectedProjectId ? assigned.length : totalCounts.assigned,
+            created: selectedProjectId ? created.length : totalCounts.created,
+            subscribed: selectedProjectId ? subscribed.length : totalCounts.subscribed,
             activity: selectedProjectId ? activities.length : totalCounts.activity,
           }}
         />
@@ -56,13 +59,24 @@ function YourWorkLayoutContent({ children }: { children: React.ReactNode }) {
         userData={userData}
         projects={projectBreakdown}
         selectedProjectId={selectedProjectId}
-        onSelectProject={actions.selectProject}
+        onSelectProject={setSelectedProjectId}
       />
+
+      {/* Shared Work Item Detail Dialog */}
+      {selectedWorkItem && (
+        <WorkItemDialogModal
+          workItemId={selectedWorkItem.workItemId || ''}
+          projectId={selectedWorkItem.projectId}
+          initialWorkItem={selectedWorkItem.workItem}
+          open={Boolean(selectedWorkItem)}
+          onOpenChange={(open) => {
+            if (!open) closeWorkItem();
+          }}
+        />
+      )}
     </div>
   );
 }
-
-import ProjectLayout from '@/features/projects/shell/components/ProjectLayout';
 
 export default function YourWorkLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -73,3 +87,4 @@ export default function YourWorkLayout({ children }: { children: React.ReactNode
     </ProjectLayout>
   );
 }
+

@@ -3,18 +3,19 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { Library, Folder, FolderKanban, X, Plus, Search, Loader2 } from 'lucide-react';
-import { useItems, useCollections } from '../../data';
-import { useLibraryModalStore } from '../../store/library-ui.store';
+import { useItems, useCollections } from '@/features/library/data';
+import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/shared/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
-import type { Item, Collection } from '../../types/library.types';
+import type { Item, Collection } from '@/features/library/types/library.types';
 
 // ── Helper: compute ancestor breadcrumb path for a collection ────────────────
 function getCollectionAncestorPath(
@@ -38,30 +39,35 @@ function getCollectionAncestorPath(
 
 // ── CollectionPickerPopover Component ────────────────────────────────────────
 export interface CollectionPickerPopoverProps {
-  paper: Item;
+  item?: Item;
+  paper?: Item;
   scopeId?: string;
   canEdit?: boolean;
   align?: 'start' | 'center' | 'end';
   children: React.ReactNode;
 }
 
-export function CollectionPickerPopover({
-  paper,
+export function CollectionPickerPopover(props: CollectionPickerPopoverProps) {
+  const paper = (props.item || props.paper)!;
+  const {
   scopeId,
   canEdit = true,
   align = 'end',
   children,
-}: CollectionPickerPopoverProps) {
+  } = props;
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreatingQuick, setIsCreatingQuick] = useState(false);
 
   const effectiveScope = scopeId || paper?.projectId || 'user';
-  const { actions } = useItems({ scopeId: effectiveScope });
+  const { actions } = useItems({ scopeId: effectiveScope, enabled: false });
   const { updatePaper } = actions;
   const { state: colState, createCollection } = useCollections(effectiveScope);
-  const collections = colState?.collections || [];
-  const openModal = useLibraryModalStore((s) => s.openModal);
+  const collections = useMemo(
+    () => colState?.collections || [],
+    [colState?.collections],
+  );
+  const openModal = useLibraryUIStore((s) => s.openModal);
 
   // Map collections for O(1) lookup
   const colMap = useMemo(() => {
@@ -224,15 +230,19 @@ export function CollectionPickerPopover({
             autoFocus
           />
           {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              className="text-foreground hover:bg-muted p-0.5 rounded cursor-pointer shrink-0"
-              title="Clear search"
-              aria-label="Clear search"
-            >
-              <X className="size-3" strokeWidth={1.5} />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="text-foreground hover:bg-muted p-0.5 rounded cursor-pointer shrink-0"
+                  aria-label="Clear search"
+                >
+                  <X className="size-3" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Clear search</TooltipContent>
+            </Tooltip>
           )}
         </div>
 
@@ -320,27 +330,31 @@ export function CollectionPickerPopover({
 
 // ── Main CollectionsSection Component ─────────────────────────────────────────
 interface CollectionsSectionProps {
-  paper: Item;
+  item?: Item;
+  paper?: Item;
   scopeId?: string;
   projectId?: string;
-  onCreateCollection?: () => void;
   hideHeader?: boolean;
   canEdit?: boolean;
 }
 
-export default function CollectionsSection({
-  paper,
+export default function CollectionsSection(props: CollectionsSectionProps) {
+  const paper = (props.item || props.paper)!;
+  const {
   scopeId,
   projectId,
-  onCreateCollection,
   hideHeader = false,
   canEdit = true,
-}: CollectionsSectionProps) {
+  } = props;
   const effectiveScope = scopeId || projectId || paper?.projectId || 'user';
-  const { actions } = useItems({ scopeId: effectiveScope });
+  const openModal = useLibraryUIStore((s) => s.openModal);
+  const { actions } = useItems({ scopeId: effectiveScope, enabled: false });
   const { updatePaper } = actions;
   const { state: colState } = useCollections(effectiveScope);
-  const collections = colState?.collections || [];
+  const collections = useMemo(
+    () => colState?.collections || [],
+    [colState?.collections],
+  );
   const { projects = [] } = useProjects();
 
   // Resolve active library root name and icon (My Library vs Project Library)
@@ -459,16 +473,19 @@ export default function CollectionsSection({
             Libraries and Collections
           </h3>
           {canEdit && (
-            <CollectionPickerPopover paper={paper} scopeId={effectiveScope} canEdit={canEdit}>
-              <button
-                type="button"
-                className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
-                title="Add to collection"
-                aria-label="Add to collection"
-              >
-                <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-              </button>
-            </CollectionPickerPopover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => openModal('CREATE_COLLECTION')}
+                  className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
+                  aria-label="Create collection"
+                >
+                  <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Create collection</TooltipContent>
+            </Tooltip>
           )}
         </div>
       )}
@@ -483,48 +500,43 @@ export default function CollectionsSection({
               <Library className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
             )}
           </div>
-          <Link
-            href={libraryRootHref}
-            className="font-medium text-12 text-foreground tracking-tight truncate hover:underline select-none"
-            title={`Navigate to ${libraryTitle}`}
-          >
-            {libraryTitle}
-          </Link>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href={libraryRootHref}
+                className="font-medium text-12 text-foreground tracking-tight truncate hover:underline select-none"
+              >
+                {libraryTitle}
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="top">{`Navigate to ${libraryTitle}`}</TooltipContent>
+          </Tooltip>
         </div>
 
-        {assignedCollectionIdsSet.size === 0 ? (
-          <span className="text-11 px-1.5 py-0.2 rounded bg-muted text-foreground font-normal shrink-0">
-            Unfiled
-          </span>
-        ) : (
+        {assignedCollectionIdsSet.size > 0 && (
           <span className="text-11 px-1.5 py-0.2 rounded bg-muted font-medium text-foreground shrink-0">
             {assignedCollectionIdsSet.size}
           </span>
         )}
       </div>
 
-      {/* When Unfiled: Clean, non-intrusive empty callout with Add button */}
-      {assignedCollectionIdsSet.size === 0 && (
-        <div className="flex flex-col gap-1.5 px-2.5 py-2 rounded-md bg-muted/40 border border-border/50 text-11 text-foreground mt-0.5">
-          <span className="leading-snug">
-            This item is in your library root and is not filed in any collection.
-          </span>
-          {canEdit && (
-            <CollectionPickerPopover
-              paper={paper}
-              scopeId={effectiveScope}
-              canEdit={canEdit}
-              align="start"
+      {/* When Unfiled: Clean inline Add action */}
+      {assignedCollectionIdsSet.size === 0 && canEdit && (
+        <div className="pt-0.5 px-1.5">
+          <CollectionPickerPopover
+            paper={paper}
+            scopeId={effectiveScope}
+            canEdit={canEdit}
+            align="start"
+          >
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-11 text-foreground hover:text-foreground/80 transition-colors cursor-pointer py-0.5"
             >
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 text-11 font-medium text-primary hover:text-primary/80 transition-colors w-fit cursor-pointer"
-              >
-                <Plus className="size-3" strokeWidth={2} />
-                Add to a collection
-              </button>
-            </CollectionPickerPopover>
-          )}
+              <Plus className="size-3" strokeWidth={1.5} />
+              Add to a collection
+            </button>
+          </CollectionPickerPopover>
         </div>
       )}
 
@@ -549,29 +561,41 @@ export default function CollectionsSection({
                     {col.path}
                   </span>
                 )}
-                <Link
-                  href={href}
-                  className="text-12 truncate leading-tight text-foreground font-normal hover:underline select-none"
-                  title={col.path ? `${col.path} / ${col.name}` : col.name}
-                >
-                  {col.name}
-                </Link>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href={href}
+                      className="text-12 truncate leading-tight text-foreground font-normal hover:underline select-none"
+                    >
+                      {col.name}
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    {col.path ? `${col.path} / ${col.name}` : col.name}
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
 
             {canEdit && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRemoveFromCollection(col.id);
-                }}
-                className="invisible group-hover:visible max-md:visible size-5 flex items-center justify-center rounded hover:bg-muted text-foreground cursor-pointer shrink-0 transition-colors"
-                title={`Remove from "${col.name}" (item will remain in library)`}
-                aria-label={`Remove from collection ${col.name}, item will remain in library`}
-              >
-                <X className="size-3.5 shrink-0" strokeWidth={1.5} />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveFromCollection(col.id);
+                    }}
+                    className="invisible group-hover:visible max-md:visible size-5 flex items-center justify-center rounded hover:bg-muted text-foreground cursor-pointer shrink-0 transition-colors"
+                    aria-label={`Remove from collection ${col.name}, item will remain in library`}
+                  >
+                    <X className="size-3.5 shrink-0" strokeWidth={1.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  {`Remove from "${col.name}" (item will remain in library)`}
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
         );

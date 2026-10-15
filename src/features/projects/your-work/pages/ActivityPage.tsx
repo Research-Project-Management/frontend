@@ -1,43 +1,40 @@
 'use client';
 
 import React from 'react';
-import { useActivityFeed } from '../hooks/use-activity-feed';
-import { ActivityTimeline } from '../components/activity/ActivityTimeline';
+import { useYourWorkContext } from '../context/your-work.context';
+import { ActivityFeedList } from '../components/shared/ActivityFeedList';
 import { YourWorkPageLayout } from '../components/shared/YourWorkPageLayout';
 import { YourWorkEmptyState } from '../components/shared/YourWorkEmptyState';
 
 export function ActivityPage() {
-  const { state } = useActivityFeed();
   const {
-    allWorkItems,
     activities,
     workItemProjectMap,
     isLoading,
-    isLoadingActivity,
+    isLoadingYourWork,
     isError,
     error,
-  } = state;
+    openWorkItem,
+  } = useYourWorkContext();
 
   return (
-    <YourWorkPageLayout
-      isLoading={isLoading}
-      isError={isError}
-      error={error}
-      allWorkItems={allWorkItems}
-      renderList={(handleOpenItem) =>
-        activities.length === 0 ? (
-          <YourWorkEmptyState variant="activity" />
-        ) : (
-          <ActivityTimeline
-            activities={activities}
-            isLoading={isLoadingActivity}
-            onWorkItemClick={handleOpenItem}
-            workItemProjectMap={workItemProjectMap}
-          />
-        )
-      }
-    />
+    <YourWorkPageLayout isLoading={isLoading} isError={isError} error={error}>
+      {activities.length === 0 ? (
+        <YourWorkEmptyState variant="activity" />
+      ) : (
+        <ActivityFeedList
+          title="Recent activity"
+          showCount
+          items={activities}
+          isLoading={isLoadingYourWork}
+          onWorkItemClick={openWorkItem}
+          workItemProjectMap={workItemProjectMap}
+          emptyPadding="py-12"
+        />
+      )}
+    </YourWorkPageLayout>
   );
 }
 
 export default ActivityPage;
+

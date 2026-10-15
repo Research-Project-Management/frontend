@@ -4,8 +4,8 @@ import { useMemo, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { prioritySchema, type Priority } from '../types/work-item.types';
-import type { AttachCenterData } from '../components/modals/Attachments';
+import { prioritySchema, type Priority } from '@/features/projects/project-id/work-items/types/work-item.types';
+import type { AttachCenterData } from '@/features/projects/project-id/work-items/components/modals/Attachments';
 
 // ── Work Item Form & Mutation Controller ─────────────────────────────────────
 
@@ -26,17 +26,12 @@ export const createWorkItemFormSchema = z.object({
   createMore: z.boolean(),
 });
 
-export const createItemFormSchema = createWorkItemFormSchema;
-
 export type CreateWorkItemFormData = z.infer<typeof createWorkItemFormSchema>;
-export type CreateItemFormData = CreateWorkItemFormData;
 
 export interface UseWorkItemFormOptions {
   defaultColumnId?: string;
   initialValues?: Partial<CreateWorkItemFormData>;
 }
-
-export type UseItemFormOptions = UseWorkItemFormOptions;
 
 export function useWorkItemForm(options: UseWorkItemFormOptions = {}) {
   const { defaultColumnId = 'backlog', initialValues } = options;
@@ -191,5 +186,3 @@ export function useWorkItemForm(options: UseWorkItemFormOptions = {}) {
     setCreateMore,
   };
 }
-
-export const useItemForm = useWorkItemForm;

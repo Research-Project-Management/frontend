@@ -85,8 +85,8 @@ export function AddStatusUpdateModal({
       setMessage('');
       setSelectedStatus('on_track');
       onOpenChange(false);
-    } catch (err: any) {
-      const msg = err?.message || 'Failed to post project status update';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to post project status update';
       toast.error(msg, { id: 'project-status-update' });
     } finally {
       setIsSubmitting(false);

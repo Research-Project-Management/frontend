@@ -24,4 +24,21 @@ export * from './search/search.queries';
 export * from './sync/sync.service';
 export * from './sync/sync.queries';
 export * from './batch-upload.service';
+export {
+  readerService,
+  ReaderService,
+  AnnotationsService,
+  getPaperFileUrl,
+  fetchPdfBlob,
+} from './reader/reader.service';
+export { AiService, streamPaperChat } from './reader/ai.service';
+export {
+  useReaderItem,
+  useReaderDocument,
+  useReaderFulltext,
+  useExportAnnotatedPdf,
+  useOcrExtraction,
+} from './reader/reader.queries';
+
+
 

@@ -64,6 +64,7 @@ export interface LibraryPermissions {
   readonly canCreateItem: boolean;
   readonly canEditItem: boolean;
   readonly canDeleteItem: boolean;
+  readonly canPurgeItem?: boolean;
   readonly canManageCollections: boolean;
   readonly canImport: boolean;
   readonly canExport: boolean;
@@ -80,6 +81,8 @@ export interface UserLibraryScope {
   id?: string; // Optional identifier ('user')
   name: string; // "Library"
   role?: 'owner'; // Optional alias for backward compatibility with legacy checks
+  permissions?: Partial<LibraryPermissions> | string[] | Record<string, unknown>;
+  effectivePermissions?: string[];
 }
 
 /**
@@ -93,7 +96,9 @@ export interface ProjectLibraryScope {
   id: string; // Project UUID
   projectId?: string; // Canonical alias for Project UUID
   name: string; // Project title
-  role: ProjectRole;
+  role?: ProjectRole;
+  permissions?: Partial<LibraryPermissions> | string[] | Record<string, unknown>;
+  effectivePermissions?: string[];
 }
 
 /**

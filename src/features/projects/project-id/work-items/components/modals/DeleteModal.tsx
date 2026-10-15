@@ -4,8 +4,8 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Loader2 } from 'lucide-react';
-import type { Item } from '../../types/work-item.types';
-import type { DeleteModalProps } from '../../types/modal.types';
+import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
+import type { DeleteModalProps } from '@/features/projects/project-id/work-items/types/modal.types';
 
 export type { DeleteModalProps };
 

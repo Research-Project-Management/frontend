@@ -2,9 +2,8 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { Item, Column, Project, ProjectMember } from '../../types/work-item.types';
-import type { AssigneeFilterOption } from '../../hooks/use-topbar';
-import { AnalyticsService } from '../../api/work-item.api';
+import type { Item, Column } from '@/features/projects/project-id/work-items/types/work-item.types';
+import { AnalyticsService } from '@/features/projects/project-id/work-items/api/work-item.api';
 
 import {
   Sheet,
@@ -21,7 +20,7 @@ import {
   AvatarImage,
 } from '@/shared/components/ui/avatar';
 import { BarChart3, Users, CheckCircle2 } from 'lucide-react';
-import type { AnalyticsDrawerProps } from '../../types/layout.types';
+import type { AnalyticsDrawerProps } from '@/features/projects/project-id/work-items/types/layout.types';
 
 export type { AnalyticsDrawerProps };
 

@@ -21,22 +21,23 @@ import { Input } from '@/shared/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
 import { useProjectPages } from '@/features/projects/project-id/pages/hooks/use-page';
 import { useViewItems } from '@/features/library/data/catalog/catalog.queries';
-import { useUploadFilesWithToast } from '../../hooks/use-attachment';
+import { useUploadFilesWithToast } from '@/features/projects/project-id/work-items/hooks/use-attachment';
 import type {
   AttachPageItem,
   AttachPaperItem,
   AttachFileItem,
   AttachLinkItem,
-} from '../../types/work-item.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 import type {
   ItemAttachment,
   AttachCenterData,
   AttachmentsProps,
-} from '../../types/attachment.types';
+} from '@/features/projects/project-id/work-items/types/attachment.types';
 import {
   getAttachmentTypeLabel,
   formatAttachmentMeta,
-} from '../../utils/attachment.utils';
+} from '@/features/projects/project-id/work-items/utils/attachment.utils';
+import { normalizeAttachments } from '@/features/projects/project-id/work-items/utils/modal.utils';
 
 export type { ItemAttachment, AttachCenterData, AttachmentsProps };
 
@@ -59,18 +60,10 @@ export function Attachments({
   isReadOnly = false,
 }: AttachmentsProps) {
   // Normalize attachments input (supporting both structured object and legacy flat array)
-  const normalized: AttachCenterData = React.useMemo(() => {
-    if (!attachments) return { pages: [], papers: [], files: [], links: [] };
-    if (Array.isArray(attachments)) {
-      return { pages: [], papers: [], files: attachments, links: [] };
-    }
-    return {
-      pages: Array.isArray(attachments.pages) ? attachments.pages : [],
-      papers: Array.isArray(attachments.papers) ? attachments.papers : [],
-      files: Array.isArray(attachments.files) ? attachments.files : [],
-      links: Array.isArray(attachments.links) ? attachments.links : [],
-    };
-  }, [attachments]);
+  const normalized: AttachCenterData = React.useMemo(
+    () => normalizeAttachments(attachments),
+    [attachments],
+  );
 
   const [activeTab, setActiveTab] = useState<'pages' | 'papers' | 'files' | 'links'>('pages');
 
@@ -127,11 +120,6 @@ export function Attachments({
   // Attach Link State
   const [linkTitle, setLinkTitle] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
-
-  // File rename state
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-  const [renameItem, setRenameItem] = useState<ItemAttachment | null>(null);
-  const [renameValue, setRenameValue] = useState('');
 
   // File direct upload state
   const uploadFilesWithToast = useUploadFilesWithToast();

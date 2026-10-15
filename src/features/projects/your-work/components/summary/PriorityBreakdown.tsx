@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -11,8 +11,7 @@ import {
   Cell,
   Tooltip as RechartsTooltip,
 } from 'recharts';
-import { cn } from "@/shared/lib/utils";
-import { EmptyIllustration } from './BreakdownCard';
+import { BreakdownCard, BreakdownTooltip } from './BreakdownCard';
 
 export interface PriorityBreakdownProps {
   priorityBreakdown?: Record<string, number>;
@@ -26,34 +25,6 @@ interface PriorityItem {
   label: string;
   count: number;
   hex: string;
-}
-
-interface PriorityTooltipProps {
-  active?: boolean;
-  payload?: Array<{ payload: PriorityItem }>;
-  total: number;
-}
-
-function PriorityCustomTooltip({ active, payload, total }: PriorityTooltipProps) {
-  if (!active || !payload || !payload.length) return null;
-  const data = payload[0].payload;
-  const percentage = total > 0 ? Math.round((data.count / total) * 100) : 0;
-
-  return (
-    <div className="rounded-md bg-popover px-2.5 py-1.5 text-12 text-popover-foreground border border-border shadow-overlay">
-      <div className="flex items-center gap-1.5 font-medium">
-        <span
-          className="size-2 rounded-full shrink-0"
-          style={{ backgroundColor: data.hex }}
-        />
-        <span>{data.label} Priority</span>
-      </div>
-      <div className="mt-1 text-11 text-muted-foreground flex items-center gap-1">
-        <span className="font-medium text-foreground tabular-nums">{data.count} items</span>
-        <span>({percentage}%)</span>
-      </div>
-    </div>
-  );
 }
 
 const PRIORITY_DEFINITIONS = [
@@ -70,11 +41,6 @@ export const PriorityBreakdown = React.memo<PriorityBreakdownProps>(function Pri
   totalAssigned,
   className,
 }: PriorityBreakdownProps) {
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
   const effectiveTotal = totalAssigned !== undefined ? totalAssigned : total;
 
   const priorities: PriorityItem[] = useMemo(() => PRIORITY_DEFINITIONS.map((def) => ({
@@ -86,92 +52,88 @@ export const PriorityBreakdown = React.memo<PriorityBreakdownProps>(function Pri
     effectiveTotal === 0 || priorities.every((p) => (p.count || 0) === 0);
 
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
-      <h3 className="text-13 font-semibold text-foreground tracking-tight">
-        Work items by priority
-      </h3>
-
-      <div className="rounded-md bg-muted/40 p-5 min-h-[290px] flex flex-col justify-center">
-        {isEmpty ? (
-          <div className="flex flex-col items-center justify-center py-6 text-center">
-            <EmptyIllustration />
-            <span className="text-12 text-muted-foreground mt-3 font-normal">
-              No work item assigned yet
-            </span>
-          </div>
-        ) : (
-          <div className="flex flex-col justify-between h-full space-y-3">
-            {/* Vertical Bar Chart */}
-            <div className="h-[190px] w-full">
-              {isMounted ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={priorities}
-                    margin={{ top: 14, right: 14, left: -22, bottom: 0 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      vertical={false}
-                      className="stroke-border/40"
-                    />
-                    <XAxis
-                      dataKey="label"
-                      tickLine={false}
-                      axisLine={false}
-                      className="text-11 fill-muted-foreground font-medium"
-                      dy={6}
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      tickLine={false}
-                      axisLine={false}
-                      className="text-11 fill-muted-foreground"
-                      width={32}
-                    />
-                    <RechartsTooltip
-                      content={
-                        <PriorityCustomTooltip total={effectiveTotal} />
-                      }
-                      cursor={{ fill: 'var(--muted)', opacity: 0.25 }}
-                    />
-                    <Bar
-                      dataKey="count"
-                      barSize={26}
-                      radius={[4, 4, 0, 0]}
-                    >
-                      {priorities.map((entry) => (
-                        <Cell key={entry.key} fill={entry.hex} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full w-full rounded-md bg-muted/30 animate-pulse" />
-              )}
-            </div>
-
-            {/* Bottom Numeric Legend Strip */}
-            <div className="flex items-center justify-between gap-1 pt-2.5 border-t border-border/40">
-              {priorities.map((item) => (
-                <div key={item.key} className="flex items-center gap-1.5 text-12">
-                  <span
-                    className="size-2 rounded-full shrink-0"
-                    style={{ backgroundColor: item.hex }}
+    <BreakdownCard
+      title="Work items by priority"
+      isEmpty={isEmpty}
+      className={className}
+    >
+      {(isMounted) => (
+        <div className="flex flex-col justify-between h-full space-y-3">
+          {/* Vertical Bar Chart */}
+          <div className="h-[190px] w-full">
+            {isMounted ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={priorities}
+                  margin={{ top: 14, right: 14, left: -22, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    className="stroke-border/40"
                   />
-                  <span className="text-11 font-medium text-muted-foreground hidden sm:inline">
-                    {item.label}
-                  </span>
-                  <span className="text-12 font-medium text-foreground tabular-nums">
-                    {item.count}
-                  </span>
-                </div>
-              ))}
-            </div>
+                  <XAxis
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={false}
+                    className="text-11 fill-muted-foreground font-medium"
+                    dy={6}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    tickLine={false}
+                    axisLine={false}
+                    className="text-11 fill-muted-foreground"
+                    width={32}
+                  />
+                  <RechartsTooltip
+                    content={
+                      <BreakdownTooltip
+                        total={effectiveTotal}
+                        labelSuffix=" Priority"
+                        countSuffix=" items"
+                      />
+                    }
+                    cursor={{ fill: 'var(--muted)', opacity: 0.25 }}
+                  />
+                  <Bar
+                    dataKey="count"
+                    barSize={26}
+                    radius={[4, 4, 0, 0]}
+                  >
+                    {priorities.map((entry) => (
+                      <Cell key={entry.key} fill={entry.hex} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full rounded-md bg-muted/30 animate-pulse" />
+            )}
           </div>
-        )}
-      </div>
-    </div>
+
+          {/* Bottom Numeric Legend Strip */}
+          <div className="flex items-center justify-between gap-1 pt-2.5 border-t border-border/40">
+            {priorities.map((item) => (
+              <div key={item.key} className="flex items-center gap-1.5 text-12">
+                <span
+                  className="size-2 rounded-full shrink-0"
+                  style={{ backgroundColor: item.hex }}
+                />
+                <span className="text-11 font-medium text-muted-foreground hidden sm:inline">
+                  {item.label}
+                </span>
+                <span className="text-12 font-medium text-foreground tabular-nums">
+                  {item.count}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </BreakdownCard>
   );
 });
 
 export default PriorityBreakdown;
+

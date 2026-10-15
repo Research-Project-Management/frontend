@@ -1,10 +1,10 @@
-import type { Item, Column as ColumnType } from './work-item.types';
+import type { Item, Column } from './work-item.types';
 
 export type CalendarLayoutMode = 'month' | 'week';
 
 export interface CalendarViewProps {
   items?: Item[];
-  columns: ColumnType[];
+  columns: Column[];
   projectId?: string;
   onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
   onOpenCardDetail: (item: Item) => void;

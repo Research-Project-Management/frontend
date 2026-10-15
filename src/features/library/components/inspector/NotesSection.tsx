@@ -4,20 +4,18 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { MinusCircle, Plus, StickyNote } from 'lucide-react';
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Button } from "@/shared/components/ui/button";
-import { normalizeNotes, type NormalizedNote } from '../../domain/metadata';
-import { useNotes } from '../../data';
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
+import { normalizeNotes, type NormalizedNote } from '@/features/library/domain/metadata';
+import { useNotes } from '@/features/library/data';
 import { cn } from "@/shared/lib/utils";
-import type { Item } from '@/features/library/types/library.types';
+import type { Item, Note } from '@/features/library/types/library.types';
 
 export interface NotesSectionProps {
   item?: Item;
-  /** @deprecated Use item instead */
   paper?: Item;
   scopeId?: string;
   projectId?: string;
   onUpdateItem?: (data: Partial<Item>) => void;
-  /** @deprecated Use onUpdateItem instead */
-  onUpdatePaper?: (data: Partial<Item>) => void;
   onAddNote?: (content: string) => void;
   onDeleteNote?: (noteId: string, noteContent?: string) => void;
   onRequestDelete?: (note: { id: string; content: string }) => void;
@@ -101,7 +99,7 @@ function NotesSectionContent({
 
   const notes: NormalizedNote[] = useMemo(() => {
     if (canonicalNotes && canonicalNotes.length > 0) {
-      return canonicalNotes.map((noteItem: any) => ({
+      return canonicalNotes.map((noteItem: Note & { content?: string }) => ({
         id: noteItem.id,
         content: noteItem.contentMd || noteItem.content || '',
         createdAt: noteItem.createdAt,
@@ -240,15 +238,19 @@ function NotesSectionContent({
             Notes
           </h3>
           {canEdit && (
-            <button
-              type="button"
-              onClick={() => setIsAdding(true)}
-              className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
-              title="Add note"
-              aria-label="Add note"
-            >
-              <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setIsAdding(true)}
+                  className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
+                  aria-label="Add note"
+                >
+                  <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Add note</TooltipContent>
+            </Tooltip>
           )}
         </div>
       )}
@@ -295,17 +297,21 @@ function NotesSectionContent({
               &ldquo;{potentialCommentText}&rdquo;
             </p>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleConvertCommentToNote}
-            className="h-6 text-10 shrink-0 font-normal px-2 gap-1 cursor-pointer"
-            title="Convert publication comment to a research note"
-          >
-            <Plus className="size-3" />
-            <span>Add as Note</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleConvertCommentToNote}
+                className="h-6 text-10 shrink-0 font-normal px-2 gap-1 cursor-pointer"
+              >
+                <Plus className="size-3" />
+                <span>Add as Note</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Convert publication comment to a research note</TooltipContent>
+          </Tooltip>
         </div>
       )}
 
@@ -373,25 +379,36 @@ function NotesSectionContent({
                 <div className="size-4 shrink-0 flex items-center justify-center">
                   <NoteIcon className="size-3.5 text-foreground shrink-0" />
                 </div>
-                <span className="text-xs font-normal text-foreground tracking-tight select-text break-words leading-snug line-clamp-2" title={n.content}>
-                  {n.content}
-                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-xs font-normal text-foreground tracking-tight select-text break-words leading-snug line-clamp-2">
+                      {n.content}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs break-words">
+                    {n.content}
+                  </TooltipContent>
+                </Tooltip>
                 {onNavigateToAnnotation && (() => {
                   const pageMatch = n.content.match(/(?:p\.|page)\s*(\d+)/i);
                   if (pageMatch) {
                     const pageNum = parseInt(pageMatch[1], 10);
                     return (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onNavigateToAnnotation(pageNum);
-                        }}
-                        className="text-10 font-medium text-primary hover:underline px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 shrink-0 cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden"
-                        title={`Jump to page ${pageNum}`}
-                      >
-                        p. {pageNum}
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onNavigateToAnnotation(pageNum);
+                            }}
+                            className="text-10 font-medium text-primary hover:underline px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 shrink-0 cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden"
+                          >
+                            p. {pageNum}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">{`Jump to page ${pageNum}`}</TooltipContent>
+                      </Tooltip>
                     );
                   }
                   return null;
@@ -400,25 +417,29 @@ function NotesSectionContent({
 
               {/* Minus circle button on hover / mobile visible */}
               {canEdit && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onRequestDelete) {
-                      onRequestDelete({ id: n.id, content: n.content });
-                    } else if (onDeleteNote) {
-                      onDeleteNote(n.id, n.content);
-                    } else if (deleteNote) {
-                      const target = canonicalNotes.find((cn) => cn.id === n.id);
-                      deleteNote(n.id, target?.version);
-                    }
-                  }}
-                  className="invisible group-hover/note:visible max-md:visible size-5 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0 relative before:absolute before:-inset-2.5 md:before:hidden"
-                  title="Delete note"
-                  aria-label="Delete note"
-                >
-                  <MinusCircle className="size-3.5 text-foreground shrink-0" />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onRequestDelete) {
+                          onRequestDelete({ id: n.id, content: n.content });
+                        } else if (onDeleteNote) {
+                          onDeleteNote(n.id, n.content);
+                        } else if (deleteNote) {
+                          const target = canonicalNotes.find((cn) => cn.id === n.id);
+                          deleteNote(n.id, target?.version);
+                        }
+                      }}
+                      className="invisible group-hover/note:visible max-md:visible size-5 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0 relative before:absolute before:-inset-2.5 md:before:hidden"
+                      aria-label="Delete note"
+                    >
+                      <MinusCircle className="size-3.5 text-foreground shrink-0" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Delete note</TooltipContent>
+                </Tooltip>
               )}
             </div>
           );

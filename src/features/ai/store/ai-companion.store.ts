@@ -65,13 +65,14 @@ export const useAiCompanionStore = create<AiCompanionState>()(
     {
       name: 'flux-ai-companion-storage',
       version: 2,
-      migrate: (persistedState: any, version: number) => {
-        if (version < 2 && persistedState) {
-          if (persistedState.width === 420 || !persistedState.width) {
-            persistedState.width = 380;
+      migrate: (persistedState: unknown, version: number) => {
+        const state = persistedState as Partial<AiCompanionState> | undefined;
+        if (version < 2 && state) {
+          if (state.width === 420 || !state.width) {
+            state.width = 380;
           }
         }
-        return persistedState;
+        return state as AiCompanionState;
       },
       partialize: (state) => ({
         isOpen: state.isOpen,

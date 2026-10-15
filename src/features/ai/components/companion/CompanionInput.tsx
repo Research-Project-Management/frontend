@@ -206,7 +206,7 @@ export function CompanionInput({
 
   // Active non-archived projects
   const activeProjects = useMemo(() => {
-    return (projects || []).filter((p: any) => !p.isArchived);
+    return (projects || []).filter((p) => !p.isArchived);
   }, [projects]);
 
   // Track if user explicitly clicked "None" in the dropdown to avoid auto-selecting again in this session
@@ -233,7 +233,7 @@ export function CompanionInput({
       if (currentProjectId) {
         hasUserExplicitlyClearedRef.current = false;
         const matched = activeProjects.find(
-          (p: any) => p.id === currentProjectId || p.identifier === currentProjectId
+          (p) => p.id === currentProjectId || p.identifier === currentProjectId
         );
         const resolvedId = matched ? matched.id : currentProjectId;
         setSelectedProject(resolvedId);
@@ -261,7 +261,7 @@ export function CompanionInput({
     // 1. If route project ID is present, try matching it first
     if (currentProjectId) {
       const matched = activeProjects.find(
-        (p: any) => p.id === currentProjectId || p.identifier === currentProjectId
+        (p) => p.id === currentProjectId || p.identifier === currentProjectId
       );
       if (matched) {
         if (selectedProject !== matched.id) {
@@ -277,7 +277,7 @@ export function CompanionInput({
     // 2. If current selectedProject matches an active project (by id or identifier)
     if (selectedProject) {
       const matched = activeProjects.find(
-        (p: any) => p.id === selectedProject || p.identifier === selectedProject
+        (p) => p.id === selectedProject || p.identifier === selectedProject
       );
       if (matched) {
         if (selectedProject !== matched.id) {
@@ -295,7 +295,7 @@ export function CompanionInput({
       const stored = localStorage.getItem('flux_active_project_id');
       if (stored) {
         const matched = activeProjects.find(
-          (p: any) => p.id === stored || p.identifier === stored
+          (p) => p.id === stored || p.identifier === stored
         );
         if (matched) {
           setSelectedProject(matched.id);
@@ -317,7 +317,7 @@ export function CompanionInput({
   const filteredProjects = useMemo(() => {
     const q = projectSearch.trim().toLowerCase();
     if (!q) return activeProjects;
-    return activeProjects.filter((p: any) =>
+    return activeProjects.filter((p) =>
       (p.name || '').toLowerCase().includes(q)
     );
   }, [activeProjects, projectSearch]);
@@ -380,8 +380,8 @@ export function CompanionInput({
             },
           ]);
           successCount++;
-        } catch (err: any) {
-          toast.error(`Failed to upload ${file.name}: ${err?.message || 'Error'}`);
+        } catch (err: unknown) {
+          toast.error(`Failed to upload ${file.name}: ${err instanceof Error ? err.message : 'Error'}`);
         } finally {
           setUploadingFiles((prev) => prev.filter((item) => item.id !== tempId));
         }
@@ -498,7 +498,7 @@ export function CompanionInput({
     if (!selectedProject) return null;
     return (
       activeProjects.find(
-        (p: any) => p.id === selectedProject || p.identifier === selectedProject
+        (p) => p.id === selectedProject || p.identifier === selectedProject
       ) || null
     );
   }, [activeProjects, selectedProject]);
@@ -640,7 +640,7 @@ export function CompanionInput({
                 )}
 
                 {!isLoadingProjects &&
-                  filteredProjects.map((p: any) => {
+                  filteredProjects.map((p) => {
                     const isSelected =
                       selectedProject === p.id || selectedProject === p.identifier;
                     const displayName =

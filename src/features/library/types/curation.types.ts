@@ -5,6 +5,7 @@ export const duplicateGroupSchema = z.object({
   matchType: z.enum(['DOI', 'TITLE_AUTHOR_YEAR']),
   confidence: z.enum(['high', 'medium']),
   key: z.string(),
+  recommendedMasterId: z.string().optional(),
   papers: z.array(itemSchema),
   items: z.array(itemSchema).optional(),
 });

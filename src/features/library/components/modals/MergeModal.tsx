@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -22,25 +22,19 @@ import {
   Paperclip,
   Tag,
   Folder,
-  Split,
-  Info,
   SlidersHorizontal,
   AlertTriangle,
 } from 'lucide-react';
-import type { Item } from '../../types/items.types';
-import { formatAcademicAuthors } from '../../utils/academic-text';
-import { libraryServices } from '../../data';
-import {
-  inspectItemDifferences,
-  aggregateItemAssets,
-  type ItemFieldDiff,
-  type FieldOptionValue,
-} from '../../domain/diff';
+import type { Item } from '@/features/library/types/items.types';
+import { formatAcademicAuthors } from '@/features/library/domain/academic-text';
+import { libraryServices } from '@/features/library/data';
+import { useDuplicateMergeState } from '@/features/library/hooks/useDuplicateMergeState';
 
 export interface MergeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   duplicates: Item[];
+  recommendedMasterId?: string;
   scopeId?: string;
   projectId?: string;
   onMerge: (
@@ -57,55 +51,65 @@ export function MergeModal({
   open,
   onOpenChange,
   duplicates = [],
+  recommendedMasterId,
   scopeId,
   projectId,
   onMerge,
   onDismissDuplicate,
 }: MergeModalProps) {
-  // Rich items state: hydrates sparse items with full metadata from server if needed
+  // Rich items state: uses server-provided cluster items directly, only hydrating bare stubs
   const [items, setItems] = useState<Item[]>(duplicates);
-  const [isLoadingFull, setIsLoadingFull] = useState<boolean>(false);
+  const [, setIsLoadingFull] = useState<boolean>(false);
 
-  // Selected Master Record ID
-  const [selectedMasterId, setSelectedMasterId] = useState<string>(
-    duplicates[0]?.id || '',
-  );
-
-  // Field override values: { [fieldKey]: selectedValue }
-  const [fieldOverrides, setFieldOverrides] = useState<Record<string, unknown>>({});
-
-  // Filter toggle: only display fields that actually have conflicting/different values
-  const [showConflictsOnly, setShowConflictsOnly] = useState<boolean>(false);
+  const {
+    selectedMasterId,
+    fieldOverrides,
+    effectiveItemType,
+    getEffectiveMergeSelections,
+    showConflictsOnly,
+    setShowConflictsOnly,
+    masterPaper,
+    inspection,
+    assetsSummary,
+    itemTypes,
+    hasTypeMismatch,
+    visibleFields,
+    handleSelectMaster,
+    handleSelectFieldValue,
+    handleAutoRecommend,
+    resetMergeState,
+  } = useDuplicateMergeState(items, recommendedMasterId);
 
   // Action pending states
   const [isMerging, setIsMerging] = useState<boolean>(false);
-  const [isDismissing, setIsDismissing] = useState<boolean>(false);
 
-  // ── 1. Hydrate full items when modal opens ──────────────────────────────────
+  // ── 1. Hydrate only bare stub items missing metadata when modal opens ───────
   useEffect(() => {
     if (!open || !duplicates || duplicates.length === 0) return;
 
-    // Set initial fallback items
     setItems(duplicates);
-    setSelectedMasterId(duplicates[0]?.id || '');
-    setFieldOverrides({});
+    resetMergeState(recommendedMasterId || '');
 
-    // Check if items already have full metadata (e.g. abstract or attachments present)
-    const hasDetailedMetadata = duplicates.some(
-      (d) => Boolean(d.abstract) || (Array.isArray(d.attachments) && d.attachments.length > 0),
-    );
+    // Only fetch from backend if an item is a bare stub missing basic bibliographic fields
+    const isBareStub = (d: Item) =>
+      !d.title &&
+      !d.doi &&
+      !d.year &&
+      !d.abstract &&
+      (!Array.isArray(d.authors) || d.authors.length === 0) &&
+      (!Array.isArray(d.creators) || d.creators.length === 0);
 
-    if (hasDetailedMetadata) {
+    if (!duplicates.some(isBareStub)) {
       return;
     }
 
-    // Hydrate in parallel
     let isMounted = true;
     setIsLoadingFull(true);
 
     const effectiveScope = scopeId || projectId || 'user';
     Promise.all(
       duplicates.map(async (dup) => {
+        if (!isBareStub(dup)) return dup;
         try {
           const full = await libraryServices.items.getItem(effectiveScope, dup.id);
           return full || dup;
@@ -128,75 +132,9 @@ export function MergeModal({
     return () => {
       isMounted = false;
     };
-  }, [open, duplicates, scopeId, projectId]);
+  }, [open, duplicates, recommendedMasterId, scopeId, projectId, resetMergeState]);
 
-  // Master paper reference
-  const masterPaper = useMemo(
-    () => items.find((p) => p.id === selectedMasterId) || items[0],
-    [items, selectedMasterId],
-  );
-
-  // ── 2. Compute Deep Diff Matrix & Assets Summary ───────────────────────────
-  const inspection = useMemo(
-    () => inspectItemDifferences(items, selectedMasterId),
-    [items, selectedMasterId],
-  );
-
-  const assetsSummary = useMemo(
-    () => aggregateItemAssets(items),
-    [items],
-  );
-
-  const itemTypes = useMemo(() => {
-    return Array.from(new Set(items.map((i) => i.itemType).filter(Boolean)));
-  }, [items]);
-  const hasTypeMismatch = itemTypes.length > 1;
-
-  // Filtered fields based on user toggle
-  const visibleFields = useMemo(() => {
-    if (!showConflictsOnly) return inspection.fields;
-    return inspection.fields.filter((f) => f.hasConflict);
-  }, [inspection.fields, showConflictsOnly]);
-
-  // Handle switching Master Record
-  const handleSelectMaster = (newMasterId: string) => {
-    setSelectedMasterId(newMasterId);
-    // Clear overrides so values naturally fall back to the newly chosen master
-    setFieldOverrides({});
-  };
-
-  // Handle picking a specific field value from a candidate
-  const handleSelectFieldValue = (fieldKey: string, option: FieldOptionValue) => {
-    setFieldOverrides((prev) => {
-      // If user clicks the value that is already master's default, we can remove override
-      const masterVal = masterPaper ? (masterPaper as Record<string, unknown>)[fieldKey] : undefined;
-      if (option.rawValue === masterVal) {
-        const copy = { ...prev };
-        delete copy[fieldKey];
-        return copy;
-      }
-      return {
-        ...prev,
-        [fieldKey]: option.rawValue,
-      };
-    });
-  };
-
-  // Handle auto-optimizing: pick best recommended values for all conflicting fields
-  const handleAutoRecommend = () => {
-    const newOverrides: Record<string, unknown> = {};
-    for (const field of inspection.fields) {
-      if (field.hasConflict && field.recommendedItemId !== selectedMasterId) {
-        const bestOpt = field.options.find((o) => o.itemId === field.recommendedItemId);
-        if (bestOpt && !bestOpt.isEmpty) {
-          newOverrides[field.key] = bestOpt.rawValue;
-        }
-      }
-    }
-    setFieldOverrides(newOverrides);
-  };
-
-  // ── 3. Action Handlers ──────────────────────────────────────────────────────
+  // ── 2. Action Handlers ──────────────────────────────────────────────────────
   const handleConfirmMerge = async () => {
     if (!masterPaper) return;
     setIsMerging(true);
@@ -205,120 +143,70 @@ export function MergeModal({
         .filter((p) => p.id !== masterPaper.id)
         .map((p) => p.id);
 
-      await onMerge(masterPaper, fieldOverrides, duplicateIdsToDelete);
+      await onMerge(masterPaper, getEffectiveMergeSelections(), duplicateIdsToDelete);
       onOpenChange(false);
     } finally {
       setIsMerging(false);
     }
   };
 
-  const handleDismissNotDuplicates = async () => {
-    setIsDismissing(true);
-    try {
-      const itemIds = items.map((p) => p.id);
-      if (onDismissDuplicate) {
-        await onDismissDuplicate(itemIds);
-      }
-      onOpenChange(false);
-    } finally {
-      setIsDismissing(false);
-    }
-  };
-
   if (!items || items.length === 0) return null;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (isMerging || isDismissing) return; onOpenChange(v); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (isMerging) return;
+        onOpenChange(v);
+      }}
+    >
       <DialogContent
-        className="sm:max-w-5xl w-[95vw] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-background border border-border rounded-md shadow-raised-200 font-sans"
+        className="sm:max-w-5xl w-[95vw] max-h-[88vh] flex flex-col p-0 gap-0 overflow-hidden bg-background border border-border rounded-lg shadow-raised-200 font-sans"
       >
-        {/* ── Header ──────────────────────────────────────────────────────── */}
-        <DialogHeader className="px-6 py-4 border-b border-border bg-background shrink-0">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="space-y-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <div className="size-6 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <GitMerge className="size-3.5" strokeWidth={1.75} />
-                </div>
-                <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
-                  Merge Duplicate Records
-                </DialogTitle>
-                <Badge
-                  variant="secondary"
-                  className="text-11 h-5 px-2 font-mono tabular-nums rounded-full bg-muted border border-border font-medium"
-                >
-                  {items.length} Records
-                </Badge>
-                {isLoadingFull && (
-                  <span className="flex items-center gap-1 text-11 text-foreground animate-pulse">
-                    <Loader2 className="size-3 animate-spin" />
-                    <span>Hydrating details...</span>
-                  </span>
-                )}
-              </div>
-              <DialogDescription className="text-12 text-foreground line-clamp-1">
-                Select the authoritative master version and review conflicting bibliographic fields. Notes, files, and tags will be merged.
-              </DialogDescription>
-            </div>
-
-            {/* Quick Filter Switch & Smart Auto-Pick */}
-            <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
-              {inspection.conflictCount > 0 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAutoRecommend}
-                  className="h-7 px-2 text-11 gap-1 font-medium rounded-md border-border text-foreground hover:bg-muted"
-                  title="Auto-select the most complete values (longest abstract, full author names, canonical DOI)"
-                >
-                  <Check className="size-3 text-primary shrink-0" />
-                  <span>Recommend Best</span>
-                </Button>
-              )}
-
-              <div className="flex items-center gap-2 px-2.5 py-1 rounded-md border border-border bg-background">
-                <SlidersHorizontal className="size-3 text-foreground shrink-0" />
-                <Label htmlFor="diff-filter-toggle" className="text-11 font-medium cursor-pointer text-foreground select-none">
-                  Conflicts only ({inspection.conflictCount})
-                </Label>
-                <Switch
-                  id="diff-filter-toggle"
-                  checked={showConflictsOnly}
-                  onCheckedChange={setShowConflictsOnly}
-                  className="scale-75 origin-right"
-                />
-              </div>
-            </div>
-          </div>
+        {/* ── Header: Clean & focused, no border lines, title and X only ── */}
+        <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
+          <DialogTitle className="text-16 font-semibold text-foreground tracking-tight">
+            Merge Duplicate Records
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Select the authoritative master version and review conflicting bibliographic fields. Notes, files, and tags will be merged.
+          </DialogDescription>
         </DialogHeader>
 
-        {hasTypeMismatch && (
-          <div className="mx-6 mt-3 flex items-start gap-2 p-3 rounded-md border border-warning/30 bg-warning/10 text-warning text-12">
-            <AlertTriangle className="size-4 shrink-0 mt-0.5 text-warning" />
-            <div className="space-y-0.5">
-              <p className="font-semibold">Items of different types cannot be merged</p>
-              <p className="text-11 text-foreground leading-normal">
-                Selected items have different item types ({itemTypes.join(', ')}). In accordance with Zotero standards, change their item types to match before merging.
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* ── Scrollable Body Workbench ─────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto min-h-0 px-6 py-2 space-y-4">
+          {hasTypeMismatch && (
+            <div className="flex items-start gap-2.5 p-3 rounded-md border border-warning/20 bg-warning/10 text-warning text-12">
+              <AlertTriangle className="size-4 shrink-0 mt-0.5 text-warning" />
+              <div className="space-y-0.5">
+                <p className="font-medium text-foreground">
+                  Cross-type duplicate detected ({itemTypes.join(' → ')})
+                </p>
+                <p className="text-11 text-muted-foreground leading-normal">
+                  Merging will unify all records into the selected Item Type ({effectiveItemType}).
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* 1. Master Version Rail */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-11 font-medium text-foreground">
+              <span className="text-12 font-medium text-foreground">
                 Step 1: Choose Master Record (Base Version)
               </span>
-              <span className="text-10 text-foreground">
+              <span className="text-11 text-muted-foreground">
                 All unselected fields default to this record
               </span>
             </div>
 
-            <div className={`grid gap-2.5 ${items.length === 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-3'}`}>
+            <div
+              className={`grid gap-2.5 max-h-[320px] overflow-y-auto pr-0.5 ${
+                items.length === 2
+                  ? 'grid-cols-1 sm:grid-cols-2'
+                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+              }`}
+            >
               {items.map((item, idx) => {
                 const isMaster = item.id === selectedMasterId;
                 const authorList = formatAcademicAuthors(
@@ -331,23 +219,23 @@ export function MergeModal({
                   <div
                     key={item.id}
                     onClick={() => handleSelectMaster(item.id)}
-                    className={`relative p-3 rounded-md border transition-colors cursor-pointer select-none flex flex-col justify-between gap-2 ${
+                    className={`group relative p-3 rounded-md border transition-all cursor-pointer select-none flex flex-col justify-between gap-2 ${
                       isMaster
-                        ? 'border-primary/70 bg-primary/5 ring-1 ring-primary/20'
-                        : 'border-border bg-background hover:bg-muted/40 hover:border-border'
+                        ? 'border-primary/80 bg-primary/[0.04] ring-1 ring-primary/20'
+                        : 'border-border/70 bg-background hover:bg-muted/40 hover:border-border'
                     }`}
                   >
                     <div className="space-y-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-10 font-mono text-foreground">
+                        <span className="text-11 font-medium text-muted-foreground">
                           Version {idx + 1}
                         </span>
                         {isMaster ? (
-                          <Badge className="h-4 px-1.5 text-10 font-medium bg-primary text-primary-foreground rounded-md shadow-none">
+                          <Badge className="h-4.5 px-2 text-10 font-medium bg-primary text-primary-foreground rounded-full shadow-none">
                             Master
                           </Badge>
                         ) : (
-                          <span className="text-10 text-foreground hover:underline">
+                          <span className="text-11 text-muted-foreground group-hover:text-primary transition-colors">
                             Set as Master
                           </span>
                         )}
@@ -357,14 +245,14 @@ export function MergeModal({
                         {item.title || 'Untitled Item'}
                       </h4>
 
-                      <p className="text-11 text-foreground truncate" title={authorList}>
+                      <p className="text-11 text-muted-foreground truncate" title={authorList}>
                         {authorList}
                       </p>
                     </div>
 
-                    <div className="pt-2 border-t border-border/60 flex items-center justify-between text-10 font-mono text-foreground">
+                    <div className="pt-2 border-t border-border/50 flex items-center justify-between text-11 text-muted-foreground">
                       <span>{item.itemType || 'article'}</span>
-                      <span>{item.year ? `Year: ${item.year}` : 'Year: -'}</span>
+                      <span>{item.year ? `Year: ${item.year}` : 'Year: —'}</span>
                     </div>
                   </div>
                 );
@@ -373,57 +261,97 @@ export function MergeModal({
           </div>
 
           {/* 2. Non-Destructive Assets Union Banner */}
-          <div className="p-3 rounded-md border border-border bg-muted/40 flex items-start gap-3">
-            <ShieldCheck className="size-4 text-success shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0 space-y-1">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-11 font-medium text-foreground">
-                <span className="flex items-center gap-1.5">
-                  <Paperclip className="size-3 text-foreground" />
-                  <strong>{assetsSummary.totalFiles}</strong> File(s) preserved
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <FileText className="size-3 text-foreground" />
-                  <strong>{assetsSummary.totalNotes}</strong> Note(s) combined
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Tag className="size-3 text-foreground" />
-                  <strong>{assetsSummary.totalTags}</strong> Tag(s) merged
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Folder className="size-3 text-foreground" />
-                  <strong>{assetsSummary.totalCollections}</strong> Collection(s) preserved
-                </span>
-              </div>
-              <p className="text-11 text-foreground leading-relaxed">
-                Non-destructive accumulation: All PDF attachments, literature notes, tags, and collection memberships from both records will be retained and attached to the master item.
-              </p>
+          <div className="p-3 rounded-md border border-border/70 bg-muted/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-12">
+            <div className="flex items-center gap-2 min-w-0">
+              <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-500 shrink-0" strokeWidth={1.75} />
+              <span className="text-11 text-muted-foreground leading-normal">
+                Non-destructive: All attachments, notes, tags, and collections are preserved and attached to the master record.
+              </span>
+            </div>
+            <div className="flex items-center gap-3 shrink-0 text-11 text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Paperclip className="size-3 text-muted-foreground" />
+                <strong className="font-medium text-foreground">{assetsSummary.totalFiles}</strong> files
+              </span>
+              <span className="flex items-center gap-1.5">
+                <FileText className="size-3 text-muted-foreground" />
+                <strong className="font-medium text-foreground">{assetsSummary.totalNotes}</strong> notes
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Tag className="size-3 text-muted-foreground" />
+                <strong className="font-medium text-foreground">{assetsSummary.totalTags}</strong> tags
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Folder className="size-3 text-muted-foreground" />
+                <strong className="font-medium text-foreground">{assetsSummary.totalCollections}</strong> collections
+              </span>
             </div>
           </div>
 
-          {/* 3. Side-by-Side Field Diff Matrix */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-11 font-medium text-foreground">
-                Step 2: Resolve Field Discrepancies (Click a cell to override)
-              </span>
-              <span className="text-10 text-foreground">
-                Showing {visibleFields.length} of {inspection.fields.length} fields
-              </span>
+          {/* 3. Side-by-Side Field Diff Matrix with contextual conflict controls */}
+          <div className="space-y-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1">
+              <div>
+                <span className="text-12 font-medium text-foreground">
+                  Step 2: Resolve Field Discrepancies
+                </span>
+                <p className="text-11 text-muted-foreground">
+                  Showing {visibleFields.length} of {inspection.fields.length} fields. Click any cell to override.
+                </p>
+              </div>
+
+              {/* Contextual Conflict Resolution Controls */}
+              <div className="flex items-center gap-2 shrink-0">
+                {inspection.conflictCount > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAutoRecommend}
+                    className="h-7 px-2.5 text-11 gap-1.5 font-medium rounded-md border-border text-foreground hover:bg-muted"
+                    title="Auto-select the most complete values (longest abstract, full author names, canonical DOI)"
+                  >
+                    <Check className="size-3 text-primary shrink-0" />
+                    <span>Recommend Best</span>
+                  </Button>
+                )}
+
+                <div className="flex items-center gap-2 px-2.5 py-1 rounded-md border border-border/70 bg-muted/20">
+                  <SlidersHorizontal className="size-3 text-muted-foreground shrink-0" />
+                  <Label
+                    htmlFor="diff-filter-toggle"
+                    className="text-11 font-medium cursor-pointer text-muted-foreground select-none"
+                  >
+                    Conflicts only ({inspection.conflictCount})
+                  </Label>
+                  <Switch
+                    id="diff-filter-toggle"
+                    checked={showConflictsOnly}
+                    onCheckedChange={setShowConflictsOnly}
+                    className="scale-75 origin-right"
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="rounded-md border border-border overflow-hidden bg-background">
+            <div className="rounded-md border border-border/70 overflow-x-auto bg-background">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-border bg-muted/30 text-11 text-foreground font-medium">
-                    <th className="w-36 px-3.5 py-2 shrink-0">Field</th>
+                  <tr className="border-b border-border/70 bg-muted/30 text-11 text-muted-foreground font-medium">
+                    <th className="w-40 px-3.5 py-2 shrink-0 sticky left-0 bg-background/95 backdrop-blur-xs z-10 border-r border-border/40">
+                      Field
+                    </th>
                     {items.map((item, idx) => {
                       const isMaster = item.id === selectedMasterId;
                       return (
-                        <th key={item.id} className="px-3.5 py-2 font-medium">
+                        <th key={item.id} className="px-3.5 py-2 font-medium min-w-[200px]">
                           <div className="flex items-center gap-1.5">
-                            <span>Version {idx + 1}</span>
+                            <span className="text-foreground">Version {idx + 1}</span>
                             {isMaster && (
-                              <Badge variant="outline" className="text-10 px-1.5 py-0 h-4 rounded-md border-primary/40 text-primary bg-primary/5">
+                              <Badge
+                                variant="outline"
+                                className="text-10 px-1.5 py-0 h-4 rounded-md border-primary/40 text-primary bg-primary/5"
+                              >
                                 Master
                               </Badge>
                             )}
@@ -433,7 +361,7 @@ export function MergeModal({
                     })}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border text-12">
+                <tbody className="divide-y divide-border/60 text-12">
                   {visibleFields.map((field) => {
                     const activeOverrideValue = fieldOverrides[field.key];
                     const masterValue = field.masterValue?.rawValue;
@@ -443,24 +371,24 @@ export function MergeModal({
                         key={field.key}
                         className={`transition-colors ${
                           field.hasConflict
-                            ? 'bg-warning/[0.04] hover:bg-warning/[0.08]'
+                            ? 'bg-warning/[0.03] hover:bg-warning/[0.06]'
                             : 'hover:bg-muted/20'
                         }`}
                       >
                         {/* Field Label Column */}
-                        <td className="px-3.5 py-2.5 align-top font-medium text-11 text-foreground">
+                        <td className="px-3.5 py-2.5 align-top font-medium text-11 text-foreground sticky left-0 bg-background/95 backdrop-blur-xs z-10 border-r border-border/40">
                           <div className="space-y-1">
                             <span className="text-foreground block">{field.label}</span>
                             {field.hasConflict ? (
                               <Badge
                                 variant="outline"
-                                className="text-10 h-4 px-1.5 rounded-md border-warning/30 text-warning bg-warning/10"
+                                className="text-10 h-4 px-1.5 rounded-md border-warning/30 text-warning bg-warning/10 font-normal"
                               >
                                 Conflict
                               </Badge>
                             ) : (
-                              <span className="text-10 text-foreground font-mono">
-                                identical
+                              <span className="text-10 text-muted-foreground">
+                                Identical
                               </span>
                             )}
                           </div>
@@ -468,7 +396,6 @@ export function MergeModal({
 
                         {/* Value Cells for each Duplicate Version */}
                         {field.options.map((opt) => {
-                          // Determine if this cell's value is currently selected
                           const isExplicitOverride =
                             activeOverrideValue !== undefined &&
                             (typeof opt.rawValue === 'object'
@@ -492,16 +419,16 @@ export function MergeModal({
                               className="px-3.5 py-2.5 align-top cursor-pointer select-none"
                             >
                               <div
-                                className={`p-2 rounded-md border text-12 transition-colors flex flex-col justify-between gap-1.5 min-h-[44px] ${
+                                className={`p-2.5 rounded-md border text-12 transition-all flex flex-col justify-between gap-1.5 min-h-[48px] ${
                                   isSelected
-                                    ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/20'
-                                    : 'border-border/60 bg-muted/20 text-foreground hover:bg-muted'
+                                    ? 'border-primary bg-primary/[0.08] text-foreground ring-1 ring-primary/20'
+                                    : 'border-border/60 bg-muted/20 text-foreground hover:bg-muted/50'
                                 }`}
                               >
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="line-clamp-4 break-words leading-relaxed text-12 font-normal">
                                     {opt.isEmpty ? (
-                                      <span className="italic text-foreground/70 text-11">
+                                      <span className="italic text-muted-foreground/60 text-11">
                                         (Empty)
                                       </span>
                                     ) : (
@@ -539,31 +466,27 @@ export function MergeModal({
           </div>
         </div>
 
-        {/* ── Footer Actions ────────────────────────────────────────────────── */}
-        <DialogFooter className="px-6 py-3 border-t border-border bg-background flex flex-row items-center justify-between sm:justify-between shrink-0 gap-2">
-          {/* Left: Not Duplicates action */}
-          <div className="flex items-center gap-2">
+        {/* ── Footer: Clean action layout with optional Not Duplicates dismissal ── */}
+        <DialogFooter className="px-6 pt-3 pb-6 flex flex-row items-center justify-between shrink-0 gap-2 sm:justify-between">
+          <div>
             {onDismissDuplicate && (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={handleDismissNotDuplicates}
-                disabled={isDismissing || isMerging}
-                className="h-8 px-2.5 text-13 font-medium text-foreground hover:bg-muted gap-1.5 rounded-md"
-                title="Mark this pair as false positive so they are not grouped as duplicates again"
+                onClick={async () => {
+                  const ids = items.map((p) => p.id).filter(Boolean);
+                  await onDismissDuplicate(ids);
+                  onOpenChange(false);
+                }}
+                disabled={isMerging}
+                className="h-8 px-3 text-12 font-medium text-foreground rounded-md hover:bg-muted cursor-pointer"
               >
-                {isDismissing ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Split className="size-3.5" />
-                )}
-                <span>Not Duplicates</span>
+                Not Duplicates
               </Button>
             )}
           </div>
 
-          {/* Right: Cancel & Merge Buttons */}
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -571,7 +494,7 @@ export function MergeModal({
               size="sm"
               onClick={() => onOpenChange(false)}
               disabled={isMerging}
-              className="h-8 px-3 text-13 font-medium text-foreground rounded-md border-border hover:bg-muted"
+              className="h-8 px-3 text-12 font-medium text-foreground rounded-md border-border hover:bg-muted"
             >
               Cancel
             </Button>
@@ -580,19 +503,15 @@ export function MergeModal({
               type="button"
               size="sm"
               onClick={handleConfirmMerge}
-              disabled={isMerging || !masterPaper || hasTypeMismatch}
-              className="h-8 px-3 text-13 font-medium gap-1.5 rounded-md bg-primary text-primary-foreground shadow-none hover:bg-primary/90 disabled:opacity-50"
+              disabled={isMerging || !masterPaper}
+              className="h-8 px-3 text-12 font-medium gap-1.5 rounded-md bg-primary text-primary-foreground shadow-none hover:bg-primary/90 disabled:opacity-50"
             >
               {isMerging ? (
                 <Loader2 className="size-3.5 animate-spin shrink-0" />
               ) : (
-                <GitMerge className="size-3.5 shrink-0" />
+                <GitMerge className="size-3.5 shrink-0" strokeWidth={1.75} />
               )}
-              <span>
-                {isMerging
-                  ? 'Merging Records...'
-                  : `Merge ${items.length} Records into Master`}
-              </span>
+              <span>{isMerging ? 'Merging...' : 'Merge Records'}</span>
             </Button>
           </div>
         </DialogFooter>

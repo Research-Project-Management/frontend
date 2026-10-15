@@ -1,0 +1,270 @@
+﻿import { z } from 'zod';
+import {
+  annotationRectSchema,
+  annotationTypeSchema,
+  readerAnnotationSchema,
+  createAnnotationSchema,
+  updateAnnotationSchema,
+  readerPanelSchema,
+  readerFitModeSchema,
+  creatorTypeSchema,
+  documentCreatorSchema,
+  documentAttachmentSchema,
+  primaryFileSchema,
+  documentReadingStateSchema,
+  documentTagSchema,
+  readerNoteSchema,
+  createNoteSchema,
+  updateNoteSchema,
+  readerCollectionSchema,
+  readerDocumentSchema,
+  updateDocumentSchema,
+  readerAiCitationSchema,
+  readerAiMessageRoleSchema,
+  readerAiMessageSchema,
+  readerQuickPromptSchema,
+  readerPaperContextSchema,
+  documentRenameFormSchema,
+  noteFormSchema,
+  annotationFormSchema,
+  chatMessageFormSchema,
+  documentBoundingBoxSchema,
+  documentSectionSchema,
+  documentFigureSchema,
+  documentTableSchema,
+  documentFormulaSchema,
+  documentReferenceSchema,
+  documentFulltextSchema,
+} from './reader.schema';
+
+declare const __brand: unique symbol;
+export type Brand<T, B> = T & { readonly [__brand]: B };
+
+export type DocumentId = Brand<string, 'DocumentId'>;
+export type AnnotationId = Brand<string, 'AnnotationId'>;
+export type NoteId = Brand<string, 'NoteId'>;
+export type CollectionId = Brand<string, 'CollectionId'>;
+export type AttachmentId = Brand<string, 'AttachmentId'>;
+
+export const toDocumentId = (id: string): DocumentId => id as DocumentId;
+export const toAnnotationId = (id: string): AnnotationId => id as AnnotationId;
+export const toNoteId = (id: string): NoteId => id as NoteId;
+export const toCollectionId = (id: string): CollectionId => id as CollectionId;
+export const toAttachmentId = (id: string): AttachmentId => id as AttachmentId;
+
+export type AnnotationRect = z.infer<typeof annotationRectSchema>;
+export type AnnotationType = z.infer<typeof annotationTypeSchema>;
+export type ReaderAnnotation = z.infer<typeof readerAnnotationSchema>;
+export type CreateAnnotationDto = z.infer<typeof createAnnotationSchema>;
+export type UpdateAnnotationDto = z.infer<typeof updateAnnotationSchema>;
+
+export type ReaderPanel = z.infer<typeof readerPanelSchema>;
+export type ReaderFitMode = z.infer<typeof readerFitModeSchema>;
+
+export type CreatorType = z.infer<typeof creatorTypeSchema>;
+export type DocumentCreator = z.infer<typeof documentCreatorSchema>;
+export type DocumentAttachment = z.infer<typeof documentAttachmentSchema>;
+export type PrimaryDocumentFile = z.infer<typeof primaryFileSchema>;
+
+export type ReaderNote = z.infer<typeof readerNoteSchema>;
+export type CreateNoteDto = z.infer<typeof createNoteSchema>;
+export type UpdateNoteDto = z.infer<typeof updateNoteSchema>;
+export type ReaderCollection = z.infer<typeof readerCollectionSchema>;
+
+export type DocumentReadingState = z.infer<typeof documentReadingStateSchema>;
+export type DocumentTag = z.infer<typeof documentTagSchema>;
+export type ReaderDocument = z.infer<typeof readerDocumentSchema>;
+export type UpdateDocumentDto = z.infer<typeof updateDocumentSchema>;
+
+export type ReaderAiCitation = z.infer<typeof readerAiCitationSchema>;
+export type ReaderAiMessageRole = z.infer<typeof readerAiMessageRoleSchema>;
+export type ReaderAiMessage = z.infer<typeof readerAiMessageSchema>;
+export type ReaderQuickPrompt = z.infer<typeof readerQuickPromptSchema>;
+export type ReaderPaperContext = z.infer<typeof readerPaperContextSchema>;
+
+export type DocumentRenameFormData = z.infer<typeof documentRenameFormSchema>;
+export type NoteFormData = z.infer<typeof noteFormSchema>;
+export type AnnotationFormData = z.infer<typeof annotationFormSchema>;
+export type ChatMessageFormData = z.infer<typeof chatMessageFormSchema>;
+
+export type DocumentBoundingBox = z.infer<typeof documentBoundingBoxSchema>;
+export type DocumentSection = z.infer<typeof documentSectionSchema>;
+export type DocumentFigure = z.infer<typeof documentFigureSchema>;
+export type DocumentTable = z.infer<typeof documentTableSchema>;
+export type DocumentFormula = z.infer<typeof documentFormulaSchema>;
+export type DocumentReference = z.infer<typeof documentReferenceSchema>;
+export type DocumentFulltext = z.infer<typeof documentFulltextSchema>;
+
+export interface StreamPaperOptions {
+  selection?: {
+    text: string;
+    pageNumber: number;
+  };
+  chatId?: string;
+  onCitation?: (citations: ReaderAiCitation[]) => void;
+  signal?: AbortSignal;
+}
+
+export interface PdfOutlineItem {
+  title: string;
+  pageNumber: number;
+  dest?: unknown;
+  items?: PdfOutlineItem[];
+}
+
+export interface PdfThumbnail {
+  pageNumber: number;
+  src?: string;
+  aspectRatio: number;
+}
+
+export interface ReaderNavigationTarget {
+  pageNumber: number;
+  annotationId?: string;
+  coords?: AnnotationRect;
+  timestamp: number;
+}
+
+export interface ReaderState {
+  paper: ReaderDocument | null;
+  collection?: ReaderCollection | null;
+  pdfBlobUrl: string | null;
+  isLoading: boolean;
+  error: string | null;
+  currentPage: number;
+  totalPages: number;
+  zoomLevel: number;
+  fitMode: ReaderFitMode;
+  activePanel: ReaderPanel | null;
+  panelWidth: number;
+  annotations: ReaderAnnotation[];
+  selectionContext: string | null;
+}
+
+export type Item = ReaderDocument;
+export type Collection = ReaderCollection;
+export type Note = ReaderNote;
+export type PdfAnnotation = ReaderAnnotation;
+export type CopilotCitation = ReaderAiCitation;
+export type CopilotMessage = ReaderAiMessage;
+export type QuickPrompt = ReaderQuickPrompt;
+export type CopilotPaperContext = ReaderPaperContext;
+export type ItemAttachment = DocumentAttachment;
+export type CreatorCredit = DocumentCreator & {
+  order?: number;
+  fieldMode?: number;
+  isInstitution?: boolean;
+};
+
+export type InspectorSectionId =
+  | 'info'
+  | 'abstract'
+  | 'notes'
+  | 'attachments'
+  | 'files'
+  | 'tags'
+  | 'collections'
+  | 'cite'
+  | 'relations'
+  | 'ai';
+
+export interface TagWithCount {
+  id: string;
+  name: string;
+  count?: number;
+  color?: string | null;
+}
+
+export interface RelatedItem {
+  id: string;
+  title: string;
+  year?: number | null;
+  authors?: string[];
+  itemType?: string;
+  predicate?: string;
+  direction?: 'outgoing' | 'incoming' | 'both';
+  citationKey?: string;
+  doi?: string | null;
+}
+
+export interface CslStyle {
+  id: string;
+  title: string;
+  shortTitle?: string;
+  updated?: string;
+  dependent?: boolean;
+}
+
+export interface CslStyleMetadata {
+  id: string;
+  title: string;
+  shortTitle?: string;
+  summary?: string;
+  name?: string;
+  isPrimary?: boolean;
+}
+
+export interface ItemFieldDefinition {
+  field: string;
+  label: string;
+  type?: string;
+  required?: boolean;
+  mono?: boolean;
+  category?: string;
+}
+
+export type SchemaFieldDefinition = ItemFieldDefinition;
+
+export interface SchemaItemTypeDefinition {
+  itemType: string;
+  label: string;
+  fields?: ItemFieldDefinition[];
+  creatorTypes?: Array<{ creatorType: string; label: string; primary?: boolean }>;
+  primaryCreatorType?: string;
+}
+
+export interface DroppedField {
+  field: string;
+  label: string;
+  value: unknown;
+}
+
+export interface FieldMappingChange {
+  fromField: string;
+  toField: string;
+  value: unknown;
+  rule: 'direct' | 'base-semantic' | 'special-rule';
+}
+
+export interface CreatorRoleChange {
+  creator: Record<string, unknown>;
+  fromRole: string;
+  toRole: string;
+  reason: 'preserved' | 'primary-fallback' | 'secondary-fallback';
+}
+
+export interface TypeConversionPreview {
+  sourceType: string;
+  targetType: string;
+  preservedFields: string[];
+  mappedFields: FieldMappingChange[];
+  droppedFields: DroppedField[];
+  creatorChanges: CreatorRoleChange[];
+  projectedItem: Record<string, unknown>;
+  unmappedRetained: Record<string, unknown>;
+  hasLoss: boolean;
+}
+
+export interface ItemMetadataSourceItem {
+  id: string;
+  sourceProvider: string;
+  fetchedAt: string;
+  doi?: string;
+  rawPayload?: Record<string, unknown>;
+}
+
+export interface ItemMetadataSourcesResponse {
+  sources: ItemMetadataSourceItem[];
+}
+
+

@@ -18,7 +18,7 @@ export type StorageItem = {
     parentId?: string | null;
     parent?: string | null;
     trashedAt?: string | null;
-    metaData?: Record<string, any>;
+    metaData?: Record<string, unknown>;
     sharedWith?: Array<{
         id?: string;
         fileId?: string;
@@ -68,7 +68,7 @@ export type UploadFileParams = {
     projectId?: string;
     parentId?: string | null;
     pageId?: string | null;
-    metaData?: Record<string, any>;
+    metaData?: Record<string, unknown>;
     onProgress?: (progress: number) => void;
 };
 
@@ -80,7 +80,7 @@ export type CreateFileRecordParams = {
     mimeType?: string;
     url: string;
     thumbnail?: string | null;
-    metaData?: Record<string, any>;
+    metaData?: Record<string, unknown>;
     parentId?: string | null;
 };
 

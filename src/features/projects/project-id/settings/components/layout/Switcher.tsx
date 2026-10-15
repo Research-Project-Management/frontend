@@ -1,5 +1,7 @@
 'use client';
 
+import type { Project } from '@/features/projects/shell/types/project.types';
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Search, ChevronsUpDown, X } from 'lucide-react';
@@ -11,8 +13,8 @@ import { ProjectAvatar } from "@/shared/components/icons";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface SwitcherProps {
-  currentProject: any;
-  projects: any[];
+  currentProject: Project | null | undefined;
+  projects: Project[];
   currentProjectId: string;
 }
 
@@ -57,7 +59,7 @@ export default function Switcher({
     p.name?.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const handleSelect = (project: any) => {
+  const handleSelect = (project: Project) => {
     setOpen(false);
     router.push(`/projects/${project.id}/settings`);
   };

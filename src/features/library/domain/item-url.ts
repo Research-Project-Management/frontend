@@ -3,13 +3,34 @@
  * 100% Pure TypeScript - 0% React, 0% DOM dependencies
  */
 
-import type { Item } from '../types/library.types';
-
 export function isProjectScope(scopeId?: string): scopeId is string {
   if (!scopeId) return false;
   const s = scopeId.trim().toLowerCase();
   return s !== 'user' && s !== 'me' && s !== 'global' && s !== 'default';
 }
+
+export type ItemFileSource = {
+  fileUrl?: string | null;
+  pdfUrl?: string | null;
+  openAccessPdfUrl?: string | null;
+  url?: string | null;
+  filename?: string | null;
+  doi?: string | null;
+  arxivId?: string | null;
+  fileId?: string | null;
+  metadata?: unknown;
+  primaryFile?: { url?: string | null; fileId?: string | null } | null;
+  attachments?: Array<{
+    id?: string;
+    url?: string | null;
+    fileUrl?: string | null;
+    fileId?: string | null;
+    filename?: string | null;
+    mimeType?: string | null;
+    attachmentType?: string | null;
+  }> | null;
+  [key: string]: unknown;
+};
 
 /**
  * Extracts the canonical PDF or reading file URL from an Item.
@@ -17,7 +38,7 @@ export function isProjectScope(scopeId?: string): scopeId is string {
  * and avoids falling back to DOI landing page URLs.
  */
 export function getItemFileUrl(
-  item?: Partial<Item> | Record<string, any> | null | undefined,
+  item?: ItemFileSource | null | undefined,
   scopeId?: string,
 ): string {
   if (!item) return '';
@@ -114,7 +135,7 @@ export function getItemFileUrl(
 
 /** @deprecated Use getItemFileUrl instead */
 export function getPaperFileUrl(
-  item?: Partial<Item> | Record<string, any> | null | undefined,
+  item?: ItemFileSource | null | undefined,
   scopeId?: string,
 ): string {
   return getItemFileUrl(item, scopeId);

@@ -42,8 +42,14 @@ export interface StreamChatOptions {
 }
 
 interface SseCallbacks {
-  onMeta?: (meta: any) => void;
-  onAction?: (action: any) => void;
+  onMeta?: (meta: {
+    chatId?: string;
+    title?: string;
+    agent: string;
+    intent: string;
+    sources?: SourceItem[];
+  }) => void;
+  onAction?: (action: AgentAction) => void;
 }
 
 function parseSseDataChunk(
@@ -55,7 +61,7 @@ function parseSseDataChunk(
   }
   if (data.startsWith('[META]')) {
     try {
-      const meta = JSON.parse(data.slice(6));
+      const meta = JSON.parse(data.slice(6)) as Parameters<NonNullable<SseCallbacks['onMeta']>>[0];
       callbacks?.onMeta?.(meta);
     } catch (err) {
       logger.debug('[chatService] Failed to parse stream meta', { err });
@@ -64,7 +70,7 @@ function parseSseDataChunk(
   }
   if (data.startsWith('[ACTION]')) {
     try {
-      const action = JSON.parse(data.slice(8));
+      const action = JSON.parse(data.slice(8)) as AgentAction;
       callbacks?.onAction?.(action);
     } catch (err) {
       logger.debug('[chatService] Failed to parse stream action', { err });
@@ -76,13 +82,13 @@ function parseSseDataChunk(
     try {
       const parsed = JSON.parse(data);
       if (parsed && typeof parsed === 'object') {
-        const p = parsed as Record<string, any>;
+        const p = parsed as Record<string, unknown>;
         if (p.type === 'meta' && callbacks?.onMeta) {
-          callbacks.onMeta(p.data || p);
+          callbacks.onMeta((p.data || p) as Parameters<NonNullable<SseCallbacks['onMeta']>>[0]);
           return {};
         }
         if (p.type === 'action' && callbacks?.onAction) {
-          callbacks.onAction(p.data || p);
+          callbacks.onAction((p.data || p) as AgentAction);
           return {};
         }
         if (typeof p.content === 'string') {

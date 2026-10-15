@@ -15,8 +15,8 @@ import {
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/shared/components/ui/dropdown-menu';
 import type { TreeNode } from './sidebar.types';
-import type { Collection } from '../../types/library.types';
-import { useLibrarySidebarStore } from '../../store/library-ui.store';
+import type { Collection } from '@/features/library/types/library.types';
+import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
 
 interface CollectionContextMenuProps {
   node: TreeNode;
@@ -45,7 +45,7 @@ export function CollectionContextMenu({
   onDelete,
   onDeleteWithItems,
 }: CollectionContextMenuProps) {
-  const activeScope = useLibrarySidebarStore((s) => s.activeScope);
+  const activeScope = useLibraryUIStore((s) => s.activeScope);
   const isProjectScope = activeScope.type === 'project';
   const rootLibraryName = isProjectScope ? (activeScope.name || 'Project') : 'My Library';
   return (

@@ -4,6 +4,7 @@ import type {
   CreateDraftInput,
   UpdateDraftInput,
   PublishDraftInput,
+  PublishDraftResponse,
   DraftQueryFilter,
   DraftListResponse,
 } from '../types/draft.types';
@@ -57,8 +58,8 @@ export const DraftService = {
   publishDraft: async (
     id: string,
     input: PublishDraftInput,
-  ): Promise<{ workItem: any; item: any; [key: string]: any }> => {
-    const res = await apiPost<{ workItem: any; item: any; [key: string]: any }>(
+  ): Promise<PublishDraftResponse> => {
+    const res = await apiPost<PublishDraftResponse>(
       `/api/work-items/drafts/${id}/publish`,
       input,
     );

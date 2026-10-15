@@ -5,7 +5,7 @@ import { Search, Check } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
-import type { Item } from '../../types/work-item.types';
+import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export function ParentHierarchyIcon({ className }: { className?: string }) {
   return (
@@ -28,7 +28,7 @@ export function ParentHierarchyIcon({ className }: { className?: string }) {
 
 export const AddParentIcon = ParentHierarchyIcon;
 
-import type { ParentItemPopoverProps } from '../../types/picker.types';
+import type { ParentItemPopoverProps } from '@/features/projects/project-id/work-items/types/picker.types';
 
 export type { ParentItemPopoverProps };
 

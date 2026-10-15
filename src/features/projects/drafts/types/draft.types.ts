@@ -31,7 +31,7 @@ export interface WorkItemDraft {
   labels: string[];
   assigneeId: string | null;
   assigneeIds: string[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   projectId: string | null;
   project?: ProjectSummary | null;
   authorId: string;
@@ -51,7 +51,7 @@ export interface CreateDraftInput {
   labels?: string[];
   assigneeId?: string;
   assigneeIds?: string[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface UpdateDraftInput {
@@ -66,7 +66,7 @@ export interface UpdateDraftInput {
   labels?: string[];
   assigneeId?: string;
   assigneeIds?: string[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface PublishDraftInput {
@@ -75,6 +75,12 @@ export interface PublishDraftInput {
   cycleId?: string;
   title?: string;
   priority?: WorkItemPriority;
+}
+
+export interface PublishDraftResponse {
+  workItem?: { id?: string; identifier?: string; [key: string]: unknown };
+  item?: { id?: string; identifier?: string; [key: string]: unknown };
+  [key: string]: unknown;
 }
 
 export interface DraftQueryFilter {

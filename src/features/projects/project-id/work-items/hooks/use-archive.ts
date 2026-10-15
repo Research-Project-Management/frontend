@@ -1,9 +1,9 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { ArchiveService } from '../api/work-item.api';
-import type { Item } from '../types/work-item.types';
+import { ArchiveService } from '@/features/projects/project-id/work-items/api/work-item.api';
+import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
+import { workItemToast } from './use-work-item-toast';
 
 export const archiveKeys = {
   all: ['archived-items'] as const,
@@ -26,8 +26,6 @@ export const useArchivedItems = (projectId: string) =>
     enabled: Boolean(projectId),
   });
 
-export const useArchivedWorkItems = useArchivedItems;
-
 export const useArchiveItem = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -35,13 +33,11 @@ export const useArchiveItem = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
       queryClient.invalidateQueries({ queryKey: ['archived-items'] });
-      toast.success('Work item archived', { id: 'work-item-action' });
+      workItemToast.success('Work item archived', 'action');
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to archive work item', { id: 'work-item-action' }),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to archive work item', 'action'),
   });
 };
-
-export const useArchiveWorkItem = useArchiveItem;
 
 export const useRestoreItem = () => {
   const queryClient = useQueryClient();
@@ -50,13 +46,11 @@ export const useRestoreItem = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
       queryClient.invalidateQueries({ queryKey: ['archived-items'] });
-      toast.success('Work item restored', { id: 'work-item-action' });
+      workItemToast.success('Work item restored', 'action');
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to restore work item', { id: 'work-item-action' }),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to restore work item', 'action'),
   });
 };
-
-export const useRestoreWorkItem = useRestoreItem;
 
 export const useBulkArchive = () => {
   const queryClient = useQueryClient();
@@ -73,14 +67,11 @@ export const useBulkArchive = () => {
         queryClient.invalidateQueries({ queryKey: ['archived-items', vars.projectId] });
       }
       const targetIds = vars.ids || vars.itemIds || vars.workItemIds || [];
-      toast.success(`Archived ${targetIds.length} items`, { id: 'work-item-bulk' });
+      workItemToast.success(`Archived ${targetIds.length} items`, 'bulk');
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to archive work items', { id: 'work-item-bulk' }),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to archive work items', 'bulk'),
   });
 };
-
-export const useBulkArchiveItems = useBulkArchive;
-export const useBulkArchiveWorkItems = useBulkArchive;
 
 export const useBulkRestore = () => {
   const queryClient = useQueryClient();
@@ -97,11 +88,9 @@ export const useBulkRestore = () => {
         queryClient.invalidateQueries({ queryKey: ['archived-items', vars.projectId] });
       }
       const targetIds = vars.ids || vars.itemIds || vars.workItemIds || [];
-      toast.success(`Restored ${targetIds.length} items`, { id: 'work-item-bulk' });
+      workItemToast.success(`Restored ${targetIds.length} items`, 'bulk');
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to restore work items', { id: 'work-item-bulk' }),
+    onError: (error: Error) => workItemToast.error(error, 'Failed to restore work items', 'bulk'),
   });
 };
 
-export const useBulkRestoreItems = useBulkRestore;
-export const useBulkRestoreWorkItems = useBulkRestore;

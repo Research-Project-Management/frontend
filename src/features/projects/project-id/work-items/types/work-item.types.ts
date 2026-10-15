@@ -2,16 +2,14 @@ import { z } from "zod";
 
 // ── 1. Zod Domain Schemas ────────────────────────────────────────────────────
 
-// Priority
-export const workItemPrioritySchema = z.enum([
+export const prioritySchema = z.enum([
   "urgent",
   "high",
   "medium",
   "low",
   "none",
 ]);
-export const prioritySchema = workItemPrioritySchema;
-export const itemPrioritySchema = workItemPrioritySchema;
+export const workItemPrioritySchema = prioritySchema;
 
 // Relations
 export const relationTypeSchema = z.enum([
@@ -20,7 +18,6 @@ export const relationTypeSchema = z.enum([
   "relates_to",
   "duplicate_of",
 ]);
-export const itemRelationTypeSchema = relationTypeSchema;
 export const workItemRelationTypeSchema = relationTypeSchema;
 
 export const addRelationDtoSchema = z.object({
@@ -47,8 +44,6 @@ export const relationSchema = z.object({
     .nullable()
     .optional(),
 });
-export const itemRelationSchema = relationSchema;
-export const workItemRelationSchema = relationSchema;
 
 // State Groups
 export const stateGroupSchema = z.enum([
@@ -409,7 +404,6 @@ export type ItemPriority = Priority;
 export type WorkItemPriority = Priority;
 
 export type RelationType = z.infer<typeof relationTypeSchema>;
-export type ItemRelationType = RelationType;
 export type WorkItemRelationType = RelationType;
 
 export type Relation = z.infer<typeof relationSchema>;
@@ -430,10 +424,8 @@ export type WorkItemAttachments = Attachments;
 
 export type UserMinimal = z.infer<typeof userMinimalSchema>;
 export type ParentItemMinimal = z.infer<typeof parentItemMinimalSchema>;
-export type ParentWorkItemMinimal = ParentItemMinimal;
 
 export type SubItem = z.infer<typeof subItemSchema>;
-export type SubItemMinimal = SubItem;
 export type ChildWorkItem = SubItem;
 
 export type Item = z.infer<typeof itemSchema>;
@@ -469,7 +461,6 @@ export type State = z.infer<typeof stateSchema>;
 export type Column = State;
 export type ColumnType = Column;
 export type WorkItemState = State;
-export type WorkItemStateSchema = State;
 
 export type StateGroup = z.infer<typeof stateGroupSchema>;
 
@@ -587,17 +578,15 @@ export interface BaseWorkItemViewProps {
 // ── 4. UI Modes & States ─────────────────────────────────────────────────────
 
 export type ViewMode = "board" | "list" | "calendar" | "table" | "timeline" | "split";
-export type ItemViewMode = ViewMode;
-export type WorkItemViewMode = ViewMode;
 export type ItemDetailDisplayMode = "side-peek" | "center" | "fullscreen";
 
+export type FilterState = WorkItemFilters;
+
 export type ModalState =
-  | { mode: "idle" }
-  | { mode: "create"; columnId?: string; title?: string }
-  | { mode: "edit"; item: Item; workItem?: Item }
-  | { mode: "delete"; item: Item; workItem?: Item };
-export type ItemModalState = ModalState;
-export type WorkItemModalState = ModalState;
+  | { type: 'idle'; mode?: 'idle' }
+  | { type: 'create'; mode?: 'create'; initialData?: Partial<Item>; columnId?: string; title?: string }
+  | { type: 'detail'; mode?: 'edit' | 'detail'; card: Item; item?: Item; workItem?: Item }
+  | { type: 'delete'; mode?: 'delete'; item: Item; workItem?: Item };
 
 // ── 5. Standard Domain Configurations ────────────────────────────────────────
 

@@ -38,7 +38,7 @@ import {
 } from '@/features/library/domain/metadata';
 import { resolveItemFieldValue } from '@/features/library/domain/diff';
 import * as InfoSectionExports from '@/features/library/components/inspector/InfoSection';
-import * as MetadataUtilExports from '@/features/library/domain/metadata.util';
+import * as DomainExports from '@/features/library/domain';
 import type { Item } from '@/features/library/types/library.types';
 
 describe('Wave 13: Architectural Flow Standardization & Single Source of Truth', () => {
@@ -84,7 +84,7 @@ describe('Wave 13: Architectural Flow Standardization & Single Source of Truth',
     }
   });
 
-  it('maintains 100% reference identity between domain/item-field-schema, InfoSection.tsx, and utils/metadata.util.ts', () => {
+  it('maintains 100% reference identity between domain/item-field-schema, InfoSection.tsx, and domain/index.ts', () => {
     expect(InfoSectionExports.ALL_SCHEMA_FIELD_KEYS).toBe(ALL_SCHEMA_FIELD_KEYS);
     expect(InfoSectionExports.FIRST_CLASS_ITEM_COLUMNS).toBe(FIRST_CLASS_ITEM_COLUMNS);
     expect(InfoSectionExports.DIRECT_METADATA_FIELDS).toBe(DIRECT_METADATA_FIELDS);
@@ -94,9 +94,9 @@ describe('Wave 13: Architectural Flow Standardization & Single Source of Truth',
     expect(InfoSectionExports.resolveInspectorFieldValue).toBe(resolveInspectorFieldValue);
     expect(InfoSectionExports.buildInspectorFieldPatch).toBe(buildInspectorFieldPatch);
 
-    expect(MetadataUtilExports.DIRECT_METADATA_FIELDS).toBe(DIRECT_METADATA_FIELDS);
-    expect(MetadataUtilExports.resolveInspectorFieldValue).toBe(resolveInspectorFieldValue);
-    expect(MetadataUtilExports.buildInspectorFieldPatch).toBe(buildInspectorFieldPatch);
+    expect(DomainExports.DIRECT_METADATA_FIELDS).toBe(DIRECT_METADATA_FIELDS);
+    expect(DomainExports.resolveInspectorFieldValue).toBe(resolveInspectorFieldValue);
+    expect(DomainExports.buildInspectorFieldPatch).toBe(buildInspectorFieldPatch);
   });
 
   it('unifies title patch construction for GeneralFields across standard title, caseName, nameOfAct, and subject', () => {

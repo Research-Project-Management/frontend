@@ -198,49 +198,6 @@ export default function InfoSection(props: InfoSectionProps) {
       (f: SchemaFieldDefinition) => !EXCLUDED_DYNAMIC_LOOP_FIELDS.has(f.field.toLowerCase()),
     );
 
-    const hasDoiField = raw.some((f) => f.field.toLowerCase() === 'doi');
-    const hasCitationMetrics =
-      hasDoiField ||
-      Boolean(item?.citationCount && Number(item.citationCount) > 0) ||
-      Boolean(item?.referenceCount && Number(item.referenceCount) > 0);
-
-    if (
-      hasCitationMetrics &&
-      !raw.some((f) => f.field.toLowerCase() === 'citationcount')
-    ) {
-      const doiIdx = raw.findIndex((f) => f.field.toLowerCase() === 'doi');
-      const citationDef: SchemaFieldDefinition = {
-        field: 'citationCount',
-        label: 'Citations',
-        type: 'number',
-        category: 'identifiers',
-        mono: true,
-      };
-      if (doiIdx >= 0) {
-        raw.splice(doiIdx + 1, 0, citationDef);
-      } else {
-        raw.push(citationDef);
-      }
-    }
-    if (
-      hasCitationMetrics &&
-      !raw.some((f) => f.field.toLowerCase() === 'referencecount')
-    ) {
-      const citIdx = raw.findIndex((f) => f.field.toLowerCase() === 'citationcount');
-      const refDef: SchemaFieldDefinition = {
-        field: 'referenceCount',
-        label: 'References',
-        type: 'number',
-        category: 'identifiers',
-        mono: true,
-      };
-      if (citIdx >= 0) {
-        raw.splice(citIdx + 1, 0, refDef);
-      } else {
-        raw.push(refDef);
-      }
-    }
-
     // Deduplicate against type-specific mapped venue/publisher fields if backend returned both base & mapped keys
     const fieldKeySet = new Set(raw.map((f) => f.field.toLowerCase()));
     const mappedPubTitle = typeDefinition?.fields?.find(
@@ -264,7 +221,7 @@ export default function InfoSection(props: InfoSectionProps) {
       }
       return true;
     });
-  }, [typeDefinition, currentItemType, item?.citationCount, item?.referenceCount]);
+  }, [typeDefinition, currentItemType]);
 
   if (!item) return null;
 

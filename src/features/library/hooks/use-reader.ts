@@ -68,7 +68,8 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   } = useAnnotations(scopeId, effectiveAttachmentId);
 
   useEffect(() => {
-    if (!paper || paper.ragStatus !== 'pending') return;
+    const ragStatus = (paper as { ragStatus?: string } | undefined)?.ragStatus;
+    if (!paper || ragStatus !== 'pending') return;
     const interval = setInterval(() => {
       qc.invalidateQueries({ queryKey: readerQueryKeys.item(scopeId, effectivePaperId) });
     }, 5000);

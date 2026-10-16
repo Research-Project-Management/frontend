@@ -737,19 +737,18 @@ export function ReaderToolbar({
             </ToolbarIconButton>
           )}
 
-          <div className="w-px h-3.5 bg-border mx-0.5" />
-
-          <ToolbarIconButton
-            onClick={onToggleInspector}
-            active={isInspectorOpen}
-            ariaLabel={isInspectorOpen ? 'Collapse inspector' : 'Expand inspector'}
-            tooltip={
-              isInspectorOpen ? 'Collapse inspector (Ctrl+/)' : 'Expand inspector (Ctrl+/)'
-            }
-            className={isInspectorOpen ? 'bg-muted border-none' : undefined}
-          >
-            <PanelRight className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-          </ToolbarIconButton>
+          {onToggleInspector && !isInspectorOpen && (
+            <>
+              <div className="w-px h-3.5 bg-border mx-0.5" />
+              <ToolbarIconButton
+                onClick={onToggleInspector}
+                ariaLabel="Expand inspector"
+                tooltip="Expand inspector (Ctrl+/)"
+              >
+                <PanelRight className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+              </ToolbarIconButton>
+            </>
+          )}
         </div>
     </div>
   );

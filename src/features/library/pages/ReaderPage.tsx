@@ -20,9 +20,12 @@ import { useOcrExtraction, useExportAnnotatedPdf } from '@/features/library/data
 import { ReaderInspector } from '@/features/library/components/inspector/ReaderInspector';
 import Topbar from '@/features/library/components/reader/Topbar';
 import ReaderToolbar from '@/features/library/components/reader/ReaderToolbar';
-import Sidebar from '@/features/library/components/reader/Sidebar';
 import Systembar from '@/features/library/components/reader/Systembar';
 import type { AnnotationRect } from '@/features/library/types/reader.types';
+
+const Sidebar = dynamic(() => import('@/features/library/components/reader/Sidebar'), {
+  ssr: false,
+});
 
 const BibtexModal = dynamic(() => import('@/features/library/components/modals/BibtexModal'), {
   ssr: false,
@@ -395,7 +398,10 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           onZoomIn={() => setZoom((z) => Math.min(2.5, +(z + 0.15).toFixed(2)))}
           onZoomOut={() => setZoom((z) => Math.max(0.5, +(z - 0.15).toFixed(2)))}
           onSetZoom={setZoom}
-          onFitWidth={() => setZoom(1.0)}
+          onFitWidth={() => {
+            setFitMode('fit-width');
+            setZoom(1.0);
+          }}
           rotation={rotation}
           onRotate={handleRotate}
           themeMode={themeMode}
@@ -443,7 +449,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       )}
 
       {/* WORKSPACE VIEWPORT */}
-      <div className="relative flex min-h-0 flex-1 overflow-hidden bg-muted">
+      <div className="relative flex h-full w-full min-h-0 flex-1 overflow-hidden bg-muted">
         {/* 3. SIDEBAR (Collapsible 288px: Outline, Annotations & Pages) */}
         <Sidebar
           isOpen={isSidebarOpen && !isReadingMode}
@@ -463,7 +469,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         />
 
         {/* 4. MAIN PDF CANVAS */}
-        <main className="flex min-w-0 flex-1 flex-col overflow-hidden relative">
+        <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden relative">
           {isLoadingPapers ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-2">
               <Loader2 className="size-6 animate-spin text-foreground" strokeWidth={1.5} />
@@ -523,7 +529,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                     initialSearchQuery={initialSearchQuery}
                   />
                 </div>
-                <div className="flex-1 min-w-0 min-h-0 overflow-hidden relative">
+                <div className="flex-1 min-w-0 min-h-0 h-full overflow-hidden relative">
                   <Viewer {...sharedViewerProps} targetPage={null} />
                 </div>
               </div>

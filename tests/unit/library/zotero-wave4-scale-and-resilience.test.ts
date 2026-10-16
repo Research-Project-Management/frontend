@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseBatchIdentifiersInput,
   cleanDoi,
-} from '@/features/library/domain/metadata.util';
+} from '@/features/library/domain';
 import {
   buildIdentifierIngestionPayload,
 } from '@/features/library/data/ingestion/ingestion.queries';
@@ -18,7 +18,7 @@ import {
   getDescendantCollectionIds,
   getCollectionBreadcrumbPath,
   canMoveCollection,
-} from '@/features/library/domain/collection-tree.util';
+} from '@/features/library/domain';
 import {
   filterItemsBySavedSearch,
   type SavedSearchConditionGroup,

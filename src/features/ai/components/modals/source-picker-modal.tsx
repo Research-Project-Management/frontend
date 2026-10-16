@@ -95,8 +95,10 @@ function branchNameMatches(node: TreeNode, query: string): boolean {
   );
 }
 
-const isIndexedPaper = (paper: Paper): paper is Paper & { ragDocId: string } =>
-  paper.ragStatus === 'indexed' && typeof paper.ragDocId === 'string' && paper.ragDocId.length > 0;
+const isIndexedPaper = (paper: Paper): paper is Paper & { ragDocId: string } => {
+  const p = paper as unknown as { ragStatus?: string; ragDocId?: string };
+  return p.ragStatus === 'indexed' && typeof p.ragDocId === 'string' && p.ragDocId.length > 0;
+};
 
 const compactAuthors = (paper: Paper) => {
   if (!paper.authors.length) return '';

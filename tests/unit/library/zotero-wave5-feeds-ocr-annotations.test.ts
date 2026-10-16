@@ -4,7 +4,7 @@ import {
   mapFeedEntryToCreateItemPayload,
   resolveOpenAccessLicenseBadge,
   filterItemsBySystemView,
-} from '@/features/library/domain/metadata.util';
+} from '@/features/library/domain';
 import {
   ANNOTATION_COLORS,
   PdfAnnotationEngine,

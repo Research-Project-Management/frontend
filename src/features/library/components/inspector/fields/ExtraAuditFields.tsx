@@ -5,8 +5,7 @@ import type { Item } from '@/features/library/types/library.types';
 import { formatAndSanitizeExtraMetadata, isValidValue } from '@/features/library/domain/metadata';
 import { formatAuditDate } from '@/features/library/components/inspector/InfoSection';
 import { InlineTextarea } from './InlineTextarea';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { useItemMetadataSourcesQuery } from '@/features/library/data';
+
 
 export interface ExtraAuditFieldsProps {
   item?: Item;
@@ -34,12 +33,6 @@ export function ExtraAuditFields(props: ExtraAuditFieldsProps) {
     });
   };
 
-  const { data: metadataSourcesData } = useItemMetadataSourcesQuery(
-    item?.projectId,
-    item?.id,
-    { enabled: !!item?.id },
-  );
-  const sources = metadataSourcesData?.sources || [];
 
   if (!item) return null;
 
@@ -95,33 +88,7 @@ export function ExtraAuditFields(props: ExtraAuditFieldsProps) {
         </div>
       )}
 
-      {/* Metadata Provenance Sources (arXiv, MeXtract, CrossRef) */}
-      {sources.length > 0 && (
-        <div className="grid grid-cols-[84px_1fr] gap-2 items-start py-0.5">
-          <span
-            className="text-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate pt-1"
-            id="label-sources"
-          >
-            Sources
-          </span>
-          <div className="flex flex-nowrap gap-1 px-2 py-1 items-center overflow-x-auto min-w-0 h-7 thin-scrollbar">
-            {sources.map((s) => (
-              <Tooltip key={s.id}>
-                <TooltipTrigger asChild>
-                  <span
-                    className="inline-flex items-center rounded-md bg-muted border border-border px-1.5 py-0.5 text-10 font-medium text-foreground cursor-default"
-                  >
-                    {s.sourceProvider}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  {`Fetched at ${formatAuditDate(s.fetchedAt)} via ${s.sourceProvider}`}
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-        </div>
-      )}
+
     </>
   );
 }

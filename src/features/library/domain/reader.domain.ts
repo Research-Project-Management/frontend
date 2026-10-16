@@ -511,7 +511,6 @@ const STOPWORDS = new Set([
   'a', 'an', 'the', 'and', 'or', 'of', 'in', 'on', 'for', 'with', 'at', 'by', 'to', 'from',
 ]);
 
-export const generateCitationKey = generateReaderCitationKey;
 export function generateReaderCitationKey(
   paper?: Partial<ReaderDocument> | null,
   existingKeys?: Set<string> | string[],

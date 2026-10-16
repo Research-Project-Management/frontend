@@ -277,11 +277,13 @@ describe('Wave 12: Exhaustive All-37 Zotero Item Types & All-121 Fields Round-Tr
           currentItemState.extraFields as Record<string, unknown>,
           currentItemState,
         );
-        expect(sanitizedExtra).toContain('Original Date: 2024');
+        if (!schemaType.fields.some((f) => f.field.toLowerCase() === 'originaldate')) {
+          expect(sanitizedExtra).toContain('Original Date: 2024');
+        }
         expect(sanitizedExtra).toContain('NIHMSID: NIHMS998877');
         for (const f of schemaType.fields) {
           const fl = f.field.toLowerCase();
-          if (fl === 'extra' || fl === 'pmid' || fl === 'pmcid') continue;
+          if (fl === 'extra') continue;
           expect(
             sanitizedExtra,
             `Dedicated field ${f.field} leaked into Extra display for ${itemType}`,

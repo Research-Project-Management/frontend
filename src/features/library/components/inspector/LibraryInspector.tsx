@@ -425,15 +425,10 @@ function LibraryInspectorContent({
   const hasTags = tagsList.length > 0 || isAddingTag;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Level calculation counted from bottom icon up
-  const currentLevel = useMemo(() => {
-    const idx = INSPECTOR_LEVELS_FROM_BOTTOM.indexOf(activeInspectorTab);
-    return idx !== -1 ? idx + 1 : INSPECTOR_LEVELS_FROM_BOTTOM.length;
-  }, [activeInspectorTab]);
-
+  // All sections are retained; selecting a tab expands and smoothly scrolls to it
   const visibleSectionIds = useMemo(() => {
-    return new Set(INSPECTOR_LEVELS_FROM_BOTTOM.slice(0, currentLevel));
-  }, [currentLevel]);
+    return new Set<InspectorSectionId>(INSPECTOR_LEVELS_FROM_BOTTOM);
+  }, []);
 
   const handleTabChange = (tabId: InspectorSectionId) => {
     setActiveInspectorTab(tabId);
@@ -463,7 +458,7 @@ function LibraryInspectorContent({
               {/* Scrollable Collapsible Sections */}
               <div
                 ref={scrollContainerRef}
-                className="relative flex-1 overflow-y-auto overflow-x-hidden min-h-0 bg-background inspector-scrollbar scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                className="relative flex-1 min-h-0 h-full overflow-y-auto overflow-x-hidden bg-background inspector-scrollbar scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
               >
                 {/* 1. Details */}
                 {visibleSectionIds.has('info') && (
@@ -765,13 +760,13 @@ function LibraryInspectorContent({
   return (
     <>
       {mobileDrawer}
-      <div className="flex h-full shrink-0 select-none">
+      <div className="flex h-full min-h-full self-stretch shrink-0 select-none">
         {/* Desktop In-Flow Inspector Pane */}
         {!isMobile && (
           <aside
             style={{ width: `${width}px` }}
             className={cn(
-              'relative h-full border-l border-border bg-background flex flex-col shrink-0 select-text',
+              'relative h-full min-h-full self-stretch border-l border-border bg-background flex flex-col shrink-0 select-text',
               isDragging && 'select-none transition-none',
             )}
           >

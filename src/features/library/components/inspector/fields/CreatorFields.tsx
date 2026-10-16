@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Plus, Minus, Check, ChevronDown, ChevronUp, Building2, User } from 'lucide-react';
+import { Plus, Minus, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import type { Item, CreatorCredit } from '@/features/library/types/library.types';
@@ -341,34 +341,6 @@ export function CreatorFields(props: CreatorFieldsProps) {
     syncCreatorsToParent(updatedCreators);
   };
 
-  const handleToggleFieldMode = (targetIndex: number) => {
-    const currentCreator = localCreators[targetIndex];
-    if (!currentCreator) return;
-    const nextFieldMode = currentCreator.fieldMode === 1 ? 0 : 1;
-    const trimmedName = currentCreator.name.trim();
-    const updatedCreators = [...localCreators];
-
-    if (nextFieldMode === 1) {
-      updatedCreators[targetIndex] = {
-        ...currentCreator,
-        fieldMode: 1,
-        firstName: undefined,
-        lastName: trimmedName || undefined,
-      };
-    } else {
-      const parsed = trimmedName ? parseCreatorName(trimmedName) : { firstName: '', lastName: '' };
-      updatedCreators[targetIndex] = {
-        ...currentCreator,
-        fieldMode: 0,
-        firstName: parsed.firstName || undefined,
-        lastName: parsed.lastName || undefined,
-        shortName: undefined,
-      };
-    }
-    setLocalCreators(updatedCreators);
-    syncCreatorsToParent(updatedCreators);
-  };
-
   const handleAddCreator = (afterIndex?: number) => {
     toast.dismiss('item-update');
     const primaryRoleDef =
@@ -557,43 +529,8 @@ export function CreatorFields(props: CreatorFieldsProps) {
                 </Tooltip>
               )}
 
-              {/* Action Buttons (Mode Toggle, Add, Remove) - visible on hover on desktop, always visible on mobile */}
+              {/* Action Buttons (Add, Remove) - visible on hover on desktop, always visible on mobile */}
               <div className="invisible group-hover:visible max-md:visible flex items-center gap-0.5 shrink-0">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleFieldMode(originalIndex)}
-                      className={cn(
-                        'size-6 flex items-center justify-center rounded-md transition-colors cursor-pointer focus-visible:outline-none relative before:absolute before:-inset-2 md:before:hidden',
-                        isSingleField
-                          ? 'text-primary bg-primary/10 hover:bg-primary/20'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted',
-                      )}
-                      aria-label={
-                        isSingleField
-                          ? `Switch ${roleLabel.toLowerCase()} ${originalIndex + 1} to two fields (person)`
-                          : `Switch ${roleLabel.toLowerCase()} ${originalIndex + 1} to single field (institution)`
-                      }
-                    >
-                      {isSingleField ? (
-                        <Building2 className="size-3.5 shrink-0" aria-hidden="true" strokeWidth={1.5} />
-                      ) : (
-                        <User className="size-3.5 shrink-0" aria-hidden="true" strokeWidth={1.5} />
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="bottom"
-                    align="start"
-                    sideOffset={6}
-                    alignOffset={2}
-                  >
-                    {isSingleField
-                      ? 'Switch to two fields (last, first)'
-                      : 'Switch to single field (institution)'}
-                  </TooltipContent>
-                </Tooltip>
 
                 <Tooltip>
                   <TooltipTrigger asChild>

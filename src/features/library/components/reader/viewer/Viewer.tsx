@@ -194,8 +194,18 @@ export default function Viewer({
   >({});
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState<number>(600);
-  const [containerHeight, setContainerHeight] = useState<number>(800);
+  const [containerWidth, setContainerWidth] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      return Math.max(600, window.innerWidth - 360);
+    }
+    return 1000;
+  });
+  const [containerHeight, setContainerHeight] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      return Math.max(600, window.innerHeight - 100);
+    }
+    return 800;
+  });
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const scrollToPage = useCallback((page: number) => {
@@ -225,13 +235,15 @@ export default function Viewer({
   useEffect(() => {
     if (!scrollContainerRef.current) return;
     const el = scrollContainerRef.current;
-    const update = () => {
-      const rect = el.getBoundingClientRect();
-      setContainerWidth(rect.width);
-      setContainerHeight(rect.height);
+    const update = (entries?: ResizeObserverEntry[]) => {
+      const entry = entries?.[0];
+      const width = entry ? entry.contentRect.width : el.clientWidth || el.getBoundingClientRect().width;
+      const height = entry ? entry.contentRect.height : el.clientHeight || el.getBoundingClientRect().height;
+      if (width > 0) setContainerWidth(Math.round(width));
+      if (height > 0) setContainerHeight(Math.round(height));
     };
     update();
-    const obs = new ResizeObserver(update);
+    const obs = new ResizeObserver((entries) => update(entries));
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
@@ -556,8 +568,8 @@ export default function Viewer({
   const currentZoom = zoomProp ?? 1.0;
   const containerH = containerHeight || 800;
   const fitPageWidth = Math.max(260, Math.round(((containerH - 72) / 1.414) * currentZoom));
-  const fitWidthWidth = Math.max(320, Math.round((containerWidth - 56) * currentZoom));
-  const spreadPageWidth = Math.max(260, Math.round(((containerWidth - 72) / 2) * currentZoom));
+  const fitWidthWidth = Math.max(320, Math.round((containerWidth - 16) * currentZoom));
+  const spreadPageWidth = Math.max(260, Math.round(((containerWidth - 32) / 2) * currentZoom));
 
   const standardPageWidth = fitMode === 'fit-page' ? fitPageWidth : fitWidthWidth;
   const effectivePageWidth = viewMode === 'spread' ? spreadPageWidth : standardPageWidth;
@@ -595,6 +607,7 @@ export default function Viewer({
       <div
         key={pageNum}
         data-page-num={pageNum}
+        style={{ width: effectivePageWidth }}
         ref={(el) => {
           if (el) pageRefs.current.set(pageNum, el);
           else pageRefs.current.delete(pageNum);
@@ -604,7 +617,7 @@ export default function Viewer({
         onMouseMove={(e) => handlePageMouseMove(e, pageNum)}
         onMouseUp={(e) => handlePageMouseUp(e, pageNum)}
         className={cn(
-          'bg-card border border-border rounded-md overflow-hidden transition-all relative shrink-0',
+          'bg-card border border-border rounded-md overflow-hidden transition-all relative shrink-0 mx-auto shadow-sm',
           themeMode === 'dark' && 'invert-[0.9] hue-rotate-180 contrast-90 brightness-95',
           themeMode === 'sepia' && 'sepia-[0.3] contrast-95 brightness-95',
           (activeTool === 'area' || activeTool === 'note') && 'cursor-crosshair select-none',
@@ -740,7 +753,7 @@ export default function Viewer({
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         className={cn(
-          'flex-1 overflow-auto relative',
+          'flex-1 w-full overflow-auto relative',
           interactionMode === 'hand'
             ? 'cursor-grab active:cursor-grabbing select-none'
             : 'select-text',
@@ -798,16 +811,17 @@ export default function Viewer({
         ) : (
           <Document
             file={blobUrl}
+            className="w-full min-w-full flex flex-col items-center"
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={onDocumentLoadError}
             loading={
-              <div className="flex flex-col items-center gap-4 py-5 px-4">
+              <div className="w-full flex flex-col items-center gap-4 py-4 px-2">
                 <DocumentPageSkeleton width={effectivePageWidth} />
               </div>
             }
           >
             {viewMode === 'spread' ? (
-              <div className="flex flex-col items-center gap-4 py-5 px-4 max-w-[1920px] mx-auto">
+              <div className="w-full flex flex-col items-center gap-4 py-4 px-2 max-w-[1920px] mx-auto">
                 {spreadPairs.map(([p1, p2]) => (
                   <div key={p1} className="flex flex-row justify-center items-start gap-4">
                     {renderPageCard(p1)}
@@ -816,11 +830,11 @@ export default function Viewer({
                 ))}
               </div>
             ) : viewMode === 'single' ? (
-              <div className="flex flex-col items-center gap-3 py-5 px-4 min-h-full justify-center">
+              <div className="w-full flex flex-col items-center gap-3 py-4 px-2 min-h-full justify-center">
                 {renderPageCard(Math.min(Math.max(1, visiblePage), numPages || 1))}
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-3 py-5 px-4">
+              <div className="w-full flex flex-col items-center gap-3 py-4 px-2">
                 {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) =>
                   renderPageCard(pageNum),
                 )}

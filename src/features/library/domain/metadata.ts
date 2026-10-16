@@ -73,20 +73,51 @@ const INVALID_TAG_TOKENS = new Set([
   'undefined',
   'n/a',
   'na',
+  'n.a.',
   'none',
   'nil',
   'unknown',
   'false',
   'true',
+  'sample',
+  'draft',
+  'test',
+  'etc',
+  'etc.',
+  'et al',
+  'et al.',
+  'downloaded',
+  'downloaded from',
+  'full text',
+  'pdf',
+  'abstract',
+  'keywords',
+  'keyword',
+  'index terms',
+  'key words',
+  'open access',
+  'all rights reserved',
+  'peer-reviewed',
+  'original article',
+  'research article',
+  'review article',
+  'multidisciplinary',
+  'general',
+  'miscellaneous',
+  'misc',
 ]);
 
 /**
- * Lightweight helper to clean a single user-typed tag in the frontend UI.
+ * Lightweight helper to clean a single user-typed or imported tag in the frontend UI.
  */
 export function cleanSingleFrontendTag(raw: string): string | null {
   if (!raw || typeof raw !== 'string') return null;
   let str = raw
     .replace(/[\uFFFD]/g, '')
+    .replace(
+      /^(?:tags?|keywords?|index terms?|categor(?:y|ies)|subject(?: areas?)?|topics?|terms?|classification|descriptors?|field(?: of study)?)[:—\-\s]+/i,
+      '',
+    )
     .replace(/^[#"''`([{<•·*—\-\s]+/, '')
     .replace(/["''`)\]}>.,;:—\-\s•·*]+$/, '')
     .trim();
@@ -94,8 +125,25 @@ export function cleanSingleFrontendTag(raw: string): string | null {
   str = stripLatexMarkup(str);
   str = str.replace(/<[^>]+>/g, '').trim();
 
-  if (!str || str.length < 2) return null;
-  if (INVALID_TAG_TOKENS.has(str.toLowerCase())) return null;
+  if (!str || str.length < 2 || str.length > 60) return null;
+  const lower = str.toLowerCase();
+  if (INVALID_TAG_TOKENS.has(lower)) return null;
+  // Reject pure numbers, year ranges, pagination, or identifier strings
+  if (/^\d+$/.test(str) || /^\d{1,4}[-–—/]\d{1,4}$/.test(str)) return null;
+  if (
+    /^(?:doi[:\s/]|https?:\/\/|www\.|10\.\d{4,9}\/|(?:pmid|pmcid|isbn|issn|arxiv)[:\s/])/i.test(
+      str,
+    )
+  ) {
+    return null;
+  }
+  if (
+    /^(?:p|pp|page|pages|vol|volume|no|number|v|issue)\.?\s*\d+(?:\s*[-–—]\s*\d+)?$/i.test(
+      str,
+    )
+  ) {
+    return null;
+  }
   return str;
 }
 
@@ -135,13 +183,21 @@ export function normalizeTags(
 
   for (const item of candidates) {
     if (typeof item === 'string') {
-      const parts = item.includes(';') || item.includes(',') ? item.split(/[,;]+/) : [item];
+      const parts =
+        item.includes(';') || item.includes(',') || item.includes('•')
+          ? item.split(/[,;•]+/)
+          : [item];
       for (const part of parts) {
         addTag(cleanSingleFrontendTag(part));
       }
     } else if (item && typeof item === 'object') {
       const tagObj = item as Record<string, unknown>;
-      const name = typeof tagObj.name === 'string' ? tagObj.name : typeof tagObj.tag === 'string' ? tagObj.tag : '';
+      const name =
+        typeof tagObj.name === 'string'
+          ? tagObj.name
+          : typeof tagObj.tag === 'string'
+            ? tagObj.tag
+            : '';
       if (name) {
         addTag(cleanSingleFrontendTag(name));
       }
@@ -163,31 +219,92 @@ export interface NormalizedNote {
 }
 
 /**
+ * Cleans HTML tags and entities from a note string while preserving paragraph structure.
+ */
+export function cleanNoteContent(raw: string): string {
+  if (!raw || typeof raw !== 'string') return '';
+  if (!/<\/?[a-z][\s\S]*>/i.test(raw) && !raw.includes('&')) {
+    return raw.trim();
+  }
+  return raw
+    .replace(/\r\n/g, '\n')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, (_, c) => `# ${c.trim()}\n\n`)
+    .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, (_, c) => `## ${c.trim()}\n\n`)
+    .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, (_, c) => `### ${c.trim()}\n\n`)
+    .replace(/<h[4-6][^>]*>([\s\S]*?)<\/h[4-6]>/gi, (_, c) => `#### ${c.trim()}\n\n`)
+    .replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, (_, c) => `> ${c.trim()}\n\n`)
+    .replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_, c) => `- ${c.trim()}\n`)
+    .replace(/<\/?(ul|ol)[^>]*>/gi, '\n')
+    .replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, (_, c) => `${c.trim()}\n\n`)
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<(strong|b)[^>]*>([\s\S]*?)<\/\1>/gi, '**$2**')
+    .replace(/<(em|i)[^>]*>([\s\S]*?)<\/\1>/gi, '*$2*')
+    .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '`$1`')
+    .replace(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&mdash;/gi, '—')
+    .replace(/&ndash;/gi, '–')
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/**
  * Normalizes an array of notes from an Item for inspector display.
  */
 export function normalizeNotes(rawNotes?: unknown): NormalizedNote[] {
   if (!rawNotes) return [];
   if (!Array.isArray(rawNotes)) {
-    if (typeof rawNotes === 'string' && rawNotes.trim()) {
-      return [{ id: 'note-0', note: rawNotes.trim(), content: rawNotes.trim() }];
+    if (typeof rawNotes === 'string') {
+      const cleaned = cleanNoteContent(rawNotes);
+      if (cleaned) {
+        return [{ id: 'note-0', note: cleaned, content: cleaned }];
+      }
     }
     return [];
   }
 
   const results: NormalizedNote[] = [];
+  const seenContent = new Set<string>();
   let index = 0;
   for (const n of rawNotes) {
     if (!n) continue;
-    if (typeof n === 'string' && n.trim()) {
-      results.push({ id: `note-${index++}`, note: n.trim(), content: n.trim() });
+    if (typeof n === 'string') {
+      const cleaned = cleanNoteContent(n);
+      const dedupeKey = cleaned.toLowerCase();
+      if (cleaned && !seenContent.has(dedupeKey)) {
+        seenContent.add(dedupeKey);
+        results.push({ id: `note-${index++}`, note: cleaned, content: cleaned });
+      }
     } else if (typeof n === 'object') {
       const obj = n as Record<string, unknown>;
-      const text = typeof obj.content === 'string' ? obj.content : typeof obj.note === 'string' ? obj.note : '';
-      if (text.trim()) {
+      const rawText =
+        typeof obj.contentMd === 'string' && obj.contentMd
+          ? obj.contentMd
+          : typeof obj.content === 'string' && obj.content
+            ? obj.content
+            : typeof obj.note === 'string'
+              ? obj.note
+              : '';
+      const cleaned = cleanNoteContent(rawText);
+      const dedupeKey = cleaned.toLowerCase();
+      if (cleaned && !seenContent.has(dedupeKey)) {
+        seenContent.add(dedupeKey);
         results.push({
           id: typeof obj.id === 'string' && obj.id ? obj.id : `note-${index++}`,
-          note: text.trim(),
-          content: text.trim(),
+          note: cleaned,
+          content: cleaned,
           title: typeof obj.title === 'string' ? obj.title : undefined,
           tags: Array.isArray(obj.tags) ? obj.tags.filter((t): t is string => typeof t === 'string') : undefined,
           createdAt: typeof obj.createdAt === 'string' ? obj.createdAt : undefined,
@@ -398,9 +515,14 @@ export const INTERNAL_AND_DEDICATED_METADATA_KEYS = new Set<string>([
   'retractionnature',
   'retractionreasons',
   'retractionnoticedoi',
+  'retractiondetails',
+  'retractioncheckedat',
+  'ismypublication',
+  'publicationconfirmedat',
   'provenance',
   'fieldprovenance',
   'sourceprovider',
+  'source',
   'sources',
   'extractionstatus',
   'ingestionstatus',
@@ -412,8 +534,30 @@ export const INTERNAL_AND_DEDICATED_METADATA_KEYS = new Set<string>([
   'qualityscore',
   'engineused',
   'primarycategory',
+  'categories',
+  'journalref',
+  'warnings',
+  'disambiguationwarning',
+  'rejectedciteddoi',
+  'wafkind',
+  'promptuploadpdf',
+  'crossrefenriched',
+  'confidencescore',
+  'originprovider',
+  'canonicalid',
+  'canonicalurl',
+  'resolvedat',
+  'ragdocid',
+  'ragindexedat',
+  'raglastattemptat',
+  'ragattempts',
+  'ragerror',
+  'ragstatus',
   '_version',
   'version',
+  'expectedversion',
+  'isdeleted',
+  'silent',
   'deletedat',
   'createdat',
   'updatedat',
@@ -424,7 +568,36 @@ export const INTERNAL_AND_DEDICATED_METADATA_KEYS = new Set<string>([
   'paperid',
   'userid',
   'projectid',
+  'workspaceid',
   'scopeid',
+  'uploadedbyid',
+  'createdbyid',
+  'fileid',
+  'filename',
+  'mimetype',
+  'size',
+  'primaryfile',
+  'hasfile',
+  'attachmentcount',
+  'notecount',
+  'firstauthor',
+  'userstates',
+  'states',
+  'readstatus',
+  'rating',
+  'lastreadat',
+  'outgoingrel',
+  'incomingrel',
+  'relations',
+  'seealso',
+  'identifiers',
+  'itemtags',
+  'zoterotags',
+  'collectionitems',
+  'noteslist',
+  'ingestionruns',
+  'itemmetadata',
+  'publications',
   // First-class DB column aliases & relation keys
   'abstract',
   'journal',
@@ -447,8 +620,10 @@ export const INTERNAL_AND_DEDICATED_METADATA_KEYS = new Set<string>([
   'authors',
   'creators',
   'contributors',
+  'editors',
   'tags',
   'keywords',
+  'keywordslist',
   'labels',
   'notes',
   'attachments',
@@ -460,6 +635,24 @@ export const INTERNAL_AND_DEDICATED_METADATA_KEYS = new Set<string>([
 ]);
 
 export const INTERNAL_EXTRA_KEYS = INTERNAL_AND_DEDICATED_METADATA_KEYS;
+
+/**
+ * Genuine Zotero 7 `Extra` / CSL overflow identifier keys that may be promoted
+ * from structured `extraFields` / JSONB into the `Extra` display when they are NOT
+ * already a dedicated first-class schema field of the item's `itemType`.
+ */
+const GENUINE_ZOTERO_EXTRA_OVERFLOW_KEYS = new Set<string>([
+  'pmid',
+  'pmcid',
+  'nihmsid',
+  'oclc',
+  'lccn',
+  'mr',
+  'zbl',
+  'originaldate',
+  'tex.ids',
+  'texids',
+]);
 
 export function isAllowedZoteroExtraKey(rawKey: string): boolean {
   const trimmed = rawKey.trim();
@@ -496,6 +689,34 @@ export function formatAndSanitizeExtraMetadata(
   const lines: string[] = [];
   const seenNormalizedLines = new Set<string>();
 
+  const effectiveExtraFields =
+    additionalExtraFields ||
+    (associatedPaperItem?.extraFields as Record<string, unknown> | undefined);
+
+  const resolvedItemType =
+    (typeof associatedPaperItem?.itemType === 'string' && associatedPaperItem.itemType) ||
+    (typeof effectiveExtraFields?.itemType === 'string' && effectiveExtraFields.itemType) ||
+    undefined;
+
+  const dedicatedFieldsForType = new Set<string>(
+    resolvedItemType && INITIAL_ITEM_TYPE_FIELDS_MAP[resolvedItemType]
+      ? INITIAL_ITEM_TYPE_FIELDS_MAP[resolvedItemType].map((f) =>
+          f.toLowerCase().replace(/[\s_-]+/g, ''),
+        )
+      : [],
+  );
+
+  const isDedicatedFieldOnCurrentType = (rawKey: string): boolean => {
+    const normKey = rawKey.trim().toLowerCase().replace(/[\s_-]+/g, '');
+    return normKey !== 'extra' && dedicatedFieldsForType.has(normKey);
+  };
+
+  const canPromoteStructuredKeyToExtra = (rawKey: string): boolean => {
+    const normKey = rawKey.trim().toLowerCase().replace(/[\s_-]+/g, '');
+    if (!GENUINE_ZOTERO_EXTRA_OVERFLOW_KEYS.has(normKey)) return false;
+    return !isDedicatedFieldOnCurrentType(rawKey);
+  };
+
   const pushUniqueLine = (rawLine: string) => {
     const trimmed = rawLine.trim();
     if (!trimmed) return;
@@ -503,7 +724,12 @@ export function formatAndSanitizeExtraMetadata(
     if (kvMatch) {
       const key = kvMatch[1]!.trim();
       const val = kvMatch[2]!.trim();
-      if (!isAllowedZoteroExtraKey(key) || !isValidValue(val)) {
+      if (
+        !isAllowedZoteroExtraKey(key) ||
+        isDedicatedFieldOnCurrentType(key) ||
+        !isValidValue(val) ||
+        val === '[object Object]'
+      ) {
         return;
       }
     }
@@ -523,11 +749,16 @@ export function formatAndSanitizeExtraMetadata(
       try {
         const parsed = JSON.parse(trimmed);
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-            if (isAllowedZoteroExtraKey(key) && isValidValue(value)) {
-              pushUniqueLine(
-                `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`,
-              );
+          const parsedObj = parsed as Record<string, unknown>;
+          if (typeof parsedObj._rawExtra === 'string' && parsedObj._rawExtra.trim()) {
+            for (const l of parsedObj._rawExtra.split(/\r?\n/)) {
+              pushUniqueLine(l);
+            }
+          }
+          for (const [key, value] of Object.entries(parsedObj)) {
+            if (key === '_rawExtra' || typeof value === 'object') continue;
+            if (canPromoteStructuredKeyToExtra(key) && isValidValue(value)) {
+              pushUniqueLine(`${key}: ${value}`);
             }
           }
         }
@@ -543,17 +774,11 @@ export function formatAndSanitizeExtraMetadata(
     }
   }
 
-  const effectiveExtraFields =
-    additionalExtraFields ||
-    (associatedPaperItem?.extraFields as Record<string, unknown> | undefined);
-
   if (effectiveExtraFields && typeof effectiveExtraFields === 'object') {
     for (const [key, value] of Object.entries(effectiveExtraFields)) {
-      if (key === 'originalDate') continue;
-      if (isAllowedZoteroExtraKey(key) && isValidValue(value)) {
-        pushUniqueLine(
-          `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`,
-        );
+      if (key === 'originalDate' || typeof value === 'object') continue;
+      if (canPromoteStructuredKeyToExtra(key) && isValidValue(value)) {
+        pushUniqueLine(`${key}: ${value}`);
       }
     }
   }

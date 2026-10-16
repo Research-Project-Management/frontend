@@ -99,12 +99,7 @@ function NotesSectionContent({
 
   const notes: NormalizedNote[] = useMemo(() => {
     if (canonicalNotes && canonicalNotes.length > 0) {
-      return canonicalNotes.map((noteItem: Note & { content?: string }) => ({
-        id: noteItem.id,
-        content: noteItem.contentMd || noteItem.content || '',
-        createdAt: noteItem.createdAt,
-        updatedAt: noteItem.updatedAt,
-      }));
+      return normalizeNotes(canonicalNotes);
     }
     const normalizedExistingNotes = normalizeNotes(paper.notes);
     if (normalizedExistingNotes.length > 0) {

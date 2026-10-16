@@ -1,9 +1,21 @@
 'use client';
 
-import { useRef, type ReactNode } from 'react';
+import { useRef, useState, useEffect, type ReactNode } from 'react';
 import { motion, useInView, useReducedMotion } from 'framer-motion';
 
 const snappyEase = [0.16, 1, 0.3, 1] as const;
+
+/**
+ * Ensures client-only preferences (such as prefers-reduced-motion) do not cause
+ * React SSR hydration mismatch errors between server-rendered HTML and client VDOM.
+ */
+function useHydrated(): boolean {
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+  return hydrated;
+}
 
 interface MotionRevealProps {
   children: ReactNode;
@@ -24,13 +36,15 @@ export function MotionReveal({
 }: MotionRevealProps) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once, margin: '-50px 0px' });
-  const shouldReduce = useReducedMotion();
+  const isHydrated = useHydrated();
+  const shouldReduceRaw = useReducedMotion();
+  const shouldReduce = isHydrated && Boolean(shouldReduceRaw);
 
   return (
     <motion.div
       ref={ref}
       className={className}
-      initial={shouldReduce ? { opacity: 1, y: 0 } : { opacity: 0, y: yOffset }}
+      initial={{ opacity: 0, y: yOffset }}
       animate={
         shouldReduce
           ? { opacity: 1, y: 0 }
@@ -64,7 +78,9 @@ export function MotionStaggerContainer({
 }: StaggerContainerProps) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-50px 0px' });
-  const shouldReduce = useReducedMotion();
+  const isHydrated = useHydrated();
+  const shouldReduceRaw = useReducedMotion();
+  const shouldReduce = isHydrated && Boolean(shouldReduceRaw);
 
   return (
     <motion.div
@@ -94,13 +110,15 @@ export function MotionItem({
   children: ReactNode;
   className?: string;
 }) {
-  const shouldReduce = useReducedMotion();
+  const isHydrated = useHydrated();
+  const shouldReduceRaw = useReducedMotion();
+  const shouldReduce = isHydrated && Boolean(shouldReduceRaw);
 
   return (
     <motion.div
       className={className}
       variants={{
-        hidden: { opacity: 0, y: shouldReduce ? 0 : 12 },
+        hidden: { opacity: 0, y: 12 },
         visible: {
           opacity: 1,
           y: 0,

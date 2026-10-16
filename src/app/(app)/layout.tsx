@@ -51,7 +51,7 @@ export default function AppLayout({
 
   if (isPaperReader) {
     return (
-      <div className='h-dvh w-full overflow-hidden bg-background' suppressHydrationWarning>
+      <div className='h-dvh w-full flex flex-col overflow-hidden bg-background' suppressHydrationWarning>
         <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Document Reader">
           <Suspense fallback={<AppLoading />}>
             {children}

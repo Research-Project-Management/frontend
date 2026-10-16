@@ -67,7 +67,7 @@ export function InspectorTabs({
     <aside
       aria-label="Inspector panel bar"
       className={cn(
-        'w-10 shrink-0 h-full border-l border-border bg-background flex flex-col items-center select-none z-20',
+        'w-10 shrink-0 h-full min-h-full self-stretch border-l border-border bg-background flex flex-col items-center select-none z-20',
         className,
       )}
     >

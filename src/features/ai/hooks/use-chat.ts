@@ -230,7 +230,10 @@ export function useChat() {
         const resObj = res as unknown as Item[] | { papers?: Item[]; items?: Item[] };
         const papers: Item[] = Array.isArray(resObj) ? resObj : resObj?.papers || resObj?.items || [];
         const indexedPapers = papers.filter(
-          (paper): paper is Item & { ragDocId: string } => paper.ragStatus === 'indexed' && Boolean(paper.ragDocId),
+          (paper): paper is Item & { ragDocId: string } => {
+            const p = paper as unknown as { ragStatus?: string; ragDocId?: string };
+            return p.ragStatus === 'indexed' && Boolean(p.ragDocId);
+          },
         );
         indexedPapers.forEach((paper) => addSource(paper.ragDocId, paper.title));
 

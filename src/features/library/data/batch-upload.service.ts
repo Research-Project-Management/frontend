@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { IngestionService } from './ingestion/ingestion.service';
 import { UploadService } from './extraction/extraction.service';
-import { itemKeys, invalidateCollections } from './query-keys';
+import { itemKeys, libraryKeys, invalidateCollections } from './query-keys';
 import type { IngestionProgressItem } from './ingestion/ingestion.service';
 import type {
   ProcessingFileItem,
@@ -98,7 +98,7 @@ export async function executeBatchUpload(
   }));
 
   const queue = [...files];
-  const concurrency = 2;
+  const concurrency = 4;
   let completedCount = 0;
   let successCount = 0;
   let failCount = 0;
@@ -314,7 +314,12 @@ export async function executeBatchUpload(
             } | null;
             const statusData = statusPayload?.data || statusPayload;
             const currentStatus = statusData?.status;
-            if (currentStatus === 'COMPLETED' || currentStatus === 'READY' || currentStatus === 'SUCCEEDED') {
+            if (
+              currentStatus === 'COMPLETED' ||
+              currentStatus === 'READY' ||
+              currentStatus === 'SUCCEEDED' ||
+              currentStatus === 'NEEDS_REVIEW'
+            ) {
               if (statusData?.title && statusData.title !== 'Uploaded Document') {
                 finalTitle = statusData.title;
               }
@@ -339,14 +344,19 @@ export async function executeBatchUpload(
         }
 
         if (!isDone) {
-          markFileFailed('Metadata extraction timed out. Please check your library.');
-          return;
+          // Non-blocking graceful handoff: file was safely stored and queued on server
+          // Transition to ready so user sees their uploaded item immediately
+          isDone = true;
         }
       }
 
-      // File extraction completed successfully!
+      // File extraction / storage completed successfully!
       successCount++;
       completedCount++;
+
+      // Trigger immediate incremental cache invalidation so each item pops up live
+      void queryClient.invalidateQueries({ queryKey: libraryKeys.items(scopeId) });
+      void queryClient.invalidateQueries({ queryKey: libraryKeys.counts(scopeId) });
 
       // Update provisional item with final itemId and title so LibraryContent can seamlessly hand off
       store.setState((s) => {
@@ -406,10 +416,11 @@ export async function executeBatchUpload(
 
   // Single coalesced synchronization after batch completion before removing provisional items
   await Promise.all([
-    queryClient.refetchQueries({ queryKey: itemKeys.all(scopeId) }),
-    queryClient.refetchQueries({ queryKey: itemKeys.counts(scopeId) }),
+    queryClient.invalidateQueries({ queryKey: libraryKeys.items(scopeId) }),
+    queryClient.invalidateQueries({ queryKey: libraryKeys.counts(scopeId) }),
+    queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
     effectiveCollection
-      ? queryClient.refetchQueries({ queryKey: itemKeys.byCollection(scopeId, effectiveCollection) })
+      ? queryClient.invalidateQueries({ queryKey: libraryKeys.items(scopeId, { collectionId: effectiveCollection }) })
       : Promise.resolve(),
   ]);
   invalidateCollections(queryClient, scopeId);

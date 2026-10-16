@@ -1,3 +1,4 @@
+import '@/shared/lib/dom-polyfill';
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import { Toaster } from "@/shared/components/ui/sonner";

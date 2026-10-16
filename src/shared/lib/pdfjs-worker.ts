@@ -1,3 +1,5 @@
+import '@/shared/lib/dom-polyfill';
+
 /**
  * pdfjs-worker.ts
  *

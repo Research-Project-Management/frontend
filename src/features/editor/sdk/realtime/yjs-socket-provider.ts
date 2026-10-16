@@ -320,7 +320,7 @@ export class YjsSocketIOProvider {
         .__fluxFakeSocket;
       this.socket = fakeSocket ?? io(socketUrl, {
         path: '/socket.io',
-        transports: ['websocket', 'polling'],
+        transports: ['polling', 'websocket'],
         auth: authPayload,
         reconnection: true,
         reconnectionAttempts: Infinity,

@@ -80,10 +80,10 @@ export function useInbox(initialCategory: InboxCategory = 'all'): UseInboxReturn
     const token = getAuthToken();
 
     try {
-      const socket = io(baseUrl, {
+      const socket = io(baseUrl || undefined, {
         path: '/socket.io',
         auth: { token },
-        transports: ['websocket', 'polling'],
+        transports: ['polling', 'websocket'],
         reconnection: true,
         reconnectionDelay: 2000,
         reconnectionAttempts: 5,

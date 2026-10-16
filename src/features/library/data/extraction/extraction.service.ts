@@ -312,7 +312,7 @@ export async function uploadLibraryFileMultipart(
     const uploadBase = isProject
       ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/upload`
       : `/api/v1/library/upload`;
-    const baseUrl = getEffectiveBaseUrl() || API_BASE_URL;
+    const baseUrl = getEffectiveBaseUrl();
     const uploadUrl = `${baseUrl}${uploadBase}`;
 
     xhr.open('POST', uploadUrl, true);

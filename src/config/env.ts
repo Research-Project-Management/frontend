@@ -32,9 +32,44 @@ const envSchema = z.object({
     .default('development'),
 });
 
+const resolveRawApiUrl = (): string => {
+  const configured = (process.env.NEXT_PUBLIC_API_URL ?? '').trim().replace(/\/$/, '');
+
+  // On the server (Node.js SSR / Route Handlers), prefer INTERNAL_API_URL, then NEXT_PUBLIC_API_URL
+  if (typeof window === 'undefined') {
+    const internal = (process.env.INTERNAL_API_URL ?? '').trim().replace(/\/$/, '');
+    return internal || configured || 'http://127.0.0.1:3000';
+  }
+
+  // In the browser:
+  // 1. If NEXT_PUBLIC_API_URL is empty or relative, use '' so requests go through same-origin Next.js rewrites
+  if (!configured || configured === '/') {
+    return '';
+  }
+
+  // 2. Prevent Mixed Content errors & dynamic DNS blocks: if page is loaded over HTTPS
+  //    and configured URL is insecure HTTP or uses *.sslip.io, force relative same-origin proxy ('')
+  if (
+    (window.location.protocol === 'https:' && /^http:\/\//i.test(configured)) ||
+    /\.sslip\.io(\b|:|\/|$)/i.test(configured)
+  ) {
+    return '';
+  }
+
+  // 3. In production browser (not localhost), if configured points to localhost/127.0.0.1, force relative ('')
+  const isLocalBrowser =
+    window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  if (!isLocalBrowser && /^https?:\/\/(localhost|127\.0\.0\.1)(\b|:|\/|$)/i.test(configured)) {
+    return '';
+  }
+
+  return configured;
+};
+
 const parseEnv = () => {
+  const resolvedApiUrl = resolveRawApiUrl();
   const rawEnv = {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3000',
+    NEXT_PUBLIC_API_URL: resolvedApiUrl,
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME || 'Flux',
     NEXT_PUBLIC_ENABLE_ANALYTICS: process.env.NEXT_PUBLIC_ENABLE_ANALYTICS || 'false',
     INTERNAL_API_URL: process.env.INTERNAL_API_URL,
@@ -49,7 +84,7 @@ const parseEnv = () => {
       parsed.error.flatten().fieldErrors,
     );
     return {
-      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3000',
+      NEXT_PUBLIC_API_URL: resolvedApiUrl,
       NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME || 'Flux',
       NEXT_PUBLIC_ENABLE_ANALYTICS: false,
       INTERNAL_API_URL: undefined,

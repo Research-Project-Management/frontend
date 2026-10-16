@@ -53,6 +53,15 @@ export function getEffectiveBaseUrl(): string {
       // Ignore security errors in restricted browser contexts
     }
   }
+  if (typeof window !== 'undefined') {
+    if (
+      !API_BASE_URL ||
+      (window.location.protocol === 'https:' && /^http:\/\//i.test(API_BASE_URL)) ||
+      /\.sslip\.io(\b|:|\/|$)/i.test(API_BASE_URL)
+    ) {
+      return '';
+    }
+  }
   return API_BASE_URL;
 }
 

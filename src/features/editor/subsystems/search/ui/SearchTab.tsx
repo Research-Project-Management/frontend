@@ -88,7 +88,27 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
     setUseRegex,
     collapsedFiles,
     toggleFileCollapsed,
-  } = useSearchStore();
+  } = useSearchStore(
+    useShallow((s) => ({
+      query: s.query,
+      setQuery: s.setQuery,
+      instantQuery: s.instantQuery,
+      setInstantQuery: s.setInstantQuery,
+      replaceText: s.replaceText,
+      setReplaceText: s.setReplaceText,
+      showReplace: s.showReplace,
+      setShowReplace: s.setShowReplace,
+      toggleShowReplace: s.toggleShowReplace,
+      caseSensitive: s.caseSensitive,
+      setCaseSensitive: s.setCaseSensitive,
+      wholeWord: s.wholeWord,
+      setWholeWord: s.setWholeWord,
+      useRegex: s.useRegex,
+      setUseRegex: s.setUseRegex,
+      collapsedFiles: s.collapsedFiles,
+      toggleFileCollapsed: s.toggleFileCollapsed,
+    }))
+  );
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);

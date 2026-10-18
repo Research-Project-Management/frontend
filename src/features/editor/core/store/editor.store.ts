@@ -55,10 +55,16 @@ export const useDocumentEditorStore = create<DocumentEditorState>((set, get) => 
         typeof pageOrUpdater === 'function'
           ? pageOrUpdater(state.currentPage)
           : pageOrUpdater;
+      const hasDistinctActiveFile =
+        state.activeFilePage &&
+        next &&
+        state.activeFilePage.id !== state.currentPage?.id &&
+        state.activeFilePage.id !== next.id;
       return {
         currentPage: next,
-        activeFilePage: next,
-        activePageId: next?.id || null,
+        parentPageId: state.parentPageId || next?.id || null,
+        activeFilePage: hasDistinctActiveFile ? state.activeFilePage : next,
+        activePageId: hasDistinctActiveFile ? state.activeFilePage?.id || null : next?.id || null,
       };
     }),
   setProjectId: (projectId) => set({ projectId }),
@@ -66,11 +72,11 @@ export const useDocumentEditorStore = create<DocumentEditorState>((set, get) => 
   setActivePageId: (activePageId) => set({ activePageId }),
   setFileHierarchy: (fileHierarchy) => set({ fileHierarchy }),
   setActiveFilePage: (activeFilePage) =>
-    set({
+    set((state) => ({
       activeFilePage,
-      currentPage: activeFilePage,
-      activePageId: activeFilePage?.id || null,
-    }),
+      currentPage: activeFilePage ?? state.currentPage,
+      activePageId: (activeFilePage ?? state.currentPage)?.id || null,
+    })),
   setSelectedAsset: (selectedAsset) => set({ selectedAsset }),
   setTexFiles: (texFiles) => set({ texFiles }),
   resetPageState: () =>

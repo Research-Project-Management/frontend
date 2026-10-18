@@ -1,15 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  resolveEffectiveLibraryPermissions,
-  PROJECT_ROLE_PERMISSIONS,
-  getLibraryPermissions,
-} from '@/features/library/domain/library-permissions.policy';
-import { duplicateGroupSchema } from '@/features/library/types/curation.types';
-import { QualityService } from '@/features/library/data/ingestion/ingestion.service';
-import { CitationService, fetchReferenceByDoi } from '@/features/library/data/citation/citation.service';
-import { sanitizeItemPayload } from '@/features/library/data/catalog/catalog.service';
-import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
-import { resolveProjectRole } from '@/features/library/components/sidebar/ProjectLibrariesSection';
+  resolveEffectiveLibraryPermissions, PROJECT_ROLE_PERMISSIONS, getLibraryPermissions, } from '@/features/library/domain/library-permissions.policy';
+import { duplicateGroupSchema } from '@/features/library/domain/types/curation.types';
+import { QualityService, CitationService, fetchReferenceByDoi, sanitizeItemPayload } from '@/features/library/sdk/library.client';
+import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { resolveProjectRole } from '@/features/library/ui/sidebar/ProjectLibrariesSection';
 import * as api from '@/shared/lib/api';
 
 vi.mock('@/shared/lib/api', () => ({
@@ -269,3 +264,6 @@ describe('Wave 14: Backend-Authority Alignment', () => {
     });
   });
 });
+
+
+

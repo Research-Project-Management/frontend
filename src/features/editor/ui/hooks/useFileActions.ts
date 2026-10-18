@@ -12,7 +12,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { fileService } from '@/features/editor/sdk/manuscript.service';
-import { workspaceCoordinator, useSettingsStore } from '@/features/editor/core';
+import { workspaceCoordinator, useSettingsStore, editorCommandBus } from '@/features/editor/core';
 import { pageKeys } from './document.queries';
 import { toast } from 'sonner';
 
@@ -27,6 +27,13 @@ export function useFileActions() {
     },
     onSuccess: (newFile, variables) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.files(variables.parentPageId) });
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      editorCommandBus.dispatch({ type: 'filetree:updated', payload: { action: 'create', file: newFile } });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+      }
       toast.success(`Created file "${newFile.title}"`, { id: `create-file-${newFile.id || variables.title}` });
     },
     onError: (err: unknown) => {
@@ -46,7 +53,9 @@ export function useFileActions() {
       const targetPageId = typeof variables === 'string' ? variables : variables.pageId;
       queryClient.invalidateQueries({ queryKey: pageKeys.detail(targetPageId) });
       queryClient.invalidateQueries({ queryKey: pageKeys.files(targetPageId) });
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      queryClient.invalidateQueries({ queryKey: ['editor-root-doc'] });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to set main document';

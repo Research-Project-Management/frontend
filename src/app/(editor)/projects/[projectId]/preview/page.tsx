@@ -143,7 +143,7 @@ export default function DetachedPdfPreviewPage() {
           className="h-7 text-xs gap-1.5 cursor-pointer"
         >
           <ArrowLeft className="size-3.5" />
-          <span>Gắn lại giao diện chính</span>
+          <span>Re-attach to main editor</span>
         </Button>
       </header>
 

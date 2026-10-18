@@ -52,6 +52,7 @@ export function ReviewHeader({
     <SidebarPanelHeader
       title="Review"
       closeAriaLabel="Close review panel"
+      onClose={onClose}
     >
       {/* Resolved comments toggle */}
       <Tooltip>

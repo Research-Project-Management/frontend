@@ -81,10 +81,13 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
         showResolved={showResolved}
         onToggleResolved={handleToggleResolved}
         activeResolvedCount={activeResolvedCount}
+        onClose={onClose}
       />
 
       {/* ── Overleaf View Mode Control Bar ── */}
       <TrackChangesControlBar
+        reviewMode={Boolean(reviewMode)}
+        onToggleReviewMode={setReviewMode}
         viewMode={trackChangesViewMode}
         onViewModeChange={(mode) => {
           if (mode === 'changes' || mode === 'clean' || mode === 'original') {
@@ -122,14 +125,24 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
             count={pendingSuggestions.length}
             onRejectAll={() => {
               if (pageId) {
-                reviewCoordinator.applyAllLocally('reject');
-                rejectAllMutation.mutate({ pageId });
+                const hasServerPending = pendingSuggestions.some((s) => !s.id.startsWith('sug-local-'));
+                if (hasServerPending) {
+                  reviewCoordinator.applyAllLocally('reject');
+                  rejectAllMutation.mutate({ pageId });
+                } else {
+                  void reviewCoordinator.rejectAll(pageId);
+                }
               }
             }}
             onAcceptAll={() => {
               if (pageId) {
-                reviewCoordinator.applyAllLocally('accept');
-                acceptAllMutation.mutate({ pageId });
+                const hasServerPending = pendingSuggestions.some((s) => !s.id.startsWith('sug-local-'));
+                if (hasServerPending) {
+                  reviewCoordinator.applyAllLocally('accept');
+                  acceptAllMutation.mutate({ pageId });
+                } else {
+                  void reviewCoordinator.acceptAll(pageId);
+                }
               }
             }}
             isRejecting={rejectAllMutation.isPending}

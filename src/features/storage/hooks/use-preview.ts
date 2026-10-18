@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { updateFileMetadata } from '@/features/storage/services/file.service';
-import { previewServices } from '@/features/storage/services/preview.service';
+import { previewServices } from '@/features/storage/services/drive.service';
 import type { StorageItem } from '@/features/storage/types/storage.types';
 import { resolveFileUrl } from '@/shared/lib/file-client';
 import { storageKeys } from '../constants/storage.keys';
+import { usePreviewStore } from '../store/storage-ui.store';
 
 export function usePreview(item: StorageItem | null) {
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
@@ -33,9 +34,19 @@ export function usePreview(item: StorageItem | null) {
         ...(item?.metaData || {}),
         description: args.description,
       }),
-    onSuccess: () => {
+    onSuccess: (_data, args) => {
       setIsSaved(true);
       toast.success('Description saved');
+      const current = usePreviewStore.getState().selectedItem;
+      if (current && current.id === args.fileId) {
+        usePreviewStore.getState().setSelectedItem({
+          ...current,
+          metaData: {
+            ...(current.metaData || {}),
+            description: args.description,
+          },
+        });
+      }
       queryClient.invalidateQueries({ queryKey: storageKeys.all });
     },
     onError: () => {

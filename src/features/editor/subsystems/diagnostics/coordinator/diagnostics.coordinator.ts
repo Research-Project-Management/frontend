@@ -15,7 +15,7 @@ import type { CompileError } from '@/features/editor/domain/types/compiler.types
 import { normalizeLatexPath } from '@/features/editor/domain/latex/latex-dag-engine';
 import { heuristicLatexErrorFix } from '@/features/editor/domain/ai/ai-error-assist';
 import type { EditorDiagnosticItem } from '@/features/editor/core/bus/command-bus.port';
-import { type WarningFilterOptions, filterDiagnostics } from '@/features/editor/subsystems/compiler/logs/warning-filter';
+import { type WarningFilterOptions, filterDiagnostics } from '@/features/editor/domain/latex/warning-filter';
 import {
   type IndexedDiagnosticItem,
   type FileDiagnosticsSummary,

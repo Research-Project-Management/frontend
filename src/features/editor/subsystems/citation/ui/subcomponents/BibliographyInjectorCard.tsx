@@ -4,8 +4,8 @@ import React, { useState, useCallback } from 'react';
 import { BookOpen, Copy, Check, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
-import { libraryServices } from '@/features/library/data';
-import type { Item } from '@/features/library/types';
+import { libraryServices } from '@/features/library/sdk/library.client';
+import type { Item } from '@/features/library/domain/types/library.types';
 import {
   isLatexDocument,
   detectDocumentCitationStyle,
@@ -39,7 +39,7 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
   const fetchFormattedBibliography = useCallback(async () => {
     const itemIds = (citedItems || []).map((i) => i.id).filter(Boolean);
     if (itemIds.length === 0) {
-      throw new Error('Chưa có tài liệu nào trong thư viện được trích dẫn');
+      throw new Error('No library items have been cited yet');
     }
 
     const currentContent = getContent ? getContent() : engine?.getContent?.() || '';
@@ -51,7 +51,7 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
   // Handler: Insert bibliography section directly into document content
   const handleInsert = useCallback(async () => {
     if (!engine && !getContent) {
-      toast.error('Trình soạn thảo chưa sẵn sàng');
+      toast.error('Editor is not ready');
       return;
     }
 
@@ -60,7 +60,7 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
     const detectedStyle = detectDocumentCitationStyle(currentContent, activeFilePath);
 
     setIsInjecting(true);
-    const toastId = toast.loading('Đang tự động định dạng danh mục tài liệu...');
+    const toastId = toast.loading('Formatting bibliography...');
 
     try {
       const res = await fetchFormattedBibliography();
@@ -90,14 +90,14 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
         if (refreshContent) refreshContent();
       }
 
-      const actionText = action === 'replaced' ? 'Cập nhật' : 'Chèn';
+      const actionText = action === 'replaced' ? 'Updated' : 'Inserted';
       toast.success(
-        `Đã ${actionText.toLowerCase()} danh mục ${citedItems.length} tài liệu vào đề cương!`,
+        `${actionText} bibliography with ${citedItems.length} references!`,
         { id: toastId },
       );
     } catch (err: unknown) {
-      toast.error('Không thể tạo danh mục tài liệu', {
-        description: (err as Error)?.message || 'Lỗi khi gọi engine trích dẫn',
+      toast.error('Failed to generate bibliography', {
+        description: (err as Error)?.message || 'Error calling citation engine',
         id: toastId,
       });
     } finally {
@@ -114,12 +114,12 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
 
   // Handler: Copy full bibliography directly to clipboard
   const handleCopy = useCallback(async () => {
-    const toastId = toast.loading('Đang sao chép danh mục tài liệu...');
+    const toastId = toast.loading('Copying bibliography...');
     try {
       const res = await fetchFormattedBibliography();
       const text = res.bibliographyText || '';
       if (!text.trim()) {
-        toast.error('Danh mục tài liệu rỗng', { id: toastId });
+        toast.error('Bibliography is empty', { id: toastId });
         return;
       }
 
@@ -128,15 +128,15 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 2000);
         toast.success(
-          `Đã sao chép danh mục ${citedItems.length} tài liệu vào clipboard!`,
+          `Copied ${citedItems.length} references to clipboard!`,
           { id: toastId },
         );
       } else {
-        toast.error('Không thể sao chép vào clipboard', { id: toastId });
+        toast.error('Failed to copy to clipboard', { id: toastId });
       }
     } catch (err: unknown) {
-      toast.error('Sao chép thất bại', {
-        description: (err as Error)?.message || 'Lỗi khi định dạng trích dẫn',
+      toast.error('Copy failed', {
+        description: (err as Error)?.message || 'Error formatting citations',
         id: toastId,
       });
     }
@@ -150,21 +150,21 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-12 font-medium">
           <BookOpen className="size-3.5 text-primary shrink-0" strokeWidth={1.5} />
-          <span>Danh mục tài liệu ({citedCount})</span>
+          <span>References ({citedCount})</span>
         </div>
 
         {/* Auto-detect badge */}
         <span
           className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-primary/10 text-primary border border-primary/20"
-          title="Tự động nhận diện cú pháp bài viết và chuẩn hóa tên tác giả Việt Nam"
+          title="Automatically detects document syntax and normalizes author names"
         >
           <Check className="size-2.5 shrink-0" />
-          <span>Tự động nhận diện</span>
+          <span>Auto-detected</span>
         </span>
       </div>
 
       <p className="text-11 leading-relaxed text-muted-foreground">
-        Tự động phát hiện định dạng bài viết & chuẩn hóa tên tác giả Việt Nam theo quy chuẩn.
+        Automatically detects document format and normalizes author names.
       </p>
 
       {/* Action Buttons */}
@@ -180,23 +180,24 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
           ) : (
             <BookOpen className="size-3 shrink-0" />
           )}
-          <span>{isInjecting ? 'Đang tạo...' : 'Chèn vào đề cương'}</span>
+          <span>{isInjecting ? 'Generating...' : 'Insert Bibliography'}</span>
         </button>
 
         <button
           type="button"
           onClick={handleCopy}
           className="h-7 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-foreground text-11 font-medium flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
-          title="Sao chép toàn bộ danh mục tài liệu vào clipboard"
+          title="Copy full bibliography to clipboard"
         >
           {isCopied ? (
             <Check className="size-3 text-primary shrink-0" />
           ) : (
             <Copy className="size-3 shrink-0 text-muted-foreground" />
           )}
-          <span>{isCopied ? 'Đã chép' : 'Sao chép'}</span>
+          <span>{isCopied ? 'Copied' : 'Copy'}</span>
         </button>
       </div>
     </div>
   );
 });
+

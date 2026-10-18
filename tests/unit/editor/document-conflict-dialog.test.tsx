@@ -28,7 +28,7 @@ describe('DocumentConflictDialog Component', () => {
     );
 
     expect(screen.getByTestId('document-conflict-dialog')).toBeDefined();
-    expect(screen.getByText('Phát hiện xung đột tài liệu')).toBeDefined();
+    expect(screen.getByText('Document conflict detected')).toBeDefined();
     expect(screen.getByText('main.tex')).toBeDefined();
     expect(screen.getByTestId('conflict-diff-metrics')).toBeDefined();
     expect(screen.getByTestId('btn-keep-local')).toBeDefined();

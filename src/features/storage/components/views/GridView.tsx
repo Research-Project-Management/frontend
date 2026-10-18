@@ -4,13 +4,12 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Star, Folder, CheckSquare, Square, Loader2, Upload, FolderPlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { resolveFileUrl } from "@/shared/lib/file-client";
-import { useInfiniteSentinel } from '../../hooks/use-infinite-sentinel';
+import { useInfiniteSentinel } from '../../hooks/use-storage';
 import { Button } from '@/shared/components/ui/button';
 import type { StorageItem } from '@/features/storage/types/storage.types';
-import { getFileType, getFileIcon, getFileColor, formatFileSize } from '../../utils/storage.util';
+import { getFileType, getFileIcon, getFileColor, formatFileSize, createFolderDropHandlers } from '../../utils/storage.util';
 import { ItemActions, type StorageViewProps } from './ListView';
-import { useStorageSelectionStore } from '../../store/use-selection-store';
-import { createFolderDropHandlers } from '../../utils/drag-drop.util';
+import { useStorageSelectionStore } from '../../store/storage-ui.store';
 import StorageEmptyState from '../layout/StorageEmptyState';
 
 const GridFileIconItem = React.memo(function GridFileIconItem({ item }: { item: StorageItem }) {
@@ -45,6 +44,7 @@ export const GridView = React.memo(function GridView({
   items,
   onToggleStar,
   onDelete,
+  onRestore,
   onDownload,
   onFolderClick,
   onFileClick,
@@ -106,7 +106,7 @@ export const GridView = React.memo(function GridView({
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
                     transition={{ duration: 0.2 }}
-                    {...createFolderDropHandlers(folder, isReadOnly, onDropOnFolder, setDragOverFolderId)}
+                    {...createFolderDropHandlers(folder, isReadOnly || isTrash, onDropOnFolder, setDragOverFolderId)}
                     onClick={(e: React.MouseEvent) => {
                       if (!isReadOnly && (e.shiftKey || e.ctrlKey || e.metaKey)) {
                         e.preventDefault();
@@ -174,6 +174,7 @@ export const GridView = React.memo(function GridView({
                           item={folder}
                           onToggleStar={onToggleStar}
                           onDelete={onDelete}
+                          onRestore={onRestore}
                           onDownload={onDownload}
                           isTrash={isTrash}
                           onMoveToParent={onMoveToParent}
@@ -217,9 +218,9 @@ export const GridView = React.memo(function GridView({
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
                     transition={{ duration: 0.2 }}
-                    draggable={!isReadOnly && !!onDragStartFile}
+                    draggable={!isReadOnly && !isTrash && !!onDragStartFile}
                     onDragStart={(e: unknown) => {
-                      if (!isReadOnly && onDragStartFile) {
+                      if (!isReadOnly && !isTrash && onDragStartFile) {
                         onDragStartFile(file, e as React.DragEvent);
                       }
                     }}
@@ -279,6 +280,7 @@ export const GridView = React.memo(function GridView({
                               item={file}
                               onToggleStar={onToggleStar}
                               onDelete={onDelete}
+                              onRestore={onRestore}
                               onDownload={onDownload}
                               isTrash={isTrash}
                               onMoveToParent={onMoveToParent}

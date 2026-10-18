@@ -834,16 +834,18 @@
 
 
 
-* {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-  transition: scrollbar-color 0.2s ease;
-}
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.2s ease;
+  }
 
-*:hover,
-*:focus-within,
-*:active {
-  scrollbar-color: var(--border) transparent;
+  *:hover,
+  *:focus-within,
+  *:active {
+    scrollbar-color: var(--border) transparent;
+  }
 }
 
 ::-webkit-scrollbar-button {
@@ -881,18 +883,20 @@
   background: transparent !important;
 }
 
-.custom-scrollbar,
-.vertical-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-  transition: scrollbar-color 0.2s ease;
-}
+@supports not selector(::-webkit-scrollbar) {
+  .custom-scrollbar,
+  .vertical-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.2s ease;
+  }
 
-.custom-scrollbar:hover,
-.custom-scrollbar:focus-within,
-.vertical-scrollbar:hover,
-.vertical-scrollbar:focus-within {
-  scrollbar-color: var(--border) transparent;
+  .custom-scrollbar:hover,
+  .custom-scrollbar:focus-within,
+  .vertical-scrollbar:hover,
+  .vertical-scrollbar:focus-within {
+    scrollbar-color: var(--border) transparent;
+  }
 }
 
 .custom-scrollbar::-webkit-scrollbar,
@@ -934,34 +938,39 @@
   background-color: var(--muted-foreground) !important;
 }
 
-.thin-scrollbar::-webkit-scrollbar {
-  width: 2px !important;
-  height: 2px !important;
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.2s ease;
 }
 
-.thin-scrollbar::-webkit-scrollbar-button {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
+.thin-scrollbar:hover,
+.thin-scrollbar:focus-within {
+  scrollbar-color: var(--border) transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
 }
 
 .thin-scrollbar::-webkit-scrollbar-track {
-  background: transparent !important;
+  background: transparent;
 }
 
 .thin-scrollbar::-webkit-scrollbar-thumb {
-  background-color: transparent !important;
-  border-radius: 9999px !important;
+  background-color: transparent;
+  border-radius: 9999px;
   transition: background-color 0.2s ease;
 }
 
 .thin-scrollbar:hover::-webkit-scrollbar-thumb,
 .thin-scrollbar:focus-within::-webkit-scrollbar-thumb {
-  background-color: var(--border) !important;
+  background-color: var(--border);
 }
 
-.thin-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: var(--muted-foreground) !important;
+.thin-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground);
 }
 
 /* Kanban board interactive scrollbar: clean scrolling without layout-shifting gutter */
@@ -976,16 +985,18 @@
   height: 0;
 }
 
-.interactive-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-  transition: scrollbar-color 0.25s ease;
-}
+@supports not selector(::-webkit-scrollbar) {
+  .interactive-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.25s ease;
+  }
 
-.interactive-scrollbar:hover,
-.interactive-scrollbar:focus-within,
-.interactive-scrollbar:active {
-  scrollbar-color: var(--border) transparent;
+  .interactive-scrollbar:hover,
+  .interactive-scrollbar:focus-within,
+  .interactive-scrollbar:active {
+    scrollbar-color: var(--border) transparent;
+  }
 }
 
 .interactive-scrollbar::-webkit-scrollbar {

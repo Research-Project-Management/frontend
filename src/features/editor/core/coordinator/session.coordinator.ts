@@ -14,7 +14,7 @@ import { documentStore } from '@/features/editor/domain/document/document-store'
 import {
   lruDocumentCache,
   type DocumentModelState,
-} from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+} from '@/features/editor/domain/document/lru-document-cache';
 import {
   draftStorageService,
   type DraftSnapshot,
@@ -351,7 +351,7 @@ export class SessionCoordinatorRegistry {
     await this.flushAllPending();
     if (useConnectivityStore.getState().offlinePendingCompile) {
       useConnectivityStore.getState().setOfflinePendingCompile(false);
-      editorCommandBus.dispatch({ type: 'compiler:trigger', draft: true });
+      editorCommandBus.dispatch({ type: 'compiler:trigger' });
     }
   }
 
@@ -910,7 +910,7 @@ export class SessionCoordinatorRegistry {
       if (model.content === lastCompiled) return;
 
       this.lastCompiledContentMap.set(fileId, model.content);
-      editorCommandBus.dispatch({ type: 'compiler:trigger', draft: true });
+      editorCommandBus.dispatch({ type: 'compiler:trigger' });
     }, this.options.autoCompileDelay ?? DEFAULT_AUTOCOMPILE_DELAY);
   }
 }

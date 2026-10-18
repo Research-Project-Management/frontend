@@ -1,11 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import {
-  parseBatchIdentifiersInput,
-  cleanDoi,
-} from '@/features/library/domain';
+import { parseBatchIdentifiersInput, cleanDoi } from '@/features/library/domain/identifiers';
 import {
   buildIdentifierIngestionPayload,
-} from '@/features/library/data/ingestion/ingestion.queries';
+} from '@/features/library/sdk/queries/ingestion.queries';
 import {
   isItemRetracted,
   getRetractionInfo,
@@ -13,24 +10,19 @@ import {
 import {
   getLibraryPermissions,
 } from '@/features/library/domain/library-permissions.policy';
-import {
-  buildCollectionTree,
-  getDescendantCollectionIds,
-  getCollectionBreadcrumbPath,
-  canMoveCollection,
-} from '@/features/library/domain';
+import { buildCollectionTree, getDescendantCollectionIds, getCollectionBreadcrumbPath, canMoveCollection } from '@/features/library/domain/collection-tree.domain';
 import {
   filterItemsBySavedSearch,
   type SavedSearchConditionGroup,
-} from '@/features/library/types/saved-searches.types';
+} from '@/features/library/domain/types/saved-searches.types';
 import {
   sortLibraryItems,
 } from '@/features/library/domain/sort-items.domain';
 import {
   PdfAnnotationEngine,
 } from '@/features/library/domain/reader.domain';
-import type { Collection, Item } from '@/features/library/types/library.types';
-import type { ReaderAnnotation, ReaderDocument } from '@/features/library/types/reader.types';
+import type { Collection, Item } from '@/features/library/domain/types/library.types';
+import type { ReaderAnnotation, ReaderDocument } from '@/features/library/domain/types/reader.types';
 
 describe('Wave 4: Zotero 7 Web Translators & Identifier Input, Retraction Watch, Hierarchical Collections, and 1,000-Item Scale Benchmark', () => {
   // ===========================================================================
@@ -409,3 +401,4 @@ ER  -`;
     });
   });
 });
+

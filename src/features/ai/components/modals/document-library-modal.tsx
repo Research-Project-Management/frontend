@@ -164,16 +164,16 @@ export function DocumentLibraryModal({
   const handleToggleSourceInChat = (doc: DocumentItem) => {
     if (activeSourceIds.has(doc.id)) {
       removeSource(doc.id);
-      toast.info(`Đã bỏ "${doc.title}" khỏi phiên chat`);
+      toast.info(`Removed "${doc.title}" from chat session`);
     } else {
       addSource(doc.id, doc.title, { sourceType: 'upload' });
       setFluxDataEnabled(true);
-      toast.success(`Đã thêm "${doc.title}" vào ngữ cảnh hỏi đáp`);
+      toast.success(`Added "${doc.title}" to Q&A context`);
     }
   };
 
   const handleDelete = async (docId: string, title: string) => {
-    if (!confirm(`Bạn có chắc muốn xóa vĩnh viễn tài liệu "${title}" khỏi kho dữ liệu vector?`)) {
+    if (!confirm(`Are you sure you want to permanently delete "${title}" from the vector knowledge base?`)) {
       return;
     }
     setIsDeletingId(docId);
@@ -181,9 +181,9 @@ export function DocumentLibraryModal({
       await deleteDocument(docId, projectId);
       setDocuments((prev) => prev.filter((d) => d.id !== docId));
       removeSource(docId);
-      toast.success(`Đã xóa tài liệu "${title}" thành công`);
+      toast.success(`Deleted "${title}" successfully`);
     } catch (err: unknown) {
-      toast.error('Lỗi khi xóa tài liệu: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      toast.error('Failed to delete document: ' + (err instanceof Error ? err.message : 'Unknown error'));
     } finally {
       setIsDeletingId(null);
     }
@@ -196,12 +196,12 @@ export function DocumentLibraryModal({
       const res = await fetchDocumentContent(docId);
       setPreviewDoc({
         title,
-        content: res.text || 'Không có nội dung văn bản nào được trích xuất.',
+        content: res.text || 'No text content could be extracted.',
       });
     } catch {
       setPreviewDoc({
         title,
-        content: 'Không thể tải nội dung xem trước của tài liệu này.',
+        content: 'Unable to load preview content for this document.',
       });
     } finally {
       setIsPreviewLoading(false);
@@ -227,7 +227,7 @@ export function DocumentLibraryModal({
           sourceType: 'upload',
         });
       } catch (err: unknown) {
-        toast.error(`Lỗi khi tải ${file.name}: ${err instanceof Error ? err.message : 'Upload error'}`);
+        toast.error(`Error uploading ${file.name}: ${err instanceof Error ? err.message : 'Upload error'}`);
       }
     }
 
@@ -236,7 +236,7 @@ export function DocumentLibraryModal({
     if (fileInputRef.current) fileInputRef.current.value = '';
 
     if (successCount > 0) {
-      toast.success(`Đã thêm ${successCount} tài liệu mới vào kho dữ liệu`);
+      toast.success(`Added ${successCount} new documents to knowledge base`);
       loadDocuments();
     }
   };
@@ -255,14 +255,14 @@ export function DocumentLibraryModal({
                 <div>
                   <div className="flex items-center gap-2">
                     <DialogTitle className="text-base font-semibold text-foreground">
-                      Kho tài liệu AI
+                      AI Document Library
                     </DialogTitle>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-muted border border-border text-muted-foreground font-medium">
-                      {documents.length} tài liệu
+                      {documents.length} documents
                     </span>
                   </div>
                   <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                    Quản lý dữ liệu tài liệu đã upload để phục vụ AI phân tích và trả lời câu hỏi chính xác (RAG).
+                    Manage uploaded research documents for AI analysis and accurate retrieval-augmented generation (RAG).
                   </DialogDescription>
                 </div>
               </div>
@@ -277,7 +277,7 @@ export function DocumentLibraryModal({
                   className="h-8 gap-1.5 text-xs"
                 >
                   <RefreshCw className={cn("size-3.5", isLoading && "animate-spin")} />
-                  <span>Làm mới</span>
+                  <span>Refresh</span>
                 </Button>
 
                 <Button
@@ -291,7 +291,7 @@ export function DocumentLibraryModal({
                   ) : (
                     <UploadCloud className="size-3.5" />
                   )}
-                  <span>Tải lên tài liệu</span>
+                  <span>Upload documents</span>
                 </Button>
                 <input
                   ref={fileInputRef}
@@ -312,8 +312,8 @@ export function DocumentLibraryModal({
                   <div className="flex justify-between font-medium text-foreground mb-1">
                     <span>
                       {uploadProgress.stage === 'processing'
-                        ? 'Đang trích xuất nội dung & đánh chỉ mục vector store...'
-                        : 'Đang tải file lên...'}
+                        ? 'Extracting content & indexing vector store...'
+                        : 'Uploading files...'}
                     </span>
                     <span>{uploadProgress.percent}%</span>
                   </div>
@@ -333,7 +333,7 @@ export function DocumentLibraryModal({
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm kiếm tài liệu theo tên file, chủ đề hoặc nhãn..."
+                placeholder="Search documents by filename, topic, or label..."
                 className="pl-9 h-8.5 text-xs bg-muted/40 border-border/70"
               />
               {searchQuery && (
@@ -352,7 +352,7 @@ export function DocumentLibraryModal({
             {isLoading && documents.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 gap-2 text-muted-foreground">
                 <Loader2 className="size-6 animate-spin text-primary" />
-                <p className="text-xs">Đang tải kho tài liệu...</p>
+                <p className="text-xs">Loading document library...</p>
               </div>
             ) : filteredDocs.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-center p-6 border border-dashed rounded-xl border-border/80">
@@ -360,12 +360,12 @@ export function DocumentLibraryModal({
                   <FolderArchive className="size-6" />
                 </div>
                 <h3 className="text-sm font-semibold text-foreground">
-                  {searchQuery ? 'Không tìm thấy tài liệu phù hợp' : 'Chưa có tài liệu nào trong kho'}
+                  {searchQuery ? 'No matching documents found' : 'No documents in library yet'}
                 </h3>
                 <p className="text-xs text-muted-foreground max-w-sm mt-1 mb-4">
                   {searchQuery
-                    ? `Thử tìm kiếm với từ khóa khác.`
-                    : 'Tải lên các file PDF, Word, báo cáo, dữ liệu hoặc code để AI có thể tra cứu và giải đáp thông minh.'}
+                    ? `Try searching with different keywords.`
+                    : 'Upload PDF, Word, reports, or code files for intelligent AI search and retrieval.'}
                 </p>
                 <Button
                   size="sm"
@@ -373,7 +373,7 @@ export function DocumentLibraryModal({
                   className="gap-2 text-xs"
                 >
                   <UploadCloud className="size-4" />
-                  <span>Tải lên tài liệu đầu tiên</span>
+                  <span>Upload first document</span>
                 </Button>
               </div>
             ) : (
@@ -460,12 +460,12 @@ export function DocumentLibraryModal({
                           {isAttached ? (
                             <>
                               <Check className="size-3 text-primary shrink-0" />
-                              <span>Đang trong Chat</span>
+                              <span>In Chat</span>
                             </>
                           ) : (
                             <>
                               <Plus className="size-3 shrink-0" />
-                              <span>Đưa vào Chat</span>
+                              <span>Add to Chat</span>
                             </>
                           )}
                         </Button>
@@ -483,7 +483,7 @@ export function DocumentLibraryModal({
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent side="top" className="text-xs">
-                              Xem nội dung trích xuất
+                              View extracted content
                             </TooltipContent>
                           </Tooltip>
 
@@ -504,7 +504,7 @@ export function DocumentLibraryModal({
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent side="top" className="text-xs">
-                              Xóa khỏi kho dữ liệu
+                              Delete from knowledge base
                             </TooltipContent>
                           </Tooltip>
                         </div>
@@ -529,7 +529,7 @@ export function DocumentLibraryModal({
               </DialogTitle>
             </div>
             <DialogDescription className="text-xs text-muted-foreground">
-              Văn bản đã được trích xuất và phân tích vào các chunks trong vector store.
+              Text has been extracted and chunked in the vector store.
             </DialogDescription>
           </DialogHeader>
 
@@ -537,7 +537,7 @@ export function DocumentLibraryModal({
             {isPreviewLoading ? (
               <div className="flex items-center justify-center p-8 gap-2 text-muted-foreground">
                 <Loader2 className="size-4.5 animate-spin text-primary" />
-                <span>Đang trích xuất nội dung từ vector store...</span>
+                <span>Extracting content from vector store...</span>
               </div>
             ) : (
               previewDoc?.content

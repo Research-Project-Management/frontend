@@ -28,7 +28,7 @@ import {
 } from '@/features/library/domain/citations';
 import {
   buildIdentifierIngestionPayload,
-} from '@/features/library/data/ingestion/ingestion.queries';
+} from '@/features/library/sdk/queries/ingestion.queries';
 import {
   PdfAnnotationEngine,
   formatInTextCitation,
@@ -37,9 +37,9 @@ import {
 import {
   buildFallbackCitation,
   buildFallbackBibtex,
-} from '@/features/library/hooks/useLibraryBatchCoordinator';
-import type { Item } from '@/features/library/types/library.types';
-import type { ReaderAnnotation, ReaderDocument } from '@/features/library/types/reader.types';
+} from '@/features/library/core/coordinator/batch-action.coordinator';
+import type { Item } from '@/features/library/domain/types/library.types';
+import type { ReaderAnnotation, ReaderDocument } from '@/features/library/domain/types/reader.types';
 
 describe('Wave 2: Zotero 7 Official Documentation & Power-User User Stories', () => {
   // ===========================================================================
@@ -437,3 +437,5 @@ describe('Wave 2: Zotero 7 Official Documentation & Power-User User Stories', ()
     });
   });
 });
+
+

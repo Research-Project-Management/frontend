@@ -44,6 +44,7 @@ import { PdfFindBar } from './PdfFindBar';
 import { CompilationErrorBanner } from './CompilationErrorBanner';
 import PdfSurface, { type SurfaceHandle } from './PdfSurface';
 import { CompilerLogs, parseLatexLog } from './CompilerLogs';
+import { filterDiagnostics } from '@/features/editor/domain/latex/warning-filter';
 
 import { usePdfZoom } from './hooks/usePdfZoom';
 import { usePdfCompiler } from './hooks/usePdfCompiler';
@@ -132,10 +133,38 @@ export function PdfViewer() {
     saveThumbnailMutation,
   });
 
+  const suppressBadBoxes = useSettingsStore((s) => s.suppressBadBoxes);
+  const suppressFontWarnings = useSettingsStore((s) => s.suppressFontWarnings);
+  const suppressPackageWarnings = useSettingsStore((s) => s.suppressPackageWarnings);
+  const customSuppressedWarnings = useSettingsStore((s) => s.customSuppressedWarnings);
+  const stopOnFirstError = useSettingsStore((s) => s.stopOnFirstError);
+
   const parsedLog = useMemo(
     () => (compileLog ? parseLatexLog(compileLog) : null),
     [compileLog],
   );
+
+  const filteredWarningCount = useMemo(() => {
+    if (!parsedLog) return 0;
+    let warnings = parsedLog.warnings;
+    if (stopOnFirstError && parsedLog.errors.length > 0) {
+      const transientRegex = /(?:^|Warning:\s*)(?:Reference|Citation)\s+.+undefined\s+on\s+input\s+line/i;
+      warnings = warnings.filter((w) => !transientRegex.test(w.message || ''));
+    }
+    return filterDiagnostics(warnings, {
+      suppressBadBoxes,
+      suppressFontWarnings,
+      suppressPackageWarnings,
+      customPatterns: customSuppressedWarnings,
+    }).length;
+  }, [
+    parsedLog,
+    stopOnFirstError,
+    suppressBadBoxes,
+    suppressFontWarnings,
+    suppressPackageWarnings,
+    customSuppressedWarnings,
+  ]);
 
   const handleToggleLog = useCallback(() => {
     setShowLogsOverlay((prev) => !prev);
@@ -244,10 +273,10 @@ export function PdfViewer() {
   });
 
 
-  // Auto-switch to CompilerLogs on compilation error, and return to PDF on successful compile
+  // Auto-switch to CompilerLogs on compilation error when no PDF is available, and return to PDF on successful compile
   const prevCompileStatusRef = useRef(compileStatus);
   useEffect(() => {
-    if (compileStatus === 'error') {
+    if (compileStatus === 'error' && !pdfUrl) {
       setShowLogsOverlay(true);
     } else if (
       (compileStatus === 'idle' || compileStatus === 'done') &&
@@ -390,7 +419,7 @@ export function PdfViewer() {
             syncScroll={syncScroll}
             onToggleSyncScroll={toggleSyncScroll}
             errorCount={parsedLog?.errors.length ?? 0}
-            warningCount={parsedLog?.warnings.length ?? 0}
+            warningCount={filteredWarningCount}
           />
 
           <a ref={downloadRef} className="hidden" aria-hidden="true" />

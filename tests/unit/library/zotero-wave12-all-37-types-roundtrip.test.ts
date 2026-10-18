@@ -28,7 +28,7 @@ import {
   getTitleFieldForType,
   getDateFieldForType,
   getVenueFieldForType,
-} from '@/features/library/types/item-types.types';
+} from '@/features/library/domain/types/item-types.types';
 import {
   mapBackendItemToPaper,
   getItemDisplayTitle,
@@ -40,11 +40,11 @@ import {
   resolveInspectorFieldValue,
   buildInspectorFieldPatch,
   DIRECT_METADATA_FIELDS,
-} from '@/features/library/components/inspector/InfoSection';
+} from '@/features/library/ui/inspector/InfoSection';
 import {
   parseCreators,
   toItemCreators,
-} from '@/features/library/components/inspector/fields/CreatorFields';
+} from '@/features/library/ui/inspector/fields/CreatorFields';
 import {
   generateCitationKey,
   toBibTeXEntry,
@@ -62,7 +62,7 @@ interface RawZoteroSchemaItemType {
 
 const zoteroSchemaPath = path.resolve(
   __dirname,
-  '../../../../backend/src/modules/library/shared-kernel/data/zotero-schema.json',
+  '../../../../backend/src/modules/library/core/data/zotero-schema.json',
 );
 const rawZoteroSchema = JSON.parse(fs.readFileSync(zoteroSchemaPath, 'utf8')) as {
   itemTypes: RawZoteroSchemaItemType[];
@@ -324,3 +324,4 @@ describe('Wave 12: Exhaustive All-37 Zotero Item Types & All-121 Fields Round-Tr
     },
   );
 });
+

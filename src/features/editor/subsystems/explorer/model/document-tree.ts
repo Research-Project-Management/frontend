@@ -11,7 +11,7 @@
 
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
-import { displayName } from './document-naming';
+import { displayName } from '@/features/editor/domain/document/document-naming';
 
 export type FileTreeFolderNode = {
   type: 'folder';
@@ -127,19 +127,21 @@ export function getRootFilePriority(
   parentPageId?: string | null,
 ): number {
   const lower = item.displayLabel.toLowerCase();
-  const storeMainFile = useSettingsStore.getState().mainFile;
-  const storeMainBib = useSettingsStore.getState().mainBibFile;
-  if (
-    Boolean(item.isRootDoc) ||
-    (mainFileId && item.id === mainFileId) ||
-    (configuredMainFile && lower === configuredMainFile.toLowerCase()) ||
-    (storeMainFile && lower === storeMainFile.toLowerCase()) ||
-    (!mainFileId && !configuredMainFile && item.id === parentPageId) ||
-    lower === 'main.tex'
-  ) {
-    return 1;
+
+  // 1. If explicit mainFileId is supplied, it is the sole authority on what item is main
+  if (mainFileId) {
+    if (item.id === mainFileId) return 1;
+  } else if (configuredMainFile) {
+    if (lower === configuredMainFile.toLowerCase()) return 1;
+  } else {
+    // No explicit mainFileId or configuredMainFile
+    const storeMainFile = useSettingsStore.getState().mainFile;
+    if (storeMainFile && lower === storeMainFile.toLowerCase()) return 1;
+    if (item.isRootDoc || (parentPageId && item.id === parentPageId) || lower === 'main.tex') return 1;
   }
+
   if (lower === 'preamble.tex') return 2;
+  const storeMainBib = useSettingsStore.getState().mainBibFile;
   if (
     lower === 'references.bib' ||
     (storeMainBib && storeMainBib !== 'auto' && lower === storeMainBib.toLowerCase())

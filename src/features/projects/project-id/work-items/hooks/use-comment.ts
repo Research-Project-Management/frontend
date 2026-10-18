@@ -12,6 +12,7 @@ export const commentKeys = {
 function invalidateCommentQueries(queryClient: QueryClient, targetId: string) {
   queryClient.invalidateQueries({ queryKey: commentKeys.item(targetId) });
   queryClient.invalidateQueries({ queryKey: commentKeys.workItem(targetId) });
+  queryClient.invalidateQueries({ queryKey: ['work-item-activity', targetId] });
   queryClient.invalidateQueries({ queryKey: ['work-items'] });
 }
 

@@ -22,7 +22,6 @@ const DeleteModal = dynamic(
   { ssr: false }
 );
 import { useShallow } from 'zustand/react/shallow';
-import { useStorageSelectionStore } from '../../store/use-selection-store';
 import {
   useBatchDeleteItems,
   useBatchRestoreItems,
@@ -31,7 +30,10 @@ import {
 } from '../../hooks/use-storage';
 import { downloadFileUrl } from "@/shared/lib/file-client";
 import type { StorageItem } from '../../types/storage.types';
-import { useStorageUIStore } from '../../store/storage-ui.store';
+import {
+  useStorageUIStore,
+  useStorageSelectionStore,
+} from '../../store/storage-ui.store';
 
 export interface BulkActionBarProps {
   items: StorageItem[];
@@ -93,7 +95,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
     toast.info(`Packaging ${selectedCount} item(s) into ZIP archive...`);
 
     try {
-      const zipUrl = `/api/files/bulk-download?ids=${encodeURIComponent(selectedIds.join(','))}`;
+      const zipUrl = `/api/v1/storage/files/bulk-download?ids=${encodeURIComponent(selectedIds.join(','))}`;
       downloadFileUrl(zipUrl, `flux_research_export_${Date.now()}.zip`);
       toast.success('Started downloading ZIP archive');
     } catch (err) {

@@ -15,13 +15,13 @@ export {
   computeDraftDiffSummary,
   type DraftDiffSummary,
   type DraftDiffLine,
-} from './model/draft-diff';
+} from '@/features/editor/domain/document/draft-diff';
 export {
   type ProjectCompilationSnapshot,
   type SnapshotProjectFile,
   type SnapshotLRUModel,
   type SnapshotDirtyItem,
-} from './model/compilation-snapshot';
+} from '@/features/editor/domain/document/compilation-snapshot';
 export {
   type VersionEventType,
   type CreateVersionInput,
@@ -29,15 +29,17 @@ export {
   createVersionSchema,
   createSnapshotSchema,
   versionEventTypeSchema,
-} from './model/history.types';
+} from '@/features/editor/domain/types/history.types';
 
-// 2. Presentation Layer (Thin Views & Modals)
+// 2. Presentation Layer (Pages & Views)
 export {
-  default as ProjectHistoryModal,
-  ProjectHistoryView,
+  default as HistoryPage,
   ProjectHistoryPage,
+  ProjectHistoryView,
+  ProjectHistoryModal,
+  type HistoryPageProps,
   type ProjectHistoryModalProps,
-} from './ui/ProjectHistoryModal';
+} from './ui/HistoryPage';
 export {
   SideBySideDiffViewer,
   alignHunkForSplitView,
@@ -61,7 +63,7 @@ export {
 // 3. Subsystem Deep Interface Port (The Seam)
 export interface HistorySubsystemPort {
   readonly name: 'history';
-  openHistoryModal(projectId?: string, initialVersion?: number): void;
+  openHistoryPage(projectId?: string, initialVersion?: number): void;
   compareVersions(baseVersion: number, targetVersion: number): void;
   restoreVersion(versionId: number): Promise<boolean>;
 }

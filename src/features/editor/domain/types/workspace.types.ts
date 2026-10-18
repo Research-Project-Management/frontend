@@ -23,5 +23,4 @@ export interface WorkspaceLayoutConfig {
   readonly editorMode: EditorMode;
   readonly activeSidePanel: ActiveSidePanel;
   readonly isPdfVisible: boolean;
-  readonly isBottomDockVisible: boolean;
 }

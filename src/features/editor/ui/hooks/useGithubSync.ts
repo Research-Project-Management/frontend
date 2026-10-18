@@ -10,6 +10,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { integrationService } from '@/features/settings/services/integration.service';
+import { pageKeys } from '@/features/editor/ui/hooks/document.queries';
+import { editorCommandBus } from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
 
 export const githubSyncKeys = {
   all: ['github-sync'] as const,
@@ -135,8 +138,14 @@ export function useGithubSync({
     onSuccess: (data) => {
       toast.success(`Pulled ${data.filesImported} files from GitHub!`, { id: 'github-pull' });
       linkQuery.refetch();
-      queryClient.invalidateQueries({ queryKey: ['files', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['manuscript-nodes', projectId] });
+      lruDocumentCache.clearAll();
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      editorCommandBus.dispatch({ type: 'filetree:updated' });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+      }
     },
     onError: (err: unknown) => {
       toast.error((err as Error)?.message || 'Failed to pull from GitHub', { id: 'github-pull' });

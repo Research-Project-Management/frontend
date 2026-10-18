@@ -23,9 +23,10 @@ import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Input } from '@/shared/components/ui/input';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useChatMode } from '../../hooks/use-chat-mode';
-import { useCollections, useItems as usePapers } from '@/features/library/data/catalog/catalog.queries';
-import type { Collection, Item as Paper } from '@/features/library/types';
-import { LibraryEmptyState } from '@/features/library/components/content/LibraryEmptyState';
+import { useCollections } from '@/features/library/sdk/queries/collections.queries';
+import { useItems as usePapers } from '@/features/library/sdk/queries/catalog.queries';
+import type { Collection, Item as Paper } from '@/features/library/domain/types/library.types';
+import { LibraryEmptyState } from '@/features/library/ui/content/LibraryEmptyState';
 import { storageFileService, type StorageItem } from '@/features/storage';
 import { StorageEmptyState } from '@/features/storage/components/layout/StorageEmptyState';
 import { uploadDocument } from '../../services/chat.service';
@@ -600,3 +601,5 @@ export function SourcePickerModal({
 }
 
 export default SourcePickerModal;
+
+

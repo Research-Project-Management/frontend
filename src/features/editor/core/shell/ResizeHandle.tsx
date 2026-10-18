@@ -6,8 +6,8 @@
  *
  * Design Specifications:
  * - 8px gutter bar matching the project's light & dark design tokens.
- * - Flush rectangular collapse segment with rounded-none (bo góc none) fitting 100% within the 8px groove.
- * - Zero overflow into adjacent editor or sidebar panes (không tràn ra ngoài).
+ * - Flush rectangular collapse segment with rounded-none fitting 100% within the 8px groove.
+ * - Zero overflow into adjacent editor or sidebar panes.
  * - High-contrast chevron centered in the rectangular block.
  * - 4 square grip dots centered cleanly in the lower groove section.
  */

@@ -1,10 +1,9 @@
 /**
  * Pure Domain Policy: Zotero 7 System Views & "My Publications" Authorship / Open Access License Guard
- * 100% Pure TypeScript - Zero React/DOM dependencies.
  */
 
-import { isItemRetracted } from './retraction.domain';
-import type { LibraryScope } from '../types/core.types';
+import { isItemRetracted } from './retraction';
+import type { LibraryScope } from './types/core.types';
 
 export type LibrarySystemViewId =
   | 'all'

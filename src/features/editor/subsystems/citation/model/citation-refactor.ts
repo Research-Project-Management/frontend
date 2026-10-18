@@ -48,31 +48,31 @@ export function validateCitationKey(key: string, oldKey?: string): ValidateKeyRe
   const trimmed = (key || '').trim();
 
   if (!trimmed) {
-    return { isValid: false, error: 'Khóa trích dẫn không được để trống.' };
+    return { isValid: false, error: 'Citation key cannot be empty.' };
   }
 
   if (trimmed.startsWith('@')) {
     return {
       isValid: false,
-      error: 'Khóa trích dẫn không cần chứa ký tự @ ở đầu (hệ thống sẽ tự nhận diện).',
+      error: 'Citation key should not start with @ (it is detected automatically).',
     };
   }
 
   if (/\s/.test(trimmed)) {
-    return { isValid: false, error: 'Khóa trích dẫn không được chứa khoảng trắng.' };
+    return { isValid: false, error: 'Citation key cannot contain whitespace.' };
   }
 
   if (/[\\{},~"%\$\^]/.test(trimmed)) {
     return {
       isValid: false,
-      error: 'Khóa trích dẫn không được chứa các ký tự đặc biệt ({ }, \\, ~, ", %, $, ^).',
+      error: 'Citation key cannot contain special characters ({ }, \\, ~, ", %, $, ^).',
     };
   }
 
   if (oldKey && trimmed.toLowerCase() === oldKey.trim().toLowerCase()) {
     return {
       isValid: false,
-      error: 'Khóa trích dẫn mới phải khác với khóa trích dẫn hiện tại.',
+      error: 'New citation key must be different from the current key.',
     };
   }
 
@@ -81,7 +81,7 @@ export function validateCitationKey(key: string, oldKey?: string): ValidateKeyRe
   if (!validPattern.test(trimmed)) {
     return {
       isValid: false,
-      error: 'Khóa trích dẫn chỉ được chứa chữ cái, số và các ký tự: _ : - . # /',
+      error: 'Citation key may only contain letters, numbers, and: _ : - . # /',
     };
   }
 

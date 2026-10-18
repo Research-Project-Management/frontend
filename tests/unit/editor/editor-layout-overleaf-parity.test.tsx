@@ -154,8 +154,8 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
         />
       );
 
-      const backwardBtn = container.querySelector('button[aria-label="Jump to LaTeX source (SyncTeX)"]');
-      const forwardBtn = container.querySelector('button[aria-label="Jump to PDF location (SyncTeX)"]');
+      const backwardBtn = container.querySelector('button[aria-label="Go to PDF location in code (Reverse Search)"]');
+      const forwardBtn = container.querySelector('button[aria-label="Go to code location in PDF (Forward Search)"]');
 
       expect(backwardBtn).toBeInTheDocument();
       expect(forwardBtn).toBeInTheDocument();
@@ -186,7 +186,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
         />
       );
 
-      const backwardBtn = container.querySelector('button[aria-label="Jump to LaTeX source (SyncTeX)"]') as HTMLElement;
+      const backwardBtn = container.querySelector('button[aria-label="Go to PDF location in code (Reverse Search)"]') as HTMLElement;
       expect(backwardBtn).toBeInTheDocument();
       fireEvent.click(backwardBtn);
 
@@ -223,7 +223,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
         />
       );
 
-      const forwardBtn = container.querySelector('button[aria-label="Jump to PDF location (SyncTeX)"]') as HTMLElement;
+      const forwardBtn = container.querySelector('button[aria-label="Go to code location in PDF (Forward Search)"]') as HTMLElement;
       expect(forwardBtn).toBeInTheDocument();
       fireEvent.click(forwardBtn);
 
@@ -293,7 +293,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
   });
 
   describe('2. Vertical Space Optimization: EditorTabs & EditorToolbar', () => {
-    it('renders SourceVisualSwitcher in EditorToolbar and omits formatting buttons when editorMode is "code"', () => {
+    it('renders SourceVisualSwitcher and unified formatting buttons in EditorToolbar when editorMode is "code"', () => {
       useSettingsStore.setState({ editorMode: 'code' });
       renderWithProviders(<EditorArea />);
 
@@ -301,10 +301,10 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       expect(screen.getByRole('radio', { name: /code mode|source mode/i })).toBeInTheDocument();
       expect(screen.getByRole('radio', { name: /visual mode/i })).toBeInTheDocument();
 
-      // Bold, Italic formatting buttons are NOT rendered in code mode
-      expect(screen.queryByRole('button', { name: /bold/i })).toBeNull();
-      expect(screen.queryByRole('button', { name: /italic/i })).toBeNull();
-      expect(screen.queryByRole('button', { name: /section/i })).toBeNull();
+      // Formatting buttons are rendered in code mode (Overleaf unified toolbar parity)
+      expect(screen.getByRole('button', { name: /bold/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /italic/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /normal/i })).toBeInTheDocument();
     });
 
     it('renders EditorToolbar with formatting actions when editorMode is "visual"', () => {
@@ -315,7 +315,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       expect(screen.getByRole('radio', { name: /code mode|source mode/i })).toBeInTheDocument();
       expect(screen.getByRole('radio', { name: /visual mode/i })).toBeInTheDocument();
 
-      // Formatting buttons are now rendered in visual mode
+      // Formatting buttons are rendered in visual mode
       expect(screen.getByRole('button', { name: /bold/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /italic/i })).toBeInTheDocument();
     });
@@ -389,49 +389,16 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
     });
   });
 
-  describe('4. Status Bar & Word Count Parity (Overleaf 1:1)', () => {
-    it('defaults statusBarOpen to false for full-height distraction-free writing', () => {
-      useLayoutStore.getState().resetLayout();
-      expect(useLayoutStore.getState().statusBarOpen).toBe(false);
-    });
-
-    it('does not render StatusBar slot when statusBarOpen is false', () => {
-      useLayoutStore.setState({ statusBarOpen: false });
+  describe('4. Pure Overleaf Shell & Word Count Parity (Overleaf 1:1)', () => {
+    it('verifies WorkbenchShell renders full-height distraction-free writing without footer Status Bar or Bottom Dock', () => {
       const { container } = renderWithProviders(
         <WorkbenchShell
           topBar={<div>Topbar</div>}
           editor={<div>Editor</div>}
-          statusBar={<div data-testid="test-status-bar">StatusBar</div>}
-        />
-      );
-
-      expect(screen.queryByTestId('test-status-bar')).toBeNull();
-      expect(container.querySelector('[aria-label="Status Bar"]')).toBeNull();
-    });
-
-    it('renders StatusBar when statusBarOpen is explicitly toggled true', () => {
-      useLayoutStore.setState({ statusBarOpen: true });
-      renderWithProviders(
-        <WorkbenchShell
-          topBar={<div>Topbar</div>}
-          editor={<div>Editor</div>}
-          statusBar={<div data-testid="test-status-bar">StatusBar</div>}
-        />
-      );
-
-      expect(screen.getByTestId('test-status-bar')).toBeInTheDocument();
-    });
-
-    it('verifies footer Status Bar is removed for Overleaf parity (Overleaf has zero footer status bar)', () => {
-      useLayoutStore.setState({ statusBarOpen: false });
-      const { container } = renderWithProviders(
-        <WorkbenchShell
-          topBar={<div>Topbar</div>}
-          editor={<div>Editor</div>}
-          statusBar={null}
         />
       );
       expect(container.querySelector('[aria-label="Status Bar"]')).toBeNull();
+      expect(container.querySelector('[aria-label="Bottom Panel"]')).toBeNull();
     });
 
     it('verifies FileMenu does not contain duplicate Word Count or Deleted files (lives in Menu Drawer & File Tree)', async () => {

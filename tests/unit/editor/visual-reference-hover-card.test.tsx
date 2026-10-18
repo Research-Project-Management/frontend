@@ -171,7 +171,7 @@ describe('VisualReferenceHoverCard - Citations & References in Visual Mode', () 
       vi.advanceTimersByTime(200);
     });
 
-    expect(screen.getByText(/CẢNH BÁO BÀI BÁO BỊ THU HỒI/)).toBeDefined();
+    expect(screen.getByText(/WARNING: RETRACTED PUBLICATION/i)).toBeDefined();
     expect(screen.getByText('Unverifiable primary patient data.')).toBeDefined();
   });
 

@@ -152,6 +152,8 @@ export function DetailModal({
   const initialSnapshotRef = useRef("");
   const autosaveSignatureRef = useRef("");
   const autosaveReadyRef = useRef(false);
+  const prevOpenRef = useRef(false);
+  const prevCardIdRef = useRef<string | null>(null);
 
   // Popover States
   const [openStatePopover, setOpenStatePopover] = useState(false);
@@ -247,7 +249,12 @@ export function DetailModal({
 
   const handleConvertSubItem = async (sub: SubItem, sIdx: number) => {
     try {
-      await convertSubItemToRoot.mutateAsync({ id: sub.id, itemId: sub.id, workItemId: sub.id });
+      await convertSubItemToRoot.mutateAsync({
+        id: sub.id,
+        itemId: sub.id,
+        workItemId: sub.id,
+        projectId: currentProjectId,
+      });
       const updated = subItems.filter((_, i) => i !== sIdx);
       setSubItems(updated);
     } catch {}
@@ -285,7 +292,22 @@ export function DetailModal({
   ]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      prevOpenRef.current = false;
+      prevCardIdRef.current = null;
+      return;
+    }
+
+    const currentId = card?.id || null;
+    const isOpeningOrSwitchingCard =
+      !prevOpenRef.current || currentId !== prevCardIdRef.current;
+
+    if (!isOpeningOrSwitchingCard) {
+      return;
+    }
+
+    prevOpenRef.current = true;
+    prevCardIdRef.current = currentId;
 
     const effectiveAssigneeIds = card
       ? (Array.isArray(card.assigneeIds) && card.assigneeIds.length > 0
@@ -466,6 +488,7 @@ export function DetailModal({
     setIsAutosaving(true);
     const timer = setTimeout(() => {
       autosaveSignatureRef.current = payloadSnapshot;
+      initialSnapshotRef.current = payloadSnapshot;
       // Exclude relations and attachments from field autosave for existing items to prevent race conditions with dedicated mutations
       const { relations: _relations, attachments: _attachments, ...fieldPayload } = currentPayload;
       safeSave(fieldPayload);
@@ -543,6 +566,7 @@ export function DetailModal({
           id: workItemId,
           itemId: workItemId,
           workItemId: workItemId,
+          projectId: currentProjectId,
           title: itemTitle,
           columnId: defaultUnstartedColumnId,
         })) as { subItem?: SubItem; workItem?: SubItem; item?: SubItem } & Partial<SubItem>;
@@ -577,7 +601,11 @@ export function DetailModal({
     (updater: (prev: AttachCenterData) => AttachCenterData) => {
       const updated = updater(attachments);
       setAttachments(updated);
-      safeSave({ ...currentPayload, attachments: updated });
+      const nextPayload = { ...currentPayload, attachments: updated };
+      const nextSnap = ItemHelpers.createSnapshot(nextPayload);
+      initialSnapshotRef.current = nextSnap;
+      autosaveSignatureRef.current = nextSnap;
+      safeSave(nextPayload);
     },
     [attachments, currentPayload, safeSave],
   );
@@ -1128,118 +1156,131 @@ export function DetailModal({
                                 i === sIdx ? { ...s, completed: nextCompleted, columnId: nextColumnId } : s
                               );
                               setSubItems(updated);
-                              if (sub.id && !String(sub.id).startsWith('sub_')) {
-                                updateSubItemMutation.mutate({
-                                  id: sub.id,
-                                  completed: nextCompleted,
-                                  columnId: nextColumnId,
-                                });
-                              }
-                            }}
-                            aria-label={`Mark sub-item ${sub.title || 'untitled'} as ${isSubDone ? 'incomplete' : 'complete'}`}
-                            className={cn(
-                              'size-4 rounded-md border flex items-center justify-center transition-colors cursor-pointer relative before:absolute before:-inset-2.5 md:before:hidden',
-                              isSubDone ? 'bg-primary border-primary text-primary-foreground' : 'border-border hover:border-foreground'
-                            )}
-                          >
-                            {isSubDone && <Check className="size-3 shrink-0" />}
-                          </button>
-                          <span className={cn("font-medium text-xs", isSubCancelled ? 'line-through text-muted-foreground' : isSubDone ? 'text-muted-foreground' : 'text-foreground')}>
-                            {sub.title}
-                          </span>
-                        </div>
-
-                        {!isReadOnly && (
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              type="button"
-                              onClick={() => handleConvertSubItem(sub, sIdx)}
-                              className="p-1 text-foreground cursor-pointer transition-colors rounded-md hover:bg-muted relative before:absolute before:-inset-2 md:before:hidden"
-                              title="Convert to independent work item"
-                              aria-label="Convert to independent work item"
-                            >
-                              <ArrowUpRight className="size-3.5 shrink-0" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = subItems.filter((_, i) => i !== sIdx);
-                                setSubItems(updated);
                                 if (sub.id && !String(sub.id).startsWith('sub_')) {
-                                  deleteSubItemMutation.mutate({ id: sub.id });
+                                  updateSubItemMutation.mutate({
+                                    id: sub.id,
+                                    projectId: currentProjectId,
+                                    completed: nextCompleted,
+                                    columnId: nextColumnId,
+                                  });
                                 }
                               }}
-                              className="p-1 text-foreground cursor-pointer transition-colors rounded-md hover:bg-muted relative before:absolute before:-inset-2 md:before:hidden"
-                              title="Delete sub-item"
-                              aria-label="Delete sub-item"
+                              aria-label={`Mark sub-item ${sub.title || 'untitled'} as ${isSubDone ? 'incomplete' : 'complete'}`}
+                              className={cn(
+                                'size-4 rounded-md border flex items-center justify-center transition-colors cursor-pointer relative before:absolute before:-inset-2.5 md:before:hidden',
+                                isSubDone ? 'bg-primary border-primary text-primary-foreground' : 'border-border hover:border-foreground'
+                              )}
                             >
-                              <X className="size-3.5 shrink-0" />
+                              {isSubDone && <Check className="size-3 shrink-0" />}
                             </button>
+                            <span className={cn("font-medium text-xs", isSubCancelled ? 'line-through text-muted-foreground' : isSubDone ? 'text-muted-foreground' : 'text-foreground')}>
+                              {sub.title}
+                            </span>
                           </div>
-                        )}
-                      </div>
+
+                          {!isReadOnly && (
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                type="button"
+                                onClick={() => handleConvertSubItem(sub, sIdx)}
+                                className="p-1 text-foreground cursor-pointer transition-colors rounded-md hover:bg-muted relative before:absolute before:-inset-2 md:before:hidden"
+                                title="Convert to independent work item"
+                                aria-label="Convert to independent work item"
+                              >
+                                <ArrowUpRight className="size-3.5 shrink-0" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = subItems.filter((_, i) => i !== sIdx);
+                                  setSubItems(updated);
+                                  if (sub.id && !String(sub.id).startsWith('sub_')) {
+                                    deleteSubItemMutation.mutate({ id: sub.id, projectId: currentProjectId });
+                                  }
+                                }}
+                                className="p-1 text-foreground cursor-pointer transition-colors rounded-md hover:bg-muted relative before:absolute before:-inset-2 md:before:hidden"
+                                title="Delete sub-item"
+                                aria-label="Delete sub-item"
+                              >
+                                <X className="size-3.5 shrink-0" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Inline Add Sub-item Form */}
+                {!isReadOnly && (
+                  <form onSubmit={handleAddSubItem} className="flex items-center gap-2">
+                    <Input
+                      id="sub-item-quick-input"
+                      value={newSubItemTitle}
+                      onChange={(e) => setNewSubItemTitle(e.target.value)}
+                      placeholder="+ Add sub-item..."
+                      className="h-8 text-13 placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                    {newSubItemTitle.trim() && (
+                      <Button type="submit" size="sm" className="h-8 text-12 shrink-0 px-3 relative before:absolute before:-inset-1 md:before:hidden bg-primary text-primary-foreground hover:bg-primary-hover">
+                        Add
+                      </Button>
+                    )}
+                  </form>
+                )}
+              </div>
+
+              {/* Relations Section */}
+              <Relations
+                relations={relations}
+                currentItemId={workItemId || undefined}
+                availableItems={availableItems}
+                onAddRelation={(newRel) => {
+                  const prevRelations = relations;
+                  const updated = [...relations, newRel];
+                  setRelations(updated);
+                  const target = newRel.targetId || newRel.targetWorkItemId;
+                  if (workItemId && target) {
+                    addRelationMutation.mutate(
+                      {
+                        id: workItemId,
+                        itemId: workItemId,
+                        workItemId,
+                        type: newRel.type,
+                        targetId: target,
+                        targetWorkItemId: target,
+                      },
+                      {
+                        onError: () => setRelations(prevRelations),
+                      },
                     );
-                  })}
-                </div>
-              )}
-
-              {/* Inline Add Sub-item Form */}
-              {!isReadOnly && (
-                <form onSubmit={handleAddSubItem} className="flex items-center gap-2">
-                  <Input
-                    id="sub-item-quick-input"
-                    value={newSubItemTitle}
-                    onChange={(e) => setNewSubItemTitle(e.target.value)}
-                    placeholder="+ Add sub-item..."
-                    className="h-8 text-13 placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
-                  />
-                  {newSubItemTitle.trim() && (
-                    <Button type="submit" size="sm" className="h-8 text-12 shrink-0 px-3 relative before:absolute before:-inset-1 md:before:hidden bg-primary text-primary-foreground hover:bg-primary-hover">
-                      Add
-                    </Button>
-                  )}
-                </form>
-              )}
-            </div>
-
-            {/* Relations Section */}
-            <Relations
-              relations={relations}
-              currentItemId={workItemId || undefined}
-              availableItems={availableItems}
-              onAddRelation={(newRel) => {
-                const updated = [...relations, newRel];
-                setRelations(updated);
-                const target = newRel.targetId || newRel.targetWorkItemId;
-                if (workItemId && target) {
-                  addRelationMutation.mutate({
-                    id: workItemId,
-                    itemId: workItemId,
-                    workItemId,
-                    type: newRel.type,
-                    targetId: target,
-                    targetWorkItemId: target,
-                  });
-                } else {
-                  onSave({ ...currentPayload, relations: updated });
-                }
-              }}
-              onRemoveRelation={(relId, targetItemId) => {
-                const updated = relations.filter((r) => r.id !== relId);
-                setRelations(updated);
-                if (workItemId) {
-                  removeRelationMutation.mutate({
-                    id: workItemId,
-                    itemId: workItemId,
-                    workItemId,
-                    relationId: relId,
-                    targetId: targetItemId,
-                    targetWorkItemId: targetItemId,
-                  });
-                } else {
-                  onSave({ ...currentPayload, relations: updated });
-                }
-              }}
+                  } else {
+                    onSave({ ...currentPayload, relations: updated });
+                  }
+                }}
+                onRemoveRelation={(relId, targetItemId) => {
+                  const prevRelations = relations;
+                  const updated = relations.filter((r) => r.id !== relId);
+                  setRelations(updated);
+                  if (workItemId) {
+                    removeRelationMutation.mutate(
+                      {
+                        id: workItemId,
+                        itemId: workItemId,
+                        workItemId,
+                        relationId: relId,
+                        targetId: targetItemId,
+                        targetWorkItemId: targetItemId,
+                      },
+                      {
+                        onError: () => setRelations(prevRelations),
+                      },
+                    );
+                  } else {
+                    onSave({ ...currentPayload, relations: updated });
+                  }
+                }}
               isReadOnly={isReadOnly}
             />
 

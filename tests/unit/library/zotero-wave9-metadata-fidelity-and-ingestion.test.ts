@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import type { Item } from '@/features/library/types/library.types';
+﻿import { describe, expect, it } from 'vitest';
+import type { Item } from '@/features/library/domain/types/library.types';
 import {
   DIRECT_METADATA_FIELDS,
   FIELD_FALLBACK_CHAINS,
@@ -8,7 +8,7 @@ import {
   parseCreators,
   toItemCreators,
   areCreatorsEqual,
-} from '@/features/library/components/inspector/InfoSection';
+} from '@/features/library/ui/inspector/InfoSection';
 import {
   formatAndSanitizeExtraMetadata,
   isAllowedZoteroExtraKey,
@@ -438,3 +438,4 @@ describe('Zotero Wave 9 — Frontend Metadata Fidelity, Inspector Field Complete
     });
   });
 });
+

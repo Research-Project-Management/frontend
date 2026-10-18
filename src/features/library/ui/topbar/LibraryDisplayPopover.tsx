@@ -1,0 +1,341 @@
+"use client";
+
+import React, { useState } from "react";
+import {
+  ChevronUp,
+  ChevronDown,
+  ArrowUpNarrowWide,
+  ArrowDownNarrowWide,
+} from "lucide-react";
+import { Button } from "@/shared/components/ui/button";
+import { Checkbox } from "@/shared/components/ui/checkbox";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/shared/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/shared/components/ui/tooltip";
+import { cn } from "@/shared/lib/utils";
+export type {
+  LibraryColumnKey,
+  LibraryOrderBy,
+  LibraryDisplayOptions,
+} from "@/features/library/domain/types/display.types";
+export { DEFAULT_LIBRARY_DISPLAY_OPTIONS } from "@/features/library/domain/types/display.types";
+import type {
+  LibraryDisplayOptions,
+  LibraryColumnKey,
+  LibraryOrderBy,
+} from "@/features/library/domain/types/display.types";
+
+export interface LibraryDisplayPopoverProps {
+  options: LibraryDisplayOptions;
+  onOptionsChange: (options: LibraryDisplayOptions) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  className?: string;
+  isTrash?: boolean;
+}
+
+export const COLUMN_ITEMS: Array<{ key: LibraryColumnKey; label: string }> = [
+  { key: "authors", label: "Creator" },
+  { key: "year", label: "Year" },
+  { key: "publication", label: "Publication" },
+  { key: "itemType", label: "Item Type" },
+  { key: "doi", label: "DOI" },
+  { key: "citationKey", label: "Citation Key" },
+  { key: "citations", label: "Citations" },
+];
+
+const ORDER_BY_OPTIONS: Array<{ value: LibraryOrderBy; label: string }> = [
+  { value: "createdAt", label: "Date Added" },
+  { value: "updatedAt", label: "Date Modified" },
+  { value: "year", label: "Year" },
+  { value: "title", label: "Title" },
+  { value: "authors", label: "Creator" },
+  { value: "publicationTitle", label: "Publication" },
+  { value: "citationKey", label: "Citation Key" },
+];
+
+export function LibraryDisplayPopover({
+  options,
+  onOptionsChange,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
+  className,
+  isTrash,
+}: LibraryDisplayPopoverProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? setControlledOpen! : setInternalOpen;
+
+  const [columnsOpen, setColumnsOpen] = useState(true);
+  const [orderByOpen, setOrderByOpen] = useState(true);
+  const [densityOpen, setDensityOpen] = useState(true);
+
+  const { columns, orderBy, orderDirection, density = "comfortable" } = options;
+
+  const orderByOptions = React.useMemo(() => {
+    if (isTrash || orderBy === "deletedAt") {
+      return [
+        ...ORDER_BY_OPTIONS,
+        { value: "deletedAt" as LibraryOrderBy, label: "Date Deleted" },
+      ];
+    }
+    return ORDER_BY_OPTIONS;
+  }, [isTrash, orderBy]);
+
+  const handleColumnToggle = (key: LibraryColumnKey) => {
+    onOptionsChange({
+      ...options,
+      columns: {
+        ...columns,
+        [key]: !columns[key],
+      },
+    });
+  };
+
+  const handleOrderByChange = (val: LibraryOrderBy) => {
+    onOptionsChange({
+      ...options,
+      orderBy: val,
+    });
+  };
+
+  const toggleOrderDirection = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onOptionsChange({
+      ...options,
+      orderDirection: orderDirection === "asc" ? "desc" : "asc",
+    });
+  };
+
+  const handleDensityChange = (d: "comfortable" | "compact") => {
+    onOptionsChange({
+      ...options,
+      density: d,
+    });
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          size="sm"
+          className={cn(
+            "h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shrink-0 select-none inline-flex items-center justify-center",
+            open && "bg-muted",
+            className,
+          )}
+          aria-label="Display options"
+        >
+          <span>Display</span>
+        </Button>
+      </PopoverTrigger>
+
+      <PopoverContent
+        align="end"
+        sideOffset={6}
+        className="w-74 sm:w-76 max-h-[85vh] overflow-y-auto p-2 rounded-md text-12 border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-1.5 select-none font-sans no-scrollbar"
+      >
+        {/* 1. Display Properties (Columns) */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setColumnsOpen(!columnsOpen)}
+            className="flex w-full items-center justify-between px-1 py-0.5 text-12 font-medium text-foreground cursor-pointer select-none"
+          >
+            <span>Columns</span>
+            {columnsOpen ? (
+              <ChevronUp className="size-3.5 text-foreground shrink-0" />
+            ) : (
+              <ChevronDown className="size-3.5 text-foreground shrink-0" />
+            )}
+          </button>
+
+          {columnsOpen && (
+            <div className="flex flex-wrap items-center gap-1 pt-1 px-0.5 select-none">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="h-6 px-2 text-11 font-medium rounded-md bg-primary text-primary-foreground border border-primary select-none inline-flex items-center justify-center cursor-default">
+                    Title
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Primary column (always visible)</TooltipContent>
+              </Tooltip>
+              {COLUMN_ITEMS.map((item) => {
+                const isSelected = Boolean(columns[item.key]);
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => handleColumnToggle(item.key)}
+                    className={cn(
+                      "h-6 px-2 text-11 font-medium rounded-md border transition-colors cursor-pointer select-none inline-flex items-center justify-center",
+                      isSelected
+                        ? "border-primary bg-primary text-primary-foreground font-medium"
+                        : "border-border bg-background text-foreground hover:bg-muted font-normal",
+                    )}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-border my-0.5" />
+
+        {/* 2. Order by */}
+        <div>
+          <div className="flex w-full items-center justify-between px-1 py-0.5 text-12 font-medium text-foreground select-none">
+            <button
+              type="button"
+              onClick={() => setOrderByOpen(!orderByOpen)}
+              className="text-12 font-medium text-foreground cursor-pointer"
+            >
+              <span>Order by</span>
+            </button>
+
+            <div className="flex items-center gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={toggleOrderDirection}
+                    className="p-0.5 text-foreground hover:bg-muted rounded cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden"
+                    aria-label="Toggle sort direction"
+                  >
+                    {orderDirection === "asc" ? (
+                      <ArrowUpNarrowWide className="size-3.5 text-foreground shrink-0" />
+                    ) : (
+                      <ArrowDownNarrowWide className="size-3.5 text-foreground shrink-0" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {orderDirection === "asc"
+                    ? "Ascending (A to Z / Low to High)"
+                    : "Descending (Z to A / High to Low)"}
+                </TooltipContent>
+              </Tooltip>
+
+              <button
+                type="button"
+                onClick={() => setOrderByOpen(!orderByOpen)}
+                className="p-0.5 text-foreground hover:bg-muted rounded cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden"
+                aria-label={
+                  orderByOpen ? "Collapse order by" : "Expand order by"
+                }
+              >
+                {orderByOpen ? (
+                  <ChevronUp className="size-3.5 shrink-0 text-foreground" />
+                ) : (
+                  <ChevronDown className="size-3.5 shrink-0 text-foreground" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {orderByOpen && (
+            <div className="space-y-0.5 pt-0.5 select-none">
+              {orderByOptions.map((opt) => {
+                const isSelected = orderBy === opt.value;
+                return (
+                  <label
+                    key={opt.value}
+                    className={cn(
+                      "flex w-full items-center gap-2 py-1 px-1.5 rounded-md text-12 text-foreground transition-colors cursor-pointer select-none hover:bg-muted",
+                      isSelected ? "font-medium" : "font-normal",
+                    )}
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => handleOrderByChange(opt.value)}
+                      className="size-3.5 border-border data-[state=checked]:border-primary cursor-pointer shrink-0"
+                    />
+                    <span>{opt.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-border my-0.5" />
+
+        {/* 3. Density */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setDensityOpen(!densityOpen)}
+            className="flex w-full items-center justify-between px-1 py-0.5 text-12 font-medium text-foreground cursor-pointer select-none"
+          >
+            <span>Density</span>
+            {densityOpen ? (
+              <ChevronUp className="size-3.5 text-foreground shrink-0" />
+            ) : (
+              <ChevronDown className="size-3.5 text-foreground shrink-0" />
+            )}
+          </button>
+
+          {densityOpen && (
+            <div className="space-y-0.5 pt-0.5 select-none">
+              {[
+                { value: "comfortable" as const, label: "Comfortable" },
+                { value: "compact" as const, label: "Compact" },
+              ].map((item) => {
+                const isSelected = density === item.value;
+                return (
+                  <label
+                    key={item.value}
+                    className={cn(
+                      "flex w-full items-center gap-2 py-1 px-1.5 rounded-md text-12 text-foreground transition-colors cursor-pointer select-none hover:bg-muted",
+                      isSelected ? "font-medium" : "font-normal",
+                    )}
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => handleDensityChange(item.value)}
+                      className="size-3.5 border-border data-[state=checked]:border-primary cursor-pointer shrink-0"
+                    />
+                    <span>{item.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-border my-0.5" />
+
+        {/* 4. Subcollection Items */}
+        <div className="pt-0.5">
+          <label className="flex w-full items-center justify-between py-1 px-1.5 rounded-md text-12 text-foreground transition-colors cursor-pointer select-none hover:bg-muted font-medium">
+            <span>Show items from subcollections</span>
+            <Checkbox
+              checked={options.includeSubcollections ?? true}
+              onCheckedChange={(checked) =>
+                onOptionsChange({
+                  ...options,
+                  includeSubcollections: Boolean(checked),
+                })
+              }
+              className="size-3.5 border-border data-[state=checked]:border-primary cursor-pointer shrink-0"
+            />
+          </label>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+export default LibraryDisplayPopover;

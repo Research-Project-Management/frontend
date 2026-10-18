@@ -50,7 +50,7 @@ export function useKanban({
   groupBy = 'state',
   itemsByColumnId: propItemsByColumnId,
 }: UseKanbanOptions) {
-  const items = propItems || propWorkItems || [];
+  const items = useMemo(() => propItems || propWorkItems || [], [propItems, propWorkItems]);
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const mouseSensor = useSensor(MouseSensor, {
@@ -159,7 +159,7 @@ export function useKanban({
         onMoveCard(activeItemId, targetColumnId);
       }
     },
-    [validColumnIds, isReadOnly, items, itemsByColumn, onMoveCard, onReorderCard, subGroupBy],
+    [validColumnIds, isReadOnly, items, itemsByColumn, onMoveCard, onReorderCard, subGroupBy, groupBy],
   );
 
   const dragCancel = useCallback(() => {
@@ -269,11 +269,14 @@ export function useCard({
   }, [card.labels, labelMap]);
 
   const assignee = card.assignee as ({ id?: string; name?: string; avatar?: string; fullName?: string; avatarUrl?: string }) | undefined;
-  const user = assignee ? {
-    id: assignee.id || (assignee as { userId?: string }).userId,
-    name: assignee.name || assignee.fullName || 'Unassigned',
-    avatar: assignee.avatar || assignee.avatarUrl || currentUserAvatar,
-  } : null;
+  const user = useMemo(() => {
+    if (!assignee) return null;
+    return {
+      id: assignee.id || (assignee as { userId?: string }).userId,
+      name: assignee.name || assignee.fullName || 'Unassigned',
+      avatar: assignee.avatar || assignee.avatarUrl || currentUserAvatar,
+    };
+  }, [assignee, currentUserAvatar]);
 
   const isCurrentUser = Boolean(user && currentUserId && user.id === currentUserId);
   const initials = user?.name ? user.name.slice(0, 2).toUpperCase() : '??';

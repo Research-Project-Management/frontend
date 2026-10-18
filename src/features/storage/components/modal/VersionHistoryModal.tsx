@@ -25,8 +25,8 @@ import {
   FileUp,
   ShieldCheck,
 } from 'lucide-react';
-import { useFileVersions, useUploadNewVersion, useRevertFileVersion } from '../../hooks/use-file-versions';
-import { getVersionDownloadUrl } from '../../services/version.service';
+import { useFileVersions, useUploadNewVersion, useRevertFileVersion } from '../../hooks/use-storage';
+import { getVersionDownloadUrl } from '../../services/drive.service';
 import { downloadFileUrl } from '@/shared/lib/file-client';
 import { formatFileSize, formatDate } from '../../utils/storage.util';
 import type { StorageItem } from '../../types/storage.types';

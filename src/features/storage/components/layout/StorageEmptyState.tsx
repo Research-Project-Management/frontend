@@ -11,6 +11,7 @@ import {
   StorageTrashStackIllustration,
   StorageSearchStackIllustration,
 } from './StorageIllustrations';
+import { useStorageUIStore } from '../../store/storage-ui.store';
 
 export interface StorageEmptyStateProps {
   searchQuery?: string;
@@ -50,15 +51,16 @@ export function StorageEmptyState({
   description,
 }: StorageEmptyStateProps) {
   const pathname = usePathname();
+  const activeSection = useStorageUIStore((s) => s.activeSection);
   const isSearchActive = Boolean(searchQuery.trim());
 
   // Determine storage view context variant
   const variant: StorageEmptyVariant = (() => {
     if (isSearchActive) return 'search';
-    if (isTrash || pathname?.includes('/trash')) return 'trash';
-    if (pathname?.includes('/starred')) return 'starred';
-    if (pathname?.includes('/shared')) return 'shared';
-    if (pathname?.includes('/my-files')) return 'my-files';
+    if (isTrash || activeSection === 'trash' || pathname?.includes('/trash')) return 'trash';
+    if (activeSection === 'starred' || pathname?.includes('/starred')) return 'starred';
+    if (activeSection === 'shared' || pathname?.includes('/shared')) return 'shared';
+    if (activeSection === 'my-files' || pathname?.includes('/my-files')) return 'my-files';
     return 'default';
   })();
 

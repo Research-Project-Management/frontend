@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useEffect } from 'react';
-import { logger } from '@/shared/lib/logger';
-import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
+import { useEffect } from "react";
+import { logger } from "@/shared/lib/logger";
+import { PlaneErrorState } from "@/shared/components/ui/PlaneErrorState";
 
 export default function LibraryRouteError({
   error,
@@ -12,7 +12,9 @@ export default function LibraryRouteError({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error('Library route error captured', error, { digest: error.digest });
+    logger.error("Library route error captured", error, {
+      digest: error.digest,
+    });
   }, [error]);
 
   return (
@@ -23,4 +25,3 @@ export default function LibraryRouteError({
     />
   );
 }
-

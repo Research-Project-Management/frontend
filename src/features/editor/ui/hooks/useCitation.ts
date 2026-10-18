@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * use-citation.ts
@@ -8,8 +8,8 @@
  */
 
 import { useEffect, useMemo, useCallback } from 'react';
-import { useViewItems } from '@/features/library/data';
-import type { Item } from '@/features/library/types';
+import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
+import type { Item } from '@/features/library/domain/types/library.types';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import {
   extractCitationKeys,
@@ -119,3 +119,4 @@ export function useEditorCitations({
 }
 
 export const useDocumentCitation = useEditorCitations;
+

@@ -1,21 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import {
-  MERGEABLE_FIELDS,
-  scoreFieldCandidate,
-  selectBestMasterItemId,
-  inspectItemDifferences,
-  mergeZoteroExtraFields,
-  buildMergedItemPayload,
-  aggregateItemAssets,
-  resolveItemFieldValue,
-  normalizeCompareValue,
-} from '@/features/library/domain/diff';
-import { useDuplicateMergeState } from '@/features/library/hooks/useDuplicateMergeState';
+  MERGEABLE_FIELDS, scoreFieldCandidate, selectBestMasterItemId, inspectItemDifferences, mergeZoteroExtraFields, buildMergedItemPayload, aggregateItemAssets, resolveItemFieldValue, normalizeCompareValue, } from '@/features/library/domain/diff';
+import { useDuplicateMergeState } from '@/features/library/core/coordinator/curation.coordinator';
 import { getLibraryPermissions } from '@/features/library/domain/library-permissions.policy';
-import { QualityService } from '@/features/library/data/ingestion/ingestion.service';
+import { QualityService } from '@/features/library/sdk/library.client';
 import * as api from '@/shared/lib/api';
-import type { Item } from '@/features/library/types/library.types';
+import type { Item } from '@/features/library/domain/types/library.types';
 
 function makeItem(overrides: Partial<Item> & { id: string; title: string }): Item {
   return {
@@ -796,3 +787,5 @@ describe('Zotero Wave 6: Comprehensive Duplicate Detection & Merge Case Studies 
     });
   });
 });
+
+

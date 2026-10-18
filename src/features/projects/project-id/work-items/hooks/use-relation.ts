@@ -49,8 +49,10 @@ export const useAddRelationMutation = () => {
       const target = (vars.targetId || vars.targetWorkItemId) ?? '';
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
       queryClient.invalidateQueries({ queryKey: relationKeys.item(sourceId) });
+      queryClient.invalidateQueries({ queryKey: ['work-item-activity', sourceId] });
       if (target) {
         queryClient.invalidateQueries({ queryKey: relationKeys.item(target) });
+        queryClient.invalidateQueries({ queryKey: ['work-item-activity', target] });
       }
       if (!vars.silent) {
         workItemToast.success(vars.successMessage || 'Created dependency relation', 'relation');
@@ -58,6 +60,8 @@ export const useAddRelationMutation = () => {
     },
     onError: (error: Error) => workItemToast.error(error, 'Failed to add relation', 'relation'),
   });
+
+  const { mutate } = mutation;
 
   const createDependencyWithCycleCheck = useCallback(
     (
@@ -79,7 +83,7 @@ export const useAddRelationMutation = () => {
         return;
       }
 
-      mutation.mutate(
+      mutate(
         {
           id: fromId,
           workItemId: fromId,
@@ -93,7 +97,7 @@ export const useAddRelationMutation = () => {
         },
       );
     },
-    [mutation],
+    [mutate],
   );
 
   return {
@@ -129,8 +133,10 @@ export const useRemoveRelationMutation = () => {
       const target = (vars.targetId || vars.targetWorkItemId || vars.relationId) ?? '';
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
       queryClient.invalidateQueries({ queryKey: relationKeys.item(sourceId) });
+      queryClient.invalidateQueries({ queryKey: ['work-item-activity', sourceId] });
       if (target) {
         queryClient.invalidateQueries({ queryKey: relationKeys.item(target) });
+        queryClient.invalidateQueries({ queryKey: ['work-item-activity', target] });
       }
     },
     onError: (error: Error) => workItemToast.error(error, 'Failed to remove relation', 'relation'),

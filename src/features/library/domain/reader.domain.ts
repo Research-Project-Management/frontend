@@ -1,4 +1,4 @@
-﻿/**
+/**
  * reader.util.ts
  *
  * Pure domain & citation utilities for the PDF/EPUB Reader.
@@ -9,7 +9,7 @@ import type {
   AnnotationRect,
   ReaderDocument,
   DocumentCreator,
-} from '@/features/library/types/reader.types';
+} from '@/features/library/domain/types/reader.types';
 
 export const ANNOTATION_COLORS = {
   yellow: {
@@ -71,6 +71,12 @@ export const ANNOTATION_COLORS = {
 } as const;
 
 export type AnnotationColorId = keyof typeof ANNOTATION_COLORS;
+
+export const ZOTERO_COLORS = Object.values(ANNOTATION_COLORS).map((c) => ({
+  id: c.id,
+  label: c.name,
+  hex: c.border,
+}));
 
 export interface AnnotationFilterCriteria {
   query?: string | null;
@@ -268,6 +274,19 @@ export const PdfAnnotationEngine = {
 
     const pageRange = isCriteriaObject ? queryOrCriteria.pageRange : options?.pageRange;
 
+    const resolvedColorIds = new Set<AnnotationColorId>();
+    const rawColorSet = new Set<string>();
+    for (const c of rawColors) {
+      rawColorSet.add(c);
+      if (c in ANNOTATION_COLORS) {
+        resolvedColorIds.add(c as AnnotationColorId);
+        rawColorSet.add(ANNOTATION_COLORS[c as AnnotationColorId].border.toLowerCase());
+      } else {
+        resolvedColorIds.add(this.resolveColorId(c));
+      }
+    }
+    const typeSet = new Set<string>(rawTypes);
+
     return annotations.filter((a) => {
       const itemTagNames = Array.isArray((a as Record<string, unknown>).tags)
         ? ((a as Record<string, unknown>).tags as unknown[])
@@ -294,20 +313,13 @@ export const PdfAnnotationEngine = {
       if (rawColors.length > 0) {
         const itemColor = (a.color || '#ffd400').toLowerCase();
         const itemColorId = this.resolveColorId(itemColor);
-        const matchesColor = rawColors.some((c) => {
-          if (c in ANNOTATION_COLORS) {
-            const cfg = ANNOTATION_COLORS[c as AnnotationColorId];
-            return itemColor === c || itemColor === cfg.border.toLowerCase() || itemColorId === c;
-          }
-          return itemColor === c || itemColorId === this.resolveColorId(c);
-        });
+        const matchesColor = rawColorSet.has(itemColor) || resolvedColorIds.has(itemColorId);
         if (!matchesColor) return false;
       }
 
-      if (rawTypes.length > 0) {
+      if (typeSet.size > 0) {
         const itemType = (a.type || 'highlight').toLowerCase();
-        const matchesType = rawTypes.some((t) => itemType === t);
-        if (!matchesType) return false;
+        if (!typeSet.has(itemType)) return false;
       }
 
       if (rawTags.length > 0) {
@@ -438,68 +450,20 @@ export const PdfAnnotationEngine = {
   },
 };
 
-import { parseCreatorName, splitAuthorString } from '@/features/library/domain/creators';
+import { normalizeAuthors, parseCreatorName } from '@/features/library/domain/creators';
 import { isValidValue, stripLatexMarkup } from '@/features/library/domain/metadata';
+import { foldDiacritics } from '@/features/library/domain/academic-text';
+import { toAsciiKeyPart } from '@/features/library/domain/citations';
 
 function normalizeReaderAuthors(
   rawAuthors?: unknown,
   creators?: DocumentCreator[] | null,
 ): string[] {
   if (Array.isArray(creators) && creators.length > 0) {
-    const list: string[] = [];
-    for (const c of creators) {
-      if (!c) continue;
-      if (c.lastName && isValidValue(c.lastName)) {
-        const first = c.firstName && isValidValue(c.firstName) ? c.firstName.trim() : '';
-        list.push(first ? `${c.lastName.trim()}, ${first}` : c.lastName.trim());
-        continue;
-      }
-      const fullName = (c.fullName || c.name || '').trim();
-      if (fullName && isValidValue(fullName)) {
-        list.push(stripLatexMarkup(fullName));
-      } else {
-        const full = [c.firstName, c.lastName].filter(Boolean).join(' ').trim();
-        if (full && isValidValue(full)) list.push(stripLatexMarkup(full));
-      }
-    }
-    if (list.length > 0) return list;
+    const fromCreators = normalizeAuthors(undefined, creators);
+    if (fromCreators.length > 0) return fromCreators;
   }
-
-  if (Array.isArray(rawAuthors) && rawAuthors.length > 0) {
-    const result: string[] = [];
-    for (const item of rawAuthors) {
-      if (!item || !isValidValue(item)) continue;
-      if (typeof item === 'string') {
-        result.push(...splitAuthorString(item));
-      } else if (typeof item === 'object') {
-        const authorObj = item as {
-          fullName?: string;
-          name?: string;
-          firstName?: string;
-          given?: string;
-          lastName?: string;
-          family?: string;
-        };
-        const last = (authorObj.lastName || authorObj.family || '').trim();
-        const first = (authorObj.firstName || authorObj.given || '').trim();
-        if (last && isValidValue(last)) {
-          result.push(first && isValidValue(first) ? `${last}, ${first}` : last);
-        } else {
-          const fullName = (authorObj.fullName || authorObj.name || '').trim();
-          if (fullName && isValidValue(fullName)) {
-            result.push(stripLatexMarkup(fullName));
-          }
-        }
-      }
-    }
-    return result;
-  }
-
-  if (typeof rawAuthors === 'string' && isValidValue(rawAuthors)) {
-    return splitAuthorString(rawAuthors);
-  }
-
-  return [];
+  return normalizeAuthors(rawAuthors, creators);
 }
 
 function getSurnameForCitation(rawAuthor: string): string {
@@ -524,27 +488,16 @@ export function generateReaderCitationKey(
   let authorPart = 'unknown';
   if (authors.length > 0) {
     const parsed = parseCreatorName(authors[0]!);
-    authorPart = (parsed.lastName || parsed.fullName || 'author')
-      .replace(/[Đđ]/g, 'd')
-      .replace(/[Łł]/g, 'l')
-      .replace(/[Øø]/g, 'o')
-      .replace(/ß/g, 'ss')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase();
+    authorPart = toAsciiKeyPart(parsed.lastName || parsed.fullName || 'author');
   }
-  authorPart = authorPart.replace(/[^a-z0-9]/gi, '');
 
   const yearPart = paper.year && isValidValue(paper.year) ? String(paper.year) : '';
 
   let titlePart = '';
   if (paper.title && isValidValue(paper.title)) {
-    const cleanTitle = stripLatexMarkup(paper.title)
-      .replace(/[Đđ]/g, 'd')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
+    const cleanTitle = foldDiacritics(stripLatexMarkup(paper.title));
     for (const word of cleanTitle.trim().split(/\s+/)) {
-      const clean = word.replace(/[^a-z0-9]/gi, '').toLowerCase();
+      const clean = word.replace(/[^a-z0-9]/gi, '');
       if (clean && !STOPWORDS.has(clean)) {
         titlePart = clean;
         break;
@@ -616,16 +569,6 @@ export function formatAnnotationCitation(
   return { label, url, markdown };
 }
 
-function foldDiacritics(input: string): string {
-  return input
-    .replace(/[Đđ]/g, (m) => (m === 'Đ' ? 'D' : 'd'))
-    .replace(/[Łł]/g, (m) => (m === 'Ł' ? 'L' : 'l'))
-    .replace(/[Øø]/g, (m) => (m === 'Ø' ? 'O' : 'o'))
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-}
-
 /**
  * Searches extracted PDF pages (`{ pageNumber, text }`) with diacritic & case insensitivity,
  * returning ordered `PdfTextMatch` items with surrounding snippet context.
@@ -636,7 +579,7 @@ export function searchPdfPages(
   snippetRadius = 35,
 ): PdfTextMatch[] {
   if (!query || typeof query !== 'string') return [];
-  const cleanQuery = query.trim();
+  const cleanQuery = query.trim().normalize('NFC');
   if (!cleanQuery) return [];
 
   const foldedQuery = foldDiacritics(cleanQuery);
@@ -647,7 +590,7 @@ export function searchPdfPages(
 
   for (const page of pages) {
     if (!page.text) continue;
-    const rawText = page.text;
+    const rawText = page.text.normalize('NFC');
     const foldedText = foldDiacritics(rawText);
 
     let searchPos = 0;
@@ -655,9 +598,9 @@ export function searchPdfPages(
       const idx = foldedText.indexOf(foldedQuery, searchPos);
       if (idx === -1) break;
 
-      const matchedText = rawText.slice(idx, idx + cleanQuery.length);
+      const matchedText = rawText.slice(idx, idx + foldedQuery.length);
       const snippetStart = Math.max(0, idx - snippetRadius);
-      const snippetEnd = Math.min(rawText.length, idx + cleanQuery.length + snippetRadius);
+      const snippetEnd = Math.min(rawText.length, idx + foldedQuery.length + snippetRadius);
       const prefix = snippetStart > 0 ? '...' : '';
       const suffix = snippetEnd < rawText.length ? '...' : '';
       const snippet = `${prefix}${rawText.slice(snippetStart, snippetEnd).trim()}${suffix}`;

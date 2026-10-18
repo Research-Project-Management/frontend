@@ -1,7 +1,7 @@
 import AppLoading from '@/app/(app)/loading';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { ModernLibraryPage } from '@/features/library/pages/LibraryPage';
+import { ModernLibraryPage } from '@/features/library/ui/pages/LibraryPage';
 
 export const metadata: Metadata = { title: 'Collection · Library · Flux' };
 

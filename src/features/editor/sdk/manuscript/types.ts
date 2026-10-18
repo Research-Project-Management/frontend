@@ -13,7 +13,7 @@ import type {
   ProjectDiffResponse,
   ProjectFileDiff,
   VersionLabelItem,
-} from '@/features/editor/subsystems/history/model/history.types';
+} from '@/features/editor/domain/types/history.types';
 import type { DocumentExportFormat } from '@/features/editor/domain/types/export.types';
 
 export type {

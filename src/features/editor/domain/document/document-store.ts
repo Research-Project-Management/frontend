@@ -20,7 +20,7 @@ import {
   type ModelChangeListener,
   type ModelEvictionListener,
   type DocumentModelStats,
-} from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+} from './lru-document-cache';
 import {
   draftStorageService,
   DraftStorageServiceRegistry,

@@ -4,7 +4,7 @@
  * SideBySideDiffViewer.tsx
  *
  * Synchronized split column diff viewer rendering base and target revisions side-by-side.
- * Location: `features/editor/ui/modals/project-history/SideBySideDiffViewer.tsx`
+ * Location: `features/editor/subsystems/history/ui/SideBySideDiffViewer.tsx`
  */
 
 import React from 'react';
@@ -16,7 +16,7 @@ import type {
   ProjectFileDiff,
   DiffHunk,
   DiffLine,
-} from '@/features/editor/subsystems/history/model/history.types';
+} from '@/features/editor/domain/types/history.types';
 
 export interface AlignedSplitRow {
   oldLine: DiffLine | null;

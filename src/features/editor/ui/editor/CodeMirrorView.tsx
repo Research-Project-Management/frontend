@@ -93,6 +93,10 @@ export interface BuildEditorStateOptions {
   editorMode: string;
   trackChangesViewMode: string;
   reviewMode: boolean;
+  autoCloseBrackets?: boolean;
+  enableMathPreview?: boolean;
+  enableAutocomplete?: boolean;
+  enableLinter?: boolean;
   collabAdapter: YjsCodeMirrorAdapter;
   yText?: Y.Text | null;
   awareness?: YjsCollabOptions['awareness'];
@@ -110,8 +114,10 @@ export function buildEditorState(options: BuildEditorStateOptions): EditorState 
     lineWrapping: options.wordWrap,
     keybinding: options.keybinding,
     vimMode: options.keybinding === 'vim',
-    enableMathPreview: true,
-    enableAutocomplete: true,
+    autoCloseBrackets: options.autoCloseBrackets ?? true,
+    enableMathPreview: options.enableMathPreview ?? true,
+    enableAutocomplete: options.enableAutocomplete ?? true,
+    enableLinter: options.enableLinter ?? true,
     enableErrorLens: options.errorLensEnabled,
     enableSpellCheck: options.spellCheck,
     spellCheckLanguage: options.spellCheckLanguage,
@@ -225,6 +231,10 @@ export function CodeMirrorView({
   const editorTheme = useSettingsStore((s) => s.editorTheme);
   const editorMode = useSettingsStore((s) => s.editorMode);
   const errorLensEnabled = useSettingsStore((s) => s.errorLensEnabled);
+  const autoCloseBrackets = useSettingsStore((s) => s.autoCloseBrackets);
+  const showEquationPreview = useSettingsStore((s) => s.showEquationPreview);
+  const autoComplete = useSettingsStore((s) => s.autoComplete);
+  const linterEnabled = useSettingsStore((s) => s.linterEnabled);
 
   // Synchronize suggestions & comments to active CodeMirror view independently of Review sidebar
   useEditorReviewSync(fileId, activeEditorView);
@@ -339,6 +349,10 @@ export function CodeMirrorView({
         editorMode,
         trackChangesViewMode,
         reviewMode,
+        autoCloseBrackets,
+        enableMathPreview: showEquationPreview,
+        enableAutocomplete: autoComplete,
+        enableLinter: linterEnabled,
         collabAdapter,
         yText: yText ?? null,
         awareness,
@@ -362,6 +376,10 @@ export function CodeMirrorView({
       editorMode,
       trackChangesViewMode,
       reviewMode,
+      autoCloseBrackets,
+      showEquationPreview,
+      autoComplete,
+      linterEnabled,
       collabAdapter,
       awareness,
       viewUpdateListener,
@@ -383,6 +401,10 @@ export function CodeMirrorView({
       lineHeight,
       visualMode: editorMode === 'visual',
       errorLensEnabled,
+      autoCloseBrackets,
+      enableMathPreview: showEquationPreview,
+      enableAutocomplete: autoComplete,
+      enableLinter: linterEnabled,
     }),
     [
       readOnly,
@@ -398,6 +420,10 @@ export function CodeMirrorView({
       lineHeight,
       editorMode,
       errorLensEnabled,
+      autoCloseBrackets,
+      showEquationPreview,
+      autoComplete,
+      linterEnabled,
     ]
   );
 
@@ -494,8 +520,13 @@ export function CodeMirrorView({
     view.scrollDOM.addEventListener('scroll', handleScroll, { passive: true });
 
     const unsubContentUpdated = editorCommandBus.subscribe('document:content-updated', (cmd) => {
-      if (cmd.docId === currentFileIdRef.current && viewRef.current) {
-        if (sessionCoordinator.getConflict(cmd.docId) || lruDocumentCache.getModel(cmd.docId)?.isDirty) {
+      const matchesDoc =
+        cmd.docId === currentFileIdRef.current ||
+        (Boolean(currentFilePathRef.current) &&
+          (cmd.docId === currentFilePathRef.current ||
+            cmd.docId.replace(/^\//, '') === currentFilePathRef.current.replace(/^\//, '')));
+      if (matchesDoc && viewRef.current) {
+        if (sessionCoordinator.getConflict(currentFileIdRef.current) || lruDocumentCache.getModel(currentFileIdRef.current)?.isDirty) {
           return;
         }
         const currentDoc = viewRef.current.state.doc.toString();
@@ -560,6 +591,9 @@ export function CodeMirrorView({
       viewRef.current = null;
       setActiveEditorView(null);
     };
+    // Safe Intentional Exception: Persistent CodeMirror DOM container lifecycle.
+    // Mounts exactly once. Subsequent document swaps and reactive updates are handled
+    // by zero-remount view.setState and reactive effect listeners below without tearing down DOM.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

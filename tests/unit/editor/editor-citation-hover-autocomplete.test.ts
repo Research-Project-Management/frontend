@@ -263,10 +263,10 @@ describe('Editor Citation Autocomplete & Hover Tooltip Suite', () => {
 
       expect(tooltip).not.toBeNull();
       const dom = tooltip!.create(view).dom;
-      expect(dom.textContent).toContain('Chưa tìm thấy');
+      expect(dom.textContent).toContain('Not found');
       expect(dom.textContent).toContain('@unknownKey2025');
       expect(dom.textContent).toContain('Ctrl+Shift+K');
-      expect(dom.textContent).toContain('Mở Citation Picker');
+      expect(dom.textContent).toContain('Open Citation Picker');
 
       // Test button click opens citation picker
       const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');

@@ -9,21 +9,7 @@
  * - QuotaController   <-> quota.service.ts
  */
 
-// ── Re-export Drive Service (DriveController) ────────────────────────────────
 export * from './drive.service';
-
-// ── Re-export Upload Service (UploadController) ──────────────────────────────
 export * from './upload.service';
 
-// ── Re-export Trash Service (TrashController) ────────────────────────────────
-export * from './trash.service';
-
-// ── Re-export Quota Service (QuotaController) ────────────────────────────────
-export * from './quota.service';
-
-// ── Re-export Stream Service (StreamController) ──────────────────────────────
-export * from './stream.service';
-
-// ── Re-export Version Service (VersionController) ────────────────────────────
-export * from './version.service';
 

@@ -9,7 +9,22 @@
  * - Decoupled from UI hooks and React components.
  */
 
-import type { EditorDiagnosticItem } from '@/features/editor/core/bus/command-bus.port';
+export interface EditorDiagnosticItem {
+  id: string;
+  file?: string;
+  normalizedPath?: string;
+  line: number;
+  column?: number;
+  message: string;
+  severity: 'error' | 'warning' | 'info';
+  context?: string;
+  code?: string;
+  suggestion?: string;
+  fixedSnippet?: string;
+  originalSnippet?: string;
+  confidence?: 'high' | 'medium' | 'low';
+  source?: 'LaTeX Compiler' | 'LaTeX Linter' | 'Retracted Citation' | 'System';
+}
 
 export type IndexedDiagnosticItem = EditorDiagnosticItem;
 

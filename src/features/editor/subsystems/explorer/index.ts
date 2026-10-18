@@ -33,7 +33,7 @@ export {
   type DocumentModelStats,
   type ModelChangeListener,
   type ModelEvictionListener,
-} from './model/lru-document-cache';
+} from '@/features/editor/domain/document/lru-document-cache';
 
 export {
   ACADEMIC_TEMPLATES,
@@ -52,7 +52,7 @@ export {
   isImageAsset,
   displayName,
   cleanBasename,
-} from './model/document-naming';
+} from '@/features/editor/domain/document/document-naming';
 
 export {
   isZipFile,
@@ -75,8 +75,8 @@ export { IndentGuides, InlineInput, RenameInput, RowActions } from './ui/subcomp
 export { StorageFileRow, StorageFolderNode, getStorageIcon } from './ui/subcomponents/FileTreeNodes';
 export { FileTreeFolderRow } from './ui/subcomponents/FileTreeFolderRow';
 export { default as AddFilesModal } from './ui/modals/AddFilesModal';
-export { DeleteFileDialog } from './ui/dialogs/DeleteFileDialog';
-export { UploadConflictDialog } from './ui/dialogs/UploadConflictDialog';
+export { DeleteFileDialog } from './ui/modals/DeleteFileDialog';
+export { UploadConflictDialog } from './ui/modals/UploadConflictDialog';
 
 // 3. Subsystem Deep Interface Port (The Seam)
 export interface ExplorerSubsystemPort {

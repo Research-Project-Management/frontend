@@ -287,7 +287,7 @@ export const SHORTCUT_LIST: ShortcutItem[] = [
     label: 'Split Editor / Close Split',
     category: 'Layout',
     keys: ['Ctrl', '\\'],
-    description: 'Chia đôi khung soạn thảo song song (Split Panes)',
+    description: 'Split editor panes side by side',
   },
 ];
 

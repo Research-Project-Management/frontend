@@ -209,6 +209,21 @@ export function WorkItemPage({
   const closeModal = useCallback(() => setModal({ type: 'idle' }), []);
   const pathname = usePathname();
 
+  const activeModal = useMemo<ModalState>(() => {
+    if (modal.type !== 'detail' || !modal.card?.id) return modal;
+    const liveItem =
+      allItems.find((i) => i.id === modal.card.id) ||
+      archivedItems.find((i) => i.id === modal.card.id);
+    if (!liveItem) return modal;
+    return {
+      ...modal,
+      card: {
+        ...modal.card,
+        ...liveItem,
+      },
+    };
+  }, [modal, allItems, archivedItems]);
+
   useEffect(() => {
     const handleOpenModal = () => {
       const defaultCol = columns.find((c) => c.isDefault) || columns[0];
@@ -398,13 +413,14 @@ export function WorkItemPage({
     if (!formData.title?.trim()) return;
 
     const { createMore, ...restData } = formData;
+    const targetProjectId = formData.projectId || projectId;
     const defaultCol = columns.find((c) => c.isDefault) || columns[0];
     const defaultColumnId = defaultCol ? resolveStateId(defaultCol) : 'backlog';
     const payload = {
       ...restData,
       columnId: formData.columnId || defaultColumnId,
       title: formData.title.trim(),
-      projectId,
+      projectId: targetProjectId,
     };
 
     try {
@@ -419,7 +435,7 @@ export function WorkItemPage({
           type: 'create',
           initialData: { columnId: formData.columnId },
         });
-      } else if (createdItem?.id) {
+      } else if (createdItem?.id && targetProjectId === projectId) {
         setModal({ type: 'detail', card: createdItem });
       } else {
         closeModal();
@@ -430,15 +446,15 @@ export function WorkItemPage({
   }, [columns, projectId, projectActions, closeModal]);
 
   const handleSaveCard = useCallback(async (formData: ItemMutationInput) => {
-    if (modal.type !== 'detail' || !modal.card.id) return;
+    if (activeModal.type !== 'detail' || !activeModal.card.id) return;
     if (!formData.title?.trim()) return;
 
     const payload = {
       ...formData,
       title: formData.title.trim(),
       projectId,
-      id: modal.card.id,
-      workItemId: modal.card.id,
+      id: activeModal.card.id,
+      workItemId: activeModal.card.id,
     };
 
     try {
@@ -446,13 +462,13 @@ export function WorkItemPage({
     } catch {
       // Error handled by mutation hook
     }
-  }, [modal, projectId, projectActions]);
+  }, [activeModal, projectId, projectActions]);
 
   const handleDeleteCard = useCallback(() => {
-    if (modal.type === 'detail' && modal.card.id) {
-      setModal({ type: 'delete', item: modal.card });
+    if (activeModal.type === 'detail' && activeModal.card.id) {
+      setModal({ type: 'delete', item: activeModal.card });
     }
-  }, [modal]);
+  }, [activeModal]);
 
   const handleItemDeleteConfirm = useCallback(() => {
     if (modal.type === 'delete' && modal.item?.id) {
@@ -688,7 +704,7 @@ export function WorkItemPage({
 
       {/* Modals & Dialogs Container */}
       <WorkItemModals
-        modal={modal}
+        modal={activeModal}
         onCloseModal={closeModal}
         columns={columns}
         members={members}
@@ -703,8 +719,8 @@ export function WorkItemPage({
         onDeleteCard={handleDeleteCard}
         onConfirmDelete={handleItemDeleteConfirm}
         onDuplicateCard={() => {
-          if (modal.type === 'detail' && modal.card.id) {
-            handleDuplicateCard(modal.card);
+          if (activeModal.type === 'detail' && activeModal.card.id) {
+            handleDuplicateCard(activeModal.card);
           }
         }}
         isAnalyticsOpen={analyticsOpen}

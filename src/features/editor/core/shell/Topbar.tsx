@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useShallow } from 'zustand/react/shallow';
+import { toast } from 'sonner';
 
 import { Menubar } from "@/shared/components/ui/menubar";
 import {
@@ -38,7 +39,10 @@ import { cn } from '@/shared/lib/utils';
 
 import FileMenu from './topbar/FileMenu';
 import EditMenu from './topbar/EditMenu';
+import InsertMenu from './topbar/InsertMenu';
 import ViewMenu from './topbar/ViewMenu';
+import FormatMenu from './topbar/FormatMenu';
+import HelpMenu from './topbar/HelpMenu';
 import LayoutSwitcher from './topbar/LayoutSwitcher';
 import ProjectTitleDropdown from './topbar/ProjectTitleDropdown';
 import CollaboratorAvatarStack from './topbar/CollaboratorAvatarStack';
@@ -171,11 +175,14 @@ export function Topbar() {
             </TooltipContent>
           </Tooltip>
 
-          {/* Desktop Menubar (Overleaf Parity: File, Edit, View) */}
+          {/* Desktop Menubar (Overleaf Parity: File, Edit, Insert, View, Format, Help) */}
           <Menubar className="h-7 border-none bg-transparent p-0 gap-0.5 shadow-none hidden sm:flex text-12">
             <FileMenu />
             <EditMenu />
+            <InsertMenu />
             <ViewMenu />
+            <FormatMenu />
+            <HelpMenu />
           </Menubar>
         </div>
 
@@ -247,6 +254,9 @@ export function Topbar() {
             </Tooltip>
           )}
 
+          {/* Collaborator Presence Avatar Stack (Overleaf Parity: Before Action Buttons) */}
+          <CollaboratorAvatarStack />
+
           {/* Editing Mode Dropdown (Overleaf Parity: Editing vs Reviewing vs Viewing) */}
           <EditingModeDropdown />
 
@@ -275,9 +285,6 @@ export function Topbar() {
 
           {/* Layout Switcher (Overleaf Parity: Top Right) */}
           <LayoutSwitcher />
-
-          {/* Collaborator Presence Avatar Stack */}
-          <CollaboratorAvatarStack />
 
           {/* Global Modals */}
           {isTemplateModalOpen && <TemplateGalleryModal />}

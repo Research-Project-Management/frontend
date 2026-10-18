@@ -1,6 +1,5 @@
 /**
  * Pure Domain Policy: Library Scope & Permissions Resolution
- * 100% Pure TypeScript - 0% React, 0% DOM dependencies
  *
  * Rules:
  * 1. Backend Authority: When the Backend returns explicit `permissions` or `effectivePermissions`
@@ -19,7 +18,7 @@ import type {
   LibraryPermissions,
   LibraryScopeType,
   ProjectRole,
-} from '@/features/library/types/core.types';
+} from '@/features/library/domain/types/core.types';
 
 const USER_SOVEREIGN_PERMISSIONS: LibraryPermissions = {
   canRead: true,

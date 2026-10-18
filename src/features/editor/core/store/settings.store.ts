@@ -56,7 +56,10 @@ export interface DocumentSettingsState {
   reviewMode: boolean;
   trackChangesViewMode: TrackChangesViewMode;
   isHistoryOpen: boolean;
+  isShortcutsOpen: boolean;
   isTemplateModalOpen: boolean;
+  setIsShortcutsOpen: (open: boolean) => void;
+  toggleShortcuts: () => void;
   spellCheck: boolean;
   spellCheckLanguage: string;
   texLiveVersion: string;
@@ -72,7 +75,6 @@ export interface DocumentSettingsState {
   notifyComments: boolean;
   notifyUpdates: boolean;
   showEditorTabs: boolean;
-  showBreadcrumbs: boolean;
   showEquationPreview: boolean;
   pdfSpreadView: boolean;
   isLocked: boolean;
@@ -84,8 +86,6 @@ export interface DocumentSettingsState {
   setReferenceSearchStyle: (style: 'author-year' | 'numeric' | 'alphanumeric') => void;
   setSyncScroll: (syncScroll: boolean) => void;
   toggleSyncScroll: () => void;
-  setShowBreadcrumbs: (showBreadcrumbs: boolean) => void;
-  toggleShowBreadcrumbs: () => void;
   setIsLocked: (isLocked: boolean) => void;
   setAutoComplete: (autoComplete: boolean) => void;
   setNonBlinkingCursor: (nonBlinkingCursor: boolean) => void;
@@ -124,7 +124,7 @@ export interface DocumentSettingsState {
   setSpellCheck: (spellCheck: boolean) => void;
   toggleSpellCheck: () => void;
   setSpellCheckLanguage: (lang: string) => void;
-  setTexLiveVersion: (version: string) => void;
+  setTexLiveVersion: (texLiveVersion: string) => void;
   setAutoCloseBrackets: (enabled: boolean) => void;
   toggleAutoCloseBrackets: () => void;
   setLinterEnabled: (linterEnabled: boolean) => void;
@@ -175,6 +175,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       reviewMode: false,
       trackChangesViewMode: 'changes',
       isHistoryOpen: false,
+      isShortcutsOpen: false,
       isTemplateModalOpen: false,
       spellCheck: true,
       spellCheckLanguage: 'en_US',
@@ -191,7 +192,6 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       notifyComments: true,
       notifyUpdates: false,
       showEditorTabs: true,
-      showBreadcrumbs: true,
       showEquationPreview: true,
       stopOnFirstError: false,
       mainBibFile: 'auto',
@@ -222,6 +222,8 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
         })),
       setIsHistoryOpen: (isHistoryOpen) => set({ isHistoryOpen }),
       toggleHistory: () => set((s) => ({ isHistoryOpen: !s.isHistoryOpen })),
+      setIsShortcutsOpen: (isShortcutsOpen) => set({ isShortcutsOpen }),
+      toggleShortcuts: () => set((s) => ({ isShortcutsOpen: !s.isShortcutsOpen })),
       setIsTemplateModalOpen: (isTemplateModalOpen) => set({ isTemplateModalOpen }),
       toggleTemplateModal: () => set((s) => ({ isTemplateModalOpen: !s.isTemplateModalOpen })),
       setMainFile: (mainFile) => set({ mainFile }),
@@ -248,8 +250,6 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       toggleErrorLensEnabled: () => set((s) => ({ errorLensEnabled: !s.errorLensEnabled })),
       setShowEditorTabs: (showEditorTabs) => set({ showEditorTabs }),
       toggleShowEditorTabs: () => set((s) => ({ showEditorTabs: !s.showEditorTabs })),
-      setShowBreadcrumbs: (showBreadcrumbs) => set({ showBreadcrumbs }),
-      toggleShowBreadcrumbs: () => set((s) => ({ showBreadcrumbs: !s.showBreadcrumbs })),
       setShowEquationPreview: (showEquationPreview) => set({ showEquationPreview }),
       toggleShowEquationPreview: () => set((s) => ({ showEquationPreview: !s.showEquationPreview })),
       setPdfSpreadView: (pdfSpreadView) => set({ pdfSpreadView }),
@@ -301,7 +301,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       },
       partialize: (state) => {
         // Don't persist transient UI state or auto-compile (always on by default)
-        const { settingsPanelOpen, settingsActiveTab, autoCompile, isHistoryOpen, isTemplateModalOpen, isLocked, ...rest } = state;
+        const { settingsPanelOpen, settingsActiveTab, autoCompile, isHistoryOpen, isShortcutsOpen, isTemplateModalOpen, isLocked, ...rest } = state;
         return rest;
       },
     },

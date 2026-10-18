@@ -82,11 +82,11 @@ No pages of output.`;
       />
     );
 
-    // Look for "Dòng 42" and "Dòng 18" buttons
-    const line42Btn = screen.getByRole('button', { name: /dòng 42/i });
+    // Look for dedicated "Go to line 42" and "Go to line 18" buttons
+    const line42Btn = screen.getByRole('button', { name: /^go to line 42/i });
     expect(line42Btn).toBeInTheDocument();
 
-    const line18Btn = screen.getByRole('button', { name: /dòng 18/i });
+    const line18Btn = screen.getByRole('button', { name: /^go to line 18/i });
     expect(line18Btn).toBeInTheDocument();
   });
 
@@ -100,7 +100,7 @@ No pages of output.`;
       />
     );
 
-    const line18Btn = screen.getByRole('button', { name: /dòng 18/i });
+    const line18Btn = screen.getByRole('button', { name: /^go to line 18/i });
     fireEvent.click(line18Btn);
 
     expect(onJumpToError).toHaveBeenCalledWith('sections/intro.tex', 18);

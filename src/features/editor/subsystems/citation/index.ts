@@ -43,6 +43,7 @@ export {
   formatInTextCitationPreview,
   formatBibliographyPreview,
   formatShortAuthor,
+  isVietnameseAuthorName,
   stripLatexComments,
   stripCodeBlocks,
   formatCitationSnippet,

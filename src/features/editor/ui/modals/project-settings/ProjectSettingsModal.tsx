@@ -41,7 +41,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   Sheet,
@@ -95,14 +95,16 @@ export { EDITOR_FONT_FAMILIES, EDITOR_FONT_SIZES };
 type MenuView = 'menu' | 'github' | 'references' | 'dictionary';
 
 export function ProjectSettingsModal() {
+  const queryClient = useQueryClient();
   const params = useParams<{ pageId?: string; projectId?: string }>();
   const currentPage = usePageStore((s) => s.currentPage);
+  const storeParentPageId = usePageStore((s) => s.parentPageId);
   const activeFilePage = usePageStore((s) => s.activeFilePage);
   const storeProjectId = usePageStore((s) => s.projectId);
   const { getContent } = useEditorInstance();
   const pdfUrl = useCompileStore((s) => s.pdfUrl);
 
-  const pageId = params?.pageId;
+  const pageId = params?.pageId || storeParentPageId || currentPage?.id;
   const rawProjectId = params?.projectId || params?.pageId || storeProjectId || currentPage?.id;
   const effectiveProjectId =
     extractProjectId(currentPage) ||
@@ -126,6 +128,8 @@ export function ProjectSettingsModal() {
   const setAutoCompile = useSettingsStore((s) => s.setAutoCompile);
   const autoCloseBrackets = useSettingsStore((s) => s.autoCloseBrackets);
   const setAutoCloseBrackets = useSettingsStore((s) => s.setAutoCloseBrackets);
+  const autoComplete = useSettingsStore((s) => s.autoComplete);
+  const setAutoComplete = useSettingsStore((s) => s.setAutoComplete);
   const linterEnabled = useSettingsStore((s) => s.linterEnabled);
   const setLinterEnabled = useSettingsStore((s) => s.setLinterEnabled);
   const errorLensEnabled = useSettingsStore((s) => s.errorLensEnabled);
@@ -365,6 +369,7 @@ export function ProjectSettingsModal() {
         description: `Custom template saved from ${projectTitle}`,
         category: 'Academic',
       });
+      queryClient.invalidateQueries({ queryKey: ['manuscript-templates'] });
       toast.success('Project saved to Template Gallery!', { id: toastId });
     } catch (err: unknown) {
       toast.error((err as Error)?.message || 'Failed to save custom template', { id: toastId });
@@ -1060,6 +1065,18 @@ export function ProjectSettingsModal() {
                   checked={autoCompile}
                   onCheckedChange={setAutoCompile}
                   aria-label="Auto-compile toggle"
+                />
+              </SettingRow>
+
+              {/* Auto-complete */}
+              <SettingRow
+                title="Auto-complete"
+                description="Show LaTeX command, environment, and citation suggestions"
+              >
+                <OverleafSwitch
+                  checked={autoComplete}
+                  onCheckedChange={setAutoComplete}
+                  aria-label="Auto-complete toggle"
                 />
               </SettingRow>
 

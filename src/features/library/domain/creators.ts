@@ -449,6 +449,23 @@ function extractCreatorDisplayName(c: RawCreatorLike): string {
   return stripLatexMarkup((c.fullName || c.name || '').trim());
 }
 
+function appendNormalizedCreatorEntries(entries: readonly unknown[], target: string[]): void {
+  for (const entry of entries) {
+    if (!entry) continue;
+    if (typeof entry === 'string') {
+      if (!entry.trim()) continue;
+      for (const s of splitAuthorString(entry)) {
+        const parsed = parseCreatorName(s);
+        const full = (parsed.fullName || s).trim();
+        if (full && !isNoiseAuthorName(full)) target.push(full);
+      }
+    } else if (typeof entry === 'object') {
+      const extracted = extractCreatorDisplayName(entry as RawCreatorLike);
+      if (extracted && !isNoiseAuthorName(extracted)) target.push(extracted);
+    }
+  }
+}
+
 /**
  * Extracts and normalizes authors array for UI presentation.
  * Supports string arrays and structured creator objects (Zotero, CSL-JSON, Mendeley).
@@ -465,7 +482,11 @@ export function normalizeAuthors(
       creators?: RawCreatorLike[];
       contributors?: RawCreatorLike[];
     };
-    if (candidate.authors !== undefined || candidate.creators !== undefined || candidate.contributors !== undefined) {
+    if (
+      candidate.authors !== undefined ||
+      candidate.creators !== undefined ||
+      candidate.contributors !== undefined
+    ) {
       return normalizeAuthors(candidate.authors, candidate.creators, candidate.contributors);
     }
   }
@@ -473,47 +494,23 @@ export function normalizeAuthors(
   // 1. Direct string or object array
   if (Array.isArray(rawAuthors) && rawAuthors.length > 0) {
     const list: string[] = [];
-    for (const item of rawAuthors) {
-      if (typeof item === 'string' && item.trim()) {
-        const split = splitAuthorString(item);
-        for (const s of split) {
-          const parsed = parseCreatorName(s);
-          const full = (parsed.fullName || s).trim();
-          if (full && !isNoiseAuthorName(full)) list.push(full);
-        }
-      } else if (item && typeof item === 'object') {
-        const extracted = extractCreatorDisplayName(item as RawCreatorLike);
-        if (extracted && !isNoiseAuthorName(extracted)) list.push(extracted);
-      }
-    }
+    appendNormalizedCreatorEntries(rawAuthors, list);
     if (list.length > 0) return list;
   } else if (typeof rawAuthors === 'string' && rawAuthors.trim()) {
     return splitAuthorString(rawAuthors).map((s) => parseCreatorName(s).fullName || s);
   }
 
   // 2. Structured creators / contributors
-  const creatorList = (Array.isArray(creators) && creators.length > 0)
-    ? creators
-    : (Array.isArray(contributors) && contributors.length > 0)
-      ? contributors
-      : [];
+  const creatorList =
+    Array.isArray(creators) && creators.length > 0
+      ? creators
+      : Array.isArray(contributors) && contributors.length > 0
+        ? contributors
+        : [];
 
   if (creatorList.length > 0) {
     const names: string[] = [];
-    for (const rawC of creatorList) {
-      if (!rawC) continue;
-      if (typeof rawC === 'string') {
-        const split = splitAuthorString(rawC);
-        for (const s of split) {
-          const parsed = parseCreatorName(s);
-          const full = (parsed.fullName || s).trim();
-          if (full && !isNoiseAuthorName(full)) names.push(full);
-        }
-      } else {
-        const extracted = extractCreatorDisplayName(rawC);
-        if (extracted && !isNoiseAuthorName(extracted)) names.push(extracted);
-      }
-    }
+    appendNormalizedCreatorEntries(creatorList, names);
     if (names.length > 0) return names;
   }
 

@@ -1,13 +1,12 @@
 /**
  * Pure Domain Model: Deep Metadata Diff & Asset Aggregation Engine
- * 100% Pure TypeScript - 0% React, 0% DOM dependencies
  *
  * Zotero-grade Deep Metadata Diff & Asset Aggregation Engine for Duplicate Merging.
  * Inspects all canonical bibliographic fields, flags field conflicts,
  * computes smart value recommendations, and calculates non-destructive asset union.
  */
 
-import type { Item } from '@/features/library/types/library.types';
+import type { Item } from '@/features/library/domain/types/library.types';
 import {
   isValidValue,
   normalizeTags,
@@ -107,10 +106,42 @@ function isFieldEmpty(val: unknown): boolean {
   if (!isValidValue(val)) return true;
   if (typeof val === 'number' && val === 0) return true;
   if (Array.isArray(val)) {
-    return val.filter((v) => isValidValue(v)).length === 0;
+    return !val.some((v) => isValidValue(v));
   }
   return false;
 }
+
+const EXTRA_FIELD_FALLBACKS: Record<string, readonly string[]> = {
+  publicationDate: ['date', 'issueDate', 'dateDecided', 'dateEnacted', 'filingDate'],
+  issue: [
+    'number',
+    'patentNumber',
+    'reportNumber',
+    'docketNumber',
+    'publicLawNumber',
+    'billNumber',
+    'documentNumber',
+    'identifier',
+    'episodeNumber',
+  ],
+  place: ['eventPlace', 'country', 'repositoryLocation'],
+  publisher: [
+    'university',
+    'institution',
+    'issuingAuthority',
+    'authority',
+    'organization',
+    'company',
+    'repository',
+    'court',
+    'distributor',
+    'studio',
+    'network',
+    'label',
+  ],
+  series: ['seriesTitle'],
+  seriesTitle: ['series'],
+};
 
 /**
  * Resolves a field value from an item, delegating to canonical domain resolvers (`getItemDisplayTitle`,
@@ -154,39 +185,7 @@ export function resolveItemFieldValue(item: Record<string, unknown> | undefined,
     }
   }
 
-  const extraFallbacks: Record<string, readonly string[]> = {
-    publicationDate: ['date', 'issueDate', 'dateDecided', 'dateEnacted', 'filingDate'],
-    issue: [
-      'number',
-      'patentNumber',
-      'reportNumber',
-      'docketNumber',
-      'publicLawNumber',
-      'billNumber',
-      'documentNumber',
-      'identifier',
-      'episodeNumber',
-    ],
-    place: ['eventPlace', 'country', 'repositoryLocation'],
-    publisher: [
-      'university',
-      'institution',
-      'issuingAuthority',
-      'authority',
-      'organization',
-      'company',
-      'repository',
-      'court',
-      'distributor',
-      'studio',
-      'network',
-      'label',
-    ],
-    series: ['seriesTitle'],
-    seriesTitle: ['series'],
-  };
-
-  const aliases = extraFallbacks[key];
+  const aliases = EXTRA_FIELD_FALLBACKS[key];
   if (aliases) {
     for (const alias of aliases) {
       if (!isFieldEmpty(item[alias])) return item[alias];
@@ -202,6 +201,14 @@ export function resolveItemFieldValue(item: Record<string, unknown> | undefined,
   return direct;
 }
 
+function extractCreatorObjectName(obj: Record<string, unknown>, fallback: unknown): string {
+  const name =
+    obj.fullName ||
+    obj.name ||
+    [obj.firstName || obj.given, obj.lastName || obj.family].filter(Boolean).join(' ');
+  return name ? String(name) : JSON.stringify(fallback);
+}
+
 export function normalizeCompareValue(val: unknown): string {
   if (isFieldEmpty(val)) return '';
   if (Array.isArray(val)) {
@@ -209,12 +216,7 @@ export function normalizeCompareValue(val: unknown): string {
       .filter((x) => isValidValue(x))
       .map((x) => {
         if (typeof x === 'object' && x !== null) {
-          const obj = x as Record<string, unknown>;
-          const name =
-            obj.fullName ||
-            obj.name ||
-            [obj.firstName || obj.given, obj.lastName || obj.family].filter(Boolean).join(' ');
-          return name ? String(name).trim().toLowerCase() : JSON.stringify(x);
+          return extractCreatorObjectName(x as Record<string, unknown>, x).trim().toLowerCase();
         }
         return String(x).trim().toLowerCase();
       })
@@ -235,13 +237,7 @@ export function formatFieldValueDisplay(key: string, value: unknown): string {
       .map((item) => {
         if (typeof item === 'string') return item;
         if (typeof item === 'object' && item !== null) {
-          const obj = item as Record<string, unknown>;
-          return (
-            obj.fullName ||
-            obj.name ||
-            [obj.firstName || obj.given, obj.lastName || obj.family].filter(Boolean).join(' ') ||
-            JSON.stringify(item)
-          );
+          return extractCreatorObjectName(item as Record<string, unknown>, item);
         }
         return String(item);
       })
@@ -513,20 +509,35 @@ export function inspectItemDifferences(
 ): MergeInspectionResult {
   const masterItem = items.find((p) => p.id === masterId) || items[0];
 
+  let conflictCount = 0;
+  let identicalCount = 0;
+  let missingInMasterCount = 0;
+
   const fields: ItemFieldDiff[] = customFields.map((field) => {
     const rawMaster = resolveItemFieldValue(masterItem as Record<string, unknown>, field.key);
     const normMaster = normalizeCompareValue(rawMaster);
+
+    const uniqueNormalized = new Set<string>();
+    let anyEmptyCandidate = false;
 
     const options: FieldOptionValue[] = items.map((item, idx) => {
       const rawVal = resolveItemFieldValue(item as Record<string, unknown>, field.key);
       const isEmpty = isFieldEmpty(rawVal);
       const effectiveRawVal = isEmpty ? (Array.isArray(rawVal) ? [] : undefined) : rawVal;
       const displayVal = formatFieldValueDisplay(field.key, effectiveRawVal);
+      const isMaster = item.id === masterItem.id;
+      const normVal = normalizeCompareValue(effectiveRawVal);
+
+      if (normVal) {
+        uniqueNormalized.add(normVal);
+      } else if (!isMaster) {
+        anyEmptyCandidate = true;
+      }
 
       return {
         itemId: item.id,
         itemTitle: item.title || `Record ${idx + 1}`,
-        isMaster: item.id === masterItem.id,
+        isMaster,
         rawValue: effectiveRawVal,
         displayValue: displayVal,
         isEmpty,
@@ -537,24 +548,19 @@ export function inspectItemDifferences(
     });
 
     const masterOption = options.find((o) => o.itemId === masterItem.id) || options[0];
-
-    // Determine status & conflict
     const nonMasterOptions = options.filter((o) => o.itemId !== masterItem.id);
+
     let status: DiffStatus = 'IDENTICAL';
     let hasConflict = false;
 
-    const allNormalized = options.map((o) => normalizeCompareValue(o.rawValue));
-    const uniqueNormalized = Array.from(new Set(allNormalized.filter(Boolean)));
-
-    if (uniqueNormalized.length === 0) {
+    if (uniqueNormalized.size === 0) {
       status = 'IDENTICAL';
       hasConflict = false;
-    } else if (uniqueNormalized.length === 1) {
+    } else if (uniqueNormalized.size === 1) {
       if (!normMaster) {
         status = 'MISSING_IN_MASTER';
         hasConflict = true;
       } else {
-        const anyEmptyCandidate = nonMasterOptions.some((o) => !normalizeCompareValue(o.rawValue));
         status = anyEmptyCandidate ? 'MISSING_IN_CANDIDATE' : 'IDENTICAL';
         hasConflict = false;
       }
@@ -562,6 +568,10 @@ export function inspectItemDifferences(
       status = !normMaster ? 'MISSING_IN_MASTER' : 'CONFLICT';
       hasConflict = true;
     }
+
+    if (hasConflict) conflictCount++;
+    if (status === 'IDENTICAL') identicalCount++;
+    if (status === 'MISSING_IN_MASTER') missingInMasterCount++;
 
     // Determine recommended item
     let recommendedItemId = masterItem.id;
@@ -592,10 +602,6 @@ export function inspectItemDifferences(
       candidateValue: nonMasterOptions[0]?.rawValue,
     };
   });
-
-  const conflictCount = fields.filter((f) => f.hasConflict).length;
-  const identicalCount = fields.filter((f) => f.status === 'IDENTICAL').length;
-  const missingInMasterCount = fields.filter((f) => f.status === 'MISSING_IN_MASTER').length;
 
   return {
     masterItemId: masterItem?.id || masterId,

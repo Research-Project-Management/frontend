@@ -24,7 +24,7 @@ import {
   useStorageFilterStore,
   type StorageTypeFilter,
   type StorageSortBy,
-} from '../../store/use-filter-store';
+} from '../../store/storage-ui.store';
 
 const TYPE_OPTIONS: {
   label: string;

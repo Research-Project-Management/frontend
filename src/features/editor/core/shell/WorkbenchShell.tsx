@@ -1,21 +1,18 @@
 /**
  * WorkbenchShell.tsx
  *
- * Canonical Workbench Shell (Block 7: UI Shell Layer).
- * Location: `features/editor/ui/shell/WorkbenchShell.tsx`
+ * Canonical Overleaf-Parity Workbench Shell (Block 7: UI Shell Layer).
+ * Location: `features/editor/core/shell/WorkbenchShell.tsx`
  *
  * Slots & Anatomy:
- * 1. TopBarSlot: Global project metadata & compilation triggers.
- * 2. ActivityBarSlot: Far-left 48px icon strip to toggle Primary Sidebar viewlets (Files, Search, AI...).
- * 3. LeftSidebarSlot: Primary Sidebar Viewlet Container (Files, Outline, Search, Citations, Review, Chat, AI).
- * 4. EditorSlot: Scoped EditorTabBar + Breadcrumbs + Scoped EditorToolbar + CodeMirror View.
- * 5. PreviewSlot: Scoped PdfToolbar + PDF.js Canvas Scroller.
+ * 1. TopBarSlot: Global project metadata & menu bar.
+ * 2. ActivityBarSlot: Far-left 48px icon strip to toggle Primary Sidebar viewlets (Files, Search, Citations, Review, AI).
+ * 3. LeftSidebarSlot: Primary Sidebar Viewlet Container (Files + File Outline, Search, Citations, Review, AI).
+ * 4. EditorSlot: Scoped EditorTabBar + Scoped EditorToolbar + CodeMirror / Visual Editor View.
+ * 5. PreviewSlot: Scoped PdfToolbar + PDF.js Canvas Scroller & CompilerLogs.
  * 6. CenterSplitter: Smooth resizable divider between Editor and Preview.
- * 7. BottomPanelSlot: Dockable Problems View & Raw Compiler Log terminal.
- * 8. StatusBarSlot: Interactive footer strip (Vim, Ln:Col, Git branch, Error badges).
  *
  * State & Sizing: Fully managed by `useLayoutStore`.
- * NOTE: AI Assistant is integrated directly into the Left Primary Sidebar.
  */
 
 'use client';
@@ -32,8 +29,6 @@ export interface WorkbenchShellProps {
   leftSidebar?: React.ReactNode;
   editor?: React.ReactNode;
   preview?: React.ReactNode;
-  bottomPanel?: React.ReactNode;
-  statusBar?: React.ReactNode;
   className?: string;
 }
 
@@ -43,8 +38,6 @@ export function WorkbenchShell({
   leftSidebar,
   editor,
   preview,
-  bottomPanel,
-  statusBar,
   className,
 }: WorkbenchShellProps) {
   const {
@@ -54,10 +47,6 @@ export function WorkbenchShell({
     toggleSidebarLeft,
     splitRatio,
     setSplitRatio,
-    bottomPanelOpen,
-    bottomPanelHeight,
-    setBottomPanelHeight,
-    statusBarOpen,
   } = useLayoutStore();
 
   const [isPreviewCollapsed, setIsPreviewCollapsed] = React.useState(false);
@@ -183,60 +172,6 @@ export function WorkbenchShell({
     window.addEventListener('touchcancel', onTouchEnd);
   }, [setSplitRatio]);
 
-  // 3. Drag Handler for Bottom Diagnostics / Problems Panel (Mouse & Touch)
-  const handleBottomPanelResize = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    const startY = e.clientY;
-    const startHeight = bottomPanelHeight;
-    let rafId: number | null = null;
-
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        const delta = startY - moveEvent.clientY;
-        setBottomPanelHeight(startHeight + delta);
-      });
-    };
-
-    const onMouseUp = () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  }, [bottomPanelHeight, setBottomPanelHeight]);
-
-  const handleBottomPanelTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 0) return;
-    const startY = e.touches[0].clientY;
-    const startHeight = bottomPanelHeight;
-    let rafId: number | null = null;
-
-    const onTouchMove = (moveEvent: TouchEvent) => {
-      if (moveEvent.touches.length === 0) return;
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        const delta = startY - moveEvent.touches[0].clientY;
-        setBottomPanelHeight(startHeight + delta);
-      });
-    };
-
-    const onTouchEnd = () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      window.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('touchend', onTouchEnd);
-      window.removeEventListener('touchcancel', onTouchEnd);
-    };
-
-    window.addEventListener('touchmove', onTouchMove, { passive: true });
-    window.addEventListener('touchend', onTouchEnd);
-    window.addEventListener('touchcancel', onTouchEnd);
-  }, [bottomPanelHeight, setBottomPanelHeight]);
-
   return (
     <div className={cn('h-screen w-screen flex flex-col bg-background select-none', className)}>
       {/* ── Slot 1: Global Topbar ─────────────────────────────────────────── */}
@@ -278,7 +213,7 @@ export function WorkbenchShell({
           </>
         )}
 
-        {/* ── Center Work Area: Editor, Preview, and Bottom Panel ──────────── */}
+        {/* ── Center Work Area: Editor & PDF Preview ──────────────────────── */}
         <div ref={containerRef} className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
           <div className="flex-1 flex min-h-0 min-w-0">
             {/* ── Slot 4: Center Editor Area ────────────────────────────────── */}
@@ -317,31 +252,8 @@ export function WorkbenchShell({
               </section>
             )}
           </div>
-
-          {/* ── Slot 7: Bottom Problems & Compiler Logs Drawer ─────────────── */}
-          {bottomPanelOpen && bottomPanel && (
-            <>
-              <ResizeHandle
-                onMouseDown={handleBottomPanelResize}
-                onTouchStart={handleBottomPanelTouchStart}
-                orientation="horizontal"
-                label="Resize bottom problems panel"
-              />
-              <div
-                style={{ height: `${bottomPanelHeight}px` }}
-                className="shrink-0 border-t border-border bg-surface overflow-hidden"
-              >
-                {bottomPanel}
-              </div>
-            </>
-          )}
         </div>
       </main>
-
-      {/* ── Slot 8: Global Status Bar ─────────────────────────────────────── */}
-      {statusBarOpen && statusBar && (
-        <div className="shrink-0 z-30">{statusBar}</div>
-      )}
     </div>
   );
 }

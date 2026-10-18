@@ -2,13 +2,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import ProjectHistoryModal from '@/features/editor/subsystems/history/ui/ProjectHistoryModal';
+import HistoryPage from '@/features/editor/subsystems/history/ui/HistoryPage';
 import { manuscriptService, historyService } from '@/features/editor/sdk/manuscript.service';
 import { editorCommandBus } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
 import type { ProjectVersionListItem, ProjectDiffResponse } from '@/features/editor/subsystems/history/model/history.types';
 
-describe('ProjectHistoryModal Component (Overleaf Parity)', () => {
+const ProjectHistoryModal = HistoryPage;
+
+describe('HistoryPage Component (Overleaf Parity)', () => {
   let queryClient: QueryClient;
 
   const mockVersions: ProjectVersionListItem[] = [

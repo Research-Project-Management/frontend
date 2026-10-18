@@ -8,7 +8,10 @@ export { AVAILABLE_LABEL_COLORS, DEFAULT_LABEL_COLOR };
 export const labelKeys = {
   all: ['labels'] as const,
   project: (projectId?: string) => ['labels', 'project', projectId] as const,
-  scoped: (projectId?: string, type?: string) => ['labels', projectId ?? 'default', type] as const,
+  scoped: (projectId?: string, type?: string) => {
+    const normalizedType = !type || type === 'work-item' ? 'work_item' : type;
+    return ['labels', projectId ?? 'default', normalizedType] as const;
+  },
 };
 
 export const useLabelsQuery = (
@@ -18,7 +21,7 @@ export const useLabelsQuery = (
 ) =>
   useQuery({
     queryKey: labelKeys.scoped(projectId, type),
-    queryFn: () => LabelService.list(projectId, type),
+    queryFn: () => LabelService.list(projectId, !type || type === 'work-item' ? 'work_item' : type),
     staleTime: 60_000,
     enabled: options?.enabled !== undefined ? options.enabled : Boolean(projectId),
   });

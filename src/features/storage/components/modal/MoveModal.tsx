@@ -22,9 +22,11 @@ import { Input } from '@/shared/components/ui/input';
 import { cn } from "@/shared/lib/utils";
 import type { StorageItem } from '@/features/storage/types/storage.types';
 import { getAllFiles as getWorkspaceFiles, createFolder as createWorkspaceFolder } from '@/features/storage/services/file.service';
-import { useMoveItem } from '@/features/storage/hooks/use-storage';
-import { useStorageSelectionStore } from '@/features/storage/store/use-selection-store';
-import { useStorageUIStore } from '@/features/storage/store/storage-ui.store';
+import { useMoveItem, useBatchMoveItems } from '@/features/storage/hooks/use-storage';
+import {
+  useStorageUIStore,
+  useStorageSelectionStore,
+} from '@/features/storage/store/storage-ui.store';
 
 export type OpenMoveModalDetail = {
   item?: StorageItem;
@@ -65,7 +67,9 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
   const [newFolderName, setNewFolderName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
-  const { mutateAsync: moveItemMutation, isPending: isMoving } = useMoveItem();
+  const { mutateAsync: moveItemMutation, isPending: isMovingSingle } = useMoveItem();
+  const { mutateAsync: batchMoveMutation, isPending: isMovingBatch } = useBatchMoveItems();
+  const isMoving = isMovingSingle || isMovingBatch;
 
   const targetScopeId = scopeProjectId || propProjectId || params.projectId;
 
@@ -169,9 +173,14 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
     }
 
     try {
-      for (const item of itemsToMove) {
+      if (itemsToMove.length === 1) {
         await moveItemMutation({
-          itemId: item.id,
+          itemId: itemsToMove[0].id,
+          parentId: selectedFolderId,
+        });
+      } else {
+        await batchMoveMutation({
+          ids: itemsToMove.map((item) => item.id),
           parentId: selectedFolderId,
         });
       }

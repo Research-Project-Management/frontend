@@ -134,7 +134,7 @@ export function AiTopbar({ title: propTitle, className }: AiTopbarProps) {
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-xs">
-              {isSourcesOpen ? 'Đóng bảng nguồn' : 'Mở bảng nguồn (Sources)'}
+              {isSourcesOpen ? 'Close sources panel' : 'Open sources panel'}
             </TooltipContent>
           </Tooltip>
         </div>

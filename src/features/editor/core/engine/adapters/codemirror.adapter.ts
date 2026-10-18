@@ -31,7 +31,7 @@ import {
   acceptDiffEffect,
   rejectDiffEffect,
   diffProposalField,
-} from '@/features/editor/subsystems/review/extensions/inline-diff';
+} from '@/features/editor/subsystems/review';
 import { dispatchEditorCommand } from './editor-command-port';
 
 // Effect to trigger line flash/highlight for SyncTeX or compiler errors

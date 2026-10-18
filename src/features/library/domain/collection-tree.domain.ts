@@ -1,9 +1,8 @@
 /**
  * Pure Hierarchical Collection Tree Utilities (Zotero 7 Collections & Subcollections)
- * 100% Pure TypeScript - O(N) graph traversal with cycle guards against corrupted parentId chains.
  */
 
-import type { Collection } from '../types/library.types';
+import type { Collection } from './types/library.types';
 
 export interface CollectionHierarchyNode extends Collection {
   children: CollectionHierarchyNode[];
@@ -138,18 +137,13 @@ export function canMoveCollection(
   if (!targetParentId) return true;
   if (sourceId === targetParentId) return false;
 
-  const descendants = getDescendantCollectionIds(collections, sourceId);
-  if (descendants.includes(targetParentId)) {
-    return false;
-  }
-
-  // Also ensure targetParentId itself is not part of a cycle leading back to sourceId
   const parentMap = new Map<string, string | null | undefined>();
   for (const c of collections) {
     if (c.id) parentMap.set(c.id, c.parentId);
   }
   if (!parentMap.has(targetParentId)) return false;
 
+  // Walk ancestors from targetParentId up to root: if we reach sourceId or a cycle, move is invalid
   let curr: string | null | undefined = targetParentId;
   const visited = new Set<string>();
   while (curr) {
@@ -160,4 +154,45 @@ export function canMoveCollection(
   }
 
   return true;
+}
+
+export { buildCollectionTree as buildTree };
+
+/**
+ * Returns collections that are valid targets for moving/copying
+ * by filtering out the target node itself and all its descendant subcollections.
+ * Strict O(N) complexity using adjacency list graph traversal.
+ */
+export function getValidMoveTargets(allCollections: Collection[], currentId: string): Collection[] {
+  const descendantIds = new Set(getDescendantCollectionIds(allCollections, currentId));
+  return allCollections.filter((c) => !descendantIds.has(c.id));
+}
+
+/**
+ * Filters a collection list by search keyword, preserving the chain of parent collections.
+ * Strict O(N) complexity using hash map parent lookup and cycle guard.
+ */
+export function filterCollections(cols: Collection[], searchQuery: string): Collection[] {
+  const q = searchQuery.trim().toLowerCase();
+  if (!q) return cols;
+
+  const parentMap = new Map<string, string | null>();
+  for (const c of cols) {
+    parentMap.set(c.id, c.parentId || null);
+  }
+
+  const matchingIds = new Set<string>();
+  for (const c of cols) {
+    if (c.name.toLowerCase().includes(q)) {
+      let currId: string | null | undefined = c.id;
+      const visitedInPath = new Set<string>();
+      while (currId && !visitedInPath.has(currId)) {
+        visitedInPath.add(currId);
+        matchingIds.add(currId);
+        currId = parentMap.get(currId);
+      }
+    }
+  }
+
+  return cols.filter((c) => matchingIds.has(c.id));
 }

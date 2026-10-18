@@ -8,10 +8,8 @@
  * - TopBar: Project title, compile button, global actions.
  * - ActivityBar: 48px icon strip switching Primary Sidebar viewlets (Files, Search, AI...).
  * - PrimarySidebar: FileTree, Project Search, Outline, Citations, Review, Chat, AI.
- * - EditorArea: Tab bar, breadcrumbs, scoped format toolbar, CodeMirror 6.
- * - Viewer: PDF.js previewer, scoped zoom & sync toolbar.
- * - BottomDockPanel: Problems table (O(log K) search) & raw compiler logs.
- * - StatusBar: Git branch, problems indicator, sync status, Ln/Col coordinates.
+ * - EditorArea: Tab bar, scoped format toolbar, CodeMirror 6 / Visual Editor.
+ * - Viewer: PDF.js previewer, scoped zoom & sync toolbar, and CompilerLogs.
  * - Modals: Settings, WordCount, DeletedFiles.
  *
  * NOTE: 0 dependencies on legacy sub-features/ directory.
@@ -30,7 +28,6 @@ import { ActivityBar } from './ActivityBar';
 import Topbar from './Topbar';
 import { PrimarySidebar } from './PrimarySidebar';
 import { EditorArea } from '@/features/editor/ui/editor/EditorArea';
-import { BottomDockPanel } from '@/features/editor/ui/panel/BottomDockPanel';
 
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import { usePageStore } from '@/features/editor/core';
@@ -39,7 +36,7 @@ import { useLayoutStore, type ActivityBarTab } from '@/features/editor/core';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { editorCommandBus, getActiveEditorEngine } from '@/features/editor/core';
 import { keybindingCoordinator } from '@/features/editor/subsystems/keybinding';
-import { useViewItems } from '@/features/library/data';
+import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 
 const PdfViewer = dynamic(() => import('@/features/editor/subsystems/compiler').then(m => m.PdfViewer), { ssr: false });
@@ -48,11 +45,10 @@ const DeletedFilesModal = dynamic(() => import('@/features/editor/ui/modals/Dele
 const WordCountModal = dynamic(() => import('@/features/editor/ui/modals/WordCountModal'), { ssr: false });
 const CitationPickerModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/modals/CitationPickerModal'), { ssr: false });
 const RenameCitationModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/modals/RenameCitationModal'), { ssr: false });
-const ProjectHistoryModal = dynamic(() => import('@/features/editor/subsystems/history/ui/ProjectHistoryModal'), { ssr: false });
+const HistoryPage = dynamic(() => import('@/features/editor/subsystems/history/ui/HistoryPage'), { ssr: false });
 const TableWizardModal = dynamic(() => import('@/features/editor/ui/modals/table-wizard/TableWizardModal'), { ssr: false });
 const FigureWizardModal = dynamic(() => import('@/features/editor/ui/modals/FigureWizardModal'), { ssr: false });
 const SymbolPaletteModal = dynamic(() => import('@/features/editor/ui/modals/SymbolPaletteModal'), { ssr: false });
-const CollaborativeDiagramModal = dynamic(() => import('@/features/editor/ui/modals/diagram-canvas/CollaborativeDiagramModal'), { ssr: false });
 
 /** Safely extracts LaTeX string content from active engine or document entity */
 function getDocContent(doc: unknown, fallbackEngineContent?: string): string {
@@ -110,7 +106,6 @@ export function ModernWorkbenchLayout() {
   const [tableWizardInitialLatex, setTableWizardInitialLatex] = useState('');
   const [figureWizardOpen, setFigureWizardOpen] = useState(false);
   const [symbolPaletteOpen, setSymbolPaletteOpen] = useState(false);
-  const [diagramCanvasOpen, setDiagramCanvasOpen] = useState(false);
 
   // Sync workspace library references into latexSymbolsIndex for instant autocomplete & hover
   const { data: libraryData } = useViewItems(rawProjectId || 'me', 'all');
@@ -182,8 +177,6 @@ export function ModernWorkbenchLayout() {
         setFigureWizardOpen(true);
       } else if (cmd.dialog === 'symbol-palette') {
         setSymbolPaletteOpen(true);
-      } else if (cmd.dialog === 'diagram-canvas' || cmd.dialog === 'tikz-canvas') {
-        setDiagramCanvasOpen(true);
       } else if (cmd.dialog === 'github-sync') {
         useSettingsStore.getState().openSettingsModal('github');
       } else if (cmd.dialog === 'project-settings') {
@@ -212,9 +205,6 @@ export function ModernWorkbenchLayout() {
       }
       if (!cmd.dialog || cmd.dialog === 'symbol-palette') {
         setSymbolPaletteOpen(false);
-      }
-      if (!cmd.dialog || cmd.dialog === 'diagram-canvas' || cmd.dialog === 'tikz-canvas') {
-        setDiagramCanvasOpen(false);
       }
     });
 
@@ -267,6 +257,18 @@ export function ModernWorkbenchLayout() {
   const isEditorOnly = layout === 'editor-only';
   const isViewerOnly = layout === 'viewer-only';
 
+  if (isHistoryOpen) {
+    return (
+      <HistoryPage
+        open={isHistoryOpen}
+        onOpenChange={(open) => setIsHistoryOpen(open)}
+        onClose={() => setIsHistoryOpen(false)}
+        projectId={rawProjectId}
+        pageId={rootPageId || currentPage?.id}
+      />
+    );
+  }
+
   return (
     <>
       <WorkbenchShell
@@ -275,8 +277,6 @@ export function ModernWorkbenchLayout() {
         leftSidebar={<PrimarySidebar />}
         editor={!isViewerOnly ? <EditorArea /> : null}
         preview={!isEditorOnly && !isPdfDetached ? <PdfViewer /> : null}
-        bottomPanel={<BottomDockPanel />}
-        statusBar={null}
       />
 
       {/* Global Modals */}
@@ -338,14 +338,6 @@ export function ModernWorkbenchLayout() {
         />
       )}
 
-      {isHistoryOpen && (
-        <ProjectHistoryModal
-          open={isHistoryOpen}
-          onOpenChange={(open) => setIsHistoryOpen(open)}
-          projectId={rawProjectId}
-        />
-      )}
-
       {tableWizardOpen && (
         <TableWizardModal
           open={tableWizardOpen}
@@ -396,25 +388,9 @@ export function ModernWorkbenchLayout() {
           }}
         />
       )}
-
-      {diagramCanvasOpen && (
-        <CollaborativeDiagramModal
-          open={diagramCanvasOpen}
-          onOpenChange={(open) => {
-            setDiagramCanvasOpen(open);
-            if (!open) {
-              editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'diagram-canvas' });
-            }
-          }}
-          projectId={rawProjectId}
-          onInsert={(latexCode) => {
-            editorCommandBus.dispatch({ type: 'editor:insert-text', text: `\n${latexCode}\n` });
-            editorCommandBus.dispatch({ type: 'editor:focus' });
-          }}
-        />
-      )}
     </>
   );
 }
 
 export default ModernWorkbenchLayout;
+

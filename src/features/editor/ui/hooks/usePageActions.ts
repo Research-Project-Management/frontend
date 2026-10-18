@@ -47,13 +47,20 @@ export function usePageActions() {
   const updateTitleMutation = useMutation({
     mutationFn: async ({ pageId, title, oldTitle }: { pageId: string; title: string; oldTitle?: string }) => {
       if (isLocked) throw new Error('Document is locked');
-      setCurrentPage((prev) => (prev ? { ...prev, title } : prev));
+      const pageStore = usePageStore.getState();
+      if (pageStore.activeFilePage?.id === pageId) {
+        pageStore.setActiveFilePage({ ...pageStore.activeFilePage, title });
+      }
+      if (pageStore.currentPage?.id === pageId) {
+        setCurrentPage((prev) => (prev && prev.id === pageId ? { ...prev, title } : prev));
+      }
       return await manuscriptService.docs.updateTitle(pageId, title, oldTitle);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.detail(variables.pageId) });
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
 
       // Synchronize open tabs across projects
       const tabsState = useTabsStore.getState();
@@ -78,8 +85,14 @@ export function usePageActions() {
       return await manuscriptService.docs.delete(pageId);
     },
     onSuccess: (_data, pageId) => {
+      const parentPageId = usePageStore.getState().parentPageId || usePageStore.getState().currentPage?.id;
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      if (parentPageId) {
+        queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
+        queryClient.invalidateQueries({ queryKey: pageKeys.deletedFiles(parentPageId) });
+      }
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
       }
@@ -97,9 +110,15 @@ export function usePageActions() {
       return await workspaceCoordinator.restoreFile(pageId);
     },
     onSuccess: (_, pageId) => {
+      const parentPageId = usePageStore.getState().parentPageId || usePageStore.getState().currentPage?.id;
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: pageKeys.deletedFiles(pageId) });
+      if (parentPageId) {
+        queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
+        queryClient.invalidateQueries({ queryKey: pageKeys.deletedFiles(parentPageId) });
+      }
     },
     onError: (err: unknown, pageId) => {
       const msg = err instanceof Error ? err.message : 'Failed to restore file';
@@ -113,7 +132,16 @@ export function usePageActions() {
       return await manuscriptService.docs.duplicate(pageId);
     },
     onSuccess: (_data, pageId) => {
+      const parentPageId = usePageStore.getState().parentPageId || usePageStore.getState().currentPage?.id;
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      if (parentPageId) {
+        queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
+      }
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+      }
       toast.success('File duplicated', { id: `duplicate-file-${pageId}` });
     },
     onError: (err: unknown, pageId) => {

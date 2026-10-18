@@ -108,7 +108,7 @@ describe('Split Editor Panes & Detached PDF Preview (Overleaf Parity)', () => {
       expect(document.querySelector('[data-file-id="doc-main"], [data-file-id="doc-1"]')).toBeInTheDocument();
       expect(document.querySelector('[data-file-id="doc-bib"]')).toBeNull();
       // Split button is visible on the single pane toolbar
-      expect(screen.getByTitle(/chia đôi khung soạn thảo/i)).toBeInTheDocument();
+      expect(screen.getByTitle(/split editor right/i)).toBeInTheDocument();
     });
 
     it('renders dual EditorPanes with ResizablePanelGroup when editorSplitMode is "vertical"', () => {
@@ -137,7 +137,7 @@ describe('Split Editor Panes & Detached PDF Preview (Overleaf Parity)', () => {
 
       renderWithProviders(<EditorArea />);
 
-      const closeButtons = screen.getAllByTitle(/đóng khung soạn thảo này/i);
+      const closeButtons = screen.getAllByTitle(/close split pane/i);
       expect(closeButtons.length).toBeGreaterThan(0);
       fireEvent.click(closeButtons[0]);
 
@@ -153,7 +153,7 @@ describe('Split Editor Panes & Detached PDF Preview (Overleaf Parity)', () => {
 
       renderWithProviders(<EditorArea />);
 
-      const swapButtons = screen.getAllByTitle(/đổi vị trí 2 khung soạn thảo/i);
+      const swapButtons = screen.getAllByTitle(/swap split panes/i);
       expect(swapButtons.length).toBeGreaterThan(0);
       fireEvent.click(swapButtons[0]);
 
@@ -181,7 +181,7 @@ describe('Split Editor Panes & Detached PDF Preview (Overleaf Parity)', () => {
         />
       );
 
-      const popoutBtn = screen.getByLabelText(/mở pdf ra cửa sổ riêng biệt/i);
+      const popoutBtn = screen.getByLabelText(/open pdf in separate window/i);
       expect(popoutBtn).toBeInTheDocument();
       fireEvent.click(popoutBtn);
 

@@ -20,7 +20,7 @@ import {
 } from '@/features/editor/core';
 import { diagnosticsCoordinator, type IndexedDiagnosticItem } from '@/features/editor/subsystems/diagnostics';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import type { DiffProposal } from '@/features/editor/domain/types/ports/editor-engine.port';
 import { heuristicLatexErrorFix } from '@/features/editor/domain/ai/ai-error-assist';
 import { toast } from 'sonner';

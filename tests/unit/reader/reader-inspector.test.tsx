@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
-import { ReaderInspector } from '@/features/library/components/inspector/ReaderInspector';
+import { ReaderInspector } from '@/features/library/ui/inspector/ReaderInspector';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
@@ -25,8 +25,8 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-vi.mock('@/features/library/data/reader/reader.queries', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/features/library/data/reader/reader.queries')>();
+vi.mock('@/features/library/sdk/queries/reader.queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/library/sdk/queries/reader.queries')>();
   return {
     ...actual,
     useReaderItem: vi.fn().mockReturnValue({
@@ -48,7 +48,7 @@ vi.mock('@/features/library', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/library')>();
   return {
     ...actual,
-    useLibrarySidebarStore: vi.fn((selector) =>
+    useLibraryUIStore: vi.fn((selector) =>
       selector({
         isInspectorOpen: true,
         toggleInspector: vi.fn(),
@@ -57,16 +57,8 @@ vi.mock('@/features/library', async (importOriginal) => {
         setIsInspectorOpen: vi.fn(),
         inspectorWidth: 360,
         setInspectorWidth: vi.fn(),
-      })
-    ),
-    useLibraryViewStore: vi.fn((selector) =>
-      selector({
         activeItemId: 'test-paper-1',
         selectOnly: vi.fn(),
-      })
-    ),
-    useLibraryModalStore: vi.fn((selector) =>
-      selector({
         openModal: vi.fn(),
       })
     ),
@@ -103,7 +95,7 @@ describe('ReaderInspector Shared LibraryInspector Parity', () => {
     cleanup();
   });
 
-  it('renders ReaderInspector with title and inspector tabs including Paper AI Copilot', () => {
+  it('renders ReaderInspector with title and standard inspector tabs without AI copilot', () => {
     const testItem = {
       id: 'test-paper-1',
       title: 'Attention Is All You Need',
@@ -133,8 +125,9 @@ describe('ReaderInspector Shared LibraryInspector Parity', () => {
     const panelBar = screen.getByRole('complementary', { name: /inspector panel bar/i });
     expect(panelBar).toBeDefined();
 
-    // Paper AI Copilot section header and tab button both exist in Reader mode
-    const aiCopilotButtons = screen.getAllByRole('button', { name: /paper ai copilot/i });
-    expect(aiCopilotButtons.length).toBeGreaterThanOrEqual(2);
+    // Paper AI Copilot has been removed from Reader inspector
+    const aiCopilotButtons = screen.queryAllByRole('button', { name: /paper ai copilot/i });
+    expect(aiCopilotButtons.length).toBe(0);
   });
 });
+

@@ -1,5 +1,12 @@
 import { create } from 'zustand';
-import type { StorageItem } from '../types/storage-item.types';
+import type {
+  StorageItem,
+  StorageTypeFilter,
+  StorageSortBy,
+  StorageFilterState,
+} from '../types/storage.types';
+
+export type { StorageTypeFilter, StorageSortBy, StorageFilterState };
 
 export type StorageSection = 'home' | 'my-files' | 'shared' | 'starred' | 'trash';
 
@@ -145,4 +152,208 @@ export const useStorageUIStore = create<StorageUIState>((set, get) => ({
   restoringItemId: null,
   setRestoringItemId: (id) => set({ restoringItemId: id }),
 }));
+
+// ============================================================================
+// PREVIEW & VIEW STORES
+// ============================================================================
+
+interface PreviewStore {
+  selectedItem: StorageItem | null;
+  setSelectedItem: (item: StorageItem | null) => void;
+}
+
+export const usePreviewStore = create<PreviewStore>((set) => ({
+  selectedItem: null,
+  setSelectedItem: (item) => set({ selectedItem: item }),
+}));
+
+interface ViewState {
+  view: 'list' | 'grid';
+  setView: (view: 'list' | 'grid') => void;
+}
+
+export const useViewStore = create<ViewState>((set) => ({
+  view: 'list',
+  setView: (view) => set({ view }),
+}));
+
+export const useStorageViewStore = useViewStore;
+
+// ============================================================================
+// FILTER & SELECTION STORES
+// ============================================================================
+
+export const useStorageFilterStore = create<StorageFilterState>((set, get) => ({
+  typeFilter: 'all',
+  selectedTypes: [],
+  sortBy: 'date-desc',
+
+  setTypeFilter: (typeFilter) =>
+    set({
+      typeFilter,
+      selectedTypes: typeFilter === 'all' ? [] : [typeFilter],
+    }),
+
+  toggleType: (type) => {
+    const { selectedTypes } = get();
+    if (type === 'all') {
+      set({ selectedTypes: [], typeFilter: 'all' });
+      return;
+    }
+    const next = selectedTypes.includes(type)
+      ? selectedTypes.filter((t) => t !== type)
+      : [...selectedTypes, type];
+    set({
+      selectedTypes: next,
+      typeFilter:
+        next.length === 1 ? next[0] : next.length === 0 ? 'all' : next[0],
+    });
+  },
+
+  setSelectedTypes: (selectedTypes) =>
+    set({
+      selectedTypes,
+      typeFilter:
+        selectedTypes.length === 1
+          ? selectedTypes[0]
+          : selectedTypes.length === 0
+            ? 'all'
+            : selectedTypes[0],
+    }),
+
+  setSortBy: (sortBy) => set({ sortBy }),
+
+  resetFilters: () =>
+    set({
+      typeFilter: 'all',
+      selectedTypes: [],
+      sortBy: 'date-desc',
+    }),
+
+  isFilterActive: () => {
+    const { selectedTypes, sortBy, typeFilter } = get();
+    const hasTypes = selectedTypes.length > 0 || typeFilter !== 'all';
+    const hasSort = sortBy !== 'date-desc';
+    return hasTypes || hasSort;
+  },
+
+  getActiveFilterCount: () => {
+    const { selectedTypes, sortBy, typeFilter } = get();
+    let count = 0;
+    if (selectedTypes.length > 0) {
+      count += selectedTypes.length;
+    } else if (typeFilter !== 'all') {
+      count += 1;
+    }
+
+    if (sortBy !== 'date-desc') {
+      count += 1;
+    }
+    return count;
+  },
+}));
+
+interface StorageSelectionState {
+  selectedIds: string[];
+  lastSelectedId: string | null;
+
+  isSelected: (id: string) => boolean;
+  isAllSelected: (allIds: string[]) => boolean;
+  hasSelection: () => boolean;
+
+  toggleSelect: (id: string) => void;
+  selectOnly: (id: string) => void;
+  selectRange: (allIds: string[], targetId: string) => void;
+  selectAll: (allIds: string[]) => void;
+  clearSelection: () => void;
+  setSelectedIds: (ids: string[]) => void;
+}
+
+export const useStorageSelectionStore = create<StorageSelectionState>(
+  (set, get) => ({
+    selectedIds: [],
+    lastSelectedId: null,
+
+    isSelected: (id: string) => get().selectedIds.includes(id),
+
+    isAllSelected: (allIds: string[]) => {
+      if (allIds.length === 0) return false;
+      const { selectedIds } = get();
+      return allIds.every((id) => selectedIds.includes(id));
+    },
+
+    hasSelection: () => get().selectedIds.length > 0,
+
+    toggleSelect: (id: string) => {
+      const { selectedIds } = get();
+      if (selectedIds.includes(id)) {
+        set({
+          selectedIds: selectedIds.filter((item) => item !== id),
+          lastSelectedId: id,
+        });
+      } else {
+        set({
+          selectedIds: [...selectedIds, id],
+          lastSelectedId: id,
+        });
+      }
+    },
+
+    selectOnly: (id: string) => {
+      set({
+        selectedIds: [id],
+        lastSelectedId: id,
+      });
+    },
+
+    selectRange: (allIds: string[], targetId: string) => {
+      const { lastSelectedId, selectedIds } = get();
+      if (
+        !lastSelectedId ||
+        !allIds.includes(lastSelectedId) ||
+        !allIds.includes(targetId)
+      ) {
+        set({
+          selectedIds: [targetId],
+          lastSelectedId: targetId,
+        });
+        return;
+      }
+
+      const fromIndex = allIds.indexOf(lastSelectedId);
+      const toIndex = allIds.indexOf(targetId);
+      const start = Math.min(fromIndex, toIndex);
+      const end = Math.max(fromIndex, toIndex);
+
+      const rangeIds = allIds.slice(start, end + 1);
+      const merged = Array.from(new Set([...selectedIds, ...rangeIds]));
+
+      set({
+        selectedIds: merged,
+        lastSelectedId: targetId,
+      });
+    },
+
+    selectAll: (allIds: string[]) => {
+      set({
+        selectedIds: [...allIds],
+        lastSelectedId: allIds[allIds.length - 1] || null,
+      });
+    },
+
+    clearSelection: () => {
+      set({
+        selectedIds: [],
+        lastSelectedId: null,
+      });
+    },
+
+    setSelectedIds: (ids: string[]) => {
+      set({
+        selectedIds: ids,
+        lastSelectedId: ids[ids.length - 1] || null,
+      });
+    },
+  }),
+);
 

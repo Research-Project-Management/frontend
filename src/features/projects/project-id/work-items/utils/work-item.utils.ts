@@ -264,17 +264,17 @@ export const WorkItemHelpers = {
     startDate?: string | null | Date,
     dueDate?: string | null | Date
   ): string => {
-    // Nếu chỉ có ngày bắt đầu thì không hiện, chỉ hiện khi có ngày kết thúc
+    // If only start date is present, do not display; only display when due date exists
     if (!dueDate) return "";
 
     const formattedDue = WorkItemHelpers.formatDate(dueDate);
     if (!formattedDue) return "";
 
-    // Nếu không có ngày bắt đầu: chỉ hiện ngày kết thúc
+    // If no start date: display only due date
     if (!startDate) return formattedDue;
 
     const formattedStart = WorkItemHelpers.formatDate(startDate);
-    // Nếu có cả ngày bắt đầu và kết thúc: gộp chung, không tách riêng
+    // If both start and due date exist and differ: combine into range
     if (formattedStart && formattedStart !== formattedDue) {
       return `${formattedStart} - ${formattedDue}`;
     }

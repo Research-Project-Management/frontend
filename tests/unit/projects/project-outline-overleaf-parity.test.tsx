@@ -12,9 +12,8 @@ import {
   type OutlineItem,
 } from '@/features/editor/domain/latex/latex-symbols-core';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
-import { OutlineTab } from '@/features/editor/subsystems/outline';
-import { editorCommandBus } from '@/features/editor/core';
-import { usePageStore } from '@/features/editor/core';
+import { FileOutlineSection } from '@/features/editor/subsystems/explorer/ui/subcomponents/FileOutlineSection';
+import { editorCommandBus, useLayoutStore } from '@/features/editor/core';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 
 describe('Phase 13: Project Outline & Section Jump Navigation (Overleaf Parity)', () => {
@@ -207,107 +206,81 @@ Proofs body.
     });
   });
 
-  describe('3. OutlineTab UI: Scopes, Filtering & Section Jump Navigation', () => {
-    it('renders OutlineTab with Project and File scope switcher and category filter', () => {
-      // Mock active document
-      usePageStore.setState({
-        currentPage: { id: 'main-id', title: 'main.tex' } as any,
-        activeFilePage: { id: 'main-id', title: 'main.tex' } as any,
-      });
+  describe('3. FileOutlineSection UI: Overleaf File Tree Outline & Section Jump Navigation', () => {
+    it('renders FileOutlineSection with headings, figures, and tables extracted from document content', () => {
+      useLayoutStore.setState({ fileOutlineOpen: true });
 
-      // Populate latexSymbolsIndex with project symbols
-      latexSymbolsIndex.indexFile(
-        'main-id',
-        'main.tex',
-        `\\section{System Overview}
+      const docContent = `\\section{System Overview}
 \\begin{figure}
   \\caption{Flowchart Architecture}
-\\end{figure}`,
-        true
-      );
+\\end{figure}
+\\begin{table}
+  \\caption{Benchmark Metrics}
+\\end{table}`;
 
       render(
         <TooltipProvider>
-          <OutlineTab />
+          <FileOutlineSection
+            isFileTreeOpen={true}
+            docContent={docContent}
+            activeFileName="main.tex"
+          />
         </TooltipProvider>
       );
 
-      // Scope buttons exist
-      expect(screen.getByRole('button', { name: /project/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /file/i })).toBeInTheDocument();
-
-      // Category filters exist
-      expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Sec' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Fig/Tab' })).toBeInTheDocument();
-
-      // Heading items are visible
+      expect(screen.getByText('File Outline')).toBeInTheDocument();
       expect(screen.getByText('System Overview')).toBeInTheDocument();
       expect(screen.getByText(/Flowchart Architecture/)).toBeInTheDocument();
+      expect(screen.getByText(/Benchmark Metrics/)).toBeInTheDocument();
     });
 
-    it('filters outline by category (Sec vs Fig/Tab)', () => {
-      usePageStore.setState({
-        currentPage: { id: 'test-doc', title: 'doc.tex' } as any,
-        activeFilePage: { id: 'test-doc', title: 'doc.tex' } as any,
-      });
-
-      latexSymbolsIndex.indexFile(
-        'test-doc',
-        'doc.tex',
-        `\\section{Main Body}
-\\begin{figure}
-  \\caption{My Figure}
-\\end{figure}`,
-        true
-      );
+    it('toggles FileOutlineSection collapse and expand via useLayoutStore', () => {
+      useLayoutStore.setState({ fileOutlineOpen: true });
 
       render(
         <TooltipProvider>
-          <OutlineTab />
+          <FileOutlineSection
+            isFileTreeOpen={true}
+            docContent={`\\section{Main Body}`}
+            activeFileName="doc.tex"
+          />
         </TooltipProvider>
       );
 
-      // Filter to Sections only
-      fireEvent.click(screen.getByRole('button', { name: 'Sec' }));
       expect(screen.getByText('Main Body')).toBeInTheDocument();
-      expect(screen.queryByText(/My Figure/)).not.toBeInTheDocument();
 
-      // Filter to Figures & Tables only
-      fireEvent.click(screen.getByRole('button', { name: 'Fig/Tab' }));
+      // Click accordion header to collapse
+      fireEvent.click(screen.getByRole('button', { name: /collapse file outline/i }));
+      expect(useLayoutStore.getState().fileOutlineOpen).toBe(false);
       expect(screen.queryByText('Main Body')).not.toBeInTheDocument();
-      expect(screen.getByText(/My Figure/)).toBeInTheDocument();
+
+      // Click accordion header to expand
+      fireEvent.click(screen.getByRole('button', { name: /expand file outline/i }));
+      expect(useLayoutStore.getState().fileOutlineOpen).toBe(true);
+      expect(screen.getByText('Main Body')).toBeInTheDocument();
     });
 
-    it('dispatches navigation:jump-to-line and synctex:forward when an outline item is clicked', () => {
-      usePageStore.setState({
-        currentPage: { id: 'main-id', title: 'main.tex' } as any,
-        activeFilePage: { id: 'main-id', title: 'main.tex' } as any,
-      });
-
-      latexSymbolsIndex.indexFile(
-        'main-id',
-        'main.tex',
-        `\\section{Jump Target Section}`,
-        true
-      );
-
+    it('dispatches editor:jump-to-line and synctex:forward when an outline item is clicked', () => {
+      useLayoutStore.setState({ fileOutlineOpen: true });
       const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
 
       render(
         <TooltipProvider>
-          <OutlineTab />
+          <FileOutlineSection
+            isFileTreeOpen={true}
+            docContent={`\\section{Jump Target Section}`}
+            activeFileName="main.tex"
+          />
         </TooltipProvider>
       );
 
       const sectionButton = screen.getByText('Jump Target Section');
       fireEvent.click(sectionButton);
 
-      // Verify cross-file jump command
+      // Verify editor jump command
       expect(dispatchSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'navigation:jump-to-line',
-          filePath: 'main.tex',
+          type: 'editor:jump-to-line',
           line: 1,
           highlight: 'synctex',
         })

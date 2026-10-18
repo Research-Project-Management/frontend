@@ -25,6 +25,7 @@ import { EditorToolbar } from '@/features/editor/ui/editor/EditorToolbar';
 import { ActivityBar } from '@/features/editor/core/shell/ActivityBar';
 import { Topbar } from '@/features/editor/core/shell/Topbar';
 import { reviewCoordinator } from '@/features/editor/subsystems/review';
+import { keybindingCoordinator } from '@/features/editor/subsystems/keybinding';
 import { jumpToEditorLine } from '@/features/editor/subsystems/navigation';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
 import { suggestionService, commentService } from '@/features/editor/sdk/manuscript.service';
@@ -245,6 +246,7 @@ describe('Track Changes & Review Panel (Overleaf Parity)', () => {
     });
 
     it('triggers Add Comment on Ctrl+Alt+M keydown', () => {
+      const unsub = keybindingCoordinator.init();
       const mockEngine = {
         getSelection: vi.fn().mockReturnValue({ fromLine: 5, toLine: 5 }),
         getCursorPosition: vi.fn().mockReturnValue({ line: 5, column: 1 }),
@@ -266,6 +268,8 @@ describe('Track Changes & Review Panel (Overleaf Parity)', () => {
       expect(pending?.selectedText).toBe('Theorem 1');
       expect(useLayoutStore.getState().activeSidebarTab).toBe('review');
       expect(useLayoutStore.getState().sidebarLeftOpen).toBe(true);
+
+      unsub();
     });
   });
 

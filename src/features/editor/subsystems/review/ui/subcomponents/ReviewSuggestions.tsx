@@ -216,6 +216,8 @@ export interface TrackChangesControlBarProps {
 }
 
 export function TrackChangesControlBar({
+  reviewMode = false,
+  onToggleReviewMode,
   viewMode,
   onViewModeChange,
   className,
@@ -223,24 +225,62 @@ export function TrackChangesControlBar({
   return (
     <div
       className={cn(
-        'flex items-center justify-between gap-2 border-b border-border bg-background px-3.5 py-2 shrink-0 select-none',
+        'flex flex-col gap-2 border-b border-border bg-background px-3.5 py-2 shrink-0 select-none',
         className,
       )}
     >
-      <span className="text-11 font-medium text-muted-foreground">
-        View
-      </span>
+      {onToggleReviewMode && (
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-11 font-medium text-muted-foreground">
+            Track changes
+          </span>
+          <div className="flex items-center rounded-md border border-border bg-muted/40 p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => onToggleReviewMode(true)}
+              aria-pressed={Boolean(reviewMode)}
+              className={cn(
+                'px-2.5 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer',
+                reviewMode
+                  ? 'bg-primary text-primary-foreground font-semibold shadow-2xs'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              On
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleReviewMode(false)}
+              aria-pressed={!reviewMode}
+              className={cn(
+                'px-2.5 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer',
+                !reviewMode
+                  ? 'bg-background text-foreground font-semibold shadow-2xs'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              Off
+            </button>
+          </div>
+        </div>
+      )}
 
-      <select
-        value={viewMode}
-        onChange={(e) => onViewModeChange(e.target.value as TrackChangesViewMode)}
-        className="text-xs h-7.5 min-w-0 max-w-[160px] bg-background text-foreground border border-border rounded-md px-2 py-1 outline-none focus:border-primary cursor-pointer font-medium"
-        aria-label="Track changes view mode"
-      >
-        <option value="changes">Show all changes</option>
-        <option value="clean">Show final text</option>
-        <option value="original">Show original text</option>
-      </select>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-11 font-medium text-muted-foreground">
+          View
+        </span>
+
+        <select
+          value={viewMode}
+          onChange={(e) => onViewModeChange(e.target.value as TrackChangesViewMode)}
+          className="text-xs h-7.5 min-w-0 max-w-[160px] bg-background text-foreground border border-border rounded-md px-2 py-1 outline-none focus:border-primary cursor-pointer font-medium"
+          aria-label="Track changes view mode"
+        >
+          <option value="changes">Show all changes</option>
+          <option value="clean">Show final text</option>
+          <option value="original">Show original text</option>
+        </select>
+      </div>
     </div>
   );
 }

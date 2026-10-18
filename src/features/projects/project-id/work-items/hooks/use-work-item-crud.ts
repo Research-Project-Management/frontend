@@ -113,15 +113,28 @@ export const useCreateItem = () => {
       }
       return CoreService.create(input);
     },
-    onSuccess: () => {
+    onSuccess: (res, variables) => {
+      const created = (res as { workItem?: Item; item?: Item } | undefined)?.workItem
+        ?? (res as { workItem?: Item; item?: Item } | undefined)?.item
+        ?? (res && typeof res === 'object' && 'id' in res ? (res as unknown as Item) : undefined);
+      if (created && variables?.projectId) {
+        const createdId = resolveItemId(created);
+        queryClient.setQueriesData<ProjectItemsCache>(
+          { queryKey: ['work-items', variables.projectId] },
+          (old) =>
+            applyOptimisticItemsUpdate(old, (list) => {
+              if (createdId && list.some((i) => resolveItemId(i) === createdId)) {
+                return list.map((i) => (resolveItemId(i) === createdId ? { ...i, ...created } : i));
+              }
+              return [...list, created];
+            }),
+        );
+      }
       workItemToast.success('Work item created', 'action');
     },
     onError: (error: Error) => workItemToast.error(error, 'Failed to create work item', 'action'),
     onSettled: (_data, _error, variables) => {
       invalidateWorkItemRelatedQueries(queryClient, variables?.projectId);
-      if (variables?.projectId) {
-        queryClient.invalidateQueries({ queryKey: ['work-items-analytics', variables.projectId] });
-      }
       queryClient.invalidateQueries({ queryKey: ['your-work'] });
     },
   });
@@ -129,8 +142,66 @@ export const useCreateItem = () => {
 
 export const useCreateWorkItem = useCreateItem;
 
-export const useUpdateItem = () =>
-  useOptimisticWorkItemMutation({
+function applySingleItemPatch(
+  item: Item,
+  data: { id?: string; itemId?: string; workItemId?: string; projectId?: string } & UpdateItemInput,
+  formattedDueDate: string | null | undefined,
+  formattedStartDate: string | undefined,
+): Item {
+  let nextAssignee = typeof data.assignee === 'object' ? data.assignee : item.assignee;
+  let nextAssignees = item.assignees;
+  let nextAssigneeIds = item.assigneeIds;
+  let nextAssigneeId = item.assigneeId;
+
+  if (Array.isArray(data.assigneeIds)) {
+    nextAssigneeIds = data.assigneeIds;
+    nextAssigneeId = data.assigneeIds[0] ?? null;
+    if (data.assigneeIds.length === 0) {
+      nextAssignee = null;
+      nextAssignees = [];
+    } else if (Array.isArray(item.assignees)) {
+      const idSet = new Set(data.assigneeIds);
+      const filtered = item.assignees.filter((a) => idSet.has(String(a.id || '')));
+      // Clear partial assignees array if new IDs were added so resolveAssignees resolves all from project members
+      nextAssignees = filtered.length === data.assigneeIds.length ? filtered : [];
+      if (nextAssignee && !idSet.has(String(nextAssignee.id || ''))) {
+        nextAssignee = undefined;
+      }
+    }
+  } else if (data.assigneeId !== undefined) {
+    nextAssigneeId = data.assigneeId;
+    if (data.assigneeId === null) {
+      nextAssignee = null;
+      nextAssignees = [];
+      nextAssigneeIds = [];
+    } else if (typeof data.assigneeId === 'string') {
+      nextAssigneeIds = [data.assigneeId];
+      if (typeof data.assignee !== 'object') {
+        if (nextAssignee && String(nextAssignee.id || '') !== data.assigneeId) {
+          nextAssignee = undefined;
+        }
+        nextAssignees = [];
+      }
+    }
+  }
+
+  return {
+    ...item,
+    ...data,
+    assignee: nextAssignee,
+    assignees: nextAssignees,
+    assigneeIds: nextAssigneeIds,
+    assigneeId: nextAssigneeId,
+    ...(data.columnId && { columnId: data.columnId, stateId: data.columnId }),
+    ...(data.priority && { priority: data.priority }),
+    ...(formattedDueDate !== undefined && { dueDate: formattedDueDate }),
+    ...(formattedStartDate !== undefined && { startDate: formattedStartDate }),
+  };
+}
+
+export const useUpdateItem = () => {
+  const queryClient = useQueryClient();
+  return useOptimisticWorkItemMutation({
     mutationFn: (
       data: { id?: string; itemId?: string; workItemId?: string; projectId?: string } & UpdateItemInput,
     ) => {
@@ -158,25 +229,69 @@ export const useUpdateItem = () =>
 
       return (list: Item[]) =>
         list.map((item) => {
+          let nextItem = item;
           if (resolveItemId(item) === targetId) {
-            return {
-              ...item,
-              ...data,
-              assignee: typeof data.assignee === 'object' ? data.assignee : item.assignee,
-              ...(data.columnId && { columnId: data.columnId, stateId: data.columnId }),
-              ...(data.priority && { priority: data.priority }),
-              ...(data.assigneeId !== undefined && { assigneeId: data.assigneeId }),
-              ...(formattedDueDate !== undefined && { dueDate: formattedDueDate }),
-              ...(formattedStartDate !== undefined && { startDate: formattedStartDate }),
+            nextItem = applySingleItemPatch(item, data, formattedDueDate, formattedStartDate);
+          }
+          const hasMatchingSub =
+            (Array.isArray(nextItem.subItems) &&
+              nextItem.subItems.some((s) => resolveItemId(s as unknown as Item) === targetId)) ||
+            (Array.isArray(nextItem.childWorkItems) &&
+              nextItem.childWorkItems.some((s) => resolveItemId(s) === targetId));
+
+          if (hasMatchingSub) {
+            const patchSubEntry = <T extends { id: string; title: string; completed: boolean; columnId: string }>(s: T): T => ({
+              ...s,
+              ...(data.title !== undefined && { title: data.title }),
+              ...(data.completed !== undefined && { completed: data.completed }),
+              ...(data.columnId !== undefined && { columnId: data.columnId }),
+            });
+            nextItem = {
+              ...nextItem,
+              ...(Array.isArray(nextItem.subItems)
+                ? {
+                    subItems: nextItem.subItems.map((s) =>
+                      resolveItemId(s as unknown as Item) === targetId ? patchSubEntry(s) : s,
+                    ),
+                  }
+                : {}),
+              ...(Array.isArray(nextItem.childWorkItems)
+                ? {
+                    childWorkItems: nextItem.childWorkItems.map((s) =>
+                      resolveItemId(s) === targetId ? patchSubEntry(s) : s,
+                    ),
+                  }
+                : {}),
             };
           }
-          return item;
+          return nextItem;
         });
     },
     getProjectId: (vars) => vars?.projectId,
     errorMessage: 'Failed to update work item',
     toastScope: 'action',
+    onSuccess: (res, vars) => {
+      const targetId = (vars.id || vars.itemId || vars.workItemId) ?? '';
+      const serverItem = (res as { workItem?: Item; item?: Item } | undefined)?.workItem
+        ?? (res as { workItem?: Item; item?: Item } | undefined)?.item;
+      if (targetId && serverItem) {
+        queryClient.setQueriesData<ProjectItemsCache>({ queryKey: ['work-items'] }, (old) =>
+          applyOptimisticItemsUpdate(old, (list) =>
+            list.map((item) =>
+              resolveItemId(item) === targetId ? { ...item, ...serverItem } : item,
+            ),
+          ),
+        );
+      }
+      if (targetId) {
+        queryClient.invalidateQueries({ queryKey: ['work-item-activity', targetId] });
+        if (vars.attachments !== undefined) {
+          queryClient.invalidateQueries({ queryKey: ['work-items', targetId, 'attachments'] });
+        }
+      }
+    },
   });
+};
 
 export const useUpdateWorkItem = useUpdateItem;
 
@@ -194,7 +309,34 @@ export const useDeleteItem = () =>
     getUpdater: ({ id, workItemId }) => {
       const targetId = (id || workItemId) ?? '';
       if (!targetId) return null;
-      return (list: Item[]) => list.filter((item) => resolveItemId(item) !== targetId);
+      return (list: Item[]) =>
+        list
+          .filter((item) => resolveItemId(item) !== targetId)
+          .map((item) => {
+            const hasSub =
+              (Array.isArray(item.subItems) &&
+                item.subItems.some((s) => resolveItemId(s as unknown as Item) === targetId)) ||
+              (Array.isArray(item.childWorkItems) &&
+                item.childWorkItems.some((s) => resolveItemId(s) === targetId));
+            if (!hasSub) return item;
+            return {
+              ...item,
+              ...(Array.isArray(item.subItems)
+                ? {
+                    subItems: item.subItems.filter(
+                      (s) => resolveItemId(s as unknown as Item) !== targetId,
+                    ),
+                  }
+                : {}),
+              ...(Array.isArray(item.childWorkItems)
+                ? {
+                    childWorkItems: item.childWorkItems.filter(
+                      (s) => resolveItemId(s) !== targetId,
+                    ),
+                  }
+                : {}),
+            };
+          });
     },
     getProjectId: (vars) => vars?.projectId,
     errorMessage: 'Failed to delete work item',
@@ -216,12 +358,29 @@ export const useDuplicateItem = () => {
         itemId: vars.id || vars.workItemId || vars.itemId,
         projectId: vars.projectId,
       }),
-    onSuccess: () => {
+    onSuccess: (res, variables) => {
+      const duplicated = (res as { workItem?: Item; item?: Item } | undefined)?.workItem
+        ?? (res as { workItem?: Item; item?: Item } | undefined)?.item
+        ?? (res && typeof res === 'object' && 'id' in res ? (res as unknown as Item) : undefined);
+      if (duplicated && variables?.projectId) {
+        const dupId = resolveItemId(duplicated);
+        queryClient.setQueriesData<ProjectItemsCache>(
+          { queryKey: ['work-items', variables.projectId] },
+          (old) =>
+            applyOptimisticItemsUpdate(old, (list) => {
+              if (dupId && list.some((i) => resolveItemId(i) === dupId)) {
+                return list.map((i) => (resolveItemId(i) === dupId ? { ...i, ...duplicated } : i));
+              }
+              return [...list, duplicated];
+            }),
+        );
+      }
       workItemToast.success('Work item duplicated', 'action');
     },
     onError: (error: Error) => workItemToast.error(error, 'Failed to duplicate work item', 'action'),
     onSettled: (_data, _error, variables) => {
       invalidateWorkItemRelatedQueries(queryClient, variables?.projectId);
+      queryClient.invalidateQueries({ queryKey: ['your-work'] });
     },
   });
 };
@@ -247,13 +406,50 @@ export const useBulkUpdate = () =>
       const targetIds = new Set(vars.ids || vars.itemIds || vars.workItemIds || []);
       if (targetIds.size === 0) return null;
       const patch = vars.data || {};
+      const { addLabel, removeLabel, clearLabels, ...restPatch } = patch;
       return (list: Item[]) =>
         list.map((item) => {
           if (targetIds.has(resolveItemId(item))) {
+            let nextLabels = Array.isArray(item.labels) ? [...item.labels] : [];
+            if (clearLabels) {
+              nextLabels = [];
+            }
+            if (removeLabel) {
+              nextLabels = nextLabels.filter((l) => l !== removeLabel);
+            }
+            if (addLabel && !nextLabels.includes(addLabel)) {
+              nextLabels.push(addLabel);
+            }
+
+            let nextAssignee = typeof patch.assignee === 'object' ? patch.assignee : item.assignee;
+            let nextAssignees = item.assignees;
+            let nextAssigneeIds = item.assigneeIds;
+            let nextAssigneeId = item.assigneeId;
+
+            if (patch.assigneeId !== undefined) {
+              nextAssigneeId = patch.assigneeId;
+              if (patch.assigneeId === null) {
+                nextAssignee = null;
+                nextAssignees = [];
+                nextAssigneeIds = [];
+              } else if (typeof patch.assigneeId === 'string') {
+                nextAssigneeIds = [patch.assigneeId];
+                nextAssignees = [];
+                if (typeof patch.assignee !== 'object') {
+                  nextAssignee = undefined;
+                }
+              }
+            }
+
             return {
               ...item,
-              ...patch,
-              assignee: typeof patch.assignee === 'object' ? patch.assignee : item.assignee,
+              ...restPatch,
+              labels: nextLabels,
+              assignee: nextAssignee,
+              assignees: nextAssignees,
+              assigneeIds: nextAssigneeIds,
+              assigneeId: nextAssigneeId,
+              ...(patch.columnId && { columnId: patch.columnId, stateId: patch.columnId }),
             };
           }
           return item;
@@ -301,7 +497,26 @@ export const useBulkDelete = () =>
     getUpdater: ({ ids, itemIds, workItemIds }) => {
       const targetIds = new Set(ids || itemIds || workItemIds || []);
       if (targetIds.size === 0) return null;
-      return (list: Item[]) => list.filter((item) => !targetIds.has(resolveItemId(item)));
+      return (list: Item[]) =>
+        list
+          .filter((item) => !targetIds.has(resolveItemId(item)))
+          .map((item) => ({
+            ...item,
+            ...(Array.isArray(item.subItems)
+              ? {
+                  subItems: item.subItems.filter(
+                    (s) => !targetIds.has(resolveItemId(s as unknown as Item)),
+                  ),
+                }
+              : {}),
+            ...(Array.isArray(item.childWorkItems)
+              ? {
+                  childWorkItems: item.childWorkItems.filter(
+                    (s) => !targetIds.has(resolveItemId(s)),
+                  ),
+                }
+              : {}),
+          }));
     },
     getProjectId: (vars) => vars?.projectId,
     errorMessage: 'Failed to delete work items',
@@ -332,7 +547,56 @@ export const useCreateSubItem = () => {
       const targetId = (id || itemId || workItemId) ?? '';
       return CoreService.createSubItem(targetId, data);
     },
-    onSuccess: () => {
+    onSuccess: (res, variables) => {
+      const parentId = (variables.id || variables.itemId || variables.workItemId) ?? '';
+      const createdSub = (res as { subItem?: Item; workItem?: Item; item?: Item } | undefined)?.subItem
+        ?? (res as { subItem?: Item; workItem?: Item; item?: Item } | undefined)?.workItem
+        ?? (res as { subItem?: Item; workItem?: Item; item?: Item } | undefined)?.item;
+      if (parentId && createdSub) {
+        const subId = resolveItemId(createdSub);
+        queryClient.setQueriesData<ProjectItemsCache>({ queryKey: ['work-items'] }, (old) =>
+          applyOptimisticItemsUpdate(old, (list) => {
+            const updatedList = list.map((item) => {
+              if (resolveItemId(item) === parentId) {
+                const prevSubs = Array.isArray(item.subItems) ? item.subItems : [];
+                const prevChildren = Array.isArray(item.childWorkItems) ? item.childWorkItems : [];
+                const alreadyInSubs = prevSubs.some(
+                  (s) => resolveItemId(s as unknown as Item) === subId,
+                );
+                const alreadyInChildren = prevChildren.some((s) => resolveItemId(s) === subId);
+                const subEntry = {
+                  id: subId,
+                  title: createdSub.title,
+                  completed: Boolean(createdSub.completed),
+                  columnId: createdSub.columnId,
+                  rank: typeof createdSub.rank === 'number' ? createdSub.rank : prevSubs.length,
+                };
+                return {
+                  ...item,
+                  subItems: alreadyInSubs ? prevSubs : [...prevSubs, subEntry],
+                  childWorkItems: alreadyInChildren ? prevChildren : [...prevChildren, subEntry],
+                };
+              }
+              return item;
+            });
+            if (subId && !updatedList.some((i) => resolveItemId(i) === subId)) {
+              return [
+                ...updatedList,
+                {
+                  ...createdSub,
+                  parentId,
+                  parentWorkItemId: parentId,
+                  parentItemId: parentId,
+                },
+              ];
+            }
+            return updatedList;
+          }),
+        );
+      }
+      if (parentId) {
+        queryClient.invalidateQueries({ queryKey: ['work-item-activity', parentId] });
+      }
       workItemToast.success('Sub-item created', 'action');
     },
     onError: (error: Error) => workItemToast.error(error, 'Failed to create sub-item', 'action'),
@@ -362,7 +626,51 @@ export const useConvertSubItemToRoot = () => {
       const targetId = (id || itemId || workItemId) ?? '';
       return CoreService.convertToRoot(targetId);
     },
-    onSuccess: () => {
+    onSuccess: (res, variables) => {
+      const targetId = (variables.id || variables.itemId || variables.workItemId) ?? '';
+      const serverItem = (res as { workItem?: Item; item?: Item } | undefined)?.workItem
+        ?? (res as { workItem?: Item; item?: Item } | undefined)?.item;
+      if (targetId) {
+        queryClient.setQueriesData<ProjectItemsCache>({ queryKey: ['work-items'] }, (old) =>
+          applyOptimisticItemsUpdate(old, (list) =>
+            list.map((item) => {
+              if (resolveItemId(item) === targetId) {
+                return {
+                  ...item,
+                  ...(serverItem ?? {}),
+                  parentId: null,
+                  parentWorkItemId: null,
+                  parentItemId: null,
+                };
+              }
+              const hasSub =
+                (Array.isArray(item.subItems) &&
+                  item.subItems.some((s) => resolveItemId(s as unknown as Item) === targetId)) ||
+                (Array.isArray(item.childWorkItems) &&
+                  item.childWorkItems.some((s) => resolveItemId(s) === targetId));
+              if (!hasSub) return item;
+              return {
+                ...item,
+                ...(Array.isArray(item.subItems)
+                  ? {
+                      subItems: item.subItems.filter(
+                        (s) => resolveItemId(s as unknown as Item) !== targetId,
+                      ),
+                    }
+                  : {}),
+                ...(Array.isArray(item.childWorkItems)
+                  ? {
+                      childWorkItems: item.childWorkItems.filter(
+                        (s) => resolveItemId(s) !== targetId,
+                      ),
+                    }
+                  : {}),
+              };
+            }),
+          ),
+        );
+        queryClient.invalidateQueries({ queryKey: ['work-item-activity', targetId] });
+      }
       workItemToast.success('Converted to top-level item', 'action');
     },
     onError: (error: Error) => workItemToast.error(error, 'Failed to convert to top-level item', 'action'),

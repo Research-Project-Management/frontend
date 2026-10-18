@@ -1,12 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { extractCitationKeys } from '@/features/editor/subsystems/citation/model/citation-formatter';
 import {
-  isLatexDocument,
-  detectDocumentCitationStyle,
-  buildBibliographySection,
-  injectBibliographyIntoDocument,
-} from '@/features/editor/subsystems/citation/model/bibliography-generator';
-import { libraryServices } from '@/features/library';
+  isLatexDocument, detectDocumentCitationStyle, buildBibliographySection, injectBibliographyIntoDocument, } from '@/features/editor/subsystems/citation/model/bibliography-generator';
+import { libraryServices } from '@/features/library/sdk/library.client';
 
 describe('Live Editor Citation & Bibliography Walkthrough', () => {
   beforeEach(() => {

@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { newFileModalSchema, type NewFileModalFormValues } from '@/features/editor/domain/types/forms.types';
+import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 
 export interface NewFileTabPaneProps {
   parentPageId: string | null;
@@ -61,6 +62,11 @@ export function NewFileTabPane({
       },
       {
         onSuccess: (created: { id: string }) => {
+          navigationCoordinator.openDocument({
+            fileId: created.id,
+            title,
+            content: '',
+          });
           setSearchParams({ file: created.id });
           resetNewFile();
           onClose();

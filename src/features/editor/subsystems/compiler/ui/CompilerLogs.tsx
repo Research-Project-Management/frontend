@@ -30,15 +30,15 @@ import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance'
 import { editorCommandBus, usePageStore, useSettingsStore } from '@/features/editor/core';
 import { manuscriptService, listAuxFiles, suggestLatexFix } from '@/features/editor/sdk/manuscript.service';
 import { type AuxFileItem, type DiagnosticReportDto } from '@/features/editor/sdk/manuscript/types';
-import type { AiErrorFixResult } from '@/features/editor/sdk/manuscript/ai.api';
+import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assist';
 
 import type { LogEntry, ParsedLog, CompilerLogsProps, LogsProps, ErrorExplanationDto } from '@/features/editor/domain/types/compiler.types';
 
 import {
   parseLatexLog,
   DEFAULT_OUTPUT_FILES,
-} from '@/features/editor/subsystems/compiler/logs/compiler-logs.parser';
-import { filterDiagnostics } from '@/features/editor/subsystems/compiler/logs/warning-filter';
+} from '@/features/editor/domain/latex/compiler-logs-parser';
+import { filterDiagnostics } from '@/features/editor/domain/latex/warning-filter';
 import { CompilerLogEntryRow } from './logs/CompilerLogEntryRow';
 import { CompilerLogsHeader } from './logs/CompilerLogsHeader';
 import {

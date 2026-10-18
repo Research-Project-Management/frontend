@@ -248,7 +248,8 @@ export async function rawFetch(
   if (token) {
     const isRelative = !url.startsWith('http://') && !url.startsWith('https://');
     const isSameOrigin = typeof window !== 'undefined' && url.startsWith(window.location.origin);
-    const isApiOrigin = url.startsWith(getEffectiveBaseUrl());
+    const effectiveBaseUrl = getEffectiveBaseUrl();
+    const isApiOrigin = Boolean(effectiveBaseUrl) && url.startsWith(effectiveBaseUrl);
     if (isRelative || isSameOrigin || isApiOrigin) {
       headers['Authorization'] = `Bearer ${token}`;
     }

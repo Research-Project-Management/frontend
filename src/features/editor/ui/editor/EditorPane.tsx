@@ -35,7 +35,6 @@ const ImagePanel = dynamic(
 );
 
 import { EditorToolbar } from './EditorToolbar';
-import { SourceVisualSwitcher } from './SourceVisualSwitcher';
 import { EditorContextMenu } from './EditorContextMenu';
 import { useSettingsStore, editorCommandBus, sessionCoordinator } from '@/features/editor/core';
 import { useEditorCollaboration } from '@/features/editor/ui/hooks/useCollaboration';
@@ -79,7 +78,6 @@ export function EditorPane({
   onSwapPanes,
   onSelectFile,
 }: EditorPaneProps) {
-  const editorMode = useSettingsStore((s) => s.editorMode);
   const showEditorTabs = useSettingsStore((s) => s.showEditorTabs);
   const isLocked = useSettingsStore((s) => s.isLocked);
 
@@ -140,16 +138,13 @@ export function EditorPane({
       {isSplitActive ? (
         <div className="flex items-center justify-between h-9 px-3 bg-surface border-b border-border shrink-0 select-none">
           <div className="flex items-center gap-2 min-w-0">
-            <SourceVisualSwitcher />
-            <div className="h-4 w-px bg-border/60 mx-0.5 shrink-0" />
-
             {/* Document Switcher Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
                   className="flex items-center gap-1.5 px-2 py-1 -ml-1 rounded-sm hover:bg-muted text-xs font-medium text-foreground truncate max-w-[200px] outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer group"
-                  aria-label="Chuyển đổi tệp"
+                  aria-label="Switch file"
                 >
                   <FileCode2 className="size-3.5 text-primary shrink-0" />
                   <span className="truncate">{fileName}</span>
@@ -157,10 +152,10 @@ export function EditorPane({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56 max-h-72 overflow-y-auto z-50">
-                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Tệp trong dự án</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Project files</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {availableFiles.length === 0 ? (
-                  <div className="px-2 py-1.5 text-xs text-muted-foreground">Không có tệp nào khác</div>
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">No other files</div>
                 ) : (
                   availableFiles.map((f) => {
                     const title = f.title || f.filename || f.name || f.id;
@@ -204,7 +199,8 @@ export function EditorPane({
                   onSwapPanes();
                 }}
                 className="size-7 text-muted-foreground hover:text-foreground"
-                title="Đổi vị trí 2 khung soạn thảo"
+                title="Swap split panes"
+                aria-label="Swap split panes"
               >
                 <ArrowLeftRight className="size-3.5" />
               </Button>
@@ -218,7 +214,8 @@ export function EditorPane({
                   onCloseSplit();
                 }}
                 className="size-7 text-muted-foreground hover:text-destructive"
-                title="Đóng khung soạn thảo này"
+                title="Close split pane"
+                aria-label="Close split pane"
               >
                 <X className="size-3.5" />
               </Button>
@@ -233,8 +230,6 @@ export function EditorPane({
         />
       ) : !showEditorTabs && fileId ? (
         <div className="flex items-center h-8 bg-surface border-b border-border px-3 shrink-0 gap-2">
-          <SourceVisualSwitcher />
-          <div className="h-4 w-px bg-border/60 mx-0.5 shrink-0" />
           <span className="text-xs font-medium text-muted-foreground">{fileName}</span>
         </div>
       ) : null}
@@ -282,7 +277,7 @@ export function EditorPane({
           </div>
         ) : (
           <div className="flex items-center justify-center h-full p-4 text-center">
-            <p className="text-xs text-muted-foreground">Không có tệp nào được mở trong khung này</p>
+            <p className="text-xs text-muted-foreground">No file open in this pane</p>
           </div>
         )}
       </div>

@@ -16,7 +16,7 @@ import { useCallback } from 'react';
 import { toast } from 'sonner';
 import type { LogEntry, ErrorExplanationDto } from '@/features/editor/domain/types/compiler.types';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
-import type { AiErrorFixResult } from '@/features/editor/sdk/manuscript/ai.api';
+import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assist';
 import { manuscriptService, downloadAuxFileUrl, downloadAllArtifactsZipUrl } from '@/features/editor/sdk/manuscript.service';
 import { aiCoordinator } from '@/features/editor/subsystems/ai';
 import { usePageStore } from '@/features/editor/core';

@@ -1,10 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import {
-  parseFeedXml,
-  mapFeedEntryToCreateItemPayload,
-  resolveOpenAccessLicenseBadge,
-  filterItemsBySystemView,
-} from '@/features/library/domain';
+import { parseFeedXml, mapFeedEntryToCreateItemPayload } from '@/features/library/domain/feed-parser.domain';
+import { resolveOpenAccessLicenseBadge } from '@/features/library/domain/academic-text';
+import { filterItemsBySystemView } from '@/features/library/domain/system-views.policy';
 import {
   ANNOTATION_COLORS,
   PdfAnnotationEngine,
@@ -13,7 +10,7 @@ import {
   filterPdfOutlineTree,
   type PdfOutlineNode,
 } from '@/features/library/domain/reader.domain';
-import type { ReaderAnnotation } from '@/features/library/types/reader.types';
+import type { ReaderAnnotation } from '@/features/library/domain/types/reader.types';
 
 describe('Wave 5: Zotero 7 RSS/Atom Feed Reader & ArXiv Alerts, My Publications & License Workflow, PDF Reader Search/Outline Navigation, and Annotation Color/Tag Semantics', () => {
   // ===========================================================================

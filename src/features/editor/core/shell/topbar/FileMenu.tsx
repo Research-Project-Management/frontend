@@ -18,7 +18,7 @@ import { useLayoutStore } from '@/features/editor/core';
 import { useProjectExport } from '@/features/editor/ui/hooks/useExport';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { editorCommandBus } from '@/features/editor/core';
-import { Download, FileArchive, FileText, FileCode, Archive, Calculator, Settings } from 'lucide-react';
+import { Download, FileArchive, FileText, FileCode, Archive, Calculator, Settings, History } from 'lucide-react';
 import { GitHubIcon } from '@/shared/components/icons';
 import { duplicateProjectApi } from '@/features/projects/shell/services/project.service';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
@@ -209,6 +209,14 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
         <MenubarSeparator />
 
         <MenubarItem
+          onClick={() => useSettingsStore.getState().setIsHistoryOpen(true)}
+          className="cursor-pointer flex items-center gap-2"
+        >
+          <History className="size-3.5 text-foreground/80 shrink-0" />
+          <span className="whitespace-nowrap">Version history</span>
+        </MenubarItem>
+
+        <MenubarItem
           onClick={handleWordCount}
           className="cursor-pointer flex items-center gap-2"
         >
@@ -252,7 +260,7 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
               <FileArchive className="size-3.5 text-foreground/80 shrink-0" />
               <div className="flex flex-col">
                 <span className="font-medium whitespace-nowrap">Download Source (.zip)</span>
-                <span className="text-11 text-muted-foreground whitespace-nowrap">Tải toàn bộ mã nguồn LaTeX & thư viện</span>
+                <span className="text-11 text-muted-foreground whitespace-nowrap">Download all LaTeX source files & assets</span>
               </div>
             </MenubarItem>
             <MenubarItem
@@ -263,7 +271,7 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
               <Archive className="size-3.5 text-foreground/80 shrink-0" />
               <div className="flex flex-col">
                 <span className="font-medium whitespace-nowrap">Download arXiv submission (.zip)</span>
-                <span className="text-11 text-muted-foreground whitespace-nowrap">Gói chuẩn hóa cho arXiv / tạp chí</span>
+                <span className="text-11 text-muted-foreground whitespace-nowrap">Standardized package for arXiv / journal submission</span>
               </div>
             </MenubarItem>
             <MenubarItem
@@ -275,7 +283,7 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
               <div className="flex flex-col">
                 <span className="font-medium whitespace-nowrap">Download PDF</span>
                 <span className="text-11 text-muted-foreground whitespace-nowrap">
-                  {pdfUrl ? 'Tệp PDF đã biên dịch mới nhất' : 'Cần biên dịch tài liệu trước'}
+                  {pdfUrl ? 'Latest compiled PDF document' : 'Compile document first'}
                 </span>
               </div>
             </MenubarItem>

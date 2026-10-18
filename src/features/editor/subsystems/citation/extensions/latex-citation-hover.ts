@@ -183,7 +183,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
     const retractedBadge = document.createElement('span');
     retractedBadge.className =
       'px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-destructive/15 text-destructive border border-destructive/30 uppercase tracking-wide flex items-center gap-1';
-    retractedBadge.innerHTML = '<span>THU HỒI / RETRACTED</span>';
+    retractedBadge.innerHTML = '<span>RETRACTED</span>';
     leftPills.appendChild(retractedBadge);
   }
 
@@ -192,13 +192,13 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
   const sourceBadge = document.createElement('span');
   sourceBadge.className = 'text-[11px] text-muted-foreground flex items-center gap-1';
   if (entry.sourceFile === 'workspace-library') {
-    sourceBadge.innerHTML = '<span class="hidden sm:inline">Thư viện số</span>';
+    sourceBadge.innerHTML = '<span class="hidden sm:inline">Digital Library</span>';
   } else if (entry.sourceFile) {
     const bibBtn = document.createElement('button');
     bibBtn.type = 'button';
     bibBtn.className = 'font-mono text-[10px] text-primary hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-0 p-0';
     bibBtn.innerHTML = `<span>${escapeHtml(entry.sourceFile)}</span>`;
-    bibBtn.title = `Mở ${entry.sourceFile} (nhảy tới định nghĩa)`;
+    bibBtn.title = `Open ${entry.sourceFile} (jump to definition)`;
     bibBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -221,12 +221,12 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
 
     const alertHeader = document.createElement('div');
     alertHeader.className = 'flex items-center gap-1.5 font-semibold text-[11px] uppercase tracking-wider text-destructive';
-    alertHeader.innerHTML = '<span>CẢNH BÁO: BÀI BÁO ĐÃ BỊ THU HỒI</span>';
+    alertHeader.innerHTML = '<span>WARNING: RETRACTED PUBLICATION</span>';
     alertBox.appendChild(alertHeader);
 
     const reasonDesc = entry.retractionReason
       ? formatRetractionReason(entry.retractionReason, entry.retractionNature)
-      : 'Bài báo này đã bị nhà xuất bản hoặc ủy ban liêm chính học thuật thu hồi chính thức.';
+      : 'This publication has been formally retracted by the publisher or academic integrity committee.';
     const alertBody = document.createElement('div');
     alertBody.className = 'text-[11px] text-destructive/90 leading-relaxed font-medium';
     alertBody.textContent = reasonDesc;
@@ -239,7 +239,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
       noticeLink.rel = 'noopener noreferrer';
       noticeLink.className =
         'inline-flex items-center gap-1 text-[11px] text-destructive underline font-semibold hover:opacity-80 mt-0.5';
-      noticeLink.innerHTML = '<span>Xem thông báo chính thức của nhà xuất bản</span> <span>↗</span>';
+      noticeLink.innerHTML = '<span>View official publisher retraction notice</span> <span>↗</span>';
       alertBox.appendChild(noticeLink);
     }
 
@@ -308,8 +308,8 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
   const previewLabel = document.createElement('div');
   previewLabel.className = 'text-[10px] uppercase font-semibold text-muted-foreground tracking-wider flex items-center justify-between';
   previewLabel.innerHTML = `
-    <span>Xem trước trích dẫn</span>
-    <span class="text-[9px] font-normal normal-case text-muted-foreground/80">${isVn ? 'Tên tiếng Việt tự nhiên' : 'Chuẩn học thuật'}</span>
+    <span>Citation preview</span>
+    <span class="text-[9px] font-normal normal-case text-muted-foreground/80">${isVn ? 'Vietnamese name order' : 'Academic standard'}</span>
   `;
   previewBox.appendChild(previewLabel);
 
@@ -328,8 +328,8 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
   renameBtn.type = 'button';
   renameBtn.className =
     'inline-flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 px-2 py-0.5 rounded-md transition-colors cursor-pointer border border-border/40';
-  renameBtn.innerHTML = '<span>Đổi tên key (Refactor)</span>';
-  renameBtn.title = 'Đổi tên khóa trích dẫn trong toàn bộ dự án mà không làm hỏng tài liệu';
+  renameBtn.innerHTML = '<span>Rename key (Refactor)</span>';
+  renameBtn.title = 'Rename citation key across the entire project without breaking references';
   renameBtn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -346,8 +346,8 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
     jumpBtn.type = 'button';
     jumpBtn.className =
       'inline-flex items-center gap-1 text-primary hover:underline cursor-pointer bg-transparent border-0 p-0 text-[11px]';
-    jumpBtn.innerHTML = '<span>Tới .bib</span> ↗';
-    jumpBtn.title = `Mở ${entry.sourceFile}`;
+    jumpBtn.innerHTML = '<span>Open .bib</span> ↗';
+    jumpBtn.title = `Open ${entry.sourceFile}`;
     jumpBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -374,7 +374,7 @@ function renderUnresolvedCard(container: HTMLElement, citeKey: string): void {
   const warningBadge = document.createElement('span');
   warningBadge.className =
     'px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-warning/15 text-warning border border-warning/30 uppercase';
-  warningBadge.textContent = 'Chưa tìm thấy';
+  warningBadge.textContent = 'Not found';
   header.appendChild(warningBadge);
 
   const keySpan = document.createElement('span');
@@ -387,9 +387,9 @@ function renderUnresolvedCard(container: HTMLElement, citeKey: string): void {
   // 2. Explanation text
   const desc = document.createElement('div');
   desc.className = 'text-xs text-muted-foreground mb-3 leading-relaxed';
-  desc.innerHTML = `Khóa trích dẫn <strong>@${escapeHtml(
+  desc.innerHTML = `Citation key <strong>@${escapeHtml(
     citeKey
-  )}</strong> chưa được tìm thấy trong tệp <code>.bib</code> của dự án hoặc Thư viện số.`;
+  )}</strong> was not found in the project's <code>.bib</code> files or Digital Library.`;
   container.appendChild(desc);
 
   // 3. Action row
@@ -398,14 +398,14 @@ function renderUnresolvedCard(container: HTMLElement, citeKey: string): void {
 
   const shortcutHint = document.createElement('span');
   shortcutHint.className = 'text-[11px] text-muted-foreground';
-  shortcutHint.innerHTML = 'Phím tắt: <kbd class="px-1.5 py-0.5 rounded-sm bg-muted font-mono text-[10px] border border-border">Ctrl+Shift+K</kbd>';
+  shortcutHint.innerHTML = 'Shortcut: <kbd class="px-1.5 py-0.5 rounded-sm bg-muted font-mono text-[10px] border border-border">Ctrl+Shift+K</kbd>';
   actionRow.appendChild(shortcutHint);
 
   const openBtn = document.createElement('button');
   openBtn.type = 'button';
   openBtn.className =
     'px-2.5 py-1 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer';
-  openBtn.textContent = 'Mở Citation Picker';
+  openBtn.textContent = 'Open Citation Picker';
   openBtn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();

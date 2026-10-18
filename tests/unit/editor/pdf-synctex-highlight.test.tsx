@@ -85,9 +85,9 @@ describe('PDF Canvas SyncTeX Visual Highlight Box (Overleaf Parity)', () => {
 
       // Style assertions
       expect(box.style.left).toBe('96px'); // max(8, 100 - 4)
-      expect(box.style.top).toBe('250px');
+      expect(box.style.top).toBe('234px'); // 250 - 20 * 0.8 (SyncTeX ascent)
       expect(box.style.width).toBe('308px'); // max(300 + 8, 48)
-      expect(box.style.height).toBe('24px'); // max(20 + 4, 16)
+      expect(box.style.height).toBe('26px'); // max(20 + 6, 16)
     });
 
     it('computes robust fallback width and height when w and h are omitted (SyncTeX point records)', () => {
@@ -110,7 +110,7 @@ describe('PDF Canvas SyncTeX Visual Highlight Box (Overleaf Parity)', () => {
       const box = screen.getByTestId('synctex-pdf-highlight-box');
       expect(box).toBeInTheDocument();
       expect(box.style.left).toBe('76px'); // 80 - 4
-      expect(box.style.top).toBe('350px');
+      expect(box.style.top).toBe('336.56px'); // 350 - 14 * 1.2 * 0.8 (SyncTeX ascent)
 
       // Fallback width spans up to pageWidth - left - 24 = 600 - 76 - 24 = 500 clamped at max 480
       expect(box.style.width).toBe('480px');
@@ -172,7 +172,7 @@ describe('PDF Canvas SyncTeX Visual Highlight Box (Overleaf Parity)', () => {
       const highlightBox = screen.getByTestId('synctex-pdf-highlight-box');
       expect(highlightBox).toBeInTheDocument();
       expect(highlightBox.style.left).toBe('116px');
-      expect(highlightBox.style.top).toBe('280px');
+      expect(highlightBox.style.top).toBe('265.6px'); // 280 - 18 * 0.8 (SyncTeX ascent)
     });
 
     it('clears highlight box when clearHighlight is called', () => {

@@ -29,10 +29,10 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { useLayoutStore, type ActivityBarTab } from '@/features/editor/core';
+import { useLayoutStore, type ActivityBarTab, editorCommandBus } from '@/features/editor/core';
 import { useSettingsStore } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
-import { useReviewPendingCount } from '@/features/editor/subsystems/review/ui/hooks/useReviewPendingCount';
+import { useReviewPendingCount } from '@/features/editor/subsystems/review';
 
 const StickyDock = dynamic(() => import('@/features/shell/components/StickyDock'), {
   ssr: false,
@@ -140,6 +140,7 @@ export function ActivityBar() {
             className="size-9"
             buttonClassName="size-9 text-muted-foreground hover:text-foreground"
           />
+
 
           <Tooltip>
             <TooltipTrigger asChild>

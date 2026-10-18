@@ -2,12 +2,11 @@
  * latex-structure.ts — Pure LaTeX Outline, Environment & AST utilities
  */
 
-import { API_BASE_URL } from '@/config/env';
 import type { LogEntry, ParsedLog } from '@/features/editor/domain/types/compiler.types';
 import {
   unwrapLatexLogLines,
   normalizeCompilerLogPath,
-} from '@/features/editor/subsystems/compiler/logs/compiler-logs.parser';
+} from './compiler-logs-parser';
 
 
 // ── Document Structure ────────────────────────────────────────────────────────
@@ -665,7 +664,7 @@ export function formatContextForPrompt(ctx: RichEditorContext): string {
 // ── File URL Resolution ────────────────────────────────────────────────────────
 
 /** Resolve a relative backend file URL to an absolute URL. */
-export function resolveFileUrl(fileUrl?: string | null): string {
+export function resolveFileUrl(fileUrl?: string | null, baseUrl = ''): string {
   if (!fileUrl) return '';
   if (
     fileUrl.startsWith('http://') ||
@@ -675,7 +674,7 @@ export function resolveFileUrl(fileUrl?: string | null): string {
     return fileUrl;
   }
   const cleanUrl = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
-  return `${API_BASE_URL}${cleanUrl}`;
+  return `${baseUrl}${cleanUrl}`;
 }
 
 
@@ -712,7 +711,7 @@ class EditorEventBusImpl {
 export const EditorEventBus = new EditorEventBusImpl();
 
 // ── Raw LaTeX Log Parser ──────────────────────────────────────────────────────
-export { parseLatexLog } from '@/features/editor/subsystems/compiler/logs/compiler-logs.parser';
+export { parseLatexLog } from './compiler-logs-parser';
 export type { LogEntry, ParsedLog };
 
 

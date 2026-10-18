@@ -1,7 +1,7 @@
-import AppLoading from '@/app/(app)/loading';
+﻿import AppLoading from '@/app/(app)/loading';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import DuplicatesPage from '@/features/library/pages/DuplicatesPage';
+import DuplicatesPage from '@/features/library/ui/pages/DuplicatesPage';
 
 export const metadata: Metadata = { title: 'Duplicate Items · Library · Flux' };
 
@@ -12,3 +12,4 @@ export default function LibraryDuplicatesPage() {
     </Suspense>
   );
 }
+

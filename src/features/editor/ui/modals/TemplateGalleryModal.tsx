@@ -22,7 +22,7 @@ import {
   Search,
   Loader2,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -33,7 +33,9 @@ import {
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
-import { useSettingsStore, usePageStore } from '@/features/editor/core';
+import { useSettingsStore, usePageStore, editorCommandBus, sessionCoordinator } from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
+import { pageKeys } from '@/features/editor/ui/hooks/document.queries';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 
@@ -56,9 +58,11 @@ const TEMPLATE_ICON_MAP: Record<string, React.ComponentType<{ className?: string
 
 
 export default function TemplateGalleryModal() {
+  const queryClient = useQueryClient();
   const isTemplateModalOpen = useSettingsStore((s) => s.isTemplateModalOpen);
   const setIsTemplateModalOpen = useSettingsStore((s) => s.setIsTemplateModalOpen);
   const activeFilePage = usePageStore((s) => s.activeFilePage);
+  const currentPage = usePageStore((s) => s.currentPage);
   const projectId = usePageStore((s) => s.projectId);
   const { engine } = useEditorInstance();
   const [selectedTemplate, setSelectedTemplate] = useState<AcademicTemplate>(ACADEMIC_TEMPLATES[0]);
@@ -159,8 +163,12 @@ export default function TemplateGalleryModal() {
   const applyTemplate = useCallback(async () => {
     if (!selectedTemplate) return;
     try {
+      const targetDocId = activeFilePage?.id || currentPage?.id;
       if (engine) {
         engine.setContent(selectedTemplate.mainTex);
+        if (targetDocId) {
+          sessionCoordinator.notifyContentChange(targetDocId, selectedTemplate.mainTex);
+        }
         toast.success(`Applied "${selectedTemplate.name}" to ${activeFilePage?.title || 'current document'}`, { id: 'apply-template' });
         setIsTemplateModalOpen(false);
       } else {
@@ -171,7 +179,7 @@ export default function TemplateGalleryModal() {
     } catch {
       toast.error('Could not apply template', { id: 'apply-template' });
     }
-  }, [selectedTemplate, engine, activeFilePage?.title, setIsTemplateModalOpen]);
+  }, [selectedTemplate, engine, activeFilePage?.id, activeFilePage?.title, currentPage?.id, setIsTemplateModalOpen]);
 
   const scaffoldProject = useCallback(async () => {
     if (!selectedTemplate) return;
@@ -182,10 +190,22 @@ export default function TemplateGalleryModal() {
     setIsScaffolding(true);
     try {
       await manuscriptService.templates.scaffold(projectId, selectedTemplate.id);
-      toast.success(`Project scaffolded successfully with "${selectedTemplate.name}"!`, { id: 'scaffold-template' });
+      lruDocumentCache.clearAll();
+      if (engine) {
+        engine.setContent(selectedTemplate.mainTex);
+      }
+      const targetDocId = activeFilePage?.id || currentPage?.id;
+      if (targetDocId) {
+        sessionCoordinator.notifyContentChange(targetDocId, selectedTemplate.mainTex);
+      }
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      editorCommandBus.dispatch({ type: 'filetree:updated' });
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
       }
+      toast.success(`Project scaffolded successfully with "${selectedTemplate.name}"!`, { id: 'scaffold-template' });
       setIsTemplateModalOpen(false);
     } catch (err) {
       console.warn('[TemplateGallery] Backend scaffolding failed, falling back to active file update:', err);
@@ -193,7 +213,7 @@ export default function TemplateGalleryModal() {
     } finally {
       setIsScaffolding(false);
     }
-  }, [selectedTemplate, projectId, applyTemplate, setIsTemplateModalOpen]);
+  }, [selectedTemplate, projectId, applyTemplate, engine, activeFilePage?.id, currentPage?.id, queryClient, setIsTemplateModalOpen]);
 
   const copyCode = useCallback(() => {
     if (!selectedTemplate) return;
@@ -386,6 +406,7 @@ export default function TemplateGalleryModal() {
                           category: 'Academic',
                           mainTex: engine?.getContent(),
                         });
+                        queryClient.invalidateQueries({ queryKey: ['manuscript-templates'] });
                         toast.success('Saved project as custom template!', { id: toastId });
                       } catch (err: unknown) {
                         toast.error((err as Error)?.message || 'Failed to save custom template', { id: toastId });

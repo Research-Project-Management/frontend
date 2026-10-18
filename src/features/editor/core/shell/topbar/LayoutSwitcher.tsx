@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
 import { cn } from "@/shared/lib/utils";
-import { useSettingsStore } from '@/features/editor/core';
+import { useSettingsStore, editorCommandBus, usePageStore } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
 
 function PenIcon({ className }: { className?: string }) {
@@ -82,15 +82,13 @@ export function LayoutSwitcher() {
   const params = useParams<{ projectId?: string; pageId?: string }>();
 
   const handleOpenPdfSeparateTab = () => {
-    const pageId = params?.pageId;
-    if (pageId) {
-      const url = params.projectId
-        ? `/projects/${params.projectId}/pages/${pageId}/popout`
-        : `/editor/${pageId}/popout`;
-      window.open(url, '_blank');
+    const projectId = params?.projectId || usePageStore.getState().projectId;
+    if (projectId) {
+      editorCommandBus.dispatch({ type: 'preview:detach' });
       setIsViewerPoppedOut(true);
     } else if (pdfUrl) {
       window.open(pdfUrl, '_blank');
+      setIsViewerPoppedOut(true);
     }
   };
 

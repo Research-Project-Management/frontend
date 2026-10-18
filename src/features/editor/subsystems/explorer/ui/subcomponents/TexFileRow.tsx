@@ -68,7 +68,7 @@ export function getFileIcon(filename: string) {
   }
 }
 
-import { displayName, cleanBasename } from '@/features/editor/subsystems/explorer/model/document-naming';
+import { displayName, cleanBasename } from '@/features/editor/domain/document/document-naming';
 export { displayName, cleanBasename };
 
 export interface TexFileRowProps {

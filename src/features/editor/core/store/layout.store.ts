@@ -14,7 +14,6 @@ import { useWorkspaceStore } from './workspace.store';
 
 export type {
   ActivityBarTab,
-  BottomPanelTab,
   EditorSplitMode,
   ActiveEditorPane,
   LayoutState,

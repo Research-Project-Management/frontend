@@ -24,7 +24,7 @@ import {
   triggerFileDownload,
   type ExportSingleDocOptions,
 } from '@/features/editor/sdk/archive/document-download';
-import { getExportFilename } from '@/features/editor/subsystems/explorer/model/document-naming';
+import { getExportFilename } from '@/features/editor/domain/document/document-naming';
 
 export function useProjectExport() {
   const [isExporting, setIsExporting] = useState(false);

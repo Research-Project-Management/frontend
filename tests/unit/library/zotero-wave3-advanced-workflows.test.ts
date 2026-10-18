@@ -1,15 +1,15 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+﻿import { describe, it, expect, beforeEach } from 'vitest';
 import {
   useReaderStore,
   normalizeReaderZoom,
-} from '@/features/library/store/reader.store';
-import { useLibraryUIStore } from '@/features/library/store/library-ui.store';
+} from '@/features/library/core/store/reader.store';
+import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import {
   savedSearchConditionGroupSchema,
   evaluateSavedSearch,
   filterItemsBySavedSearch,
   type SavedSearchConditionGroup,
-} from '@/features/library/types/saved-searches.types';
+} from '@/features/library/domain/types/saved-searches.types';
 import {
   PdfAnnotationEngine,
   formatAnnotationCitation,
@@ -18,8 +18,8 @@ import {
   getLibraryPermissions,
   getScopeTarget,
 } from '@/features/library/domain/library-permissions.policy';
-import type { ReaderAnnotation, ReaderDocument } from '@/features/library/types/reader.types';
-import type { LibraryScope } from '@/features/library/types/core.types';
+import type { ReaderAnnotation, ReaderDocument } from '@/features/library/domain/types/reader.types';
+import type { LibraryScope } from '@/features/library/domain/types/core.types';
 
 describe('Zotero 7 Wave 3 — Advanced Researcher Workflows & Edge-Case Verification', () => {
   beforeEach(() => {
@@ -472,3 +472,4 @@ describe('Zotero 7 Wave 3 — Advanced Researcher Workflows & Edge-Case Verifica
     });
   });
 });
+

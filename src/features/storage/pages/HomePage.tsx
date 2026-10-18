@@ -6,23 +6,24 @@ import { toast } from 'sonner';
 import { Home, Folder, Users, Star, Trash2 } from 'lucide-react';
 
 import {
-  useHomeFiles,
-  useSharedFiles,
-  useStarredFiles,
-  useTrash,
+  useSectionFiles,
   useToggleStarItem,
   useDeleteItem,
   useRestoreItem,
   usePermanentlyDeleteItem,
   useMoveItem,
   useFolderPath,
+  useStorageQueryParams,
 } from '@/features/storage/hooks/use-storage';
-import { useStorageUIStore, type StorageSection } from '../store/storage-ui.store';
-import { useStorageSelectionStore } from '../store/use-selection-store';
-import { useStorageQueryParams } from '../hooks/use-storage-query-params';
+import {
+  useStorageUIStore,
+  usePreviewStore,
+  useStorageSelectionStore,
+  type StorageSection,
+} from '../store/storage-ui.store';
 import { StorageViewContainer } from '../components/layout/StorageViewContainer';
 import type { StorageItem, BreadcrumbSegment } from '@/features/storage/types/storage.types';
-import { canDropIntoFolder } from '../utils/my-files.util';
+import { canDropIntoFolder } from '../utils/storage.util';
 import { downloadFileUrl } from "@/shared/lib/file-client";
 import Topbar from '../components/layout/Topbar';
 import { BulkActionBar } from '../components/actions/BulkActionBar';
@@ -52,6 +53,7 @@ export default function HomePage({
   const navigateToFolder = useStorageUIStore((s) => s.navigateToFolder);
 
   const clearSelection = useStorageSelectionStore((s) => s.clearSelection);
+  const selectedItem = usePreviewStore((s) => s.selectedItem);
 
   const {
     projectId,
@@ -107,48 +109,17 @@ export default function HomePage({
     onSearchChange: setSearchQuery,
   });
 
-  // ── Queries (Conditionally enabled based on active section) ─────────────────
-  const homeQuery = useHomeFiles(projectId, null, queryParams, {
-    enabled: activeSection === 'home',
-  });
-
-  const myFilesQuery = useHomeFiles(projectId, currentFolderId, queryParams, {
-    enabled: activeSection === 'my-files',
-  });
-
-  const sharedQuery = useSharedFiles(projectId, queryParams, {
-    enabled: activeSection === 'shared',
-  });
-
-  const starredQuery = useStarredFiles(projectId, queryParams, {
-    enabled: activeSection === 'starred',
-  });
-
-  const trashQuery = useTrash(projectId, queryParams, {
-    enabled: activeSection === 'trash',
-  });
+  // ── Unified Section Infinite Query ─────────────────────────────────────────
+  const activeQuery = useSectionFiles(
+    activeSection,
+    projectId,
+    currentFolderId,
+    queryParams,
+  );
 
   const { data: folderPathData } = useFolderPath(
     activeSection === 'my-files' ? currentFolderId : null,
   );
-
-  // Active query selection
-  const activeQuery = useMemo(() => {
-    switch (activeSection) {
-      case 'home':
-        return homeQuery;
-      case 'my-files':
-        return myFilesQuery;
-      case 'shared':
-        return sharedQuery;
-      case 'starred':
-        return starredQuery;
-      case 'trash':
-        return trashQuery;
-      default:
-        return homeQuery;
-    }
-  }, [activeSection, homeQuery, myFilesQuery, sharedQuery, starredQuery, trashQuery]);
 
   // ── Mutations ──────────────────────────────────────────────────────────────
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
@@ -173,6 +144,15 @@ export default function HomePage({
     () => (activeQuery.data?.pages.flatMap((page: { files?: StorageItem[] }) => page.files || []) || []) as StorageItem[],
     [activeQuery.data?.pages],
   );
+
+  // Keep Preview panel's selectedItem in sync with live query results
+  useEffect(() => {
+    if (!selectedItem || activeQuery.isLoading) return;
+    const updated = files.find((f) => f.id === selectedItem.id);
+    if (updated && updated !== selectedItem) {
+      setSelectedItem(updated);
+    }
+  }, [files, selectedItem, activeQuery.isLoading, setSelectedItem]);
 
   // ── Navigation Handlers ────────────────────────────────────────────────────
   const handleFolderClick = useCallback(
@@ -257,19 +237,19 @@ export default function HomePage({
   const viewProps = {
     items: files,
     highlightedItemId: activeSection === 'my-files' ? highlightedItemId : null,
-    isReadOnly: isTrash,
+    isReadOnly: false,
     isTrash,
     hasMore: activeQuery.hasNextPage,
     isFetchingNextPage: activeQuery.isFetchingNextPage,
     onLoadMore: activeQuery.fetchNextPage,
-    onFolderClick: handleFolderClick,
+    onFolderClick: isTrash ? undefined : handleFolderClick,
     onToggleStar: isTrash ? undefined : (id: string) => { void handleToggleStar(id); },
     onDelete: isTrash
       ? (id: string) => { void handlePermanentlyDelete(id); }
       : (id: string) => { void handleDelete(id); },
     onRestore: isTrash ? (id: string) => { void handleRestore(id); } : undefined,
     onDownload: handleDownload,
-    onOpenLocation: activeSection !== 'my-files' ? handleOpenLocation : undefined,
+    onOpenLocation: activeSection !== 'my-files' && !isTrash ? handleOpenLocation : undefined,
     onFileClick: (item: StorageItem) => setSelectedItem(item),
     onDragStartFile: activeSection === 'my-files' ? handleDragStart : undefined,
     onDropOnFolder: activeSection === 'my-files' ? handleDropOnFolder : undefined,

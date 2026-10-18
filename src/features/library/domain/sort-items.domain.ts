@@ -11,7 +11,7 @@
  * - Nulls/undefined sort to the bottom regardless of direction.
  */
 
-import type { Item } from '@/features/library/types/library.types';
+import type { Item } from '@/features/library/domain/types/library.types';
 import { isValidValue, stripLatexMarkup, getPublicationVenue } from '@/features/library/domain/metadata';
 import { parseCreatorName } from '@/features/library/domain/creators';
 
@@ -46,17 +46,20 @@ function extractSortableAuthor(item: Item): string | null {
   return null;
 }
 
+const LEADING_PUNCTUATION_RE = /^[\s"'“”‘’«»[\]()<>]+/;
+const VIETNAMESE_D_RE = /[Đđ]/g;
+
 function normalizeSortString(raw: string): string {
   return stripLatexMarkup(raw)
-    .replace(/^[\s"'“”‘’«»[\]()<>]+/, '')
-    .replace(/[Đđ]/g, (m) => (m === 'Đ' ? 'D' : 'd'))
+    .replace(LEADING_PUNCTUATION_RE, '')
+    .replace(VIETNAMESE_D_RE, (m) => (m === 'Đ' ? 'D' : 'd'))
     .trim();
 }
 
 // Fields that map to different internal property names
 const SORT_FIELD_ALIASES: Partial<Record<string, (item: Item) => unknown>> = {
   authors: (item) => extractSortableAuthor(item),
-  title: (item) => (item.title && isValidValue(item.title) ? normalizeSortString(item.title) : null),
+  title: (item) => (item.title && isValidValue(item.title) ? item.title : null),
   year: (item) => {
     const y = item.year;
     if (!isValidValue(y)) return null;
@@ -128,11 +131,19 @@ export function sortLibraryItems(
   direction: 'asc' | 'desc',
   serverSorted: boolean,
 ): Item[] {
-  const processing = items.filter((it) => (it as { _isProcessing?: boolean })._isProcessing);
-  const regular = items.filter((it) => !(it as { _isProcessing?: boolean })._isProcessing);
+  const processing: Item[] = [];
+  const regular: Item[] = [];
+
+  for (const item of items) {
+    if ((item as { _isProcessing?: boolean })._isProcessing) {
+      processing.push(item);
+    } else {
+      regular.push(item);
+    }
+  }
 
   if (serverSorted || !column) {
-    return [...processing, ...regular];
+    return processing.length > 0 ? [...processing, ...regular] : regular;
   }
 
   const decorated = regular.map((item) => prepareSortKey(item, column));
@@ -152,6 +163,7 @@ export function sortLibraryItems(
     return 0;
   });
 
-  return [...processing, ...decorated.map((d) => d.item)];
+  const sortedRegular = decorated.map((d) => d.item);
+  return processing.length > 0 ? [...processing, ...sortedRegular] : sortedRegular;
 }
 

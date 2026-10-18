@@ -17,7 +17,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { StorageService } from '@/features/editor/sdk/manuscript.service';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
-import { usePageStore, workspaceCoordinator } from '@/features/editor/core';
+import { usePageStore, workspaceCoordinator, editorCommandBus } from '@/features/editor/core';
+import { pageKeys } from './document.queries';
 
 export function useResolvedProjectId(
   pageIdOrProjectId?: string | null,
@@ -99,6 +100,21 @@ export function useEditorStorageMutations(
   const queryClient = useQueryClient();
   const effectiveProjectId = useResolvedProjectId(pageIdOrProjectId, explicitProjectId);
 
+  const invalidateStorageState = () => {
+    const parentPageId = usePageStore.getState().parentPageId || usePageStore.getState().currentPage?.id || pageIdOrProjectId;
+    queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+    queryClient.invalidateQueries({ queryKey: pageKeys.all });
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
+    if (parentPageId) {
+      queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
+      queryClient.invalidateQueries({ queryKey: pageKeys.deletedFiles(parentPageId) });
+    }
+    editorCommandBus.dispatch({ type: 'filetree:updated' });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+    }
+  };
+
   const uploadFileMutation = useMutation({
     mutationFn: async ({
       file,
@@ -122,7 +138,7 @@ export function useEditorStorageMutations(
       );
     },
     onSuccess: (newItem) => {
-      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      invalidateStorageState();
       toast.success(`Uploaded "${newItem.filename}"`, { id: `upload-${newItem.filename}` });
     },
     onError: (err: unknown) => {
@@ -151,7 +167,7 @@ export function useEditorStorageMutations(
       return await StorageService.createPageFolder(targetId, name, targetParentId ?? defaultParentId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      invalidateStorageState();
       toast.success('Folder created', { id: 'create-folder' });
     },
     onError: (err: unknown) => {
@@ -183,7 +199,7 @@ export function useEditorStorageMutations(
       return await StorageService.renameItem(id, name, effectiveProjectId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      invalidateStorageState();
     },
     onError: (err: unknown, args) => {
       const msg = err instanceof Error ? err.message : 'Failed to rename item';
@@ -200,7 +216,7 @@ export function useEditorStorageMutations(
       return await StorageService.permanentlyDeleteItem(itemId, effectiveProjectId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      invalidateStorageState();
     },
     onError: (err: unknown, itemId) => {
       const msg = err instanceof Error ? err.message : 'Failed to delete file';
@@ -223,7 +239,7 @@ export function useEditorStorageMutations(
       return await StorageService.moveItem(itemId, targetFolderId, effectiveProjectId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      invalidateStorageState();
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to move item';
@@ -237,7 +253,7 @@ export function useEditorStorageMutations(
       return await StorageService.reorderItem(args.itemId, args.sortOrder, pid);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      invalidateStorageState();
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to reorder item';
@@ -251,7 +267,7 @@ export function useEditorStorageMutations(
       return await StorageService.setRootDoc(args.nodeId, pid);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      invalidateStorageState();
       queryClient.invalidateQueries({ queryKey: ['editor-root-doc'] });
       toast.success('Main document set successfully', { id: 'set-main-doc' });
     },

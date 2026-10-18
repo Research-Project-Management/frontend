@@ -214,28 +214,20 @@ export function ProjectTitleDropdown() {
           </div>
 
           <DropdownMenuItem
-            onClick={() => setIsRenameOpen(true)}
+            onClick={handleDownloadPdf}
+            disabled={!pdfUrl}
             className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm cursor-pointer hover:bg-muted"
           >
-            <Pencil className="size-3.5 text-muted-foreground shrink-0" />
-            <span>Rename project</span>
+            <FileText className="size-3.5 text-muted-foreground shrink-0" />
+            <span>Download PDF</span>
           </DropdownMenuItem>
 
           <DropdownMenuItem
-            onClick={handleMakeCopy}
-            disabled={isCopying}
+            onClick={handleDownloadZip}
             className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm cursor-pointer hover:bg-muted"
           >
-            <Copy className="size-3.5 text-muted-foreground shrink-0" />
-            <span>{isCopying ? 'Duplicating...' : 'Make a copy'}</span>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem
-            onClick={handleOpenTemplateGallery}
-            className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm cursor-pointer hover:bg-muted"
-          >
-            <LayoutTemplate className="size-3.5 text-muted-foreground shrink-0" />
-            <span>Template gallery</span>
+            <FileArchive className="size-3.5 text-muted-foreground shrink-0" />
+            <span>Download Source (.zip)</span>
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
@@ -259,20 +251,28 @@ export function ProjectTitleDropdown() {
           <DropdownMenuSeparator />
 
           <DropdownMenuItem
-            onClick={handleDownloadZip}
+            onClick={() => setIsRenameOpen(true)}
             className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm cursor-pointer hover:bg-muted"
           >
-            <FileArchive className="size-3.5 text-muted-foreground shrink-0" />
-            <span>Download Source (.zip)</span>
+            <Pencil className="size-3.5 text-muted-foreground shrink-0" />
+            <span>Rename project</span>
           </DropdownMenuItem>
 
           <DropdownMenuItem
-            onClick={handleDownloadPdf}
-            disabled={!pdfUrl}
+            onClick={handleMakeCopy}
+            disabled={isCopying}
             className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm cursor-pointer hover:bg-muted"
           >
-            <FileText className="size-3.5 text-muted-foreground shrink-0" />
-            <span>Download PDF</span>
+            <Copy className="size-3.5 text-muted-foreground shrink-0" />
+            <span>{isCopying ? 'Duplicating...' : 'Make a copy'}</span>
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onClick={handleOpenTemplateGallery}
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm cursor-pointer hover:bg-muted"
+          >
+            <LayoutTemplate className="size-3.5 text-muted-foreground shrink-0" />
+            <span>Template gallery</span>
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />

@@ -329,7 +329,7 @@ describe('WorkspaceCoordinator Deep Module (Ports & Seams)', () => {
       const res = await coordinator.refactorCitekey('oldKey', 'invalid key with spaces');
       expect(res.success).toBe(false);
       expect(mockNotification.notifyError).toHaveBeenCalledWith(
-        expect.stringContaining('khoảng trắng'),
+        expect.stringContaining('whitespace'),
         'refactor-citekey'
       );
       expect(mockService.updateFileContent).not.toHaveBeenCalled();

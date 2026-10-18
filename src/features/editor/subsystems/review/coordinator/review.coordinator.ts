@@ -209,6 +209,19 @@ export class ReviewCoordinatorRegistry {
   }
 
   /**
+   * Retrieves locally recorded suggestions (`sug-local-*`) for a document.
+   */
+  public getLocalSuggestions(pageId?: string | null): PageSuggestion[] {
+    const result: PageSuggestion[] = [];
+    for (const s of this.currentSuggestions.values()) {
+      if (s.id.startsWith('sug-local-') && (!pageId || !s.pageId || s.pageId === pageId)) {
+        result.push(s);
+      }
+    }
+    return result;
+  }
+
+  /**
    * Updates CodeMirror Track Changes and Comments decorations in-place without editor reload.
    */
   public syncEditorDecorations(
@@ -218,10 +231,25 @@ export class ReviewCoordinatorRegistry {
     viewMode: TrackChangesViewMode = 'changes',
     reviewMode: boolean = false
   ): void {
+    const preservedLocal: PageSuggestion[] = [];
+    for (const s of this.currentSuggestions.values()) {
+      if (s.id.startsWith('sug-local-') && (!this.activePageId || !s.pageId || s.pageId === this.activePageId)) {
+        preservedLocal.push(s);
+      }
+    }
+
     this.currentSuggestions.clear();
     for (const s of suggestions) {
       this.currentSuggestions.set(s.id, s);
     }
+    for (const localSug of preservedLocal) {
+      if (!this.currentSuggestions.has(localSug.id)) {
+        this.currentSuggestions.set(localSug.id, localSug);
+      }
+    }
+
+    const mergedSuggestions = Array.from(this.currentSuggestions.values());
+
     this.currentComments.clear();
     for (const c of comments) {
       this.currentComments.set(c.id, c);
@@ -235,7 +263,7 @@ export class ReviewCoordinatorRegistry {
     try {
       targetView.dispatch({
         effects: [
-          setTrackChangesSuggestionsEffect.of(suggestions),
+          setTrackChangesSuggestionsEffect.of(mergedSuggestions),
           setTrackChangesCommentsEffect.of(comments),
           setTrackChangesViewModeEffect.of(viewMode),
           setTrackChangesReviewModeEffect.of(reviewMode),
@@ -380,6 +408,17 @@ export class ReviewCoordinatorRegistry {
       this.applySuggestionLocally(this.activeView, sug, 'accept');
     }
 
+    if (suggestionId.startsWith('sug-local-')) {
+      this.notificationPort.notifySuccess('Change accepted', `sug-${suggestionId}`);
+      editorCommandBus.dispatch({
+        type: 'editor:review-event',
+        pageId,
+        event: 'suggestion:accepted',
+        payload: { suggestionId },
+      });
+      return true;
+    }
+
     try {
       await this.servicePort.acceptSuggestion(pageId, suggestionId);
       this.notificationPort.notifySuccess('Change accepted', `sug-${suggestionId}`);
@@ -411,6 +450,17 @@ export class ReviewCoordinatorRegistry {
       this.applySuggestionLocally(this.activeView, sug, 'reject');
     }
 
+    if (suggestionId.startsWith('sug-local-')) {
+      this.notificationPort.notifySuccess('Change rejected', `sug-${suggestionId}`);
+      editorCommandBus.dispatch({
+        type: 'editor:review-event',
+        pageId,
+        event: 'suggestion:rejected',
+        payload: { suggestionId },
+      });
+      return true;
+    }
+
     try {
       await this.servicePort.rejectSuggestion(pageId, suggestionId);
       this.notificationPort.notifySuccess('Change rejected', `sug-${suggestionId}`);
@@ -438,12 +488,7 @@ export class ReviewCoordinatorRegistry {
    */
   public async acceptAll(pageId: string): Promise<boolean> {
     // Optimistically accept all in local view
-    if (this.activeView) {
-      const pending = Array.from(this.currentSuggestions.values()).filter((s) => s.status === 'pending');
-      for (const s of pending) {
-        this.applySuggestionLocally(this.activeView, s, 'accept');
-      }
-    }
+    this.applyAllLocally('accept');
 
     try {
       await this.servicePort.acceptAllSuggestions(pageId);
@@ -465,12 +510,7 @@ export class ReviewCoordinatorRegistry {
    */
   public async rejectAll(pageId: string): Promise<boolean> {
     // Optimistically reject all in local view
-    if (this.activeView) {
-      const pending = Array.from(this.currentSuggestions.values()).filter((s) => s.status === 'pending');
-      for (const s of pending) {
-        this.applySuggestionLocally(this.activeView, s, 'reject');
-      }
-    }
+    this.applyAllLocally('reject');
 
     try {
       await this.servicePort.rejectAllSuggestions(pageId);

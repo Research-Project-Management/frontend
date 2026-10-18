@@ -34,7 +34,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
 import { useEditorStorage } from '@/features/editor/ui/hooks/useStorage';
-import { resolveFileUrl } from '@/features/editor/domain/latex/latex-structure';
+import { resolveFileUrl } from '@/shared/lib/file-client';
 import { figureWizardSchema, type FigureWizardFormValues } from '@/features/editor/domain/types/forms.types';
 
 export interface FigureWizardModalProps {

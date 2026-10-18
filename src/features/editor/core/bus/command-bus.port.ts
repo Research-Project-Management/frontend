@@ -39,26 +39,10 @@ export type DialogName =
   | 'quick-open'
   | 'shortcuts'
   | 'github-sync'
-  | 'project-settings'
-  | 'diagram-canvas'
-  | 'tikz-canvas';
+  | 'project-settings';
 
-export interface EditorDiagnosticItem {
-  id: string;
-  file?: string;
-  normalizedPath?: string;
-  line: number;
-  column?: number;
-  message: string;
-  severity: 'error' | 'warning' | 'info';
-  context?: string;
-  code?: string;
-  suggestion?: string;
-  fixedSnippet?: string;
-  originalSnippet?: string;
-  confidence?: 'high' | 'medium' | 'low';
-  source?: 'LaTeX Compiler' | 'LaTeX Linter' | 'Retracted Citation' | 'System';
-}
+import type { EditorDiagnosticItem } from '@/features/editor/domain/diagnostics/diagnostics-port';
+export type { EditorDiagnosticItem };
 
 export type EditorCommand =
   | { type: 'editor:jump-to-line'; line: number; highlight?: 'error' | 'synctex'; column?: number; length?: number }

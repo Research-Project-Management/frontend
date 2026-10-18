@@ -69,7 +69,7 @@ import type {
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import type { PageSuggestion, SuggestionStatus } from '@/features/editor/domain/types/suggestion.types';
-import type { PageVersion, ProjectEvent } from '@/features/editor/subsystems/history/model/history.types';
+import type { PageVersion, ProjectEvent } from '@/features/editor/domain/types/history.types';
 import type { DocumentExportFormat } from '@/features/editor/domain/types/export.types';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
 import { presignUpload, completePresigned } from '@/features/storage/services/upload.service';
@@ -1381,7 +1381,7 @@ export const search = {
  *
  * Manuscripts Storage & File Hierarchy Sub-API (Part of manuscriptService SDK).
  * Mirrors Backend modules/storage & project structure:
- *  - S3 / R2 Asset uploads (/api/files/upload-r2, presigned direct R2)
+ *  - S3 / R2 Asset uploads (/api/v1/storage/files/upload, presigned direct R2)
  *  - Storage file & folder hierarchy (/projects/:projectId/structure/nodes)
  *  - Item management (rename, move, delete, root doc)
  */
@@ -1390,9 +1390,9 @@ export const search = {
 
 /**
  * Determines whether a failed request to the primary structure endpoint should
- * fall back to the legacy `/api/files/*` endpoint.
+ * fall back to the storage `/api/v1/storage/files/*` endpoint.
  * Domain/client validation errors (400, 401, 403, 409, 422) must be rethrown
- * immediately rather than swallowed and retried against a legacy route.
+ * immediately rather than swallowed and retried against a fallback route.
  */
 export function shouldFallbackToLegacyEndpoint(err: unknown): boolean {
   if (err && typeof err === 'object') {
@@ -1444,11 +1444,11 @@ export const storage = {
 
   getPageFiles: async (pageId: string, parentId?: string | null): Promise<EditorStorageItem[]> => {
     if (!pageId) return [];
-    const legacyEndpoint = parentId
-      ? `/api/files/page/${pageId}?parentId=${parentId}`
-      : `/api/files/page/${pageId}`;
+    const storageEndpoint = parentId
+      ? `/api/v1/storage/files/pages/${pageId}?parentId=${parentId}`
+      : `/api/v1/storage/files/pages/${pageId}`;
     try {
-      const data = await apiGet<{ files: EditorStorageItem[] }>(legacyEndpoint, { silent: true });
+      const data = await apiGet<{ files: EditorStorageItem[] }>(storageEndpoint, { silent: true });
       if (data?.files && data.files.length > 0) {
         return data.files;
       }
@@ -1534,7 +1534,7 @@ export const storage = {
           mimeType: completed.mimeType || file.type,
           isFolder: false,
           parentId: parentId || null,
-          url: completed.url || `/api/files/${completed.fileId || completed.id}/content`,
+          url: completed.url || `/api/v1/storage/files/${completed.fileId || completed.id}/content`,
         };
       }
     } catch (directErr) {
@@ -1557,7 +1557,7 @@ export const storage = {
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const response = await fetch(`${API_BASE_URL}/api/files/page/${pageId}/upload`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/storage/files/pages/${pageId}/upload`, {
       method: 'POST',
       body: formData,
       credentials: 'include',
@@ -1586,7 +1586,7 @@ export const storage = {
       mimeType: fileObj.mimeType || file.type,
       isFolder: false,
       parentId: parentId || null,
-      url: fileObj.url || `/api/files/${payload.fileId || fileObj.id}/content`,
+      url: fileObj.url || `/api/v1/storage/files/${payload.fileId || fileObj.id}/content`,
     };
   },
 
@@ -1596,7 +1596,7 @@ export const storage = {
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const response = await fetch(`${API_BASE_URL}/api/files/upload-r2`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/storage/files/upload`, {
       method: 'POST',
       body: formData,
       credentials: 'include',
@@ -1643,7 +1643,7 @@ export const storage = {
         }
       }
     }
-    return apiPost(`/api/files/page/${pageId}/upload`, params);
+    return apiPost(`/api/v1/storage/files/pages/${pageId}/upload`, params);
   },
 
   createFile: async (
@@ -1663,7 +1663,7 @@ export const storage = {
       if (!shouldFallbackToLegacyEndpoint(err)) {
         throw err;
       }
-      return apiPost(`/api/files/page/${projectId}/upload`, {
+      return apiPost(`/api/v1/storage/files/pages/${projectId}/upload`, {
         filename: name,
         size: content ? content.length : 0,
         mimeType: 'text/x-tex',
@@ -1684,7 +1684,7 @@ export const storage = {
       if (!shouldFallbackToLegacyEndpoint(err)) {
         throw err;
       }
-      return apiPost(`/api/files/project/${projectId}/folder`, {
+      return apiPost(`/api/v1/storage/files/projects/${projectId}/folder`, {
         name,
         parentId: parentId ?? null,
       });
@@ -1702,7 +1702,7 @@ export const storage = {
       if (!shouldFallbackToLegacyEndpoint(err)) {
         throw err;
       }
-      return apiPost(`/api/files/page/${pageId}/folder`, {
+      return apiPost(`/api/v1/storage/files/pages/${pageId}/folder`, {
         name,
         parentId: parentId ?? null,
       });
@@ -1720,7 +1720,7 @@ export const storage = {
       if (!shouldFallbackToLegacyEndpoint(err)) {
         throw err;
       }
-      return apiPost(`/api/files/project/${projectId}/folder`, {
+      return apiPost(`/api/v1/storage/files/projects/${projectId}/folder`, {
         name,
         parentId: parentId ?? null,
       });
@@ -1737,7 +1737,7 @@ export const storage = {
         }
       }
     }
-    return apiPut(`/api/files/${itemId}/rename`, { name });
+    return apiPut(`/api/v1/storage/files/${itemId}/rename`, { name });
   },
 
   deleteItem: async (itemId: string, projectId?: string) => {
@@ -1750,7 +1750,7 @@ export const storage = {
         }
       }
     }
-    return apiDelete(`/api/files/${itemId}`);
+    return apiDelete(`/api/v1/storage/files/${itemId}`);
   },
 
   permanentlyDeleteItem: async (itemId: string, projectId?: string) => {
@@ -1763,7 +1763,7 @@ export const storage = {
         }
       }
     }
-    return apiDelete(`/api/files/${itemId}`);
+    return apiDelete(`/api/v1/storage/files/${itemId}`);
   },
 
   moveItem: async (itemId: string, targetFolderId: string | null, projectId?: string) => {
@@ -1778,7 +1778,7 @@ export const storage = {
         }
       }
     }
-    return apiPut(`/api/files/${itemId}/move`, { parentId: targetFolderId });
+    return apiPut(`/api/v1/storage/files/${itemId}/move`, { parentId: targetFolderId });
   },
 
   reorderItem: async (itemId: string, sortOrder: number, projectId?: string) => {

@@ -59,9 +59,11 @@ interface ProjectMemberItem {
 }
 
 export function useReviewState() {
-  const { pageId: rootPageId, projectId: routeProjectId } = useParams<{ pageId: string; projectId?: string }>();
+  const { pageId: routePageId, projectId: routeProjectId } = useParams<{ pageId: string; projectId?: string }>();
   const storeActivePageId = usePageStore((s) => s.activePageId);
+  const storeParentPageId = usePageStore((s) => s.parentPageId);
   const currentPage = usePageStore((s) => s.currentPage);
+  const rootPageId = routePageId || storeParentPageId || currentPage?.id;
   const pageId = storeActivePageId || currentPage?.id || rootPageId;
   const storeProjectId = usePageStore((s) => s.projectId);
   const projectId = routeProjectId || storeProjectId || extractProjectId(currentPage) || '';
@@ -186,11 +188,33 @@ export function useReviewState() {
   } = usePageComments(pageId ?? null);
 
   const {
-    data: suggestions = [],
+    data: serverSuggestions = [],
     isLoading: isSuggestionsLoading,
     isError: isSuggestionsError,
     error: suggestionsError,
   } = usePageSuggestions(pageId ?? null);
+
+  const [localRev, setLocalRev] = useState(0);
+
+  useEffect(() => {
+    const unsub = editorCommandBus.subscribe('editor:review-event', (cmd) => {
+      if (!cmd.pageId || cmd.pageId === pageId) {
+        setLocalRev((r) => r + 1);
+      }
+    });
+    return () => unsub();
+  }, [pageId]);
+
+  const suggestions = useMemo(() => {
+    void localRev;
+    const localList = reviewCoordinator.getLocalSuggestions(pageId);
+    if (localList.length === 0) return serverSuggestions;
+    const map = new Map(serverSuggestions.map((s) => [s.id, s]));
+    for (const ls of localList) {
+      map.set(ls.id, ls);
+    }
+    return Array.from(map.values());
+  }, [serverSuggestions, pageId, localRev]);
 
   // Suggestions mutations
   const acceptMutation = useAcceptSuggestion();
@@ -263,6 +287,11 @@ export function useReviewState() {
   const handleAcceptSuggestion = useCallback(
     (suggestionId: string) => {
       if (pageId) {
+        if (suggestionId.startsWith('sug-local-')) {
+          void reviewCoordinator.acceptSuggestion(pageId, suggestionId);
+          setLocalRev((r) => r + 1);
+          return;
+        }
         reviewCoordinator.applySuggestionByIdLocally(suggestionId, 'accept');
         acceptMutation.mutate({ pageId, suggestionId });
       }
@@ -273,6 +302,11 @@ export function useReviewState() {
   const handleRejectSuggestion = useCallback(
     (suggestionId: string) => {
       if (pageId) {
+        if (suggestionId.startsWith('sug-local-')) {
+          void reviewCoordinator.rejectSuggestion(pageId, suggestionId);
+          setLocalRev((r) => r + 1);
+          return;
+        }
         reviewCoordinator.applySuggestionByIdLocally(suggestionId, 'reject');
         rejectMutation.mutate({ pageId, suggestionId });
       }

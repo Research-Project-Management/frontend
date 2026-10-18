@@ -3,9 +3,12 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
+import { filesQuery, pageKeys } from '@/features/editor/ui/hooks/document.queries';
+import { editorCommandBus } from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
-import { TEX_EXTS, type PendingUploadItem as PendingItem } from '@/features/editor/subsystems/explorer/ui/dialogs/UploadConflictDialog';
+import { TEX_EXTS, type PendingUploadItem as PendingItem } from '@/features/editor/subsystems/explorer/ui/modals/UploadConflictDialog';
 import { parseZipArchive, extractAndImportZipToProject } from '@/features/editor/sdk/archive/archive-import';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 
@@ -306,13 +309,16 @@ export function useFileUpload({
             });
           }
         }
-        queryClient.invalidateQueries({
-          queryKey: ['project-files-editor', parentPageId],
-          exact: false,
-        });
+        queryClient.invalidateQueries({ queryKey: pageKeys.all });
+        queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+        queryClient.invalidateQueries({ queryKey: ['projects'] });
         queryClient.invalidateQueries({
           queryKey: filesQuery(parentPageId).queryKey,
         });
+        editorCommandBus.dispatch({ type: 'filetree:updated' });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+        }
       })();
     }
 
@@ -336,15 +342,21 @@ export function useFileUpload({
       setUploadingCount(remaining);
       if (remaining === 0) {
         if (parentPageId) {
+          queryClient.invalidateQueries({ queryKey: pageKeys.all });
+          queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+          queryClient.invalidateQueries({ queryKey: ['projects'] });
           queryClient.invalidateQueries({
-            queryKey: ['project-files-editor', parentPageId],
-            exact: false,
+            queryKey: filesQuery(parentPageId).queryKey,
           });
+          editorCommandBus.dispatch({ type: 'filetree:updated' });
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+          }
         }
       }
     };
 
-    let lastTexId: string | null = null;
+    let lastTexItem: { id: string; title: string; content: string } | null = null;
     if (texFlat.length) {
       for (const { file, name, conflict, resolution } of texFlat) {
         try {
@@ -364,24 +376,38 @@ export function useFileUpload({
                 pageId: existingPage.id,
                 content,
               });
-              lastTexId = existingPage.id;
+              lruDocumentCache.updateContent(existingPage.id, content, false);
+              editorCommandBus.dispatch({
+                type: 'document:content-updated',
+                docId: existingPage.id,
+                content,
+              });
+              lastTexItem = { id: existingPage.id, title: existingPage.title, content };
               continue;
             }
           }
 
+          const effectiveTitle = name.trim() || file.name;
           const created = await createFileMutation.mutateAsync({
             parentPageId,
-            title: name.trim() || file.name,
+            title: effectiveTitle,
             content,
           });
-          lastTexId = created.id;
+          lastTexItem = { id: created.id, title: effectiveTitle, content };
         } catch (err) {
           console.error('Failed to upload tex:', err);
         } finally {
           onFileSettled();
         }
       }
-      if (lastTexId) setSearchParams({ file: lastTexId });
+      if (lastTexItem) {
+        navigationCoordinator.openDocument({
+          fileId: lastTexItem.id,
+          title: lastTexItem.title,
+          content: lastTexItem.content,
+        });
+        setSearchParams({ file: lastTexItem.id });
+      }
     }
 
     if (assetFlat.length && projectId) {
@@ -468,6 +494,12 @@ export function useFileUpload({
                   if (existingPage) {
                     await updateContentMutation.mutateAsync({
                       pageId: existingPage.id,
+                      content,
+                    });
+                    lruDocumentCache.updateContent(existingPage.id, content, false);
+                    editorCommandBus.dispatch({
+                      type: 'document:content-updated',
+                      docId: existingPage.id,
                       content,
                     });
                     continue;

@@ -138,6 +138,7 @@ export function useActiveDocument() {
   }, [resolvedFileId, isMainFile, activeFileDoc, childFiles, storeActiveFilePage]);
 
   const setCurrentPage = usePageStore((s) => s.setCurrentPage);
+  const setActiveFilePage = usePageStore((s) => s.setActiveFilePage);
   const setFileHierarchy = usePageStore((s) => s.setFileHierarchy);
   const setActivePageId = usePageStore((s) => s.setActivePageId);
   const setParentPageId = usePageStore((s) => s.setParentPageId);
@@ -180,8 +181,11 @@ export function useActiveDocument() {
   useEffect(() => {
     if (!parentPage) return;
 
+    setCurrentPage?.(parentPage);
+    if (pageId) setParentPageId?.(pageId);
+
     if (isMainFile) {
-      setCurrentPage?.(parentPage);
+      setActiveFilePage?.(parentPage);
       setActivePageId?.(parentPage.id);
 
       const configuredMain = useSettingsStore.getState().mainFile || 'main.tex';
@@ -197,7 +201,7 @@ export function useActiveDocument() {
         { onlyIfUninitialized: true, openTab, setActive },
       );
     } else if (activeFile) {
-      setCurrentPage?.(activeFile);
+      setActiveFilePage?.(activeFile);
       setActivePageId?.(activeFile.id);
 
       syncWorkspaceTabs(
@@ -214,7 +218,9 @@ export function useActiveDocument() {
     parentPage,
     activeFile,
     setCurrentPage,
+    setActiveFilePage,
     setActivePageId,
+    setParentPageId,
     openTab,
     setActive,
   ]);

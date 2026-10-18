@@ -10,9 +10,10 @@ import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 import { libraryBibtexModalSchema, type LibraryBibtexModalFormValues } from '@/features/editor/domain/types/forms.types';
-import { formatItemToBibtex } from '@/features/editor/subsystems/citation/model/citation-formatter';
-import { useViewItems } from '@/features/library/data';
-import type { Item } from '@/features/library/types';
+import { formatItemToBibtex } from '@/features/editor/subsystems/citation';
+import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
+import type { Item } from '@/features/library/domain/types/library.types';
+import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 
 export interface LibraryTabPaneProps {
   parentPageId: string | null;
@@ -97,6 +98,11 @@ export function LibraryTabPane({
       },
       {
         onSuccess: (created: { id: string }) => {
+          navigationCoordinator.openDocument({
+            fileId: created.id,
+            title: targetName,
+            content: bibEntries,
+          });
           setSearchParams({ file: created.id });
           onClose();
         },
@@ -256,3 +262,4 @@ export function LibraryTabPane({
     </div>
   );
 }
+

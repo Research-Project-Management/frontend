@@ -3,8 +3,7 @@
 import dynamic from 'next/dynamic';
 import Sidebar from '@/features/storage/components/layout/Sidebar';
 
-import { usePreviewStore } from '@/features/storage/store/use-preview-store';
-import { useStorageUIStore } from '@/features/storage/store/storage-ui.store';
+import { useStorageUIStore, usePreviewStore } from '@/features/storage/store/storage-ui.store';
 import { cn } from "@/shared/lib/utils";
 
 const Preview = dynamic(

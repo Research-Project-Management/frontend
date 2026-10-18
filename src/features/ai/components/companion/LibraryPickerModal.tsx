@@ -1,29 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import {
-  Search,
-  FileText,
-  Loader2,
-  Folder,
-  Layers,
-  X,
-  Check,
-} from 'lucide-react';
-import { libraryServices } from '@/features/library/data/library-services';
+  Search, FileText, Loader2, Folder, Layers, X, Check, } from 'lucide-react';
+import { libraryServices } from '@/features/library/sdk/library.client';
 import { isProjectScope } from '@/features/library/domain/item-url';
-import type { Item, Collection } from '@/features/library/types';
-import { LibraryEmptyState } from '@/features/library/components/content/LibraryEmptyState';
+import type { Item, Collection } from '@/features/library/domain/types/library.types';
+import { LibraryEmptyState } from '@/features/library/ui/content/LibraryEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
-import { buildTree } from '@/features/library/components/sidebar/tree-helpers';
-import type { TreeNode } from '@/features/library/components/sidebar/sidebar.types';
+import { buildTree } from '@/features/library/domain/collection-tree.domain';
+import type { TreeNode } from '@/features/library/ui/sidebar/sidebar.types';
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
 
@@ -404,3 +392,5 @@ export function LibraryPickerModal({
     </Dialog>
   );
 }
+
+

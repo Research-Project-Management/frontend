@@ -39,7 +39,7 @@ describe('Citation Key Refactoring & Renaming Subsystem (Overleaf Parity)', () =
     it('rejects new key identical to old key', () => {
       const res = validateCitationKey('vaswani2017', 'vaswani2017');
       expect(res.isValid).toBe(false);
-      expect(res.error).toContain('phải khác');
+      expect(res.error).toContain('must be different');
     });
   });
 

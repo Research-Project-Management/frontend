@@ -7,6 +7,7 @@
  */
 
 import type { EditorView } from '@codemirror/view';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 
 /**
  * Wraps selection with LaTeX formatting command (Overleaf parity).
@@ -63,6 +64,9 @@ export function handleAutoCloseEnvironment(view: EditorView): boolean {
  * - Otherwise: inserts '$$' and places cursor between them
  */
 export function handleAutoCloseMath(view: EditorView): boolean {
+  if (!useSettingsStore.getState().autoCloseBrackets) {
+    return false;
+  }
   const { from, to } = view.state.selection.main;
   if (from !== to) {
     const selected = view.state.sliceDoc(from, to);
@@ -112,6 +116,9 @@ export function handleAutoCloseMath(view: EditorView): boolean {
  * Deletes both '$' characters simultaneously.
  */
 export function handleBackspaceBetweenMath(view: EditorView): boolean {
+  if (!useSettingsStore.getState().autoCloseBrackets) {
+    return false;
+  }
   const { from, to } = view.state.selection.main;
   if (from === to && from > 0) {
     const prevChar = view.state.sliceDoc(from - 1, from);

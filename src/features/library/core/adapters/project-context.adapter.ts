@@ -1,0 +1,45 @@
+'use client';
+
+import { useProjects } from '@/features/projects/shell/hooks/use-project';
+import { useAuth } from '@/features/auth/hooks/use-auth';
+
+export interface LibraryProjectScope {
+  id: string;
+  name: string;
+  role?: string;
+  permissions?: string[];
+  effectivePermissions?: string[];
+  members?: Array<{ id: string; userId: string; role: string }>;
+  [key: string]: unknown;
+}
+
+export interface LibraryUserSession {
+  id?: string;
+  email?: string;
+  name?: string;
+}
+
+export interface UseLibraryProjectContextReturn {
+  projects: LibraryProjectScope[];
+  isLoadingProjects: boolean;
+  currentUser: LibraryUserSession | null;
+  currentUserId?: string;
+  isAuthenticated: boolean;
+}
+
+/**
+ * Anti-Corruption Layer (ACL) / Adapter for Library Feature.
+ * Decouples library internals from external project and authentication module implementations.
+ */
+export function useLibraryProjectContext(): UseLibraryProjectContextReturn {
+  const { projects = [], isLoading } = useProjects();
+  const { user, isAuthenticated } = useAuth();
+
+  return {
+    projects: projects as LibraryProjectScope[],
+    isLoadingProjects: isLoading,
+    currentUser: user ? { id: user.id, email: user.email, name: user.name } : null,
+    currentUserId: user?.id,
+    isAuthenticated,
+  };
+}

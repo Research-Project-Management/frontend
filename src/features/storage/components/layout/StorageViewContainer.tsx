@@ -4,7 +4,7 @@ import React from 'react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import ListView, { type StorageViewProps } from '../views/ListView';
 import GridView from '../views/GridView';
-import { useViewStore } from '../../store/use-view-store';
+import { useViewStore } from '../../store/storage-ui.store';
 
 import StorageEmptyState from './StorageEmptyState';
 import { PlaneErrorState, type PlaneErrorStateProps } from '@/shared/components/ui/PlaneErrorState';

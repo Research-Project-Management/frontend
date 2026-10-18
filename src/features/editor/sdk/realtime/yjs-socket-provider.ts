@@ -1168,6 +1168,7 @@ export class YjsSocketIOProvider {
             projectId: this.projectId,
           });
         }
+        this.socket.removeAllListeners();
         this.socket.disconnect();
       } catch {
         // Socket cleanup error ignored on unmount

@@ -23,41 +23,26 @@ import {
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Textarea } from '@/shared/components/ui/textarea';
-import dynamic from 'next/dynamic';
-
-const ScientificViewerModal = dynamic(
-  () => import('./ScientificViewerModal'),
-  { ssr: false }
-);
-
-const VersionHistoryModal = dynamic(
-  () => import('../modal/VersionHistoryModal'),
-  { ssr: false }
-);
 import {
   getFileType,
   getFileIcon,
   getFileColor,
   formatFileSize,
   formatMimeType,
-} from '../../utils/storage.util';
-import {
   formatDetailedSize,
   formatFileLocation,
   formatDetailedDate,
-} from '../../utils/preview.util';
+} from '../../utils/storage.util';
 import { resolveFileUrl, downloadFileUrl } from '@/shared/lib/file-client';
 import { usePreview } from '../../hooks/use-preview';
-import { usePreviewStore } from '../../store/use-preview-store';
+import { useStorageUIStore, usePreviewStore } from '../../store/storage-ui.store';
 
 export default function Preview() {
-  const params = useParams();
-  const projectId = (params?.projectId as string) || (params?.id as string) || '';
   const item = usePreviewStore((s) => s.selectedItem);
   const setSelectedItem = usePreviewStore((s) => s.setSelectedItem);
+  const openScientificViewer = useStorageUIStore((s) => s.openScientificViewer);
+  const openVersionModal = useStorageUIStore((s) => s.openVersionModal);
   const [imageError, setImageError] = useState(false);
-  const [scientificViewerOpen, setScientificViewerOpen] = useState(false);
-  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
 
   useEffect(() => {
     setImageError(false);
@@ -235,7 +220,7 @@ export default function Preview() {
             )
           ) : isScientificText ? (
             <div
-              onClick={() => setScientificViewerOpen(true)}
+              onClick={() => openScientificViewer(item)}
               className="flex flex-col items-center gap-2.5 py-6 px-4 cursor-pointer hover:bg-muted/40 rounded-lg transition-all group"
               title="Click to view data table & source code"
             >
@@ -283,7 +268,7 @@ export default function Preview() {
 
           {!item.isFolder && (
             <button
-              onClick={() => setVersionHistoryOpen(true)}
+              onClick={() => openVersionModal(item)}
               className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
               title="Version history & upload new version"
             >
@@ -294,7 +279,7 @@ export default function Preview() {
 
           {isScientificText && (
             <button
-              onClick={() => setScientificViewerOpen(true)}
+              onClick={() => openScientificViewer(item)}
               className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-xs text-primary font-medium bg-primary/10 hover:bg-primary/20 transition-colors cursor-pointer"
               title="View dataset & code"
             >
@@ -377,24 +362,6 @@ export default function Preview() {
           )}
         </div>
       </div>
-
-      {/* ─── Scientific Data & Code Viewer Modal ───────────────────── */}
-      {scientificViewerOpen && (
-        <ScientificViewerModal
-          open={true}
-          onOpenChange={setScientificViewerOpen}
-          file={item}
-        />
-      )}
-
-      {/* ─── Version History Modal ─────────────────────────────────── */}
-      {versionHistoryOpen && (
-        <VersionHistoryModal
-          open={true}
-          onOpenChange={setVersionHistoryOpen}
-          file={item}
-        />
-      )}
       </div>
     </div>
   );

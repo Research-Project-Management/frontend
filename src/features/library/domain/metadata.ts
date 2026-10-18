@@ -8,137 +8,191 @@
  * badges, notes, and tags.
  */
 
-import type { Item, Note } from '@/features/library/types/library.types';
+import type { Item } from "@/features/library/domain/types/library.types";
 import {
   getVenueFieldForType,
   getTitleFieldForType,
   getDateFieldForType,
-} from '@/features/library/types';
-import { INITIAL_ITEM_TYPE_FIELDS_MAP } from '@/features/library/types/item-fields.constants';
-import { normalizeAuthors } from './creators';
+} from "@/features/library/domain/types/library.types";
+import { INITIAL_ITEM_TYPE_FIELDS_MAP } from "@/features/library/domain/types/item-fields.constants";
+import { normalizeAuthors } from "./creators";
 
-const LATEX_DIACRITIC_MAP: ReadonlyArray<readonly [RegExp, (match: string, c1: string, c2: string) => string]> = [
-  [/\{?\\`(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0300`.normalize('NFC')],
-  [/\{?\\'(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0301`.normalize('NFC')],
-  [/\{?\\\^(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0302`.normalize('NFC')],
-  [/\{?\\~(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0303`.normalize('NFC')],
-  [/\{?\\"(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0308`.normalize('NFC')],
-  [/\{?\\=(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0304`.normalize('NFC')],
-  [/\{?\\\.(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0307`.normalize('NFC')],
-  [/\{?\\u(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0306`.normalize('NFC')],
-  [/\{?\\v(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u030C`.normalize('NFC')],
-  [/\{?\\H(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u030B`.normalize('NFC')],
-  [/\{?\\c(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0327`.normalize('NFC')],
-  [/\{?\\k(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u0328`.normalize('NFC')],
-  [/\{?\\r(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g, (_, c1, c2) => `${c1 || c2}\u030A`.normalize('NFC')],
+const LATEX_DIACRITIC_MAP: ReadonlyArray<
+  readonly [RegExp, (match: string, c1: string, c2: string) => string]
+> = [
+  [
+    /\{?\\`(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g,
+    (_, c1, c2) => `${c1 || c2}\u0300`.normalize("NFC"),
+  ],
+  [
+    /\{?\\'(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g,
+    (_, c1, c2) => `${c1 || c2}\u0301`.normalize("NFC"),
+  ],
+  [
+    /\{?\\\^(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g,
+    (_, c1, c2) => `${c1 || c2}\u0302`.normalize("NFC"),
+  ],
+  [
+    /\{?\\~(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g,
+    (_, c1, c2) => `${c1 || c2}\u0303`.normalize("NFC"),
+  ],
+  [
+    /\{?\\"(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g,
+    (_, c1, c2) => `${c1 || c2}\u0308`.normalize("NFC"),
+  ],
+  [
+    /\{?\\=(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g,
+    (_, c1, c2) => `${c1 || c2}\u0304`.normalize("NFC"),
+  ],
+  [
+    /\{?\\\.(?:\{\\?([a-zA-Z])\}|\\?([a-zA-Z]))\}?/g,
+    (_, c1, c2) => `${c1 || c2}\u0307`.normalize("NFC"),
+  ],
+  [
+    /\{?\\u(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g,
+    (_, c1, c2) => `${c1 || c2}\u0306`.normalize("NFC"),
+  ],
+  [
+    /\{?\\v(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g,
+    (_, c1, c2) => `${c1 || c2}\u030C`.normalize("NFC"),
+  ],
+  [
+    /\{?\\H(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g,
+    (_, c1, c2) => `${c1 || c2}\u030B`.normalize("NFC"),
+  ],
+  [
+    /\{?\\c(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g,
+    (_, c1, c2) => `${c1 || c2}\u0327`.normalize("NFC"),
+  ],
+  [
+    /\{?\\k(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g,
+    (_, c1, c2) => `${c1 || c2}\u0328`.normalize("NFC"),
+  ],
+  [
+    /\{?\\r(?:\{\\?([a-zA-Z])\}|\s+\\?([a-zA-Z]))\}?/g,
+    (_, c1, c2) => `${c1 || c2}\u030A`.normalize("NFC"),
+  ],
 ];
 
 /** Strips LaTeX macros, decodes LaTeX diacritics, and unescapes symbols common in BibTeX */
 export function stripLatexMarkup(str: string): string {
-  if (!str || typeof str !== 'string') return '';
-  if (!str.includes('\\') && !str.includes('{') && !str.includes('}')) {
+  if (!str || typeof str !== "string") return "";
+  if (!str.includes("\\") && !str.includes("{") && !str.includes("}")) {
     return str.trim();
   }
   // Normalize dotless \i and \j first so accent commands like {\'\i}, \'{\i}, \'\i combine cleanly
-  let out = str
-    .replace(/\\i\b\s*/g, 'i')
-    .replace(/\\j\b\s*/g, 'j');
+  let out = str.replace(/\\i\b\s*/g, "i").replace(/\\j\b\s*/g, "j");
   for (const [pattern, replacer] of LATEX_DIACRITIC_MAP) {
     out = out.replace(pattern, replacer);
   }
   out = out
-    .replace(/\\aa\b/g, 'å')
-    .replace(/\\AA\b/g, 'Å')
-    .replace(/\\ae\b/g, 'æ')
-    .replace(/\\AE\b/g, 'Æ')
-    .replace(/\\oe\b/g, 'œ')
-    .replace(/\\OE\b/g, 'Œ')
-    .replace(/\\o\b/g, 'ø')
-    .replace(/\\O\b/g, 'Ø')
-    .replace(/\\l\b/g, 'ł')
-    .replace(/\\L\b/g, 'Ł')
-    .replace(/\\dj\b/g, 'đ')
-    .replace(/\\DJ\b/g, 'Đ')
-    .replace(/\\ss\b/g, 'ß')
-    .replace(/\\([&%$#_{}])/g, '$1')
-    .replace(/\\(?:textbf|textit|textsf|texttt|textsc|emph|text|mathrm|mathbf|mathit)\s*\{([^}]+)\}/gi, '$1')
-    .replace(/\\(?:bf|it|em|rm|sf|tt|large|Large|small|tiny)\b\s*/gi, '')
-    .replace(/[{}]/g, '')
+    .replace(/\{\\aa\}|\\aa\b/g, "å")
+    .replace(/\{\\AA\}|\\AA\b/g, "Å")
+    .replace(/\{\\ae\}|\\ae\b/g, "æ")
+    .replace(/\{\\AE\}|\\AE\b/g, "Æ")
+    .replace(/\{\\oe\}|\\oe\b/g, "œ")
+    .replace(/\{\\OE\}|\\OE\b/g, "Œ")
+    .replace(/\{\\o\}|\\o\b/g, "ø")
+    .replace(/\{\\O\}|\\O\b/g, "Ø")
+    .replace(/\{\\l\}|\\l\b/g, "ł")
+    .replace(/\{\\L\}|\\L\b/g, "Ł")
+    .replace(/\{\\dj\}|\\dj\b/g, "đ")
+    .replace(/\{\\DJ\}|\\DJ\b/g, "Đ")
+    .replace(/\{\\ss\}|\\ss\b/g, "ß")
+    .replace(/\\([&%$#_{}])/g, "$1")
+    .replace(
+      /\\(?:textbf|textit|textsf|texttt|textsc|emph|text|mathrm|mathbf|mathit)\s*\{([^}]+)\}/gi,
+      "$1",
+    )
+    .replace(/\\(?:bf|it|em|rm|sf|tt|large|Large|small|tiny)\b\s*/gi, "")
+    .replace(/[{}]/g, "")
     .trim();
   return out;
 }
 
 const INVALID_TAG_TOKENS = new Set([
-  'null',
-  'undefined',
-  'n/a',
-  'na',
-  'n.a.',
-  'none',
-  'nil',
-  'unknown',
-  'false',
-  'true',
-  'sample',
-  'draft',
-  'test',
-  'etc',
-  'etc.',
-  'et al',
-  'et al.',
-  'downloaded',
-  'downloaded from',
-  'full text',
-  'pdf',
-  'abstract',
-  'keywords',
-  'keyword',
-  'index terms',
-  'key words',
-  'open access',
-  'all rights reserved',
-  'peer-reviewed',
-  'original article',
-  'research article',
-  'review article',
-  'multidisciplinary',
-  'general',
-  'miscellaneous',
-  'misc',
+  "null",
+  "undefined",
+  "n/a",
+  "na",
+  "n.a.",
+  "n.a",
+  "none",
+  "nil",
+  "unknown",
+  "false",
+  "true",
+  "sample",
+  "draft",
+  "test",
+  "etc",
+  "etc.",
+  "et al",
+  "et al.",
+  "downloaded",
+  "downloaded from",
+  "full text",
+  "pdf",
+  "abstract",
+  "keywords",
+  "keyword",
+  "index terms",
+  "key words",
+  "open access",
+  "all rights reserved",
+  "peer-reviewed",
+  "original article",
+  "research article",
+  "review article",
+  "multidisciplinary",
+  "general",
+  "miscellaneous",
+  "misc",
 ]);
 
 /**
- * Lightweight helper to clean a single user-typed or imported tag in the frontend UI.
+ * Cleans and validates a single tag in the frontend UI.
  */
 export function cleanSingleFrontendTag(raw: string): string | null {
-  if (!raw || typeof raw !== 'string') return null;
+  if (!raw || typeof raw !== "string") return null;
   let str = raw
-    .replace(/[\uFFFD]/g, '')
+    .replace(/[\uFFFD]/g, "")
     .replace(
       /^(?:tags?|keywords?|index terms?|categor(?:y|ies)|subject(?: areas?)?|topics?|terms?|classification|descriptors?|field(?: of study)?)[:—\-\s]+/i,
-      '',
+      "",
     )
-    .replace(/^[#"''`([{<•·*—\-\s]+/, '')
-    .replace(/["''`)\]}>.,;:—\-\s•·*]+$/, '')
+    .replace(/^[#"''`[{<•·*—\-\s]+/, "")
+    .replace(/["''`\]}>.,;:—\-\s•·*]+$/, "")
     .trim();
 
-  str = stripLatexMarkup(str);
-  str = str.replace(/<[^>]+>/g, '').trim();
+  if (str.startsWith("(") && str.endsWith(")")) {
+    str = str.slice(1, -1).trim();
+  } else if (str.startsWith("(") && !str.includes(")")) {
+    str = str.slice(1).trim();
+  } else if (str.endsWith(")") && !str.includes("(")) {
+    str = str.slice(0, -1).trim();
+  }
 
-  if (!str || str.length < 2 || str.length > 60) return null;
+  str = stripLatexMarkup(str);
+  str = str
+    .replace(/<[^>]+>/g, "")
+    .replace(/[\xA0\r\n\s]+/g, " ")
+    .trim()
+    .normalize("NFC");
+
+  if (!str || str.length < 2 || str.length > 255) return null;
   const lower = str.toLowerCase();
   if (INVALID_TAG_TOKENS.has(lower)) return null;
-  // Reject pure numbers, year ranges, pagination, or identifier strings
   if (/^\d+$/.test(str) || /^\d{1,4}[-–—/]\d{1,4}$/.test(str)) return null;
   if (
-    /^(?:doi[:\s/]|https?:\/\/|www\.|10\.\d{4,9}\/|(?:pmid|pmcid|isbn|issn|arxiv)[:\s/])/i.test(
+    /^(?:doi[:\s/]|https?:\/\/|www\.|10\.\d{4,9}\/|(?:pmid|pmcid|isbn|issn|arxiv)[:\s/]|downloaded\s+(?:from|on|by)\b)/i.test(
       str,
     )
   ) {
     return null;
   }
   if (
-    /^(?:p|pp|page|pages|vol|volume|no|number|v|issue)\.?\s*\d+(?:\s*[-–—]\s*\d+)?$/i.test(
+    /^(?:(?:p|pp|v)\.\s*|(?:p|pp|v)\s+|(?:page|pages|vol|volume|no|number|issue)\.?\s*)\d+(?:\s*[-–—]\s*\d+)?$/i.test(
       str,
     )
   ) {
@@ -151,22 +205,26 @@ export function cleanSingleFrontendTag(raw: string): string | null {
  * Normalizes tags from an Item for inspector display.
  */
 export function normalizeTags(
-  rawItem?: { tags?: unknown; keywords?: unknown; labels?: unknown } | unknown[] | string | null,
+  rawItem?:
+    | { tags?: unknown; keywords?: unknown; labels?: unknown }
+    | unknown[]
+    | string
+    | null,
 ): string[] {
   if (!rawItem) return [];
 
   const candidates: unknown[] = [];
   if (Array.isArray(rawItem)) {
     candidates.push(...rawItem);
-  } else if (typeof rawItem === 'object') {
+  } else if (typeof rawItem === "object") {
     const obj = rawItem as Record<string, unknown>;
     if (Array.isArray(obj.tags)) candidates.push(...obj.tags);
     if (Array.isArray(obj.keywords)) candidates.push(...obj.keywords);
     if (Array.isArray(obj.labels)) candidates.push(...obj.labels);
-    if (typeof obj.tags === 'string') candidates.push(obj.tags);
-    if (typeof obj.keywords === 'string') candidates.push(obj.keywords);
-    if (typeof obj.labels === 'string') candidates.push(obj.labels);
-  } else if (typeof rawItem === 'string') {
+    if (typeof obj.tags === "string") candidates.push(obj.tags);
+    if (typeof obj.keywords === "string") candidates.push(obj.keywords);
+    if (typeof obj.labels === "string") candidates.push(obj.labels);
+  } else if (typeof rawItem === "string") {
     candidates.push(rawItem);
   }
 
@@ -182,22 +240,22 @@ export function normalizeTags(
   };
 
   for (const item of candidates) {
-    if (typeof item === 'string') {
+    if (typeof item === "string") {
       const parts =
-        item.includes(';') || item.includes(',') || item.includes('•')
+        item.includes(";") || item.includes(",") || item.includes("•")
           ? item.split(/[,;•]+/)
           : [item];
       for (const part of parts) {
         addTag(cleanSingleFrontendTag(part));
       }
-    } else if (item && typeof item === 'object') {
+    } else if (item && typeof item === "object") {
       const tagObj = item as Record<string, unknown>;
       const name =
-        typeof tagObj.name === 'string'
+        typeof tagObj.name === "string"
           ? tagObj.name
-          : typeof tagObj.tag === 'string'
+          : typeof tagObj.tag === "string"
             ? tagObj.tag
-            : '';
+            : "";
       if (name) {
         addTag(cleanSingleFrontendTag(name));
       }
@@ -222,41 +280,50 @@ export interface NormalizedNote {
  * Cleans HTML tags and entities from a note string while preserving paragraph structure.
  */
 export function cleanNoteContent(raw: string): string {
-  if (!raw || typeof raw !== 'string') return '';
-  if (!/<\/?[a-z][\s\S]*>/i.test(raw) && !raw.includes('&')) {
+  if (!raw || typeof raw !== "string") return "";
+  if (!/<\/?[a-z][\s\S]*>/i.test(raw) && !raw.includes("&")) {
     return raw.trim();
   }
   return raw
-    .replace(/\r\n/g, '\n')
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/\r\n/g, "\n")
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
     .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, (_, c) => `# ${c.trim()}\n\n`)
     .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, (_, c) => `## ${c.trim()}\n\n`)
     .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, (_, c) => `### ${c.trim()}\n\n`)
-    .replace(/<h[4-6][^>]*>([\s\S]*?)<\/h[4-6]>/gi, (_, c) => `#### ${c.trim()}\n\n`)
-    .replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, (_, c) => `> ${c.trim()}\n\n`)
+    .replace(
+      /<h[4-6][^>]*>([\s\S]*?)<\/h[4-6]>/gi,
+      (_, c) => `#### ${c.trim()}\n\n`,
+    )
+    .replace(
+      /<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi,
+      (_, c) => `> ${c.trim()}\n\n`,
+    )
     .replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_, c) => `- ${c.trim()}\n`)
-    .replace(/<\/?(ul|ol)[^>]*>/gi, '\n')
+    .replace(/<\/?(ul|ol)[^>]*>/gi, "\n")
     .replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, (_, c) => `${c.trim()}\n\n`)
-    .replace(/<\/div>/gi, '\n')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<(strong|b)[^>]*>([\s\S]*?)<\/\1>/gi, '**$2**')
-    .replace(/<(em|i)[^>]*>([\s\S]*?)<\/\1>/gi, '*$2*')
-    .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '`$1`')
-    .replace(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<(strong|b)[^>]*>([\s\S]*?)<\/\1>/gi, "**$2**")
+    .replace(/<(em|i)[^>]*>([\s\S]*?)<\/\1>/gi, "*$2*")
+    .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, "`$1`")
+    .replace(
+      /<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi,
+      "[$2]($1)",
+    )
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"')
     .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&mdash;/gi, '—')
-    .replace(/&ndash;/gi, '–')
-    .split('\n')
+    .replace(/&mdash;/gi, "—")
+    .replace(/&ndash;/gi, "–")
+    .split("\n")
     .map((line) => line.trimEnd())
-    .join('\n')
-    .replace(/\n{3,}/g, '\n\n')
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
@@ -266,50 +333,65 @@ export function cleanNoteContent(raw: string): string {
 export function normalizeNotes(rawNotes?: unknown): NormalizedNote[] {
   if (!rawNotes) return [];
   if (!Array.isArray(rawNotes)) {
-    if (typeof rawNotes === 'string') {
+    if (typeof rawNotes === "string") {
       const cleaned = cleanNoteContent(rawNotes);
       if (cleaned) {
-        return [{ id: 'note-0', note: cleaned, content: cleaned }];
+        return [{ id: "note-0", note: cleaned, content: cleaned }];
       }
     }
     return [];
   }
 
   const results: NormalizedNote[] = [];
-  const seenContent = new Set<string>();
+  const seenKeys = new Set<string>();
   let index = 0;
   for (const n of rawNotes) {
     if (!n) continue;
-    if (typeof n === 'string') {
+    if (typeof n === "string") {
       const cleaned = cleanNoteContent(n);
-      const dedupeKey = cleaned.toLowerCase();
-      if (cleaned && !seenContent.has(dedupeKey)) {
-        seenContent.add(dedupeKey);
-        results.push({ id: `note-${index++}`, note: cleaned, content: cleaned });
-      }
-    } else if (typeof n === 'object') {
-      const obj = n as Record<string, unknown>;
-      const rawText =
-        typeof obj.contentMd === 'string' && obj.contentMd
-          ? obj.contentMd
-          : typeof obj.content === 'string' && obj.content
-            ? obj.content
-            : typeof obj.note === 'string'
-              ? obj.note
-              : '';
-      const cleaned = cleanNoteContent(rawText);
-      const dedupeKey = cleaned.toLowerCase();
-      if (cleaned && !seenContent.has(dedupeKey)) {
-        seenContent.add(dedupeKey);
+      const dedupeKey = `text:${cleaned.toLowerCase()}`;
+      if (cleaned && !seenKeys.has(dedupeKey)) {
+        seenKeys.add(dedupeKey);
         results.push({
-          id: typeof obj.id === 'string' && obj.id ? obj.id : `note-${index++}`,
+          id: `note-${index++}`,
           note: cleaned,
           content: cleaned,
-          title: typeof obj.title === 'string' ? obj.title : undefined,
-          tags: Array.isArray(obj.tags) ? obj.tags.filter((t): t is string => typeof t === 'string') : undefined,
-          createdAt: typeof obj.createdAt === 'string' ? obj.createdAt : undefined,
-          updatedAt: typeof obj.updatedAt === 'string' ? obj.updatedAt : undefined,
-          dateModified: typeof obj.dateModified === 'string' ? obj.dateModified : undefined,
+        });
+      }
+    } else if (typeof n === "object") {
+      const obj = n as Record<string, unknown>;
+      const rawText =
+        typeof obj.contentMd === "string" && obj.contentMd
+          ? obj.contentMd
+          : typeof obj.content === "string" && obj.content
+            ? obj.content
+            : typeof obj.note === "string"
+              ? obj.note
+              : "";
+      const cleaned = cleanNoteContent(rawText);
+      const realId =
+        typeof obj.id === "string" && obj.id.trim().length > 0
+          ? obj.id.trim()
+          : null;
+      const dedupeKey = realId
+        ? `id:${realId}`
+        : `text:${cleaned.toLowerCase()}`;
+      if (cleaned && !seenKeys.has(dedupeKey)) {
+        seenKeys.add(dedupeKey);
+        results.push({
+          id: realId || `note-${index++}`,
+          note: cleaned,
+          content: cleaned,
+          title: typeof obj.title === "string" ? obj.title : undefined,
+          tags: Array.isArray(obj.tags)
+            ? obj.tags.filter((t): t is string => typeof t === "string")
+            : undefined,
+          createdAt:
+            typeof obj.createdAt === "string" ? obj.createdAt : undefined,
+          updatedAt:
+            typeof obj.updatedAt === "string" ? obj.updatedAt : undefined,
+          dateModified:
+            typeof obj.dateModified === "string" ? obj.dateModified : undefined,
         });
       }
     }
@@ -319,19 +401,19 @@ export function normalizeNotes(rawNotes?: unknown): NormalizedNote[] {
 }
 
 const HTML_ENTITIES: Record<string, string> = {
-  '&amp;': '&',
-  '&lt;': '<',
-  '&gt;': '>',
-  '&quot;': '"',
-  '&#39;': "'",
-  '&apos;': "'",
-  '&nbsp;': ' ',
-  '&ndash;': '–',
-  '&mdash;': '—',
-  '&lsquo;': '‘',
-  '&rsquo;': '’',
-  '&ldquo;': '“',
-  '&rdquo;': '”',
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&apos;": "'",
+  "&nbsp;": " ",
+  "&ndash;": "–",
+  "&mdash;": "—",
+  "&lsquo;": "‘",
+  "&rsquo;": "’",
+  "&ldquo;": "“",
+  "&rdquo;": "”",
 };
 
 /**
@@ -340,27 +422,35 @@ const HTML_ENTITIES: Record<string, string> = {
  * decodes HTML entities, strips leading "Abstract" headers, and filters placeholder strings.
  */
 export function cleanAbstractText(text?: string | null): string {
-  if (!text || typeof text !== 'string') return '';
-  if (!isValidValue(text)) return '';
+  if (!text || typeof text !== "string") return "";
+  if (!isValidValue(text)) return "";
 
   let cleaned = text
     // Strip leading <jats:title>Abstract</jats:title> or <title>Abstract</title> blocks
-    .replace(/<(?:jats:)?title[^>]*>\s*abstract\s*:?\s*<\/(?:jats:)?title>/gi, ' ')
+    .replace(
+      /<(?:jats:)?title[^>]*>\s*abstract\s*:?\s*<\/(?:jats:)?title>/gi,
+      " ",
+    )
     // Replace paragraph/block closing tags with spaces so sentences don't concatenate
-    .replace(/<\/(?:jats:)?(?:p|sec|div|li|br)\s*>/gi, ' ')
+    .replace(/<\/(?:jats:)?(?:p|sec|div|li|br)\s*>/gi, " ")
     // Strip remaining XML/HTML tags
-    .replace(/<[^>]+>/g, '')
+    .replace(/<[^>]+>/g, "")
     // Decode named HTML entities
-    .replace(/&(?:amp|lt|gt|quot|#39|apos|nbsp|ndash|mdash|lsquo|rsquo|ldquo|rdquo);/gi, (m) => HTML_ENTITIES[m.toLowerCase()] ?? m)
+    .replace(
+      /&(?:amp|lt|gt|quot|#39|apos|nbsp|ndash|mdash|lsquo|rsquo|ldquo|rdquo);/gi,
+      (m) => HTML_ENTITIES[m.toLowerCase()] ?? m,
+    )
     // Decode numeric HTML entities
     .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
+      String.fromCharCode(parseInt(hex, 16)),
+    )
     // Strip leading "Abstract:" or "Summary:" prefix if left over
-    .replace(/^(?:abstract|summary)\s*[:.—\-]\s*/i, '')
-    .replace(/\s+/g, ' ')
+    .replace(/^(?:abstract|summary)\s*[:.—\-]\s*/i, "")
+    .replace(/\s+/g, " ")
     .trim();
 
-  if (!isValidValue(cleaned)) return '';
+  if (!isValidValue(cleaned)) return "";
   return cleaned;
 }
 
@@ -371,29 +461,29 @@ export function cleanAbstractText(text?: string | null): string {
 export function getItemDisplayTitle(
   item?: Partial<Item> | Record<string, unknown> | null,
 ): string {
-  if (!item || typeof item !== 'object') return '';
+  if (!item || typeof item !== "object") return "";
   const rec = item as Record<string, unknown>;
   const ef = (rec.extraFields as Record<string, unknown> | undefined) || {};
 
   const clean = (val: unknown): string => {
-    if (!isValidValue(val)) return '';
+    if (!isValidValue(val)) return "";
     return stripLatexMarkup(String(val).trim());
   };
 
-  const itemType = typeof rec.itemType === 'string' ? rec.itemType : undefined;
+  const itemType = typeof rec.itemType === "string" ? rec.itemType : undefined;
   const preferredTitleField = getTitleFieldForType(itemType);
-  if (preferredTitleField && preferredTitleField !== 'title') {
+  if (preferredTitleField && preferredTitleField !== "title") {
     const val = clean(rec[preferredTitleField] ?? ef[preferredTitleField]);
     if (val) return val;
   }
 
-  const fallbackFields = ['title', 'caseName', 'nameOfAct', 'subject'] as const;
+  const fallbackFields = ["title", "caseName", "nameOfAct", "subject"] as const;
   for (const field of fallbackFields) {
     const val = clean(rec[field] ?? ef[field]);
     if (val) return val;
   }
 
-  return '';
+  return "";
 }
 
 /**
@@ -403,12 +493,12 @@ export function getItemDisplayTitle(
 export function getPublicationVenue(
   item?: Partial<Item> | Record<string, unknown> | null,
 ): string {
-  if (!item || typeof item !== 'object') return '';
+  if (!item || typeof item !== "object") return "";
   const rec = item as Record<string, unknown>;
   const extra = (rec.extraFields as Record<string, unknown> | undefined) || {};
 
   const clean = (val: unknown): string => {
-    if (!isValidValue(val)) return '';
+    if (!isValidValue(val)) return "";
     return stripLatexMarkup(String(val).trim());
   };
 
@@ -420,36 +510,36 @@ export function getPublicationVenue(
   }
 
   const fallbackFields = [
-    'journal',
-    'publicationTitle',
-    'bookTitle',
-    'proceedingsTitle',
-    'conferenceName',
-    'meetingName',
-    'court',
-    'issuingAuthority',
-    'authority',
-    'repository',
-    'publisher',
-    'company',
-    'organization',
-    'institution',
-    'university',
-    'distributor',
-    'studio',
-    'network',
-    'label',
-    'programTitle',
-    'websiteTitle',
-    'blogTitle',
-    'forumTitle',
-    'dictionaryTitle',
-    'encyclopediaTitle',
-    'sessionTitle',
-    'legislativeBody',
-    'committee',
-    'code',
-    'reporter',
+    "journal",
+    "publicationTitle",
+    "bookTitle",
+    "proceedingsTitle",
+    "conferenceName",
+    "meetingName",
+    "court",
+    "issuingAuthority",
+    "authority",
+    "repository",
+    "publisher",
+    "company",
+    "organization",
+    "institution",
+    "university",
+    "distributor",
+    "studio",
+    "network",
+    "label",
+    "programTitle",
+    "websiteTitle",
+    "blogTitle",
+    "forumTitle",
+    "dictionaryTitle",
+    "encyclopediaTitle",
+    "sessionTitle",
+    "legislativeBody",
+    "committee",
+    "code",
+    "reporter",
   ];
 
   for (const field of fallbackFields) {
@@ -459,7 +549,7 @@ export function getPublicationVenue(
     }
   }
 
-  if (extra && typeof extra === 'object') {
+  if (extra && typeof extra === "object") {
     for (const field of fallbackFields) {
       if (field in extra) {
         const val = clean(extra[field]);
@@ -468,21 +558,19 @@ export function getPublicationVenue(
     }
   }
 
-  return '';
+  return "";
 }
 
 /**
  * Formats an academic itemType into a user-friendly label ("Journal Article", "Conference Paper").
  */
 export function formatItemTypeLabel(rawType?: string | null): string {
-  if (!rawType) return '—';
+  if (!rawType) return "—";
   const str = String(rawType).trim();
   const withSpaces = str
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ');
-  return withSpaces
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ");
+  return withSpaces.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /**
@@ -497,7 +585,11 @@ export const ALL_ZOTERO_SCHEMA_FIELDS: ReadonlySet<string> = new Set<string>(
  * (`PMID`/`PMCID` on `journalArticle`, `originalDate` on `book`/`bookSection`) and must remain
  * allowed as explicit `Key: Value` lines in the Zotero `Extra` textarea.
  */
-const ALLOWED_ZOTERO_EXTRA_LINE_KEYS = new Set<string>(['pmid', 'pmcid', 'originaldate']);
+const ALLOWED_ZOTERO_EXTRA_LINE_KEYS = new Set<string>([
+  "pmid",
+  "pmcid",
+  "originaldate",
+]);
 
 export const INTERNAL_AND_DEDICATED_METADATA_KEYS = new Set<string>([
   // Automatically derived from all 121 Zotero Schema v42 fields across all 37 item types
@@ -505,133 +597,133 @@ export const INTERNAL_AND_DEDICATED_METADATA_KEYS = new Set<string>([
     .map((f) => f.toLowerCase())
     .filter((k) => !ALLOWED_ZOTERO_EXTRA_LINE_KEYS.has(k)),
   // Internal / system / audit / duplicate / retraction / ingestion telemetry state
-  'dismissedduplicateids',
-  'mergedcitationkeys',
-  'mergedfromids',
-  'isretracted',
-  'retraction',
-  'retractionstatus',
-  'retractiondate',
-  'retractionnature',
-  'retractionreasons',
-  'retractionnoticedoi',
-  'retractiondetails',
-  'retractioncheckedat',
-  'ismypublication',
-  'publicationconfirmedat',
-  'provenance',
-  'fieldprovenance',
-  'sourceprovider',
-  'source',
-  'sources',
-  'extractionstatus',
-  'ingestionstatus',
-  'verificationscore',
-  'isverified',
-  'matchedsignals',
-  'missingfields',
-  'isselfsufficient',
-  'qualityscore',
-  'engineused',
-  'primarycategory',
-  'categories',
-  'journalref',
-  'warnings',
-  'disambiguationwarning',
-  'rejectedciteddoi',
-  'wafkind',
-  'promptuploadpdf',
-  'crossrefenriched',
-  'confidencescore',
-  'originprovider',
-  'canonicalid',
-  'canonicalurl',
-  'resolvedat',
-  'ragdocid',
-  'ragindexedat',
-  'raglastattemptat',
-  'ragattempts',
-  'ragerror',
-  'ragstatus',
-  '_version',
-  'version',
-  'expectedversion',
-  'isdeleted',
-  'silent',
-  'deletedat',
-  'createdat',
-  'updatedat',
-  'dateadded',
-  'datemodified',
-  'id',
-  'itemid',
-  'paperid',
-  'userid',
-  'projectid',
-  'workspaceid',
-  'scopeid',
-  'uploadedbyid',
-  'createdbyid',
-  'fileid',
-  'filename',
-  'mimetype',
-  'size',
-  'primaryfile',
-  'hasfile',
-  'attachmentcount',
-  'notecount',
-  'firstauthor',
-  'userstates',
-  'states',
-  'readstatus',
-  'rating',
-  'lastreadat',
-  'outgoingrel',
-  'incomingrel',
-  'relations',
-  'seealso',
-  'identifiers',
-  'itemtags',
-  'zoterotags',
-  'collectionitems',
-  'noteslist',
-  'ingestionruns',
-  'itemmetadata',
-  'publications',
+  "dismissedduplicateids",
+  "mergedcitationkeys",
+  "mergedfromids",
+  "isretracted",
+  "retraction",
+  "retractionstatus",
+  "retractiondate",
+  "retractionnature",
+  "retractionreasons",
+  "retractionnoticedoi",
+  "retractiondetails",
+  "retractioncheckedat",
+  "ismypublication",
+  "publicationconfirmedat",
+  "provenance",
+  "fieldprovenance",
+  "sourceprovider",
+  "source",
+  "sources",
+  "extractionstatus",
+  "ingestionstatus",
+  "verificationscore",
+  "isverified",
+  "matchedsignals",
+  "missingfields",
+  "isselfsufficient",
+  "qualityscore",
+  "engineused",
+  "primarycategory",
+  "categories",
+  "journalref",
+  "warnings",
+  "disambiguationwarning",
+  "rejectedciteddoi",
+  "wafkind",
+  "promptuploadpdf",
+  "crossrefenriched",
+  "confidencescore",
+  "originprovider",
+  "canonicalid",
+  "canonicalurl",
+  "resolvedat",
+  "ragdocid",
+  "ragindexedat",
+  "raglastattemptat",
+  "ragattempts",
+  "ragerror",
+  "ragstatus",
+  "_version",
+  "version",
+  "expectedversion",
+  "isdeleted",
+  "silent",
+  "deletedat",
+  "createdat",
+  "updatedat",
+  "dateadded",
+  "datemodified",
+  "id",
+  "itemid",
+  "paperid",
+  "userid",
+  "projectid",
+  "workspaceid",
+  "scopeid",
+  "uploadedbyid",
+  "createdbyid",
+  "fileid",
+  "filename",
+  "mimetype",
+  "size",
+  "primaryfile",
+  "hasfile",
+  "attachmentcount",
+  "notecount",
+  "firstauthor",
+  "userstates",
+  "states",
+  "readstatus",
+  "rating",
+  "lastreadat",
+  "outgoingrel",
+  "incomingrel",
+  "relations",
+  "seealso",
+  "identifiers",
+  "itemtags",
+  "zoterotags",
+  "collectionitems",
+  "noteslist",
+  "ingestionruns",
+  "itemmetadata",
+  "publications",
   // First-class DB column aliases & relation keys
-  'abstract',
-  'journal',
-  'journalabbr',
-  'numberofpages',
-  'arxiv',
-  'arxivid',
-  'openaccesspdfurl',
-  'pdfurl',
-  'fileurl',
-  'year',
-  'publicationdate',
-  'accessedat',
-  'itemtype',
-  'license',
-  'citekey',
-  'citationcount',
-  'referencecount',
-  'authority',
-  'authors',
-  'creators',
-  'contributors',
-  'editors',
-  'tags',
-  'keywords',
-  'keywordslist',
-  'labels',
-  'notes',
-  'attachments',
-  'collections',
-  'collectionid',
-  'collectionids',
-  'extra',
-  'extrafields',
+  "abstract",
+  "journal",
+  "journalabbr",
+  "numberofpages",
+  "arxiv",
+  "arxivid",
+  "openaccesspdfurl",
+  "pdfurl",
+  "fileurl",
+  "year",
+  "publicationdate",
+  "accessedat",
+  "itemtype",
+  "license",
+  "citekey",
+  "citationcount",
+  "referencecount",
+  "authority",
+  "authors",
+  "creators",
+  "contributors",
+  "editors",
+  "tags",
+  "keywords",
+  "keywordslist",
+  "labels",
+  "notes",
+  "attachments",
+  "collections",
+  "collectionid",
+  "collectionids",
+  "extra",
+  "extrafields",
 ]);
 
 export const INTERNAL_EXTRA_KEYS = INTERNAL_AND_DEDICATED_METADATA_KEYS;
@@ -642,22 +734,22 @@ export const INTERNAL_EXTRA_KEYS = INTERNAL_AND_DEDICATED_METADATA_KEYS;
  * already a dedicated first-class schema field of the item's `itemType`.
  */
 const GENUINE_ZOTERO_EXTRA_OVERFLOW_KEYS = new Set<string>([
-  'pmid',
-  'pmcid',
-  'nihmsid',
-  'oclc',
-  'lccn',
-  'mr',
-  'zbl',
-  'originaldate',
-  'tex.ids',
-  'texids',
+  "pmid",
+  "pmcid",
+  "nihmsid",
+  "oclc",
+  "lccn",
+  "mr",
+  "zbl",
+  "originaldate",
+  "tex.ids",
+  "texids",
 ]);
 
 export function isAllowedZoteroExtraKey(rawKey: string): boolean {
   const trimmed = rawKey.trim();
-  if (!trimmed || trimmed.startsWith('_')) return false;
-  const normalized = trimmed.toLowerCase().replace(/[\s_-]+/g, '');
+  if (!trimmed || trimmed.startsWith("_")) return false;
+  const normalized = trimmed.toLowerCase().replace(/[\s_-]+/g, "");
   return !INTERNAL_AND_DEDICATED_METADATA_KEYS.has(normalized);
 }
 
@@ -671,9 +763,9 @@ export function formatExtraDisplay(item: Item): string {
     item,
   );
   if (sanitized) {
-    return sanitized.replace(/\r?\n+/g, ', ');
+    return sanitized.replace(/\r?\n+/g, ", ");
   }
-  return '—';
+  return "—";
 }
 
 /**
@@ -694,25 +786,33 @@ export function formatAndSanitizeExtraMetadata(
     (associatedPaperItem?.extraFields as Record<string, unknown> | undefined);
 
   const resolvedItemType =
-    (typeof associatedPaperItem?.itemType === 'string' && associatedPaperItem.itemType) ||
-    (typeof effectiveExtraFields?.itemType === 'string' && effectiveExtraFields.itemType) ||
+    (typeof associatedPaperItem?.itemType === "string" &&
+      associatedPaperItem.itemType) ||
+    (typeof effectiveExtraFields?.itemType === "string" &&
+      effectiveExtraFields.itemType) ||
     undefined;
 
   const dedicatedFieldsForType = new Set<string>(
     resolvedItemType && INITIAL_ITEM_TYPE_FIELDS_MAP[resolvedItemType]
       ? INITIAL_ITEM_TYPE_FIELDS_MAP[resolvedItemType].map((f) =>
-          f.toLowerCase().replace(/[\s_-]+/g, ''),
+          f.toLowerCase().replace(/[\s_-]+/g, ""),
         )
       : [],
   );
 
   const isDedicatedFieldOnCurrentType = (rawKey: string): boolean => {
-    const normKey = rawKey.trim().toLowerCase().replace(/[\s_-]+/g, '');
-    return normKey !== 'extra' && dedicatedFieldsForType.has(normKey);
+    const normKey = rawKey
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]+/g, "");
+    return normKey !== "extra" && dedicatedFieldsForType.has(normKey);
   };
 
   const canPromoteStructuredKeyToExtra = (rawKey: string): boolean => {
-    const normKey = rawKey.trim().toLowerCase().replace(/[\s_-]+/g, '');
+    const normKey = rawKey
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]+/g, "");
     if (!GENUINE_ZOTERO_EXTRA_OVERFLOW_KEYS.has(normKey)) return false;
     return !isDedicatedFieldOnCurrentType(rawKey);
   };
@@ -720,7 +820,9 @@ export function formatAndSanitizeExtraMetadata(
   const pushUniqueLine = (rawLine: string) => {
     const trimmed = rawLine.trim();
     if (!trimmed) return;
-    const kvMatch = trimmed.match(/^([A-Za-z_][A-Za-z0-9._\s-]{0,40}?)\s*:\s*(.+)$/);
+    const kvMatch = trimmed.match(
+      /^([A-Za-z_][A-Za-z0-9._\s-]{0,40}?)\s*:\s*(.+)$/,
+    );
     if (kvMatch) {
       const key = kvMatch[1]!.trim();
       const val = kvMatch[2]!.trim();
@@ -728,35 +830,38 @@ export function formatAndSanitizeExtraMetadata(
         !isAllowedZoteroExtraKey(key) ||
         isDedicatedFieldOnCurrentType(key) ||
         !isValidValue(val) ||
-        val === '[object Object]'
+        val === "[object Object]"
       ) {
         return;
       }
     }
     const norm = trimmed
       .toLowerCase()
-      .replace(/\s*:\s*/g, ': ')
-      .replace(/\s+/g, ' ');
+      .replace(/\s*:\s*/g, ": ")
+      .replace(/\s+/g, " ");
     if (!seenNormalizedLines.has(norm)) {
       seenNormalizedLines.add(norm);
       lines.push(trimmed);
     }
   };
 
-  if (typeof rawExtraMetadata === 'string' && rawExtraMetadata.trim()) {
+  if (typeof rawExtraMetadata === "string" && rawExtraMetadata.trim()) {
     const trimmed = rawExtraMetadata.trim();
-    if (trimmed.startsWith('{') && !trimmed.startsWith('{:')) {
+    if (trimmed.startsWith("{") && !trimmed.startsWith("{:")) {
       try {
         const parsed = JSON.parse(trimmed);
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
           const parsedObj = parsed as Record<string, unknown>;
-          if (typeof parsedObj._rawExtra === 'string' && parsedObj._rawExtra.trim()) {
+          if (
+            typeof parsedObj._rawExtra === "string" &&
+            parsedObj._rawExtra.trim()
+          ) {
             for (const l of parsedObj._rawExtra.split(/\r?\n/)) {
               pushUniqueLine(l);
             }
           }
           for (const [key, value] of Object.entries(parsedObj)) {
-            if (key === '_rawExtra' || typeof value === 'object') continue;
+            if (key === "_rawExtra" || typeof value === "object") continue;
             if (canPromoteStructuredKeyToExtra(key) && isValidValue(value)) {
               pushUniqueLine(`${key}: ${value}`);
             }
@@ -774,16 +879,16 @@ export function formatAndSanitizeExtraMetadata(
     }
   }
 
-  if (effectiveExtraFields && typeof effectiveExtraFields === 'object') {
+  if (effectiveExtraFields && typeof effectiveExtraFields === "object") {
     for (const [key, value] of Object.entries(effectiveExtraFields)) {
-      if (key === 'originalDate' || typeof value === 'object') continue;
+      if (key === "originalDate" || typeof value === "object") continue;
       if (canPromoteStructuredKeyToExtra(key) && isValidValue(value)) {
         pushUniqueLine(`${key}: ${value}`);
       }
     }
   }
 
-  return lines.join('\n').trim();
+  return lines.join("\n").trim();
 }
 
 /**
@@ -791,27 +896,29 @@ export function formatAndSanitizeExtraMetadata(
  */
 export function isValidValue(val?: unknown): boolean {
   if (val === undefined || val === null) return false;
-  if (typeof val === 'number') return !isNaN(val) && Number.isFinite(val) && val !== 0;
-  if (typeof val === 'boolean') return true;
+  if (typeof val === "number")
+    return !isNaN(val) && Number.isFinite(val) && val !== 0;
+  if (typeof val === "boolean") return true;
   if (Array.isArray(val)) return val.some((item) => isValidValue(item));
-  if (typeof val === 'object') return Object.keys(val as Record<string, unknown>).length > 0;
+  if (typeof val === "object")
+    return Object.keys(val as Record<string, unknown>).length > 0;
   const s = String(val).trim();
   if (!s) return false;
   const lower = s.toLowerCase();
   if (
-    lower === '0' ||
-    lower === '0000' ||
-    lower === 'n/a' ||
-    lower === 'na' ||
-    lower === 'none' ||
-    lower === 'nil' ||
-    lower === 'null' ||
-    lower === 'undefined' ||
-    lower === '{}' ||
-    lower === '[]' ||
-    lower === '[object object]' ||
-    lower === 'unknown' ||
-    lower.startsWith('unknown ')
+    lower === "0" ||
+    lower === "0000" ||
+    lower === "n/a" ||
+    lower === "na" ||
+    lower === "none" ||
+    lower === "nil" ||
+    lower === "null" ||
+    lower === "undefined" ||
+    lower === "{}" ||
+    lower === "[]" ||
+    lower === "[object object]" ||
+    lower === "unknown" ||
+    lower.startsWith("unknown ")
   ) {
     return false;
   }
@@ -822,22 +929,25 @@ export function isValidValue(val?: unknown): boolean {
  * Normalizes a field value into a clean display string, returning empty string for invalid/placeholder values.
  */
 export function cleanValue(val?: unknown): string {
-  if (!isValidValue(val)) return '';
+  if (!isValidValue(val)) return "";
   if (Array.isArray(val)) {
     return val
       .map((item) => {
-        if (typeof item === 'string') return item;
-        if (item && typeof item === 'object') {
-          const obj = item as { name?: string; firstName?: string; lastName?: string };
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object") {
+          const obj = item as {
+            name?: string;
+            firstName?: string;
+            lastName?: string;
+          };
           return (
-            obj.name ||
-            [obj.firstName, obj.lastName].filter(Boolean).join(' ')
+            obj.name || [obj.firstName, obj.lastName].filter(Boolean).join(" ")
           );
         }
         return String(item);
       })
       .filter(Boolean)
-      .join(', ');
+      .join(", ");
   }
   return String(val).trim();
 }
@@ -849,7 +959,7 @@ export function cleanValue(val?: unknown): string {
 export function getItemDisplayDate(
   item?: Partial<Item> | Record<string, unknown> | null,
 ): number | string | null {
-  if (!item || typeof item !== 'object') return null;
+  if (!item || typeof item !== "object") return null;
   const rec = item as Record<string, unknown>;
   const ef = (rec.extraFields as Record<string, unknown> | undefined) || {};
   if (isValidValue(rec.year)) {
@@ -857,11 +967,11 @@ export function getItemDisplayDate(
     if (!isNaN(num) && num >= 1000 && num <= 2999) return num;
   }
 
-  const itemType = typeof rec.itemType === 'string' ? rec.itemType : undefined;
+  const itemType = typeof rec.itemType === "string" ? rec.itemType : undefined;
   const preferredDateField = getDateFieldForType(itemType);
   const preferredVal =
-    preferredDateField && preferredDateField !== 'date'
-      ? rec[preferredDateField] ?? ef[preferredDateField]
+    preferredDateField && preferredDateField !== "date"
+      ? (rec[preferredDateField] ?? ef[preferredDateField])
       : undefined;
 
   const dateSource =
@@ -891,34 +1001,34 @@ export function getItemDisplayDate(
  * All Zotero Schema v42 field keys promoted from `extraFields` / `metadata` onto top-level `Item`
  * during `mapBackendItemToPaper`. Automatically derived from `ALL_ZOTERO_SCHEMA_FIELDS`.
  */
-export const ALL_ZOTERO_PROMOTE_KEYS: readonly string[] = Array.from(ALL_ZOTERO_SCHEMA_FIELDS).filter(
-  (k) => k !== 'title' && k !== 'extra',
-);
+export const ALL_ZOTERO_PROMOTE_KEYS: readonly string[] = Array.from(
+  ALL_ZOTERO_SCHEMA_FIELDS,
+).filter((k) => k !== "title" && k !== "extra");
 
 const PUBLISHER_CANDIDATE_KEYS = [
-  'publisher',
-  'university',
-  'institution',
-  'issuingAuthority',
-  'authority',
-  'court',
-  'legislativeBody',
-  'company',
-  'organization',
-  'repository',
-  'distributor',
-  'studio',
-  'network',
-  'label',
+  "publisher",
+  "university",
+  "institution",
+  "issuingAuthority",
+  "authority",
+  "court",
+  "legislativeBody",
+  "company",
+  "organization",
+  "repository",
+  "distributor",
+  "studio",
+  "network",
+  "label",
 ] as const;
 
 const DATE_CANDIDATE_KEYS = [
-  'publicationDate',
-  'date',
-  'issueDate',
-  'dateDecided',
-  'dateEnacted',
-  'filingDate',
+  "publicationDate",
+  "date",
+  "issueDate",
+  "dateDecided",
+  "dateEnacted",
+  "filingDate",
 ] as const;
 
 function pickFirstValidField(
@@ -944,11 +1054,15 @@ function mergeRawItemPartials(rec: Record<string, unknown>): {
   ef: Record<string, unknown>;
 } {
   const rawMetadata =
-    rec.metadata && typeof rec.metadata === 'object' && !Array.isArray(rec.metadata)
+    rec.metadata &&
+    typeof rec.metadata === "object" &&
+    !Array.isArray(rec.metadata)
       ? (rec.metadata as Record<string, unknown>)
       : {};
   const rawExtraFields =
-    rec.extraFields && typeof rec.extraFields === 'object' && !Array.isArray(rec.extraFields)
+    rec.extraFields &&
+    typeof rec.extraFields === "object" &&
+    !Array.isArray(rec.extraFields)
       ? (rec.extraFields as Record<string, unknown>)
       : {};
   const ef: Record<string, unknown> = { ...rawMetadata, ...rawExtraFields };
@@ -977,7 +1091,8 @@ function projectCanonicalBaseFields(
   ef: Record<string, unknown>,
 ): void {
   mapped.title =
-    getItemDisplayTitle(mapped) || (typeof rec.title === 'string' ? rec.title : '');
+    getItemDisplayTitle(mapped) ||
+    (typeof rec.title === "string" ? rec.title : "");
 
   const normalizedAuthors = normalizeAuthors(
     rec.authors as unknown[],
@@ -989,7 +1104,10 @@ function projectCanonicalBaseFields(
       creatorType?: string;
     }>,
   );
-  if (normalizedAuthors.length > 0 && (!Array.isArray(rec.authors) || rec.authors.length === 0)) {
+  if (
+    normalizedAuthors.length > 0 &&
+    (!Array.isArray(rec.authors) || rec.authors.length === 0)
+  ) {
     mapped.authors = normalizedAuthors;
   }
 
@@ -1005,9 +1123,9 @@ function projectCanonicalBaseFields(
 
   const displayDate = getItemDisplayDate(mapped);
   const resolvedYear =
-    typeof displayDate === 'number'
+    typeof displayDate === "number"
       ? displayDate
-      : typeof rec.year === 'number' && rec.year > 0
+      : typeof rec.year === "number" && rec.year > 0
         ? rec.year
         : undefined;
   if (!isValidValue(rec.year) && resolvedYear !== undefined) {
@@ -1022,9 +1140,9 @@ function projectCanonicalBaseFields(
   }
 
   const baseProjections: ReadonlyArray<readonly [string, readonly string[]]> = [
-    ['abstract', ['abstractNote', 'abstract']],
-    ['volume', ['reporterVolume', 'codeVolume']],
-    ['pages', ['firstPage', 'codePages']],
+    ["abstract", ["abstractNote", "abstract"]],
+    ["volume", ["reporterVolume", "codeVolume"]],
+    ["pages", ["firstPage", "codePages"]],
   ];
   for (const [targetKey, sourceKeys] of baseProjections) {
     if (!isValidValue(rec[targetKey])) {
@@ -1036,7 +1154,10 @@ function projectCanonicalBaseFields(
   }
 
   if (!isValidValue(rec.place) && !isValidValue(ef.place)) {
-    const fallbackPlace = pickFirstValidField(rec, ef, ['repositoryLocation', 'country']);
+    const fallbackPlace = pickFirstValidField(rec, ef, [
+      "repositoryLocation",
+      "country",
+    ]);
     if (isValidValue(fallbackPlace)) {
       mapped.place = String(fallbackPlace).trim();
     }
@@ -1050,14 +1171,14 @@ function projectCanonicalBaseFields(
 export function mapBackendItemToPaper(
   raw?: Partial<Item> | Record<string, unknown> | null,
 ): Item {
-  if (!raw || typeof raw !== 'object') {
+  if (!raw || typeof raw !== "object") {
     return {
-      id: '',
-      title: 'Untitled',
+      id: "",
+      title: "Untitled",
       authors: [],
       year: 0,
-      createdAt: '',
-      updatedAt: '',
+      createdAt: "",
+      updatedAt: "",
     } as unknown as Item;
   }
 
@@ -1070,38 +1191,42 @@ export function mapBackendItemToPaper(
 export const mapBackendPaperToItem = mapBackendItemToPaper;
 
 const EXTRA_KEY_ALIASES: Record<string, readonly string[]> = {
-  doi: ['doi', 'DOI'],
-  citationkey: ['citationKey', 'citeKey'],
-  citekey: ['citationKey', 'citeKey'],
-  arxiv: ['arxivId', 'archiveID', 'archiveId', 'arXiv'],
-  arxivid: ['arxivId', 'archiveID', 'archiveId', 'arXiv'],
-  archiveid: ['archiveID', 'archiveId', 'arxivId'],
-  pmid: ['pmid', 'PMID'],
-  pmcid: ['pmcid', 'PMCID'],
-  isbn: ['isbn', 'ISBN'],
-  issn: ['issn', 'ISSN'],
-  eventplace: ['eventPlace', 'event-place', 'place'],
-  originaldate: ['originalDate', 'original-date'],
-  publisher: ['publisher'],
-  institution: ['institution', 'publisher'],
-  university: ['university', 'publisher'],
-  authority: ['issuingAuthority', 'authority', 'publisher'],
-  issuingauthority: ['issuingAuthority', 'authority', 'publisher'],
-  court: ['court', 'authority', 'publisher'],
-  organization: ['organization', 'publisher'],
-  company: ['company', 'publisher'],
-  containertitle: ['containerTitle', 'publicationTitle'],
-  publicationtitle: ['publicationTitle'],
-  proceedingstitle: ['proceedingsTitle', 'publicationTitle'],
-  booktitle: ['bookTitle', 'publicationTitle'],
-  meetingname: ['meetingName', 'conferenceName', 'publicationTitle'],
-  versionnumber: ['versionNumber', 'version'],
-  version: ['versionNumber', 'version'],
-  patentnumber: ['patentNumber', 'number'],
-  docketnumber: ['docketNumber', 'number'],
-  publiclawnumber: ['publicLawNumber', 'number'],
-  reportnumber: ['reportNumber', 'number'],
+  doi: ["doi", "DOI"],
+  citationkey: ["citationKey", "citeKey"],
+  citekey: ["citationKey", "citeKey"],
+  arxiv: ["arxivId", "archiveID", "archiveId", "arXiv"],
+  arxivid: ["arxivId", "archiveID", "archiveId", "arXiv"],
+  archiveid: ["archiveID", "archiveId", "arxivId"],
+  pmid: ["pmid", "PMID"],
+  pmcid: ["pmcid", "PMCID"],
+  isbn: ["isbn", "ISBN"],
+  issn: ["issn", "ISSN"],
+  eventplace: ["eventPlace", "event-place", "place"],
+  originaldate: ["originalDate", "original-date"],
+  publisher: ["publisher"],
+  institution: ["institution", "publisher"],
+  university: ["university", "publisher"],
+  authority: ["issuingAuthority", "authority", "publisher"],
+  issuingauthority: ["issuingAuthority", "authority", "publisher"],
+  court: ["court", "authority", "publisher"],
+  organization: ["organization", "publisher"],
+  company: ["company", "publisher"],
+  containertitle: ["containerTitle", "publicationTitle"],
+  publicationtitle: ["publicationTitle"],
+  proceedingstitle: ["proceedingsTitle", "publicationTitle"],
+  booktitle: ["bookTitle", "publicationTitle"],
+  meetingname: ["meetingName", "conferenceName", "publicationTitle"],
+  versionnumber: ["versionNumber", "version"],
+  version: ["versionNumber", "version"],
+  patentnumber: ["patentNumber", "number"],
+  docketnumber: ["docketNumber", "number"],
+  publiclawnumber: ["publicLawNumber", "number"],
+  reportnumber: ["reportNumber", "number"],
 };
+
+const PARSED_EXTRA_STRING_CACHE = new Map<string, Record<string, string>>();
+const PARSED_EXTRA_OBJECT_CACHE = new WeakMap<object, Record<string, string>>();
+const MAX_PARSED_EXTRA_STRING_CACHE_SIZE = 1024;
 
 /**
  * Parses Zotero's "Extra" field cheater syntax (both `Key: Value` lines and `{:Key: Value}` blocks)
@@ -1111,6 +1236,16 @@ export function parseZoteroExtraField(extra?: unknown): Record<string, string> {
   const result: Record<string, string> = {};
   if (!extra) return result;
 
+  if (typeof extra === "string") {
+    const trimmed = extra.trim();
+    if (!trimmed) return result;
+    const cached = PARSED_EXTRA_STRING_CACHE.get(trimmed);
+    if (cached) return { ...cached };
+  } else if (typeof extra === "object" && !Array.isArray(extra)) {
+    const cached = PARSED_EXTRA_OBJECT_CACHE.get(extra);
+    if (cached) return { ...cached };
+  }
+
   const setKey = (rawKey: string, rawVal: string) => {
     const k = rawKey.trim();
     const v = rawVal.trim();
@@ -1118,7 +1253,7 @@ export function parseZoteroExtraField(extra?: unknown): Record<string, string> {
     result[k] = v;
     const lower = k.toLowerCase();
     result[lower] = v;
-    const collapsed = lower.replace(/[\s_-]+/g, '');
+    const collapsed = lower.replace(/[\s_-]+/g, "");
     result[collapsed] = v;
     const aliases = EXTRA_KEY_ALIASES[collapsed];
     if (aliases) {
@@ -1129,30 +1264,39 @@ export function parseZoteroExtraField(extra?: unknown): Record<string, string> {
     }
   };
 
-  if (typeof extra === 'object' && !Array.isArray(extra)) {
+  if (typeof extra === "object" && !Array.isArray(extra)) {
     for (const [k, v] of Object.entries(extra as Record<string, unknown>)) {
       if (v !== null && v !== undefined && isValidValue(v)) {
         setKey(k, String(v));
       }
     }
-    return result;
+    PARSED_EXTRA_OBJECT_CACHE.set(extra, result);
+    return { ...result };
   }
 
-  if (typeof extra !== 'string') return result;
+  if (typeof extra !== "string") return result;
   const trimmed = extra.trim();
   if (!trimmed) return result;
 
   // 1. Parse JSON if formatted as JSON object
-  if (trimmed.startsWith('{') && !trimmed.startsWith('{:')) {
+  if (trimmed.startsWith("{") && !trimmed.startsWith("{:")) {
     try {
       const parsed = JSON.parse(trimmed);
-      if (parsed && typeof parsed === 'object') {
-        for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      if (parsed && typeof parsed === "object") {
+        for (const [k, v] of Object.entries(
+          parsed as Record<string, unknown>,
+        )) {
           if (v !== null && v !== undefined && isValidValue(v)) {
             setKey(k, String(v));
           }
         }
-        return result;
+        if (
+          PARSED_EXTRA_STRING_CACHE.size >= MAX_PARSED_EXTRA_STRING_CACHE_SIZE
+        ) {
+          PARSED_EXTRA_STRING_CACHE.clear();
+        }
+        PARSED_EXTRA_STRING_CACHE.set(trimmed, result);
+        return { ...result };
       }
     } catch {
       // Fall through to line-by-line Zotero Extra parsing
@@ -1169,17 +1313,37 @@ export function parseZoteroExtraField(extra?: unknown): Record<string, string> {
   // 3. Parse standard Zotero `Key: Value` lines
   const lines = trimmed.split(/\r?\n/);
   for (const line of lines) {
-    const cleanLine = line.replace(/\{:[^:}]+:[^}]+\}/g, '').trim();
+    const cleanLine = line.replace(/\{:[^:}]+:[^}]+\}/g, "").trim();
     if (!cleanLine) continue;
-    const match = cleanLine.match(/^([A-Za-z][A-Za-z0-9\s_-]{0,40}?)\s*:\s*(.+)$/);
+    const match = cleanLine.match(
+      /^([A-Za-z][A-Za-z0-9\s_-]{0,40}?)\s*:\s*(.+)$/,
+    );
     if (match) {
       setKey(match[1], match[2]);
     }
   }
 
-  return result;
+  if (PARSED_EXTRA_STRING_CACHE.size >= MAX_PARSED_EXTRA_STRING_CACHE_SIZE) {
+    PARSED_EXTRA_STRING_CACHE.clear();
+  }
+  PARSED_EXTRA_STRING_CACHE.set(trimmed, result);
+  return { ...result };
 }
 
-
-
-
+/**
+ * Normalizes an uploaded file name to a clean presentation title.
+ * Strips file extensions and normalizes dashes/underscores to title case words.
+ */
+export function cleanFilenameToTitle(filename?: string | null): string {
+  if (!filename || typeof filename !== "string") return "Uploaded Document";
+  const base = filename
+    .replace(/\.[a-zA-Z0-9]+$/, "")
+    .replace(/[-_]+/g, " ")
+    .trim();
+  if (!base) return "Uploaded Document";
+  return base
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}

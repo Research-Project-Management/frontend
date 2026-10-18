@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Wave 13: Architectural Flow Standardization, Pipeline Consolidation & Single Source of Truth
  *
  * Verifies:
@@ -13,11 +13,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { INITIAL_ITEM_TYPE_FIELDS_MAP } from '@/features/library/types/item-fields.constants';
+import { INITIAL_ITEM_TYPE_FIELDS_MAP } from '@/features/library/domain/types/item-fields.constants';
 import {
   ALL_ITEM_TYPES_FLAT,
   getTitleFieldForType,
-} from '@/features/library/types/item-types.types';
+} from '@/features/library/domain/types/item-types.types';
 import {
   ALL_SCHEMA_FIELD_KEYS,
   FIRST_CLASS_ITEM_COLUMNS,
@@ -37,9 +37,9 @@ import {
   getItemDisplayTitle,
 } from '@/features/library/domain/metadata';
 import { resolveItemFieldValue } from '@/features/library/domain/diff';
-import * as InfoSectionExports from '@/features/library/components/inspector/InfoSection';
-import * as DomainExports from '@/features/library/domain';
-import type { Item } from '@/features/library/types/library.types';
+import * as InfoSectionExports from '@/features/library/ui/inspector/InfoSection';
+import * as DomainExports from '@/features/library/domain/item-field-schema';
+import type { Item } from '@/features/library/domain/types/library.types';
 
 describe('Wave 13: Architectural Flow Standardization & Single Source of Truth', () => {
   it('derives ALL_SCHEMA_FIELD_KEYS, DIRECT_METADATA_FIELDS, and ALL_ZOTERO_PROMOTE_KEYS automatically from the 37 Zotero item types with zero drift', () => {
@@ -184,3 +184,4 @@ describe('Wave 13: Architectural Flow Standardization & Single Source of Truth',
     }
   });
 });
+

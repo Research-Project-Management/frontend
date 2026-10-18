@@ -47,7 +47,7 @@ export function useTopbar({
   onAssigneeFilterChange: propOnUserFilterChange,
   initialFilters,
 }: UseTopbarOptions = {}) {
-  const items = propItems || propWorkItems || [];
+  const items = useMemo(() => propItems || propWorkItems || [], [propItems, propWorkItems]);
   const { projectId } = useParams() as { projectId: string };
   const router = useRouter();
   const { projects = [] } = useProjects();

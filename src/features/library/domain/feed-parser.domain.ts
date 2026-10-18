@@ -2,7 +2,6 @@
  * Pure Domain & Utility Module: Zotero 7 RSS 2.0, RDF/PRISM (RSS 1.0), and Atom Feed Parser
  * + One-Click "Save to Library / Collection" Payload Mapper.
  *
- * 100% Pure TypeScript — Zero DOM / Node XML dependencies.
  */
 
 import {

@@ -20,7 +20,7 @@ import { manuscriptService, pageService } from '@/features/editor/sdk/manuscript
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 import type { EditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
-import { displayName } from '@/features/editor/subsystems/explorer/model/document-naming';
+import { displayName } from '@/features/editor/domain/document/document-naming';
 import { prepareAssetInsertion } from '@/features/editor/domain/latex/smart-paste';
 
 export interface UseFileExplorerActionsOptions {

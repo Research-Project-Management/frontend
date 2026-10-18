@@ -3,7 +3,7 @@ import { Folder, FileText, Video, Music, Archive, Image as ImageIcon, File as Fi
 import { downloadFileUrl } from "@/shared/lib/file-client";
 import { cn } from "@/shared/lib/utils";
 import { formatBytes } from "@/shared/utils/format";
-import type { FileType, StorageItem } from '../types/storage.types';
+import type { FileType, StorageItem, BreadcrumbSegment } from '../types/storage.types';
 
 export function getFileType(item: StorageItem): FileType {
   if (item.isFolder) return 'folder';
@@ -150,3 +150,95 @@ export async function downloadStorageItem(item: StorageItem): Promise<void> {
   }
 }
 
+// ============================================================================
+// PREVIEW FORMATTING UTILITIES
+// ============================================================================
+
+export function formatDetailedSize(bytes?: number): string {
+  if (bytes === undefined || bytes === null || Number.isNaN(bytes)) {
+    return '-';
+  }
+  const formatted = formatFileSize(bytes);
+  const localeBytes = bytes.toLocaleString();
+  return `${formatted} (${localeBytes} bytes)`;
+}
+
+export function formatFileLocation(item?: StorageItem | null, projectName?: string): string {
+  if (!item) return '-';
+  if (projectName) {
+    return `${projectName}${item.parent ? ` / ${item.parent}` : ''}`;
+  }
+  return item.parent ? `My Files / ${item.parent}` : 'My Files (Root)';
+}
+
+export function formatDetailedDate(dateString?: string | Date | null): string {
+  if (!dateString) return '-';
+  try {
+    const d = new Date(dateString);
+    if (Number.isNaN(d.getTime())) return '-';
+    return d.toLocaleString('vi-VN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return '-';
+  }
+}
+
+// ============================================================================
+// DRAG-AND-DROP & BREADCRUMB UTILITIES
+// ============================================================================
+
+export function createFolderDropHandlers(
+  folder: StorageItem,
+  isReadOnly?: boolean,
+  onDropOnFolder?: (folder: StorageItem, e: React.DragEvent) => void,
+  setDragOverFolderId?: (id: string | null) => void,
+) {
+  return {
+    onDragOver: (e: React.DragEvent) => {
+      if (!isReadOnly && folder.isFolder && onDropOnFolder) {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOverFolderId?.(folder.id);
+      }
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      if (isReadOnly) return;
+      e.stopPropagation();
+      setDragOverFolderId?.(null);
+    },
+    onDrop: (e: React.DragEvent) => {
+      if (!isReadOnly && folder.isFolder && onDropOnFolder) {
+        setDragOverFolderId?.(null);
+        onDropOnFolder(folder, e);
+      }
+    },
+  };
+}
+
+export function navigateBreadcrumbPath(
+  segments: BreadcrumbSegment[],
+  targetIndex: number,
+): BreadcrumbSegment[] {
+  return segments.slice(0, targetIndex + 1);
+}
+
+export function pushBreadcrumbFolder(
+  segments: BreadcrumbSegment[],
+  folder: { id: string; name: string },
+): BreadcrumbSegment[] {
+  return [...segments, { id: folder.id, name: folder.name }];
+}
+
+export function canDropIntoFolder(
+  draggedItem: StorageItem | null,
+  targetFolder: StorageItem,
+): boolean {
+  if (!draggedItem || !targetFolder.isFolder) return false;
+  if (draggedItem.id === targetFolder.id) return false;
+  return true;
+}

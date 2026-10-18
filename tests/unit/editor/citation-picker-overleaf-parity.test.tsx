@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import React from 'react';
 import CitationPickerModal from '@/features/editor/subsystems/citation/ui/modals/CitationPickerModal';
@@ -36,7 +36,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   };
 });
 
-vi.mock('@/features/library/data/catalog/catalog.queries', () => ({
+vi.mock('@/features/library/sdk/catalog/catalog.queries', () => ({
   useCollections: vi.fn().mockReturnValue({
     collections: [],
     isLoading: false,
@@ -44,7 +44,7 @@ vi.mock('@/features/library/data/catalog/catalog.queries', () => ({
   }),
 }));
 
-vi.mock('@/features/library/data', () => ({
+vi.mock('@/features/library/sdk', () => ({
   useCollections: vi.fn().mockReturnValue({
     collections: [],
     isLoading: false,
@@ -192,3 +192,4 @@ describe('Overleaf Parity: Citation Picker & Reference Workflow', () => {
     view.destroy();
   });
 });
+

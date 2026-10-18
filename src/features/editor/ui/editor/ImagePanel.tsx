@@ -10,7 +10,7 @@
 import React from 'react';
 import { FileImage, AlertCircle } from 'lucide-react';
 import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
-import { resolveFileUrl } from '@/features/editor/domain/latex/latex-structure';
+import { resolveFileUrl } from '@/shared/lib/file-client';
 
 export interface ImagePanelProps {
   asset: AssetInfo;

@@ -4,7 +4,7 @@ import React from 'react';
 import { Check, Loader2 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { LogEntry } from '@/features/editor/domain/types/compiler.types';
-import type { AiErrorFixResult } from '@/features/editor/sdk/manuscript/ai.api';
+import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assist';
 
 export interface LogAiFixPanelProps {
   entry: LogEntry;

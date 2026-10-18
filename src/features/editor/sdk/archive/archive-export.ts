@@ -15,7 +15,7 @@ import {
   manuscriptService,
   StorageService,
 } from '@/features/editor/sdk/manuscript.service';
-import { resolveFileUrl } from '@/features/editor/domain/latex/latex-structure';
+import { resolveFileUrl } from '@/shared/lib/file-client';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 

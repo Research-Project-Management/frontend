@@ -14,7 +14,7 @@ import { fetchLogEntryExplanation } from '@/features/editor/subsystems/compiler/
 import { LogExplanationPanel } from './LogExplanationPanel';
 import { LogAiFixPanel } from './LogAiFixPanel';
 import type { LogEntry, ErrorExplanationDto } from '@/features/editor/domain/types/compiler.types';
-import type { AiErrorFixResult } from '@/features/editor/sdk/manuscript/ai.api';
+import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assist';
 
 export interface CompilerLogEntryRowProps {
   id?: string;
@@ -95,7 +95,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
                     e.stopPropagation();
                     onClick?.();
                   }}
-                  aria-label={`Go to line ${entry.line} (Dòng ${entry.line})`}
+                  aria-label={`Go to line ${entry.line}`}
                   className="min-h-[28px] flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-medium text-foreground bg-muted hover:bg-muted/80 border border-border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors shrink-0 relative after:absolute after:-inset-1 after:content-['']"
                   title={`Go to line ${entry.line}${entry.file ? ` in ${entry.file}` : ''}`}
                 >

@@ -12,10 +12,11 @@ import {
   Columns2,
   Scan,
   Check,
+  ExternalLink,
 } from 'lucide-react';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSub, MenubarSubTrigger, MenubarSubContent, MenubarSeparator } from '@/shared/components/ui/menubar';
 import { cn } from "@/shared/lib/utils";
-import { editorCommandBus } from '@/features/editor/core';
+import { editorCommandBus, usePageStore } from '@/features/editor/core';
 import { useSettingsStore } from '@/features/editor/core';
 import { useLayoutStore } from '@/features/editor/core';
 import { useShallow } from 'zustand/react/shallow';
@@ -203,7 +204,23 @@ export function ViewMenu() {
           <span className="flex-1 text-xs whitespace-nowrap">PDF only</span>
         </MenubarItem>
 
-        {/* 4. Focus mode */}
+        {/* 4. Open PDF in separate tab */}
+        <MenubarItem
+          onClick={() => {
+            const projectId = usePageStore.getState().projectId;
+            if (projectId) {
+              editorCommandBus.dispatch({ type: 'preview:detach' });
+            }
+          }}
+          className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors text-xs font-medium select-none"
+        >
+          <div className="size-4 flex items-center justify-center shrink-0">
+            <ExternalLink className="size-4 opacity-70" strokeWidth={1.8} />
+          </div>
+          <span className="flex-1 text-xs whitespace-nowrap">Open PDF in separate tab</span>
+        </MenubarItem>
+
+        {/* 5. Focus mode */}
         <MenubarItem
           onClick={handleToggleFocusMode}
           className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors text-xs font-medium select-none"

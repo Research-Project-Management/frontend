@@ -15,6 +15,7 @@ import {
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
 import { pageService } from '@/features/editor/sdk/manuscript.service';
+import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 
 interface ProjectOption {
   id: string;
@@ -86,14 +87,20 @@ export function ProjectTabPane({
           contentStr = rc.content;
         }
       }
+      const targetTitle = projectTargetName.trim();
       createFile.mutate(
         {
           parentPageId,
-          title: projectTargetName.trim(),
+          title: targetTitle,
           content: contentStr,
         },
         {
           onSuccess: (created: { id: string }) => {
+            navigationCoordinator.openDocument({
+              fileId: created.id,
+              title: targetTitle,
+              content: contentStr,
+            });
             setSearchParams({ file: created.id });
             onClose();
           },

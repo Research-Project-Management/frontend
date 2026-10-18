@@ -10,7 +10,7 @@
  */
 
 import { sessionCoordinator } from '@/features/editor/core';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { useCompileStore } from './compiler.store';
 
 export interface FlushBarrierResult {

@@ -88,7 +88,7 @@ export function buildBibliographySection({
   ].some((s) => styleId.toLowerCase().includes(s));
 
   const cleanBibText = (bibliographyText || '').trim();
-  const title = headingTitle || 'Tài liệu tham khảo';
+  const title = headingTitle || 'References';
 
   if (format === 'latex') {
     // If individual citations with keys are provided, generate \bibitem entries

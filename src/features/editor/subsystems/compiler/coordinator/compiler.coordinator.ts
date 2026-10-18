@@ -22,10 +22,10 @@ import {
   assembleCompilationSnapshot,
   type ProjectCompilationSnapshot,
   type SnapshotProjectFile,
-} from '@/features/editor/subsystems/history/model/compilation-snapshot';
+} from '@/features/editor/domain/document/compilation-snapshot';
 import { latexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
-import { diagnosticsCoordinator, type IndexedDiagnosticItem, type FileDiagnosticsSummary } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { diagnosticsCoordinator, type IndexedDiagnosticItem, type FileDiagnosticsSummary } from '@/features/editor/subsystems/diagnostics';
 import {
   editorCommandBus,
   workspaceCoordinator,
@@ -300,8 +300,8 @@ export class CompilerCoordinatorRegistry {
       sessionCoordinator.flushPendingDrafts();
       compileStore.setCompileStatus('idle');
       compileStore.setCompileLog(
-        '[Offline Mode] Bạn đang ngoại tuyến. Các thay đổi đã được lưu an toàn vào bộ nhớ máy (IndexedDB).\n' +
-        'Quá trình biên dịch đã được xếp hàng và sẽ tự động bắt đầu ngay khi kết nối mạng được khôi phục.'
+        '[Offline Mode] You are currently offline. Changes are safely saved locally (IndexedDB).\n' +
+        'Compilation has been queued and will start automatically when connection is restored.'
       );
       editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
       return false;
@@ -554,8 +554,8 @@ export class CompilerCoordinatorRegistry {
         sessionCoordinator.flushPendingDrafts();
         compileStore.setCompileStatus('idle');
         compileStore.setCompileLog(
-          '[Offline Mode] Mất kết nối mạng trong quá trình gửi yêu cầu biên dịch.\n' +
-          'Bản nháp đã được lưu cục bộ và sẽ tự động biên dịch lại khi có mạng.'
+          '[Offline Mode] Network connection lost during compilation request.\n' +
+          'Your draft is saved locally and will automatically recompile when reconnected.'
         );
         editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
       } else {

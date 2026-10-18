@@ -20,7 +20,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
 import { useProjectPages } from '@/features/projects/project-id/pages/hooks/use-page';
-import { useViewItems } from '@/features/library/data/catalog/catalog.queries';
+import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
 import { useUploadFilesWithToast } from '@/features/projects/project-id/work-items/hooks/use-attachment';
 import type {
   AttachPageItem,
@@ -1061,3 +1061,4 @@ export function Attachments({
 }
 
 export default Attachments;
+

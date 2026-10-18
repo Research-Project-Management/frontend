@@ -20,8 +20,8 @@ import { toast } from 'sonner';
 
 export function OfflineBanner() {
   const isOnline = useConnectivityStore((s) => s.isOnline);
-  const syncStatus = useConnectivityStore((s) => s.syncStatus);
   const pendingSaveCount = useConnectivityStore((s) => s.pendingSaveCount);
+  const offlinePendingCompile = useConnectivityStore((s) => s.offlinePendingCompile);
   const recordOnline = useConnectivityStore((s) => s.recordOnline);
   const recordOffline = useConnectivityStore((s) => s.recordOffline);
 
@@ -102,6 +102,7 @@ export function OfflineBanner() {
         <WifiOff className="size-4 shrink-0" />
         <span className="truncate">
           <span className="font-semibold">Offline Mode:</span> Editing is saved locally to your device (IndexedDB) and will sync once reconnected.
+          {offlinePendingCompile && ' Compilation queued for when connection is restored.'}
           {pendingSaveCount > 0 && ` (${pendingSaveCount} pending changes)`}
         </span>
       </div>

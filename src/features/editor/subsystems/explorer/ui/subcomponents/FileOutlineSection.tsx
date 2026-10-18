@@ -4,7 +4,7 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { editorCommandBus } from '@/features/editor/core';
-import { parseDocumentOutline, OUTLINE_INDENT } from '@/features/editor/subsystems/compiler/synctex/pdf-outline';
+import { parseDocumentOutline, OUTLINE_INDENT } from '@/features/editor/subsystems/compiler';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { useLayoutStore } from '@/features/editor/core';
 

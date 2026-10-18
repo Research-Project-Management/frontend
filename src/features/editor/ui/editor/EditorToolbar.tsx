@@ -27,7 +27,6 @@ import {
   Sigma,
   Table as TableIcon,
   Image as ImageIcon,
-  Shapes,
   Link2,
   BookOpen,
   List,
@@ -36,8 +35,11 @@ import {
   Code,
   MessageSquarePlus,
   Columns2,
+  Search,
+  Bookmark,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
+import { SourceVisualSwitcher } from './SourceVisualSwitcher';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -46,7 +48,7 @@ import {
 } from '@/shared/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { editorCommandBus, useSettingsStore } from '@/features/editor/core';
-import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
+import { EditorEventBus } from '@/features/editor/core/bus/event-bus';
 import { cn } from '@/shared/lib/utils';
 
 export interface EditorToolbarProps {
@@ -87,13 +89,7 @@ function ToolbarSeparator() {
 
 export function EditorToolbar({ className, readOnly = false, onSplitRight }: EditorToolbarProps) {
   const editorMode = useSettingsStore((s) => s.editorMode);
-  const layout = useSettingsStore((s) => s.layout);
-  const setLayout = useSettingsStore((s) => s.setLayout);
   const [currentStyle, setCurrentStyle] = useState<string>('Normal');
-
-  const handleToggleSplitView = React.useCallback(() => {
-    setLayout(layout === 'split' ? 'editor-only' : 'split');
-  }, [layout, setLayout]);
 
   // ── History Handlers (Undo / Redo) ──
   const handleUndo = () => {
@@ -186,15 +182,10 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'figure-wizard' });
   };
 
-  const handleInsertDiagram = () => {
-    if (readOnly) return;
-    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'diagram-canvas' });
-  };
-
   const handleInsertLink = () => {
     if (readOnly) return;
     if (editorMode === 'visual') {
-      const url = window.prompt('Nhập URL liên kết:');
+      const url = window.prompt('Enter link URL:');
       if (url) {
         EditorEventBus.emit('flux:visual-command', { command: 'createLink', contentHtml: url });
         editorCommandBus.dispatch({ type: 'editor:visual-command', command: 'createLink', contentHtml: url });
@@ -211,6 +202,15 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
   const handleInsertCitation = () => {
     if (readOnly) return;
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'citation-picker' });
+  };
+
+  const handleInsertCrossRef = () => {
+    if (readOnly) return;
+    editorCommandBus.dispatch({
+      type: 'editor:wrap-selection',
+      prefix: '\\ref{',
+      suffix: '}',
+    });
   };
 
   // ── Environment Handlers (Lists, Quote, Code) ──
@@ -252,96 +252,6 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
     editorCommandBus.dispatch({ type: 'review:create-comment' });
   }, [readOnly]);
 
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
-      const modKey = isMac ? e.metaKey : e.ctrlKey;
-
-      if (modKey && e.altKey && e.key.toLowerCase() === 'm') {
-        e.preventDefault();
-        handleAddComment();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleAddComment]);
-
-  if (editorMode === 'code') {
-    return (
-      <div
-        className={cn(
-          'h-9 min-h-[36px] px-2 flex items-center border-b border-border bg-surface select-none shrink-0 overflow-x-auto overflow-y-hidden scrollbar-none gap-0.5',
-          className
-        )}
-      >
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={readOnly}
-              onClick={handleInsertSymbol}
-              className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
-              aria-label="Insert Symbol (Ω)"
-            >
-              <OmegaIcon />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            <span>Insert Symbol (Ω)</span>
-          </TooltipContent>
-        </Tooltip>
-
-        <ToolbarSeparator />
-
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={readOnly}
-              onClick={handleAddComment}
-              className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
-              aria-label="Add Comment"
-            >
-              <MessageSquarePlus className="size-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            <span>Add Comment</span>
-            <span className="ml-1.5 opacity-60">(Mod-Alt-m)</span>
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleToggleSplitView}
-              className={cn(
-                "size-7 p-0 rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']",
-                layout === 'split'
-                  ? "text-primary bg-muted/60"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              )}
-              aria-label="Split view"
-              title="Split view (Editor & PDF preview) - Chia đôi khung soạn thảo"
-            >
-              <Columns2 className="size-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            <span>{layout === 'split' ? 'Editor only (Ẩn PDF)' : 'Split view (Hiện PDF)'}</span>
-          </TooltipContent>
-        </Tooltip>
-
-        <ToolbarSeparator />
-      </div>
-    );
-  }
-
   return (
     <div
       className={cn(
@@ -349,9 +259,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
         className
       )}
     >
-
-
-      {/* ── 1. History Group (Undo / Redo) ── */}
+      {/* ── 1. History Group (Undo / Redo - Overleaf Parity: Far Left) ── */}
       <Tooltip delayDuration={300}>
         <TooltipTrigger asChild>
           <Button
@@ -524,22 +432,81 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
         </TooltipContent>
       </Tooltip>
 
+      <ToolbarSeparator />
+
+      {/* ── 5. Insert Objects (Overleaf Parity: Link, Comment, Cross-ref, Citation, Figure, Table) ── */}
       <Tooltip delayDuration={300}>
         <TooltipTrigger asChild>
           <Button
             variant="ghost"
             size="sm"
             disabled={readOnly}
-            onClick={handleInsertTable}
+            onClick={handleInsertLink}
             className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
-            aria-label="Insert table"
+            aria-label="Insert link"
           >
-            <TableIcon className="size-3.5" />
+            <Link2 className="size-3.5" />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">
-          <span>Insert table</span>
-          <span className="ml-1.5 opacity-60">(Mod-Shift-t)</span>
+          <span>Insert link</span>
+          <span className="ml-1.5 opacity-60">(Mod-k)</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={handleAddComment}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
+            aria-label="Add Comment"
+          >
+            <MessageSquarePlus className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Add Comment</span>
+          <span className="ml-1.5 opacity-60">(Mod-Alt-m)</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={handleInsertCrossRef}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
+            aria-label="Cross reference"
+          >
+            <Bookmark className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Cross-reference</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            onClick={handleInsertCitation}
+            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
+            aria-label="Cite reference"
+          >
+            <BookOpen className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <span>Cite reference</span>
+          <span className="ml-1.5 opacity-60">(Mod-Shift-k)</span>
         </TooltipContent>
       </Tooltip>
 
@@ -567,53 +534,16 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
             variant="ghost"
             size="sm"
             disabled={readOnly}
-            onClick={handleInsertDiagram}
+            onClick={handleInsertTable}
             className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
-            aria-label="Insert TikZ diagram"
+            aria-label="Insert table"
           >
-            <Shapes className="size-3.5" />
+            <TableIcon className="size-3.5" />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">
-          <span>Insert TikZ diagram</span>
-        </TooltipContent>
-      </Tooltip>
-
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={readOnly}
-            onClick={handleInsertLink}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
-            aria-label="Insert link"
-          >
-            <Link2 className="size-3.5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs">
-          <span>Insert link</span>
-          <span className="ml-1.5 opacity-60">(Mod-k)</span>
-        </TooltipContent>
-      </Tooltip>
-
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={readOnly}
-            onClick={handleInsertCitation}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
-            aria-label="Cite reference"
-          >
-            <BookOpen className="size-3.5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs">
-          <span>Cite reference</span>
-          <span className="ml-1.5 opacity-60">(Mod-Shift-k)</span>
+          <span>Insert table</span>
+          <span className="ml-1.5 opacity-60">(Mod-Shift-t)</span>
         </TooltipContent>
       </Tooltip>
 
@@ -692,52 +622,57 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
         </TooltipContent>
       </Tooltip>
 
-      {/* ── 6. Collaboration & Actions (Add Comment & Split) ── */}
-      <ToolbarSeparator />
+      {/* ── 6. Right Side Group (Overleaf Parity: Source/Visual Switcher, Search in file, Split) ── */}
+      <div className="ml-auto flex items-center gap-1 shrink-0">
+        {/* Toggle In-File Search (Ctrl+F) */}
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                editorCommandBus.dispatch({ type: 'editor:find' });
+              }}
+              className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
+              aria-label="Search in file (Ctrl+F)"
+            >
+              <Search className="size-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            <span>Search in file</span>
+            <span className="ml-1.5 opacity-60">(Mod-f)</span>
+          </TooltipContent>
+        </Tooltip>
 
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={readOnly}
-            onClick={handleAddComment}
-            className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
-            aria-label="Add Comment"
-          >
-            <MessageSquarePlus className="size-3.5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs">
-          <span>Add Comment</span>
-          <span className="ml-1.5 opacity-60">(Mod-Alt-m)</span>
-        </TooltipContent>
-      </Tooltip>
+        <ToolbarSeparator />
 
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleToggleSplitView}
-            className={cn(
-              "size-7 p-0 rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']",
-              layout === 'split'
-                ? "text-primary bg-muted/60"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
-            )}
-            aria-label="Split view"
-            title="Split view (Editor & PDF preview) - Chia đôi khung soạn thảo"
-          >
-            <Columns2 className="size-3.5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs">
-          <span>{layout === 'split' ? 'Editor only (Ẩn PDF)' : 'Split view (Hiện PDF)'}</span>
-        </TooltipContent>
-      </Tooltip>
+        {/* Code / Visual Mode Switcher */}
+        <SourceVisualSwitcher />
 
-      <ToolbarSeparator />
+        {onSplitRight && (
+          <>
+            <ToolbarSeparator />
+            <Tooltip delayDuration={300}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onSplitRight}
+                  className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
+                  aria-label="Split editor right"
+                  title="Split editor right"
+                >
+                  <Columns2 className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                <span>Split editor right</span>
+              </TooltipContent>
+            </Tooltip>
+          </>
+        )}
+      </div>
     </div>
   );
 }

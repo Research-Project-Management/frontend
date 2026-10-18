@@ -1,10 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  sanitizeItemPayload,
-  ItemService,
-  QualityService,
-  SyncService,
-} from '@/features/library/data';
+  sanitizeItemPayload, ItemService, QualityService, SyncService } from '@/features/library/sdk/library.client';
 import * as api from '@/shared/lib/api';
 
 describe('Library Module — Client Zero-Trust & Sanitization', () => {
@@ -324,4 +320,5 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
     });
   });
 });
+
 

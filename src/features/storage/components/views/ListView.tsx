@@ -29,10 +29,13 @@ const DeleteModal = dynamic(
 );
 import { resolveFileUrl } from "@/shared/lib/file-client";
 import { cn } from "@/shared/lib/utils";
-import { useInfiniteSentinel } from '../../hooks/use-infinite-sentinel';
+import { useInfiniteSentinel } from '../../hooks/use-storage';
 import type { StorageItem } from '@/features/storage/types/storage.types';
-import { useStorageUIStore } from '@/features/storage/store/storage-ui.store';
-import { usePreviewStore } from '@/features/storage/store/use-preview-store';
+import {
+  useStorageUIStore,
+  usePreviewStore,
+  useStorageSelectionStore,
+} from '@/features/storage/store/storage-ui.store';
 import StorageEmptyState from '../layout/StorageEmptyState';
 import {
   getFileType,
@@ -40,9 +43,8 @@ import {
   getFileColor,
   formatFileSize,
   formatDate,
+  createFolderDropHandlers,
 } from '../../utils/storage.util';
-import { useStorageSelectionStore } from '../../store/use-selection-store';
-import { createFolderDropHandlers } from '../../utils/drag-drop.util';
 
 const FileIconItem = React.memo(function FileIconItem({ item }: { item: StorageItem }) {
   const [hasError, setHasError] = useState(false);
@@ -164,15 +166,10 @@ export const ItemActions = React.memo(function ItemActions({
   };
 
   const handleRestore = async () => {
+    if (!onRestore) return;
     setIsRestoring(true);
     try {
-      const event = new CustomEvent('restore-storage-item', { detail: item.id });
-      window.dispatchEvent(event);
-      if (onRestore) {
-        await Promise.resolve(onRestore(item.id));
-      } else {
-        await Promise.resolve(onDelete(item.id));
-      }
+      await Promise.resolve(onRestore(item.id));
       toast.success("Restored successfully");
     } catch {
       toast.error("Failed to restore");

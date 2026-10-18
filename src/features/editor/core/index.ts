@@ -21,6 +21,7 @@ export {
   getActiveEditorInstance,
   registerDefaultBridges,
 } from './bus/command-bus';
+export { EditorEventBus } from './bus/event-bus';
 
 export type {
   IEditorCommandBus,
@@ -87,13 +88,10 @@ export {
 
 export {
   useViewerStore,
-} from '@/features/editor/subsystems/compiler/coordinator/viewer.store';
-
-export {
   useCompilerStore,
   useCompileStore,
-} from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
-export type { CompileError } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
+} from '@/features/editor/subsystems/compiler';
+export type { CompileError } from '@/features/editor/domain/types/compiler.types';
 
 // 3. Shell Presentation Layer
 export { default as ModernWorkbenchLayout } from './shell/ModernWorkbenchLayout';

@@ -19,7 +19,7 @@ import React, {
   useEffect,
   useMemo,
 } from 'react';
-import { useParams, useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   FileCode2,
@@ -50,7 +50,7 @@ import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { type LinkedFileDto } from '@/features/editor/sdk/manuscript/types';
 import { StorageFileRow } from './subcomponents/FileTreeNodes';
-import { UploadConflictDialog } from './dialogs/UploadConflictDialog';
+import { UploadConflictDialog } from './modals/UploadConflictDialog';
 import { FileOutlineSection } from './subcomponents/FileOutlineSection';
 import { FileTreeToolbar } from './subcomponents/FileTreeToolbar';
 import { TexFileRow, displayName } from './subcomponents/TexFileRow';
@@ -60,7 +60,7 @@ import { useFileTree } from './hooks/useFileTree';
 import type { FileTreeNode } from '@/features/editor/subsystems/explorer/model/document-tree';
 import { useFileExplorerActions } from './hooks/useFileExplorerActions';
 import type { AddFilesTab } from '@/features/editor/subsystems/explorer/ui/modals/add-files.types';
-import { DeleteFileDialog } from './dialogs/DeleteFileDialog';
+import { DeleteFileDialog } from './modals/DeleteFileDialog';
 import { FileTreeContainer } from './FileTreeContainer';
 
 const AddFilesModal = dynamic(
@@ -78,11 +78,7 @@ const sanitizeTitle = (raw: string) => {
 
 const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => void }) {
   const { pageId, projectId: routeProjectId } = useParams<{ pageId?: string; projectId?: string }>();
-  const parentPageId: string | null = pageId ?? null;
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-
   const setSearchParams = useCallback(
     (newParams: Record<string, string>) => {
       if (typeof window !== 'undefined') {
@@ -98,6 +94,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   );
 
   const currentPage = usePageStore((s) => s.currentPage);
+  const storeParentPageId = usePageStore((s) => s.parentPageId);
   const activeFilePage = usePageStore((s) => s.activeFilePage);
   const setTexFiles = usePageStore((s) => s.setTexFiles);
   const setSelectedAsset = usePageStore((s) => s.setSelectedAsset);
@@ -105,14 +102,16 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   const configuredMainFile = useSettingsStore((s) => s.mainFile);
   const openTab = useTabsStore((s) => s.openTab);
 
+  const parentPageId: string | null = pageId || storeParentPageId || currentPage?.id || null;
+
   const { data: parentPage } = useQuery({
     ...pageQuery(parentPageId ?? ''),
     enabled: !!parentPageId,
   });
 
   const { data: deletedFilesList = [] } = useQuery({
-    ...deletedFilesQuery(pageId || ''),
-    enabled: Boolean(pageId),
+    ...deletedFilesQuery(parentPageId || ''),
+    enabled: Boolean(parentPageId),
   });
 
   const projectId =
@@ -228,9 +227,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     const handleFileTreeUpdated = () => {
       if (parentPageId) {
         queryClient.invalidateQueries({ queryKey: filesQuery(parentPageId).queryKey });
-        if (pageId) {
-          queryClient.invalidateQueries({ queryKey: deletedFilesQuery(pageId).queryKey });
-        }
+        queryClient.invalidateQueries({ queryKey: deletedFilesQuery(parentPageId).queryKey });
       }
     };
 
@@ -240,7 +237,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       window.removeEventListener('flux:filetree-updated', handleFileTreeUpdated);
       unsubCmd();
     };
-  }, [queryClient, parentPageId, pageId]);
+  }, [queryClient, parentPageId]);
 
   // Query external linked files (Zotero, Mendeley, remote URL)
   const { data: linkedFiles = [] } = useQuery<LinkedFileDto[]>({
@@ -436,6 +433,11 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
           setIsCreatingFile(false);
           setNewFileName('');
           queryClient.invalidateQueries({ queryKey: filesQuery(parentPageId).queryKey });
+          navigationCoordinator.openDocument({
+            fileId: file.id,
+            title: parsed.data.title,
+            content: '',
+          });
           setSearchParams({ file: file.id });
         },
       },
@@ -480,8 +482,6 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     [renameValue, files, updateTitleMutation],
   );
 
-  const closeTab = useTabsStore((s) => s.closeTab);
-
   const handleDelete = useCallback(
     (fileId: string) => {
       const target =
@@ -498,17 +498,11 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
     deletePageMutation.mutate(targetId, {
       onSuccess: () => {
-        closeTab(parentPageId, targetId, (nextId) => {
-          if (nextId) {
-            setSearchParams({ file: nextId });
-          } else {
-            setSearchParams({});
-          }
-        });
+        navigationCoordinator.closeDocument(targetId);
         setFileToDelete(null);
       },
     });
-  }, [fileToDelete, parentPageId, deletePageMutation, closeTab, setSearchParams]);
+  }, [fileToDelete, parentPageId, deletePageMutation]);
 
   const handleSetMain = useCallback(
     (fileId: string) => {

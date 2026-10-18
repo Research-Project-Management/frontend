@@ -42,10 +42,11 @@ const bibParseCache = new Map<string, CachedBibFile>();
 export function useCitationTabState() {
   const params = useParams<{ projectId?: string; pageId?: string }>();
   const currentPage = usePageStore((s) => s.currentPage);
+  const storeParentPageId = usePageStore((s) => s.parentPageId);
   const storeProjectId = usePageStore((s) => s.projectId);
   const { engine, getContent } = useEditorInstance();
 
-  const rootPageId = params?.pageId || params?.projectId || currentPage?.id || '';
+  const rootPageId = params?.pageId || storeParentPageId || currentPage?.id || params?.projectId || '';
   const projectId =
     params?.projectId ||
     storeProjectId ||
@@ -94,6 +95,19 @@ export function useCitationTabState() {
       }
     };
   }, [engine, refreshContent]);
+
+  useEffect(() => {
+    const handleClearBibCache = () => {
+      bibParseCache.clear();
+      refreshContent();
+    };
+    window.addEventListener('flux:filetree-updated', handleClearBibCache);
+    const unsubCmd = editorCommandBus.subscribe('filetree:updated', handleClearBibCache);
+    return () => {
+      window.removeEventListener('flux:filetree-updated', handleClearBibCache);
+      unsubCmd();
+    };
+  }, [refreshContent]);
 
   // Load project files to extract citations from any project .bib files
   const { data: projectFiles = [] } = useQuery({

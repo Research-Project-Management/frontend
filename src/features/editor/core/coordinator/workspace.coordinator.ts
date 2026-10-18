@@ -15,14 +15,14 @@
 
 import { manuscriptService, fileService } from '@/features/editor/sdk/manuscript.service';
 import { type LinkedFileDto } from '@/features/editor/sdk/manuscript/types';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import { latexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import {
   validateCitationKey,
   refactorCitationKeyAcrossFiles,
-} from '@/features/editor/subsystems/citation/model/citation-refactor';
+} from '@/features/editor/subsystems/citation';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
 import {
   editorCommandBus,
@@ -41,7 +41,7 @@ import {
   setDefaultSpellingNotifier,
 } from '@/features/editor/core/engine/adapters/editor-spelling-port';
 import { setDefaultFileUploader } from '@/features/editor/core/engine/adapters/editor-filestore-port';
-import { filestore } from '@/features/editor/sdk/manuscript/filestore.api';
+import { filestore } from '@/features/editor/sdk/manuscript.service';
 
 // Bridge CodeMirror file upload default port with filestore
 setDefaultFileUploader((projectId, file, name) => filestore.upload(projectId, file, name));
@@ -90,13 +90,28 @@ export const noopWorkspaceNotificationPort: WorkspaceNotificationPort = {
 };
 
 export const defaultWorkspaceStorePort: WorkspaceStorePort = {
-  getActiveProjectId: () => usePageStore.getState().projectId,
-  closeTab: (fileId) => useTabsStore.getState().closeTab(fileId),
+  getActiveProjectId: () =>
+    usePageStore.getState().projectId ||
+    usePageStore.getState().parentPageId ||
+    usePageStore.getState().currentPage?.id ||
+    null,
+  closeTab: (fileId) => {
+    const tabsStore = useTabsStore.getState();
+    for (const projId of Object.keys(tabsStore.tabsByProject)) {
+      tabsStore.closeTab(projId, fileId);
+    }
+    const pageStore = usePageStore.getState();
+    if (pageStore.activeFilePage?.id === fileId) {
+      const parentPage = pageStore.currentPage;
+      pageStore.setActiveFilePage(parentPage && parentPage.id !== fileId ? parentPage : null);
+    }
+  },
   updateTabTitle: (projectId, itemId, newTitle) => {
     const tabsStore = useTabsStore.getState();
-    const allTabs = Object.values(tabsStore.tabsByProject).flat();
-    const existingTab = allTabs.find((t) => t?.id === itemId);
-    if (existingTab) {
+    for (const projId of Object.keys(tabsStore.tabsByProject)) {
+      tabsStore.updateTabTitle(projId, itemId, newTitle);
+    }
+    if (projectId && !tabsStore.tabsByProject[projectId]) {
       tabsStore.updateTabTitle(projectId, itemId, newTitle);
     }
   },
@@ -167,6 +182,12 @@ export class WorkspaceCoordinatorRegistry {
     this.storePort = defaultWorkspaceStorePort;
   }
 
+  private dispatchFileTreeRefresh(): void {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+    }
+  }
+
   private initCommandSubscriptions(): void {
     if (typeof window === 'undefined' || this.initialized) return;
     this.initialized = true;
@@ -227,27 +248,31 @@ export class WorkspaceCoordinatorRegistry {
 
       if (!newFile) return null;
 
+      const resolvedTitle = newFile.title || newFile.name || name;
+      const resolvedContent = newFile.content || content;
+
       // 1. Warm LRU cache
       lruDocumentCache.warm(newFile.id, {
-        filePath: newFile.title || newFile.name || name,
-        content: newFile.content || content,
+        filePath: resolvedTitle,
+        content: resolvedContent,
         projectId: effectiveProjectId,
       });
 
       // 2. Register in LaTeX DAG Engine & Symbol Index
-      latexDagEngine.parseAndRegister(newFile.title || newFile.name || name, newFile.content || content);
-      latexSymbolsIndex.indexFile(newFile.id, newFile.title || newFile.name || name, newFile.content || content);
+      latexDagEngine.parseAndRegister(resolvedTitle, resolvedContent, newFile.id);
+      latexSymbolsIndex.indexFile(newFile.id, resolvedTitle, resolvedContent);
 
       // 3. Notify FileTree & CommandBus
       editorCommandBus.dispatch({ type: 'filetree:updated', payload: { action: 'create', file: newFile } });
+      this.dispatchFileTreeRefresh();
 
       // 4. Auto-open in tab if requested
       if (openAfterCreate) {
         editorCommandBus.dispatch({
           type: 'navigation:open-tab',
           fileId: newFile.id,
-          title: newFile.title || newFile.name || name,
-          path: newFile.title || newFile.name || name,
+          title: resolvedTitle,
+          path: resolvedTitle,
         });
       }
 
@@ -272,8 +297,20 @@ export class WorkspaceCoordinatorRegistry {
     try {
       await this.servicePort.renameNode(effectiveProjectId, itemId, { name: newName });
 
-      // 1. Cascade rename to Tabs Store
+      // 1. Cascade rename to Tabs Store across all project/page scopes
       this.storePort.updateTabTitle(effectiveProjectId, itemId, newName);
+
+      // 1b. Cascade rename to PageStore if active or current page matches
+      const pageStore = usePageStore.getState();
+      if (pageStore.activeFilePage?.id === itemId) {
+        pageStore.setActiveFilePage({
+          ...pageStore.activeFilePage,
+          title: newName,
+        });
+      }
+      if (pageStore.currentPage?.id === itemId) {
+        pageStore.setCurrentPage((prev) => (prev ? { ...prev, title: newName } : prev));
+      }
 
       // 2. Cascade rename to LRU Cache
       const model = lruDocumentCache.getModel(itemId);
@@ -296,6 +333,7 @@ export class WorkspaceCoordinatorRegistry {
         type: 'filetree:updated',
         payload: { action: 'rename', itemId, oldName, newName },
       });
+      this.dispatchFileTreeRefresh();
 
       this.notificationPort.notifySuccess(`Renamed to "${newName}"`, `rename-file-${itemId}`);
       return true;
@@ -318,6 +356,7 @@ export class WorkspaceCoordinatorRegistry {
 
       // 1. Close open tab if present
       this.storePort.closeTab(fileId);
+      editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId });
 
       // 2. Evict from LRU Cache, DAG, & Symbol Index
       lruDocumentCache.evictModel(fileId);
@@ -329,6 +368,7 @@ export class WorkspaceCoordinatorRegistry {
         type: 'filetree:updated',
         payload: { action: 'delete', fileId },
       });
+      this.dispatchFileTreeRefresh();
 
       this.notificationPort.notifySuccess('File moved to trash', `delete-file-${fileId}`);
       return true;
@@ -356,6 +396,7 @@ export class WorkspaceCoordinatorRegistry {
         type: 'filetree:updated',
         payload: { action: 'move', itemId, targetFolderId },
       });
+      this.dispatchFileTreeRefresh();
 
       this.notificationPort.notifySuccess('Moved successfully', `move-file-${itemId}`);
       return true;
@@ -405,10 +446,7 @@ export class WorkspaceCoordinatorRegistry {
         type: 'filetree:updated',
         payload: { action: 'restore', fileId, page },
       });
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
-      }
+      this.dispatchFileTreeRefresh();
 
       this.notificationPort.notifySuccess('File restored', `restore-file-${fileId}`);
       return res;
@@ -428,16 +466,16 @@ export class WorkspaceCoordinatorRegistry {
 
     try {
       await this.servicePort.setRootDoc(effectiveProjectId, fileId);
-      this.storePort.setMainFile(fileId);
+      const cached = lruDocumentCache.getModel(fileId);
+      const matchedProjectFile = this.projectFiles.find((f) => f.id === fileId);
+      const resolvedFileName = cached?.filePath || matchedProjectFile?.title || matchedProjectFile?.name || fileId;
+      this.storePort.setMainFile(resolvedFileName);
 
       editorCommandBus.dispatch({
         type: 'filetree:updated',
         payload: { action: 'set-root', fileId },
       });
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
-      }
+      this.dispatchFileTreeRefresh();
 
       this.notificationPort.notifySuccess('Set as main document', 'set-main-file');
       return true;
@@ -593,8 +631,15 @@ export class WorkspaceCoordinatorRegistry {
 
       // If this file is currently open in the active editor, notify store and command bus
       if (activeDocId && activeDocId === mod.id) {
-        usePageStore.getState().setCurrentPage((prev) =>
-          prev ? { ...prev, content: mod.newContent, docContent: mod.newContent } : prev
+        const pageStore = usePageStore.getState();
+        if (pageStore.activeFilePage?.id === mod.id) {
+          pageStore.setActiveFilePage({
+            ...pageStore.activeFilePage,
+            content: mod.newContent,
+          });
+        }
+        pageStore.setCurrentPage((prev) =>
+          prev && prev.id === mod.id ? { ...prev, content: mod.newContent, docContent: mod.newContent } : prev
         );
         editorCommandBus.dispatch({ type: 'editor:set-content', content: mod.newContent });
       }
@@ -605,6 +650,7 @@ export class WorkspaceCoordinatorRegistry {
       type: 'filetree:updated',
       payload: { action: 'refactor-citekey', oldKey, newKey, totalCount },
     });
+    this.dispatchFileTreeRefresh();
 
     this.notificationPort.notifySuccess(
       `Renamed @${oldKey} to @${newKey} (${totalCount} occurrences in ${modifiedFiles.length} files)!`,

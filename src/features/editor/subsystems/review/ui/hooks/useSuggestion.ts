@@ -11,6 +11,7 @@ import { useQuery, useMutation, type QueryClient } from '@tanstack/react-query';
 import type { SuggestionStatus, PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 import { suggestionService } from '@/features/editor/sdk/manuscript.service';
 import { type CreateSuggestionPayload } from '@/features/editor/sdk/manuscript/types';
+import { reviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
 import { toast } from 'sonner';
 import { useSafeQueryClient } from './safeQueryClient';
 
@@ -134,6 +135,7 @@ export const useAcceptAllSuggestions = (customClient?: QueryClient) => {
   const queryClient = useSafeQueryClient(customClient);
   return useMutation({
     mutationFn: async ({ pageId }: { pageId: string }) => {
+      reviewCoordinator.applyAllLocally('accept');
       return await suggestionService.acceptAllSuggestions(pageId);
     },
     onSuccess: (_, variables) => {
@@ -152,6 +154,7 @@ export const useRejectAllSuggestions = (customClient?: QueryClient) => {
   const queryClient = useSafeQueryClient(customClient);
   return useMutation({
     mutationFn: async ({ pageId }: { pageId: string }) => {
+      reviewCoordinator.applyAllLocally('reject');
       return await suggestionService.rejectAllSuggestions(pageId);
     },
     onSuccess: (_, variables) => {

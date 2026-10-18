@@ -140,6 +140,14 @@ export function useSyncCollection() {
         `Successfully synced ${data.collectionName} to ${data.targetBibFile}!`,
       );
       queryClient.invalidateQueries({ queryKey: INTEGRATIONS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      queryClient.invalidateQueries({ queryKey: ['pages'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['project-citation-validation'] });
+      queryClient.invalidateQueries({ queryKey: ['project-linked-files'] });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+      }
     },
     onError: (err: unknown) => {
       toast.error(`Sync failed: ${getErrorMessage(err) || 'Could not sync collection'}`);

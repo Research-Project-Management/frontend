@@ -10,8 +10,8 @@ import {
   formatRis,
   formatCslJson,
 } from '@/features/library/domain/citations';
-import { buildFallbackCitation } from '@/features/library/hooks/useLibraryBatchCoordinator';
-import type { Item } from '@/features/library/types/library.types';
+import { buildFallbackCitation } from '@/features/library/core/coordinator/batch-action.coordinator';
+import type { Item } from '@/features/library/domain/types/library.types';
 
 describe('Zotero Wave 8: Citation, Export & Metadata Format Grounding & Accuracy Remediation', () => {
   // ===========================================================================
@@ -330,3 +330,4 @@ describe('Zotero Wave 8: Citation, Export & Metadata Format Grounding & Accuracy
     });
   });
 });
+

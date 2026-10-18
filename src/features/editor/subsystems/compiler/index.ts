@@ -73,6 +73,7 @@ export {
   extractOutlineFromContent,
   parseDocumentOutline,
   cleanLatexTitle,
+  OUTLINE_INDENT,
   type PdfOutlineItem,
   type OutlineEntry,
 } from './synctex/pdf-outline';
@@ -89,12 +90,12 @@ export {
   DEFAULT_OUTPUT_FILES,
   type LogEntry,
   type ParsedLog,
-} from './logs/compiler-logs.parser';
+} from '@/features/editor/domain/latex/compiler-logs-parser';
 export {
   filterDiagnostics,
   shouldSuppressWarning,
   type WarningFilterOptions,
-} from './logs/warning-filter';
+} from '@/features/editor/domain/latex/warning-filter';
 
 // 4. Presentation Layer (Thin Views & Controls)
 export { default as PdfViewer, PdfViewer as NamedPdfViewer } from './ui/PdfViewer';
@@ -123,7 +124,7 @@ import {
 import { useCompileStore } from './coordinator/compiler.store';
 import { editorCommandBus, usePageStore } from '@/features/editor/core';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
-import type { ProjectCompilationSnapshot } from '@/features/editor/subsystems/history/model/compilation-snapshot';
+import type { ProjectCompilationSnapshot } from '@/features/editor/domain/document/compilation-snapshot';
 
 export interface CompileIntent {
   mode?: 'full' | 'fast';

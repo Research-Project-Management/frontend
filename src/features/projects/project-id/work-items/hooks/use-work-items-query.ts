@@ -84,10 +84,14 @@ export function invalidateWorkItemRelatedQueries(
     queryClient.invalidateQueries({ queryKey: ['project-state-counts', projectId] });
     queryClient.invalidateQueries({ queryKey: ['project-details', projectId] });
     queryClient.invalidateQueries({ queryKey: ['project-overview', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['project-analytics-dist', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['work-items-analytics', projectId] });
   } else {
     queryClient.invalidateQueries({ queryKey: ['project-states'] });
     queryClient.invalidateQueries({ queryKey: ['project-state-counts'] });
     queryClient.invalidateQueries({ queryKey: ['project-details'] });
     queryClient.invalidateQueries({ queryKey: ['project-overview'] });
+    queryClient.invalidateQueries({ queryKey: ['project-analytics-dist'] });
+    queryClient.invalidateQueries({ queryKey: ['work-items-analytics'] });
   }
 }

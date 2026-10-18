@@ -77,16 +77,16 @@ export const RenameCitationModal: React.FC<RenameCitationModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <DialogHeader className="pr-6">
             <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
-              Đổi tên khóa trích dẫn (Refactor Citekey)
+              Rename Citation Key (Refactor)
             </DialogTitle>
             <DialogDescription className="text-12 text-muted-foreground mt-0.5">
-              Đổi tên khóa trích dẫn trong tất cả các tệp <code>.tex</code>, <code>.bib</code> và <code>.md</code> của dự án mà không làm mất liên kết hay gây lỗi biên dịch.
+              Safely rename this citation key across all project <code>.tex</code>, <code>.bib</code>, and <code>.md</code> files without breaking references.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 py-1">
             <div className="text-xs flex items-center justify-between">
-              <span className="text-muted-foreground">Khóa hiện tại:</span>
+              <span className="text-muted-foreground">Current key:</span>
               <span className="font-mono bg-muted/60 px-2 py-0.5 rounded-sm text-foreground font-semibold">
                 @{oldKey}
               </span>
@@ -94,7 +94,7 @@ export const RenameCitationModal: React.FC<RenameCitationModalProps> = ({
 
             <div className="space-y-1.5">
               <label htmlFor={inputId} className="text-xs font-medium text-foreground">
-                Khóa trích dẫn mới:
+                New citation key:
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-xs select-none">
@@ -109,7 +109,7 @@ export const RenameCitationModal: React.FC<RenameCitationModalProps> = ({
                     setTouched(true);
                   }}
                   autoFocus
-                  placeholder="ví dụ: vaswani2017attention"
+                  placeholder="e.g. vaswani2017attention"
                   className={`pl-7 font-mono text-xs ${
                     showError ? 'border-destructive focus-visible:ring-destructive' : ''
                   }`}
@@ -132,7 +132,7 @@ export const RenameCitationModal: React.FC<RenameCitationModalProps> = ({
               disabled={isSubmitting}
               className="h-8 text-xs cursor-pointer"
             >
-              Hủy
+              Cancel
             </Button>
             <Button
               type="submit"
@@ -140,7 +140,7 @@ export const RenameCitationModal: React.FC<RenameCitationModalProps> = ({
               disabled={!validation.isValid || isSubmitting}
               className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-none"
             >
-              {isSubmitting ? 'Đang cập nhật...' : 'Xác nhận đổi tên'}
+              {isSubmitting ? 'Updating...' : 'Rename Key'}
             </Button>
           </DialogFooter>
         </form>

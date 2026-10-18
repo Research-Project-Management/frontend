@@ -17,8 +17,10 @@ import {
   ChevronRight,
   FileCode2,
   Loader2,
+  Replace,
 } from "lucide-react";
 import { Input } from '@/shared/components/ui/input';
+import { Button } from '@/shared/components/ui/button';
 import { cn } from "@/shared/lib/utils";
 import {
   usePageStore,
@@ -35,6 +37,7 @@ import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { SidebarPanelHeader } from '@/features/editor/core/shell/SidebarPanelHeader';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
+import { useProjectSearchActions } from './useProjectSearchActions';
 
 interface MatchEntry {
   line: number;
@@ -71,6 +74,11 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
     setQuery,
     instantQuery,
     setInstantQuery,
+    replaceText,
+    setReplaceText,
+    showReplace,
+    setShowReplace,
+    toggleShowReplace,
     caseSensitive,
     setCaseSensitive,
     wholeWord,
@@ -82,8 +90,25 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   } = useSearchStore();
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(query, 250);
   const effectiveQuery = instantQuery !== null ? instantQuery : debouncedQuery;
+
+  const {
+    isReplacingAll,
+    handleReplaceAllCurrentFile,
+    handleReplaceAllEverywhere,
+  } = useProjectSearchActions({
+    engine,
+    effectiveQuery,
+    replaceText,
+    useRegex,
+    wholeWord,
+    caseSensitive,
+    rootProjectId,
+    rootPageId,
+    activeFileId: activeFileId ?? null,
+  });
 
   const handleSearch = useCallback(() => {
     setInstantQuery(query);
@@ -102,6 +127,9 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
         if (cmd.query !== undefined) {
           setQuery(cmd.query);
         }
+        if (cmd.showReplace !== undefined) {
+          setShowReplace(cmd.showReplace);
+        }
         setTimeout(() => {
           searchInputRef.current?.focus();
           searchInputRef.current?.select();
@@ -109,7 +137,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
       }
     });
     return unsub;
-  }, [setQuery]);
+  }, [setQuery, setShowReplace]);
 
   // Fetch all text files in project
   const { data: projectFiles = [] } = useQuery({
@@ -381,6 +409,68 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             W
           </button>
         </div>
+
+        {/* Row 3: Replace Input & Actions (When Replace is toggled on) */}
+        {showReplace && (
+          <div className="space-y-1.5 pt-1 border-t border-border/40 animate-in fade-in-50 duration-150">
+            <div className="relative w-full">
+              <Replace
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none shrink-0"
+                strokeWidth={1.5}
+              />
+              <Input
+                ref={replaceInputRef}
+                value={replaceText}
+                onChange={(e) => setReplaceText(e.target.value)}
+                placeholder="Replace with..."
+                className="h-8 pl-8 pr-8 text-xs bg-background border-border/80 focus-visible:ring-1 focus-visible:ring-primary rounded-md w-full placeholder:text-muted-foreground"
+              />
+              {replaceText ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReplaceText("");
+                    replaceInputRef.current?.focus();
+                  }}
+                  aria-label="Clear replace"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-xs cursor-pointer after:absolute after:-inset-1.5 after:content-['']"
+                >
+                  <X className="size-3.5 shrink-0" />
+                </button>
+              ) : null}
+            </div>
+
+            <div className="flex items-center gap-1.5 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!effectiveQuery || isReplacingAll}
+                onClick={handleReplaceAllCurrentFile}
+                className="h-6 px-2 text-[11px] font-normal cursor-pointer"
+              >
+                In File
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                disabled={!effectiveQuery || isReplacingAll}
+                onClick={handleReplaceAllEverywhere}
+                className="h-6 px-2 text-[11px] font-normal cursor-pointer"
+              >
+                {isReplacingAll ? (
+                  <>
+                    <Loader2 className="size-3 animate-spin mr-1 shrink-0" />
+                    Replacing…
+                  </>
+                ) : (
+                  "Replace All"
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Results List */}

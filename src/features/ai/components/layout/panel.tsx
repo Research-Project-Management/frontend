@@ -161,14 +161,14 @@ export function Panel() {
   };
 
   const handleDeleteLibraryDoc = async (docId: string, title: string) => {
-    if (!confirm(`Xóa vĩnh viễn tài liệu "${title}" khỏi vector store?`)) return;
+    if (!confirm(`Permanently delete "${title}" from vector store?`)) return;
     try {
       await deleteDocument(docId, projectId);
       setAllDocs((prev) => prev.filter((d) => d.id !== docId));
       removeSource(docId);
-      toast.success(`Đã xóa ${title}`);
+      toast.success(`Deleted ${title}`);
     } catch {
-      toast.error('Không thể xóa tài liệu');
+      toast.error('Failed to delete document');
     }
   };
 
@@ -202,7 +202,7 @@ export function Panel() {
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <span>Trong Chat ({sources.length})</span>
+          <span>In Chat ({sources.length})</span>
         </button>
         <button
           type="button"
@@ -215,7 +215,7 @@ export function Panel() {
           )}
         >
           <Database className="size-3 text-ai shrink-0" />
-          <span>Kho dữ liệu</span>
+          <span>Knowledge Base</span>
         </button>
       </div>
 
@@ -249,7 +249,7 @@ export function Panel() {
               }}
             />
             <FileUp className="size-5 mx-auto mb-1.5 text-muted-foreground shrink-0" />
-            <p className="text-11 font-medium text-foreground">Kéo thả file hoặc bấm để tải lên</p>
+            <p className="text-11 font-medium text-foreground">Drag and drop files or click to upload</p>
             <p className="text-10 text-muted-foreground mt-0.5">PDF, DOC, TXT, CSV, Code</p>
           </div>
 
@@ -260,7 +260,7 @@ export function Panel() {
               className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md border border-border bg-background hover:bg-muted text-11 font-medium text-foreground transition-colors cursor-pointer"
             >
               <BookOpen className="size-3 text-ai shrink-0" />
-              <span>Từ Library</span>
+              <span>From Library</span>
             </button>
 
             <button
@@ -268,7 +268,7 @@ export function Panel() {
               className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md border border-border bg-background hover:bg-muted text-11 font-medium text-foreground transition-colors cursor-pointer"
             >
               <Database className="size-3 text-ai shrink-0" />
-              <span>Quản lý kho</span>
+              <span>Manage Library</span>
             </button>
           </div>
 
@@ -302,13 +302,13 @@ export function Panel() {
                   onChange={(e) => handleToggleAll(e.target.checked)}
                   className="rounded border-border text-ai focus:ring-ai size-3.5"
                 />
-                <span>Chọn tất cả ({sources.length})</span>
+                <span>Select all ({sources.length})</span>
               </label>
             </div>
 
             {sources.length === 0 ? (
               <div className="p-4 text-center text-xs text-muted-foreground">
-                Chưa có tài liệu nào trong phiên chat này. Tải lên hoặc chọn từ kho dữ liệu để AI tra cứu.
+                No documents in this session. Upload or select from the library for AI retrieval.
               </div>
             ) : (
               <div className="space-y-1">
@@ -339,7 +339,7 @@ export function Panel() {
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="left" className="text-xs">
-                          Xem trước
+                          Preview
                         </TooltipContent>
                       </Tooltip>
 
@@ -353,7 +353,7 @@ export function Panel() {
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="left" className="text-xs">
-                          Bỏ khỏi chat
+                          Remove from chat
                         </TooltipContent>
                       </Tooltip>
                     </div>
@@ -372,7 +372,7 @@ export function Panel() {
               <Input
                 value={docSearch}
                 onChange={(e) => setDocSearch(e.target.value)}
-                placeholder="Tìm tài liệu..."
+                placeholder="Search documents..."
                 className="pl-8 h-7 text-xs bg-muted/30 border-border"
               />
             </div>
@@ -388,7 +388,7 @@ export function Panel() {
                   <RefreshCw className={cn("size-3", loadingDocs && "animate-spin")} />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">Làm mới kho dữ liệu</TooltipContent>
+              <TooltipContent side="top" className="text-xs">Refresh document library</TooltipContent>
             </Tooltip>
           </div>
 
@@ -396,11 +396,11 @@ export function Panel() {
             {loadingDocs && allDocs.length === 0 ? (
               <div className="flex items-center justify-center p-8 gap-2 text-xs text-muted-foreground">
                 <Loader2 className="size-4 animate-spin text-primary" />
-                <span>Đang tải kho tài liệu...</span>
+                <span>Loading document library...</span>
               </div>
             ) : filteredLibraryDocs.length === 0 ? (
               <div className="p-4 text-center text-xs text-muted-foreground">
-                {docSearch ? 'Không tìm thấy tài liệu' : 'Kho dữ liệu chưa có tài liệu nào'}
+                {docSearch ? 'No documents found' : 'Document library is empty'}
               </div>
             ) : (
               filteredLibraryDocs.map((doc) => {
@@ -445,12 +445,12 @@ export function Panel() {
                         {isAttached ? (
                           <>
                             <Check className="size-3" />
-                            <span>Đang dùng</span>
+                            <span>In chat</span>
                           </>
                         ) : (
                           <>
                             <Plus className="size-3" />
-                            <span>Thêm vào chat</span>
+                            <span>Add to chat</span>
                           </>
                         )}
                       </button>
@@ -459,14 +459,14 @@ export function Panel() {
                         <button
                           onClick={() => handleViewContent(doc.id, doc.title)}
                           className="p-1 rounded text-muted-foreground hover:text-foreground"
-                          title="Xem nội dung"
+                          title="View content"
                         >
                           <Eye className="size-3" />
                         </button>
                         <button
                           onClick={() => handleDeleteLibraryDoc(doc.id, doc.title)}
                           className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          title="Xóa vĩnh viễn"
+                          title="Delete permanently"
                         >
                           <Trash2 className="size-3" />
                         </button>
@@ -485,7 +485,7 @@ export function Panel() {
             className="w-full text-xs h-8 gap-1.5 shrink-0"
           >
             <ExternalLink className="size-3" />
-            <span>Mở kho tài liệu đầy đủ</span>
+            <span>Open full document library</span>
           </Button>
         </div>
       )}
@@ -496,14 +496,14 @@ export function Panel() {
           <DialogHeader className="pb-3 border-b border-border">
             <DialogTitle className="text-sm font-semibold truncate">{viewingDoc?.name}</DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Nội dung văn bản được lưu trữ trong vector store.
+              Extracted text stored in vector knowledge base.
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto p-4 rounded-lg bg-muted/40 font-mono text-xs leading-relaxed whitespace-pre-wrap max-h-[55vh] select-text">
             {viewingLoading ? (
               <div className="flex items-center justify-center p-8 gap-2 text-muted-foreground">
                 <Loader2 className="size-4.5 animate-spin text-primary shrink-0" />
-                <span>Đang tải nội dung...</span>
+                <span>Loading content...</span>
               </div>
             ) : (
               viewingDoc?.content

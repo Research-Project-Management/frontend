@@ -7,7 +7,7 @@
 import { apiPost, apiDelete, apiGet, getAuthToken } from '@/shared/lib/api';
 import { API_BASE_URL } from '@/config/env';
 
-import type { UploadFileParams, CreateFileRecordParams } from '../types/storage-item.types';
+import type { UploadFileParams, CreateFileRecordParams } from '../types/storage.types';
 export type { UploadFileParams, CreateFileRecordParams };
 
 export interface PresignUploadDto {
@@ -69,7 +69,7 @@ export interface ResumableUploadOptions {
 // ── 1. Presigned & Direct Upload ─────────────────────────────────────────────
 
 export const presignUpload = (dto: PresignUploadDto) => {
-  return apiPost<PresignUploadResult>('/api/files/presign', dto);
+  return apiPost<PresignUploadResult>('/api/v1/storage/files/presign', dto);
 };
 
 export const completePresigned = (params: CompletePresignedParams) => {
@@ -81,11 +81,11 @@ export const completePresigned = (params: CompletePresignedParams) => {
     filename: string;
     size: number;
     mimeType: string;
-  }>('/api/files/presign/complete', params);
+  }>('/api/v1/storage/files/presign/complete', params);
 };
 
 export const createFileRecord = (params: CreateFileRecordParams) => {
-  return apiPost<{ id: string; url: string; file: Record<string, unknown> }>('/api/files/upload', {
+  return apiPost<{ id: string; url: string; file: Record<string, unknown> }>('/api/v1/storage/files/upload', {
     filename: params.filename,
     size: params.size,
     mimeType: params.mimeType,
@@ -159,8 +159,8 @@ export const uploadDirectWithProgress = (
 
     const targetUploadUrl =
       typeof window !== 'undefined'
-        ? '/api/files/upload'
-        : `${API_BASE_URL}/api/files/upload`;
+        ? '/api/v1/storage/files/upload'
+        : `${API_BASE_URL}/api/v1/storage/files/upload`;
     xhr.open('POST', targetUploadUrl, true);
     const token = getAuthToken();
     if (token) {
@@ -256,7 +256,7 @@ export const initiateMultipart = (
   projectId?: string | null,
   parentId?: string | null,
 ) => {
-  return apiPost<InitiateMultipartResult>('/api/files/multipart/initiate', {
+  return apiPost<InitiateMultipartResult>('/api/v1/storage/files/multipart/initiate', {
     filename,
     mimeType,
     totalSize,
@@ -271,7 +271,7 @@ export const getMultipartPartUrl = (
   partNumber: number,
 ) => {
   return apiGet<PartUrlResult>(
-    `/api/files/multipart/${encodeURIComponent(sessionId)}/part-url?partNumber=${partNumber}`,
+    `/api/v1/storage/files/multipart/${encodeURIComponent(sessionId)}/part-url?partNumber=${partNumber}`,
   );
 };
 
@@ -321,7 +321,7 @@ export const completeMultipart = (
   parts: MultipartPartDto[],
 ) => {
   return apiPost<{ fileId: string; blobId?: string; url: string; filename: string; size: number }>(
-    '/api/files/multipart/complete',
+    '/api/v1/storage/files/multipart/complete',
     {
       sessionId,
       parts,
@@ -331,7 +331,7 @@ export const completeMultipart = (
 
 export const abortMultipart = (sessionId: string) => {
   return apiDelete<{ success: boolean }>(
-    `/api/files/multipart/${encodeURIComponent(sessionId)}`,
+    `/api/v1/storage/files/multipart/${encodeURIComponent(sessionId)}`,
   );
 };
 

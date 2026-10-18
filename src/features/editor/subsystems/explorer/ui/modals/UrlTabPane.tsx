@@ -11,6 +11,8 @@ import { Input } from '@/shared/components/ui/input';
 import { urlImportModalSchema, type UrlImportModalFormValues } from '@/features/editor/domain/types/forms.types';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { pageKeys } from '@/features/editor/ui/hooks/document.queries';
+import { editorCommandBus } from '@/features/editor/core';
+import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 
 export interface UrlTabPaneProps {
   parentPageId: string | null;
@@ -41,6 +43,18 @@ export function UrlTabPane({
       if (!parentPageId || !rawUrl.trim() || !targetName.trim()) return;
       setIsFetchingUrl(true);
 
+      const notifyTreeUpdated = () => {
+        queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
+        queryClient.invalidateQueries({ queryKey: pageKeys.all });
+        queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+        queryClient.invalidateQueries({ queryKey: ['project-linked-files', effectiveProjectId] });
+        queryClient.invalidateQueries({ queryKey: ['projects'] });
+        editorCommandBus.dispatch({ type: 'filetree:updated' });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+        }
+      };
+
       try {
         // 1. Primary path: Use backend Linked Files service (SSRF-protected)
         try {
@@ -51,8 +65,7 @@ export function UrlTabPane({
             provider: 'url',
           });
           toast.success(`Linked and imported ${targetName} from URL`, { id: `url-import-${targetName}` });
-          queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
-          queryClient.invalidateQueries({ queryKey: ['storage-files', parentPageId] });
+          notifyTreeUpdated();
           onClose();
           return;
         } catch (backendErr: unknown) {
@@ -77,6 +90,11 @@ export function UrlTabPane({
               title: targetName,
               content: textContent,
             });
+            navigationCoordinator.openDocument({
+              fileId: created.id,
+              title: targetName,
+              content: textContent,
+            });
             setSearchParams({ file: created.id });
           } else {
             const blob = await response.blob();
@@ -89,8 +107,7 @@ export function UrlTabPane({
               pageId: parentPageId,
             });
           }
-          queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
-          queryClient.invalidateQueries({ queryKey: ['storage-files', parentPageId] });
+          notifyTreeUpdated();
           toast.success(`Imported ${targetName} from URL`, { id: `url-import-${targetName}` });
           onClose();
         }

@@ -276,7 +276,6 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
             envStack.push({ name: envName, from: cmdFrom, to: fullTo, line: currentLine });
 
             // If entering a known math environment
-            // If entering a known math environment
             if (MATH_ENVS.has(envName.replace(/\*$/, ''))) {
               mathStack.push({ type: 'env', name: envName, from: cmdFrom, line: currentLine });
             }

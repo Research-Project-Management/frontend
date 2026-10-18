@@ -16,7 +16,7 @@
 'use client';
 
 import React from 'react';
-import { FileCode2, WifiOff } from 'lucide-react';
+import { FileCode2 } from 'lucide-react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { Button } from '@/shared/components/ui/button';
@@ -31,12 +31,12 @@ import { EditorPane } from './EditorPane';
 import dynamic from 'next/dynamic';
 
 const DraftRecoveryDialog = dynamic(
-  () => import('./DraftRecoveryDialog').then((m) => m.DraftRecoveryDialog),
+  () => import('@/features/editor/ui/modals/DraftRecoveryDialog').then((m) => m.DraftRecoveryDialog),
   { ssr: false }
 );
 
 const DocumentConflictDialog = dynamic(
-  () => import('./DocumentConflictDialog').then((m) => m.DocumentConflictDialog),
+  () => import('@/features/editor/ui/modals/DocumentConflictDialog').then((m) => m.DocumentConflictDialog),
   { ssr: false }
 );
 
@@ -44,8 +44,6 @@ import { useActiveDocument } from '@/features/editor/ui/hooks/useActiveDocument'
 import { useEditorCollaboration } from '@/features/editor/ui/hooks/useCollaboration';
 import {
   useSettingsStore,
-  usePageStore,
-  useConnectivityStore,
   useLayoutStore,
   editorCommandBus,
   sessionCoordinator,
@@ -124,15 +122,11 @@ export function EditorArea() {
     isAssetTab,
     displayPage,
     pageId,
-    fileId,
     selectedAsset,
     selectFile,
     parentPage,
     childFiles,
   } = useActiveDocument();
-
-  const showEditorTabs = useSettingsStore((s) => s.showEditorTabs);
-  const editorMode = useSettingsStore((s) => s.editorMode);
 
   const editorSplitMode = useLayoutStore((s) => s.editorSplitMode);
   const editorSplitRatio = useLayoutStore((s) => s.editorSplitRatio);
@@ -195,8 +189,6 @@ export function EditorArea() {
     enabled: Boolean(!isLoading && activePage && displayPage && effectiveProjectId),
   });
 
-  const isOnline = useConnectivityStore((s) => s.isOnline);
-  const offlinePendingCompile = useConnectivityStore((s) => s.offlinePendingCompile);
   const isRealtimeConnected = Boolean(yText) && realtimeStatus === 'connected';
 
   // Report the *actual* realtime connection status so HTTP autosave resumes when disconnected.
@@ -212,12 +204,12 @@ export function EditorArea() {
   React.useEffect(() => {
     return sessionCoordinator.onConflict((conflict) => {
       setActiveConflict(conflict);
-      toast.warning('Phát hiện xung đột tài liệu với máy chủ', {
+      toast.warning('Document conflict detected with server', {
         id: `doc-conflict-${conflict.fileId}`,
         duration: 15000,
-        description: 'Tài liệu đã được cập nhật từ máy chủ trong khi bạn có thay đổi chưa lưu.',
+        description: 'The document was updated on the server while you have unsaved local changes.',
         action: {
-          label: 'Xem & Giải quyết',
+          label: 'Review & Resolve',
           onClick: () => setActiveConflict(conflict),
         },
       });
@@ -350,23 +342,6 @@ export function EditorArea() {
 
   return (
     <div className="h-full w-full flex flex-col bg-canvas min-h-0">
-      {/* ── Offline Mode Notice ── */}
-      {!isOnline && (
-        <div className="flex items-center justify-between px-3 py-1 bg-warning/10 border-b border-warning/20 text-warning text-xs shrink-0">
-          <div className="flex items-center gap-2">
-            <WifiOff className="size-3.5 shrink-0 text-warning" />
-            <span>
-              {offlinePendingCompile
-                ? 'Đang ngoại tuyến: Bản nháp đã được lưu vào IndexedDB. Quá trình biên dịch đã được xếp hàng.'
-                : 'Đang ngoại tuyến: Các thay đổi đang được lưu an toàn vào bộ nhớ máy (IndexedDB). Sẽ tự động đồng bộ khi có mạng.'}
-            </span>
-          </div>
-          <span className="text-10 text-warning/80 font-mono hidden sm:inline">
-            Tự động đồng bộ khi kết nối lại
-          </span>
-        </div>
-      )}
-
       {/* ── Draft Recovery Dialog (explicit decision required) ── */}
       {recoverableDraft && displayPage && (
         <DraftRecoveryDialog

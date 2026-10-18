@@ -19,7 +19,7 @@ import {
 } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { compilerCoordinator } from '@/features/editor/subsystems/compiler/coordinator/compiler.coordinator';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import type { SurfaceHandle } from '@/features/editor/subsystems/compiler/ui/PdfSurface';
 
 export interface ViewerPageFileEntry {

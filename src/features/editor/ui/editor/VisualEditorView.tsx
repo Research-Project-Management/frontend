@@ -14,7 +14,7 @@
 import React, { useEffect } from 'react';
 import { CodeMirrorView } from './CodeMirrorView';
 import { useSettingsStore, editorCommandBus } from '@/features/editor/core';
-import { filestore } from '@/features/editor/sdk/manuscript/filestore.api';
+import { filestore } from '@/features/editor/sdk/manuscript.service';
 
 export interface VisualEditorViewProps {
   fileId?: string;

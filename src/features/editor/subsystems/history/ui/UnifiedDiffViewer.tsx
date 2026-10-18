@@ -4,7 +4,7 @@
  * UnifiedDiffViewer.tsx
  *
  * Unified single-column diff hunk viewer with line numbers and word-level token highlight.
- * Location: `features/editor/ui/modals/project-history/UnifiedDiffViewer.tsx`
+ * Location: `features/editor/subsystems/history/ui/UnifiedDiffViewer.tsx`
  */
 
 import React from 'react';
@@ -16,7 +16,7 @@ import type {
   ProjectFileDiff,
   DiffHunk,
   DiffLine,
-} from '@/features/editor/subsystems/history/model/history.types';
+} from '@/features/editor/domain/types/history.types';
 
 export interface UnifiedDiffViewerProps {
   fileDiff: ProjectFileDiff;

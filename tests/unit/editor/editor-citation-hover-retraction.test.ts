@@ -91,10 +91,10 @@ describe('Editor Citation Retraction Warning Subsystem (Overleaf Parity)', () =>
     const dom = tooltip!.create(view).dom as HTMLElement;
 
     // 1. Red warning badge in header
-    expect(dom.textContent).toContain('THU HỒI / RETRACTED');
+    expect(dom.textContent).toContain('RETRACTED');
 
     // 2. Alert callout box with official warning header
-    expect(dom.textContent).toContain('CẢNH BÁO: BÀI BÁO ĐÃ BỊ THU HỒI');
+    expect(dom.textContent).toContain('WARNING: RETRACTED PUBLICATION');
     expect(dom.textContent).toContain('Clinical trial irregularities');
 
     // 3. Official publisher notice URL link
@@ -102,7 +102,7 @@ describe('Editor Citation Retraction Warning Subsystem (Overleaf Parity)', () =>
     expect(noticeLink).not.toBeNull();
 
     // 4. Refactor action button
-    expect(dom.textContent).toContain('Đổi tên key (Refactor)');
+    expect(dom.textContent).toContain('Rename key (Refactor)');
   });
 
   it('flags retracted citations with warning diagnostics in runLatexLinter', () => {

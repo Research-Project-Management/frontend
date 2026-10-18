@@ -32,7 +32,7 @@ describe('Citation Key Refactor & Modal Workflow (Overleaf Parity)', () => {
     );
 
     expect(screen.getByText('@vaswani2017')).toBeDefined();
-    expect(screen.getByText('Đổi tên khóa trích dẫn (Refactor Citekey)')).toBeDefined();
+    expect(screen.getByText('Rename Citation Key (Refactor)')).toBeDefined();
     expect(screen.getByDisplayValue('vaswani2017')).toBeDefined();
   });
 
@@ -49,17 +49,17 @@ describe('Citation Key Refactor & Modal Workflow (Overleaf Parity)', () => {
 
     // Type spaces
     fireEvent.change(input, { target: { value: 'vaswani with spaces' } });
-    expect(screen.getByText('Khóa trích dẫn không được chứa khoảng trắng.')).toBeDefined();
+    expect(screen.getByText('Citation key cannot contain whitespace.')).toBeDefined();
 
     // Type special characters
     fireEvent.change(input, { target: { value: 'vaswani{2017}' } });
     expect(
-      screen.getByText('Khóa trích dẫn không được chứa các ký tự đặc biệt ({ }, \\, ~, ", %, $, ^).')
+      screen.getByText('Citation key cannot contain special characters ({ }, \\, ~, ", %, $, ^).')
     ).toBeDefined();
 
     // Type identical key
     fireEvent.change(input, { target: { value: 'vaswani2017' } });
-    expect(screen.getByText('Khóa trích dẫn mới phải khác với khóa trích dẫn hiện tại.')).toBeDefined();
+    expect(screen.getByText('New citation key must be different from the current key.')).toBeDefined();
   });
 
   it('executes workspaceCoordinator.refactorCitekey across cached models', async () => {
@@ -87,7 +87,7 @@ describe('Citation Key Refactor & Modal Workflow (Overleaf Parity)', () => {
     const input = screen.getByDisplayValue('vaswani2017');
     fireEvent.change(input, { target: { value: 'vaswani_attention_2017' } });
 
-    const submitBtn = screen.getByText('Xác nhận đổi tên');
+    const submitBtn = screen.getByText('Rename Key');
     fireEvent.click(submitBtn);
 
     await waitFor(() => {

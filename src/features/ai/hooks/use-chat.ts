@@ -5,13 +5,11 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import type { ChatMessage, SourceItem, AgentAction, MessageAttachment } from '../types/chat.types';
 import {
-  streamChatResponse,
-  getChatSession,
-} from '../services/chat.service';
+  streamChatResponse, getChatSession, } from '../services/chat.service';
 import { buildResponseWidgetsFromActions } from '../components/chat/response-widgets';
 import { useChatMode } from './use-chat-mode';
-import { libraryServices } from '@/features/library/data/library-services';
-import type { Item } from '@/features/library/types';
+import { libraryServices } from '@/features/library/sdk/library.client';
+import type { Item } from '@/features/library/domain/types/library.types';
 
 export function mergeAgentAction(current: AgentAction[], action: AgentAction): AgentAction[] {
   // If the action is finishing or updating a currently calling tool
@@ -405,3 +403,4 @@ export function useChat() {
 
 // Backward compatibility alias
 export const useWorkspaceChat = useChat;
+

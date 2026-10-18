@@ -27,13 +27,11 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/shared/components/ui/
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { useTopbar } from '../../hooks/use-topbar';
-import CreateFolderModal from '../modal/CreateFolderModal';
-import RenameModal from '../modal/RenameModal';
+import { CreateFolderModal, RenameModal } from '../modal/SingleInputModal';
 import DuplicateModal from '../modal/DuplicateModal';
 import MoveModal from '../modal/MoveModal';
-import { useViewStore } from '../../store/use-view-store';
 import { StorageFilterPopover } from '../filters/StorageFilterPopover';
-import { useStorageUIStore, type StorageSection } from '../../store/storage-ui.store';
+import { useStorageUIStore, useViewStore, type StorageSection } from '../../store/storage-ui.store';
 
 export interface BreadcrumbItem {
   id: string | null;

@@ -396,9 +396,9 @@ export function VisualReferenceHoverCard({
           <div className="mb-2.5 p-2 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-[11px] flex items-start gap-1.5 font-sans leading-normal">
             <AlertTriangle className="size-3.5 shrink-0 mt-0.5 text-destructive" />
             <div>
-              <span className="font-semibold">CẢNH BÁO BÀI BÁO BỊ THU HỒI / RETRACTED:</span>
+              <span className="font-semibold">WARNING: RETRACTED PUBLICATION:</span>
               <p className="opacity-90 mt-0.5">
-                {entry.retractionReason || 'Ấn phẩm này đã bị nhà xuất bản rút lại.'}
+                {entry.retractionReason || 'This publication has been formally retracted by the publisher.'}
               </p>
             </div>
           </div>
@@ -451,7 +451,7 @@ export function VisualReferenceHoverCard({
               <span>Unresolved Citation Key</span>
             </div>
             <p className="text-[11px] leading-normal">
-              Khóa trích dẫn <code className="font-mono text-foreground font-semibold">@{citeKey}</code> chưa được định nghĩa trong file .bib của dự án.
+              Citation key <code className="font-mono text-foreground font-semibold">@{citeKey}</code> is not defined in any project .bib file.
             </p>
           </div>
         )}
@@ -578,7 +578,7 @@ export function VisualReferenceHoverCard({
             <span>Target Not Found</span>
           </div>
           <p className="text-[11px] leading-normal">
-            Không tìm thấy hình ảnh, bảng hoặc nhãn có tên <code className="font-mono text-foreground font-semibold">\{labelKey}\</code> trong tài liệu này.
+            No figure, table, or label named <code className="font-mono text-foreground font-semibold">\{labelKey}\</code> was found in this document.
           </p>
         </div>
       )}

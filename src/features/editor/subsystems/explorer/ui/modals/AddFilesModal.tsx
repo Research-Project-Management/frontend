@@ -18,6 +18,7 @@ import {
 } from '@/shared/components/ui/dialog';
 import { useFileActions } from '@/features/editor/ui/hooks/useFileActions';
 import { useEditorStorage } from '@/features/editor/ui/hooks/useStorage';
+import { usePageStore } from '@/features/editor/core';
 
 import type {
   AddFilesTab,
@@ -45,13 +46,16 @@ export default function AddFilesModal({
   open,
   onOpenChange,
   defaultTab = 'new-file',
-  parentPageId,
+  parentPageId: propParentPageId,
   projectId = '',
   onPickItems,
 }: AddFilesModalProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const storeParentPageId = usePageStore((s) => s.parentPageId);
+  const currentPageId = usePageStore((s) => s.currentPage?.id);
+  const parentPageId = propParentPageId || storeParentPageId || currentPageId || null;
 
   const setSearchParams = useCallback(
     (newParams: Record<string, string>) => {

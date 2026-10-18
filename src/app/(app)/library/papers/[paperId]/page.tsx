@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import ReaderPage from '@/features/library/pages/ReaderPage';
+import ReaderPage from '@/features/library/ui/pages/ReaderPage';
 
 export const metadata: Metadata = { title: 'Paper Reader · Flux' };
 

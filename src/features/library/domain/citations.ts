@@ -9,11 +9,11 @@
  * keys in UI badges, copy-to-clipboard buttons, and toolbar style labels.
  */
 
-import type { Item, CslStyle } from '@/features/library/types/library.types';
+import type { Item, CslStyle } from '@/features/library/domain/types/library.types';
 import {
   CSL_TYPE_MAP,
   getPrimaryCreatorType,
-} from '@/features/library/types/item-types.types';
+} from '@/features/library/domain/types/item-types.types';
 import { parseCreatorName, normalizeAuthors, isInstitutionName } from './creators';
 import {
   stripLatexMarkup,
@@ -25,6 +25,7 @@ import {
   getItemDisplayDate,
 } from './metadata';
 import { cleanDoi, extractArxivId, extractPmid, extractPmcId, cleanIsbn } from './identifiers';
+import { foldDiacritics } from './academic-text';
 
 export interface CitationKeyInput {
   title?: string | null;
@@ -63,19 +64,9 @@ const PRIMARY_AUTHOR_LIKE_CREATOR_ROLES = new Set([
  * Transliterates Unicode diacritics (e.g., Đ/đ -> d, Ł/ł -> l, Ø/ø -> o, ß -> ss, NFD combining marks)
  * into clean ASCII lowercase alphanumeric characters for BibTeX keys.
  */
-function toAsciiKeyPart(raw: string): string {
+export function toAsciiKeyPart(raw: string): string {
   if (!raw) return '';
-  return stripLatexMarkup(raw)
-    .replace(/[Đđ]/g, 'd')
-    .replace(/[Łł]/g, 'l')
-    .replace(/[Øø]/g, 'o')
-    .replace(/ß/g, 'ss')
-    .replace(/[Ææ]/g, 'ae')
-    .replace(/[Œœ]/g, 'oe')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
+  return foldDiacritics(stripLatexMarkup(raw)).replace(/[^a-z0-9]/g, '');
 }
 
 /**
@@ -142,13 +133,8 @@ export function generateCitationKey(
   const effectiveTitle = getItemDisplayTitle(rec) || item.title;
   if (effectiveTitle && isValidValue(effectiveTitle)) {
     const stopWords = new Set(['a', 'an', 'the', 'on', 'of', 'for', 'in', 'to', 'is', 'and', 'with', 'by', 'as', 'at']);
-    const cleanTitle = stripLatexMarkup(String(effectiveTitle))
-      .replace(/[Đđ]/g, 'd')
-      .replace(/[Łł]/g, 'l')
-      .replace(/[Øø]/g, 'o')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
-    const words = cleanTitle.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
+    const cleanTitle = foldDiacritics(stripLatexMarkup(String(effectiveTitle)));
+    const words = cleanTitle.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
     for (const w of words) {
       if (!stopWords.has(w)) {
         titlePart = w;
@@ -192,9 +178,6 @@ export function generateCitationKey(
 
   return `${baseKey}_${Date.now()}`;
 }
-
-export const getItemCitationKey = generateCitationKey;
-export const getPaperCitationKey = generateCitationKey;
 
 export interface BibTeXExportableItem {
   title?: string;

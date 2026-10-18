@@ -1,6 +1,5 @@
 /**
  * Pure Domain Presentation Helpers: Identifiers (DOI, arXiv, PMID, ISBN)
- * 100% Pure TypeScript - 0% React, 0% DOM dependencies
  *
  * NOTE: Academic title capitalization, NLP normalization, and metadata cleaning
  * are strictly executed on the backend server pipeline (Single Source of Truth).

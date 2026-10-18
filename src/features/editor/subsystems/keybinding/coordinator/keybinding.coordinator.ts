@@ -150,19 +150,7 @@ export class KeybindingCoordinatorRegistry {
       },
     });
 
-    // 8. Toggle Bottom Panel (Mod-j)
-    this.register({
-      id: 'workbench.toggleBottomPanel',
-      key: 'Mod-j',
-      description: 'Toggle Bottom Dock Panel (Problems & Logs)',
-      scope: 'any',
-      handler: (e) => {
-        e.preventDefault();
-        useLayoutStore.getState().toggleBottomPanel();
-      },
-    });
-
-    // 9. Toggle AI Research Assistant (Mod-i)
+    // 8. Toggle AI Research Assistant (Mod-i)
     this.register({
       id: 'workbench.toggleAiPanel',
       key: 'Mod-i',
@@ -264,26 +252,7 @@ export class KeybindingCoordinatorRegistry {
       scope: 'any',
       handler: (e) => {
         e.preventDefault();
-        const engine = getActiveEditorInstance();
-        let selectedText = '';
-        let startLine = 1;
-        let endLine = 1;
-
-        if (engine && typeof engine.getCursorPosition === 'function') {
-          const cursor = engine.getCursorPosition();
-          startLine = cursor?.line ?? 1;
-          endLine = cursor?.line ?? 1;
-        }
-
-        useDocumentCollaborationStore.getState().setPendingComment({
-          startLine,
-          endLine,
-          selectedText,
-        });
-
-        useLayoutStore.getState().setSidebarLeftOpen(true);
-        useLayoutStore.getState().setActiveSidebarTab('review');
-        editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
+        editorCommandBus.dispatch({ type: 'review:create-comment' });
       },
     });
 

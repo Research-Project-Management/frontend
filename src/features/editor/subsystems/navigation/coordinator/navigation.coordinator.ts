@@ -24,7 +24,7 @@ import {
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import type { NodeTreeItem } from '@/features/editor/domain/types/node.types';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
 import { toast } from 'sonner';
 
@@ -520,19 +520,28 @@ export class NavigationCoordinatorRegistry {
   public closeDocument(fileId: string): void {
     const tabsStore = useTabsStore.getState();
     const pageStore = usePageStore.getState();
-    const projectId = pageStore.projectId || pageStore.currentPage?.id || 'default';
+    const projectId = pageStore.projectId || pageStore.parentPageId || pageStore.currentPage?.id || 'default';
+    const parentId = pageStore.parentPageId || pageStore.currentPage?.id;
 
     // 1. Save and evict from session coordinator
     sessionCoordinator.closeTab(fileId);
 
-    // 2. Close in tabsStore and gracefully route to adjacent tab
+    // 2. Close in parentId scope if distinct from projectId
+    if (parentId && parentId !== projectId) {
+      tabsStore.closeTab(parentId, fileId);
+    }
+
+    // 3. Close in primary projectId scope and gracefully route to adjacent tab
     tabsStore.closeTab(projectId, fileId, (nextId) => {
-      const rootPageId = pageStore.currentPage?.id || projectId;
+      const rootPageId = parentId || pageStore.currentPage?.id || projectId;
       const isNextRoot = !nextId || nextId === rootPageId || nextId === `${rootPageId}-main`;
 
       if (!isNextRoot && nextId) {
         tabsStore.setActive(projectId, nextId);
-        const tabs = tabsStore.tabsByProject[projectId] || [];
+        if (parentId && parentId !== projectId) {
+          tabsStore.setActive(parentId, nextId);
+        }
+        const tabs = tabsStore.tabsByProject[projectId] || (parentId ? tabsStore.tabsByProject[parentId] : []) || [];
         const nextActiveTab = tabs.find((t) => t.id === nextId);
         if (nextActiveTab) {
           this.openDocument({
@@ -544,6 +553,9 @@ export class NavigationCoordinatorRegistry {
       } else {
         // Revert to root document
         tabsStore.setActive(projectId, rootPageId);
+        if (parentId && parentId !== projectId) {
+          tabsStore.setActive(parentId, rootPageId);
+        }
         const rootPage = pageStore.currentPage;
         if (rootPage) {
           pageStore.setActiveFilePage(rootPage);

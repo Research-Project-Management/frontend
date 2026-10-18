@@ -136,7 +136,7 @@ function AiCompanionSidebarInner() {
   const firstUserMessage = messages.find((m) => m.role === 'user')?.content;
   const isGreeting =
     firstUserMessage &&
-    /^(xin chào|chào bạn|chào|hello|hi|hey|alo)[!.,? ]*$/i.test(
+    /^(hello|hi|hey|greetings|howdy)[!.,? ]*$/i.test(
       firstUserMessage.trim()
     );
   const chatTitle =

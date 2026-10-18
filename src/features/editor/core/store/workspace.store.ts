@@ -22,7 +22,6 @@ import type {
 // ── Layout Enums & Types ──────────────────────────────────────────────────────
 
 export type ActivityBarTab = 'files' | 'search' | 'citations' | 'review' | 'ai';
-export type BottomPanelTab = 'problems' | 'output';
 export type EditorSplitMode = 'none' | 'vertical' | 'horizontal';
 export type ActiveEditorPane = 'primary' | 'secondary';
 
@@ -62,14 +61,6 @@ export interface LayoutState {
   // Detached PDF Window (Overleaf Parity: Separate screen preview)
   isPdfDetached: boolean;
 
-  // Bottom Dock Panel (Problems / Diagnostics / Output)
-  bottomPanelOpen: boolean;
-  bottomPanelHeight: number;
-  activeBottomTab: BottomPanelTab;
-
-  // Status Bar
-  statusBarOpen: boolean;
-
   // Layout Actions
   toggleSidebarLeft: () => void;
   setSidebarLeftOpen: (open: boolean) => void;
@@ -94,16 +85,6 @@ export interface LayoutState {
   setPdfDetached: (detached: boolean) => void;
   togglePdfDetached: () => void;
 
-  toggleBottomPanel: () => void;
-  setBottomPanelOpen: (open: boolean) => void;
-  setBottomPanelHeight: (height: number) => void;
-  setActiveBottomTab: (tab: BottomPanelTab) => void;
-  openBottomTab: (tab: BottomPanelTab) => void;
-  openBottomPanelWithTab: (tab: BottomPanelTab) => void;
-
-  toggleStatusBar: () => void;
-  setStatusBarOpen: (open: boolean) => void;
-
   resetLayout: () => void;
 }
 
@@ -117,7 +98,6 @@ export interface WorkspaceStoreState extends LayoutState {
   readonly splitMode: SplitMode;
   readonly activeSidePanel: ActiveSidePanel;
   readonly isPdfVisible: boolean;
-  readonly isBottomDockVisible: boolean;
 
   // Tab Actions
   openTab: (projectId: string, tab: Omit<WorkspaceTab, 'lastAccessedAt'>) => void;
@@ -134,8 +114,6 @@ export interface WorkspaceStoreState extends LayoutState {
   toggleSidePanel: (panel: NonNullable<ActiveSidePanel>) => void;
   togglePdfVisible: () => void;
   setPdfVisible: (visible: boolean) => void;
-  toggleBottomDockVisible: () => void;
-  setBottomDockVisible: (visible: boolean) => void;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -163,10 +141,6 @@ const DEFAULT_LAYOUT = {
   activeEditorPane: 'primary' as ActiveEditorPane,
   secondaryFileId: null as string | null,
   isPdfDetached: false,
-  bottomPanelOpen: false,
-  bottomPanelHeight: 220,
-  activeBottomTab: 'problems' as BottomPanelTab,
-  statusBarOpen: false,
 };
 
 // ── Store Definition ──────────────────────────────────────────────────────────
@@ -199,9 +173,6 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
         },
         get isPdfVisible(): boolean {
           return !get().isPdfDetached;
-        },
-        get isBottomDockVisible(): boolean {
-          return get().bottomPanelOpen;
         },
 
         // ── Tabs Actions ──────────────────────────────────────────────────────
@@ -447,27 +418,6 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
         togglePdfDetached: () =>
           set((state) => ({ isPdfDetached: !state.isPdfDetached })),
 
-        toggleBottomPanel: () =>
-          set((state) => ({ bottomPanelOpen: !state.bottomPanelOpen })),
-
-        setBottomPanelOpen: (open) => set({ bottomPanelOpen: open }),
-
-        setBottomPanelHeight: (height) =>
-          set({ bottomPanelHeight: Math.max(120, Math.min(height, 500)) }),
-
-        setActiveBottomTab: (tab) => set({ activeBottomTab: tab }),
-
-        openBottomTab: (tab) =>
-          set({ activeBottomTab: tab, bottomPanelOpen: true }),
-
-        openBottomPanelWithTab: (tab) =>
-          set({ activeBottomTab: tab, bottomPanelOpen: true }),
-
-        toggleStatusBar: () =>
-          set((state) => ({ statusBarOpen: !state.statusBarOpen })),
-
-        setStatusBarOpen: (open) => set({ statusBarOpen: open }),
-
         resetLayout: () => set(DEFAULT_LAYOUT),
 
         // ── Bridge Layout Actions ─────────────────────────────────────────────
@@ -516,14 +466,6 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
         setPdfVisible: (visible) => {
           set({ isPdfDetached: !visible });
         },
-
-        toggleBottomDockVisible: () => {
-          set((state) => ({ bottomPanelOpen: !state.bottomPanelOpen }));
-        },
-
-        setBottomDockVisible: (visible) => {
-          set({ bottomPanelOpen: visible });
-        },
       }),
       {
         name: 'flux_editor_workbench_layout',
@@ -540,10 +482,6 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
           activeEditorPane: state.activeEditorPane,
           secondaryFileId: state.secondaryFileId,
           isPdfDetached: state.isPdfDetached,
-          bottomPanelOpen: state.bottomPanelOpen,
-          bottomPanelHeight: state.bottomPanelHeight,
-          activeBottomTab: state.activeBottomTab,
-          statusBarOpen: state.statusBarOpen,
         }),
       }
     )
@@ -573,4 +511,3 @@ export const useWorkspaceSplitRatio = () => useWorkspaceStore((s) => s.splitRati
 export const useActiveEditorPane = () => useWorkspaceStore((s) => s.activeEditorPane);
 export const useActiveSidePanel = () => useWorkspaceStore((s) => s.activeSidePanel);
 export const useIsPdfVisible = () => useWorkspaceStore((s) => s.isPdfVisible);
-export const useIsBottomDockVisible = () => useWorkspaceStore((s) => s.isBottomDockVisible);

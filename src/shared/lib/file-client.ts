@@ -308,8 +308,8 @@ export function uploadFileWithDetails(
 
     const targetUploadUrl =
       typeof window !== 'undefined'
-        ? '/api/files/upload-r2'
-        : `${API_BASE_URL}/api/files/upload-r2`;
+        ? '/api/v1/storage/files/upload'
+        : `${API_BASE_URL}/api/v1/storage/files/upload`;
     xhr.open('POST', targetUploadUrl, true);
 
     const token = getAuthToken();

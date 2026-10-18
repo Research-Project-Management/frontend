@@ -47,12 +47,14 @@ import { vim, Vim } from '@replit/codemirror-vim';
 import { latexLanguage, lineHighlightField, synctexHighlightTheme } from '@/features/editor/core/engine/extensions/latex-language';
 import { createLatexAutocompleteExtension } from '@/features/editor/core/engine/extensions/latex-autocomplete';
 import { createLatexSmartPasteExtension } from '@/features/editor/core/engine/extensions/latex-smart-paste';
-import { createLatexLinterExtension } from '@/features/editor/subsystems/diagnostics/extensions/latex-linter';
+import {
+  createLatexLinterExtension,
+  createLatexErrorLensExtension,
+} from '@/features/editor/subsystems/diagnostics';
 import { latexMathHoverTooltip } from '@/features/editor/core/engine/extensions/latex-math-preview';
-import { latexCitationHoverTooltip } from '@/features/editor/subsystems/citation/extensions/latex-citation-hover';
-import { createInlineDiffExtension } from '@/features/editor/subsystems/review/extensions/inline-diff';
+import { latexCitationHoverTooltip } from '@/features/editor/subsystems/citation';
+import { createInlineDiffExtension } from '@/features/editor/subsystems/review';
 import { createLatexFoldExtension } from '@/features/editor/core/engine/extensions/latex-folding';
-import { createLatexErrorLensExtension } from '@/features/editor/subsystems/diagnostics/extensions/latex-error-lens';
 import { createLatexSpellingExtension } from '@/features/editor/core/engine/extensions/latex-spelling';
 import { latexVisualHeadings } from '@/features/editor/core/engine/extensions/latex-visual-headings';
 import { latexVisualMath } from '@/features/editor/core/engine/extensions/latex-visual-math';
@@ -200,6 +202,7 @@ export interface CodeMirrorPresetOptions {
   lineWrapping?: boolean;
   readOnly?: boolean;
   bracketMatching?: boolean;
+  autoCloseBrackets?: boolean;
   highlightActiveLine?: boolean;
   vimMode?: boolean;
   keybinding?: 'standard' | 'vim' | 'emacs';
@@ -296,6 +299,7 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
     lineNumbers: showLineNumbersOption = true,
     lineWrapping = true,
     bracketMatching: enableBracketMatching = true,
+    autoCloseBrackets: enableAutoCloseBrackets = true,
     highlightActiveLine: enableHighlightActive = true,
     vimMode = false,
     keybinding = 'standard',
@@ -597,7 +601,11 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
     ),
     editorCompartments.lineWrapping.of(lineWrapping ? EditorView.lineWrapping : []),
     editorCompartments.bracketMatching.of(
-      enableBracketMatching ? [bracketMatching(), closeBrackets()] : []
+      enableBracketMatching
+        ? enableAutoCloseBrackets
+          ? [bracketMatching(), closeBrackets()]
+          : [bracketMatching()]
+        : []
     ),
     editorCompartments.highlightActiveLine.of(
       enableHighlightActive ? highlightActiveLine() : []
@@ -775,6 +783,10 @@ export interface EditorRuntimeConfig {
   lineHeight?: number;
   visualMode: boolean;
   errorLensEnabled: boolean;
+  autoCloseBrackets?: boolean;
+  enableMathPreview?: boolean;
+  enableAutocomplete?: boolean;
+  enableLinter?: boolean;
 }
 
 /**
@@ -875,6 +887,38 @@ export function computeCompartmentReconfigEffects(
     );
   }
 
+  if ((prev.autoCloseBrackets ?? true) !== (next.autoCloseBrackets ?? true)) {
+    effects.push(
+      editorCompartments.bracketMatching.reconfigure(
+        next.autoCloseBrackets ?? true ? [bracketMatching(), closeBrackets()] : [bracketMatching()]
+      )
+    );
+  }
+
+  if ((prev.enableMathPreview ?? true) !== (next.enableMathPreview ?? true)) {
+    effects.push(
+      editorCompartments.mathPreview.reconfigure(
+        next.enableMathPreview ?? true ? latexMathHoverTooltip : []
+      )
+    );
+  }
+
+  if ((prev.enableAutocomplete ?? true) !== (next.enableAutocomplete ?? true)) {
+    effects.push(
+      editorCompartments.autocomplete.reconfigure(
+        next.enableAutocomplete ?? true ? createLatexAutocompleteExtension() : []
+      )
+    );
+  }
+
+  if ((prev.enableLinter ?? true) !== (next.enableLinter ?? true)) {
+    effects.push(
+      editorCompartments.linter.reconfigure(
+        next.enableLinter ?? true ? createLatexLinterExtension() : []
+      )
+    );
+  }
+
   return effects;
 }
 
@@ -900,5 +944,6 @@ export function reconfigureEditorCompartments(
   view.dispatch({ effects });
   return effects.length;
 }
+
 
 

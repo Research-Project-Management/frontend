@@ -237,11 +237,13 @@ export const PdfToolbar = React.memo(function PdfToolbar({
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">
-            {errorCount > 0
-              ? `Logs and output files (${errorCount} error${errorCount > 1 ? 's' : ''})`
-              : warningCount > 0
-                ? `Logs and output files (${warningCount} warning${warningCount > 1 ? 's' : ''})`
-                : 'Logs and output files'}
+            {showLog
+              ? 'Back to PDF'
+              : errorCount > 0
+                ? `Logs and output files (${errorCount} error${errorCount > 1 ? 's' : ''})`
+                : warningCount > 0
+                  ? `Logs and output files (${warningCount} warning${warningCount > 1 ? 's' : ''})`
+                  : 'Logs and output files'}
           </TooltipContent>
         </Tooltip>
 
@@ -263,29 +265,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
           </TooltipContent>
         </Tooltip>
 
-        {/* SyncTeX Navigation: Backward (PDF -> Code) and Forward (Code -> PDF) */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={() => {
-                editorCommandBus.dispatch({
-                  type: 'synctex:backward',
-                  page: pageNumber || 1,
-                });
-              }}
-              disabled={!pdfUrl}
-              aria-label="Jump to LaTeX source (SyncTeX)"
-              className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:cursor-not-allowed transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
-            >
-              <ArrowLeft className="size-3.5 shrink-0" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            Jump to LaTeX source (SyncTeX)
-          </TooltipContent>
-        </Tooltip>
-
+        {/* SyncTeX Navigation: Forward (Code -> PDF) and Backward (PDF -> Code) - Overleaf Parity */}
         <Tooltip>
           <TooltipTrigger asChild>
             <button
@@ -300,14 +280,36 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                 });
               }}
               disabled={!pdfUrl}
-              aria-label="Jump to PDF location (SyncTeX)"
+              aria-label="Go to code location in PDF (Forward Search)"
               className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:cursor-not-allowed transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
             >
               <ArrowRight className="size-3.5 shrink-0" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">
-            Jump to PDF location (SyncTeX)
+            Go to code location in PDF (SyncTeX)
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => {
+                editorCommandBus.dispatch({
+                  type: 'synctex:backward',
+                  page: pageNumber || 1,
+                });
+              }}
+              disabled={!pdfUrl}
+              aria-label="Go to PDF location in code (Reverse Search)"
+              className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:cursor-not-allowed transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
+            >
+              <ArrowLeft className="size-3.5 shrink-0" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            Go to PDF location in code (SyncTeX)
           </TooltipContent>
         </Tooltip>
       </div>
@@ -429,7 +431,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                           onClick={() => {
                             editorCommandBus.dispatch({ type: 'preview:detach' });
                           }}
-                          aria-label="Open PDF in separate window (Mở PDF ra cửa sổ riêng biệt)"
+                          aria-label="Open PDF in separate window"
                           className="size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[''] text-foreground hover:bg-muted"
                         >
                           <ExternalLink className="size-3.5 shrink-0" />
@@ -469,174 +471,193 @@ export const PdfToolbar = React.memo(function PdfToolbar({
               />
             )}
 
-            {/* More Options Menu: appears when secondary utilities or scale are folded */}
-            {(!showExtendedUtilities || collapseScale) && (
-              <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-                <Tooltip open={isMenuOpen ? false : menuTooltipOpen} onOpenChange={setMenuTooltipOpen}>
-                  <TooltipTrigger asChild>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label="Viewer options"
-                        className={cn(
-                          'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
-                          isMenuOpen
-                            ? 'bg-muted text-foreground'
-                            : 'text-foreground hover:bg-muted',
-                        )}
-                      >
-                        <MoreHorizontal className="size-4" />
-                      </button>
-                    </PopoverTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    Viewer options
-                  </TooltipContent>
-                </Tooltip>
+            {/* More Options Menu: always accessible for Viewer options & Scale controls */}
+            <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+              <Tooltip open={isMenuOpen ? false : menuTooltipOpen} onOpenChange={setMenuTooltipOpen}>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Viewer options"
+                      className={cn(
+                        'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
+                        isMenuOpen
+                          ? 'bg-muted text-foreground'
+                          : 'text-foreground hover:bg-muted',
+                      )}
+                    >
+                      <MoreHorizontal className="size-4" />
+                    </button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  Viewer options
+                </TooltipContent>
+              </Tooltip>
 
-                <PopoverContent
-                  align="end"
-                  sideOffset={6}
-                  onOpenAutoFocus={(e) => e.preventDefault()}
-                  className="w-56 p-1.5 bg-popover text-popover-foreground border border-border shadow-md rounded-md z-50 text-xs font-sans select-none"
-                >
-                  {/* Secondary Viewer Toggles */}
-                  {!showExtendedUtilities && (
-                    <div className="pb-1 mb-1 border-b border-border space-y-0.5">
-                      <div className="px-2 py-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                        Viewer options
-                      </div>
-                      {onToggleInvertColors && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onToggleInvertColors();
-                            setIsMenuOpen(false);
-                          }}
-                          className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
-                        >
-                          <span className="flex items-center gap-2">
-                            <InvertColorsIcon className="size-3.5" />
-                            <span>Dark mode (Invert)</span>
-                          </span>
-                          {invertColors && <Check className="size-3.5 text-primary" />}
-                        </button>
-                      )}
-                      {onToggleSpreadView && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onToggleSpreadView();
-                            setIsMenuOpen(false);
-                          }}
-                          className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
-                        >
-                          <span className="flex items-center gap-2">
-                            <BookOpen className="size-3.5" />
-                            <span>Two-page spread</span>
-                          </span>
-                          {isSpreadView && <Check className="size-3.5 text-primary" />}
-                        </button>
-                      )}
-                      {onToggleSyncScroll && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onToggleSyncScroll();
-                            setIsMenuOpen(false);
-                          }}
-                          className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
-                        >
-                          <span className="flex items-center gap-2">
-                            <Link2 className="size-3.5" />
-                            <span>Sync scrolling</span>
-                          </span>
-                          {syncScroll && <Check className="size-3.5 text-primary" />}
-                        </button>
-                      )}
+              <PopoverContent
+                align="end"
+                sideOffset={6}
+                onOpenAutoFocus={(e) => e.preventDefault()}
+                className="w-56 p-1.5 bg-popover text-popover-foreground border border-border shadow-md rounded-md z-50 text-xs font-sans select-none"
+              >
+                {/* Secondary Viewer Toggles */}
+                <div className="pb-1 mb-1 border-b border-border space-y-0.5">
+                  <div className="px-2 py-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    Viewer options
+                  </div>
+                  {onToggleInvertColors && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onToggleInvertColors();
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
+                    >
+                      <span className="flex items-center gap-2">
+                        <InvertColorsIcon className="size-3.5" />
+                        <span>Dark mode (Invert)</span>
+                      </span>
+                      {invertColors && <Check className="size-3.5 text-primary" />}
+                    </button>
+                  )}
+                  {onToggleSpreadView && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onToggleSpreadView();
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
+                    >
+                      <span className="flex items-center gap-2">
+                        <BookOpen className="size-3.5" />
+                        <span>Two-page spread</span>
+                      </span>
+                      {isSpreadView && <Check className="size-3.5 text-primary" />}
+                    </button>
+                  )}
+                  {onToggleSyncScroll && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onToggleSyncScroll();
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Link2 className="size-3.5" />
+                        <span>Sync scrolling</span>
+                      </span>
+                      {syncScroll && <Check className="size-3.5 text-primary" />}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      editorCommandBus.dispatch({ type: 'preview:detach' });
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
+                  >
+                    <span className="flex items-center gap-2">
+                      <ExternalLink className="size-3.5" />
+                      <span>Separate window</span>
+                    </span>
+                  </button>
+                </div>
+
+                {/* Scale / Zoom controls in popover */}
+                <div className="flex items-center justify-between px-2 py-1">
+                  <span className="font-semibold text-foreground text-xs">Scale</span>
+                  <span className="text-[11px] font-mono text-muted-foreground tabular-nums">
+                    {autoFit
+                      ? fitMode === 'height'
+                        ? 'Fit Page'
+                        : fitMode === 'auto'
+                          ? 'Auto'
+                          : 'Fit Width'
+                      : `${Math.round(scale * 100)}%`}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1 mt-1 px-1">
+                  <button
+                    type="button"
+                    onClick={onZoomOut}
+                    aria-label="Zoom out"
+                    className="size-7 flex-1 flex items-center justify-center rounded-sm border border-border hover:bg-muted text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    title="Zoom out"
+                  >
+                    <Minus className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onSetFitMode) onSetFitMode('width');
+                      else onToggleAutoFit();
+                    }}
+                    className={cn(
+                      'h-7 px-2.5 flex items-center justify-center rounded-sm border text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                      autoFit && fitMode !== 'height'
+                        ? 'bg-primary text-primary-foreground border-primary font-semibold'
+                        : 'border-border hover:bg-muted text-foreground',
+                    )}
+                  >
+                    Fit Width
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onSetFitMode) onSetFitMode('height');
+                      else onToggleAutoFit();
+                    }}
+                    className={cn(
+                      'h-7 px-2.5 flex items-center justify-center rounded-sm border text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                      autoFit && fitMode === 'height'
+                        ? 'bg-primary text-primary-foreground border-primary font-semibold'
+                        : 'border-border hover:bg-muted text-foreground',
+                    )}
+                  >
+                    Fit Page
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onZoomIn}
+                    aria-label="Zoom in"
+                    className="size-7 flex-1 flex items-center justify-center rounded-sm border border-border hover:bg-muted text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    title="Zoom in"
+                  >
+                    <Plus className="size-3.5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-4 gap-1 mt-2 px-1 pb-1">
+                  {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0].map((preset) => {
+                    const isSelected = !autoFit && Math.abs(scale - preset) < 0.01;
+                    return (
                       <button
+                        key={preset}
                         type="button"
                         onClick={() => {
-                          editorCommandBus.dispatch({ type: 'preview:detach' });
-                          setIsMenuOpen(false);
+                          onSetScale?.(preset);
                         }}
-                        className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
+                        className={cn(
+                          'h-7 min-h-[28px] px-1 rounded-sm text-[11px] font-mono flex items-center justify-center transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-0.5 after:content-[\'\']',
+                          isSelected
+                            ? 'bg-primary/10 text-primary font-semibold border border-primary/30'
+                            : 'hover:bg-muted text-foreground',
+                        )}
                       >
-                        <span className="flex items-center gap-2">
-                          <ExternalLink className="size-3.5" />
-                          <span>Separate window</span>
-                        </span>
+                        {Math.round(preset * 100)}%
                       </button>
-                    </div>
-                  )}
-
-                  {/* Scale / Zoom controls in popover */}
-                  <div className="flex items-center justify-between px-2 py-1">
-                    <span className="font-semibold text-foreground text-xs">Scale</span>
-                    <span className="text-[11px] font-mono text-muted-foreground tabular-nums">
-                      {autoFit ? 'Fit Width' : `${Math.round(scale * 100)}%`}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1 mt-1 px-1">
-                    <button
-                      type="button"
-                      onClick={onZoomOut}
-                      aria-label="Zoom out"
-                      className="size-7 flex-1 flex items-center justify-center rounded-sm border border-border hover:bg-muted text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                      title="Zoom out"
-                    >
-                      <Minus className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onToggleAutoFit()}
-                      className={cn(
-                        'h-7 px-3 flex items-center justify-center rounded-sm border text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                        autoFit
-                          ? 'bg-primary text-primary-foreground border-primary font-semibold'
-                          : 'border-border hover:bg-muted text-foreground',
-                      )}
-                    >
-                      Fit Width
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onZoomIn}
-                      aria-label="Zoom in"
-                      className="size-7 flex-1 flex items-center justify-center rounded-sm border border-border hover:bg-muted text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                      title="Zoom in"
-                    >
-                      <Plus className="size-3.5" />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-1 mt-2 px-1 pb-1">
-                    {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0].map((preset) => {
-                      const isSelected = !autoFit && Math.abs(scale - preset) < 0.01;
-                      return (
-                        <button
-                          key={preset}
-                          type="button"
-                          onClick={() => {
-                            if (autoFit) onToggleAutoFit();
-                            onSetScale?.(preset);
-                          }}
-                          className={cn(
-                            'h-7 min-h-[28px] px-1 rounded-sm text-[11px] font-mono flex items-center justify-center transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-0.5 after:content-[\'\']',
-                            isSelected
-                              ? 'bg-primary/10 text-primary font-semibold border border-primary/30'
-                              : 'hover:bg-muted text-foreground',
-                          )}
-                        >
-                          {Math.round(preset * 100)}%
-                        </button>
-                      );
-                    })}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
       </div>
     </div>
   );

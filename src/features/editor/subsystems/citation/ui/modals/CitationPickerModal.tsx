@@ -18,70 +18,32 @@
 
 import React, { useState, useMemo, useEffect, useRef, useCallback, useDeferredValue } from 'react';
 import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogClose,
-} from '@/shared/components/ui/dialog';
+  Dialog, DialogContent, DialogTitle, DialogClose, } from '@/shared/components/ui/dialog';
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/shared/components/ui/dropdown-menu';
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, } from '@/shared/components/ui/dropdown-menu';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/shared/components/ui/alert-dialog';
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, } from '@/shared/components/ui/alert-dialog';
 import {
-  Library,
-  Folder,
-  FolderOpen,
-  ChevronRight,
-  FileText,
-  FileCode,
-  BookMarked,
-  Search,
-  X,
-  Copy,
-  Loader2,
-  Check,
-  ExternalLink,
-  Code2,
-  SearchX,
-  Binary,
-} from 'lucide-react';
+  Library, Folder, FolderOpen, ChevronRight, FileText, FileCode, BookMarked, Search, X, Copy, Loader2, Check, ExternalLink, Code2, SearchX, Binary, } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
+import { filesQuery, pageKeys } from '@/features/editor/ui/hooks/document.queries';
 import { useEditorCitations } from '@/features/editor/ui/hooks/useCitation';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import {
-  extractCitationKeys,
-  formatCitationSnippet,
-  formatBibEntryToBibtex,
-  formatItemToBibtex,
-  cleanAbstractText,
-} from '@/features/editor/subsystems/citation/model/citation-formatter';
+  extractCitationKeys, formatCitationSnippet, formatBibEntryToBibtex, formatItemToBibtex, cleanAbstractText, } from '@/features/editor/subsystems/citation/model/citation-formatter';
 import { validateAcademicIdentifier } from '@/features/editor/subsystems/citation/model/citation.schema';
 import {
-  buildRetractedCitationMap,
-  type RetractedItemInfo,
-} from '@/features/editor/subsystems/citation/model/retracted-citations';
+  buildRetractedCitationMap, type RetractedItemInfo, } from '@/features/editor/subsystems/citation/model/retracted-citations';
 import type { BibEntry } from '@/features/editor/subsystems/citation/model/bib-parser';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import type { BibEntryDto } from '@/features/editor/sdk/manuscript/types';
-import { useCollections, useRetractedItems } from '@/features/library/data';
+import { useCollections } from '@/features/library/sdk/queries/collections.queries';
+import { useRetractedItems } from '@/features/library/sdk/queries/ingestion.queries';
 import {
   getActiveEditorEngine,
   editorCommandBus,
@@ -140,11 +102,13 @@ export default function CitationPickerModal({
   citedKeys: propsCitedKeys,
 }: CitationPickerModalProps) {
   // Contextual project and document resolution
+  const queryClient = useQueryClient();
   const params = useParams<{ pageId?: string; projectId?: string }>();
   const currentPage = usePageStore((s) => s.currentPage);
+  const storeParentPageId = usePageStore((s) => s.parentPageId);
   const storeProjectId = usePageStore((s) => s.projectId);
 
-  const rootId = currentPage?.id || params?.pageId || '';
+  const rootId = params?.pageId || storeParentPageId || currentPage?.id || '';
   const effectiveProjectId =
     propsProjectId ||
     params?.projectId ||
@@ -608,21 +572,36 @@ export default function CitationPickerModal({
           ? `${currentContent.trim()}\n\n${bibCode}\n`
           : `${bibCode}\n`;
         sessionCoordinator.notifyContentChange(primaryBib.id, newContent);
+        latexSymbolsIndex.indexFile(primaryBib.id, primaryBib.title || preferredBib, newContent);
         toast.success(`Synced @${entry.key} to ${primaryBib.title || preferredBib}`, {
           id: `sync-bib-${entry.key}`,
         });
       } else {
-        await workspaceCoordinator.createFile({
+        const created = await workspaceCoordinator.createFile({
           name: preferredBib,
           content: `${bibCode}\n`,
           openAfterCreate: false,
         });
+        if (created?.id) {
+          latexSymbolsIndex.indexFile(created.id, preferredBib, `${bibCode}\n`);
+        }
         toast.success(`Created ${preferredBib} and synced @${entry.key}`, {
           id: `sync-bib-${entry.key}`,
         });
       }
+
+      if (rootId) {
+        queryClient.invalidateQueries({ queryKey: filesQuery(rootId).queryKey });
+      }
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      queryClient.invalidateQueries({ queryKey: ['project-citation-validation', effectiveProjectId] });
+      editorCommandBus.dispatch({ type: 'filetree:updated' });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+      }
     },
-    [effectiveProjectId, projectFiles, libraryItems],
+    [effectiveProjectId, projectFiles, libraryItems, rootId, queryClient],
   );
 
   /**
@@ -1581,3 +1560,4 @@ export default function CitationPickerModal({
     </Dialog>
   );
 }
+

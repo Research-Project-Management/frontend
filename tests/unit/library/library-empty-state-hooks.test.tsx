@@ -1,7 +1,7 @@
-import React from 'react';
+﻿import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
-import { LibraryEmptyState } from '@/features/library/components/content/LibraryEmptyState';
+import { LibraryEmptyState } from '@/features/library/ui/content/LibraryEmptyState';
 
 // Mock Next.js navigation
 vi.mock('next/navigation', () => ({
@@ -9,11 +9,11 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock child illustration components to keep unit test light
-vi.mock('@/features/library/components/content/RecentlyReadEmptyState', () => ({
+vi.mock('@/features/library/ui/content/RecentlyReadEmptyState', () => ({
   RecentlyReadEmptyState: () => <div data-testid="recently-read-empty">Recently Read Empty</div>,
 }));
 
-vi.mock('@/features/library/components/content/LibraryIllustrations', () => ({
+vi.mock('@/features/library/ui/content/LibraryIllustrations', () => ({
   libraryIllustrationStyles: '',
   StarredStackIllustration: () => <div data-testid="starred-icon" />,
   TrashStackIllustration: () => <div data-testid="trash-icon" />,
@@ -57,3 +57,4 @@ describe('LibraryEmptyState Rules of Hooks Invariants', () => {
     expect(screen.getByText('No matching references')).toBeDefined();
   });
 });
+

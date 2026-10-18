@@ -44,7 +44,7 @@ export const CompileButton = React.memo(function CompileButton({
   const autoCompile = useSettingsStore((s) => s.autoCompile);
   const setAutoCompile = useSettingsStore((s) => s.setAutoCompile);
   const stopOnFirstError = useSettingsStore((s) => s.stopOnFirstError);
-  const setStopOnFirstError = (stop: boolean) => useSettingsStore.setState({ stopOnFirstError: stop });
+  const setStopOnFirstError = useSettingsStore((s) => s.setStopOnFirstError);
 
   const isRunning =
     compileStatus === 'compiling' ||

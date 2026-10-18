@@ -3,7 +3,7 @@
  * across LaTeX and Markdown documents in the Flux Editor.
  */
 
-import type { Item } from '@/features/library/types';
+import type { Item } from '@/features/library/domain/types/library.types';
 import type { BibEntry } from './bib-parser';
 
 /**
@@ -319,11 +319,11 @@ export function formatShortAuthor(rawAuthorStr?: string): string {
     const secondAuthor = formatSingle(authors[1]);
     return `${firstAuthor} & ${secondAuthor}`;
   }
-  return isVn ? `${firstAuthor} và c.s.` : `${firstAuthor} et al.`;
+  return `${firstAuthor} et al.`;
 }
 
 /**
- * Formats an in-text citation preview e.g. "(Nguyễn Văn An và c.s., 2024)"
+ * Formats an in-text citation preview e.g. "(Nguyen et al., 2024)"
  */
 export function formatInTextCitationPreview(entry: { author?: string; year?: string }): string {
   const authorShort = formatShortAuthor(entry.author);
@@ -343,9 +343,9 @@ export function formatBibliographyPreview(entry: {
   year?: string;
   doi?: string;
 }): string {
-  const authorShort = formatShortAuthor(entry.author) || 'Khuyết danh';
+  const authorShort = formatShortAuthor(entry.author) || 'Anonymous';
   const yearStr = entry.year ? `(${entry.year})` : '(n.d.)';
-  const titleStr = entry.title ? `"${entry.title}"` : 'Tài liệu không tên';
+  const titleStr = entry.title ? `"${entry.title}"` : 'Untitled document';
   const pub = entry.journal || entry.booktitle || '';
   const pubPart = pub ? `. ${pub}` : '';
   const doiPart = entry.doi ? `. DOI: ${entry.doi}` : '';

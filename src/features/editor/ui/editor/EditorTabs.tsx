@@ -21,7 +21,6 @@ import { X, FileText } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import { useTabsStore, useSettingsStore, type EditorTab, editorCommandBus, sessionCoordinator } from '@/features/editor/core';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
-import { SourceVisualSwitcher } from './SourceVisualSwitcher';
 
 // ── Single Tab Item (Overleaf 1:1) ───────────────────────────────────────────
 
@@ -259,13 +258,7 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
   if (tabs.length === 0) return null;
 
   return (
-    <div className="flex items-center h-9 bg-surface select-none border-b border-border w-full px-0 relative">
-      {/* ── Mode Switcher at Top-Left of Editing Pane (Overleaf Parity) ── */}
-      <div className="pl-2 pr-1 shrink-0 flex items-center">
-        <SourceVisualSwitcher />
-      </div>
-      <div className="h-4 w-px bg-border/60 mx-1 shrink-0" />
-
+    <div className="flex items-center h-9 bg-surface select-none border-b border-border w-full px-1 relative">
       {/* ── File tabs ── */}
       <LayoutGroup id={`tab-bar-${rootPageId}`}>
         <div

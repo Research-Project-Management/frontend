@@ -46,7 +46,7 @@ export const ParentItemPopover: React.FC<ParentItemPopoverProps> = ({
 }) => {
   const parentId = propParentId !== undefined ? propParentId : currentParentId;
   const setParentId = propSetParentId || onSelectParent || (() => {});
-  const items = propItems || availableItems || [];
+  const items = useMemo(() => propItems || availableItems || [], [propItems, availableItems]);
   const [query, setQuery] = useState('');
 
   const selectedParent = useMemo(() => {

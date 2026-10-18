@@ -23,7 +23,7 @@ import {
   snippet,
 } from '@codemirror/autocomplete';
 import { latexSymbolsIndex, type BibEntry, type LabelEntry } from '@/features/editor/domain/latex/latex-symbols-index';
-import { isVietnameseAuthorName, formatShortAuthor } from '@/features/editor/subsystems/citation/model/citation-formatter';
+import { isVietnameseAuthorName, formatShortAuthor } from '@/features/editor/subsystems/citation';
 
 import {
   LATEX_ENVIRONMENTS,
@@ -64,7 +64,7 @@ function formatCitationInfo(entry: BibEntry): string {
   ].filter(Boolean);
   if (metaParts.length > 0) lines.push(metaParts.join('  •  '));
   if (entry.doi) lines.push(`DOI: ${entry.doi}`);
-  if (entry.sourceFile) lines.push(`Nguồn: ${entry.sourceFile}`);
+  if (entry.sourceFile) lines.push(`Source: ${entry.sourceFile}`);
   const formatted = lines.join('\n');
   citationInfoCache.set(entry, formatted);
   return formatted;

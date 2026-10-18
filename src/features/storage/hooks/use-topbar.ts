@@ -5,8 +5,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
 import { uploadFile } from '../services/upload.service';
 import { storageKeys } from '../constants/storage.keys';
-import { checkDuplicateFile, deleteItem } from '../services/file.service';
+import { getAllFiles, createFolder, deleteItem } from '../services/file.service';
 import type { UploadMode } from '../components/modal/DuplicateModal';
+import type { StorageItem } from '../types/storage.types';
 import { useStorageUIStore } from '../store/storage-ui.store';
 
 export function useTopbar({
@@ -100,11 +101,63 @@ export function useTopbar({
   }, [projectId, queryClient]);
 
   const handleUploadFiles = useCallback(async (filesToUpload: File[], targetFolder: string | null) => {
+    if (filesToUpload.length === 0) return;
+
+    // Fetch existing items once for the target folder instead of N+1 API calls
+    let existingItems: StorageItem[] = [];
+    try {
+      const res = await getAllFiles(scopeId, targetFolder);
+      existingItems = res?.files || [];
+    } catch {
+      existingItems = [];
+    }
+
+    // Cache created folder IDs by relative path during folder uploads
+    const folderPathCache = new Map<string, string | null>();
+    folderPathCache.set('', targetFolder);
+
+    const ensureFolderPath = async (relDirPath: string): Promise<string | null> => {
+      if (!relDirPath) return targetFolder;
+      if (folderPathCache.has(relDirPath)) {
+        return folderPathCache.get(relDirPath) ?? targetFolder;
+      }
+      const segments = relDirPath.split('/').filter(Boolean);
+      let currentParent = targetFolder;
+      let builtPath = '';
+      for (const seg of segments) {
+        builtPath = builtPath ? `${builtPath}/${seg}` : seg;
+        if (folderPathCache.has(builtPath)) {
+          currentParent = folderPathCache.get(builtPath) ?? null;
+          continue;
+        }
+        try {
+          const created = (await createFolder(seg, {
+            projectId,
+            parentId: currentParent,
+          })) as { id?: string; folder?: { id?: string } };
+          const folderId = created?.id || created?.folder?.id || currentParent;
+          folderPathCache.set(builtPath, folderId);
+          currentParent = folderId;
+        } catch {
+          folderPathCache.set(builtPath, currentParent);
+        }
+      }
+      return currentParent;
+    };
+
     for (const file of filesToUpload) {
       try {
-        const check = await checkDuplicateFile(scopeId, file.name, targetFolder);
-        
-        if (check.exists && check.existingFile) {
+        const relPath = (file as File & { webkitRelativePath?: string }).webkitRelativePath || '';
+        const pathParts = relPath ? relPath.split('/').filter(Boolean) : [];
+        const relDir = pathParts.length > 1 ? pathParts.slice(0, -1).join('/') : '';
+        const destFolder = relDir ? await ensureFolderPath(relDir) : targetFolder;
+
+        const existingFile =
+          destFolder === targetFolder
+            ? existingItems.find((item) => !item.isFolder && item.filename === file.name)
+            : undefined;
+
+        if (existingFile) {
           // Pause execution and wait for user response
           const mode = await new Promise<UploadMode | "cancel">((resolve) => {
             setDuplicatePrompt({ file, resolve });
@@ -114,27 +167,24 @@ export function useTopbar({
           if (mode === "cancel") {
             continue; // Skip this file
           } else if (mode === "replace") {
-            // Delete old record
-            await deleteItem(check.existingFile.id);
-            await performSingleFileUpload(file, targetFolder);
+            await deleteItem(existingFile.id);
+            await performSingleFileUpload(file, destFolder);
           } else if (mode === "keep-both") {
-            // Rename file and upload
             const parts = file.name.split(".");
             const ext = parts.length > 1 ? `.${parts.pop()}` : "";
             const name = parts.join(".");
             const newName = `${name} (${Date.now().toString().slice(-4)})${ext}`;
             const renamedFile = new File([file], newName, { type: file.type });
-            await performSingleFileUpload(renamedFile, targetFolder);
+            await performSingleFileUpload(renamedFile, destFolder);
           }
         } else {
-          // No duplicate, upload normally
-          await performSingleFileUpload(file, targetFolder);
+          await performSingleFileUpload(file, destFolder);
         }
       } catch (err) {
         console.error(err);
       }
     }
-  }, [scopeId, performSingleFileUpload]);
+  }, [scopeId, projectId, performSingleFileUpload]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {

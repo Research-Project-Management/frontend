@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+﻿import { describe, it, expect } from 'vitest';
 import {
   toBibTeXEntry,
   formatRis,
@@ -20,15 +20,15 @@ import {
 import {
   resolveInspectorFieldValue,
   buildInspectorFieldPatch,
-} from '@/features/library/components/inspector/InfoSection';
+} from '@/features/library/ui/inspector/InfoSection';
 import {
   getPrimaryCreatorType,
   getTitleFieldForType,
   getDateFieldForType,
   getVenueFieldForType,
   LIBRARY_ITEM_TYPES,
-} from '@/features/library/types/item-types.types';
-import type { Item } from '@/features/library/types/library.types';
+} from '@/features/library/domain/types/item-types.types';
+import type { Item } from '@/features/library/domain/types/library.types';
 
 describe('Wave 12: Multi-Type Scholarly, Legal & Technical Datasets & Base Field Mappings', () => {
   describe('1. Patent Dataset (patent)', () => {
@@ -436,3 +436,4 @@ describe('Wave 12: Multi-Type Scholarly, Legal & Technical Datasets & Base Field
     });
   });
 });
+

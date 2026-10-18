@@ -33,8 +33,13 @@ function createAttachmentMutation<TVars extends WithTargetId, TResult = unknown>
     const queryClient = useQueryClient();
     return useMutation({
       mutationFn: (vars: TVars) => config.mutationFn(resolveTargetId(vars), vars),
-      onSuccess: () => {
+      onSuccess: (_data, vars) => {
+        const targetId = resolveTargetId(vars);
         queryClient.invalidateQueries({ queryKey: ['work-items'] });
+        if (targetId) {
+          queryClient.invalidateQueries({ queryKey: ['work-items', targetId, 'attachments'] });
+          queryClient.invalidateQueries({ queryKey: ['work-item-activity', targetId] });
+        }
         workItemToast.success(config.successMessage, 'attachment');
       },
       onError: (error: Error) =>

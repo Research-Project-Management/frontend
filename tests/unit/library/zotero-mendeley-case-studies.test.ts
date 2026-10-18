@@ -47,17 +47,17 @@ import {
   getPublisherFieldForType,
   getPrimaryCreatorType,
   normalizeCanonicalItemType,
-} from '@/features/library/types/item-types.types';
-import { useDuplicateMergeState } from '@/features/library/hooks/useDuplicateMergeState';
+} from '@/features/library/domain/types/item-types.types';
+import { useDuplicateMergeState } from '@/features/library/core/coordinator/curation.coordinator';
 import { sortLibraryItems } from '@/features/library/domain/sort-items.domain';
 import {
   PdfAnnotationEngine,
   formatInTextCitation,
   formatAnnotationCitation,
-  generateCitationKey as generateReaderCitationKey,
+  generateReaderCitationKey,
 } from '@/features/library/domain/reader.domain';
-import type { Item } from '@/features/library/types/library.types';
-import type { ReaderDocument, ReaderAnnotation } from '@/features/library/types/reader.types';
+import type { Item } from '@/features/library/domain/types/library.types';
+import type { ReaderDocument, ReaderAnnotation } from '@/features/library/domain/types/reader.types';
 
 describe('Real-World Zotero & Mendeley Datasets & User Case-Study Stress Tests', () => {
   // ===========================================================================
@@ -596,3 +596,4 @@ describe('Real-World Zotero & Mendeley Datasets & User Case-Study Stress Tests',
     });
   });
 });
+

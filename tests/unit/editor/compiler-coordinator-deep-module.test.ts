@@ -6,7 +6,7 @@ import {
   CompilationFlushBarrier,
   type CompilerExecutionPort,
 } from '@/features/editor/subsystems/compiler';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { sessionCoordinator, editorCommandBus } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';

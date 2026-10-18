@@ -15,7 +15,7 @@ import {
   editorCommandBus,
   getActiveEditorInstance,
   sessionCoordinator,
-  useLayoutStore,
+  useWorkspaceStore,
   useDocumentCollaborationStore,
   useSettingsStore,
 } from '@/features/editor/core';
@@ -146,7 +146,7 @@ export class KeybindingCoordinatorRegistry {
           return;
         }
         e.preventDefault();
-        useLayoutStore.getState().toggleSidebarLeft();
+        useWorkspaceStore.getState().toggleSidebarLeft();
       },
     });
 
@@ -181,8 +181,8 @@ export class KeybindingCoordinatorRegistry {
             selectedText = sel.trim();
           }
         }
-        useLayoutStore.getState().setSidebarLeftOpen(true);
-        useLayoutStore.getState().setActiveSidebarTab('search');
+        useWorkspaceStore.getState().setSidebarLeftOpen(true);
+        useWorkspaceStore.getState().setActiveSidebarTab('search');
         editorCommandBus.dispatch({
           type: 'sidebar:open-panel',
           panel: 'Search',
@@ -206,8 +206,8 @@ export class KeybindingCoordinatorRegistry {
             selectedText = sel.trim();
           }
         }
-        useLayoutStore.getState().setSidebarLeftOpen(true);
-        useLayoutStore.getState().setActiveSidebarTab('search');
+        useWorkspaceStore.getState().setSidebarLeftOpen(true);
+        useWorkspaceStore.getState().setActiveSidebarTab('search');
         editorCommandBus.dispatch({
           type: 'sidebar:open-panel',
           panel: 'Search',

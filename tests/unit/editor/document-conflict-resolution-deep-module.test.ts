@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 import {
   sessionCoordinator,

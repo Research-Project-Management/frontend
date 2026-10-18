@@ -6,7 +6,7 @@ import {
   MOCK_PAGE,
   MOCK_FILES_HIERARCHY,
 } from '../fixtures/mock-data';
-import { parseLatexLog } from '@/features/editor/subsystems/compiler/logs/compiler-logs.parser';
+import { parseLatexLog } from '@/features/editor/domain/latex/compiler-logs-parser';
 import { parseCompileErrors } from '@/features/editor/domain/latex/latex-structure';
 import {
   parseSyncTeX,

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import { CompilerLogs, parseLatexLog, type LogEntry } from '@/features/editor/subsystems/compiler';
 import { editorCommandBus } from '@/features/editor/core';
-import { useDocumentSettingsStore } from '@/features/editor/core';
+import { useSettingsStore } from '@/features/editor/core';
 import { toast } from 'sonner';
 
 
@@ -47,7 +47,7 @@ No pages of output.`;
 
   afterEach(() => {
     cleanup();
-    useDocumentSettingsStore.setState({
+    useSettingsStore.setState({
       suppressBadBoxes: false,
       suppressFontWarnings: false,
       suppressPackageWarnings: false,
@@ -262,7 +262,7 @@ No pages of output.`;
   });
 
   it('filters out suppressed bad boxes and displays suppression toggle button', () => {
-    useDocumentSettingsStore.setState({
+    useSettingsStore.setState({
       suppressBadBoxes: true,
       suppressFontWarnings: false,
       suppressPackageWarnings: false,

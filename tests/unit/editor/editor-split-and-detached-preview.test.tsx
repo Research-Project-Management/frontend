@@ -9,7 +9,7 @@ import { PdfToolbar } from '@/features/editor/subsystems/compiler';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
 import { useSettingsStore } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
-import { useLayoutStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '@/features/editor/core';
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
@@ -82,7 +82,7 @@ describe('Split Editor Panes & Detached PDF Preview (Overleaf Parity)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useSettingsStore.setState({ editorMode: 'code', showEditorTabs: true });
-    useLayoutStore.setState({
+    useWorkspaceStore.setState({
       editorSplitMode: 'none',
       editorSplitRatio: 0.5,
       activeEditorPane: 'primary',
@@ -93,7 +93,7 @@ describe('Split Editor Panes & Detached PDF Preview (Overleaf Parity)', () => {
 
   afterEach(() => {
     cleanup();
-    useLayoutStore.setState({
+    useWorkspaceStore.setState({
       editorSplitMode: 'none',
       secondaryFileId: null,
       isPdfDetached: false,
@@ -112,7 +112,7 @@ describe('Split Editor Panes & Detached PDF Preview (Overleaf Parity)', () => {
     });
 
     it('renders dual EditorPanes with ResizablePanelGroup when editorSplitMode is "vertical"', () => {
-      useLayoutStore.setState({
+      useWorkspaceStore.setState({
         editorSplitMode: 'vertical',
         secondaryFileId: 'doc-bib',
       });
@@ -130,7 +130,7 @@ describe('Split Editor Panes & Detached PDF Preview (Overleaf Parity)', () => {
 
     it('dispatches editor:close-split when clicking close on secondary pane', () => {
       const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
-      useLayoutStore.setState({
+      useWorkspaceStore.setState({
         editorSplitMode: 'vertical',
         secondaryFileId: 'doc-bib',
       });
@@ -146,7 +146,7 @@ describe('Split Editor Panes & Detached PDF Preview (Overleaf Parity)', () => {
 
     it('dispatches editor:swap-panes when clicking swap button', () => {
       const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
-      useLayoutStore.setState({
+      useWorkspaceStore.setState({
         editorSplitMode: 'vertical',
         secondaryFileId: 'doc-bib',
       });
@@ -188,14 +188,14 @@ describe('Split Editor Panes & Detached PDF Preview (Overleaf Parity)', () => {
       expect(dispatchSpy).toHaveBeenCalledWith({ type: 'preview:detach' });
     });
 
-    it('updates isPdfDetached in useLayoutStore when toggled', () => {
-      expect(useLayoutStore.getState().isPdfDetached).toBe(false);
+    it('updates isPdfDetached in useWorkspaceStore when toggled', () => {
+      expect(useWorkspaceStore.getState().isPdfDetached).toBe(false);
 
-      useLayoutStore.getState().setPdfDetached(true);
-      expect(useLayoutStore.getState().isPdfDetached).toBe(true);
+      useWorkspaceStore.getState().setPdfDetached(true);
+      expect(useWorkspaceStore.getState().isPdfDetached).toBe(true);
 
-      useLayoutStore.getState().togglePdfDetached();
-      expect(useLayoutStore.getState().isPdfDetached).toBe(false);
+      useWorkspaceStore.getState().togglePdfDetached();
+      expect(useWorkspaceStore.getState().isPdfDetached).toBe(false);
     });
   });
 });

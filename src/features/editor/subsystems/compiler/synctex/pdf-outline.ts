@@ -109,16 +109,30 @@ export interface OutlineEntry {
 
 export const OUTLINE_INDENT = [0, 8, 18, 28, 38, 48, 58];
 
-const SECTION_COMMANDS = [
-  { cmd: 'book', level: 0, levelName: 'Book' },
-  { cmd: 'part', level: 0, levelName: 'Part' },
-  { cmd: 'chapter', level: 0, levelName: 'Chapter' },
-  { cmd: 'section', level: 1, levelName: 'Section' },
-  { cmd: 'subsection', level: 2, levelName: 'Subsection' },
-  { cmd: 'subsubsection', level: 3, levelName: 'Subsubsection' },
-  { cmd: 'paragraph', level: 4, levelName: 'Paragraph' },
-  { cmd: 'subparagraph', level: 5, levelName: 'Subparagraph' },
-] as const;
+const SECTION_REGEX = /\\(book|part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*(?:\[[^\]]*\])?(.*)/;
+
+const SECTION_META: Record<string, { level: number; levelName: string; type: OutlineEntry['type'] }> = {
+  book: { level: 0, levelName: 'Book', type: 'book' },
+  part: { level: 0, levelName: 'Part', type: 'part' },
+  chapter: { level: 0, levelName: 'Chapter', type: 'chapter' },
+  section: { level: 1, levelName: 'Section', type: 'section' },
+  subsection: { level: 2, levelName: 'Subsection', type: 'subsection' },
+  subsubsection: { level: 3, levelName: 'Subsubsection', type: 'subsubsection' },
+  paragraph: { level: 4, levelName: 'Paragraph', type: 'paragraph' },
+  subparagraph: { level: 5, levelName: 'Subparagraph', type: 'subparagraph' },
+};
+
+const RE_IFFALSE = /\\iffalse\b/;
+const RE_FI = /\\fi\b/;
+const RE_BEGIN_FIGURE = /\\begin\s*\{\s*figure\*?\s*\}/;
+const RE_END_FIGURE = /\\end\s*\{\s*figure\*?\s*\}/;
+const RE_BEGIN_TABLE = /\\begin\s*\{\s*table\*?\s*\}/;
+const RE_END_TABLE = /\\end\s*\{\s*table\*?\s*\}/;
+const RE_CAPTION = /\\caption\s*(?:\[[^\]]*\])?(.*)/;
+const RE_BEGIN_FRAME = /\\begin\s*\{\s*frame\s*\}(.*)/;
+const RE_FRAMETITLE = /\\frametitle\s*(?:\[[^\]]*\])?(.*)/;
+const RE_APPENDIX = /\\appendix\b/;
+const RE_BEGIN_ABSTRACT = /\\begin\s*\{\s*abstract\s*\}/;
 
 /**
  * Strips LaTeX formatting commands, math delims, and labels from section titles.
@@ -226,32 +240,32 @@ export function parseLatexHeadings(content: unknown, sourceFile?: string): Outli
     const trimmed = cleanLine.trim();
     if (!trimmed.includes('\\')) continue;
 
-    if (/\\iffalse\b/.test(trimmed)) {
+    if (RE_IFFALSE.test(trimmed)) {
       iffalseDepth++;
     }
     if (iffalseDepth > 0) {
-      if (/\\fi\b/.test(trimmed)) {
+      if (RE_FI.test(trimmed)) {
         iffalseDepth = Math.max(0, iffalseDepth - 1);
       }
       continue;
     }
 
     // Environment tracking for Figures & Tables (Overleaf Parity)
-    if (/\\begin\s*\{\s*figure\*?\s*\}/.test(trimmed)) {
+    if (RE_BEGIN_FIGURE.test(trimmed)) {
       inFigure = true;
       inTable = false;
-    } else if (/\\end\s*\{\s*figure\*?\s*\}/.test(trimmed)) {
+    } else if (RE_END_FIGURE.test(trimmed)) {
       inFigure = false;
-    } else if (/\\begin\s*\{\s*table\*?\s*\}/.test(trimmed)) {
+    } else if (RE_BEGIN_TABLE.test(trimmed)) {
       inTable = true;
       inFigure = false;
-    } else if (/\\end\s*\{\s*table\*?\s*\}/.test(trimmed)) {
+    } else if (RE_END_TABLE.test(trimmed)) {
       inTable = false;
     }
 
     // 0. Figure / Table Caption Extraction (Overleaf Parity)
     if (inFigure || inTable) {
-      const captionMatch = trimmed.match(/\\caption\s*(?:\[[^\]]*\])?(.*)/);
+      const captionMatch = trimmed.match(RE_CAPTION);
       if (captionMatch) {
         let accumulated = captionMatch[1];
         let offset = 0;
@@ -276,7 +290,7 @@ export function parseLatexHeadings(content: unknown, sourceFile?: string): Outli
     }
 
     // 1. Beamer frame begin: \begin{frame}...
-    const frameMatch = trimmed.match(/\\begin\s*\{\s*frame\s*\}(.*)/);
+    const frameMatch = trimmed.match(RE_BEGIN_FRAME);
     if (frameMatch) {
       const rest = frameMatch[1].trim();
       let slideTitle = 'Slide';
@@ -305,7 +319,7 @@ export function parseLatexHeadings(content: unknown, sourceFile?: string): Outli
     }
 
     // 2. Beamer frametitle: \frametitle{Title}
-    const frametitleMatch = trimmed.match(/\\frametitle\s*(?:\[[^\]]*\])?(.*)/);
+    const frametitleMatch = trimmed.match(RE_FRAMETITLE);
     if (frametitleMatch) {
       let accumulated = frametitleMatch[1];
       let offset = 0;
@@ -339,13 +353,13 @@ export function parseLatexHeadings(content: unknown, sourceFile?: string): Outli
       currentFrameEntry = null;
     }
 
-    // 4. Standard LaTeX sectioning commands
-    let matchedCommand = false;
-    for (const { cmd, level, levelName } of SECTION_COMMANDS) {
-      const regex = new RegExp(`\\\\${cmd}\\*?\\s*(?:\\[[^\\]]*\\])?(.*)`);
-      const match = trimmed.match(regex);
-      if (match) {
-        let accumulated = match[1];
+    // 4. Standard LaTeX sectioning commands (O(1) precompiled match, zero inner loop allocation)
+    const secMatch = trimmed.match(SECTION_REGEX);
+    if (secMatch) {
+      const cmd = secMatch[1];
+      const meta = SECTION_META[cmd];
+      if (meta) {
+        let accumulated = secMatch[2];
         let offset = 0;
         while (!extractBracedArgument(accumulated) && (idx + offset + 1) < lines.length && offset < 15) {
           offset++;
@@ -354,22 +368,20 @@ export function parseLatexHeadings(content: unknown, sourceFile?: string): Outli
         const arg = extractBracedArgument(accumulated);
         if (arg) {
           entries.push({
-            level,
-            levelName,
+            level: meta.level,
+            levelName: meta.levelName,
             title: cleanLatexTitle(arg.value),
             line: lineNum,
-            type: cmd,
+            type: meta.type,
             sourceFile,
           });
-          matchedCommand = true;
-          break;
+          continue;
         }
       }
     }
-    if (matchedCommand) continue;
 
     // 5. Appendix
-    if (trimmed.match(/\\appendix\b/)) {
+    if (RE_APPENDIX.test(trimmed)) {
       entries.push({
         level: 1,
         levelName: 'Appendix',
@@ -382,7 +394,7 @@ export function parseLatexHeadings(content: unknown, sourceFile?: string): Outli
     }
 
     // 6. Abstract environment
-    if (trimmed.match(/\\begin\s*\{\s*abstract\s*\}/)) {
+    if (RE_BEGIN_ABSTRACT.test(trimmed)) {
       entries.push({
         level: 1,
         levelName: 'Abstract',
@@ -438,8 +450,20 @@ export function extractOutlineFromContent(
 
 /**
  * Parses LaTeX content into outline entries for the File Outline accordion.
+ * Uses reference and equality memoization to avoid redundant document parsing on non-content updates.
  */
+let lastParsedContent: unknown = null;
+let lastSourceFile: string | undefined = undefined;
+let lastOutlineResult: OutlineEntry[] = [];
+
 export function parseDocumentOutline(content: unknown, sourceFile?: string): OutlineEntry[] {
-  return parseLatexHeadings(content, sourceFile);
+  if (content === lastParsedContent && sourceFile === lastSourceFile && lastParsedContent !== null) {
+    return lastOutlineResult;
+  }
+  const result = parseLatexHeadings(content, sourceFile);
+  lastParsedContent = content;
+  lastSourceFile = sourceFile;
+  lastOutlineResult = result;
+  return result;
 }
 

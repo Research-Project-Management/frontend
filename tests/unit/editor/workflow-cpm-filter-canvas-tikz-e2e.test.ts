@@ -57,7 +57,7 @@ import {
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { sessionCoordinator } from '@/features/editor/core';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
 describe('End-to-End Workflow Verification: CPM -> Bitset Filter -> Canvas -> TikZ -> LaTeX Editor', () => {
   // Test project items for an academic research paper workflow

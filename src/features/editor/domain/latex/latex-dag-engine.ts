@@ -809,5 +809,3 @@ export class LatexDagEngine {
 
 
 export const latexDagEngine = new LatexDagEngine();
-// Alias for backward compatibility
-export const latexDependencyGraph = latexDagEngine;

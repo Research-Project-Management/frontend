@@ -319,7 +319,7 @@ export function formatShortAuthor(rawAuthorStr?: string): string {
     const secondAuthor = formatSingle(authors[1]);
     return `${firstAuthor} & ${secondAuthor}`;
   }
-  return `${firstAuthor} et al.`;
+  return `${firstAuthor} ${isVn ? 'và c.s.' : 'et al.'}`;
 }
 
 /**

@@ -152,7 +152,7 @@ export interface DocumentSettingsState {
   removeSuppressedWarning: (pattern: string) => void;
 }
 
-export const useDocumentSettingsStore = create<DocumentSettingsState>()(
+export const useSettingsStore = create<DocumentSettingsState>()(
   persist(
     (set) => ({
       engine: 'pdflatex',
@@ -308,11 +308,6 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
   ),
 );
 
-// Aliases for seamless backward compatibility
-export const useSettingsStore = useDocumentSettingsStore;
-export const useEditorSettingsStore = useDocumentSettingsStore;
-export type SettingsState = DocumentSettingsState;
-
 // Sync warning suppression filter options with diagnosticsCoordinator
 const syncFilterOptions = (state: DocumentSettingsState) => {
   diagnosticsCoordinator.setFilterOptions({
@@ -324,8 +319,8 @@ const syncFilterOptions = (state: DocumentSettingsState) => {
 };
 
 // Initial sync
-syncFilterOptions(useDocumentSettingsStore.getState());
+syncFilterOptions(useSettingsStore.getState());
 
 // Dynamic sync on store updates
-useDocumentSettingsStore.subscribe(syncFilterOptions);
+useSettingsStore.subscribe(syncFilterOptions);
 

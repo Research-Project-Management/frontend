@@ -4,7 +4,6 @@ import * as path from 'path';
 import { parseBibContent, type BibEntry } from '@/features/editor/subsystems/citation/model/bib-parser';
 import { LatexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
 import { runLatexLinter } from '@/features/editor/subsystems/diagnostics/extensions/latex-linter-core';
-import { latexToHtml, htmlToLatex } from '@/features/editor/domain/latex/latex-converter';
 import { countLatexWords } from '@/features/editor/domain/document/word-count';
 
 const FIXTURES_DIR = path.resolve(__dirname, '../../fixtures/real-world-datasets');
@@ -164,64 +163,6 @@ describe('Flux Editor Real-World Academic Dataset Evaluation', () => {
         const diagnostics = runLatexLinter(content);
         expect(Array.isArray(diagnostics)).toBe(true);
       }
-    });
-  });
-
-  // =========================================================================
-  // Case 4: Visual Mode <-> Source Mode Round-Trip Preservation
-  // =========================================================================
-  describe('Case 4: Visual Mode Round-Trip Fidelity on Real-World Math & Tables', () => {
-    it('losslessly preserves Attention formula: Scaled Dot-Product Attention', () => {
-      const latexSnippet = `\\begin{equation}
-\\mathrm{Attention}(Q, K, V) = \\mathrm{softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)V
-\\end{equation}`;
-
-      const html = latexToHtml(latexSnippet);
-      expect(html).toContain('Attention');
-      const roundTrip = htmlToLatex(html);
-
-      // Verify mathematical core is fully preserved
-      expect(roundTrip).toContain('Attention');
-      expect(roundTrip).toContain('softmax');
-      expect(roundTrip).toContain('QK^T');
-      expect(roundTrip).toContain('sqrt{d_k}');
-    });
-
-    it('losslessly preserves Multi-Head Attention formula with \\concat macro', () => {
-      const latexSnippet = `\\begin{align}
-\\mathrm{MultiHead}(Q, K, V) = \\mathrm{Concat}(\\mathrm{head}_1, \\ldots, \\mathrm{head}_h)W^O
-\\end{align}`;
-
-      const html = latexToHtml(latexSnippet);
-      const roundTrip = htmlToLatex(html);
-
-      expect(roundTrip).toContain('MultiHead');
-      expect(roundTrip).toContain('Concat');
-      expect(roundTrip).toContain('W^O');
-    });
-
-    it('preserves complex scientific table from BERT (direction_ablation_tab.tex)', () => {
-      const tablePath = path.join(BERT_DIR, 'direction_ablation_tab.tex');
-      expect(fs.existsSync(tablePath)).toBe(true);
-      const tableLatex = fs.readFileSync(tablePath, 'utf-8');
-
-      const html = latexToHtml(tableLatex);
-      const roundTrip = htmlToLatex(html);
-
-      // Booktabs / tabular environments and metric numbers must survive round-trip
-      expect(roundTrip).toContain('tabular');
-      expect(roundTrip).toContain('MNLI');
-      expect(roundTrip).toContain('SQuAD');
-    });
-
-    it('preserves scientific citations and cite keys in paragraph text', () => {
-      const paragraph = `Recent advancements in transformer architectures \\cite{vaswani2017attention} have established new benchmarks in natural language processing \\citep{devlin2018bert}.`;
-
-      const html = latexToHtml(paragraph);
-      const roundTrip = htmlToLatex(html);
-
-      expect(roundTrip).toMatch(/\\cite(p)?\{vaswani2017attention\}/);
-      expect(roundTrip).toMatch(/\\cite(p)?\{devlin2018bert\}/);
     });
   });
 

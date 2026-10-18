@@ -13,7 +13,6 @@
 // 1. Coordinators & Stores
 export {
   compilerCoordinator,
-  compilerLifecycleCoordinator,
   CompilerCoordinatorRegistry,
   buildPageStoreFilePaths,
   type CompileOptions,
@@ -25,14 +24,11 @@ export {
   generateThumbnail,
 } from './coordinator/compilation-pipeline';
 export {
-  useCompilerStore,
-  useDocumentCompilerStore,
   useCompileStore,
   type DocumentCompilerState,
 } from './coordinator/compiler.store';
 export {
   useViewerStore,
-  useDocumentViewerStore,
   type DocumentViewerState,
   type PdfFitMode,
   type PdfRotation,

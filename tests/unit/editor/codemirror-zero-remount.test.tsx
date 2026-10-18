@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, act, cleanup } from '@testing-library/react';
 import { EditorView } from '@codemirror/view';
 import { CodeMirrorView, buildEditorState } from '@/features/editor/ui/editor/CodeMirrorView';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { reviewCoordinator } from '@/features/editor/subsystems/review';
 import { getActiveEditorEngine, setActiveEditorEngine } from '@/features/editor/core';
 import { YjsCodeMirrorAdapter } from '@/features/editor/core/engine/collaboration/yjs-codemirror-adapter';

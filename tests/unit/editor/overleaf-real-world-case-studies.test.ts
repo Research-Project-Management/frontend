@@ -29,8 +29,8 @@ import {
   filterDiagnostics,
 } from '@/features/editor/subsystems/compiler';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
-import { assembleCompilationSnapshot } from '@/features/editor/subsystems/history/model/compilation-snapshot';
-import { computeDraftDiffSummary } from '@/features/editor/subsystems/history/model/draft-diff';
+import { assembleCompilationSnapshot } from '@/features/editor/domain/document/compilation-snapshot';
+import { computeDraftDiffSummary } from '@/features/editor/domain/document/draft-diff';
 import { extractMentions } from '@/features/editor/domain/collaboration/mention';
 import { parseTableToLatex } from '@/features/editor/domain/latex/smart-paste';
 import { parseLatexTabular } from '@/features/editor/domain/latex/table-matrix';
@@ -79,7 +79,7 @@ import {
   escapeLatexText,
 } from '@/features/editor/domain/canvas/tikz-transpiler';
 import { QuadTree } from '@/features/editor/domain/canvas/quad-tree';
-import { LRUDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { LRUDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { heuristicLatexErrorFix } from '@/features/editor/domain/ai/ai-error-assist';
 import {
   formatRemainingTime,
@@ -94,11 +94,6 @@ import {
   PrefixTrie,
   LatexSymbolCatalog,
 } from '@/features/editor/domain/latex/prefix-trie';
-import {
-  extractLatexBodyAndPreamble,
-  renderMathHtml,
-  renderChemHtml,
-} from '@/features/editor/domain/latex/latex-converter';
 import {
   createInitialSessionContext,
   sessionFsmTransition,
@@ -1341,38 +1336,6 @@ describe('Real-World Overleaf Case Studies & Large-Scale Dataset Stress Tests (C
       expect(thmHits).toContain('thm:dinh_ly_hoi_tu');
       expect(ngHits).toContain('nguyen2024doisanh');
       expect(secHits.length).toBeGreaterThanOrEqual(5);
-    });
-  });
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // CASE STUDY 24 (CS-24): PREAMBLE EXTRACTION & KATEX MATH/MHCHEM RENDERING
-  // ═══════════════════════════════════════════════════════════════════════════
-  describe('CS-24: Real Manuscript Preamble Extraction (Multi-Line \\author & Nested \\title) and KaTeX Rendering', () => {
-    const attentionFiles = loadRealWorldDataset('attention');
-    const tintFiles = loadRealWorldDataset('tint');
-
-    it('extracts multi-line \\author with nested \\thanks and comma-separated \\usepackage lists from attention/ms.tex & tint/main_arxiv.tex', () => {
-      const msTex = attentionFiles.find((f) => f.path === 'ms.tex')!.content;
-      const tintMain = tintFiles.find((f) => f.path === 'main_arxiv.tex')!.content;
-
-      const parsedAttention = extractLatexBodyAndPreamble(msTex);
-      expect(parsedAttention.preamble.documentclass).toBe('article');
-      expect(parsedAttention.preamble.title).toBe('Attention Is All You Need');
-      // Multi-line \author in ms.tex contains all 8 co-authors with nested \thanks{...} and \texttt{...}
-      expect(parsedAttention.preamble.author).toContain('Ashish Vaswani');
-      expect(parsedAttention.preamble.author).toContain('Illia Polosukhin');
-      expect(parsedAttention.preamble.packages).toContain('booktabs');
-      expect(parsedAttention.preamble.packages).toContain('amsfonts');
-
-      const parsedTint = extractLatexBodyAndPreamble(tintMain);
-      expect(parsedTint.preamble.documentclass).toBe('article');
-      expect(parsedTint.preamble.packages.length).toBeGreaterThanOrEqual(5);
-
-      // Verify KaTeX math & mhchem rendering with O(1) cache
-      const mathHtml = renderMathHtml('\\text{Attention}(Q, K, V) = \\text{softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)V', true);
-      expect(mathHtml).toContain('katex');
-      const chemHtml = renderChemHtml('CO2 + C -> 2 CO');
-      expect(chemHtml).toContain('katex');
     });
   });
 

@@ -5,16 +5,9 @@ import { EditingModeDropdown } from '@/features/editor/core/shell/topbar/Editing
 import { CommentCard } from '@/features/editor/subsystems/review';
 import { EditorToolbar } from '@/features/editor/ui/editor/EditorToolbar';
 import { FigureWizardModal } from '@/features/editor/ui/modals/FigureWizardModal';
-import { VisualEditorView } from '@/features/editor/ui/editor/VisualEditorView';
 import { useSettingsStore } from '@/features/editor/core';
 import { editorCommandBus } from '@/features/editor/core';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
-
-vi.mock('@/features/editor/sdk/manuscript/filestore.api', () => ({
-  filestore: {
-    upload: vi.fn().mockResolvedValue({ id: 'f-1', filename: 'chart.png' }),
-  },
-}));
 
 
 const mockMutateUpdate = (globalThis as any).__reviewMocks.mockMutateUpdate;
@@ -172,46 +165,5 @@ describe('Overleaf 1:1 Parity: Editing Modes, Comment Editing, Omega Button & Fi
 
     // Live preview should show \includegraphics with custom path
     expect(screen.getByText(/figures\/custom_diagram\.pdf/i)).toBeDefined();
-  });
-
-  it('supports F1 keydown in VisualEditorView to open shortcuts modal', () => {
-    const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
-    const { container } = render(<VisualEditorView value="Hello world" />);
-
-    const editable = container.querySelector('[contenteditable="true"]');
-    expect(editable).toBeDefined();
-
-    fireEvent.keyDown(editable!, { key: 'F1' });
-
-    expect(dispatchSpy).toHaveBeenCalledWith({
-      type: 'dialog:open',
-      dialog: 'shortcuts',
-    });
-  });
-
-  it('handles drop of image file in VisualEditorView, inserting figure and uploading asset', async () => {
-    const { filestore } = await import('@/features/editor/sdk/manuscript/filestore.api');
-    const { container } = render(
-      <VisualEditorView value="Some text" projectId="proj-123" />
-    );
-
-    const dropzone = container.querySelector('[contenteditable="true"]');
-    expect(dropzone).toBeDefined();
-
-    const mockFile = new File(['fake-png-content'], 'diagram.png', { type: 'image/png' });
-
-    fireEvent.drop(dropzone!, {
-      dataTransfer: {
-        files: [mockFile],
-        items: [
-          {
-            type: 'image/png',
-            getAsFile: () => mockFile,
-          },
-        ],
-      },
-    });
-
-    expect(filestore.upload).toHaveBeenCalledWith('proj-123', expect.any(File), 'diagram.png');
   });
 });

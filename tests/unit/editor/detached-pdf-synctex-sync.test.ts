@@ -3,7 +3,7 @@ import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
 import { useWorkspaceStore } from '@/features/editor/core';
-import { useLayoutStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/core';
 
 // In-memory BroadcastChannel simulator for cross-window testing
@@ -60,7 +60,7 @@ describe('Detached PDF Viewer Multi-Window SyncTeX & Dual-Scroll Bus', () => {
       activeFilePage: { id: 'file-main', title: 'main.tex', path: 'main.tex' } as any,
     });
 
-    useLayoutStore.setState({
+    useWorkspaceStore.setState({
       isPdfDetached: false,
       editorSplitMode: 'none',
       activeEditorPane: 'primary',
@@ -81,7 +81,7 @@ describe('Detached PDF Viewer Multi-Window SyncTeX & Dual-Scroll Bus', () => {
     detachedChannel.close();
     MockBroadcastChannel.reset();
     navigationCoordinator.setBroadcastChannel(null);
-    useLayoutStore.setState({ isPdfDetached: false });
+    useWorkspaceStore.setState({ isPdfDetached: false });
     setActiveEditorEngine(null);
   });
 
@@ -137,7 +137,7 @@ describe('Detached PDF Viewer Multi-Window SyncTeX & Dual-Scroll Bus', () => {
 
     it('detects isDetachedPreviewWindow and broadcasts synctex:jump-to-code instead of local engine jump', () => {
       const postMessageSpy = vi.spyOn(mainChannel, 'postMessage');
-      useLayoutStore.setState({ isPdfDetached: true });
+      useWorkspaceStore.setState({ isPdfDetached: true });
       setActiveEditorEngine(null);
 
       // Verify isDetachedPreviewWindow returns true
@@ -263,13 +263,13 @@ describe('Detached PDF Viewer Multi-Window SyncTeX & Dual-Scroll Bus', () => {
 
   describe('3. Detached Preview Window Close & Reattach Lifecycle', () => {
     it('sets isPdfDetached to false when preview:window-closed is received', async () => {
-      useLayoutStore.setState({ isPdfDetached: true });
+      useWorkspaceStore.setState({ isPdfDetached: true });
 
       detachedChannel.postMessage({ type: 'preview:window-closed' });
 
       await new Promise((resolve) => setTimeout(resolve, 20));
 
-      expect(useLayoutStore.getState().isPdfDetached).toBe(false);
+      expect(useWorkspaceStore.getState().isPdfDetached).toBe(false);
     });
   });
 });

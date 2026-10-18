@@ -6,7 +6,7 @@ import { cn } from '@/shared/lib/utils';
 import { editorCommandBus } from '@/features/editor/core';
 import { parseDocumentOutline, OUTLINE_INDENT } from '@/features/editor/subsystems/compiler';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
-import { useLayoutStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '@/features/editor/core';
 
 export interface FileOutlineSectionProps {
   isFileTreeOpen: boolean;
@@ -20,8 +20,8 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
   activeFileName,
 }: FileOutlineSectionProps) {
   const { engine } = useEditorInstance();
-  const isOutlineOpen = useLayoutStore((s) => s.fileOutlineOpen);
-  const toggleFileOutline = useLayoutStore((s) => s.toggleFileOutline);
+  const isOutlineOpen = useWorkspaceStore((s) => s.fileOutlineOpen);
+  const toggleFileOutline = useWorkspaceStore((s) => s.toggleFileOutline);
   const [outlineHeight, setOutlineHeight] = useState(200);
   const [activeLine, setActiveLine] = useState<number>(1);
   const [content, setContent] = useState<string>(docContent);
@@ -32,9 +32,9 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
     setContent(docContent);
   }, [docContent]);
 
-  // Subscribe to real-time keystrokes and cursor updates from the active editor engine
+  // Subscribe to real-time keystrokes and cursor updates from the active editor engine only when open
   useEffect(() => {
-    if (!engine) return;
+    if (!engine || !isOutlineOpen) return;
 
     const initialPos = engine.getCursorPosition();
     if (initialPos) {
@@ -47,7 +47,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
     }
 
     const unsubCursor = engine.onCursorChange((line: number) => {
-      setActiveLine(line);
+      setActiveLine((prev) => (prev === line ? prev : line));
     });
 
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -63,7 +63,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
       unsubCursor();
       unsubContent();
     };
-  }, [engine]);
+  }, [engine, isOutlineOpen]);
 
   const startResizeOutline = useCallback(
     (e: React.MouseEvent) => {

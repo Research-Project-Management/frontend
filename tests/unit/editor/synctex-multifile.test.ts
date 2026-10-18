@@ -5,7 +5,7 @@ import {
   resolveReverse,
   resolvePageForLine,
 } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
 describe('Bidirectional SyncTeX Multi-File & Subfile Precision (Overleaf Parity)', () => {
   // Realistic multi-file SyncTeX sample

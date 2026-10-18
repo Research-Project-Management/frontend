@@ -11,7 +11,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   LRUDocumentCache,
   type DocumentModelState,
-} from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+} from '@/features/editor/domain/document/lru-document-cache';
 import {
   LatexDagEngine,
   normalizeLatexPath,

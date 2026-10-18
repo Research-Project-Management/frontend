@@ -4,7 +4,7 @@ import { render, screen, fireEvent, cleanup, act } from '@testing-library/react'
 import { editorCommandBus } from '@/features/editor/core';
 import { keybindingCoordinator } from '@/features/editor/subsystems/keybinding';
 import { useSearchStore } from '@/features/editor/core';
-import { useLayoutStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '@/features/editor/core';
 import { useProjectSearchActions } from '@/features/editor/subsystems/search';
 import { renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -24,7 +24,7 @@ describe('Project Search & Replace (Overleaf Parity: Ctrl+Shift+F & Replace)', (
   beforeEach(() => {
     vi.clearAllMocks();
     useSearchStore.getState().reset();
-    useLayoutStore.setState({ sidebarLeftOpen: false, activeSidebarTab: 'files' });
+    useWorkspaceStore.setState({ sidebarLeftOpen: false, activeSidebarTab: 'files' });
   });
 
   afterEach(() => {
@@ -43,8 +43,8 @@ describe('Project Search & Replace (Overleaf Parity: Ctrl+Shift+F & Replace)', (
       shiftKey: true,
     });
 
-    expect(useLayoutStore.getState().sidebarLeftOpen).toBe(true);
-    expect(useLayoutStore.getState().activeSidebarTab).toBe('search');
+    expect(useWorkspaceStore.getState().sidebarLeftOpen).toBe(true);
+    expect(useWorkspaceStore.getState().activeSidebarTab).toBe('search');
     expect(commandSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'sidebar:open-panel',
@@ -96,8 +96,8 @@ describe('Project Search & Replace (Overleaf Parity: Ctrl+Shift+F & Replace)', (
       shiftKey: true,
     });
 
-    expect(useLayoutStore.getState().sidebarLeftOpen).toBe(true);
-    expect(useLayoutStore.getState().activeSidebarTab).toBe('search');
+    expect(useWorkspaceStore.getState().sidebarLeftOpen).toBe(true);
+    expect(useWorkspaceStore.getState().activeSidebarTab).toBe('search');
     expect(commandSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'sidebar:open-panel',

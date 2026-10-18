@@ -14,7 +14,7 @@ import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSub, M
 import { usePageStore } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { useSettingsStore } from '@/features/editor/core';
-import { useLayoutStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '@/features/editor/core';
 import { useProjectExport } from '@/features/editor/ui/hooks/useExport';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { editorCommandBus } from '@/features/editor/core';
@@ -43,20 +43,20 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
   };
 
   const handleNewFile = () => {
-    useLayoutStore.getState().setActiveSidebarTab('files');
-    useLayoutStore.getState().setSidebarLeftOpen(true);
+    useWorkspaceStore.getState().setActiveSidebarTab('files');
+    useWorkspaceStore.getState().setSidebarLeftOpen(true);
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'add-files', payload: { initialTab: 'new-file' } });
   };
 
   const handleNewFolder = () => {
-    useLayoutStore.getState().setActiveSidebarTab('files');
-    useLayoutStore.getState().setSidebarLeftOpen(true);
+    useWorkspaceStore.getState().setActiveSidebarTab('files');
+    useWorkspaceStore.getState().setSidebarLeftOpen(true);
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'new-folder' });
   };
 
   const handleUploadFile = () => {
-    useLayoutStore.getState().setActiveSidebarTab('files');
-    useLayoutStore.getState().setSidebarLeftOpen(true);
+    useWorkspaceStore.getState().setActiveSidebarTab('files');
+    useWorkspaceStore.getState().setSidebarLeftOpen(true);
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'add-files', payload: { initialTab: 'upload' } });
   };
 

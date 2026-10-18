@@ -22,7 +22,7 @@ import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 
-import { usePageStore, useSettingsStore, useLayoutStore } from '@/features/editor/core';
+import { usePageStore, useSettingsStore, useWorkspaceStore } from '@/features/editor/core';
 import { useViewerStore, type DocumentViewerState } from '@/features/editor/subsystems/compiler/coordinator/viewer.store';
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
@@ -295,7 +295,7 @@ export function PdfViewer() {
   useEffect(() => {
     return editorCommandBus.subscribe('editor:suggest-fix', () => {
       setShowLogsOverlay(true);
-      useLayoutStore.getState().setSidebarLeftOpen(true);
+      useWorkspaceStore.getState().setSidebarLeftOpen(true);
     });
   }, []);
 

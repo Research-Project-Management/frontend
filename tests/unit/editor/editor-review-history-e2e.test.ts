@@ -22,7 +22,7 @@ import { reviewCoordinator } from '@/features/editor/subsystems/review';
 import { manuscriptService, suggestionService, historyService } from '@/features/editor/sdk/manuscript.service';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
 import type { TrackChangeDto, CommentThreadDto } from '@/features/editor/sdk/manuscript/types';
-import type { ProjectVersionListItem, ProjectDiffResponse } from '@/features/editor/subsystems/history/model/history.types';
+import type { ProjectVersionListItem, ProjectDiffResponse } from '@/features/editor/domain/types/history.types';
 
 describe('Track Changes, Review Mode & Version History Subsystem', () => {
   // ─── 1. CodeMirror 6 Track Changes Extension ────────────────────────────────

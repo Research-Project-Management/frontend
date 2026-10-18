@@ -17,7 +17,7 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import { Loader2 } from 'lucide-react';
-import { useLayoutStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '@/features/editor/core';
 import { FilesTab } from '@/features/editor/subsystems/explorer';
 
 const PanelLoadingFallback = () => (
@@ -48,10 +48,8 @@ const AiTab = dynamic(() => import('@/features/editor/subsystems/ai').then((m) =
 });
 
 export function PrimarySidebar() {
-  const {
-    activeSidebarTab,
-    setSidebarLeftOpen,
-  } = useLayoutStore();
+  const activeSidebarTab = useWorkspaceStore((s) => s.activeSidebarTab);
+  const setSidebarLeftOpen = useWorkspaceStore((s) => s.setSidebarLeftOpen);
 
   const handleClose = () => {
     setSidebarLeftOpen(false);

@@ -1,11 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useSettingsStore } from '@/features/editor/core';
 import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
-import {
-  latexToHtml,
-  htmlToLatex,
-  renderMathHtml,
-} from '@/features/editor/domain/latex/latex-converter';
 
 describe('Source vs Visual Editor Mode (Overleaf 1:1 Parity)', () => {
   beforeEach(() => {
@@ -65,72 +60,6 @@ describe('Source vs Visual Editor Mode (Overleaf 1:1 Parity)', () => {
       expect(listener).toHaveBeenCalledWith({ bibKey: 'knuth1984' });
 
       unsub();
-    });
-  });
-
-  describe('Lossless Round-Trip Conversion across Mode Switches', () => {
-    it('should preserve headings, bold, italic, and lists when switching to Visual and back to Source', () => {
-      const source = `\\section{Introduction}
-This is \\textbf{bold} and \\textit{italic} text.
-
-\\begin{itemize}
-  \\item First bullet
-  \\item Second bullet
-\\end{itemize}`;
-
-      // Convert to HTML for Visual Mode
-      const html = latexToHtml(source);
-      expect(html).toContain('Introduction');
-      expect(html).toContain('<strong>bold</strong>');
-      expect(html).toContain('<em>italic</em>');
-      expect(html).toContain('<ul');
-      expect(html).toContain('<li>First bullet</li>');
-
-      // Convert back to LaTeX for Source Mode
-      const restored = htmlToLatex(html, source);
-      expect(restored).toContain('\\section{Introduction}');
-      expect(restored).toContain('\\textbf{bold}');
-      expect(restored).toContain('\\textit{italic}');
-      expect(restored).toContain('\\begin{itemize}');
-      expect(restored).toContain('\\item First bullet');
-      expect(restored).toContain('\\end{itemize}');
-    });
-
-    it('should preserve complex math formulas and environments through conversion', () => {
-      const mathSource = `\\begin{equation}
-\\int_{0}^{\\infty} e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}
-\\end{equation}
-
-Inline equation $E = mc^2$ in paragraph.`;
-
-      const html = latexToHtml(mathSource);
-      expect(html).toContain('latex-math-block');
-      expect(html).toContain('latex-math-inline');
-
-      const restored = htmlToLatex(html, mathSource);
-      expect(restored).toContain('\\begin{equation}');
-      expect(restored).toContain('\\int_{0}^{\\infty} e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}');
-      expect(restored).toContain('\\end{equation}');
-      expect(restored).toContain('$E = mc^2$');
-    });
-
-    it('should preserve protected environments (figure, table, tikz) untouched', () => {
-      const protectedSource = `\\begin{figure}[htbp]
-\\centering
-\\includegraphics[width=0.8\\textwidth]{diagram.png}
-\\caption{System Architecture Diagram}
-\\label{fig:arch}
-\\end{figure}`;
-
-      const html = latexToHtml(protectedSource);
-      expect(html).toContain('latex-figure-wrapper');
-
-      const restored = htmlToLatex(html, protectedSource);
-      expect(restored).toContain('\\begin{figure}[htbp]');
-      expect(restored).toContain('\\includegraphics[width=0.8\\textwidth]{diagram.png}');
-      expect(restored).toContain('\\caption{System Architecture Diagram}');
-      expect(restored).toContain('\\label{fig:arch}');
-      expect(restored).toContain('\\end{figure}');
     });
   });
 });

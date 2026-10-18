@@ -528,5 +528,3 @@ export class LRUDocumentCache {
 }
 
 export const lruDocumentCache = new LRUDocumentCache();
-// Alias for backward compatibility
-export const documentModelManager = lruDocumentCache;

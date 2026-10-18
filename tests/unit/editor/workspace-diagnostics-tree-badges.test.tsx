@@ -8,7 +8,7 @@ import {
 } from '@/features/editor/subsystems/diagnostics';
 import { TexFileRow } from '@/features/editor/subsystems/explorer';
 import { FileTreeFolderRow } from '@/features/editor/subsystems/explorer';
-import { useDocumentSettingsStore } from '@/features/editor/core';
+import { useSettingsStore } from '@/features/editor/core';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 
 const queryClient = new QueryClient({
@@ -27,7 +27,7 @@ describe('Workspace Diagnostics Coordinator & File Tree Badges (Overleaf Parity)
   beforeEach(() => {
     diagnosticsCoordinator.clear();
     diagnosticsCoordinator.setFilterOptions({});
-    useDocumentSettingsStore.setState({
+    useSettingsStore.setState({
       suppressBadBoxes: false,
       suppressFontWarnings: false,
       suppressPackageWarnings: false,
@@ -300,13 +300,13 @@ describe('Workspace Diagnostics Coordinator & File Tree Badges (Overleaf Parity)
     expect(summary.warningCount).toBe(1);
 
     // Toggle suppressBadBoxes in settings store
-    useDocumentSettingsStore.getState().setSuppressBadBoxes(true);
+    useSettingsStore.getState().setSuppressBadBoxes(true);
 
     summary = diagnosticsCoordinator.getFileSummary('main.tex');
     expect(summary.warningCount).toBe(0);
 
     // Re-enable
-    useDocumentSettingsStore.getState().setSuppressBadBoxes(false);
+    useSettingsStore.getState().setSuppressBadBoxes(false);
     summary = diagnosticsCoordinator.getFileSummary('main.tex');
     expect(summary.warningCount).toBe(1);
   });

@@ -42,6 +42,9 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
   private view: EditorView;
   private contentListeners = new Set<(content: string) => void>();
   private cursorListeners = new Set<(line: number, col: number) => void>();
+  private cursorRafId: number | null = null;
+  private lastCursorLine = -1;
+  private lastCursorCol = -1;
 
   constructor(view: EditorView) {
     this.view = view;
@@ -62,12 +65,19 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
       }
     }
 
-    if (update.selectionSet || update.docChanged) {
-      const pos = this.getCursorPosition();
-      if (pos) {
-        for (const listener of this.cursorListeners) {
-          listener(pos.line, pos.column);
-        }
+    if ((update.selectionSet || update.docChanged) && this.cursorListeners.size > 0) {
+      if (this.cursorRafId === null) {
+        this.cursorRafId = requestAnimationFrame(() => {
+          this.cursorRafId = null;
+          const pos = this.getCursorPosition();
+          if (pos && (pos.line !== this.lastCursorLine || pos.column !== this.lastCursorCol)) {
+            this.lastCursorLine = pos.line;
+            this.lastCursorCol = pos.column;
+            for (const listener of this.cursorListeners) {
+              listener(pos.line, pos.column);
+            }
+          }
+        });
       }
     }
   }
@@ -483,6 +493,10 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
   }
 
   onDestroy(): void {
+    if (this.cursorRafId !== null) {
+      cancelAnimationFrame(this.cursorRafId);
+      this.cursorRafId = null;
+    }
     this.contentListeners.clear();
     this.cursorListeners.clear();
   }

@@ -2,9 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
 import { EditorArea } from '@/features/editor/ui/editor/EditorArea';
-import { useSettingsStore } from '@/features/editor/core';
-import { useLayoutStore } from '@/features/editor/core';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { useSettingsStore, useWorkspaceStore } from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 
@@ -64,16 +63,6 @@ vi.mock('@/features/editor/ui/editor/CodeMirrorView', () => ({
   ),
 }));
 
-// Mock VisualEditorView to prevent TipTap/DOM measurement issues in JSDOM
-vi.mock('@/features/editor/ui/editor/VisualEditorView', () => ({
-  VisualEditorView: (props: { fileId?: string }) => (
-    <div data-testid="mock-visual-view" data-file-id={props.fileId} className="visual-editor-surface">
-      <span>Visual Engine Mock</span>
-      <span>Introduction</span>
-    </div>
-  ),
-}));
-
 describe('EditorArea - Source vs Visual Mode Integration', () => {
   beforeEach(() => {
     document.body.removeAttribute('data-scroll-locked');
@@ -82,7 +71,7 @@ describe('EditorArea - Source vs Visual Mode Integration', () => {
       el.removeAttribute('aria-hidden');
     });
     useSettingsStore.setState({ editorMode: 'code', showEditorTabs: true });
-    useLayoutStore.setState({ editorSplitMode: 'none', secondaryFileId: null, activeEditorPane: 'primary' });
+    useWorkspaceStore.setState({ editorSplitMode: 'none', secondaryFileId: null, activeEditorPane: 'primary' });
     lruDocumentCache.clear();
     document.execCommand = vi.fn();
   });

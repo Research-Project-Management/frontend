@@ -3,7 +3,7 @@ import {
   LRUDocumentCache,
   lruDocumentCache,
   type DocumentModelState,
-} from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+} from '@/features/editor/domain/document/lru-document-cache';
 import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 import { sessionCoordinator } from '@/features/editor/core';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';

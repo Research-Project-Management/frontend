@@ -39,7 +39,7 @@ export interface DocumentEditorState {
   setActiveDocument: (doc: Page | PageFile | null) => void;
 }
 
-export const useDocumentEditorStore = create<DocumentEditorState>((set, get) => ({
+export const usePageStore = create<DocumentEditorState>((set, get) => ({
   currentPage: null,
   projectId: '',
   parentPageId: null,
@@ -104,7 +104,4 @@ export const useDocumentEditorStore = create<DocumentEditorState>((set, get) => 
   },
 }));
 
-// Canonical modern store exports
-export const useManuscriptStore = useDocumentEditorStore;
-export const usePageStore = useDocumentEditorStore;
 export type { AssetInfo };

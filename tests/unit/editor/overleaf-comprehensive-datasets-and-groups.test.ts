@@ -19,10 +19,6 @@ import {
   parseLatexLog,
   filterDiagnostics,
 } from '@/features/editor/subsystems/compiler';
-import {
-  latexToHtml,
-  htmlToLatex,
-} from '@/features/editor/domain/latex/latex-converter';
 import { parseTableToLatex } from '@/features/editor/domain/latex/smart-paste';
 import { parseLatexTabular } from '@/features/editor/domain/latex/table-matrix';
 import {
@@ -35,10 +31,10 @@ import {
 import {
   parseDocumentOutline,
 } from '@/features/editor/subsystems/compiler/synctex/pdf-outline';
-import { assembleCompilationSnapshot } from '@/features/editor/subsystems/history/model/compilation-snapshot';
+import { assembleCompilationSnapshot } from '@/features/editor/domain/document/compilation-snapshot';
 import { extractMentions } from '@/features/editor/domain/collaboration/mention';
 import { sanitizeZipPath, detectCommonRootPrefix } from '@/features/editor/sdk/archive/archive-import';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
 import { TikZTranspiler } from '@/features/editor/domain/canvas/tikz-transpiler';
 
@@ -177,35 +173,9 @@ describe('Overleaf Comprehensive Datasets, Group Workflows, Edge Cases & SLO Gat
   });
 
   // ===========================================================================
-  // 2. DS-2 & CS-U1/CS-U2: Heavy Math, TikZ/PGFPlots, Visual Roundtrip & Smart Paste
+  // 2. DS-2 & CS-U2: Heavy Math, TikZ/PGFPlots & Smart Paste
   // ===========================================================================
-  describe('DS-2 & CS-U1/CS-U2: Heavy Math, TikZ Transpiler & Lossless Source <-> Visual Roundtrip', () => {
-    it('CS-U1: preserves custom macros, protected environments, and math blocks across Source <-> Visual roundtrip (<80ms SLO)', () => {
-      const complexPaper = [
-        '\\section{Variational Quantum Eigensolver}',
-        'Let $\\mathcal{H} = (\\mathbb{C}^2)^{\\otimes n}$ denote the Hilbert space.',
-        '\\textbf{Theorem 1.} \\textit{For any observable $\\hat{O}$, the expectation value satisfies:}',
-        '\\[ E(\\boldsymbol{\\theta}) = \\langle \\psi(\\boldsymbol{\\theta}) | \\hat{H} | \\psi(\\boldsymbol{\\theta}) \\rangle \\geq E_0 \\]',
-        '\\subsection{Experimental Setup}',
-        'We evaluate convergence across hardware topologies.',
-      ].join('\n\n');
-
-      // Warm up JIT / parser tables before measuring hot-path roundtrip SLO
-      htmlToLatex(latexToHtml('\\section{Warmup} $x^2$'));
-
-      const t0 = performance.now();
-      const html = latexToHtml(complexPaper);
-      const roundtripLatex = htmlToLatex(html);
-      const elapsed = performance.now() - t0;
-
-      expect(elapsed).toBeLessThan(80);
-      expect(roundtripLatex).toContain('\\section{Variational Quantum Eigensolver}');
-      expect(roundtripLatex).toContain('\\subsection{Experimental Setup}');
-      expect(roundtripLatex).toContain('\\textbf{Theorem 1.}');
-      expect(roundtripLatex).toContain('\\hat{H}');
-      expect(roundtripLatex).toContain('\\mathbb{C}^2');
-    });
-
+  describe('DS-2 & CS-U2: Heavy Math, TikZ Transpiler & Smart Paste', () => {
     it('CS-U2: converts 50x8 experimental TSV spreadsheet with special LaTeX chars into valid tabular matrix', () => {
       const header = ['Model_Name', 'Dataset & Split', 'Accuracy (%)', 'Loss #1', 'p-value', 'Latency (ms)', 'Memory_GB', 'Notes'];
       const rows: string[] = [header.join('\t')];

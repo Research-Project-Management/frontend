@@ -61,7 +61,7 @@ import { latexVisualMath } from '@/features/editor/core/engine/extensions/latex-
 import { latexVisualCitations } from '@/features/editor/core/engine/extensions/latex-visual-citations';
 import { editorCommandBus } from '@/features/editor/core';
 import { useDocumentCollaborationStore } from '@/features/editor/core/store/collaboration.store';
-import { useLayoutStore } from '@/features/editor/core/store/layout.store';
+import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { getThemeExtension } from './editor-themes';
 
@@ -437,8 +437,8 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
         run: (view) => {
           const { from, to } = view.state.selection.main;
           const selectedText = from < to ? view.state.sliceDoc(from, to) : undefined;
-          useLayoutStore.getState().setSidebarLeftOpen(true);
-          useLayoutStore.getState().setActiveSidebarTab('search');
+          useWorkspaceStore.getState().setSidebarLeftOpen(true);
+          useWorkspaceStore.getState().setActiveSidebarTab('search');
           editorCommandBus.dispatch({
             type: 'sidebar:open-panel',
             panel: 'Search',
@@ -453,8 +453,8 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
         run: (view) => {
           const { from, to } = view.state.selection.main;
           const selectedText = from < to ? view.state.sliceDoc(from, to) : undefined;
-          useLayoutStore.getState().setSidebarLeftOpen(true);
-          useLayoutStore.getState().setActiveSidebarTab('search');
+          useWorkspaceStore.getState().setSidebarLeftOpen(true);
+          useWorkspaceStore.getState().setActiveSidebarTab('search');
           editorCommandBus.dispatch({
             type: 'sidebar:open-panel',
             panel: 'Search',
@@ -479,8 +479,8 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
             selectedText: selectedText || '',
           });
 
-          useLayoutStore.getState().setSidebarLeftOpen(true);
-          useLayoutStore.getState().setActiveSidebarTab('review');
+          useWorkspaceStore.getState().setSidebarLeftOpen(true);
+          useWorkspaceStore.getState().setActiveSidebarTab('review');
           editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
           return true;
         },
@@ -500,8 +500,8 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
             selectedText: selectedText || '',
           });
 
-          useLayoutStore.getState().setSidebarLeftOpen(true);
-          useLayoutStore.getState().setActiveSidebarTab('review');
+          useWorkspaceStore.getState().setSidebarLeftOpen(true);
+          useWorkspaceStore.getState().setActiveSidebarTab('review');
           editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
           return true;
         },

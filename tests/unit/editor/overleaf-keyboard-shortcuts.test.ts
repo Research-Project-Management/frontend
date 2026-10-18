@@ -202,13 +202,6 @@ describe('Overleaf LaTeX Formatting & Auto-Close (Overleaf Parity)', () => {
     expect(toggleEditor?.keys).toEqual(['Ctrl', 'Shift', 'V']);
   });
 
-  it('VisualSlashCommandMenu has table-wizard command', async () => {
-    const { SLASH_COMMANDS } = await import('@/features/editor/ui/editor/visual/toolbars/VisualSlashCommandMenu');
-    const tableWizardCmd = SLASH_COMMANDS.find((c) => c.id === 'table-wizard');
-    expect(tableWizardCmd).toBeDefined();
-    expect(tableWizardCmd?.shortcut).toBe('Ctrl+Shift+T');
-  });
-
   it('SHORTCUT_LIST has Word Count bound to Ctrl+Shift+W (Overleaf 1:1 Parity)', async () => {
     const { SHORTCUT_LIST } = await import('@/features/editor/ui/modals/KeyboardShortcutsModal');
     const wordCount = SHORTCUT_LIST.find((s) => s.id === 'word-count');

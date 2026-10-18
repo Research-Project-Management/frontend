@@ -3,7 +3,7 @@ import {
   shouldSuppressWarning,
   filterDiagnostics,
   type WarningFilterOptions,
-} from '@/features/editor/subsystems/compiler/logs/warning-filter';
+} from '@/features/editor/domain/latex/warning-filter';
 
 describe('warning-filter domain logic', () => {
   it('never suppresses compiler errors regardless of options', () => {

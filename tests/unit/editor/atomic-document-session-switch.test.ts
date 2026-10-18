@@ -7,7 +7,7 @@ import {
   type IEditorEngine,
 } from '@/features/editor/core';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
 
 describe('Atomic Document Session & Tab Lifecycle Deep Module', () => {

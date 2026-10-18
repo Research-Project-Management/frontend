@@ -41,10 +41,9 @@ const DocumentConflictDialog = dynamic(
 );
 
 import { useActiveDocument } from '@/features/editor/ui/hooks/useActiveDocument';
-import { useEditorCollaboration } from '@/features/editor/ui/hooks/useCollaboration';
 import {
   useSettingsStore,
-  useLayoutStore,
+  useWorkspaceStore,
   editorCommandBus,
   sessionCoordinator,
   type DraftSnapshot,
@@ -128,14 +127,14 @@ export function EditorArea() {
     childFiles,
   } = useActiveDocument();
 
-  const editorSplitMode = useLayoutStore((s) => s.editorSplitMode);
-  const editorSplitRatio = useLayoutStore((s) => s.editorSplitRatio);
-  const activeEditorPane = useLayoutStore((s) => s.activeEditorPane);
-  const secondaryFileId = useLayoutStore((s) => s.secondaryFileId);
-  const setEditorSplitRatio = useLayoutStore((s) => s.setEditorSplitRatio);
-  const setActiveEditorPane = useLayoutStore((s) => s.setActiveEditorPane);
-  const setSecondaryFileId = useLayoutStore((s) => s.setSecondaryFileId);
-  const setEditorSplitMode = useLayoutStore((s) => s.setEditorSplitMode);
+  const editorSplitMode = useWorkspaceStore((s) => s.editorSplitMode);
+  const editorSplitRatio = useWorkspaceStore((s) => s.editorSplitRatio);
+  const activeEditorPane = useWorkspaceStore((s) => s.activeEditorPane);
+  const secondaryFileId = useWorkspaceStore((s) => s.secondaryFileId);
+  const setEditorSplitRatio = useWorkspaceStore((s) => s.setEditorSplitRatio);
+  const setActiveEditorPane = useWorkspaceStore((s) => s.setActiveEditorPane);
+  const setSecondaryFileId = useWorkspaceStore((s) => s.setSecondaryFileId);
+  const setEditorSplitMode = useWorkspaceStore((s) => s.setEditorSplitMode);
 
   const secondaryFile = React.useMemo(() => {
     if (secondaryFileId) {
@@ -171,32 +170,7 @@ export function EditorArea() {
     }
   }, [pageId, selectFile]);
 
-  const cachedModel = displayPage?.id ? lruDocumentCache.getModel(displayPage.id) : null;
-  const rawContent =
-    cachedModel?.content !== undefined
-      ? cachedModel.content
-      : typeof displayPage?.content === 'string'
-        ? displayPage.content
-        : typeof displayPage?.content === 'object' && displayPage.content !== null && 'source' in displayPage.content
-          ? String((displayPage.content as { source?: unknown }).source ?? '')
-          : '';
-
   const effectiveProjectId = extractProjectId(activePage) ?? extractProjectId(parentPage) ?? pageId;
-  const { yText, awareness, status: realtimeStatus } = useEditorCollaboration({
-    projectId: effectiveProjectId,
-    fileId: displayPage?.id,
-    initialValue: rawContent,
-    enabled: Boolean(!isLoading && activePage && displayPage && effectiveProjectId),
-  });
-
-  const isRealtimeConnected = Boolean(yText) && realtimeStatus === 'connected';
-
-  // Report the *actual* realtime connection status so HTTP autosave resumes when disconnected.
-  React.useEffect(() => {
-    const id = displayPage?.id;
-    if (!id) return;
-    sessionCoordinator.setRealtimeConnected(id, isRealtimeConnected);
-  }, [displayPage?.id, isRealtimeConnected]);
 
   // Surface remote-vs-local conflicts with visual inspection & merge dialog
   const [activeConflict, setActiveConflict] = React.useState<DocumentConflict | null>(null);
@@ -298,7 +272,7 @@ export function EditorArea() {
 
       if (modKey && (e.key === '\\' || e.code === 'Backslash')) {
         e.preventDefault();
-        const currentMode = useLayoutStore.getState().editorSplitMode;
+        const currentMode = useWorkspaceStore.getState().editorSplitMode;
         if (currentMode === 'none') {
           const otherFile = childFiles.find((f) => f.id !== displayPage?.id);
           const targetId = otherFile?.id || parentPage?.id || displayPage?.id;

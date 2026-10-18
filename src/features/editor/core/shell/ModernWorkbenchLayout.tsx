@@ -32,7 +32,7 @@ import { EditorArea } from '@/features/editor/ui/editor/EditorArea';
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import { usePageStore } from '@/features/editor/core';
 import { useSettingsStore } from '@/features/editor/core';
-import { useLayoutStore, type ActivityBarTab } from '@/features/editor/core';
+import { useWorkspaceStore, type ActivityBarTab } from '@/features/editor/core';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { editorCommandBus, getActiveEditorEngine } from '@/features/editor/core';
 import { keybindingCoordinator } from '@/features/editor/subsystems/keybinding';
@@ -66,6 +66,60 @@ function getDocContent(doc: unknown, fallbackEngineContent?: string): string {
   }
   if (typeof d.docContent === 'string') return d.docContent;
   return '';
+}
+
+interface ConnectedWordCountModalProps {
+  open: boolean;
+  rootPageId: string | null;
+  engine: ReturnType<typeof useEditorInstance>['engine'];
+}
+
+function ConnectedWordCountModal({ open, rootPageId, engine }: ConnectedWordCountModalProps) {
+  const currentDoc = usePageStore((s) => s.activeFilePage || s.currentPage);
+  const { data: serverFiles = [] } = useQuery({
+    ...filesQuery(rootPageId || ''),
+    enabled: Boolean(rootPageId) && open,
+  });
+
+  const combinedProjectFiles = useMemo(() => {
+    if (!open) return [];
+
+    const currentDocContent = getDocContent(currentDoc, engine?.getContent());
+
+    const currentDocItem = {
+      id: currentDoc?.id || 'current',
+      title: currentDoc?.title || 'main.tex',
+      content: currentDocContent,
+    };
+
+    const list: Array<{ id: string; title: string; content: string }> = (
+      serverFiles as Array<{ id: string; title?: string; name?: string; content?: string }>
+    ).map((f) => ({
+      id: f.id,
+      title: f.title || f.name || 'document',
+      content: f.id === currentDoc?.id ? currentDocContent : (f.content || ''),
+    }));
+
+    if (!list.some((f) => f.id === currentDocItem.id || f.title === currentDocItem.title)) {
+      list.unshift(currentDocItem);
+    }
+    return list;
+  }, [serverFiles, currentDoc, engine, open]);
+
+  return (
+    <WordCountModal
+      open={open}
+      onClose={() => editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'word-count' })}
+      content={getDocContent(currentDoc, engine?.getContent())}
+      selectedText={engine?.getSelectedText() || ''}
+      activeFileName={currentDoc?.title || 'main.tex'}
+      projectFiles={combinedProjectFiles}
+      onInsertSnippet={(snippet) => {
+        editorCommandBus.dispatch({ type: 'editor:insert-text', text: snippet });
+        editorCommandBus.dispatch({ type: 'editor:focus' });
+      }}
+    />
+  );
 }
 
 export function ModernWorkbenchLayout() {
@@ -115,39 +169,7 @@ export function ModernWorkbenchLayout() {
     }
   }, [libraryData?.items]);
 
-  const currentPage = usePageStore((s) => s.currentPage);
-  const activeFilePage = usePageStore((s) => s.activeFilePage);
-  const currentDoc = activeFilePage || currentPage;
-
-  const { data: serverFiles = [] } = useQuery({
-    ...filesQuery(rootPageId || ''),
-    enabled: Boolean(rootPageId) && wordCountOpen,
-  });
-
-  const combinedProjectFiles = useMemo(() => {
-    if (!wordCountOpen) return [];
-
-    const currentDocContent = getDocContent(currentDoc, engine?.getContent());
-
-    const currentDocItem = {
-      id: currentDoc?.id || 'current',
-      title: currentDoc?.title || 'main.tex',
-      content: currentDocContent,
-    };
-
-    const list: Array<{ id: string; title: string; content: string }> = (
-      serverFiles as Array<{ id: string; title?: string; name?: string; content?: string }>
-    ).map((f) => ({
-      id: f.id,
-      title: f.title || f.name || 'document',
-      content: f.id === currentDoc?.id ? currentDocContent : (f.content || ''),
-    }));
-
-    if (!list.some((f) => f.id === currentDocItem.id || f.title === currentDocItem.title)) {
-      list.unshift(currentDocItem);
-    }
-    return list;
-  }, [serverFiles, currentDoc, engine, wordCountOpen]);
+  const currentPageId = usePageStore((s) => s.currentPage?.id);
 
   useEffect(() => {
     const disposeKeybindings = keybindingCoordinator.init();
@@ -212,7 +234,7 @@ export function ModernWorkbenchLayout() {
       const lower = (panel || '').toLowerCase();
       if (lower === 'explorer') return 'files';
       if (lower === 'outline') {
-        useLayoutStore.getState().setFileOutlineOpen(true);
+        useWorkspaceStore.getState().setFileOutlineOpen(true);
         return 'files';
       }
       if (lower === 'files' || lower === 'search' || lower === 'citations' || lower === 'review' || lower === 'ai') {
@@ -222,22 +244,19 @@ export function ModernWorkbenchLayout() {
     };
 
     const unsubSidebarToggle = editorCommandBus.subscribe('sidebar:toggle-panel', (cmd) => {
-      useLayoutStore.getState().selectActivityTab(normalizeTab(cmd.panel));
+      useWorkspaceStore.getState().selectActivityTab(normalizeTab(cmd.panel));
     });
 
     const unsubSidebarOpen = editorCommandBus.subscribe('sidebar:open-panel', (cmd) => {
-      useLayoutStore.getState().setActiveSidebarTab(normalizeTab(cmd.panel));
-      useLayoutStore.getState().setSidebarLeftOpen(true);
+      useWorkspaceStore.getState().setActiveSidebarTab(normalizeTab(cmd.panel));
+      useWorkspaceStore.getState().setSidebarLeftOpen(true);
     });
 
     const unsubAiToggle = editorCommandBus.subscribe('sidebar:toggle-ai-panel', () => {
-      useLayoutStore.getState().selectActivityTab('ai');
+      useWorkspaceStore.getState().selectActivityTab('ai');
     });
 
     const unsubHistory = editorCommandBus.subscribe('history:open', () => {
-      useSettingsStore.getState().setIsHistoryOpen(true);
-    });
-    const unsubHistoryLegacy = editorCommandBus.subscribe('history:open-modal', () => {
       useSettingsStore.getState().setIsHistoryOpen(true);
     });
 
@@ -249,11 +268,10 @@ export function ModernWorkbenchLayout() {
       unsubSidebarOpen();
       unsubAiToggle();
       unsubHistory();
-      unsubHistoryLegacy();
     };
   }, []);
 
-  const isPdfDetached = useLayoutStore((s) => s.isPdfDetached);
+  const isPdfDetached = useWorkspaceStore((s) => s.isPdfDetached);
   const isEditorOnly = layout === 'editor-only';
   const isViewerOnly = layout === 'viewer-only';
 
@@ -264,7 +282,7 @@ export function ModernWorkbenchLayout() {
         onOpenChange={(open) => setIsHistoryOpen(open)}
         onClose={() => setIsHistoryOpen(false)}
         projectId={rawProjectId}
-        pageId={rootPageId || currentPage?.id}
+        pageId={rootPageId || currentPageId}
       />
     );
   }
@@ -283,17 +301,10 @@ export function ModernWorkbenchLayout() {
       <ProjectSettingsModal />
 
       {wordCountOpen && (
-        <WordCountModal
+        <ConnectedWordCountModal
           open={wordCountOpen}
-          onClose={() => editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'word-count' })}
-          content={getDocContent(currentDoc, engine?.getContent())}
-          selectedText={engine?.getSelectedText() || ''}
-          activeFileName={currentDoc?.title || 'main.tex'}
-          projectFiles={combinedProjectFiles}
-          onInsertSnippet={(snippet) => {
-            editorCommandBus.dispatch({ type: 'editor:insert-text', text: snippet });
-            editorCommandBus.dispatch({ type: 'editor:focus' });
-          }}
+          rootPageId={rootPageId}
+          engine={engine}
         />
       )}
 
@@ -307,7 +318,7 @@ export function ModernWorkbenchLayout() {
               setDeletedFilesOpen(true);
             }
           }}
-          pageId={rootPageId || currentPage?.id || ''}
+          pageId={rootPageId || currentPageId || ''}
         />
       )}
 
@@ -365,7 +376,7 @@ export function ModernWorkbenchLayout() {
               editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'figure-wizard' });
             }
           }}
-          parentPageId={rootPageId || currentPage?.id || ''}
+          parentPageId={rootPageId || currentPageId || ''}
           onInsert={(latexCode) => {
             editorCommandBus.dispatch({ type: 'editor:insert-text', text: latexCode });
             editorCommandBus.dispatch({ type: 'editor:focus' });

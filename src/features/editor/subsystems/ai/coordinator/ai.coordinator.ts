@@ -15,7 +15,7 @@ import {
   getActiveEditorContent,
   editorCommandBus,
   usePageStore,
-  useLayoutStore,
+  useWorkspaceStore,
   sessionCoordinator,
 } from '@/features/editor/core';
 import { diagnosticsCoordinator, type IndexedDiagnosticItem } from '@/features/editor/subsystems/diagnostics';
@@ -128,7 +128,7 @@ export class AiCoordinatorRegistry {
    */
   public openAiForError(error: { message: string; line?: number; file?: string; context?: string }): void {
     // 1. Switch Primary Sidebar to AI tab (Left Sidebar)
-    const layoutStore = useLayoutStore.getState();
+    const layoutStore = useWorkspaceStore.getState();
     layoutStore.setActiveSidebarTab('ai');
     layoutStore.setSidebarLeftOpen(true);
 

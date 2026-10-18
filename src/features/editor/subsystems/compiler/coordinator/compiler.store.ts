@@ -46,7 +46,7 @@ export interface DocumentCompilerState {
   setIsViewerPoppedOut: (poppedOut: boolean) => void;
 }
 
-export const useDocumentCompilerStore = create<DocumentCompilerState>()((set, get) => ({
+export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
   // ── Dirty tracking ────────────────────────────────────────────────────
   dirtyContentMap: new Map(),
   dirtyFileIds: new Set(),
@@ -165,7 +165,4 @@ export const useDocumentCompilerStore = create<DocumentCompilerState>()((set, ge
   },
 }));
 
-// Aliases for seamless backward compatibility
-export const useCompileStore = useDocumentCompilerStore;
-export const useCompilerStore = useDocumentCompilerStore;
 export type { CompileStatus, CompileError };

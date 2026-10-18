@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { offsetsToRange, resolveRange } from '@/features/editor/sdk/manuscript/review.api';
+import { offsetsToRange, resolveRange } from '@/features/editor/sdk/manuscript/manuscript-api.client';
 
 describe('review range conversion', () => {
   const doc = 'line0\nline1\nabc';

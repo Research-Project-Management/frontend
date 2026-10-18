@@ -35,7 +35,7 @@ import { createFileSchema, createFolderSchema, renameItemSchema, extractProjectI
 import { usePageStore } from '@/features/editor/core';
 import { useTabsStore } from '@/features/editor/core/store/tabs.store';
 import { useSettingsStore } from '@/features/editor/core';
-import { useLayoutStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '@/features/editor/core';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
 import {
@@ -347,7 +347,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
   const handleFileClick = useCallback(
     (fileId: string, title: string) => {
-      const layoutStore = useLayoutStore.getState();
+      const layoutStore = useWorkspaceStore.getState();
       if (layoutStore.editorSplitMode !== 'none' && layoutStore.activeEditorPane === 'secondary') {
         layoutStore.setSecondaryFileId(fileId);
         return;

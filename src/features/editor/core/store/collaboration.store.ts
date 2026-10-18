@@ -100,9 +100,3 @@ export const useDocumentCollaborationStore = create<DocumentCollaborationState>(
   clearCollaborators: () => set({ collaborators: [] }),
 }));
 
-// Aliases for seamless backward compatibility
-export const useActionsStore = useDocumentCollaborationStore;
-export const useEditorActionsStore = useDocumentCollaborationStore;
-export const useCollaborationStore = useDocumentCollaborationStore;
-export const useCollaborationPresenceStore = useDocumentCollaborationStore;
-export type ActionsState = DocumentCollaborationState;

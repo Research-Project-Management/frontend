@@ -29,7 +29,7 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { useLayoutStore, type ActivityBarTab, editorCommandBus } from '@/features/editor/core';
+import { useWorkspaceStore, type ActivityBarTab, editorCommandBus } from '@/features/editor/core';
 import { useSettingsStore } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
 import { useReviewPendingCount } from '@/features/editor/subsystems/review';
@@ -54,11 +54,9 @@ const PRIMARY_ACTIVITIES: ActivityItem[] = [
 ];
 
 export function ActivityBar() {
-  const {
-    sidebarLeftOpen,
-    activeSidebarTab,
-    selectActivityTab,
-  } = useLayoutStore();
+  const sidebarLeftOpen = useWorkspaceStore((s) => s.sidebarLeftOpen);
+  const activeSidebarTab = useWorkspaceStore((s) => s.activeSidebarTab);
+  const selectActivityTab = useWorkspaceStore((s) => s.selectActivityTab);
 
   const toggleSettingsPanel = useSettingsStore((s) => s.toggleSettingsPanel);
   const settingsPanelOpen = useSettingsStore((s) => s.settingsPanelOpen);

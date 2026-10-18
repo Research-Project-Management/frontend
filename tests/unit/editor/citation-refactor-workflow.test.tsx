@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import React from 'react';
 import RenameCitationModal from '@/features/editor/subsystems/citation/ui/modals/RenameCitationModal';
 import { workspaceCoordinator } from '@/features/editor/core';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { editorCommandBus } from '@/features/editor/core';
 
 import { usePageStore } from '@/features/editor/core';

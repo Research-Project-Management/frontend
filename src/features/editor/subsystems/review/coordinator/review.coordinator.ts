@@ -22,7 +22,7 @@ import {
   type ReviewStorePort,
 } from '@/features/editor/subsystems/review/model/review-service-port';
 import { useDocumentCollaborationStore } from '@/features/editor/core';
-import { useLayoutStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '@/features/editor/core';
 import {
   trackChangesStateField,
   setTrackChangesSuggestionsEffect,
@@ -59,8 +59,8 @@ export const defaultReviewStorePort: ReviewStorePort = {
     }
   },
   openReviewSidebar: () => {
-    useLayoutStore.getState().setActiveSidebarTab('review');
-    useLayoutStore.getState().setSidebarLeftOpen(true);
+    useWorkspaceStore.getState().setActiveSidebarTab('review');
+    useWorkspaceStore.getState().setSidebarLeftOpen(true);
   },
 };
 

@@ -10,7 +10,7 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { useSettingsStore, editorCommandBus } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
-import { compilerLifecycleCoordinator } from '@/features/editor/subsystems/compiler/coordinator/compiler.coordinator';
+import { compilerCoordinator } from '@/features/editor/subsystems/compiler/coordinator/compiler.coordinator';
 import type { SyncTeXMap } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
 import { toast } from 'sonner';
 
@@ -43,8 +43,8 @@ export function usePdfCompiler({
 
   // Sync coordinator synctex maps into refs for viewer compatibility
   useEffect(() => {
-    synctexMapRef.current = compilerLifecycleCoordinator.getSynctexMap();
-    rawSynctexRef.current = compilerLifecycleCoordinator.getRawSynctex();
+    synctexMapRef.current = compilerCoordinator.getSynctexMap();
+    rawSynctexRef.current = compilerCoordinator.getRawSynctex();
 
     const unsub = editorCommandBus.subscribe('synctex:map-updated', (cmd) => {
       synctexMapRef.current = cmd.map;
@@ -54,7 +54,7 @@ export function usePdfCompiler({
 
   const handleCompile = useCallback(
     async (options?: { forceClean?: boolean }) => {
-      return compilerLifecycleCoordinator.compile({
+      return compilerCoordinator.compile({
         forceClean: options?.forceClean,
         onThumbnailGenerated: (dataUrl: string) => {
           if (pageId) {
@@ -70,11 +70,11 @@ export function usePdfCompiler({
   );
 
   const handleForceSync = useCallback(async () => {
-    return compilerLifecycleCoordinator.forceSync();
+    return compilerCoordinator.forceSync();
   }, []);
 
   const handleStopCompilation = useCallback(() => {
-    compilerLifecycleCoordinator.stop();
+    compilerCoordinator.stop();
     toast.info('Compilation stopped', { id: 'compiler-status' });
   }, []);
 

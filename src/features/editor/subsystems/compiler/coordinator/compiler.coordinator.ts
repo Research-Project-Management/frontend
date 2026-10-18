@@ -671,5 +671,3 @@ export class CompilerCoordinatorRegistry {
 }
 
 export const compilerCoordinator = new CompilerCoordinatorRegistry();
-// Backward compatibility alias
-export const compilerLifecycleCoordinator = compilerCoordinator;

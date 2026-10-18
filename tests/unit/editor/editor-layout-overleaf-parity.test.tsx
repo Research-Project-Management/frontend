@@ -14,7 +14,7 @@ import { FormatMenu } from '@/features/editor/core/shell/topbar/FormatMenu';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
 import { useSettingsStore } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
-import { useLayoutStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '@/features/editor/core';
 import { useDocumentCollaborationStore } from '@/features/editor/core';
 import { clearYjsProviderPool } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 
@@ -91,16 +91,6 @@ vi.mock('@/features/editor/ui/editor/CodeMirrorView', () => ({
   ),
 }));
 
-// Mock VisualEditorView to prevent TipTap/DOM measurement issues in JSDOM
-vi.mock('@/features/editor/ui/editor/VisualEditorView', () => ({
-  VisualEditorView: (props: { fileId?: string }) => (
-    <div data-testid="mock-visual-view" data-file-id={props.fileId} className="visual-editor-surface">
-      <span>Visual Engine Mock</span>
-      <span>Introduction</span>
-    </div>
-  ),
-}));
-
 describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -110,7 +100,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       editorMode: 'code',
       showEditorTabs: true,
     });
-    useLayoutStore.setState({
+    useWorkspaceStore.setState({
       activeSidebarTab: 'files',
       sidebarLeftOpen: true,
     });
@@ -341,8 +331,8 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       expect(pending).toBeDefined();
       expect(pending?.startLine).toBe(12);
       expect(pending?.selectedText).toBe('Theorem 2.1');
-      expect(useLayoutStore.getState().activeSidebarTab).toBe('review');
-      expect(useLayoutStore.getState().sidebarLeftOpen).toBe(true);
+      expect(useWorkspaceStore.getState().activeSidebarTab).toBe('review');
+      expect(useWorkspaceStore.getState().sidebarLeftOpen).toBe(true);
     });
   });
 

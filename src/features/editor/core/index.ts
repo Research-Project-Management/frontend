@@ -38,20 +38,19 @@ export type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-
 export {
   useWorkspaceStore,
 } from './store/workspace.store';
+export type {
+  ActivityBarTab,
+  EditorSplitMode,
+  ActiveEditorPane,
+  LayoutState,
+} from './store/workspace.store';
 
 export {
   usePageStore,
-  useDocumentEditorStore,
 } from './store/editor.store';
 
 export {
-  useLayoutStore,
-} from './store/layout.store';
-export type { ActivityBarTab } from './store/layout.store';
-
-export {
   useSettingsStore,
-  useDocumentSettingsStore,
 } from './store/settings.store';
 export type {
   TrackChangesViewMode,
@@ -68,7 +67,6 @@ export {
 } from './store/connectivity.store';
 
 export {
-  useCollaborationStore,
   useDocumentCollaborationStore,
 } from './store/collaboration.store';
 export type {
@@ -88,7 +86,6 @@ export {
 
 export {
   useViewerStore,
-  useCompilerStore,
   useCompileStore,
 } from '@/features/editor/subsystems/compiler';
 export type { CompileError } from '@/features/editor/domain/types/compiler.types';

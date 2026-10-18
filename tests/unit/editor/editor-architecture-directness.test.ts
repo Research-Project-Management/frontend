@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { usePageStore } from '@/features/editor/core';
-import { useDocumentSettingsStore } from '@/features/editor/core';
-import { useLayoutStore } from '@/features/editor/core';
+import { useSettingsStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '@/features/editor/core';
 import {
   CANONICAL_MATH_SYMBOLS,
   getModalSymbols,
@@ -57,19 +57,19 @@ describe('Editor Architecture Directness & Clean Design', () => {
 
   describe('2. Layout & Settings Store Boundary Separation', () => {
     it('Layout store is the sole source of truth for sidebar and review pane', () => {
-      const layout = useLayoutStore.getState();
+      const layout = useWorkspaceStore.getState();
       expect(layout.activeSidebarTab).toBeDefined();
       expect(layout.sidebarLeftOpen).toBeDefined();
 
       layout.setActiveSidebarTab('files');
-      expect(useLayoutStore.getState().activeSidebarTab).toBe('files');
+      expect(useWorkspaceStore.getState().activeSidebarTab).toBe('files');
 
       layout.selectActivityTab('review');
-      expect(useLayoutStore.getState().activeSidebarTab).toBe('review');
+      expect(useWorkspaceStore.getState().activeSidebarTab).toBe('review');
     });
 
     it('Settings store does not contain zombie activeSidebarPanel or isReviewOpen', () => {
-      const settings = useDocumentSettingsStore.getState();
+      const settings = useSettingsStore.getState();
       expect((settings as any).activeSidebarPanel).toBeUndefined();
       expect((settings as any).sidebarWidth).toBeUndefined();
       expect((settings as any).editorFlex).toBeUndefined();

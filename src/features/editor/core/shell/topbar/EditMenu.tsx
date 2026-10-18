@@ -12,7 +12,7 @@ import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSepara
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { editorCommandBus } from '@/features/editor/core';
 import { ShieldCheck } from 'lucide-react';
-import { useLayoutStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '@/features/editor/core';
 import { useSearchStore } from '@/features/editor/core/store/search.store';
 
 export function EditMenu({ value = 'edit' }: { value?: string } = {}) {
@@ -26,14 +26,14 @@ export function EditMenu({ value = 'edit' }: { value?: string } = {}) {
     engine?.focus();
   };
   const handleFindInProject = () => {
-    useLayoutStore.getState().setSidebarLeftOpen(true);
-    useLayoutStore.getState().setActiveSidebarTab('search');
+    useWorkspaceStore.getState().setSidebarLeftOpen(true);
+    useWorkspaceStore.getState().setActiveSidebarTab('search');
     useSearchStore.getState().setShowReplace(false);
     editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Search' });
   };
   const handleReplaceInProject = () => {
-    useLayoutStore.getState().setSidebarLeftOpen(true);
-    useLayoutStore.getState().setActiveSidebarTab('search');
+    useWorkspaceStore.getState().setSidebarLeftOpen(true);
+    useWorkspaceStore.getState().setActiveSidebarTab('search');
     useSearchStore.getState().setShowReplace(true);
     editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Search', showReplace: true });
   };

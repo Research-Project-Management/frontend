@@ -1,34 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useDocumentSettingsStore } from '@/features/editor/core';
+import { useSettingsStore } from '@/features/editor/core';
 
 describe('Emacs Mode & Keybinding Configuration (Overleaf Parity)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useDocumentSettingsStore.setState({ keybinding: 'standard' });
+    useSettingsStore.setState({ keybinding: 'standard' });
   });
 
   describe('Settings Store Keybinding Management', () => {
     it('should support switching between standard, vim, and emacs', () => {
-      const store = useDocumentSettingsStore.getState();
+      const store = useSettingsStore.getState();
       expect(store.keybinding).toBe('standard');
 
       store.setKeybinding('emacs');
-      expect(useDocumentSettingsStore.getState().keybinding).toBe('emacs');
+      expect(useSettingsStore.getState().keybinding).toBe('emacs');
 
       store.setKeybinding('vim');
-      expect(useDocumentSettingsStore.getState().keybinding).toBe('vim');
+      expect(useSettingsStore.getState().keybinding).toBe('vim');
 
       store.setKeybinding('standard');
-      expect(useDocumentSettingsStore.getState().keybinding).toBe('standard');
+      expect(useSettingsStore.getState().keybinding).toBe('standard');
     });
 
     it('should persist emacs keybinding preference along with other settings', () => {
-      const store = useDocumentSettingsStore.getState();
+      const store = useSettingsStore.getState();
       store.setKeybinding('emacs');
       store.setFontSize(15);
       store.setEditorTheme('dark');
 
-      const state = useDocumentSettingsStore.getState();
+      const state = useSettingsStore.getState();
       expect(state.keybinding).toBe('emacs');
       expect(state.fontSize).toBe(15);
       expect(state.editorTheme).toBe('dark');

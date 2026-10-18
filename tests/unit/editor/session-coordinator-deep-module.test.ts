@@ -3,7 +3,7 @@ import {
   SessionCoordinatorRegistry,
   type DocumentPersistencePort,
 } from '@/features/editor/core';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { useConnectivityStore } from '@/features/editor/core';
 
 describe('SessionCoordinator as Deep Module (Matt Pocock Codebase Design)', () => {

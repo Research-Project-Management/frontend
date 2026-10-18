@@ -1,35 +1,35 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useDocumentSettingsStore } from '@/features/editor/core';
+import { useSettingsStore } from '@/features/editor/core';
 
 describe('Vim Mode & Keybinding Configuration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useDocumentSettingsStore.setState({ keybinding: 'standard' });
+    useSettingsStore.setState({ keybinding: 'standard' });
   });
 
   describe('Settings Store Keybinding Management', () => {
     it('should have standard keybinding mode as default', () => {
-      const state = useDocumentSettingsStore.getState();
+      const state = useSettingsStore.getState();
       expect(state.keybinding).toBe('standard');
     });
 
     it('should toggle keybinding mode between standard and vim', () => {
-      const store = useDocumentSettingsStore.getState();
+      const store = useSettingsStore.getState();
 
       store.setKeybinding('vim');
-      expect(useDocumentSettingsStore.getState().keybinding).toBe('vim');
+      expect(useSettingsStore.getState().keybinding).toBe('vim');
 
       store.setKeybinding('standard');
-      expect(useDocumentSettingsStore.getState().keybinding).toBe('standard');
+      expect(useSettingsStore.getState().keybinding).toBe('standard');
     });
 
     it('should persist keybinding along with other editor preferences', () => {
-      const store = useDocumentSettingsStore.getState();
+      const store = useSettingsStore.getState();
       store.setKeybinding('vim');
       store.setFontSize(16);
       store.setWordWrap(false);
 
-      const currentState = useDocumentSettingsStore.getState();
+      const currentState = useSettingsStore.getState();
       expect(currentState.keybinding).toBe('vim');
       expect(currentState.fontSize).toBe(16);
       expect(currentState.wordWrap).toBe(false);

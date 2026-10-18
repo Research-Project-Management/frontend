@@ -3,7 +3,7 @@ import { useCompileStore } from '@/features/editor/core';
 import { useSettingsStore } from '@/features/editor/core';
 import { editorCommandBus } from '@/features/editor/core';
 import { sessionCoordinator } from '@/features/editor/core';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { draftStorageService } from '@/features/editor/domain/document/draft-storage';

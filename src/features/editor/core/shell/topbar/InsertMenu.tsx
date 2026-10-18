@@ -20,7 +20,7 @@ import {
   MenubarSeparator,
 } from '@/shared/components/ui/menubar';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
-import { editorCommandBus, useLayoutStore } from '@/features/editor/core';
+import { editorCommandBus, useWorkspaceStore } from '@/features/editor/core';
 
 export function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
   const { engine } = useEditorInstance();
@@ -84,8 +84,8 @@ export function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
           <MenubarSubContent className="min-w-52 text-xs select-none">
             <MenubarItem
               onClick={() => {
-                useLayoutStore.getState().setActiveSidebarTab('files');
-                useLayoutStore.getState().setSidebarLeftOpen(true);
+                useWorkspaceStore.getState().setActiveSidebarTab('files');
+                useWorkspaceStore.getState().setSidebarLeftOpen(true);
                 editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'add-files', payload: { initialTab: 'upload' } });
               }}
               className="cursor-pointer"
@@ -100,8 +100,8 @@ export function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
             </MenubarItem>
             <MenubarItem
               onClick={() => {
-                useLayoutStore.getState().setActiveSidebarTab('files');
-                useLayoutStore.getState().setSidebarLeftOpen(true);
+                useWorkspaceStore.getState().setActiveSidebarTab('files');
+                useWorkspaceStore.getState().setSidebarLeftOpen(true);
                 editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'add-files', payload: { initialTab: 'project' } });
               }}
               className="cursor-pointer"

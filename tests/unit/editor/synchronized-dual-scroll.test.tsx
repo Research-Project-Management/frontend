@@ -4,7 +4,7 @@ import { render, screen, fireEvent, act, renderHook } from '@testing-library/rea
 import { useSynchronizedScroll } from '@/features/editor/subsystems/compiler';
 import { PdfToolbar } from '@/features/editor/subsystems/compiler';
 import { useSettingsStore } from '@/features/editor/core';
-import { useLayoutStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '@/features/editor/core';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
 import { LatexCompilerEngine } from '@/features/editor/subsystems/compiler';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
@@ -486,24 +486,24 @@ describe('Split-View Synchronized Dual Scrolling (Overleaf Parity)', () => {
   describe('4. Proportional Split-View Resizing & Double-Click Reset (Overleaf Parity)', () => {
     it('manages splitRatio within safe bounds [0.15, 0.85] and resets to 0.5 (50/50)', () => {
       // Default is 0.5 (50/50 split)
-      useLayoutStore.getState().setSplitRatio(0.5);
-      expect(useLayoutStore.getState().splitRatio).toBe(0.5);
+      useWorkspaceStore.getState().setSplitRatio(0.5);
+      expect(useWorkspaceStore.getState().splitRatio).toBe(0.5);
 
       // User drags splitter to 70%
-      useLayoutStore.getState().setSplitRatio(0.7);
-      expect(useLayoutStore.getState().splitRatio).toBe(0.7);
+      useWorkspaceStore.getState().setSplitRatio(0.7);
+      expect(useWorkspaceStore.getState().splitRatio).toBe(0.7);
 
       // Clamp lower bound to 0.15
-      useLayoutStore.getState().setSplitRatio(0.05);
-      expect(useLayoutStore.getState().splitRatio).toBe(0.15);
+      useWorkspaceStore.getState().setSplitRatio(0.05);
+      expect(useWorkspaceStore.getState().splitRatio).toBe(0.15);
 
       // Clamp upper bound to 0.85
-      useLayoutStore.getState().setSplitRatio(0.95);
-      expect(useLayoutStore.getState().splitRatio).toBe(0.85);
+      useWorkspaceStore.getState().setSplitRatio(0.95);
+      expect(useWorkspaceStore.getState().splitRatio).toBe(0.85);
 
       // Overleaf Parity: Double-clicking center splitter snaps back to 50/50 (0.5)
-      useLayoutStore.getState().setSplitRatio(0.5);
-      expect(useLayoutStore.getState().splitRatio).toBe(0.5);
+      useWorkspaceStore.getState().setSplitRatio(0.5);
+      expect(useWorkspaceStore.getState().splitRatio).toBe(0.5);
     });
   });
 });

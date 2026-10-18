@@ -15,7 +15,7 @@ import {
   useTabsStore,
   type EditorTab,
   usePageStore,
-  useLayoutStore,
+  useWorkspaceStore,
   editorCommandBus,
   sessionCoordinator,
   workspaceCoordinator,
@@ -205,7 +205,7 @@ export class NavigationCoordinatorRegistry {
           smooth: payload.smooth ?? true,
         });
       } else if (type === 'preview:window-closed') {
-        useLayoutStore.getState().setPdfDetached(false);
+        useWorkspaceStore.getState().setPdfDetached(false);
       }
     };
   }
@@ -214,7 +214,7 @@ export class NavigationCoordinatorRegistry {
     if (typeof window === 'undefined') return false;
     return (
       window.location.pathname.includes('/preview') ||
-      (useLayoutStore.getState().isPdfDetached && !getActiveEditorInstance())
+      (useWorkspaceStore.getState().isPdfDetached && !getActiveEditorInstance())
     );
   }
 
@@ -255,7 +255,7 @@ export class NavigationCoordinatorRegistry {
 
     // Multi-Pane Split Editor Subscriptions
     editorCommandBus.subscribe('editor:split', (cmd) => {
-      const layoutStore = useLayoutStore.getState();
+      const layoutStore = useWorkspaceStore.getState();
       layoutStore.setEditorSplitMode(cmd.direction);
       if (cmd.fileId) {
         layoutStore.setSecondaryFileId(cmd.fileId);
@@ -263,25 +263,25 @@ export class NavigationCoordinatorRegistry {
     });
 
     editorCommandBus.subscribe('editor:open-to-side', (cmd) => {
-      const layoutStore = useLayoutStore.getState();
+      const layoutStore = useWorkspaceStore.getState();
       layoutStore.setEditorSplitMode('vertical');
       layoutStore.setSecondaryFileId(cmd.fileId);
       layoutStore.setActiveEditorPane('secondary');
     });
 
     editorCommandBus.subscribe('editor:close-split', () => {
-      const layoutStore = useLayoutStore.getState();
+      const layoutStore = useWorkspaceStore.getState();
       layoutStore.setEditorSplitMode('none');
       layoutStore.setSecondaryFileId(null);
       layoutStore.setActiveEditorPane('primary');
     });
 
     editorCommandBus.subscribe('editor:focus-pane', (cmd) => {
-      useLayoutStore.getState().setActiveEditorPane(cmd.paneId);
+      useWorkspaceStore.getState().setActiveEditorPane(cmd.paneId);
     });
 
     editorCommandBus.subscribe('editor:swap-panes', () => {
-      const layoutStore = useLayoutStore.getState();
+      const layoutStore = useWorkspaceStore.getState();
       const pageStore = usePageStore.getState();
       const primaryId = pageStore.getActiveDocumentId();
       const secondaryId = layoutStore.secondaryFileId;
@@ -353,7 +353,7 @@ export class NavigationCoordinatorRegistry {
     });
 
     editorCommandBus.subscribe('preview:detach', () => {
-      useLayoutStore.getState().setPdfDetached(true);
+      useWorkspaceStore.getState().setPdfDetached(true);
       const projectId = usePageStore.getState().projectId;
       if (projectId && typeof window !== 'undefined') {
         const previewUrl = `/projects/${projectId}/preview`;
@@ -363,7 +363,7 @@ export class NavigationCoordinatorRegistry {
     });
 
     editorCommandBus.subscribe('preview:attach', () => {
-      useLayoutStore.getState().setPdfDetached(false);
+      useWorkspaceStore.getState().setPdfDetached(false);
       this.broadcastChannel?.postMessage({ type: 'preview:attached' });
       this.notifier.info('PDF preview reattached to main window', { id: 'pdf-preview-detach' });
     });

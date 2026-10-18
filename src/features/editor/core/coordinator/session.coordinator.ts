@@ -916,5 +916,3 @@ export class SessionCoordinatorRegistry {
 }
 
 export const sessionCoordinator = new SessionCoordinatorRegistry();
-// Backward compatibility alias
-export const documentSessionCoordinator = sessionCoordinator;

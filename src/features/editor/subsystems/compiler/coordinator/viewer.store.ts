@@ -58,7 +58,7 @@ export interface DocumentViewerState {
   resetViewerState: () => void;
 }
 
-export const useDocumentViewerStore = create<DocumentViewerState>((set) => ({
+export const useViewerStore = create<DocumentViewerState>((set) => ({
   pageNumber: 1,
   numPages: 1,
 
@@ -163,5 +163,3 @@ export const useDocumentViewerStore = create<DocumentViewerState>((set) => ({
       findMatchesCount: { current: 0, total: 0 },
     }),
 }));
-
-export const useViewerStore = useDocumentViewerStore;

@@ -25,7 +25,6 @@ export {
 
 export {
   lruDocumentCache,
-  documentModelManager,
   LRUDocumentCache,
   type DocumentModelState,
   type DocumentCursorSelection,

@@ -12,13 +12,14 @@
  * 5. PreviewSlot: Scoped PdfToolbar + PDF.js Canvas Scroller & CompilerLogs.
  * 6. CenterSplitter: Smooth resizable divider between Editor and Preview.
  *
- * State & Sizing: Fully managed by `useLayoutStore`.
+ * State & Sizing: Fully managed by `useWorkspaceStore`.
  */
 
 'use client';
 
 import React, { useRef, useCallback } from 'react';
-import { useLayoutStore } from '@/features/editor/core';
+import { useShallow } from 'zustand/react/shallow';
+import { useWorkspaceStore } from '@/features/editor/core';
 import { ResizeHandle } from './ResizeHandle';
 import { OfflineBanner } from './OfflineBanner';
 import { cn } from '@/shared/lib/utils';
@@ -47,7 +48,16 @@ export function WorkbenchShell({
     toggleSidebarLeft,
     splitRatio,
     setSplitRatio,
-  } = useLayoutStore();
+  } = useWorkspaceStore(
+    useShallow((s) => ({
+      sidebarLeftOpen: s.sidebarLeftOpen,
+      sidebarLeftWidth: s.sidebarLeftWidth,
+      setSidebarLeftWidth: s.setSidebarLeftWidth,
+      toggleSidebarLeft: s.toggleSidebarLeft,
+      splitRatio: s.splitRatio,
+      setSplitRatio: s.setSplitRatio,
+    }))
+  );
 
   const [isPreviewCollapsed, setIsPreviewCollapsed] = React.useState(false);
   const togglePreviewCollapse = useCallback(() => {

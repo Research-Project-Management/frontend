@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useDocumentSettingsStore } from '@/features/editor/core';
+import { useSettingsStore } from '@/features/editor/core';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
 import { ProjectSettingsModal } from '@/features/editor/ui/modals/project-settings/ProjectSettingsModal';
 
@@ -21,7 +21,7 @@ const queryClient = new QueryClient({
 
 describe('Warning Suppression Settings & Modal Integration (Overleaf Parity)', () => {
   beforeEach(() => {
-    useDocumentSettingsStore.setState({
+    useSettingsStore.setState({
       settingsPanelOpen: true,
       settingsActiveTab: 'editor',
       suppressBadBoxes: false,
@@ -32,43 +32,43 @@ describe('Warning Suppression Settings & Modal Integration (Overleaf Parity)', (
   });
 
   it('updates store state and adds/removes custom warning patterns', () => {
-    const store = useDocumentSettingsStore.getState();
+    const store = useSettingsStore.getState();
 
     // Toggle bad boxes
     store.setSuppressBadBoxes(true);
-    expect(useDocumentSettingsStore.getState().suppressBadBoxes).toBe(true);
+    expect(useSettingsStore.getState().suppressBadBoxes).toBe(true);
 
     // Toggle font warnings
     store.setSuppressFontWarnings(true);
-    expect(useDocumentSettingsStore.getState().suppressFontWarnings).toBe(true);
+    expect(useSettingsStore.getState().suppressFontWarnings).toBe(true);
 
     // Toggle package warnings
     store.setSuppressPackageWarnings(true);
-    expect(useDocumentSettingsStore.getState().suppressPackageWarnings).toBe(true);
+    expect(useSettingsStore.getState().suppressPackageWarnings).toBe(true);
 
     // Add custom patterns
     store.addSuppressedWarning('Underfull \\hbox');
     store.addSuppressedWarning('/marginpar.*moved/i');
-    expect(useDocumentSettingsStore.getState().customSuppressedWarnings).toEqual([
+    expect(useSettingsStore.getState().customSuppressedWarnings).toEqual([
       'Underfull \\hbox',
       '/marginpar.*moved/i',
     ]);
 
     // Deduplication check
     store.addSuppressedWarning('Underfull \\hbox');
-    expect(useDocumentSettingsStore.getState().customSuppressedWarnings).toHaveLength(2);
+    expect(useSettingsStore.getState().customSuppressedWarnings).toHaveLength(2);
 
     // Remove pattern
     store.removeSuppressedWarning('Underfull \\hbox');
-    expect(useDocumentSettingsStore.getState().customSuppressedWarnings).toEqual([
+    expect(useSettingsStore.getState().customSuppressedWarnings).toEqual([
       '/marginpar.*moved/i',
     ]);
   });
 
   it('automatically syncs settings store updates to diagnosticsCoordinator filterOptions', () => {
-    useDocumentSettingsStore.getState().setSuppressBadBoxes(true);
-    useDocumentSettingsStore.getState().setSuppressFontWarnings(true);
-    useDocumentSettingsStore.getState().addSuppressedWarning('custom-pattern');
+    useSettingsStore.getState().setSuppressBadBoxes(true);
+    useSettingsStore.getState().setSuppressFontWarnings(true);
+    useSettingsStore.getState().addSuppressedWarning('custom-pattern');
 
     const options = diagnosticsCoordinator.getFilterOptions();
     expect(options.suppressBadBoxes).toBe(true);
@@ -94,7 +94,7 @@ describe('Warning Suppression Settings & Modal Integration (Overleaf Parity)', (
     act(() => {
       fireEvent.click(badBoxesSwitch);
     });
-    expect(useDocumentSettingsStore.getState().suppressBadBoxes).toBe(true);
+    expect(useSettingsStore.getState().suppressBadBoxes).toBe(true);
 
     // Check Font Warnings switch
     const fontSwitch = screen.getByRole('switch', { name: /hide font warnings/i });
@@ -102,7 +102,7 @@ describe('Warning Suppression Settings & Modal Integration (Overleaf Parity)', (
     act(() => {
       fireEvent.click(fontSwitch);
     });
-    expect(useDocumentSettingsStore.getState().suppressFontWarnings).toBe(true);
+    expect(useSettingsStore.getState().suppressFontWarnings).toBe(true);
 
     // Check Custom warning filter input
     const patternInput = screen.getByLabelText(/new warning filter pattern/i);
@@ -113,7 +113,7 @@ describe('Warning Suppression Settings & Modal Integration (Overleaf Parity)', (
       fireEvent.keyDown(patternInput, { key: 'Enter', code: 'Enter' });
     });
 
-    expect(useDocumentSettingsStore.getState().customSuppressedWarnings).toContain('Float too large');
+    expect(useSettingsStore.getState().customSuppressedWarnings).toContain('Float too large');
 
     // Check pattern tag is rendered
     const removeBtn = screen.getByLabelText(/remove filter Float too large/i);
@@ -122,6 +122,6 @@ describe('Warning Suppression Settings & Modal Integration (Overleaf Parity)', (
     act(() => {
       fireEvent.click(removeBtn);
     });
-    expect(useDocumentSettingsStore.getState().customSuppressedWarnings).not.toContain('Float too large');
+    expect(useSettingsStore.getState().customSuppressedWarnings).not.toContain('Float too large');
   });
 });

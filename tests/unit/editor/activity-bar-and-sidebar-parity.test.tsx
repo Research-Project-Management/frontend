@@ -4,7 +4,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { ActivityBar } from '@/features/editor/core/shell/ActivityBar';
 import { TexFileRow } from '@/features/editor/subsystems/explorer';
-import { useLayoutStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '@/features/editor/core';
 
 // Mock manuscriptService to keep tests decoupled and fast
 vi.mock('@/features/editor/sdk/manuscript.service', () => ({
@@ -41,7 +41,7 @@ const renderWithProviders = (ui: React.ReactElement) => {
 describe('Activity Bar & Left Sidebar Overleaf 1:1 Parity', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useLayoutStore.setState({
+    useWorkspaceStore.setState({
       sidebarLeftOpen: true,
       activeSidebarTab: 'files',
     });
@@ -74,8 +74,8 @@ describe('Activity Bar & Left Sidebar Overleaf 1:1 Parity', () => {
     const searchTab = screen.getByRole('tab', { name: /search in project/i });
     fireEvent.click(searchTab);
 
-    expect(useLayoutStore.getState().activeSidebarTab).toBe('search');
-    expect(useLayoutStore.getState().sidebarLeftOpen).toBe(true);
+    expect(useWorkspaceStore.getState().activeSidebarTab).toBe('search');
+    expect(useWorkspaceStore.getState().sidebarLeftOpen).toBe(true);
   });
 
   it('renders TexFileRow with Main document badge when isMain is true', () => {

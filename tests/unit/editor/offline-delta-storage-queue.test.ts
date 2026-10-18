@@ -4,7 +4,7 @@ import {
   type OfflineMutation,
   type ProjectFileSnapshot,
 } from '@/features/editor/domain/document/draft-storage';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { documentStore } from '@/features/editor/domain/document/document-store';
 import { sessionCoordinator } from '@/features/editor/core';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';

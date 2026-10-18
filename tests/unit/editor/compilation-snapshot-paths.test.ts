@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { assembleCompilationSnapshot } from '@/features/editor/subsystems/history/model/compilation-snapshot';
-import { computeDraftDiffSummary } from '@/features/editor/subsystems/history/model/draft-diff';
+import { assembleCompilationSnapshot } from '@/features/editor/domain/document/compilation-snapshot';
+import { computeDraftDiffSummary } from '@/features/editor/domain/document/draft-diff';
 
 describe('#7 compilation snapshot path resolution', () => {
   const chapterId = '3f2a9c1e-uuid-chapter';

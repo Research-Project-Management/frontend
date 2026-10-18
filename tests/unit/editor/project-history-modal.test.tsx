@@ -6,7 +6,7 @@ import HistoryPage from '@/features/editor/subsystems/history/ui/HistoryPage';
 import { manuscriptService, historyService } from '@/features/editor/sdk/manuscript.service';
 import { editorCommandBus } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
-import type { ProjectVersionListItem, ProjectDiffResponse } from '@/features/editor/subsystems/history/model/history.types';
+import type { ProjectVersionListItem, ProjectDiffResponse } from '@/features/editor/domain/types/history.types';
 
 const ProjectHistoryModal = HistoryPage;
 

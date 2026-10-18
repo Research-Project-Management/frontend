@@ -15,7 +15,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import { useLayoutStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
 import { useDocumentCollaborationStore } from '@/features/editor/core';
 import { useReviewPendingCount } from '@/features/editor/subsystems/review';
@@ -79,7 +79,7 @@ describe('Track Changes & Review Panel (Overleaf Parity)', () => {
       el.removeAttribute('aria-hidden');
     });
 
-    useLayoutStore.getState().resetLayout();
+    useWorkspaceStore.getState().resetLayout();
     useDocumentCollaborationStore.getState().clearPendingComment();
     usePageStore.setState({ activePageId: 'doc-456', projectId: 'proj-123', currentPage: null });
 
@@ -94,28 +94,28 @@ describe('Track Changes & Review Panel (Overleaf Parity)', () => {
 
   describe('1. Layout Store Review Panel State & Dimensions', () => {
     it('initializes reviewPanelOpen as false and reviewPanelWidth as 340', () => {
-      const state = useLayoutStore.getState();
+      const state = useWorkspaceStore.getState();
       expect(state.reviewPanelOpen).toBe(false);
       expect(state.reviewPanelWidth).toBe(340);
     });
 
     it('toggles reviewPanelOpen via toggleReviewPanel()', () => {
-      useLayoutStore.getState().toggleReviewPanel();
-      expect(useLayoutStore.getState().reviewPanelOpen).toBe(true);
+      useWorkspaceStore.getState().toggleReviewPanel();
+      expect(useWorkspaceStore.getState().reviewPanelOpen).toBe(true);
 
-      useLayoutStore.getState().toggleReviewPanel();
-      expect(useLayoutStore.getState().reviewPanelOpen).toBe(false);
+      useWorkspaceStore.getState().toggleReviewPanel();
+      expect(useWorkspaceStore.getState().reviewPanelOpen).toBe(false);
     });
 
     it('sets reviewPanelWidth with boundaries clamped between 260 and 520', () => {
-      useLayoutStore.getState().setReviewPanelWidth(100);
-      expect(useLayoutStore.getState().reviewPanelWidth).toBe(260);
+      useWorkspaceStore.getState().setReviewPanelWidth(100);
+      expect(useWorkspaceStore.getState().reviewPanelWidth).toBe(260);
 
-      useLayoutStore.getState().setReviewPanelWidth(600);
-      expect(useLayoutStore.getState().reviewPanelWidth).toBe(520);
+      useWorkspaceStore.getState().setReviewPanelWidth(600);
+      expect(useWorkspaceStore.getState().reviewPanelWidth).toBe(520);
 
-      useLayoutStore.getState().setReviewPanelWidth(400);
-      expect(useLayoutStore.getState().reviewPanelWidth).toBe(400);
+      useWorkspaceStore.getState().setReviewPanelWidth(400);
+      expect(useWorkspaceStore.getState().reviewPanelWidth).toBe(400);
     });
   });
 
@@ -182,13 +182,13 @@ describe('Track Changes & Review Panel (Overleaf Parity)', () => {
       const reviewTab = screen.getByRole('tab', { name: /Review & Comments/i });
       expect(reviewTab).toBeDefined();
 
-      expect(useLayoutStore.getState().activeSidebarTab).toBe('files');
+      expect(useWorkspaceStore.getState().activeSidebarTab).toBe('files');
       fireEvent.click(reviewTab);
-      expect(useLayoutStore.getState().activeSidebarTab).toBe('review');
-      expect(useLayoutStore.getState().sidebarLeftOpen).toBe(true);
+      expect(useWorkspaceStore.getState().activeSidebarTab).toBe('review');
+      expect(useWorkspaceStore.getState().sidebarLeftOpen).toBe(true);
 
       fireEvent.click(reviewTab);
-      expect(useLayoutStore.getState().sidebarLeftOpen).toBe(false);
+      expect(useWorkspaceStore.getState().sidebarLeftOpen).toBe(false);
     });
 
     it('displays live badge count on ActivityBar review tab when there are pending review items', () => {
@@ -241,8 +241,8 @@ describe('Track Changes & Review Panel (Overleaf Parity)', () => {
       expect(pending?.startLine).toBe(12);
       expect(pending?.endLine).toBe(14);
       expect(pending?.selectedText).toBe('\\textbf{Collaborative research}');
-      expect(useLayoutStore.getState().activeSidebarTab).toBe('review');
-      expect(useLayoutStore.getState().sidebarLeftOpen).toBe(true);
+      expect(useWorkspaceStore.getState().activeSidebarTab).toBe('review');
+      expect(useWorkspaceStore.getState().sidebarLeftOpen).toBe(true);
     });
 
     it('triggers Add Comment on Ctrl+Alt+M keydown', () => {
@@ -266,8 +266,8 @@ describe('Track Changes & Review Panel (Overleaf Parity)', () => {
       expect(pending).toBeDefined();
       expect(pending?.startLine).toBe(5);
       expect(pending?.selectedText).toBe('Theorem 1');
-      expect(useLayoutStore.getState().activeSidebarTab).toBe('review');
-      expect(useLayoutStore.getState().sidebarLeftOpen).toBe(true);
+      expect(useWorkspaceStore.getState().activeSidebarTab).toBe('review');
+      expect(useWorkspaceStore.getState().sidebarLeftOpen).toBe(true);
 
       unsub();
     });

@@ -18,7 +18,7 @@ import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSub, M
 import { cn } from "@/shared/lib/utils";
 import { editorCommandBus, usePageStore } from '@/features/editor/core';
 import { useSettingsStore } from '@/features/editor/core';
-import { useLayoutStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '@/features/editor/core';
 import { useShallow } from 'zustand/react/shallow';
 
 function PenIcon({ className }: { className?: string }) {
@@ -121,7 +121,7 @@ export function ViewMenu() {
     }))
   );
 
-  const fileOutlineOpen = useLayoutStore((s) => s.fileOutlineOpen);
+  const fileOutlineOpen = useWorkspaceStore((s) => s.fileOutlineOpen);
 
   const handleToggleFocusMode = () => {
     if (typeof document === 'undefined') return;
@@ -341,9 +341,9 @@ export function ViewMenu() {
         {/* Show file outline */}
         <MenubarItem
           onClick={() => {
-            useLayoutStore.getState().setSidebarLeftOpen(true);
-            useLayoutStore.getState().setActiveSidebarTab('files');
-            useLayoutStore.getState().toggleFileOutline();
+            useWorkspaceStore.getState().setSidebarLeftOpen(true);
+            useWorkspaceStore.getState().setActiveSidebarTab('files');
+            useWorkspaceStore.getState().toggleFileOutline();
           }}
           className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors text-xs font-medium select-none"
         >

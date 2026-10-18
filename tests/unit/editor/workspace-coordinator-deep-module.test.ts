@@ -20,7 +20,7 @@ import type {
   WorkspaceNotificationPort,
   WorkspaceStorePort,
 } from '@/features/editor/domain/workspace/workspace-service-port';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { latexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';

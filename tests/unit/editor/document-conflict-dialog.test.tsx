@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
-import { DocumentConflictDialog } from '@/features/editor/ui/editor/DocumentConflictDialog';
+import { DocumentConflictDialog } from '@/features/editor/ui/modals/DocumentConflictDialog';
 import type { DocumentConflict } from '@/features/editor/core';
 
 describe('DocumentConflictDialog Component', () => {

@@ -48,6 +48,7 @@ import type {
   ReverseSyncPayload,
   ReverseSyncResult,
   DocReviewsResponseDto,
+  TextRangeDto,
   TrackChangeDto,
   CommentThreadDto,
   CommentReplyDto,
@@ -981,13 +982,6 @@ export const suggestions = {
  * Review & Track Changes sub-API: Tracked changes, comment threads, batch resolution.
  */
 
-export interface TextRangeDto {
-  startLine: number;
-  startCol: number;
-  endLine: number;
-  endCol: number;
-}
-
 /** Converts a 0-based absolute character offset into a 0-based line/column pair. */
 export function offsetToLineCol(content: string, offset: number): { line: number; col: number } {
   const clamped = Math.max(0, Math.min(offset, content.length));
@@ -1388,33 +1382,6 @@ export const search = {
 
 
 
-/**
- * Determines whether a failed request to the primary structure endpoint should
- * fall back to the storage `/api/v1/storage/files/*` endpoint.
- * Domain/client validation errors (400, 401, 403, 409, 422) must be rethrown
- * immediately rather than swallowed and retried against a fallback route.
- */
-export function shouldFallbackToLegacyEndpoint(err: unknown): boolean {
-  if (err && typeof err === 'object') {
-    const status =
-      (err as { statusCode?: number; status?: number }).statusCode ??
-      (err as { status?: number }).status;
-    if (typeof status === 'number') {
-      if (status === 400 || status === 401 || status === 403 || status === 409 || status === 422) {
-        return false;
-      }
-      if (status === 404 || status === 501) {
-        return true;
-      }
-      // For other 4xx client errors, do not blindly retry legacy endpoint
-      if (status >= 400 && status < 500) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
 export type { EditorStorageItem };
 
 export const storage = {
@@ -1444,17 +1411,6 @@ export const storage = {
 
   getPageFiles: async (pageId: string, parentId?: string | null): Promise<EditorStorageItem[]> => {
     if (!pageId) return [];
-    const storageEndpoint = parentId
-      ? `/api/v1/storage/files/pages/${pageId}?parentId=${parentId}`
-      : `/api/v1/storage/files/pages/${pageId}`;
-    try {
-      const data = await apiGet<{ files: EditorStorageItem[] }>(storageEndpoint, { silent: true });
-      if (data?.files && data.files.length > 0) {
-        return data.files;
-      }
-    } catch {
-      // Fallback to project structure nodes
-    }
     try {
       const endpoint = parentId
         ? `${MANUSCRIPTS_API_BASE}/projects/${pageId}/structure/nodes?parentId=${parentId}`
@@ -1485,134 +1441,58 @@ export const storage = {
     projectId?: string,
   ): Promise<EditorStorageItem> => {
     const targetProjectId = projectId || pageId;
-    // ── 1. Attempt Direct-to-R2 Presigned Upload ──
-    try {
-      const presignRes = await presignUpload({
-        filename: file.name,
-        mimeType: file.type || 'application/octet-stream',
-        size: file.size,
-        projectId: targetProjectId,
-      });
+    const presignRes = await presignUpload({
+      filename: file.name,
+      mimeType: file.type || 'application/octet-stream',
+      size: file.size,
+      projectId: targetProjectId,
+    });
 
-      const uploadUrl = presignRes?.uploadUrl || presignRes?.signedUrl;
-      if (uploadUrl && presignRes?.storageKey) {
-        await new Promise<void>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          if (onProgress) {
-            xhr.upload.onprogress = (event) => {
-              if (event.lengthComputable) {
-                onProgress(Math.round((event.loaded / event.total) * 100));
-              }
-            };
+    const uploadUrl = presignRes?.uploadUrl;
+    if (!uploadUrl || !presignRes?.storageKey) {
+      throw new Error('Failed to obtain presigned upload URL');
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      if (onProgress) {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            onProgress(Math.round((event.loaded / event.total) * 100));
           }
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              resolve();
-            } else {
-              reject(new Error(`Direct R2 upload failed with status ${xhr.status}`));
-            }
-          };
-          xhr.onerror = () => reject(new Error('Direct R2 upload network error'));
-          xhr.open('PUT', uploadUrl, true);
-          xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-          xhr.send(file);
-        });
-
-        const completed = await completePresigned({
-          storageKey: presignRes.storageKey,
-          filename: file.name,
-          size: file.size,
-          mimeType: file.type || 'application/octet-stream',
-          projectId: targetProjectId,
-          parentId: parentId || null,
-        });
-
-        return {
-          id: completed.fileId || completed.id,
-          filename: completed.filename || file.name,
-          size: typeof completed.size === 'number' ? completed.size : file.size,
-          mimeType: completed.mimeType || file.type,
-          isFolder: false,
-          parentId: parentId || null,
-          url: completed.url || `/api/v1/storage/files/${completed.fileId || completed.id}/content`,
         };
       }
-    } catch (directErr) {
-      if (!shouldFallbackToLegacyEndpoint(directErr)) {
-        throw directErr;
-      }
-      console.warn(
-        '[StorageService] Direct R2 presigned upload failed, falling back to backend upload proxy:',
-        directErr,
-      );
-    }
-
-    // ── 2. Fallback to backend upload proxy ──
-    const formData = new FormData();
-    formData.append('file', file);
-    if (parentId) {
-      formData.append('parentId', parentId);
-    }
-    const token = getAuthToken();
-    const headers: Record<string, string> = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    const response = await fetch(`${API_BASE_URL}/api/v1/storage/files/pages/${pageId}/upload`, {
-      method: 'POST',
-      body: formData,
-      credentials: 'include',
-      headers,
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Direct R2 upload failed with status ${xhr.status}`));
+        }
+      };
+      xhr.onerror = () => reject(new Error('Direct R2 upload network error'));
+      xhr.open('PUT', uploadUrl, true);
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+      xhr.send(file);
     });
-    if (!response.ok) {
-      const errText = await response.text().catch(() => '');
-      throw new Error(`Upload failed (${response.status}): ${errText}`);
-    }
-    type FileUploadPayload = {
-      file?: { id?: string; filename?: string; size?: number; mimeType?: string; url?: string };
-      id?: string;
-      fileId?: string;
-      filename?: string;
-      size?: number;
-      mimeType?: string;
-      url?: string;
-    };
-    const json = (await response.json()) as { data?: FileUploadPayload } & FileUploadPayload;
-    const payload: FileUploadPayload = json.data || json;
-    const fileObj = payload.file || payload;
+
+    const completed = await completePresigned({
+      storageKey: presignRes.storageKey,
+      filename: file.name,
+      size: file.size,
+      mimeType: file.type || 'application/octet-stream',
+      projectId: targetProjectId,
+      parentId: parentId || null,
+    });
+
     return {
-      id: fileObj.id || payload.id || payload.fileId || '',
-      filename: fileObj.filename || file.name,
-      size: typeof fileObj.size === 'number' ? fileObj.size : file.size,
-      mimeType: fileObj.mimeType || file.type,
+      id: completed.fileId || completed.id,
+      filename: completed.filename || file.name,
+      size: typeof completed.size === 'number' ? completed.size : file.size,
+      mimeType: completed.mimeType || file.type,
       isFolder: false,
       parentId: parentId || null,
-      url: fileObj.url || `/api/v1/storage/files/${payload.fileId || fileObj.id}/content`,
+      url: completed.url || `/api/v1/storage/files/${completed.fileId || completed.id}/content`,
     };
-  },
-
-  uploadToR2: async (pageId: string, formData: FormData): Promise<{ url: string; path: string }> => {
-    formData.append('pageId', pageId);
-    const token = getAuthToken();
-    const headers: Record<string, string> = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    const response = await fetch(`${API_BASE_URL}/api/v1/storage/files/upload`, {
-      method: 'POST',
-      body: formData,
-      credentials: 'include',
-      headers,
-    });
-    if (!response.ok) throw new Error('Upload to R2 proxy failed');
-    type R2Payload = {
-      url?: string;
-      path?: string;
-      file?: { url?: string };
-    };
-    const json = (await response.json()) as { data?: R2Payload } & R2Payload;
-    const payload = json.data || json;
-    const url = payload.url || payload.file?.url || payload.path || '';
-    const path = payload.path || payload.url || url;
-    return { url, path };
   },
 
   createFileRecord: async (
@@ -1627,23 +1507,15 @@ export const storage = {
     },
     projectId?: string,
   ) => {
-    if (projectId) {
-      try {
-        return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, {
-          name: params.filename,
-          type: 'FILE',
-          parentId: params.parentId ?? null,
-          url: params.url,
-          sizeBytes: params.size,
-          mimeType: params.mimeType,
-        });
-      } catch (err) {
-        if (!shouldFallbackToLegacyEndpoint(err)) {
-          throw err;
-        }
-      }
-    }
-    return apiPost(`/api/v1/storage/files/pages/${pageId}/upload`, params);
+    const targetProjectId = projectId || pageId;
+    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${targetProjectId}/structure/nodes`, {
+      name: params.filename,
+      type: 'FILE',
+      parentId: params.parentId ?? null,
+      url: params.url,
+      sizeBytes: params.size,
+      mimeType: params.mimeType,
+    });
   },
 
   createFile: async (
@@ -1652,148 +1524,61 @@ export const storage = {
     parentId?: string | null,
     content?: string,
   ) => {
-    try {
-      return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, {
-        name,
-        type: 'DOC',
-        parentId: parentId ?? null,
-        ...(content !== undefined ? { content } : {}),
-      });
-    } catch (err) {
-      if (!shouldFallbackToLegacyEndpoint(err)) {
-        throw err;
-      }
-      return apiPost(`/api/v1/storage/files/pages/${projectId}/upload`, {
-        filename: name,
-        size: content ? content.length : 0,
-        mimeType: 'text/x-tex',
-        url: '',
-        parentId: parentId ?? null,
-      });
-    }
+    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, {
+      name,
+      type: 'DOC',
+      parentId: parentId ?? null,
+      ...(content !== undefined ? { content } : {}),
+    });
   },
 
   createFolder: async (projectId: string, name: string, parentId?: string | null) => {
-    try {
-      return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, {
-        name,
-        type: 'FOLDER',
-        parentId: parentId ?? null,
-      });
-    } catch (err) {
-      if (!shouldFallbackToLegacyEndpoint(err)) {
-        throw err;
-      }
-      return apiPost(`/api/v1/storage/files/projects/${projectId}/folder`, {
-        name,
-        parentId: parentId ?? null,
-      });
-    }
+    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, {
+      name,
+      type: 'FOLDER',
+      parentId: parentId ?? null,
+    });
   },
 
   createPageFolder: async (pageId: string, name: string, parentId?: string | null) => {
-    try {
-      return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${pageId}/structure/nodes`, {
-        name,
-        type: 'FOLDER',
-        parentId: parentId ?? null,
-      });
-    } catch (err) {
-      if (!shouldFallbackToLegacyEndpoint(err)) {
-        throw err;
-      }
-      return apiPost(`/api/v1/storage/files/pages/${pageId}/folder`, {
-        name,
-        parentId: parentId ?? null,
-      });
-    }
+    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${pageId}/structure/nodes`, {
+      name,
+      type: 'FOLDER',
+      parentId: parentId ?? null,
+    });
   },
 
   createProjectFolder: async (projectId: string, name: string, parentId?: string | null) => {
-    try {
-      return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, {
-        name,
-        type: 'FOLDER',
-        parentId: parentId ?? null,
-      });
-    } catch (err) {
-      if (!shouldFallbackToLegacyEndpoint(err)) {
-        throw err;
-      }
-      return apiPost(`/api/v1/storage/files/projects/${projectId}/folder`, {
-        name,
-        parentId: parentId ?? null,
-      });
-    }
+    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, {
+      name,
+      type: 'FOLDER',
+      parentId: parentId ?? null,
+    });
   },
 
   renameItem: async (itemId: string, name: string, projectId?: string) => {
-    if (projectId) {
-      try {
-        return await apiPatch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}/rename`, { name });
-      } catch (err) {
-        if (!shouldFallbackToLegacyEndpoint(err)) {
-          throw err;
-        }
-      }
-    }
-    return apiPut(`/api/v1/storage/files/${itemId}/rename`, { name });
+    return await apiPatch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}/rename`, { name });
   },
 
   deleteItem: async (itemId: string, projectId?: string) => {
-    if (projectId) {
-      try {
-        return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}`);
-      } catch (err) {
-        if (!shouldFallbackToLegacyEndpoint(err)) {
-          throw err;
-        }
-      }
-    }
-    return apiDelete(`/api/v1/storage/files/${itemId}`);
+    return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}`);
   },
 
   permanentlyDeleteItem: async (itemId: string, projectId?: string) => {
-    if (projectId) {
-      try {
-        return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}`);
-      } catch (err) {
-        if (!shouldFallbackToLegacyEndpoint(err)) {
-          throw err;
-        }
-      }
-    }
-    return apiDelete(`/api/v1/storage/files/${itemId}`);
+    return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}`);
   },
 
   moveItem: async (itemId: string, targetFolderId: string | null, projectId?: string) => {
-    if (projectId) {
-      try {
-        return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}/move`, {
-          destParentId: targetFolderId,
-        });
-      } catch (err) {
-        if (!shouldFallbackToLegacyEndpoint(err)) {
-          throw err;
-        }
-      }
-    }
-    return apiPut(`/api/v1/storage/files/${itemId}/move`, { parentId: targetFolderId });
+    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}/move`, {
+      destParentId: targetFolderId,
+    });
   },
 
   reorderItem: async (itemId: string, sortOrder: number, projectId?: string) => {
-    if (projectId) {
-      try {
-        return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}/reorder`, {
-          sortOrder,
-        });
-      } catch (err) {
-        if (!shouldFallbackToLegacyEndpoint(err)) {
-          throw err;
-        }
-      }
-    }
-    return null;
+    if (!projectId) return null;
+    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}/reorder`, {
+      sortOrder,
+    });
   },
 
   setRootDoc: async (nodeId: string, projectId: string) => {
@@ -2206,13 +1991,8 @@ export const templates = {
     } else if (query?.offset !== undefined) {
       params.offset = String(query.offset);
     }
-    try {
-      const res = await apiGet<ProjectTemplateItem[] | { templates?: ProjectTemplateItem[] }>(`${MANUSCRIPTS_API_BASE}/projects/templates`, { params });
-      return Array.isArray(res) ? res : res?.templates || [];
-    } catch {
-      const res = await apiGet<ProjectTemplateItem[] | { templates?: ProjectTemplateItem[] }>(`${MANUSCRIPTS_API_BASE}/templates`, { params });
-      return Array.isArray(res) ? res : res?.templates || [];
-    }
+    const res = await apiGet<ProjectTemplateItem[] | { templates?: ProjectTemplateItem[] }>(`${MANUSCRIPTS_API_BASE}/templates`, { params });
+    return Array.isArray(res) ? res : res?.templates || [];
   },
 
   search: async (query: { q?: string; category?: string; tags?: string[] }): Promise<ProjectTemplateItem[]> => {
@@ -2224,11 +2004,7 @@ export const templates = {
   },
 
   getById: async (id: string): Promise<ProjectTemplateItem | null> => {
-    try {
-      return await apiGet<ProjectTemplateItem>(`${MANUSCRIPTS_API_BASE}/projects/templates/${id}`);
-    } catch {
-      return await apiGet<ProjectTemplateItem>(`${MANUSCRIPTS_API_BASE}/templates/${id}`);
-    }
+    return await apiGet<ProjectTemplateItem>(`${MANUSCRIPTS_API_BASE}/templates/${id}`);
   },
 
   instantiate: async (templateId: string, projectName: string): Promise<{ projectId: string; [key: string]: unknown }> => {
@@ -2240,14 +2016,7 @@ export const templates = {
   },
 
   scaffold: async (projectId: string, templateId: string): Promise<Record<string, unknown>> => {
-    try {
-      return await apiPost<Record<string, unknown>>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/templates/${templateId}/scaffold`,
-        { templateId },
-      );
-    } catch {
-      return await apiPost<Record<string, unknown>>(`${MANUSCRIPTS_API_BASE}/templates/scaffold`, { projectId, templateId });
-    }
+    return await apiPost<Record<string, unknown>>(`${MANUSCRIPTS_API_BASE}/templates/scaffold`, { projectId, templateId });
   },
 };
 
@@ -2444,41 +2213,30 @@ export class AcademicAiService {
     let explanation = '';
 
     try {
-      const token = getAuthToken();
       const systemPrompt = getAcademicSystemPrompt(action, customPrompt);
-
       const promptText = `Text to edit:\n"""\n${maskedText}\n"""`;
-      const response = await fetch(`${API_BASE_URL}/api/ai/chat/sync`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          query: promptText,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: promptText },
-          ],
-          model: 'fast',
-        }),
-      });
 
-      if (response.ok) {
-        const json = (await response.json()) as Record<string, unknown>;
-        const data = (json?.data && typeof json.data === 'object' ? json.data : json) as Record<string, unknown>;
-        const rawAiText =
-          typeof data?.content === 'string'
-            ? data.content
-            : typeof data?.message === 'string'
-              ? data.message
-              : typeof data?.response === 'string'
-                ? data.response
-                : '';
-        if (rawAiText && rawAiText.trim().length > 0) {
-          suggestedResult = unmask(rawAiText.trim().replace(/^"""\s*|\s*"""$/g, ''));
-          explanation = `Applied ${action.replace('-', ' ')} via AI Copilot.`;
-        }
+      const json = await apiPost<Record<string, unknown>>('/api/ai/chat/sync', {
+        query: promptText,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: promptText },
+        ],
+        model: 'fast',
+      }, { silent: true });
+
+      const data = (json?.data && typeof json.data === 'object' ? json.data : json) as Record<string, unknown>;
+      const rawAiText =
+        typeof data?.content === 'string'
+          ? data.content
+          : typeof data?.message === 'string'
+            ? data.message
+            : typeof data?.response === 'string'
+              ? data.response
+              : '';
+      if (rawAiText && rawAiText.trim().length > 0) {
+        suggestedResult = unmask(rawAiText.trim().replace(/^"""\s*|\s*"""$/g, ''));
+        explanation = `Applied ${action.replace('-', ' ')} via AI Copilot.`;
       }
     } catch {
       // Fallback silently to heuristic engine
@@ -2514,8 +2272,6 @@ export class AcademicAiService {
  * Request AI fix suggestion for a given compilation error.
  */
 export async function suggestLatexFix(params: AiErrorFixParams): Promise<AiErrorFixResult> {
-  const token = getAuthToken();
-
   const prompt = [
     'You are an expert LaTeX debugging assistant (Overleaf Error Assist).',
     'Analyze the following LaTeX compiler error and suggest an immediate, surgical fix.',
@@ -2537,24 +2293,6 @@ export async function suggestLatexFix(params: AiErrorFixParams): Promise<AiError
   ].filter(Boolean).join('\n');
 
   try {
-    const res = await fetch(`${API_BASE_URL}/api/ai/chat/sync`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({
-        messages: [{ role: 'user', content: prompt }],
-        query: prompt,
-        pageId: params.pageId,
-        projectId: params.projectId,
-      }),
-    });
-
-    if (!res.ok) {
-      return heuristicLatexErrorFix(params);
-    }
-
     type AiCompletionPayload = {
       content?: string;
       reply?: string;
@@ -2564,7 +2302,13 @@ export async function suggestLatexFix(params: AiErrorFixParams): Promise<AiError
       data?: AiCompletionPayload | string;
     } & AiCompletionPayload;
 
-    const json = (await res.json()) as AiCompletionResponse | string;
+    const json = await apiPost<AiCompletionResponse | string>('/api/ai/chat/sync', {
+      messages: [{ role: 'user', content: prompt }],
+      query: prompt,
+      pageId: params.pageId,
+      projectId: params.projectId,
+    }, { silent: true });
+
     const data = (typeof json === 'object' && json !== null && 'data' in json ? json.data : json) || json;
     const rawContent: string =
       typeof data === 'string'

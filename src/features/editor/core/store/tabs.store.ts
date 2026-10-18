@@ -11,7 +11,7 @@
  */
 
 import { useWorkspaceStore } from './workspace.store';
-import { useDocumentEditorStore as usePageStore } from './editor.store';
+import { usePageStore } from './editor.store';
 import type { EditorTab } from './workspace.store';
 
 export type { EditorTab } from './workspace.store';
@@ -111,14 +111,35 @@ export const tabsActions = {
   },
 };
 
-export const useDocumentTabsStore = (<T,>(selector?: (state: DocumentTabsState) => T): T => {
+let cachedTabsByProject: Record<string, readonly EditorTab[]> | null = null;
+let cachedActiveByProject: Record<string, string | null> | null = null;
+let cachedSecondaryActiveByProject: Record<string, string | null> | null = null;
+let cachedTabsState: DocumentTabsState | null = null;
+
+function getMappedTabsState(ws: ReturnType<typeof useWorkspaceStore.getState>): DocumentTabsState {
+  if (
+    cachedTabsState &&
+    cachedTabsByProject === ws.tabsByProject &&
+    cachedActiveByProject === ws.activeByProject &&
+    cachedSecondaryActiveByProject === ws.secondaryActiveByProject
+  ) {
+    return cachedTabsState;
+  }
+  cachedTabsByProject = ws.tabsByProject;
+  cachedActiveByProject = ws.activeByProject;
+  cachedSecondaryActiveByProject = ws.secondaryActiveByProject;
+  cachedTabsState = {
+    tabsByProject: ws.tabsByProject,
+    activeByProject: ws.activeByProject,
+    secondaryActiveByProject: ws.secondaryActiveByProject,
+    ...tabsActions,
+  };
+  return cachedTabsState;
+}
+
+export const useTabsStore = (<T,>(selector?: (state: DocumentTabsState) => T): T => {
   return useWorkspaceStore((ws) => {
-    const state: DocumentTabsState = {
-      tabsByProject: ws.tabsByProject,
-      activeByProject: ws.activeByProject,
-      secondaryActiveByProject: ws.secondaryActiveByProject,
-      ...tabsActions,
-    };
+    const state = getMappedTabsState(ws);
     return selector ? selector(state) : (state as unknown as T);
   });
 }) as {
@@ -126,17 +147,5 @@ export const useDocumentTabsStore = (<T,>(selector?: (state: DocumentTabsState) 
   getState: () => DocumentTabsState;
 };
 
-useDocumentTabsStore.getState = () => {
-  const ws = useWorkspaceStore.getState();
-  return {
-    tabsByProject: ws.tabsByProject,
-    activeByProject: ws.activeByProject,
-    secondaryActiveByProject: ws.secondaryActiveByProject,
-    ...tabsActions,
-  };
-};
+useTabsStore.getState = () => getMappedTabsState(useWorkspaceStore.getState());
 
-// Backward compatibility aliases
-export const useTabsStore = useDocumentTabsStore;
-export const useEditorTabsStore = useDocumentTabsStore;
-export type TabsState = DocumentTabsState;

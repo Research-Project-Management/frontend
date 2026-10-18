@@ -26,13 +26,15 @@
 
 import * as api from '@/shared/lib/api';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
-import { manuscriptService, shouldFallbackToLegacyEndpoint } from './manuscript/manuscript-client';
+import { manuscriptService } from './manuscript/manuscript-api.client';
 
-export * from './manuscript/manuscript-client';
+export * from './manuscript/base';
+export * from './manuscript/types';
+export * from './manuscript/manuscript-api.client';
 export * from './realtime/yjs-socket-provider';
 export * from './archive/archive-export';
 export * from './archive/archive-import';
-export { manuscriptService };
+export { manuscriptService, manuscriptService as manuscriptApi };
 export default manuscriptService;
 
 // ─── 1. Core Document & File Aliases ─────────────────────────────────────────
@@ -119,38 +121,19 @@ export const fileService = {
     title: string;
     content?: string;
   }): Promise<PageFile> => {
-    try {
-      const res = await api.apiPost<{ file?: RawPageFileRecord; files?: RawPageFileRecord[] } & Partial<RawPageFileRecord>>(
-        `/api/v1/manuscripts/docs/${parentPageId}/files`,
-        { title, content: content || '' }
-      );
-      const node = res.file || (Array.isArray(res.files) ? res.files[0] : res);
-      return {
-        id: node.id || node._id || `file-${Date.now()}`,
-        pageId: parentPageId,
-        title: node.title || node.name || title,
-        content: content || '',
-        createdAt: node.createdAt || new Date().toISOString(),
-        updatedAt: node.updatedAt || new Date().toISOString(),
-      };
-    } catch (err) {
-      if (!manuscriptService.files || !shouldFallbackToLegacyEndpoint(err)) {
-        throw err;
-      }
-      const node = (await manuscriptService.structure.createNode(parentPageId, {
-        name: title,
-        type: 'doc',
-        content: content || '',
-      })) as Partial<RawPageFileRecord>;
-      return {
-        id: node.id || node._id || `file-${Date.now()}`,
-        pageId: parentPageId,
-        title: node.name || title,
-        content: content || '',
-        createdAt: node.createdAt || new Date().toISOString(),
-        updatedAt: node.updatedAt || new Date().toISOString(),
-      };
-    }
+    const res = await api.apiPost<{ file?: RawPageFileRecord; files?: RawPageFileRecord[] } & Partial<RawPageFileRecord>>(
+      `/api/v1/manuscripts/docs/${parentPageId}/files`,
+      { title, content: content || '' }
+    );
+    const node = res.file || (Array.isArray(res.files) ? res.files[0] : res);
+    return {
+      id: node.id || node._id || `file-${Date.now()}`,
+      pageId: parentPageId,
+      title: node.title || node.name || title,
+      content: content || '',
+      createdAt: node.createdAt || new Date().toISOString(),
+      updatedAt: node.updatedAt || new Date().toISOString(),
+    };
   },
 
   setMain: async (
@@ -202,7 +185,6 @@ export const compileService = {
   downloadAllArtifactsZipUrl,
   cleanAuxFiles,
 };
-export const DocumentCompileService = compileService;
 
 // ─── 3. SyncTeX Aliases ──────────────────────────────────────────────────────
 
@@ -210,12 +192,10 @@ export const synctexService = {
   forwardSync: manuscriptService.synctex.forwardSync,
   reverseSync: manuscriptService.synctex.reverseSync,
 };
-export const DocumentSynctexService = synctexService;
 
 // ─── 4. Comment Aliases ──────────────────────────────────────────────────────
 
 export const commentService = manuscriptService.comments;
-export const DocumentCommentService = commentService;
 
 // ─── 5. Suggestion / Track Changes Aliases ───────────────────────────────────
 
@@ -240,7 +220,6 @@ export const suggestionService = {
   rejectSelectedSuggestions: (docId: string, suggestionIds: string[]) =>
     manuscriptService.suggestions.rejectSelectedSuggestions(docId, suggestionIds),
 };
-export const DocumentSuggestionService = suggestionService;
 
 // ─── 6. History / Versions Aliases ──────────────────────────────────────────
 
@@ -257,9 +236,7 @@ export const versionService = {
     manuscriptService.history.getDiff(docId, fromVersionId, toVersionId),
   compareVersions: (docId: string, fromVersionId: string, toVersionId: string) =>
     manuscriptService.history.compareVersions(docId, fromVersionId, toVersionId),
-  delete: async (_pageId: string, _versionId: string): Promise<void> => {},
 };
-export const PageVersionService = versionService;
 
 export const historyKeys = {
   all: ['history'] as const,
@@ -314,7 +291,6 @@ export const documentSearchService = {
 // ─── 9. Collaboration Aliases ────────────────────────────────────────────────
 
 export const collaborationService = manuscriptService.collaboration;
-export const DocumentCollaborationService = collaborationService;
 
 // ─── 10. AI Assistant & Error Repair Aliases ─────────────────────────────────
 

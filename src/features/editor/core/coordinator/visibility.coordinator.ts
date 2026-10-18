@@ -146,5 +146,3 @@ export class VisibilityCoordinatorRegistry {
 }
 
 export const visibilityCoordinator = new VisibilityCoordinatorRegistry();
-// Backward compatibility alias
-export const visibilityHibernationCoordinator = visibilityCoordinator;

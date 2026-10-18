@@ -32,8 +32,8 @@ import { integrationService } from '@/features/settings/services/integration.ser
 import { latexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
 import { parseLatexStructure } from '@/features/editor/domain/latex/latex-structure';
 import { LatexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
-import { assembleCompilationSnapshot } from '@/features/editor/subsystems/history/model/compilation-snapshot';
-import { compilerLifecycleCoordinator } from '@/features/editor/subsystems/compiler/coordinator/compiler.coordinator';
+import { assembleCompilationSnapshot } from '@/features/editor/domain/document/compilation-snapshot';
+import { compilerCoordinator } from '@/features/editor/subsystems/compiler/coordinator/compiler.coordinator';
 import { parseSyncTeX, resolveForward, resolveReverse } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
 import { detectMentionQuery, formatMention, extractMentions } from '@/features/editor/domain/collaboration/mention';
 
@@ -372,7 +372,7 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
         currentPage: { id: 'page-root', projectId: 'proj-compile-99', title: 'main.tex' } as never,
       });
 
-      compilerLifecycleCoordinator.stop();
+      compilerCoordinator.stop();
       expect(cancelSpy).toHaveBeenCalledWith('proj-compile-99');
 
       // Aux file URLs (.bbl, .log, and all artifacts zip)

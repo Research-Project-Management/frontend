@@ -29,7 +29,7 @@ import * as syncProtocol from 'y-protocols/sync';
 import * as encoding from 'lib0/encoding';
 import * as decoding from 'lib0/decoding';
 import { sessionCoordinator } from '@/features/editor/core';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 
 describe('Real-Time Collaboration System: Best Case, Bad Case & Edge Cases', () => {

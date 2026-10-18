@@ -21,7 +21,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { cn } from "@/shared/lib/utils";
 import type { StorageItem } from '@/features/storage/types/storage.types';
-import { getAllFiles as getWorkspaceFiles, createFolder as createWorkspaceFolder } from '@/features/storage/services/file.service';
+import { getAllFiles as getWorkspaceFiles, createFolder as createWorkspaceFolder } from '@/features/storage/services/drive.service';
 import { useMoveItem, useBatchMoveItems } from '@/features/storage/hooks/use-storage';
 import {
   useStorageUIStore,

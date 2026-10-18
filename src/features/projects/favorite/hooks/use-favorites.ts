@@ -23,9 +23,7 @@ export function useFavorites(): UseFavoritesReturn {
     if (typeof window === 'undefined') return new Set();
     try {
       const key = getStorageKey();
-      const saved =
-        localStorage.getItem(key) ||
-        localStorage.getItem('sidebar_favorite_projects');
+      const saved = localStorage.getItem(key);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
@@ -49,12 +47,10 @@ export function useFavorites(): UseFavoritesReturn {
 
     window.addEventListener('storage', handleSync);
     window.addEventListener(FAVORITES_EVENT, handleSync);
-    window.addEventListener('flux:project-favorites-changed', handleSync);
 
     return () => {
       window.removeEventListener('storage', handleSync);
       window.removeEventListener(FAVORITES_EVENT, handleSync);
-      window.removeEventListener('flux:project-favorites-changed', handleSync);
     };
   }, [readFavorites]);
 
@@ -64,7 +60,6 @@ export function useFavorites(): UseFavoritesReturn {
         const serialized = JSON.stringify(Array.from(next));
         localStorage.setItem('sidebar_favorites', serialized);
         window.dispatchEvent(new CustomEvent(FAVORITES_EVENT));
-        window.dispatchEvent(new CustomEvent('flux:project-favorites-changed'));
       } catch {
         // Handle storage error
       }
@@ -155,12 +150,9 @@ export function useFavorites(): UseFavoritesReturn {
   return {
     state,
     actions,
-    // Direct getters for backward compatibility
     favoriteIds,
     toggleFavorite,
     isFavorite,
     isPending: toggleFavoriteMutation.isPending,
   };
 }
-
-export const useProjectFavorites = useFavorites;

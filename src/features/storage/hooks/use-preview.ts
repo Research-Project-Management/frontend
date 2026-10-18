@@ -3,8 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { updateFileMetadata } from '@/features/storage/services/file.service';
-import { previewServices } from '@/features/storage/services/drive.service';
+import { updateFileMetadata, previewServices } from '@/features/storage/services/drive.service';
 import type { StorageItem } from '@/features/storage/types/storage.types';
 import { resolveFileUrl } from '@/shared/lib/file-client';
 import { storageKeys } from '../constants/storage.keys';
@@ -18,15 +17,18 @@ export function usePreview(item: StorageItem | null) {
 
   const queryClient = useQueryClient();
 
+  const itemId = item?.id;
+  const itemDescription = typeof item?.metaData?.description === 'string' ? item.metaData.description : '';
+
   useEffect(() => {
-    if (item) {
-      setDescription(typeof item.metaData?.description === 'string' ? item.metaData.description : '');
+    if (itemId) {
+      setDescription(itemDescription);
       setIsSaved(true);
     } else {
       setDescription('');
       setPreviewDataUrl(null);
     }
-  }, [item?.id, item?.metaData?.description]);
+  }, [itemId, itemDescription]);
 
   const saveDescriptionMutation = useMutation({
     mutationFn: (args: { fileId: string; description: string }) =>
@@ -86,7 +88,7 @@ export function usePreview(item: StorageItem | null) {
       setPreviewDataUrl(null);
       setLoading(false);
     }
-  }, [item?.id, item?.url, generateThumbnail]);
+  }, [item, generateThumbnail]);
 
   const handleSaveDescription = () => {
     if (!item?.id) return;

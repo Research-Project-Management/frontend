@@ -13,7 +13,7 @@ import {
 } from '@/features/editor/domain/latex/latex-symbols-core';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { FileOutlineSection } from '@/features/editor/subsystems/explorer/ui/subcomponents/FileOutlineSection';
-import { editorCommandBus, useLayoutStore } from '@/features/editor/core';
+import { editorCommandBus, useWorkspaceStore } from '@/features/editor/core';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 
 describe('Phase 13: Project Outline & Section Jump Navigation (Overleaf Parity)', () => {
@@ -208,7 +208,7 @@ Proofs body.
 
   describe('3. FileOutlineSection UI: Overleaf File Tree Outline & Section Jump Navigation', () => {
     it('renders FileOutlineSection with headings, figures, and tables extracted from document content', () => {
-      useLayoutStore.setState({ fileOutlineOpen: true });
+      useWorkspaceStore.setState({ fileOutlineOpen: true });
 
       const docContent = `\\section{System Overview}
 \\begin{figure}
@@ -234,8 +234,8 @@ Proofs body.
       expect(screen.getByText(/Benchmark Metrics/)).toBeInTheDocument();
     });
 
-    it('toggles FileOutlineSection collapse and expand via useLayoutStore', () => {
-      useLayoutStore.setState({ fileOutlineOpen: true });
+    it('toggles FileOutlineSection collapse and expand via useWorkspaceStore', () => {
+      useWorkspaceStore.setState({ fileOutlineOpen: true });
 
       render(
         <TooltipProvider>
@@ -251,17 +251,17 @@ Proofs body.
 
       // Click accordion header to collapse
       fireEvent.click(screen.getByRole('button', { name: /collapse file outline/i }));
-      expect(useLayoutStore.getState().fileOutlineOpen).toBe(false);
+      expect(useWorkspaceStore.getState().fileOutlineOpen).toBe(false);
       expect(screen.queryByText('Main Body')).not.toBeInTheDocument();
 
       // Click accordion header to expand
       fireEvent.click(screen.getByRole('button', { name: /expand file outline/i }));
-      expect(useLayoutStore.getState().fileOutlineOpen).toBe(true);
+      expect(useWorkspaceStore.getState().fileOutlineOpen).toBe(true);
       expect(screen.getByText('Main Body')).toBeInTheDocument();
     });
 
     it('dispatches editor:jump-to-line and synctex:forward when an outline item is clicked', () => {
-      useLayoutStore.setState({ fileOutlineOpen: true });
+      useWorkspaceStore.setState({ fileOutlineOpen: true });
       const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
 
       render(

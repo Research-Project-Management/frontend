@@ -3,7 +3,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { Item, Column } from '@/features/projects/project-id/work-items/types/work-item.types';
-import { AnalyticsService } from '@/features/projects/project-id/work-items/api/work-item.api';
+import { workItemApi } from '@/features/projects/project-id/work-items/api/work-item.api';
 
 import {
   Sheet,
@@ -36,7 +36,7 @@ export function AnalyticsDrawer({
 
   const { data: analytics, isLoading } = useQuery({
     queryKey: ['project-analytics-dist', currentProjectId],
-    queryFn: () => AnalyticsService.getProjectAnalytics(currentProjectId!),
+    queryFn: () => workItemApi.analytics.getProjectAnalytics(currentProjectId!),
     enabled: Boolean(isOpen && currentProjectId),
     staleTime: 60 * 1000,
   });

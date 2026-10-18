@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { RelationService } from '@/features/projects/project-id/work-items/api/work-item.api';
+import { workItemApi } from '@/features/projects/project-id/work-items/api/work-item.api';
 import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
 import { extractNormalizedEdges, wouldCauseCycle } from '@/features/projects/project-id/work-items/utils/cpm-graph';
 import { workItemToast } from './use-work-item-toast';
@@ -14,7 +14,7 @@ export const relationKeys = {
 export const useRelations = (id: string) =>
   useQuery({
     queryKey: relationKeys.item(id),
-    queryFn: () => RelationService.getRelations(id),
+    queryFn: () => workItemApi.relations.getRelations(id),
     enabled: Boolean(id),
   });
 
@@ -42,7 +42,7 @@ export const useAddRelationMutation = () => {
     }: AddRelationVariables) => {
       const sourceId = (id || itemId || workItemId) ?? '';
       const target = (targetId || targetWorkItemId) ?? '';
-      return RelationService.addRelation(sourceId, { targetWorkItemId: target, targetId: target, type });
+      return workItemApi.relations.addRelation(sourceId, { targetWorkItemId: target, targetId: target, type });
     },
     onSuccess: (_, vars) => {
       const sourceId = (vars.id || vars.itemId || vars.workItemId) ?? '';
@@ -126,7 +126,7 @@ export const useRemoveRelationMutation = () => {
     }) => {
       const sourceId = (id || itemId || workItemId) ?? '';
       const target = (targetId || targetWorkItemId || relationId) ?? '';
-      return RelationService.removeRelation(sourceId, target);
+      return workItemApi.relations.removeRelation(sourceId, target);
     },
     onSuccess: (_, vars) => {
       const sourceId = (vars.id || vars.itemId || vars.workItemId) ?? '';

@@ -162,7 +162,7 @@ export const workItemApi = {
       rank,
     }: ReorderItemInput) => {
       const targetId = id || workItemId || '';
-      const payload = { workItemId: targetId, id: targetId, columnId, rank };
+      const payload = { workItemId: targetId, columnId, rank };
       return projectId
         ? apiPut<{ message: string }>(`/api/projects/${projectId}/work-items/reorder`, payload)
         : apiPut<{ message: string }>(`/api/work-items/${targetId}/reorder`, payload);
@@ -176,7 +176,7 @@ export const workItemApi = {
       projectId,
     }: BulkUpdateItemInput) => {
       const targetIds = ids || itemIds || workItemIds || [];
-      const payload = { workItemIds: targetIds, ids: targetIds, data, projectId };
+      const payload = { workItemIds: targetIds, data, projectId };
       return projectId
         ? apiPut<{ message: string; count: number }>(`/api/projects/${projectId}/work-items/bulk`, payload)
         : apiPut<{ message: string; count: number }>(`/api/work-items/bulk`, payload);
@@ -189,7 +189,7 @@ export const workItemApi = {
       projectId,
     }: { ids?: string[]; itemIds?: string[]; workItemIds?: string[]; projectId?: string }) => {
       const targetIds = ids || itemIds || workItemIds || [];
-      const payload = { workItemIds: targetIds, ids: targetIds, ...(projectId && { projectId }) };
+      const payload = { workItemIds: targetIds, ...(projectId && { projectId }) };
       return projectId
         ? apiPost(`/api/projects/${projectId}/work-items/bulk-delete`, payload)
         : apiPost(`/api/work-items/bulk-delete`, payload);
@@ -243,7 +243,7 @@ export const workItemApi = {
     deleteState: (projectId: string, stateId: string, fallbackStateId?: string) =>
       apiDelete<{ success: boolean; states: WorkItemState[]; columns: WorkItemState[]; migratedTo?: string }>(
         `/api/projects/${projectId}/states/${stateId}${
-          fallbackStateId ? `?targetStateId=${fallbackStateId}&fallbackStateId=${fallbackStateId}` : ''
+          fallbackStateId ? `?targetStateId=${fallbackStateId}` : ''
         }`,
       ),
 
@@ -479,14 +479,14 @@ export const workItemApi = {
       workItemApi.archive.restore(id),
 
     bulkArchive: (ids: string[], projectId?: string) => {
-      const payload = { workItemIds: ids, ids, ...(projectId && { projectId }) };
+      const payload = { workItemIds: ids, ...(projectId && { projectId }) };
       return projectId
         ? apiPost<{ message: string; count: number }>(`/api/projects/${projectId}/work-items/bulk-archive`, payload)
         : apiPost<{ message: string; count: number }>(`/api/work-items/bulk-archive`, payload);
     },
 
     bulkRestore: (ids: string[], projectId?: string) => {
-      const payload = { workItemIds: ids, ids, ...(projectId && { projectId }) };
+      const payload = { workItemIds: ids, ...(projectId && { projectId }) };
       return projectId
         ? apiPost<{ message: string; count: number }>(`/api/projects/${projectId}/work-items/bulk-restore`, payload)
         : apiPost<{ message: string; count: number }>(`/api/work-items/bulk-restore`, payload);
@@ -505,20 +505,6 @@ export const workItemApi = {
       apiGet<ProjectAnalyticsDistribution>(`/api/v1/projects/${projectId}/analytics`),
   },
 } as const;
-
-// ── Aliases & Backward Compatibility ─────────────────────────────────────────
-export const CoreService = workItemApi.items;
-export const WorkItemService = workItemApi.items;
-export const StateService = workItemApi.states;
-export const AssignmentService = workItemApi.assignments;
-export const RelationService = workItemApi.relations;
-export const LabelService = workItemApi.labels;
-export const CommentService = workItemApi.comments;
-export const AttachmentService = workItemApi.attachments;
-export const HistoryService = workItemApi.history;
-export const ActivityService = workItemApi.history;
-export const ArchiveService = workItemApi.archive;
-export const AnalyticsService = workItemApi.analytics;
 
 
 

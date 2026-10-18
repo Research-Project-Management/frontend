@@ -14,7 +14,7 @@ import {
   useRestoreProject,
   type UpdateProjectVariables,
 } from '@/features/projects/shell/hooks/use-project';
-import { uploadGenericFile } from '@/features/storage/services/file.service';
+import { uploadGenericFile } from '@/features/storage/services/upload.service';
 import { projectGeneralSchema, type ProjectGeneralFormValues } from '../schemas/general.schema';
 
 export function useGeneral(projectId: string) {

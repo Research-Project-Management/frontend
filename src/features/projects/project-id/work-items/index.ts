@@ -13,17 +13,6 @@ export * from './types/modal.types';
 // ── API Services ─────────────────────────────────────────────────────────────
 export {
   workItemApi,
-  CoreService,
-  CoreService as WorkItemService,
-  StateService,
-  AttachmentService,
-  CommentService,
-  AssignmentService,
-  RelationService,
-  LabelService,
-  HistoryService,
-  ArchiveService,
-  AnalyticsService,
   AVAILABLE_LABEL_COLORS,
   DEFAULT_LABEL_COLOR,
 } from './api/work-item.api';

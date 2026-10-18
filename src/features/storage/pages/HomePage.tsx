@@ -71,14 +71,15 @@ export default function HomePage({
     const folderParam = searchParams?.get('folder') || initialFolderId || null;
     const highlightParam = searchParams?.get('highlight') || null;
 
-    if (viewParam !== activeSection) {
-      setActiveSection(viewParam, false);
+    const state = useStorageUIStore.getState();
+    if (viewParam !== state.activeSection) {
+      state.setActiveSection(viewParam, false);
     }
-    if (folderParam !== currentFolderId) {
-      setCurrentFolderId(folderParam, false);
+    if (folderParam !== state.currentFolderId) {
+      state.setCurrentFolderId(folderParam, false);
     }
-    if (highlightParam !== highlightedItemId) {
-      setHighlightedItemId(highlightParam, false);
+    if (highlightParam !== state.highlightedItemId) {
+      state.setHighlightedItemId(highlightParam, false);
     }
   }, [searchParams, initialSection, initialFolderId]);
 

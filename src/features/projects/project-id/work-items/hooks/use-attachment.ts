@@ -3,7 +3,7 @@
 import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUpload } from "@/shared/hooks/use-upload";
-import { AttachmentService } from '@/features/projects/project-id/work-items/api/work-item.api';
+import { workItemApi } from '@/features/projects/project-id/work-items/api/work-item.api';
 import type {
   AttachPageInput,
   AttachPaperInput,
@@ -54,14 +54,14 @@ export const useAttachPage = createAttachmentMutation<WithTargetId & AttachPageI
     if (!parsed.success) {
       throw new Error(parsed.error.issues[0]?.message || 'Invalid page attachment input');
     }
-    return AttachmentService.attachPage(targetId, parsed.data);
+    return workItemApi.attachments.attachPage(targetId, parsed.data);
   },
   successMessage: 'Page attached to work item',
   errorMessage: 'Failed to attach page',
 });
 
 export const useDetachPage = createAttachmentMutation<WithTargetId & { pageId: string }>({
-  mutationFn: (targetId, { pageId }) => AttachmentService.detachPage(targetId, pageId),
+  mutationFn: (targetId, { pageId }) => workItemApi.attachments.detachPage(targetId, pageId),
   successMessage: 'Page detached',
   errorMessage: 'Failed to detach page',
 });
@@ -72,14 +72,14 @@ export const useAttachPaper = createAttachmentMutation<WithTargetId & AttachPape
     if (!parsed.success) {
       throw new Error(parsed.error.issues[0]?.message || 'Invalid paper attachment input');
     }
-    return AttachmentService.attachPaper(targetId, parsed.data);
+    return workItemApi.attachments.attachPaper(targetId, parsed.data);
   },
   successMessage: 'Paper attached to work item',
   errorMessage: 'Failed to attach paper',
 });
 
 export const useDetachPaper = createAttachmentMutation<WithTargetId & { paperId: string }>({
-  mutationFn: (targetId, { paperId }) => AttachmentService.detachPaper(targetId, paperId),
+  mutationFn: (targetId, { paperId }) => workItemApi.attachments.detachPaper(targetId, paperId),
   successMessage: 'Paper detached',
   errorMessage: 'Failed to detach paper',
 });
@@ -90,14 +90,14 @@ export const useAttachFile = createAttachmentMutation<WithTargetId & AttachFileI
     if (!parsed.success) {
       throw new Error(parsed.error.issues[0]?.message || 'Invalid file attachment input');
     }
-    return AttachmentService.attachFile(targetId, parsed.data);
+    return workItemApi.attachments.attachFile(targetId, parsed.data);
   },
   successMessage: 'File attached',
   errorMessage: 'Failed to attach file',
 });
 
 export const useDetachFile = createAttachmentMutation<WithTargetId & { fileId: string }>({
-  mutationFn: (targetId, { fileId }) => AttachmentService.detachFile(targetId, fileId),
+  mutationFn: (targetId, { fileId }) => workItemApi.attachments.detachFile(targetId, fileId),
   successMessage: 'File removed',
   errorMessage: 'Failed to remove file',
 });
@@ -108,14 +108,14 @@ export const useAttachLink = createAttachmentMutation<WithTargetId & AttachLinkI
     if (!parsed.success) {
       throw new Error(parsed.error.issues[0]?.message || 'Invalid link attachment input');
     }
-    return AttachmentService.attachLink(targetId, parsed.data);
+    return workItemApi.attachments.attachLink(targetId, parsed.data);
   },
   successMessage: 'Link attached',
   errorMessage: 'Failed to attach link',
 });
 
 export const useDetachLink = createAttachmentMutation<WithTargetId & { linkIndex: number }>({
-  mutationFn: (targetId, { linkIndex }) => AttachmentService.detachLink(targetId, linkIndex),
+  mutationFn: (targetId, { linkIndex }) => workItemApi.attachments.detachLink(targetId, linkIndex),
   successMessage: 'Link removed',
   errorMessage: 'Failed to remove link',
 });
@@ -170,7 +170,7 @@ export const useUploadAttachmentWithToast = () => {
 export const useWorkItemAttachments = (workItemId?: string | null) => {
   return useQuery({
     queryKey: ['work-items', workItemId, 'attachments'],
-    queryFn: () => (workItemId ? AttachmentService.getWorkItemAttachments(workItemId) : Promise.resolve(null)),
+    queryFn: () => (workItemId ? workItemApi.attachments.getWorkItemAttachments(workItemId) : Promise.resolve(null)),
     enabled: Boolean(workItemId),
   });
 };

@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
 import { uploadFile } from '../services/upload.service';
 import { storageKeys } from '../constants/storage.keys';
-import { getAllFiles, createFolder, deleteItem } from '../services/file.service';
+import { getAllFiles, createFolder, deleteItem } from '../services/drive.service';
 import type { UploadMode } from '../components/modal/DuplicateModal';
 import type { StorageItem } from '../types/storage.types';
 import { useStorageUIStore } from '../store/storage-ui.store';

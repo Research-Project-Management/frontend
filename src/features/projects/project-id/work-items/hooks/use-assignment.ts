@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AssignmentService } from '@/features/projects/project-id/work-items/api/work-item.api';
+import { workItemApi } from '@/features/projects/project-id/work-items/api/work-item.api';
 import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
 import { resolveItemId } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import { invalidateWorkItemRelatedQueries } from './use-work-items-query';
@@ -48,7 +48,7 @@ export const assignmentKeys = {
 export const useEligibleAssigneesQuery = (projectId: string) =>
   useQuery({
     queryKey: assignmentKeys.eligible(projectId),
-    queryFn: () => AssignmentService.getEligibleAssignees(projectId),
+    queryFn: () => workItemApi.assignments.getEligibleAssignees(projectId),
     enabled: Boolean(projectId),
   });
 
@@ -57,7 +57,7 @@ export const useJoinItemMutation = () => {
   return useMutation({
     mutationFn: ({ id, projectId, workItemId }: { id?: string; projectId: string; workItemId?: string }) => {
       const targetId = (id || workItemId) ?? '';
-      return AssignmentService.join(projectId, targetId);
+      return workItemApi.assignments.join(projectId, targetId);
     },
     onSuccess: (res, vars) => {
       const targetId = (vars.id || vars.workItemId) ?? '';
@@ -73,7 +73,7 @@ export const useLeaveItemMutation = () => {
   return useMutation({
     mutationFn: ({ id, projectId, workItemId }: { id?: string; projectId: string; workItemId?: string }) => {
       const targetId = (id || workItemId) ?? '';
-      return AssignmentService.leave(projectId, targetId);
+      return workItemApi.assignments.leave(projectId, targetId);
     },
     onSuccess: (res, vars) => {
       const targetId = (vars.id || vars.workItemId) ?? '';
@@ -99,7 +99,7 @@ export const useSetAssigneesMutation = () => {
       assigneeIds: string[];
     }) => {
       const targetId = (id || workItemId) ?? '';
-      return AssignmentService.setAssignees(projectId, targetId, assigneeIds);
+      return workItemApi.assignments.setAssignees(projectId, targetId, assigneeIds);
     },
     onSuccess: (res, vars) => {
       const targetId = (vars.id || vars.workItemId) ?? '';
@@ -114,7 +114,7 @@ export const useSubscribeItemMutation = () => {
   return useMutation({
     mutationFn: ({ id, projectId, workItemId }: { id?: string; projectId: string; workItemId?: string }) => {
       const targetId = (id || workItemId) ?? '';
-      return AssignmentService.subscribeMe(projectId, targetId);
+      return workItemApi.assignments.subscribeMe(projectId, targetId);
     },
     onSuccess: (res, vars) => {
       const targetId = (vars.id || vars.workItemId) ?? '';
@@ -130,7 +130,7 @@ export const useUnsubscribeItemMutation = () => {
   return useMutation({
     mutationFn: ({ id, projectId, workItemId }: { id?: string; projectId: string; workItemId?: string }) => {
       const targetId = (id || workItemId) ?? '';
-      return AssignmentService.unsubscribeMe(projectId, targetId);
+      return workItemApi.assignments.unsubscribeMe(projectId, targetId);
     },
     onSuccess: (res, vars) => {
       const targetId = (vars.id || vars.workItemId) ?? '';
@@ -146,7 +146,7 @@ export const useAssignItemMutation = () => {
   return useMutation({
     mutationFn: ({ projectId, workItemId, id, assigneeId }: { projectId: string; workItemId?: string; id?: string; assigneeId?: string | null }) => {
       const targetId = (id || workItemId) ?? '';
-      return AssignmentService.assign(projectId, targetId, assigneeId ?? null);
+      return workItemApi.assignments.assign(projectId, targetId, assigneeId ?? null);
     },
     onSuccess: (res, vars) => {
       const targetId = (vars.id || vars.workItemId) ?? '';
@@ -161,7 +161,7 @@ export const useUnassignItemMutation = () => {
   return useMutation({
     mutationFn: ({ projectId, workItemId, id }: { projectId: string; workItemId?: string; id?: string }) => {
       const targetId = (id || workItemId) ?? '';
-      return AssignmentService.unassign(projectId, targetId);
+      return workItemApi.assignments.unassign(projectId, targetId);
     },
     onSuccess: (res, vars) => {
       const targetId = (vars.id || vars.workItemId) ?? '';
@@ -176,7 +176,7 @@ export const useRemoveAssigneeMutation = () => {
   return useMutation({
     mutationFn: ({ projectId, workItemId, id, targetUserId }: { projectId: string; workItemId?: string; id?: string; targetUserId?: string; userId?: string }) => {
       const targetId = (id || workItemId) ?? '';
-      return AssignmentService.removeAssignee(projectId, targetId, targetUserId || '');
+      return workItemApi.assignments.removeAssignee(projectId, targetId, targetUserId || '');
     },
     onSuccess: (res, vars) => {
       const targetId = (vars.id || vars.workItemId) ?? '';
@@ -190,7 +190,7 @@ export const useBulkAssignMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ projectId, workItemIds, assigneeId }: { projectId: string; workItemIds: string[]; assigneeId: string | null }) => {
-      return AssignmentService.bulkAssign(projectId, workItemIds, assigneeId);
+      return workItemApi.assignments.bulkAssign(projectId, workItemIds, assigneeId);
     },
     onSuccess: (_res, vars) => {
       invalidateWorkItemRelatedQueries(queryClient, vars.projectId);

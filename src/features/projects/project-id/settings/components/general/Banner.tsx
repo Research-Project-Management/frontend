@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { IconPicker, ProjectAvatar } from "@/shared/components/icons";
-import { CoverModal } from './CoverModal';
+import { CoverModal } from '@/shared/components/ui/cover-modal';
 
 interface GeneralBannerProps {
   name: string;

@@ -39,18 +39,6 @@ export const getInitialDisplayOptions = (projId?: string, targetMode: ViewMode =
           subGroupBy,
         };
       }
-      // Fallback check legacy key if exists
-      const legacyKey = projId ? `flux:work-item-display-options:${projId}` : DISPLAY_OPTIONS_STORAGE_KEY;
-      const legacySaved = localStorage.getItem(legacyKey);
-      if (legacySaved) {
-        const parsed = JSON.parse(legacySaved) as Record<string, unknown>;
-        const groupBy = (targetMode === 'table' || targetMode === 'timeline') ? 'none' : (((typeof parsed.groupBy === 'string' && parsed.groupBy !== 'null' ? parsed.groupBy : defaultGb)) as GroupByOption);
-        return {
-          ...DEFAULT_DISPLAY_OPTIONS,
-          ...parsed,
-          groupBy,
-        };
-      }
     } catch {}
   }
   return {

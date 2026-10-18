@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { LabelService, AVAILABLE_LABEL_COLORS, DEFAULT_LABEL_COLOR } from '@/features/projects/project-id/work-items/api/work-item.api';
+import { workItemApi, AVAILABLE_LABEL_COLORS, DEFAULT_LABEL_COLOR } from '@/features/projects/project-id/work-items/api/work-item.api';
 
 export { AVAILABLE_LABEL_COLORS, DEFAULT_LABEL_COLOR };
 
@@ -21,7 +21,7 @@ export const useLabelsQuery = (
 ) =>
   useQuery({
     queryKey: labelKeys.scoped(projectId, type),
-    queryFn: () => LabelService.list(projectId, !type || type === 'work-item' ? 'work_item' : type),
+    queryFn: () => workItemApi.labels.list(projectId, !type || type === 'work-item' ? 'work_item' : type),
     staleTime: 60_000,
     enabled: options?.enabled !== undefined ? options.enabled : Boolean(projectId),
   });

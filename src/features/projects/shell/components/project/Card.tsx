@@ -20,7 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avat
 import { ProjectAvatar } from "@/shared/components/icons";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { cn } from "@/shared/lib/utils";
-import { useFavorites } from '../../hooks/use-favorites';
+import { useFavorites } from '@/features/projects/favorite/hooks/use-favorites';
 import { useArchiveProject, useDuplicateProject, useDeleteProject } from '../../hooks/use-project';
 import {
   getProjectKey,

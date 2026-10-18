@@ -121,7 +121,7 @@ export function useHomeFiles(
 
   return useInfiniteQuery({
     queryKey: [
-      ...storageKeys.workspaceHomeFiles(scopeId, parentId),
+      ...storageKeys.driveHomeFiles(scopeId, parentId),
       'infinite',
       mergedParams,
     ],
@@ -181,15 +181,15 @@ function createInfiniteStorageQuery(
 }
 
 export const useMyFiles = createInfiniteStorageQuery(
-  storageKeys.workspaceMyFiles,
+  storageKeys.driveMyFiles,
   getMyFiles,
 );
 export const useSharedFiles = createInfiniteStorageQuery(
-  storageKeys.workspaceShared,
+  storageKeys.driveShared,
   getSharedFiles,
 );
 export const useStarredFiles = createInfiniteStorageQuery(
-  storageKeys.workspaceStarred,
+  storageKeys.driveStarred,
   getStarredFiles,
 );
 
@@ -374,7 +374,7 @@ export function useTrash(
   options?: { enabled?: boolean },
 ) {
   return useInfiniteQuery({
-    queryKey: [...storageKeys.workspaceTrashed(scopeId), 'infinite', params],
+    queryKey: [...storageKeys.driveTrashed(scopeId), 'infinite', params],
     queryFn: ({ pageParam = 1 }) =>
       getTrashedFiles(scopeId, {
         ...params,
@@ -468,7 +468,7 @@ export interface UseStorageQuotaOptions {
 
 export function useStorageUsage(scopeId?: string, projectId?: string) {
   return useQuery<StorageUsageResult>({
-    queryKey: [...storageKeys.workspaceUsage(scopeId), projectId],
+    queryKey: [...storageKeys.driveUsage(scopeId), projectId],
     queryFn: () => getStorageUsage(scopeId, projectId),
     enabled: true,
     ...DRIVE_QUERY_OPTIONS,

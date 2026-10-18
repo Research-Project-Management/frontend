@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { CommentService } from '@/features/projects/project-id/work-items/api/work-item.api';
+import { workItemApi } from '@/features/projects/project-id/work-items/api/work-item.api';
 import { workItemToast } from './use-work-item-toast';
 
 export const commentKeys = {
@@ -20,7 +20,7 @@ export const useComments = (id: string) =>
   useQuery({
     queryKey: commentKeys.item(id),
     queryFn: async () => {
-      const res = await CommentService.getComments(id);
+      const res = await workItemApi.comments.getComments(id);
       if (Array.isArray(res)) return res;
       if (res && 'comments' in res && Array.isArray(res.comments)) return res.comments;
       if (res && 'data' in res && Array.isArray(res.data)) return res.data;
@@ -34,7 +34,7 @@ export const useAddComment = () => {
   return useMutation({
     mutationFn: ({ id, itemId, workItemId, content }: { id?: string; itemId?: string; workItemId?: string; content: string }) => {
       const targetId = (id || itemId || workItemId) ?? '';
-      return CommentService.addComment(targetId, content);
+      return workItemApi.comments.addComment(targetId, content);
     },
     onSuccess: (_, vars) => {
       const targetId = (vars.id || vars.itemId || vars.workItemId) ?? '';
@@ -49,7 +49,7 @@ export const useDeleteComment = () => {
   return useMutation({
     mutationFn: ({ id, itemId, workItemId, commentId }: { id?: string; itemId?: string; workItemId?: string; commentId: string }) => {
       const targetId = (id || itemId || workItemId) ?? '';
-      return CommentService.deleteComment(targetId, commentId);
+      return workItemApi.comments.deleteComment(targetId, commentId);
     },
     onSuccess: (_, vars) => {
       const targetId = (vars.id || vars.itemId || vars.workItemId) ?? '';
@@ -76,7 +76,7 @@ export const useUpdateComment = () => {
       content: string;
     }) => {
       const targetId = (id || itemId || workItemId) ?? '';
-      return CommentService.updateComment(targetId, commentId, content);
+      return workItemApi.comments.updateComment(targetId, commentId, content);
     },
     onSuccess: (_, vars) => {
       const targetId = (vars.id || vars.itemId || vars.workItemId) ?? '';
@@ -103,7 +103,7 @@ export const useReactComment = () => {
       emoji: string;
     }) => {
       const targetId = (id || itemId || workItemId) ?? '';
-      return CommentService.reactComment(targetId, commentId, emoji);
+      return workItemApi.comments.reactComment(targetId, commentId, emoji);
     },
     onSuccess: (_, vars) => {
       const targetId = (vars.id || vars.itemId || vars.workItemId) ?? '';

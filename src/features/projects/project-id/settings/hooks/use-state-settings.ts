@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  StateService,
-  CreateStateInput,
-  UpdateStateInput,
-  ReorderStateItem,
-} from "../services/state.service";
+  workItemApi,
+  type CreateStateInput,
+  type UpdateStateInput,
+  type ReorderStateItem,
+} from "@/features/projects/project-id/work-items/api/work-item.api";
 import type { WorkItemState } from "../types/state.types";
 import { DEFAULT_WORK_ITEM_STATES } from "../types/state.types";
 
@@ -19,13 +19,13 @@ export function useStateSettings(projectId: string) {
 
   const statesQ = useQuery({
     queryKey: stateKeys.all(projectId),
-    queryFn: () => StateService.getStates(projectId),
+    queryFn: () => workItemApi.states.getStates(projectId),
     enabled: Boolean(projectId),
   });
 
   const countsQ = useQuery({
     queryKey: stateKeys.counts(projectId),
-    queryFn: () => StateService.getStateCounts(projectId),
+    queryFn: () => workItemApi.states.getStateCounts(projectId),
     enabled: Boolean(projectId),
   });
 
@@ -39,7 +39,7 @@ export function useStateSettings(projectId: string) {
   };
 
   const createMut = useMutation({
-    mutationFn: (data: CreateStateInput) => StateService.createState(projectId, data),
+    mutationFn: (data: CreateStateInput) => workItemApi.states.createState(projectId, data),
     onSuccess: () => {
       invalidateWorkflowCache();
       toast.success('Workflow state created', { id: 'settings-state' });
@@ -49,7 +49,7 @@ export function useStateSettings(projectId: string) {
 
   const updateMut = useMutation({
     mutationFn: ({ stateId, data }: { stateId: string; data: UpdateStateInput }) =>
-      StateService.updateState(projectId, stateId, data),
+      workItemApi.states.updateState(projectId, stateId, data),
     onSuccess: () => {
       invalidateWorkflowCache();
       toast.success('Workflow state updated', { id: 'settings-state' });
@@ -58,7 +58,7 @@ export function useStateSettings(projectId: string) {
   });
 
   const reorderMut = useMutation({
-    mutationFn: (states: ReorderStateItem[]) => StateService.reorderStates(projectId, states),
+    mutationFn: (states: ReorderStateItem[]) => workItemApi.states.reorderStates(projectId, states),
     onSuccess: () => {
       invalidateWorkflowCache();
       toast.success('Workflow states reordered', { id: 'settings-state' });
@@ -68,7 +68,7 @@ export function useStateSettings(projectId: string) {
 
   const deleteMut = useMutation({
     mutationFn: ({ stateId, fallbackStateId }: { stateId: string; fallbackStateId?: string }) =>
-      StateService.deleteState(projectId, stateId, fallbackStateId),
+      workItemApi.states.deleteState(projectId, stateId, fallbackStateId),
     onSuccess: () => {
       invalidateWorkflowCache();
       toast.success('Workflow state deleted', { id: 'settings-state' });
@@ -77,7 +77,7 @@ export function useStateSettings(projectId: string) {
   });
 
   const resetMut = useMutation({
-    mutationFn: () => StateService.resetStates(projectId),
+    mutationFn: () => workItemApi.states.resetStates(projectId),
     onSuccess: () => {
       invalidateWorkflowCache();
       toast.success('Workflow states reset to default', { id: 'settings-state' });

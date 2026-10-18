@@ -24,7 +24,6 @@ export interface PresignUploadResult {
   storageKey: string;
   fileUuid: string;
   expiresIn: number;
-  signedUrl?: string; // backwards compatibility alias
   path?: string;
   url?: string;
 }
@@ -54,7 +53,6 @@ export interface PartUrlResult {
 export interface MultipartPartDto {
   partNumber: number;
   eTag: string;
-  etag?: string;
 }
 
 export interface ResumableUploadOptions {
@@ -194,7 +192,7 @@ export const uploadBlobWithPresigned = async (
       projectId,
     });
 
-    const uploadUrl = presignRes?.uploadUrl || presignRes?.signedUrl;
+    const uploadUrl = presignRes?.uploadUrl;
     if (uploadUrl && presignRes?.storageKey) {
       await new Promise<void>((resolve, reject) => {
         if (signal?.aborted) return reject(new Error('Upload aborted'));
@@ -301,7 +299,7 @@ export const uploadPartToS3 = (
           xhr.getResponseHeader('etag') ||
           '';
         const eTag = rawEtag.replace(/^"|"$/g, '');
-        resolve({ partNumber, eTag, etag: eTag });
+        resolve({ partNumber, eTag });
       } else {
         reject(new Error(`S3 part upload failed with status ${xhr.status}`));
       }

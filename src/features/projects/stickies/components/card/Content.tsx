@@ -44,6 +44,7 @@ export default memo(function Content({
   const initialText = useMemo(() => {
     const raw = sticky.content || '';
     return raw.includes('<') ? stripHtml(raw) : raw;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally captured once on mount for CodeMirror initial state
   }, []);
 
   useEffect(() => {
@@ -218,6 +219,7 @@ export default memo(function Content({
       view.destroy();
       viewRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- CodeMirror is initialized once; external updates are handled by the separate sync effect below
   }, [onReady, placeholder]);
 
   // Sync external changes when view is not focused

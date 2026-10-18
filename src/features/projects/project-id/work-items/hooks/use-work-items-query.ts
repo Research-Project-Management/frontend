@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CoreService, StateService } from '@/features/projects/project-id/work-items/api/work-item.api';
+import { workItemApi } from '@/features/projects/project-id/work-items/api/work-item.api';
 import {
   projectKeys,
   fetchProject,
@@ -17,7 +17,7 @@ export const stateKeys = {
 export const useProjectStates = (projectId: string) =>
   useQuery({
     queryKey: stateKeys.all(projectId),
-    queryFn: () => StateService.getStates(projectId),
+    queryFn: () => workItemApi.states.getStates(projectId),
     enabled: Boolean(projectId),
     staleTime: 30_000,
   });
@@ -37,7 +37,7 @@ export const workItemKeys = itemKeys;
 export const useProjectItems = (projectId: string) =>
   useQuery({
     queryKey: itemKeys.project(projectId),
-    queryFn: () => CoreService.getProjectItems(projectId),
+    queryFn: () => workItemApi.items.getProjectItems(projectId),
     enabled: Boolean(projectId),
     staleTime: 30_000,
   });
@@ -47,7 +47,7 @@ export const useProjectWorkItems = useProjectItems;
 export const useAllItems = () =>
   useQuery({
     queryKey: itemKeys.all,
-    queryFn: () => CoreService.getItems(),
+    queryFn: () => workItemApi.items.getItems(),
     enabled: true,
   });
 
@@ -61,7 +61,7 @@ export const useProjectDetails = (projectId: string) =>
 
 export const useWorkspaceProjects = () =>
   useQuery({
-    queryKey: projectKeys.all('all'),
+    queryKey: projectKeys.all(),
     queryFn: async () => {
       const res = await fetchUserProjects('all');
       if (Array.isArray(res)) return res;

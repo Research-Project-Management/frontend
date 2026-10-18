@@ -38,7 +38,7 @@ import {
 import { ArchiveCard } from '../components/archived/ArchiveCard';
 import { DeletePermanentModal } from '../components/archived/DeletePermanentModal';
 import { ArchivedEmptyState } from '../components/archived/ArchivedEmptyState';
-import { ArchiveService } from '@/features/projects/project-id/work-items/api/work-item.api';
+import { workItemApi } from '@/features/projects/project-id/work-items/api/work-item.api';
 import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
 import { ViewService } from '@/features/projects/project-id/views/services/view.service';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
@@ -109,7 +109,7 @@ export function ArchivePage() {
     queryKey: ['archived-work-items', currentProjectId],
     queryFn: async () => {
       if (!currentProjectId) return [] as Item[];
-      const res = await ArchiveService.getArchived(currentProjectId);
+      const res = await workItemApi.archive.getArchived(currentProjectId);
       if (Array.isArray(res)) return res as Item[];
       if (res && typeof res === 'object') {
         const resObj = res as unknown as Record<string, unknown>;
@@ -121,7 +121,7 @@ export function ArchivePage() {
     enabled: Boolean(currentProjectId),
   });
 
-  const archivedItems: Item[] = archivedItemsData || [];
+  const archivedItems: Item[] = useMemo(() => archivedItemsData || [], [archivedItemsData]);
   const filteredArchivedItems = useMemo(() => {
     if (!searchQuery.trim()) return archivedItems;
     const q = searchQuery.toLowerCase();
@@ -134,7 +134,7 @@ export function ArchivePage() {
 
   // Work items restore mutations
   const restoreWorkItemMutation = useMutation({
-    mutationFn: (id: string) => ArchiveService.restore(id),
+    mutationFn: (id: string) => workItemApi.archive.restore(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['archived-work-items'] });
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
@@ -144,7 +144,7 @@ export function ArchivePage() {
   });
 
   const bulkRestoreMutation = useMutation({
-    mutationFn: (ids: string[]) => ArchiveService.bulkRestore(ids),
+    mutationFn: (ids: string[]) => workItemApi.archive.bulkRestore(ids),
     onSuccess: (_, ids) => {
       queryClient.invalidateQueries({ queryKey: ['archived-work-items'] });
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
@@ -153,6 +153,7 @@ export function ArchivePage() {
     },
     onError: (err: Error) => toast.error(err.message || 'Failed to bulk restore'),
   });
+  const { mutate: bulkRestore } = bulkRestoreMutation;
 
   // 4. Archived Views logic
   const {
@@ -171,7 +172,7 @@ export function ArchivePage() {
     enabled: Boolean(currentProjectId),
   });
 
-  const archivedViews: WorkItemViewItem[] = viewsData || [];
+  const archivedViews: WorkItemViewItem[] = useMemo(() => viewsData || [], [viewsData]);
   const filteredArchivedViews = useMemo(() => {
     if (!searchQuery.trim()) return archivedViews;
     const q = searchQuery.toLowerCase();
@@ -195,7 +196,7 @@ export function ArchivePage() {
     enabled: Boolean(currentProjectId),
   });
 
-  const archivedPages: Page[] = pagesData || [];
+  const archivedPages: Page[] = useMemo(() => pagesData || [], [pagesData]);
   const filteredArchivedPages = useMemo(() => {
     if (!searchQuery.trim()) return archivedPages;
     const q = searchQuery.toLowerCase();
@@ -220,16 +221,19 @@ export function ArchivePage() {
     });
   };
 
+  const { mutate: restoreProject } = restoreProjectMutation;
+  const { mutate: deleteProject } = deleteProjectMutation;
+
   const handleBulkRestoreSelected = React.useCallback(() => {
     if (selectedItemIds.size === 0) return;
-    bulkRestoreMutation.mutate(Array.from(selectedItemIds));
-  }, [selectedItemIds, bulkRestoreMutation]);
+    bulkRestore(Array.from(selectedItemIds));
+  }, [selectedItemIds, bulkRestore]);
 
   const handleRestoreProject = React.useCallback((projectId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    restoreProjectMutation.mutate({ projectId });
-  }, [restoreProjectMutation]);
+    restoreProject({ projectId });
+  }, [restoreProject]);
 
   const handleOpenDeletePermanent = React.useCallback((p: Project, e: React.MouseEvent) => {
     e.preventDefault();
@@ -239,11 +243,11 @@ export function ArchivePage() {
 
   const handleDeletePermanent = React.useCallback(() => {
     if (!deleteConfirmProject?.id) return;
-    deleteProjectMutation.mutate(
+    deleteProject(
       { projectId: deleteConfirmProject.id },
       { onSettled: () => setDeleteConfirmProject(null) }
     );
-  }, [deleteConfirmProject?.id, deleteProjectMutation]);
+  }, [deleteConfirmProject?.id, deleteProject]);
 
   const currentProject = activeProjects.find((p) => p.id === currentProjectId);
 

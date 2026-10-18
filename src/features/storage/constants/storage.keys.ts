@@ -20,22 +20,6 @@ export const storageKeys = {
     [...storageKeys.scoped(scopeId), 'trashed'] as const,
   driveUsage: (scopeId?: string) =>
     [...storageKeys.scoped(scopeId), 'usage'] as const,
-
-  // Backward compatibility aliases
-  workspaceHomeFiles: (scopeId?: string, parentId?: string | null) =>
-    storageKeys.driveHomeFiles(scopeId, parentId),
-  workspaceFiles: (scopeId?: string, parentId?: string | null) =>
-    storageKeys.driveFiles(scopeId, parentId),
-  workspaceMyFiles: (scopeId?: string) =>
-    storageKeys.driveMyFiles(scopeId),
-  workspaceShared: (scopeId?: string) =>
-    storageKeys.driveShared(scopeId),
-  workspaceStarred: (scopeId?: string) =>
-    storageKeys.driveStarred(scopeId),
-  workspaceTrashed: (scopeId?: string) =>
-    storageKeys.driveTrashed(scopeId),
-  workspaceUsage: (scopeId?: string) =>
-    storageKeys.driveUsage(scopeId),
   quota: (projectId?: string) =>
     [...storageKeys.all, 'quota', projectId || 'me'] as const,
 

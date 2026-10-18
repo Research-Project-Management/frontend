@@ -21,7 +21,7 @@ import {
 
 const DeleteModal = dynamic(
   () =>
-    import('@/features/settings/components/modal/DeleteModal').then(
+    import('@/features/settings/components/labels/DeleteModal').then(
       (m) => m.DeleteModal
     ),
   { ssr: false }

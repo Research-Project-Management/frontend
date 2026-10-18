@@ -183,7 +183,11 @@ export function useProjectLinkSharing(projectId?: string) {
   });
 
   return {
-    ...query,
+    data: query.data,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    refetch: query.refetch,
     toggleMutation,
   };
 }

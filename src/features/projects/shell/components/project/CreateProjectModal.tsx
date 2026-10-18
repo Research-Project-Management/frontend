@@ -34,8 +34,8 @@ import {
 } from "@/shared/components/icons";
 import { cn } from "@/shared/lib/utils";
 import { useCreateProject, useUpdateProject } from '../../hooks/use-project';
-import { CoverModal } from '@/features/projects/project-id/settings/components/general/CoverModal';
-import { uploadGenericFile } from '@/features/storage/services/file.service';
+import { CoverModal } from '@/shared/components/ui/cover-modal';
+import { uploadGenericFile } from '@/features/storage/services/upload.service';
 import { createProjectFormSchema, type CreateProjectFormValues } from '../../schemas/project.schema';
 import type { Project, ProjectPriority } from '../../types/project.types';
 
@@ -246,6 +246,7 @@ export function CreateProjectModal({
     if (isModalOpen && !form.formState.isDirty && !name) {
       setValue('avatar', getRandomProjectEmoji());
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only evaluate once when modal opens, not on form typing
   }, [isModalOpen]);
 
   useEffect(() => {

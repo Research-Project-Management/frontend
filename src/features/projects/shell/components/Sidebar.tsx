@@ -39,7 +39,7 @@ import {
 } from '@/shared/components/icons';
 import { useProjects } from '../hooks/use-project';
 import type { Project } from '../types/project.types';
-import { useFavorites } from '../hooks/use-favorites';
+import { useFavorites } from '@/features/projects/favorite/hooks/use-favorites';
 import { useProject } from '@/features/projects/project-id/work-items/hooks/use-work-item';
 
 const CreateProjectModal = dynamic(

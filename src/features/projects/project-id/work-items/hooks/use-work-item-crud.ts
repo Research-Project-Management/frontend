@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { CoreService } from '@/features/projects/project-id/work-items/api/work-item.api';
+import { workItemApi } from '@/features/projects/project-id/work-items/api/work-item.api';
 import type {
   Item,
   CreateItemInput,
@@ -111,7 +111,7 @@ export const useCreateItem = () => {
         const errorMsg = parsed.error.issues[0]?.message || 'Invalid work item data';
         throw new Error(errorMsg);
       }
-      return CoreService.create(input);
+      return workItemApi.items.create(input);
     },
     onSuccess: (res, variables) => {
       const created = (res as { workItem?: Item; item?: Item } | undefined)?.workItem
@@ -210,7 +210,7 @@ export const useUpdateItem = () => {
         const errorMsg = parsed.error.issues[0]?.message || 'Invalid work item update';
         throw new Error(errorMsg);
       }
-      return CoreService.update(data);
+      return workItemApi.items.update(data);
     },
     getUpdater: (data) => {
       const targetId = (data.id || data.itemId || data.workItemId) ?? '';
@@ -305,7 +305,7 @@ export const useDeleteItem = () =>
       itemId?: string;
       workItemId?: string;
       projectId?: string;
-    }) => CoreService.delete((id || workItemId) ?? ''),
+    }) => workItemApi.items.delete((id || workItemId) ?? ''),
     getUpdater: ({ id, workItemId }) => {
       const targetId = (id || workItemId) ?? '';
       if (!targetId) return null;
@@ -352,7 +352,7 @@ export const useDuplicateItem = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (vars: { id?: string; itemId?: string; workItemId?: string; projectId: string }) =>
-      CoreService.duplicate({
+      workItemApi.items.duplicate({
         id: vars.id || vars.workItemId || vars.itemId,
         workItemId: vars.id || vars.workItemId || vars.itemId,
         itemId: vars.id || vars.workItemId || vars.itemId,
@@ -400,7 +400,7 @@ export const useBulkUpdate = () =>
       if (!parsed.success) {
         throw new Error(parsed.error.issues[0]?.message || 'Invalid bulk update data');
       }
-      return CoreService.bulkUpdate(payload);
+      return workItemApi.items.bulkUpdate(payload);
     },
     getUpdater: (vars) => {
       const targetIds = new Set(vars.ids || vars.itemIds || vars.workItemIds || []);
@@ -488,7 +488,7 @@ export const useBulkDelete = () =>
       workItemIds?: string[];
       projectId?: string;
     }) =>
-      CoreService.bulkDelete({
+      workItemApi.items.bulkDelete({
         ids: ids || itemIds || workItemIds,
         itemIds: ids || itemIds || workItemIds,
         workItemIds: ids || itemIds || workItemIds,
@@ -545,7 +545,7 @@ export const useCreateSubItem = () => {
       projectId?: string;
     } & CreateSubItemInput) => {
       const targetId = (id || itemId || workItemId) ?? '';
-      return CoreService.createSubItem(targetId, data);
+      return workItemApi.items.createSubItem(targetId, data);
     },
     onSuccess: (res, variables) => {
       const parentId = (variables.id || variables.itemId || variables.workItemId) ?? '';
@@ -624,7 +624,7 @@ export const useConvertSubItemToRoot = () => {
       projectId?: string;
     }) => {
       const targetId = (id || itemId || workItemId) ?? '';
-      return CoreService.convertToRoot(targetId);
+      return workItemApi.items.convertToRoot(targetId);
     },
     onSuccess: (res, variables) => {
       const targetId = (variables.id || variables.itemId || variables.workItemId) ?? '';
@@ -690,7 +690,7 @@ export const useReorderItem = () =>
       if (!parsed.success) {
         throw new Error(parsed.error.issues[0]?.message || 'Invalid reorder data');
       }
-      return CoreService.reorder(vars);
+      return workItemApi.items.reorder(vars);
     },
     getUpdater: (vars) => {
       const targetId = (vars.workItemId || vars.id) ?? '';

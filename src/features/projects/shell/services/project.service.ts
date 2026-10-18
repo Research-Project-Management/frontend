@@ -25,11 +25,11 @@ export type {
 // ── Query Keys Factory ────────────────────────────────────────────────────────
 
 export const projectKeys = {
-  all: (_scopeId?: string) => ['projects', 'me'] as const,
+  all: () => ['projects', 'me'] as const,
   byId: (projectId: string) => ['project', projectId] as const,
   overview: (projectId: string) => ['project-overview', projectId] as const,
   header: (projectId: string) => ['project-header', projectId] as const,
-  projectsHeader: (_scopeId?: string) => ['projects-header', 'me'] as const,
+  projectsHeader: () => ['projects-header', 'me'] as const,
   members: (projectId: string) => ['project-members', projectId] as const,
   states: (projectId: string) => ['project-states', projectId] as const,
   currentState: (projectId: string) => ['project-current-state', projectId] as const,
@@ -56,17 +56,9 @@ export const fetchProjects = (
   fetchUserProjects('all', signal);
 
 export function createProjectApi(
-  first: CreateProjectInput | string,
-  second?: CreateProjectInput | string,
+  data: CreateProjectInput,
 ): Promise<ProjectDetailResponse> {
-  const payload: CreateProjectInput =
-    typeof first === 'object'
-      ? first
-      : typeof second === 'object'
-        ? second
-        : ({} as CreateProjectInput);
-
-  return apiPost<ProjectDetailResponse>(`/api/projects`, payload);
+  return apiPost<ProjectDetailResponse>(`/api/projects`, data);
 }
 
 export const duplicateProjectApi = (projectId: string) =>
@@ -224,14 +216,3 @@ export const ProjectService = {
   restoreTrashed: (projectId: string) => restoreTrashedProjectApi(projectId),
   permanentDelete: (projectId: string) => permanentDeleteProjectApi(projectId),
 };
-
-// Backwards compatibility aliases
-export const createProject = createProjectApi;
-export const updateProject = updateProjectApi;
-export const deleteProject = deleteProjectApi;
-export const archiveProject = archiveProjectApi;
-export const restoreProject = restoreProjectApi;
-export const addProjectMember = addProjectMemberApi;
-export const updateProjectMemberRole = updateProjectMemberRoleApi;
-export const removeProjectMember = removeProjectMemberApi;
-export const transferOwnership = transferOwnershipApi;

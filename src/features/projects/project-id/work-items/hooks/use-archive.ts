@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArchiveService } from '@/features/projects/project-id/work-items/api/work-item.api';
+import { workItemApi } from '@/features/projects/project-id/work-items/api/work-item.api';
 import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
 import { resolveItemId } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import { invalidateWorkItemRelatedQueries } from './use-work-items-query';
@@ -33,7 +33,7 @@ export const useArchivedItems = (projectId: string) =>
   useQuery({
     queryKey: archiveKeys.project(projectId),
     queryFn: async () => {
-      const res = await ArchiveService.getArchived(projectId);
+      const res = await workItemApi.archive.getArchived(projectId);
       if (Array.isArray(res)) return res as Item[];
       if (res && typeof res === 'object') {
         const resObj = res as unknown as Record<string, unknown>;
@@ -48,7 +48,7 @@ export const useArchivedItems = (projectId: string) =>
 export const useArchiveItem = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => ArchiveService.archive(id),
+    mutationFn: (id: string) => workItemApi.archive.archive(id),
     onSuccess: (res, id) => {
       const serverItem = res?.workItem || res?.item;
       queryClient.setQueriesData<ProjectItemsCache>({ queryKey: ['work-items'] }, (old) =>
@@ -81,7 +81,7 @@ export const useArchiveItem = () => {
 export const useRestoreItem = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => ArchiveService.restore(id),
+    mutationFn: (id: string) => workItemApi.archive.restore(id),
     onSuccess: (res, id) => {
       const serverItem = res?.workItem || res?.item;
       queryClient.setQueriesData<Item[]>({ queryKey: ['archived-items'] }, (old) =>
@@ -126,7 +126,7 @@ export const useBulkArchive = () => {
   return useMutation({
     mutationFn: (vars: { ids?: string[]; itemIds?: string[]; workItemIds?: string[]; projectId?: string }) => {
       const targetIds = vars.ids || vars.itemIds || vars.workItemIds || [];
-      return ArchiveService.bulkArchive(targetIds, vars.projectId);
+      return workItemApi.archive.bulkArchive(targetIds, vars.projectId);
     },
     onSuccess: (_, vars) => {
       const targetIds = vars.ids || vars.itemIds || vars.workItemIds || [];
@@ -153,7 +153,7 @@ export const useBulkRestore = () => {
   return useMutation({
     mutationFn: (vars: { ids?: string[]; itemIds?: string[]; workItemIds?: string[]; projectId?: string }) => {
       const targetIds = vars.ids || vars.itemIds || vars.workItemIds || [];
-      return ArchiveService.bulkRestore(targetIds, vars.projectId);
+      return workItemApi.archive.bulkRestore(targetIds, vars.projectId);
     },
     onSuccess: (_, vars) => {
       const targetIds = vars.ids || vars.itemIds || vars.workItemIds || [];

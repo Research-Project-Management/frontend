@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import {
   FolderPlus,
   FolderOutput,
@@ -16,11 +17,13 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/shared/components/ui/dropdown-menu';
 import type { TreeNode } from './sidebar.types';
 import type { Collection } from '@/features/library/domain/types/library.types';
+import { getValidMoveTargets } from '@/features/library/domain/collection-tree.domain';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 
 interface CollectionContextMenuProps {
   node: TreeNode;
-  validMoveTargets: Collection[];
+  allCollections?: Collection[];
+  validMoveTargets?: Collection[];
   canManageCollections?: boolean;
   onCreateSub: (parentId: string, parentName: string) => void;
   onStartRename: (id: string, name: string) => void;
@@ -34,7 +37,8 @@ interface CollectionContextMenuProps {
 
 export function CollectionContextMenu({
   node,
-  validMoveTargets,
+  allCollections = [],
+  validMoveTargets: propValidMoveTargets,
   canManageCollections = true,
   onCreateSub,
   onStartRename,
@@ -45,11 +49,18 @@ export function CollectionContextMenu({
   onDelete,
   onDeleteWithItems,
 }: CollectionContextMenuProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const activeScope = useLibraryUIStore((s) => s.activeScope);
   const isProjectScope = activeScope.type === 'project';
   const rootLibraryName = isProjectScope ? (activeScope.name || 'Project') : 'My Library';
+
+  const validMoveTargets = useMemo(() => {
+    if (propValidMoveTargets) return propValidMoveTargets;
+    if (!isOpen || allCollections.length === 0) return [];
+    return getValidMoveTargets(allCollections, node.id);
+  }, [isOpen, propValidMoveTargets, allCollections, node.id]);
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"

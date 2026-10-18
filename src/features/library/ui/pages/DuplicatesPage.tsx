@@ -291,6 +291,7 @@ export function DuplicatesPage() {
                     <div
                       key={groupKey}
                       onClick={() => setSelectedGroupKey(groupKey)}
+                      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 140px' }}
                       className={cn(
                         'rounded-md border bg-card overflow-hidden transition-colors cursor-pointer',
                         isSelectedGroup

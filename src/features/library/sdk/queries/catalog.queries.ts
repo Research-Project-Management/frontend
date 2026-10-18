@@ -70,6 +70,7 @@ export function useViewItems(
         { signal },
       ),
     enabled,
+    placeholderData: (previousData) => previousData,
     select: (data) => {
       const items: Item[] = data?.items || [];
       const meta = (data?.meta || data?.pagination || null) as CursorPaginationMeta | null;
@@ -599,6 +600,7 @@ export function useLibraryItemsQuery(
         nextCursor,
       };
     },
+    placeholderData: (previousData) => previousData,
     staleTime: 1000 * 30,
   });
 }

@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/shared/lib/utils';
 import { usePdf } from './use-pdf';
-import { readerService, getPaperFileUrl } from '@/features/library/sdk/library.client';
+import { readerService, getItemFileUrl } from '@/features/library/sdk/library.client';
 import {
   useReaderItem,
   useReaderFulltext,
@@ -47,7 +47,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const fulltext = fulltextQuery.data ?? null;
   const isLoadingFulltext = fulltextQuery.isLoading;
 
-  const paperUrl = getPaperFileUrl(paper);
+  const paperUrl = getItemFileUrl(paper);
   const {
     blobUrl: pdfBlobUrl,
     isLoading: pdfLoading,

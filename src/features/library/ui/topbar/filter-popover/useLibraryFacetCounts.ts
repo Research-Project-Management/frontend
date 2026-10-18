@@ -47,17 +47,19 @@ export interface UseLibraryFacetCountsParams {
   scopeId: string;
   items?: Item[];
   searchQuery: string;
+  isOpen?: boolean;
 }
 
 export function useLibraryFacetCounts({
   scopeId,
   items,
   searchQuery,
+  isOpen = true,
 }: UseLibraryFacetCountsParams) {
   const { searchParams, updateQuery } = useLibraryNavigation();
   const queryClient = useQueryClient();
   const { data: counts } = useLibraryCountsQuery(scopeId);
-  const { tags } = useTags(scopeId);
+  const { tags } = useTags(scopeId, { enabled: isOpen });
 
   const rawFileStatus = searchParams.get('fileStatus');
   const hasFileParam = searchParams.get('hasFile');
@@ -249,24 +251,27 @@ export function useLibraryFacetCounts({
   const hasDateFilter = Boolean(startDate || endDate || fromYear !== null || toYear !== null);
 
   const matchingFileItems = useMemo(() => {
+    if (!isOpen) return [];
     return FILE_STATUS_OPTIONS.map((item) => ({
       ...item,
       match: calculateFilterMatchScore(item.label, searchQuery, item.aliases),
     }))
       .filter((item) => item.match.matches)
       .sort((a, b) => b.match.score - a.match.score);
-  }, [searchQuery]);
+  }, [searchQuery, isOpen]);
 
   const matchingReadingItems = useMemo(() => {
+    if (!isOpen) return [];
     return READING_STATUS_OPTIONS.map((item) => ({
       ...item,
       match: calculateFilterMatchScore(item.label, searchQuery, item.aliases),
     }))
       .filter((item) => item.match.matches)
       .sort((a, b) => b.match.score - a.match.score);
-  }, [searchQuery]);
+  }, [searchQuery, isOpen]);
 
   const dynamicTypes = useMemo(() => {
+    if (!isOpen) return [];
     const existingTypeMap = new Map<string, { canonicalKey: string; count: number }>();
 
     const serverTypeCounts = counts?.itemTypes || counts?.byItemType;
@@ -371,9 +376,10 @@ export function useLibraryFacetCounts({
     });
 
     return options.sort((a, b) => a.label.localeCompare(b.label));
-  }, [counts, items, scopeId, queryClient, itemTypes, serverItemTypes]);
+  }, [counts, items, scopeId, queryClient, itemTypes, serverItemTypes, isOpen]);
 
   const matchingTypeItems = useMemo(() => {
+    if (!isOpen) return [];
     return dynamicTypes
       .map((item) => ({
         ...item,
@@ -381,9 +387,10 @@ export function useLibraryFacetCounts({
       }))
       .filter((item) => item.match.matches)
       .sort((a, b) => b.match.score - a.match.score);
-  }, [dynamicTypes, searchQuery]);
+  }, [dynamicTypes, searchQuery, isOpen]);
 
   const dateSectionMatch = useMemo(() => {
+    if (!isOpen) return { matches: false, score: 0 };
     return calculateFilterMatchScore('Publication year date calendar start end', searchQuery, [
       'year',
       'date',
@@ -397,9 +404,10 @@ export function useLibraryFacetCounts({
       String(currentYear - 3),
       String(currentYear - 5),
     ]);
-  }, [searchQuery, currentYear]);
+  }, [searchQuery, currentYear, isOpen]);
 
   const matchingTags = useMemo(() => {
+    if (!isOpen) return [];
     const list = tags.filter((t: TagWithCount) => {
       const count = t._count?.itemTags ?? 0;
       if (count > 0) return true;
@@ -421,7 +429,7 @@ export function useLibraryFacetCounts({
       })
       .filter((item) => item.matches)
       .sort((a, b) => b.score - a.score);
-  }, [tags, searchQuery, activeTagsSet]);
+  }, [tags, searchQuery, activeTagsSet, isOpen]);
 
   const totalMatchesCount =
     matchingFileItems.length +

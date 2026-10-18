@@ -92,10 +92,6 @@ export const CollectionNode = memo(function CollectionNode({
     }
   };
 
-  const validMoveTargets = useMemo(
-    () => getValidMoveTargets(allCollections, node.id),
-    [allCollections, node.id],
-  );
   const effectiveIsOpen = isSearching ? true : isOpen;
 
   // Hierarchy indentation: 24px (align with SidebarNavItem pl-6) + depth * 16px
@@ -164,7 +160,7 @@ export const CollectionNode = memo(function CollectionNode({
             <div className="flex items-center gap-0.5 shrink-0 ml-auto">
               <CollectionContextMenu
                 node={node}
-                validMoveTargets={validMoveTargets}
+                allCollections={allCollections}
                 canManageCollections={canManageCollections}
                 onCreateSub={onCreateSub}
                 onStartRename={onStartRename}

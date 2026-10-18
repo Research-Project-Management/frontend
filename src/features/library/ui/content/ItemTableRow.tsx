@@ -89,20 +89,45 @@ export const ItemTableRow = React.memo(function ItemTableRow({
   const toggleSelect = useLibraryUIStore((s) => s.toggleSelect);
   const openModal = useLibraryUIStore((s) => s.openModal);
 
-  const cleanTitle = cleanAcademicText(getItemDisplayTitle(item) || item.title) || 'Untitled';
-  const { formattedAuthors, authorTooltip } = React.useMemo(() => {
-    const raw =
+  const { cleanTitle, formattedAuthors, authorTooltip, displayYear, venueText } = React.useMemo(() => {
+    const title = cleanAcademicText(getItemDisplayTitle(item) || item.title) || 'Untitled';
+
+    const rawAuthors =
       item.authors && item.authors.length > 0
         ? item.authors
         : item.creators;
-    if (!raw) return { formattedAuthors: '-', authorTooltip: '' };
-    const full = formatAcademicAuthors(raw, 999);
-    const short = formatAcademicAuthors(raw);
+    let shortAuthors = '—';
+    let fullAuthors = '';
+    if (rawAuthors) {
+      const full = formatAcademicAuthors(rawAuthors, 999);
+      shortAuthors = formatAcademicAuthors(rawAuthors);
+      fullAuthors = full !== '—' ? full : '';
+    }
+
+    const rawDate = getItemDisplayDate(item);
+    let year = '-';
+    if (typeof rawDate === 'number') {
+      year = String(rawDate);
+    } else if (typeof rawDate === 'string') {
+      year = rawDate.match(/\b(1[7-9]\d{2}|20\d{2})\b/)?.[1] || rawDate || '-';
+    }
+
+    const venue = cleanAcademicText(
+      getPublicationVenue(item) ||
+        item.publicationTitle ||
+        item.journal ||
+        item.publisher ||
+        '',
+    );
+
     return {
-      formattedAuthors: short,
-      authorTooltip: full !== '-' ? full : '',
+      cleanTitle: title,
+      formattedAuthors: shortAuthors,
+      authorTooltip: fullAuthors,
+      displayYear: year,
+      venueText: venue,
     };
-  }, [item.authors, item.creators]);
+  }, [item]);
 
   const isStarred =
     Boolean(item.isStarred) ||

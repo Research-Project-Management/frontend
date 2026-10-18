@@ -92,12 +92,32 @@ interface PreparedSortKey {
   numVal: number;
 }
 
-function prepareSortKey(item: Item, column: string): PreparedSortKey {
+const DATE_COLUMNS = new Set([
+  'createdAt',
+  'updatedAt',
+  'deletedAt',
+  'dateAdded',
+  'dateModified',
+  'dateDeleted',
+]);
+
+function prepareSortKey(item: Item, column: string, isDateColumn: boolean): PreparedSortKey {
   const raw = getValue(item, column);
   const isEmpty =
     !isValidValue(raw) || (typeof raw === 'number' && (Number.isNaN(raw) || raw === 0));
   if (isEmpty) {
     return { item, isEmpty: true, strVal: null, numVal: 0 };
+  }
+  if (isDateColumn && typeof raw === 'string') {
+    const ts = Date.parse(raw);
+    if (!Number.isNaN(ts)) {
+      return {
+        item,
+        isEmpty: false,
+        strVal: null,
+        numVal: ts,
+      };
+    }
   }
   if (typeof raw === 'string') {
     return {
@@ -131,6 +151,20 @@ export function sortLibraryItems(
   direction: 'asc' | 'desc',
   serverSorted: boolean,
 ): Item[] {
+  if (items.length <= 1) return items;
+
+  // Fast-path for serverSorted when no items are currently processing: preserve array reference!
+  if (serverSorted || !column) {
+    let hasProcessing = false;
+    for (let i = 0; i < items.length; i++) {
+      if ((items[i] as { _isProcessing?: boolean })._isProcessing) {
+        hasProcessing = true;
+        break;
+      }
+    }
+    if (!hasProcessing) return items;
+  }
+
   const processing: Item[] = [];
   const regular: Item[] = [];
 
@@ -146,7 +180,8 @@ export function sortLibraryItems(
     return processing.length > 0 ? [...processing, ...regular] : regular;
   }
 
-  const decorated = regular.map((item) => prepareSortKey(item, column));
+  const isDateColumn = DATE_COLUMNS.has(column);
+  const decorated = regular.map((item) => prepareSortKey(item, column, isDateColumn));
   decorated.sort((a, b) => {
     // Nullish or dirty placeholder values sort last regardless of direction
     if (a.isEmpty && b.isEmpty) return 0;

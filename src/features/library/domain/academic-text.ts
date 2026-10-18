@@ -10,21 +10,41 @@
 
 import { normalizeAuthors, parseCreatorName } from '@/features/library/domain/creators';
 
+const ASCII_ONLY_RE = /^[\x00-\x7F]*$/;
+const SPECIAL_LATIN_FOLD_RE = /[ĐđŁłØøßÆæŒœ]/g;
+const COMBINING_DIACRITIC_RE = /[\u0300-\u036f]/g;
+const SPECIAL_LATIN_MAP: Readonly<Record<string, string>> = {
+  Đ: 'd',
+  đ: 'd',
+  Ł: 'l',
+  ł: 'l',
+  Ø: 'o',
+  ø: 'o',
+  ß: 'ss',
+  Æ: 'ae',
+  æ: 'ae',
+  Œ: 'oe',
+  œ: 'oe',
+};
+
+const BROKEN_HYPHEN_RE = /(\b[A-Za-z0-9]+)\s*[-‐‑‒–—−]\s*([A-Za-z0-9]+\b)/g;
+const MULTI_WHITESPACE_RE = /\s+/g;
+const LEADING_EMOJI_RE = /^(\p{Extended_Pictographic}|\p{Emoji_Presentation}|[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}])\s*(.*)$/u;
+
 /**
  * Transliterates and folds Unicode diacritics into lowercase ASCII characters
  * for diacritic-insensitive search and key normalization.
+ * Uses an O(1) ASCII fast-path to bypass NFD normalization when no non-ASCII characters exist.
  */
 export function foldDiacritics(input?: string | null): string {
   if (!input) return '';
+  if (ASCII_ONLY_RE.test(input)) {
+    return input.toLowerCase();
+  }
   return input
-    .replace(/[Đđ]/g, (m) => (m === 'Đ' ? 'D' : 'd'))
-    .replace(/[Łł]/g, (m) => (m === 'Ł' ? 'L' : 'l'))
-    .replace(/[Øø]/g, (m) => (m === 'Ø' ? 'O' : 'o'))
-    .replace(/ß/g, 'ss')
-    .replace(/[Ææ]/g, 'ae')
-    .replace(/[Œœ]/g, 'oe')
+    .replace(SPECIAL_LATIN_FOLD_RE, (m) => SPECIAL_LATIN_MAP[m] ?? m)
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(COMBINING_DIACRITIC_RE, '')
     .toLowerCase();
 }
 
@@ -34,8 +54,8 @@ export function foldDiacritics(input?: string | null): string {
 export function cleanAcademicText(text?: string | null): string {
   if (!text) return '';
   return text
-    .replace(/(\b[A-Za-z0-9]+)\s*[-‐‑‒–—−]\s*([A-Za-z0-9]+\b)/g, '$1-$2')
-    .replace(/\s+/g, ' ')
+    .replace(BROKEN_HYPHEN_RE, '$1-$2')
+    .replace(MULTI_WHITESPACE_RE, ' ')
     .trim();
 }
 
@@ -78,7 +98,7 @@ export function formatAcademicAuthors(
 export function parseEmojiPrefix(text?: string | null): { emoji: string | null; label: string } {
   if (!text) return { emoji: null, label: '' };
   const trimmed = text.trim();
-  const match = trimmed.match(/^(\p{Extended_Pictographic}|\p{Emoji_Presentation}|[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}])\s*(.*)$/u);
+  const match = trimmed.match(LEADING_EMOJI_RE);
   if (match) {
     return {
       emoji: match[1],

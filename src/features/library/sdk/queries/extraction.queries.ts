@@ -162,10 +162,6 @@ export function useAttachments(
     isDeleting: deleteMutation.isPending,
     isCapturingSnapshot: captureSnapshotMutation.isPending,
     isSettingPrimary: setPrimaryMutation.isPending,
-    // Convenience aliases
-    addAttachment: addMutation.mutateAsync,
-    deleteAttachment: deleteMutation.mutateAsync,
-    setPrimaryAttachment: setPrimaryMutation.mutateAsync,
   };
 }
 

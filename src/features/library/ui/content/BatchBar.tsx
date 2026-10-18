@@ -41,7 +41,7 @@ import type {
 } from "@/features/library/domain/types/library.types";
 import { isItemRetracted } from "@/features/library/domain/retraction";
 import {
-  type useLibraryBatchCoordinator,
+  useLibraryBatchCoordinator,
   executeCopyMultiCite,
   executeCopyInTextCite,
   executeExportAllBibtex,
@@ -50,6 +50,10 @@ import {
 
 export interface BatchBarProps {
   coordinator?: ReturnType<typeof useLibraryBatchCoordinator>;
+  items?: Item[];
+  collectionId?: string;
+  view?: string;
+  canEdit?: boolean;
   selectedCount?: number;
   selectedItems?: Item[];
   collections: Collection[];
@@ -65,7 +69,11 @@ export interface BatchBarProps {
 }
 
 export function BatchBar({
-  coordinator,
+  coordinator: propCoordinator,
+  items,
+  collectionId,
+  view,
+  canEdit = true,
   selectedCount: propSelectedCount,
   selectedItems: propSelectedItems,
   collections,
@@ -82,6 +90,19 @@ export function BatchBar({
   const params = useParams() as { projectId?: string };
   const effectiveScopeId =
     propsScopeId || propsProjectId || params?.projectId || "user";
+
+  const internalCoordinator = useLibraryBatchCoordinator({
+    items,
+    scopeId: effectiveScopeId,
+    collectionId,
+    view,
+    isTrash,
+    canEdit,
+  });
+
+  // Use explicit coordinator or fallback to internal coordinator when items are provided
+  const coordinator =
+    propCoordinator ?? (items !== undefined ? internalCoordinator : undefined);
 
   const activeScope = useLibraryUIStore((s) => s.activeScope);
   const isProjectScope = activeScope.type === "project";

@@ -78,6 +78,10 @@ export const ZOTERO_COLORS = Object.values(ANNOTATION_COLORS).map((c) => ({
   hex: c.border,
 }));
 
+const HEX_TO_COLOR_ID_MAP = new Map<string, AnnotationColorId>(
+  Object.values(ANNOTATION_COLORS).map((c) => [c.border.toLowerCase(), c.id]),
+);
+
 export interface AnnotationFilterCriteria {
   query?: string | null;
   color?: string | null;
@@ -106,10 +110,24 @@ export interface PdfSearchCycleResult {
 
 export const PdfAnnotationEngine = {
   sortAnnotations(annotations: ReaderAnnotation[]): ReaderAnnotation[] {
+    if (annotations.length <= 1) return [...annotations];
+
+    // Pre-cache parsed timestamps only when needed (lazy WeakMap / Map memoization)
+    let timestampCache: Map<string, number> | null = null;
+    const getTimestamp = (iso?: string | null): number => {
+      if (!iso) return 0;
+      if (!timestampCache) timestampCache = new Map();
+      const cached = timestampCache.get(iso);
+      if (cached !== undefined) return cached;
+      const parsed = Date.parse(iso) || 0;
+      timestampCache.set(iso, parsed);
+      return parsed;
+    };
+
     return [...annotations].sort((a, b) => {
       // 1. Canonical spatial sort index (PPPP|YYYYY|XXXXX) from backend SSOT
       if (a.annotationSortIndex && b.annotationSortIndex && a.annotationSortIndex !== b.annotationSortIndex) {
-        return a.annotationSortIndex.localeCompare(b.annotationSortIndex);
+        return a.annotationSortIndex < b.annotationSortIndex ? -1 : 1;
       }
 
       // 2. Page index / page number
@@ -129,9 +147,7 @@ export const PdfAnnotationEngine = {
       if (Math.abs(leftA - leftB) > 0.005) return leftA - leftB;
 
       // 4. Fallback creation timestamp
-      const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return tA - tB;
+      return getTimestamp(a.createdAt) - getTimestamp(b.createdAt);
     });
   },
 
@@ -194,10 +210,7 @@ export const PdfAnnotationEngine = {
     if (lower in ANNOTATION_COLORS) {
       return lower as AnnotationColorId;
     }
-    const found = Object.values(ANNOTATION_COLORS).find(
-      (c) => c.border.toLowerCase() === lower,
-    );
-    return found ? found.id : 'yellow';
+    return HEX_TO_COLOR_ID_MAP.get(lower) ?? 'yellow';
   },
 
   getColorSemanticLabel(colorInput?: string | null): string {
@@ -273,6 +286,12 @@ export const PdfAnnotationEngine = {
     }
 
     const pageRange = isCriteriaObject ? queryOrCriteria.pageRange : options?.pageRange;
+    const hasPageRange = Boolean(pageRange && pageRange.length === 2);
+
+    // Fast-path when no filter criteria are active
+    if (!q && rawColors.length === 0 && rawTypes.length === 0 && rawTags.length === 0 && !hasPageRange) {
+      return [...annotations];
+    }
 
     const resolvedColorIds = new Set<AnnotationColorId>();
     const rawColorSet = new Set<string>();
@@ -286,28 +305,18 @@ export const PdfAnnotationEngine = {
       }
     }
     const typeSet = new Set<string>(rawTypes);
+    const needTags = Boolean(q || rawTags.length > 0);
 
     return annotations.filter((a) => {
-      const itemTagNames = Array.isArray((a as Record<string, unknown>).tags)
-        ? ((a as Record<string, unknown>).tags as unknown[])
-            .map((t) =>
-              (typeof t === 'string' ? t : (t as { name?: string })?.name || '')
-                .trim()
-                .toLowerCase(),
-            )
-            .filter(Boolean)
-        : [];
+      // 1. Cheap O(1) checks first (pageRange, type, color) before string/tag allocations
+      if (hasPageRange && pageRange) {
+        const pageNum = a.pageNumber ?? (a.pageIndex !== undefined ? a.pageIndex + 1 : 1);
+        if (pageNum < pageRange[0] || pageNum > pageRange[1]) return false;
+      }
 
-      if (q) {
-        const tagText = itemTagNames.join(' ');
-        const selectedText = String((a as Record<string, unknown>).selectedText || '').toLowerCase();
-        const textMatch =
-          (a.quoteText || '').toLowerCase().includes(q) ||
-          selectedText.includes(q) ||
-          (a.text || '').toLowerCase().includes(q) ||
-          (a.comment || '').toLowerCase().includes(q) ||
-          tagText.includes(q);
-        if (!textMatch) return false;
+      if (typeSet.size > 0) {
+        const itemType = (a.type || 'highlight').toLowerCase();
+        if (!typeSet.has(itemType)) return false;
       }
 
       if (rawColors.length > 0) {
@@ -317,10 +326,16 @@ export const PdfAnnotationEngine = {
         if (!matchesColor) return false;
       }
 
-      if (typeSet.size > 0) {
-        const itemType = (a.type || 'highlight').toLowerCase();
-        if (!typeSet.has(itemType)) return false;
-      }
+      // 2. Lazily extract tag names only when query or tag filter is active
+      const itemTagNames = needTags && Array.isArray((a as Record<string, unknown>).tags)
+        ? ((a as Record<string, unknown>).tags as unknown[])
+            .map((t) =>
+              (typeof t === 'string' ? t : (t as { name?: string })?.name || '')
+                .trim()
+                .toLowerCase(),
+            )
+            .filter(Boolean)
+        : [];
 
       if (rawTags.length > 0) {
         const matchesAllTags = rawTags.every((reqTag) =>
@@ -329,9 +344,15 @@ export const PdfAnnotationEngine = {
         if (!matchesAllTags) return false;
       }
 
-      if (pageRange && pageRange.length === 2) {
-        const pageNum = a.pageNumber ?? (a.pageIndex !== undefined ? a.pageIndex + 1 : 1);
-        if (pageNum < pageRange[0] || pageNum > pageRange[1]) return false;
+      if (q) {
+        const selectedText = String((a as Record<string, unknown>).selectedText || '').toLowerCase();
+        const textMatch =
+          (a.quoteText || '').toLowerCase().includes(q) ||
+          selectedText.includes(q) ||
+          (a.text || '').toLowerCase().includes(q) ||
+          (a.comment || '').toLowerCase().includes(q) ||
+          itemTagNames.some((t) => t.includes(q));
+        if (!textMatch) return false;
       }
 
       return true;
@@ -432,15 +453,10 @@ export const PdfAnnotationEngine = {
   },
 
   getColorConfig(colorId?: string): { bg: string; border: string; semanticLabel: string } {
-    if (colorId && colorId in ANNOTATION_COLORS) {
-      const c = ANNOTATION_COLORS[colorId as AnnotationColorId];
-      return { bg: c.bg, border: c.border, semanticLabel: c.semanticLabel };
-    }
     if (colorId) {
-      const found = Object.values(ANNOTATION_COLORS).find(
-        (c) => c.border.toLowerCase() === colorId.toLowerCase(),
-      );
-      if (found) return { bg: found.bg, border: found.border, semanticLabel: found.semanticLabel };
+      const resolvedId = this.resolveColorId(colorId);
+      const c = ANNOTATION_COLORS[resolvedId];
+      return { bg: c.bg, border: c.border, semanticLabel: c.semanticLabel };
     }
     return {
       bg: ANNOTATION_COLORS.yellow.bg,

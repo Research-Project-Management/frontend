@@ -65,24 +65,26 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
   const addProcessingItem = useProcessModalStore((s) => s.addProcessingItem);
   const dismissProcessingItem = useProcessModalStore((s) => s.dismissProcessingItem);
 
-  // Collections & Queries
-  const { data: collections = [] } = useCollectionsQuery(effectiveScope);
+  // 1. Create Collection Modal
+  const isCreateCollectionOpen = activeModal === 'CREATE_COLLECTION';
 
-  // Mutations
+  // Collections & Queries (lazy enabled only when create collection modal is open)
+  const { data: collections = [] } = useCollectionsQuery(effectiveScope, {
+    enabled: isCreateCollectionOpen,
+  });
+
+  // Mutations & Sub-resources
   const createCollectionMutation = useCreateCollectionMutation(effectiveScope);
   const deleteItemsMutation = useDeleteLibraryItemsMutation(effectiveScope);
   const purgeItemsMutation = useBatchPurgeItemsMutation(effectiveScope);
+  const isSavedSearchModalOpen =
+    activeModal === 'SAVED_SEARCH' || activeModal === 'CREATE_SAVED_SEARCH';
   const {
     createSavedSearch,
     updateSavedSearch,
     isCreating: isCreatingSS,
     isUpdating: isUpdatingSS,
-  } = useSavedSearches(effectiveScope);
-  const isSavedSearchModalOpen =
-    activeModal === 'SAVED_SEARCH' || activeModal === 'CREATE_SAVED_SEARCH';
-
-  // 1. Create Collection Modal
-  const isCreateCollectionOpen = activeModal === 'CREATE_COLLECTION';
+  } = useSavedSearches(effectiveScope, { enabled: isSavedSearchModalOpen });
   const handleCreateCollection = async (data: CollectionFormValues) => {
     await createCollectionMutation.mutateAsync({
       name: data.name,

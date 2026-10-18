@@ -266,10 +266,8 @@ export const itemSchema = z.object({
   _processingProgress: z.number().optional(),
   _processingError: z.string().optional(),
 
-  // Legacy field fallbacks
   key: z.string().optional(),
   retractionStatus: z.string().optional(),
-  is_retracted: z.boolean().optional(),
 });
 
 // ── Mutation & Response Schemas ─────────────────────────────────────────────

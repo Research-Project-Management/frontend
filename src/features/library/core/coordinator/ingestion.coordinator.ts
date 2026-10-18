@@ -112,14 +112,8 @@ export interface PollIngestionRunOptions {
 export async function pollIngestionRunCompletion(
   scopeId: string,
   runId: string,
-  optionsOrFallbackTitle: PollIngestionRunOptions | string,
-  initialItemId?: string,
+  opts: PollIngestionRunOptions,
 ): Promise<PollRunOutcome> {
-  const opts: PollIngestionRunOptions =
-    typeof optionsOrFallbackTitle === 'string'
-      ? { fallbackTitle: optionsOrFallbackTitle, initialItemId }
-      : optionsOrFallbackTitle;
-
   const startTime = Date.now();
   const maxWaitMs = opts.maxWaitMs ?? 120000;
   const pollIntervalMs = opts.pollIntervalMs ?? 1200;
@@ -468,8 +462,7 @@ export async function executeBatchUpload(
         const pollOutcome = await pollIngestionRunCompletion(
           scopeId,
           runId,
-          identifiedTitle,
-          completedItemId,
+          { fallbackTitle: identifiedTitle, initialItemId: completedItemId },
         );
         if (!pollOutcome.ok) {
           markFileFailed(file, index, provisionalId, pollOutcome.error || 'Extraction failed');

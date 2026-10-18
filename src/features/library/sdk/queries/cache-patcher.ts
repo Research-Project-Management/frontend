@@ -15,11 +15,18 @@ export function patchItemInCacheData(
 ): unknown {
   if (!oldData || typeof oldData !== 'object') return oldData;
 
-  const applyPatch = (it: Item): Item => {
-    if (it.id !== targetId) return it;
-    return typeof patchOrUpdater === 'function'
-      ? patchOrUpdater(it)
-      : { ...it, ...patchOrUpdater };
+  const patchItemsArray = (items: Item[]): Item[] => {
+    const idx = items.findIndex((it) => it.id === targetId);
+    if (idx === -1) return items; // Structural sharing: preserve reference when targetId is absent
+    const current = items[idx];
+    const updated =
+      typeof patchOrUpdater === 'function'
+        ? patchOrUpdater(current)
+        : { ...current, ...patchOrUpdater };
+    if (updated === current) return items;
+    const next = items.slice();
+    next[idx] = updated;
+    return next;
   };
 
   const data = oldData as {
@@ -28,27 +35,35 @@ export function patchItemInCacheData(
   };
 
   if (Array.isArray(data.items)) {
+    const nextItems = patchItemsArray(data.items);
+    if (nextItems === data.items) return oldData;
     return {
       ...data,
-      items: data.items.map(applyPatch),
+      items: nextItems,
     };
   }
 
   if (Array.isArray(data.pages)) {
+    let anyPageMutated = false;
+    const nextPages = data.pages.map((page) => {
+      if (!page || !Array.isArray(page.items)) return page;
+      const nextItems = patchItemsArray(page.items);
+      if (nextItems === page.items) return page;
+      anyPageMutated = true;
+      return {
+        ...page,
+        items: nextItems,
+      };
+    });
+    if (!anyPageMutated) return oldData;
     return {
       ...data,
-      pages: data.pages.map((page) => {
-        if (!page || !Array.isArray(page.items)) return page;
-        return {
-          ...page,
-          items: page.items.map(applyPatch),
-        };
-      }),
+      pages: nextPages,
     };
   }
 
   if (Array.isArray(oldData)) {
-    return (oldData as Item[]).map(applyPatch);
+    return patchItemsArray(oldData as Item[]);
   }
 
   return oldData;

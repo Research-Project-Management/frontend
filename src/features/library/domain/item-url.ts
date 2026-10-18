@@ -133,11 +133,3 @@ export function getItemFileUrl(
 
   return "";
 }
-
-/** @deprecated Use getItemFileUrl instead */
-export function getPaperFileUrl(
-  item?: ItemFileSource | null | undefined,
-  scopeId?: string,
-): string {
-  return getItemFileUrl(item, scopeId);
-}

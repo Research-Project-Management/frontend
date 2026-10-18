@@ -15,14 +15,14 @@ export { tagKeys, noteKeys };
 
 // TAGS QUERY HOOKS
 
-export function useTags(scopeId?: string) {
+export function useTags(scopeId?: string, options?: { enabled?: boolean }) {
   const queryClient = useQueryClient();
   const effectiveScope = scopeId || 'user';
 
   const tagsQuery = useQuery({
     queryKey: tagKeys.list(effectiveScope),
     queryFn: () => TagsService.list(effectiveScope),
-    enabled: true,
+    enabled: options?.enabled ?? true,
     staleTime: 30_000,
   });
 

@@ -25,7 +25,6 @@ const USER_SOVEREIGN_PERMISSIONS: LibraryPermissions = {
   canCreateItem: true,
   canEditItem: true,
   canDeleteItem: true,
-  canPurgeItem: true,
   canManageCollections: true,
   canImport: true,
   canExport: true,
@@ -115,7 +114,7 @@ export function resolveEffectiveLibraryPermissions(
           .toLowerCase();
 
   if (scopeType === 'user' || scopeType === 'personal') {
-    return { ...USER_SOVEREIGN_PERMISSIONS };
+    return { ...USER_SOVEREIGN_PERMISSIONS, canPurgeItem: true };
   }
 
   const rawRole =
@@ -284,8 +283,7 @@ export function getLibraryPermissions(
         .toLowerCase();
 
   if (scopeType === 'user' || scopeType === 'personal') {
-    const { canPurgeItem: _purge, ...legacyShape } = USER_SOVEREIGN_PERMISSIONS;
-    return legacyShape;
+    return { ...USER_SOVEREIGN_PERMISSIONS };
   }
 
   // If caller passed server permissions or scope carries server permissions, resolve them first
@@ -293,13 +291,11 @@ export function getLibraryPermissions(
     (userRoleOrServerPerms && typeof userRoleOrServerPerms === 'object') ||
     (isScopeObject && (scopeOrType.permissions || scopeOrType.effectivePermissions))
   ) {
-    const resolved = resolveEffectiveLibraryPermissions(
+    return resolveEffectiveLibraryPermissions(
       scopeOrType,
       typeof userRoleOrServerPerms === 'object' ? userRoleOrServerPerms : null,
       typeof userRoleOrServerPerms === 'string' ? userRoleOrServerPerms : null,
     );
-    const { canPurgeItem: _purge, ...legacyShape } = resolved;
-    return legacyShape;
   }
 
   const rawRole = isScopeObject
@@ -310,12 +306,19 @@ export function getLibraryPermissions(
   const normalizedRole = String(rawRole || 'reviewer')
     .trim()
     .toLowerCase() as ProjectRole;
-
   const permissions =
     PROJECT_ROLE_PERMISSIONS[normalizedRole] ?? PROJECT_ROLE_PERMISSIONS.reviewer;
 
-  const { canPurgeItem: _purge, ...legacyShape } = permissions;
-  return legacyShape;
+  const result: LibraryPermissions = {
+    canRead: permissions.canRead,
+    canCreateItem: permissions.canCreateItem,
+    canEditItem: permissions.canEditItem,
+    canDeleteItem: permissions.canDeleteItem,
+    canManageCollections: permissions.canManageCollections,
+    canImport: permissions.canImport,
+    canExport: permissions.canExport,
+  };
+  return result;
 }
 
 export function getScopeTarget(scope: LibraryScope): {

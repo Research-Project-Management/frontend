@@ -8,24 +8,10 @@ export interface CollectionHierarchyNode extends Collection {
   children: CollectionHierarchyNode[];
 }
 
-function hasAncestorCycle(
-  startId: string,
-  targetParentId: string,
-  map: Map<string, CollectionHierarchyNode>,
-): boolean {
-  let curr: string | null | undefined = targetParentId;
-  const visited = new Set<string>();
-  while (curr) {
-    if (curr === startId) return true;
-    if (visited.has(curr)) return true;
-    visited.add(curr);
-    curr = map.get(curr)?.parentId;
-  }
-  return false;
-}
-
 /**
  * Builds a cycle-safe hierarchical tree from flat collection records (`id`, `parentId`, `name`).
+ * Uses 3-color DFS state memoization (0 = unvisited, 1 = visiting, 2 = safe/acyclic)
+ * so ancestor cycle verification across the entire forest runs in strict O(N) time instead of O(N * D).
  */
 export function buildCollectionTree(collections: Collection[]): CollectionHierarchyNode[] {
   const map = new Map<string, CollectionHierarchyNode>();
@@ -36,13 +22,48 @@ export function buildCollectionTree(collections: Collection[]): CollectionHierar
     map.set(c.id, { ...c, children: [] });
   }
 
+  // 0 = unvisited, 1 = visiting (in current chain), 2 = verified acyclic, 3 = part of cycle
+  const state = new Map<string, number>();
+
+  const isPartOfCycle = (startId: string): boolean => {
+    const existing = state.get(startId);
+    if (existing === 2) return false;
+    if (existing === 3) return true;
+
+    const path: string[] = [];
+    let curr: string | null | undefined = startId;
+
+    while (curr && map.has(curr)) {
+      const st = state.get(curr) ?? 0;
+      if (st === 2) {
+        for (let i = 0; i < path.length; i++) state.set(path[i], 2);
+        return false;
+      }
+      if (st === 1 || st === 3) {
+        for (let i = 0; i < path.length; i++) state.set(path[i], 3);
+        return true;
+      }
+      state.set(curr, 1);
+      path.push(curr);
+      const nextParent = map.get(curr)?.parentId;
+      if (nextParent === curr) {
+        for (let i = 0; i < path.length; i++) state.set(path[i], 3);
+        return true;
+      }
+      curr = nextParent;
+    }
+
+    for (let i = 0; i < path.length; i++) state.set(path[i], 2);
+    return false;
+  };
+
   for (const node of map.values()) {
     const parentId = node.parentId;
     if (
       parentId &&
       parentId !== node.id &&
       map.has(parentId) &&
-      !hasAncestorCycle(node.id, parentId, map)
+      !isPartOfCycle(node.id)
     ) {
       map.get(parentId)!.children.push(node);
     } else {

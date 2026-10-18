@@ -24,14 +24,17 @@ export const invalidateSavedSearches = (qc: QueryClient, scopeId?: string) => {
   qc.invalidateQueries({ queryKey: savedSearchKeys.all(scopeId) });
 };
 
-export function useSavedSearches(scopeId?: string) {
+export function useSavedSearches(
+  scopeId?: string,
+  options?: { enabled?: boolean },
+) {
   const queryClient = useQueryClient();
   const effectiveScope = scopeId || 'user';
 
   const savedSearchesQuery = useQuery({
     queryKey: savedSearchKeys.all(effectiveScope),
     queryFn: () => SavedSearchesService.getAll(effectiveScope),
-    enabled: true,
+    enabled: options?.enabled ?? true,
   });
 
   const createMutation = useMutation({

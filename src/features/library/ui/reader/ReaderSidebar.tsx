@@ -94,7 +94,7 @@ function LazyThumbnailPage({
   );
 }
 
-export interface SidebarProps {
+export interface ReaderSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onToggleOpen?: () => void;
@@ -119,7 +119,9 @@ export interface SidebarProps {
   onAddToNote?: (text: string, pageNumber?: number) => void;
 }
 
-export function Sidebar({
+export type SidebarProps = ReaderSidebarProps;
+
+export function ReaderSidebar({
   isOpen,
   onClose,
   onToggleOpen,
@@ -438,4 +440,5 @@ export function Sidebar({
   );
 }
 
-export default Sidebar;
+export { ReaderSidebar as Sidebar };
+export default ReaderSidebar;

@@ -16,11 +16,11 @@ import {
   useExportAnnotatedPdf,
 } from "@/features/library/sdk/queries/reader.queries";
 import { ReaderInspector } from "@/features/library/ui/inspector/ReaderInspector";
-import Topbar from "@/features/library/ui/reader/Topbar";
+import Topbar from "@/features/library/ui/reader/ReaderTopbar";
 import ReaderToolbar from "@/features/library/ui/reader/ReaderToolbar";
 import type { AnnotationRect } from "@/features/library/domain/types/reader.types";
 
-const Sidebar = dynamic(() => import("@/features/library/ui/reader/Sidebar"), {
+const Sidebar = dynamic(() => import("@/features/library/ui/reader/ReaderSidebar"), {
   ssr: false,
 });
 

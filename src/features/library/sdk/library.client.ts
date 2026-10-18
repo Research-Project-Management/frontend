@@ -13,14 +13,14 @@
  *    - citations, exports, attachments, upload, ingestion, curation, retraction, search, sync, reader
  * 3. Domain Services & Helpers:
  *    - ReaderService / readerService
- *    - fetchPdfBlob, getItemFileUrl, getPaperFileUrl, sanitizeItemPayload
+ *    - fetchPdfBlob, getItemFileUrl, sanitizeItemPayload
  */
 
 import * as api from '@/shared/lib/api';
 import { API_BASE_URL } from '@/config/env';
 import { getAuthToken } from '@/shared/lib/token-storage';
 import type { RequestOptions } from '@/shared/types/api.types';
-import { isProjectScope, getItemFileUrl, getPaperFileUrl } from '@/features/library/domain/item-url';
+import { isProjectScope, getItemFileUrl } from '@/features/library/domain/item-url';
 import { mapBackendItemToPaper, mapBackendPaperToItem } from '@/features/library/domain/metadata';
 import type {
   Item,
@@ -74,7 +74,7 @@ import {
   itemSchema,
 } from '@/features/library/domain/types/library.types';
 
-export { isProjectScope, getItemFileUrl, getPaperFileUrl, mapBackendItemToPaper, mapBackendPaperToItem };
+export { isProjectScope, getItemFileUrl, mapBackendItemToPaper, mapBackendPaperToItem };
 export type {
   TagWithCount,
   ItemStateData,
@@ -605,7 +605,6 @@ export const libraryServices = {
         citations: Array<{ paperId: string; itemId?: string; citation: FormattedCitation }>;
       }>(getCitationUrl(scopeId, 'batch-items'), {
         itemIds,
-        paperIds: itemIds,
         style,
         ...(projectId ? { projectId } : {}),
       });
@@ -641,17 +640,7 @@ export const libraryServices = {
         const unwrapped = unwrapResolvedReference(referenceResponse);
         if (unwrapped) return unwrapped;
       } catch {
-        // Fallback: GET by encoded DOI
-        try {
-          const fallback = await libraryClient.get<unknown>(
-            `/api/v1/library/citation/doi/${encodeURIComponent(rawDoi)}`,
-            { silent: true },
-          );
-          const unwrapped = unwrapResolvedReference(fallback);
-          if (unwrapped) return unwrapped;
-        } catch {
-          return null;
-        }
+        return null;
       }
       return null;
     },
@@ -1555,7 +1544,6 @@ export const ItemsService = {
     ).then((res) => (res as { data?: unknown })?.data || res || null).catch(() => null),
 
   getItemFileUrl,
-  getPaperFileUrl,
 
   getItem: (scopeId: string | undefined, itemId: string) =>
     ItemsService.getById(scopeId || 'user', itemId),
@@ -1652,7 +1640,7 @@ export const CollectionsService = {
   moveItems: (scopeId: string | undefined, collectionId: string, itemIds: string[]) =>
     libraryClient.post<{ message: string; count: number; targetCollectionId: string | null }>(
       resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}/move-items`, scopeId),
-      { itemIds, paperIds: itemIds },
+      { itemIds },
     ),
 
   movePapers: (scopeId: string | undefined, collectionId: string, paperIds: string[]) =>
@@ -2145,41 +2133,7 @@ const ReaderDocumentsService = {
 const ReaderAnnotationsService = {
   getByAttachment: libraryServices.reader.getAnnotations,
   create: libraryServices.reader.createAnnotation,
-
-  update: (async (
-    scopeId: string | undefined,
-    attachmentId: string,
-    annotationId: string,
-    arg4: UpdateAnnotationDto | number | undefined,
-    arg5?: UpdateAnnotationDto | number,
-  ): Promise<ReaderAnnotation> => {
-    let expectedVersion: number | undefined;
-    let data: UpdateAnnotationDto;
-    if (typeof arg4 === 'number' || (arg4 === undefined && typeof arg5 === 'object')) {
-      expectedVersion = arg4 as number | undefined;
-      data = arg5 as UpdateAnnotationDto;
-    } else {
-      data = arg4 as UpdateAnnotationDto;
-      expectedVersion = arg5 as number | undefined;
-    }
-    return libraryServices.reader.updateAnnotation(scopeId, attachmentId, annotationId, expectedVersion, data);
-  }) as {
-    (
-      scopeId: string | undefined,
-      attachmentId: string,
-      annotationId: string,
-      expectedVersion: number | undefined,
-      data: UpdateAnnotationDto,
-    ): Promise<ReaderAnnotation>;
-    (
-      scopeId: string | undefined,
-      attachmentId: string,
-      annotationId: string,
-      data: UpdateAnnotationDto,
-      expectedVersion?: number,
-    ): Promise<ReaderAnnotation>;
-  },
-
+  update: libraryServices.reader.updateAnnotation,
   delete: libraryServices.reader.deleteAnnotation,
   batch: libraryServices.reader.batchAnnotations,
 
@@ -2235,7 +2189,7 @@ export const readerService = {
   citations: ReaderCitationsService,
   exports: ReaderCitationsService,
   fetchPdfBlob,
-  getPaperFileUrl,
+  getItemFileUrl,
   isProjectScope,
 };
 

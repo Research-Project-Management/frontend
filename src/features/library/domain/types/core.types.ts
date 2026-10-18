@@ -28,7 +28,7 @@ export interface UserLibraryScope {
   type: 'user';
   id?: string; // Optional identifier ('user')
   name: string; // "Library"
-  role?: 'owner'; // Optional alias for backward compatibility with legacy checks
+  role?: 'owner';
   permissions?: Partial<LibraryPermissions> | string[] | Record<string, unknown>;
   effectivePermissions?: string[];
 }

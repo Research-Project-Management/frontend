@@ -41,6 +41,7 @@ export function LibraryFilterPopover({
     scopeId,
     items,
     searchQuery,
+    isOpen,
   });
 
   return (

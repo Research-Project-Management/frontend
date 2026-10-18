@@ -29,7 +29,7 @@ import {
 import type { ReaderDocument } from "@/features/library/domain/types/reader.types";
 import type { ReaderTab } from "@/features/library/core/store/reader.store";
 
-export interface TopbarProps {
+export interface ReaderTopbarProps {
   paper?: ReaderDocument | null;
   tabs?: ReaderTab[];
   activeTabId?: string;
@@ -43,7 +43,9 @@ export interface TopbarProps {
   onPrint?: () => void;
 }
 
-export function Topbar({
+export type TopbarProps = ReaderTopbarProps;
+
+export function ReaderTopbar({
   paper,
   tabs = [],
   activeTabId,
@@ -423,4 +425,5 @@ export function Topbar({
   );
 }
 
-export default Topbar;
+export { ReaderTopbar as Topbar };
+export default ReaderTopbar;

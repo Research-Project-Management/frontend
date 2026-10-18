@@ -1,9 +1,5 @@
 /**
  * Single source of truth for reading retraction state off a library item.
- *
- * The API/schema has carried several spellings over time
- * (`isRetracted`, `retractionStatus === 'retracted'`, `is_retracted`);
- * every UI surface must go through these helpers instead of re-deriving it.
  */
 
 export interface RetractionInfo {
@@ -20,7 +16,6 @@ export interface RetractionInfo {
 type RetractableLike = {
   isRetracted?: boolean | null;
   retractionStatus?: string | null;
-  is_retracted?: boolean | null;
   retractionNature?: string | null;
   retractionDetails?: unknown;
   retraction?: unknown;
@@ -44,11 +39,13 @@ export function isItemRetracted(item: unknown): boolean {
     i.retraction && typeof i.retraction === 'object'
       ? (i.retraction as Record<string, unknown>)
       : null;
+  const rawObj = item as Record<string, unknown>;
   return Boolean(
     i.isRetracted ||
+      rawObj.is_retracted === true ||
       i.retractionStatus === 'retracted' ||
-      i.is_retracted ||
       meta?.isRetracted === true ||
+      meta?.is_retracted === true ||
       meta?.retractionStatus === 'retracted' ||
       retObj?.isRetracted === true,
   );

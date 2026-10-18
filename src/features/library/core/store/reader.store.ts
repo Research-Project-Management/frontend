@@ -6,7 +6,7 @@ import {
   loadReaderStorageState,
   saveReaderTabsToStorage,
   saveReaderBookmarksToStorage,
-} from './reader-storage.adapter';
+} from '../adapters/reader-storage.adapter';
 
 export { normalizeReaderZoom };
 
@@ -250,5 +250,4 @@ export const useReaderStore = create<ReaderStoreState>((set, get) => ({
   },
 }));
 
-// Backward-compatible alias
 export const useLibraryReaderStore = useReaderStore;

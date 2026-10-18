@@ -138,8 +138,10 @@ function isConditionGroup(
   return 'conditions' in node && Array.isArray(node.conditions);
 }
 
-function extractItemFieldValues(item: Record<string, unknown>, field: string): unknown[] {
-  const normalizedField = field.trim();
+function extractNormalizedFieldValues(
+  item: Record<string, unknown>,
+  normalizedField: string,
+): unknown[] {
   if (normalizedField === 'hasFile') {
     const fileCount =
       typeof item.fileCount === 'number'
@@ -162,21 +164,24 @@ function extractItemFieldValues(item: Record<string, unknown>, field: string): u
   }
   if (normalizedField === 'tag' || normalizedField === 'tags') {
     const tags = Array.isArray(item.tags) ? item.tags : [];
-    return tags
-      .map((t) =>
+    const out: string[] = [];
+    for (let i = 0; i < tags.length; i++) {
+      const t = tags[i];
+      const name =
         typeof t === 'string'
           ? t
           : t && typeof t === 'object' && 'name' in t
             ? String((t as { name: unknown }).name)
-            : '',
-      )
-      .filter(Boolean);
+            : '';
+      if (name) out.push(name);
+    }
+    return out;
   }
   if (normalizedField === 'authors' || normalizedField === 'creator' || normalizedField === 'creators') {
     const creators = Array.isArray(item.creators) ? item.creators : [];
     const authors = Array.isArray(item.authors) ? item.authors : [];
     const extracted: string[] = [];
-    for (const c of [...creators, ...authors]) {
+    const processEntry = (c: unknown) => {
       if (typeof c === 'string') {
         extracted.push(c);
       } else if (c && typeof c === 'object') {
@@ -186,7 +191,9 @@ function extractItemFieldValues(item: Record<string, unknown>, field: string): u
           .join(' ');
         if (full) extracted.push(full);
       }
-    }
+    };
+    for (let i = 0; i < creators.length; i++) processEntry(creators[i]);
+    for (let i = 0; i < authors.length; i++) processEntry(authors[i]);
     return extracted;
   }
   const raw = item[normalizedField];
@@ -195,54 +202,90 @@ function extractItemFieldValues(item: Record<string, unknown>, field: string): u
   return [raw];
 }
 
-export function evaluateSavedSearchCondition(
-  item: Record<string, unknown>,
+function extractItemFieldValues(item: Record<string, unknown>, field: string): unknown[] {
+  return extractNormalizedFieldValues(item, field.trim());
+}
+
+/**
+ * Pre-compiles a single `SavedSearchCondition` into a zero-parse predicate closure
+ * (Partial Evaluation Pattern: pre-computes normalizedField, targetStr, targetNum, and range bounds once).
+ */
+export function compileSavedSearchCondition(
   condition: SavedSearchCondition,
-): boolean {
-  const values = extractItemFieldValues(item, condition.field);
+): (item: Record<string, unknown>) => boolean {
+  const normalizedField = condition.field.trim();
   const op = condition.operator;
   const target = condition.value;
 
   if (op === 'isPresent') {
-    return values.some((v) => v !== null && v !== undefined && String(v).trim() !== '');
+    return (item) => {
+      const values = extractNormalizedFieldValues(item, normalizedField);
+      return values.some((v) => v !== null && v !== undefined && String(v).trim() !== '');
+    };
   }
   if (op === 'isAbsent') {
-    return (
-      values.length === 0 ||
-      values.every((v) => v === null || v === undefined || String(v).trim() === '')
-    );
+    return (item) => {
+      const values = extractNormalizedFieldValues(item, normalizedField);
+      return (
+        values.length === 0 ||
+        values.every((v) => v === null || v === undefined || String(v).trim() === '')
+      );
+    };
   }
 
-  const targetStr = target !== undefined && target !== null ? String(target).trim().toLowerCase() : '';
+  const targetStr =
+    target !== undefined && target !== null ? String(target).trim().toLowerCase() : '';
   const targetNum = typeof target === 'number' ? target : Number(target);
 
   switch (op) {
     case 'is':
     case 'equals':
-      return values.some((v) => String(v).trim().toLowerCase() === targetStr);
+      return (item) =>
+        extractNormalizedFieldValues(item, normalizedField).some(
+          (v) => String(v).trim().toLowerCase() === targetStr,
+        );
     case 'isNot':
     case 'not_equals':
-      return values.every((v) => String(v).trim().toLowerCase() !== targetStr);
+      return (item) =>
+        extractNormalizedFieldValues(item, normalizedField).every(
+          (v) => String(v).trim().toLowerCase() !== targetStr,
+        );
     case 'contains':
-      return values.some((v) => String(v).toLowerCase().includes(targetStr));
+      return (item) =>
+        extractNormalizedFieldValues(item, normalizedField).some((v) =>
+          String(v).toLowerCase().includes(targetStr),
+        );
     case 'doesNotContain':
-      return values.every((v) => !String(v).toLowerCase().includes(targetStr));
+      return (item) =>
+        extractNormalizedFieldValues(item, normalizedField).every(
+          (v) => !String(v).toLowerCase().includes(targetStr),
+        );
     case 'beginsWith':
-      return values.some((v) => String(v).trim().toLowerCase().startsWith(targetStr));
+      return (item) =>
+        extractNormalizedFieldValues(item, normalizedField).some((v) =>
+          String(v).trim().toLowerCase().startsWith(targetStr),
+        );
     case 'endsWith':
-      return values.some((v) => String(v).trim().toLowerCase().endsWith(targetStr));
+      return (item) =>
+        extractNormalizedFieldValues(item, normalizedField).some((v) =>
+          String(v).trim().toLowerCase().endsWith(targetStr),
+        );
     case 'isGreaterThan':
     case 'greater_than':
-      return values.some((v) => {
-        const num = typeof v === 'number' ? v : Number(v);
-        return !Number.isNaN(num) && !Number.isNaN(targetNum) && num > targetNum;
-      });
+      if (Number.isNaN(targetNum)) return () => false;
+      return (item) =>
+        extractNormalizedFieldValues(item, normalizedField).some((v) => {
+          const num = typeof v === 'number' ? v : Number(v);
+          return !Number.isNaN(num) && num > targetNum;
+        });
     case 'isLessThan':
     case 'less_than':
-      return values.some((v) => {
-        const num = typeof v === 'number' ? v : Number(v);
-        return !Number.isNaN(num) && !Number.isNaN(targetNum) && num < targetNum;
-      });
+      if (Number.isNaN(targetNum)) return () => false;
+      return (item) =>
+        extractNormalizedFieldValues(item, normalizedField).some((v) => {
+          const num = typeof v === 'number' ? v : Number(v);
+          return !Number.isNaN(num) && num < targetNum;
+        });
     case 'isBetween':
     case 'between': {
       let min = NaN;
@@ -255,37 +298,67 @@ export function evaluateSavedSearchCondition(
         min = Number(range.min ?? range.from ?? range.start);
         max = Number(range.max ?? range.to ?? range.end);
       }
-      if (Number.isNaN(min) || Number.isNaN(max)) return false;
-      return values.some((v) => {
-        const num = typeof v === 'number' ? v : Number(v);
-        return !Number.isNaN(num) && num >= min && num <= max;
-      });
+      if (Number.isNaN(min) || Number.isNaN(max)) return () => false;
+      return (item) =>
+        extractNormalizedFieldValues(item, normalizedField).some((v) => {
+          const num = typeof v === 'number' ? v : Number(v);
+          return !Number.isNaN(num) && num >= min && num <= max;
+        });
     }
     default:
-      return false;
+      return () => false;
   }
+}
+
+/**
+ * Pre-compiles an entire `SavedSearchConditionGroup` AST into a fast predicate function.
+ */
+export function compileSavedSearch(
+  group: SavedSearchConditionGroup,
+): (item: Record<string, unknown>) => boolean {
+  if (!group.conditions || group.conditions.length === 0) {
+    return () => true;
+  }
+  const compiledChildren = group.conditions.map((node) =>
+    isConditionGroup(node) ? compileSavedSearch(node) : compileSavedSearchCondition(node),
+  );
+  if (group.conjunction === 'OR') {
+    return (item) => {
+      for (let i = 0; i < compiledChildren.length; i++) {
+        if (compiledChildren[i](item)) return true;
+      }
+      return false;
+    };
+  }
+  return (item) => {
+    for (let i = 0; i < compiledChildren.length; i++) {
+      if (!compiledChildren[i](item)) return false;
+    }
+    return true;
+  };
+}
+
+export function evaluateSavedSearchCondition(
+  item: Record<string, unknown>,
+  condition: SavedSearchCondition,
+): boolean {
+  return compileSavedSearchCondition(condition)(item);
 }
 
 export function evaluateSavedSearch(
   item: Record<string, unknown>,
   group: SavedSearchConditionGroup,
 ): boolean {
-  if (!group.conditions || group.conditions.length === 0) return true;
-  const evalNode = (node: SavedSearchCondition | SavedSearchConditionGroup): boolean =>
-    isConditionGroup(node)
-      ? evaluateSavedSearch(item, node)
-      : evaluateSavedSearchCondition(item, node);
-
-  if (group.conjunction === 'OR') {
-    return group.conditions.some(evalNode);
-  }
-  return group.conditions.every(evalNode);
+  return compileSavedSearch(group)(item);
 }
 
 export function filterItemsBySavedSearch<T extends Record<string, unknown>>(
   items: T[],
   group: SavedSearchConditionGroup,
 ): T[] {
-  return items.filter((item) => evaluateSavedSearch(item, group));
+  if (!items || items.length === 0) return [];
+  if (!group.conditions || group.conditions.length === 0) return [...items];
+  const predicate = compileSavedSearch(group);
+  return items.filter(predicate);
 }
 

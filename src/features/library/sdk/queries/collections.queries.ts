@@ -196,13 +196,17 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
   };
 }
 
-export function useCollectionsQuery(scopeId?: string) {
+export function useCollectionsQuery(
+  scopeId?: string,
+  options?: { enabled?: boolean },
+) {
   const targetScope = scopeId || 'user';
   return useQuery({
     queryKey: libraryKeys.collections(targetScope),
     queryFn: () => getCollections(targetScope),
     select: (data) => (Array.isArray(data) ? data : (data?.collections || [])),
     staleTime: 1000 * 60,
+    enabled: options?.enabled ?? true,
   });
 }
 

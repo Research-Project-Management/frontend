@@ -48,21 +48,6 @@ export interface CiteSectionProps {
 
 export type CitationFormat = string;
 
-// Standard fallback constants for backward compatibility
-export const DEFAULT_FORMATS = [
-  { id: "apa-7th", label: "APA" },
-  { id: "ieee", label: "IEEE" },
-  { id: "mla-9th", label: "MLA" },
-  { id: "bibtex", label: "BibTeX" },
-];
-export const MORE_FORMATS = [
-  { id: "chicago", label: "Chicago" },
-  { id: "harvard", label: "Harvard" },
-  { id: "nature", label: "Nature" },
-  { id: "vancouver", label: "Vancouver" },
-  { id: "ris", label: "RIS" },
-];
-
 /**
  * Robust CSL HTML sanitizer powered by DOMPurify.
  * Strictly whitelists semantic markup (i, b, em, strong, span, a, div)

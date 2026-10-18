@@ -184,20 +184,37 @@ export default function Viewer({
   useEffect(() => {
     if (!scrollContainerRef.current) return;
     const el = scrollContainerRef.current;
-    const update = () => {
+    let rafId: number | null = null;
+
+    const commitDimensions = () => {
       if (!scrollContainerRef.current) return;
       const target = scrollContainerRef.current;
-      const width = target.clientWidth;
-      const height = target.clientHeight;
-      if (width > 0) setContainerWidth(Math.round(width));
-      if (height > 0) setContainerHeight(Math.round(height));
+      const width = Math.round(target.clientWidth);
+      const height = Math.round(target.clientHeight);
+      if (width > 0) {
+        setContainerWidth((prev) => (Math.abs(prev - width) >= 2 ? width : prev));
+      }
+      if (height > 0) {
+        setContainerHeight((prev) => (Math.abs(prev - height) >= 2 ? height : prev));
+      }
     };
-    update();
-    const obs = new ResizeObserver(() => update());
+
+    commitDimensions();
+    const obs = new ResizeObserver(() => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        commitDimensions();
+      });
+    });
     obs.observe(el);
-    return () => obs.disconnect();
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      obs.disconnect();
+    };
   }, []);
 
+  const visiblePageRef = useRef<number>(1);
   useEffect(() => {
     if (numPages === 0) return;
     const container = scrollContainerRef.current;
@@ -213,7 +230,8 @@ export default function Viewer({
             best = { page, ratio: entry.intersectionRatio };
           }
         }
-        if (best && best.ratio > 0) {
+        if (best && best.ratio > 0 && best.page !== visiblePageRef.current) {
+          visiblePageRef.current = best.page;
           setVisiblePage(best.page);
           onVisiblePageChange?.(best.page);
         }

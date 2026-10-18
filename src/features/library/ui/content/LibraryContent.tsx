@@ -17,7 +17,6 @@ import { BatchBar } from './BatchBar';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useProcessModalStore, cleanFilenameToTitle } from '@/features/library/core/store/process-modal.store';
 import { useQuickCopyCoordinator } from '@/features/library/core/coordinator/quick-copy.coordinator';
-import { useLibraryBatchCoordinator } from '@/features/library/core/coordinator/batch-action.coordinator';
 import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
 import { type Item, type Collection } from '@/features/library/domain/types/library.types';
 import type { LibraryOrderBy } from '@/features/library/ui/topbar/LibraryDisplayPopover';
@@ -283,14 +282,7 @@ export function LibraryContent({
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-  const batchCoordinator = useLibraryBatchCoordinator({
-    items: displayedItems,
-    scopeId,
-    collectionId,
-    view: effectiveView,
-    isTrash,
-    canEdit,
-  });
+  const clearSelection = useLibraryUIStore((s) => s.clearSelection);
 
   // Zotero 7 Quick Copy Coordinator (Ctrl+Shift+C: Bibliography, Ctrl+Shift+A: In-text Citation)
   useQuickCopyCoordinator({
@@ -349,7 +341,6 @@ export function LibraryContent({
   );
 
   const { setSorting } = nav;
-  const { clearSelection } = batchCoordinator;
 
   const handleSortChange = useCallback(
     (columnKey: string, direction: 'asc' | 'desc') => {
@@ -455,7 +446,7 @@ export function LibraryContent({
               type="button"
               disabled={nav.page <= 1}
               onClick={() => {
-                batchCoordinator.clearSelection();
+                clearSelection();
                 nav.setPage(nav.page - 1);
               }}
               aria-label="Previous page"
@@ -486,7 +477,7 @@ export function LibraryContent({
                   key={p}
                   type="button"
                   onClick={() => {
-                    batchCoordinator.clearSelection();
+                    clearSelection();
                     nav.setPage(p);
                   }}
                   aria-current={isCurrent ? 'page' : undefined}
@@ -506,7 +497,7 @@ export function LibraryContent({
               type="button"
               disabled={nav.page >= totalPages}
               onClick={() => {
-                batchCoordinator.clearSelection();
+                clearSelection();
                 nav.setPage(nav.page + 1);
               }}
               aria-label="Next page"
@@ -523,9 +514,12 @@ export function LibraryContent({
         </nav>
       )}
 
-      {/* Floating Multi-Selection Action Bar */}
+      {/* Floating Multi-Selection Action Bar (owns its own selectedIds subscription) */}
       <BatchBar
-        coordinator={batchCoordinator}
+        items={displayedItems}
+        collectionId={collectionId}
+        view={effectiveView}
+        canEdit={canEdit}
         collections={collections as Collection[]}
         isTrash={isTrash}
         scopeId={scopeId}

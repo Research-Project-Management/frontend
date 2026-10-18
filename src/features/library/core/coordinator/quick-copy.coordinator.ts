@@ -28,20 +28,23 @@ export function useQuickCopyCoordinator({
   activeItemId: propActiveItemId,
   defaultStyle = 'apa',
 }: UseQuickCopyOptions = {}) {
-  const storeSelectedIds = useLibraryUIStore((s) => s.selectedIds);
-  const storeActiveItemId = useLibraryUIStore((s) => s.activeItemId);
-  const selectedIds = propSelectedIds ?? storeSelectedIds;
-  const activeItemId = propActiveItemId !== undefined ? propActiveItemId : storeActiveItemId;
-
   const getTargetItemIds = useCallback((): string[] => {
-    if (selectedIds && selectedIds.size > 0) {
-      return Array.from(selectedIds);
+    if (propSelectedIds && propSelectedIds.size > 0) {
+      return Array.from(propSelectedIds);
     }
-    if (activeItemId) {
-      return [activeItemId];
+    const currentSelectedIds = useLibraryUIStore.getState().selectedIds;
+    if (currentSelectedIds && currentSelectedIds.size > 0) {
+      return Array.from(currentSelectedIds);
+    }
+    const currentActiveItemId =
+      propActiveItemId !== undefined
+        ? propActiveItemId
+        : useLibraryUIStore.getState().activeItemId;
+    if (currentActiveItemId) {
+      return [currentActiveItemId];
     }
     return [];
-  }, [selectedIds, activeItemId]);
+  }, [propSelectedIds, propActiveItemId]);
 
   const warnRetractedIfNeeded = useCallback(
     (itemIds: string[], actionLabel: string) => {

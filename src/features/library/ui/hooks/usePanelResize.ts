@@ -78,8 +78,8 @@ export function usePanelResize({
       }
       const deltaX = latestClientXRef.current - startXRef.current;
       const appliedDelta = direction === 'right' ? deltaX : -deltaX;
-      const nextWidth = clampWidth(startWidthRef.current + appliedDelta);
-      setWidth(nextWidth);
+      const finalWidth = clampWidth(startWidthRef.current + appliedDelta);
+      setWidth(finalWidth);
       setIsDragging(false);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';

@@ -91,74 +91,70 @@ export type ToolCategory = 'read' | 'create' | 'update' | 'delete' | 'analyze';
 /** Pretty labels for tools displayed in ActionCard */
 export const TOOL_LABELS: Record<string, { label: string; icon: string; category: ToolCategory }> = {
   // ─── Work item management ────────────────────────────────────────────────
-  list_work_items:             { label: 'Listing Work Items',      icon: '📋', category: 'read' },
-  get_my_work_items:           { label: 'Getting My Work Items',   icon: '📋', category: 'read' },
-  summarize_member_work_items: { label: 'Summarizing Workload',    icon: '📊', category: 'analyze' },
-  create_work_item:            { label: 'Creating Work Item',      icon: '✅', category: 'create' },
-  update_work_item:            { label: 'Updating Work Item',      icon: '✏️', category: 'update' },
-  delete_work_item:            { label: 'Deleting Work Item',      icon: '🗑️', category: 'delete' },
+  list_work_items:             { label: 'Listing Work Items',      icon: 'list-todo', category: 'read' },
+  get_my_work_items:           { label: 'Getting My Work Items',   icon: 'list-todo', category: 'read' },
+  summarize_member_work_items: { label: 'Summarizing Workload',    icon: 'bar-chart-3', category: 'analyze' },
+  create_work_item:            { label: 'Creating Work Item',      icon: 'plus', category: 'create' },
+  update_work_item:            { label: 'Updating Work Item',      icon: 'pencil', category: 'update' },
+  delete_work_item:            { label: 'Deleting Work Item',      icon: 'trash-2', category: 'delete' },
+  list_tasks:                  { label: 'Listing Work Items',      icon: 'list-todo', category: 'read' },
+  get_my_tasks:                { label: 'Getting My Work Items',   icon: 'list-todo', category: 'read' },
+  summarize_member_tasks:      { label: 'Summarizing Workload',    icon: 'bar-chart-3', category: 'analyze' },
 
   // ─── Projects ─────────────────────────────────────────────────────────────
-  list_projects:          { label: 'Listing Projects',        icon: '📁', category: 'read' },
-  get_project_overview:   { label: 'Project Overview',        icon: '📊', category: 'read' },
-  get_project_details:    { label: 'Project Details',         icon: '📁', category: 'read' },
-  update_project:         { label: 'Updating Project',        icon: '✏️', category: 'update' },
-  add_project_member:     { label: 'Adding Member',           icon: '👤', category: 'create' },
-  remove_project_member:  { label: 'Removing Member',         icon: '👤', category: 'delete' },
-  update_member_role:     { label: 'Updating Role',           icon: '🛡️', category: 'update' },
+  list_projects:          { label: 'Listing Projects',        icon: 'folder-kanban', category: 'read' },
+  get_project_overview:   { label: 'Project Overview',        icon: 'bar-chart-3', category: 'read' },
+  get_project_details:    { label: 'Project Details',         icon: 'folder-kanban', category: 'read' },
+  update_project:         { label: 'Updating Project',        icon: 'pencil', category: 'update' },
+  add_project_member:     { label: 'Adding Member',           icon: 'user', category: 'create' },
+  remove_project_member:  { label: 'Removing Member',         icon: 'user', category: 'delete' },
+  update_member_role:     { label: 'Updating Role',           icon: 'shield', category: 'update' },
 
   // ─── Research & RAG ────────────────────────────────────────────────────────
-  search_documents:       { label: 'Searching Documents',     icon: '🔍', category: 'read' },
-  web_search:             { label: 'Searching Web',           icon: '🌐', category: 'read' },
+  search_documents:       { label: 'Searching Documents',     icon: 'search', category: 'read' },
+  web_search:             { label: 'Searching Web',           icon: 'globe', category: 'read' },
 
   // ─── Workspace ────────────────────────────────────────────────────────────
-  search_workspace:       { label: 'Searching',               icon: '🔍', category: 'read' },
-  list_members:           { label: 'Listing Members',         icon: '👥', category: 'read' },
-  get_workspace_overview: { label: 'Workspace Overview',      icon: '🏠', category: 'read' },
-  get_workspace_activity: { label: 'Activity Feed',           icon: '📰', category: 'read' },
-
-  // ─── Cycles ───────────────────────────────────────────────────────────────
-  list_cycles:            { label: 'Listing Cycles',          icon: '🔄', category: 'read' },
-  get_cycle_details:      { label: 'Cycle Details',           icon: '🔄', category: 'read' },
-  create_cycle:           { label: 'Creating Cycle',          icon: '🔄', category: 'create' },
-  update_cycle:           { label: 'Updating Cycle',          icon: '✏️', category: 'update' },
-  delete_cycle:           { label: 'Deleting Cycle',          icon: '🗑️', category: 'delete' },
+  search_workspace:       { label: 'Searching',               icon: 'search', category: 'read' },
+  list_members:           { label: 'Listing Members',         icon: 'users', category: 'read' },
+  get_workspace_overview: { label: 'Workspace Overview',      icon: 'home', category: 'read' },
+  get_workspace_activity: { label: 'Activity Feed',           icon: 'activity', category: 'read' },
 
   // ─── Pages ────────────────────────────────────────────────────────────────
-  list_pages:             { label: 'Listing Pages',           icon: '📄', category: 'read' },
-  list_workspace_pages:   { label: 'Workspace Pages',         icon: '📄', category: 'read' },
-  get_page_content:       { label: 'Reading Page',            icon: '📖', category: 'read' },
-  get_page_versions:      { label: 'Page History',            icon: '🕐', category: 'read' },
-  create_page:            { label: 'Creating Page',           icon: '📝', category: 'create' },
-  update_page:            { label: 'Updating Page',           icon: '✏️', category: 'update' },
-  delete_page:            { label: 'Deleting Page',           icon: '🗑️', category: 'delete' },
+  list_pages:             { label: 'Listing Pages',           icon: 'file-text', category: 'read' },
+  list_workspace_pages:   { label: 'Workspace Pages',         icon: 'file-text', category: 'read' },
+  get_page_content:       { label: 'Reading Page',            icon: 'book-open', category: 'read' },
+  get_page_versions:      { label: 'Page History',            icon: 'clock', category: 'read' },
+  create_page:            { label: 'Creating Page',           icon: 'file-plus', category: 'create' },
+  update_page:            { label: 'Updating Page',           icon: 'pencil', category: 'update' },
+  delete_page:            { label: 'Deleting Page',           icon: 'trash-2', category: 'delete' },
 
   // ─── Labels ─────────────────────────────────────────────────────────────────
-  list_labels:            { label: 'Listing Labels',          icon: '🏷️', category: 'read' },
-  create_label:           { label: 'Creating Label',          icon: '🏷️', category: 'create' },
-  delete_label:           { label: 'Deleting Label',          icon: '🗑️', category: 'delete' },
+  list_labels:            { label: 'Listing Labels',          icon: 'tag', category: 'read' },
+  create_label:           { label: 'Creating Label',          icon: 'tag', category: 'create' },
+  delete_label:           { label: 'Deleting Label',          icon: 'trash-2', category: 'delete' },
 
   // ─── Stickies ─────────────────────────────────────────────────────────────
-  list_stickies:          { label: 'Listing Stickies',        icon: '📌', category: 'read' },
-  create_sticky:          { label: 'Creating Sticky',         icon: '📌', category: 'create' },
-  update_sticky:          { label: 'Updating Sticky',         icon: '✏️', category: 'update' },
-  delete_sticky:          { label: 'Deleting Sticky',         icon: '🗑️', category: 'delete' },
+  list_stickies:          { label: 'Listing Stickies',        icon: 'pin', category: 'read' },
+  create_sticky:          { label: 'Creating Sticky',         icon: 'pin', category: 'create' },
+  update_sticky:          { label: 'Updating Sticky',         icon: 'pencil', category: 'update' },
+  delete_sticky:          { label: 'Deleting Sticky',         icon: 'trash-2', category: 'delete' },
 
   // ─── Comments ─────────────────────────────────────────────────────────────
-  get_work_item_comments: { label: 'Work Item Comments',      icon: '💬', category: 'read' },
-  add_work_item_comment:  { label: 'Adding Comment',          icon: '💬', category: 'create' },
-  get_page_comments:      { label: 'Page Comments',           icon: '💬', category: 'read' },
-  add_page_comment:       { label: 'Adding Comment',          icon: '💬', category: 'create' },
+  get_work_item_comments: { label: 'Work Item Comments',      icon: 'message-square', category: 'read' },
+  add_work_item_comment:  { label: 'Adding Comment',          icon: 'message-square', category: 'create' },
+  get_page_comments:      { label: 'Page Comments',           icon: 'message-square', category: 'read' },
+  add_page_comment:       { label: 'Adding Comment',          icon: 'message-square', category: 'create' },
 
   // ─── Users ────────────────────────────────────────────────────────────────
-  get_current_user:       { label: 'Current User',            icon: '👤', category: 'read' },
-  search_users:           { label: 'Searching Users',         icon: '🔍', category: 'read' },
+  get_current_user:       { label: 'Current User',            icon: 'user', category: 'read' },
+  search_users:           { label: 'Searching Users',         icon: 'search', category: 'read' },
 
   // ─── Analysis ─────────────────────────────────────────────────────────────
-  get_workload_distribution: { label: 'Workload Analysis',    icon: '📊', category: 'analyze' },
-  get_overdue_report:        { label: 'Overdue Report',       icon: '⚠️', category: 'analyze' },
-  get_project_velocity:      { label: 'Project Velocity',     icon: '📈', category: 'analyze' },
-  generate_team_summary:     { label: 'Team Summary',         icon: '👥', category: 'analyze' },
+  get_workload_distribution: { label: 'Workload Analysis',    icon: 'bar-chart-3', category: 'analyze' },
+  get_overdue_report:        { label: 'Overdue Report',       icon: 'alert-triangle', category: 'analyze' },
+  get_project_velocity:      { label: 'Project Velocity',     icon: 'trending-up', category: 'analyze' },
+  generate_team_summary:     { label: 'Team Summary',         icon: 'users', category: 'analyze' },
 };
 
 /** Color scheme per tool category */

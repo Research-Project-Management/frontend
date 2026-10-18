@@ -386,7 +386,4 @@ export function Sidebar() {
   );
 }
 
-// Backward compatibility aliases
-export const ChatSidebar = Sidebar;
-export const FluxAiSidebar = Sidebar;
 export default Sidebar;

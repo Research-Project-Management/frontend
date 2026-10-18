@@ -53,9 +53,17 @@ function normalizeWorkItem(item: WorkItemLike) {
 
 function buildWorkItemWidget(tool: string, output: Record<string, unknown>): ResponseWidget | null {
   const rawColumns = asRecord(output.columns);
-  const rawItems = Array.isArray(output.workItems) ? (output.workItems as WorkItemLike[]) : Array.isArray(output.items) ? (output.items as WorkItemLike[]) : [];
+  const rawItems = Array.isArray(output.workItems)
+    ? (output.workItems as WorkItemLike[])
+    : Array.isArray(output.tasks)
+      ? (output.tasks as WorkItemLike[])
+      : Array.isArray(output.items)
+        ? (output.items as WorkItemLike[])
+        : [];
 
   if (!rawColumns && rawItems.length === 0) return null;
+
+  const isMyItems = tool === 'get_my_work_items' || tool === 'get_my_tasks';
 
   const groups = rawColumns
     ? Object.entries(rawColumns)
@@ -66,7 +74,7 @@ function buildWorkItemWidget(tool: string, output: Record<string, unknown>): Res
         .filter((group) => group.workItems.length > 0)
     : [
         {
-          label: tool === 'get_my_work_items' ? 'Assigned to you' : 'Work Items',
+          label: isMyItems ? 'Assigned to you' : 'Work Items',
           workItems: rawItems.map(normalizeWorkItem),
         },
       ];
@@ -77,7 +85,7 @@ function buildWorkItemWidget(tool: string, output: Record<string, unknown>): Res
 
   return {
     type: 'work_item_overview',
-    title: tool === 'get_my_work_items' ? 'My Work Items Overview' : 'Workspace Work Items Overview',
+    title: isMyItems ? 'My Work Items Overview' : 'Workspace Work Items Overview',
     subtitle: `${allItems.length} work item${allItems.length === 1 ? '' : 's'} tracked across this view`,
     total: allItems.length,
     done,
@@ -90,17 +98,36 @@ function buildWorkItemWidget(tool: string, output: Record<string, unknown>): Res
 function buildMetricWidget(output: Record<string, unknown>): ResponseWidget | null {
   const metrics: Array<{ label: string; value: string | number; tone?: 'default' | 'good' | 'warn' | 'bad' }> = [];
 
-  if (typeof output.total_work_items === 'number') {
-    metrics.push({ label: 'Total Work Items', value: output.total_work_items });
+  const totalCount =
+    typeof output.total_work_items === 'number'
+      ? output.total_work_items
+      : typeof output.total_tasks === 'number'
+        ? output.total_tasks
+        : undefined;
+  const completedCount =
+    typeof output.completed_work_items === 'number'
+      ? output.completed_work_items
+      : typeof output.completed_tasks === 'number'
+        ? output.completed_tasks
+        : undefined;
+  const overdueCount =
+    typeof output.overdue_work_items === 'number'
+      ? output.overdue_work_items
+      : typeof output.overdue_tasks === 'number'
+        ? output.overdue_tasks
+        : undefined;
+
+  if (typeof totalCount === 'number') {
+    metrics.push({ label: 'Total Work Items', value: totalCount });
   }
-  if (typeof output.completed_work_items === 'number') {
-    metrics.push({ label: 'Completed', value: output.completed_work_items, tone: 'good' });
+  if (typeof completedCount === 'number') {
+    metrics.push({ label: 'Completed', value: completedCount, tone: 'good' });
   }
-  if (typeof output.overdue_work_items === 'number') {
+  if (typeof overdueCount === 'number') {
     metrics.push({
       label: 'Overdue',
-      value: output.overdue_work_items,
-      tone: output.overdue_work_items > 0 ? 'warn' : 'default',
+      value: overdueCount,
+      tone: overdueCount > 0 ? 'warn' : 'default',
     });
   }
   if (typeof output.completion_rate === 'number') {
@@ -128,13 +155,22 @@ export function buildResponseWidgetsFromActions(actions: AgentAction[]): Respons
       continue;
     }
 
-    if (action.tool === 'list_work_items' || action.tool === 'get_my_work_items') {
+    if (
+      action.tool === 'list_work_items' ||
+      action.tool === 'list_tasks' ||
+      action.tool === 'get_my_work_items' ||
+      action.tool === 'get_my_tasks'
+    ) {
       const widget = buildWorkItemWidget(action.tool, action.output);
       if (widget) widgets.push(widget);
       continue;
     }
 
-    if (action.tool === 'summarize_member_work_items' || action.tool === 'get_workload_distribution') {
+    if (
+      action.tool === 'summarize_member_work_items' ||
+      action.tool === 'summarize_member_tasks' ||
+      action.tool === 'get_workload_distribution'
+    ) {
       const widget = buildMetricWidget(action.output);
       if (widget) widgets.push(widget);
     }

@@ -22,6 +22,7 @@ import {
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from "@/shared/lib/utils";
+import { useShallow } from 'zustand/react/shallow';
 import {
   usePageStore,
   useTabsStore,

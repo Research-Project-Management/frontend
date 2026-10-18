@@ -16,7 +16,7 @@ import type { UpdateProfileFormValues } from '../../types/profile.types';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/shared/components/ui/form';
 import { Loader2, AlertTriangle, Lock, Image as ImageIcon } from 'lucide-react';
 import { useUserCover } from '../../hooks/use-user-cover';
-import { CoverModal } from './CoverModal';
+import { CoverModal } from '@/shared/components/ui/cover-modal';
 
 interface ProfileAvatarDisplayProps {
   control: Control<UpdateProfileFormValues>;
@@ -73,7 +73,7 @@ export function ProfileTab() {
 
   const handleAvatarUpload = async (file: File) => {
     try {
-      const finalUrl = await uploadFile(file, 'workspace/avatars');
+      const finalUrl = await uploadFile(file, { prefix: 'workspace/avatars' });
       form.setValue('avatar', finalUrl, { shouldDirty: true });
       const currentValues = form.getValues();
       const currentName = `${currentValues.firstName || ''} ${currentValues.lastName || ''}`.trim();
@@ -122,7 +122,7 @@ export function ProfileTab() {
 
   const handleUploadCustomCover = async (file: File) => {
     try {
-      const url = await uploadFile(file, 'user/covers');
+      const url = await uploadFile(file, { prefix: 'user/covers' });
       setCover(url);
       toast.success('Background uploaded');
     } catch {

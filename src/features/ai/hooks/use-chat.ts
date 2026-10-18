@@ -401,6 +401,3 @@ export function useChat() {
   };
 }
 
-// Backward compatibility alias
-export const useWorkspaceChat = useChat;
-

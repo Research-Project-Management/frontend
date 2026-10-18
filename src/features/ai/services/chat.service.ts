@@ -121,7 +121,7 @@ export async function* streamChatResponse(
   messages: ChatMessage[],
   options?: StreamChatOptions,
 ): AsyncGenerator<string, void, unknown> {
-  const { signal, onMeta, onAction, ...cleanOptions } = options ?? {};
+  const { signal, ...cleanOptions } = options ?? {};
   const aiMessages = messages.map(({ role, content, attachments }) => ({
     role,
     content,
@@ -136,7 +136,6 @@ export async function* streamChatResponse(
     selection: cleanOptions.selection ?? null,
     cursor_context: cleanOptions.cursorContext ?? null,
     chat_id: cleanOptions.chatId ?? null,
-    ...cleanOptions,
   }, {
     headers: {
       Accept: 'text/event-stream',
@@ -214,7 +213,7 @@ export async function* streamEditorChat(
   messages: ChatMessage[],
   options?: StreamEditorChatOptions,
 ): AsyncGenerator<string, void, unknown> {
-  const { signal, onMeta, onAction, ...cleanOptions } = options ?? {};
+  const { signal, ...cleanOptions } = options ?? {};
   const aiMessages = messages.map(({ role, content }) => ({ role, content }));
   const response = await apiRawFetch('/api/ai/editor-chat', 'POST', {
     messages: aiMessages,
@@ -236,7 +235,6 @@ export async function* streamEditorChat(
     document_structure_summary: cleanOptions.documentStructureSummary ?? null,
     compile_errors: cleanOptions.compileErrors ?? null,
     user_selection: cleanOptions.userSelection ?? null,
-    ...cleanOptions,
   }, {
     headers: {
       Accept: 'text/event-stream',
@@ -294,15 +292,11 @@ export async function fetchChatSessions(
   }
 
   try {
-    const data = await apiGet<{ chats?: ChatSession[]; data?: { chats?: ChatSession[] } | ChatSession[] }>(
+    const data = await apiGet<ChatSession[] | { chats?: ChatSession[] }>(
       '/api/ai/chats',
       { params },
     );
-    return (
-      data.chats ||
-      (data.data as { chats?: ChatSession[] })?.chats ||
-      (Array.isArray(data.data) ? data.data : [])
-    );
+    return Array.isArray(data) ? data : (data.chats ?? []);
   } catch (err) {
     logger.error('[chatService] Failed to fetch chat sessions', err);
     return [];
@@ -312,15 +306,10 @@ export async function fetchChatSessions(
 export const listChatSessions = fetchChatSessions;
 
 export async function getChatSession(chatId: string): Promise<ChatSessionDetail> {
-  const data = await apiGet<{ chat?: ChatSessionDetail; data?: { chat?: ChatSessionDetail } | ChatSessionDetail }>(
+  const data = await apiGet<ChatSessionDetail & { chat?: ChatSessionDetail }>(
     `/api/ai/chats/${chatId}`,
   );
-  return (
-    data.chat ||
-    (data.data as { chat?: ChatSessionDetail })?.chat ||
-    (data.data as ChatSessionDetail) ||
-    (data as unknown as ChatSessionDetail)
-  );
+  return data.chat ?? data;
 }
 
 export async function createChatSession(
@@ -331,7 +320,7 @@ export async function createChatSession(
     documentIds?: string[];
   },
 ): Promise<ChatSessionDetail> {
-  const data = await apiPost<{ chat?: ChatSessionDetail; data?: { chat?: ChatSessionDetail } | ChatSessionDetail }>(
+  const data = await apiPost<ChatSessionDetail & { chat?: ChatSessionDetail }>(
     '/api/ai/chats',
     {
       title: input.title,
@@ -340,12 +329,7 @@ export async function createChatSession(
       documentIds: input.documentIds,
     },
   );
-  return (
-    data.chat ||
-    (data.data as { chat?: ChatSessionDetail })?.chat ||
-    (data.data as ChatSessionDetail) ||
-    (data as unknown as ChatSessionDetail)
-  );
+  return data.chat ?? data;
 }
 
 export async function appendChatMessages(
@@ -353,32 +337,22 @@ export async function appendChatMessages(
   messages: ChatMessage[],
   documentIds?: string[],
 ): Promise<ChatSessionDetail> {
-  const data = await apiPost<{ chat?: ChatSessionDetail; data?: { chat?: ChatSessionDetail } | ChatSessionDetail }>(
+  const data = await apiPost<ChatSessionDetail & { chat?: ChatSessionDetail }>(
     `/api/ai/chats/${chatId}/messages`,
     { messages, documentIds },
   );
-  return (
-    data.chat ||
-    (data.data as { chat?: ChatSessionDetail })?.chat ||
-    (data.data as ChatSessionDetail) ||
-    (data as unknown as ChatSessionDetail)
-  );
+  return data.chat ?? data;
 }
 
 export async function renameChatSession(
   chatId: string,
   title: string,
 ): Promise<ChatSession> {
-  const data = await apiPatch<{ chat?: ChatSession; data?: { chat?: ChatSession } | ChatSession }>(
+  const data = await apiPatch<ChatSession & { chat?: ChatSession }>(
     `/api/ai/chats/${chatId}`,
     { title },
   );
-  return (
-    data.chat ||
-    (data.data as { chat?: ChatSession })?.chat ||
-    (data.data as ChatSession) ||
-    (data as unknown as ChatSession)
-  );
+  return data.chat ?? data;
 }
 
 export async function deleteChatSession(chatId: string): Promise<void> {
@@ -394,14 +368,10 @@ export async function clearAiMemory(scopeId?: string): Promise<void> {
 
 export async function getPageChat(pageId: string, _options?: unknown): Promise<ChatMessage[]> {
   try {
-    const data = await apiGet<{ messages?: ChatMessage[]; data?: { messages?: ChatMessage[] } | ChatMessage[] }>(
+    const data = await apiGet<ChatMessage[] | { messages?: ChatMessage[] }>(
       `/api/ai/page-chats/${pageId}`,
     );
-    return (
-      data.messages ||
-      (data.data as { messages?: ChatMessage[] })?.messages ||
-      (Array.isArray(data.data) ? data.data : [])
-    );
+    return Array.isArray(data) ? data : (data.messages ?? []);
   } catch (err) {
     logger.error('[chatService] Failed to get page chat', err);
     return [];
@@ -511,33 +481,24 @@ export function uploadDocument(
 export async function fetchDocumentsBulk(
   ids: string[],
 ): Promise<Array<{ id: string; name: string; size: number }>> {
-  const data = await apiPost<{ documents?: Array<{ id: string; name: string; size: number }>; data?: { documents?: Array<{ id: string; name: string; size: number }> } | Array<{ id: string; name: string; size: number }> }>(
+  const data = await apiPost<Array<{ id: string; name: string; size: number }> | { documents?: Array<{ id: string; name: string; size: number }> }>(
     '/api/ai/documents/bulk',
     { ids },
   );
-  return (
-    data.documents ||
-    (data.data as { documents?: Array<{ id: string; name: string; size: number }> })?.documents ||
-    (Array.isArray(data.data) ? data.data : [])
-  );
+  return Array.isArray(data) ? data : (data.documents ?? []);
 }
 
 export async function fetchDocumentContent(
   docId: string,
 ): Promise<{ text: string }> {
-  const data = await apiGet<{
-    text?: string;
-    content?: string;
-    data?: { text?: string; content?: string } | string;
-  }>(`/api/ai/documents/${docId}/content`);
+  const data = await apiGet<string | { text?: string; content?: string }>(
+    `/api/ai/documents/${docId}/content`,
+  );
 
-  const rawData = data.data;
   const contentStr =
-    data.text ||
-    data.content ||
-    (typeof rawData === 'object' && rawData ? rawData.text || rawData.content : '') ||
-    (typeof rawData === 'string' ? rawData : '') ||
-    '';
+    typeof data === 'string'
+      ? data
+      : (data.text ?? data.content ?? '');
 
   return {
     text: contentStr,
@@ -548,12 +509,10 @@ export async function fetchDocuments(
   projectId?: string,
 ): Promise<DocumentItem[]> {
   const qs = projectId && projectId !== 'all' ? `?projectId=${encodeURIComponent(projectId)}` : '';
-  const res = await apiGet<DocumentItem[] | { data?: DocumentItem[] }>(
+  const res = await apiGet<DocumentItem[]>(
     `/api/ai/documents${qs}`,
   );
-  if (Array.isArray(res)) return res;
-  if (res && 'data' in res && Array.isArray(res.data)) return res.data;
-  return [];
+  return Array.isArray(res) ? res : [];
 }
 
 export async function deleteDocument(

@@ -23,7 +23,7 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui/avatar";
 import { resolveFileUrl } from "@/shared/lib/file-client";
 import { useUserCover } from '@/features/settings/hooks/use-user-cover';
-import { CoverModal } from '@/features/settings/components/profile/CoverModal';
+import { CoverModal } from '@/shared/components/ui/cover-modal';
 import { useUpload } from "@/shared/hooks/use-upload";
 import dynamic from 'next/dynamic';
 import { useMyProjectInvitations } from '@/features/projects/invitation/hooks/use-project-invitations';
@@ -80,7 +80,7 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
 
   const handleUploadCustomCover = async (file: File) => {
     try {
-      const url = await uploadFile(file, 'user/covers');
+      const url = await uploadFile(file, { prefix: 'user/covers' });
       setCover(url);
       toast.success('Background uploaded');
     } catch {

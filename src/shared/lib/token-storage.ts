@@ -1,32 +1,28 @@
 import { logger } from '@/shared/lib/logger';
+import { isTokenValid } from '@/shared/utils/auth-token.util';
+
 /**
  * Centralized authentication token storage adapter and lifecycle manager.
- * Supports swappable storage strategies (LocalStorage vs. InMemory) with SSR safety
- * and legacy token key fallback.
+ * Supports swappable storage strategies (LocalStorage vs. InMemory) with SSR safety.
  */
 
 // ─── 1. Types & Interface ─────────────────────────────────────────────────────
 
 export interface AuthTokens {
   readonly accessToken: string | null;
-  readonly refreshToken: string | null;
 }
 
 export interface TokenStorageAdapter {
   getAccessToken(): string | null;
-  getRefreshToken(): string | null;
-  setTokens(tokens: { accessToken: string; refreshToken?: string }): void;
   setAccessToken(accessToken: string): void;
-  setRefreshToken(refreshToken: string): void;
+  setTokens(accessToken: string): void;
   clearTokens(): void;
 }
 
 // ─── 2. Storage Keys ──────────────────────────────────────────────────────────
 
 export const STORAGE_KEYS = {
-  LEGACY_TOKEN: 'token',
   ACCESS_TOKEN: 'accessToken',
-  REFRESH_TOKEN: 'refreshToken',
 } as const;
 
 const SEVEN_DAYS_SECONDS = 7 * 24 * 60 * 60; // 604,800 seconds (1 week)
@@ -42,8 +38,6 @@ function setCookieValue(name: string, value: string, maxAgeSeconds: number = SEV
   document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax`;
 }
 
-import { isTokenValid } from '@/shared/utils/auth-token.util';
-
 function deleteCookieValue(name: string): void {
   if (typeof document === 'undefined') return;
   document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0; SameSite=Lax`;
@@ -58,17 +52,12 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
 
   public getAccessToken(): string | null {
     if (!this.isBrowser()) {
-      const cookieVal =
-        getCookieValue(STORAGE_KEYS.ACCESS_TOKEN) || getCookieValue(STORAGE_KEYS.LEGACY_TOKEN);
+      const cookieVal = getCookieValue(STORAGE_KEYS.ACCESS_TOKEN);
       return isTokenValid(cookieVal) ? cookieVal : null;
     }
     try {
-      const localVal =
-        window.localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) ||
-        window.localStorage.getItem(STORAGE_KEYS.LEGACY_TOKEN);
-      const cookieVal =
-        getCookieValue(STORAGE_KEYS.ACCESS_TOKEN) ||
-        getCookieValue(STORAGE_KEYS.LEGACY_TOKEN);
+      const localVal = window.localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+      const cookieVal = getCookieValue(STORAGE_KEYS.ACCESS_TOKEN);
 
       const validLocal = isTokenValid(localVal) ? localVal : null;
       const validCookie = isTokenValid(cookieVal) ? cookieVal : null;
@@ -76,17 +65,14 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
       // Clean up corrupt or expired values
       if (localVal && !validLocal) {
         window.localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-        window.localStorage.removeItem(STORAGE_KEYS.LEGACY_TOKEN);
       }
       if (cookieVal && !validCookie) {
         deleteCookieValue(STORAGE_KEYS.ACCESS_TOKEN);
-        deleteCookieValue(STORAGE_KEYS.LEGACY_TOKEN);
       }
 
       // Re-sync: if valid token exists in localStorage but missing from cookie (e.g. after clearing cookies)
       if (validLocal && !validCookie) {
         setCookieValue(STORAGE_KEYS.ACCESS_TOKEN, validLocal, SEVEN_DAYS_SECONDS);
-        setCookieValue(STORAGE_KEYS.LEGACY_TOKEN, validLocal, SEVEN_DAYS_SECONDS);
         return validLocal;
       }
 
@@ -94,7 +80,6 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
       if (validCookie && !validLocal) {
         try {
           window.localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, validCookie);
-          window.localStorage.setItem(STORAGE_KEYS.LEGACY_TOKEN, validCookie);
         } catch {
           // Ignore storage quota
         }
@@ -103,70 +88,34 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
 
       return validLocal || validCookie || null;
     } catch {
-      const cookieVal =
-        getCookieValue(STORAGE_KEYS.ACCESS_TOKEN) || getCookieValue(STORAGE_KEYS.LEGACY_TOKEN);
+      const cookieVal = getCookieValue(STORAGE_KEYS.ACCESS_TOKEN);
       return isTokenValid(cookieVal) ? cookieVal : null;
     }
-  }
-
-  public getRefreshToken(): string | null {
-    // Security: Refresh tokens are strictly managed via HttpOnly cookies by the browser.
-    // Clean up any legacy exposed tokens if found in localStorage or client cookies.
-    if (this.isBrowser()) {
-      try {
-        window.localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-      } catch {
-        // Ignore private browsing errors
-      }
-      deleteCookieValue(STORAGE_KEYS.REFRESH_TOKEN);
-    }
-    return null;
   }
 
   public setAccessToken(accessToken: string): void {
     if (!this.isBrowser()) return;
     try {
       window.localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
-      window.localStorage.setItem(STORAGE_KEYS.LEGACY_TOKEN, accessToken);
     } catch {
       // Ignore private browsing quota errors
     }
     setCookieValue(STORAGE_KEYS.ACCESS_TOKEN, accessToken, SEVEN_DAYS_SECONDS);
-    setCookieValue(STORAGE_KEYS.LEGACY_TOKEN, accessToken, SEVEN_DAYS_SECONDS);
   }
 
-  public setRefreshToken(_refreshToken: string): void {
-    // Security: Refresh token is strictly stored in HttpOnly cookies by the backend.
-    // Never persist refresh token in localStorage or client-accessible cookies.
-    if (!this.isBrowser()) return;
-    try {
-      window.localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-    } catch {
-      // Ignore private browsing errors
-    }
-    deleteCookieValue(STORAGE_KEYS.REFRESH_TOKEN);
-  }
-
-  public setTokens(tokens: { accessToken: string; refreshToken?: string }): void {
-    this.setAccessToken(tokens.accessToken);
-    if (tokens.refreshToken) {
-      this.setRefreshToken(tokens.refreshToken);
-    }
+  public setTokens(accessToken: string): void {
+    this.setAccessToken(accessToken);
   }
 
   public clearTokens(): void {
     if (!this.isBrowser()) return;
     try {
       window.localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-      window.localStorage.removeItem(STORAGE_KEYS.LEGACY_TOKEN);
-      window.localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
       window.localStorage.removeItem('flux_cached_user');
     } catch {
       // Ignore private browsing errors
     }
     deleteCookieValue(STORAGE_KEYS.ACCESS_TOKEN);
-    deleteCookieValue(STORAGE_KEYS.LEGACY_TOKEN);
-    deleteCookieValue(STORAGE_KEYS.REFRESH_TOKEN);
   }
 }
 
@@ -179,21 +128,12 @@ export class InMemoryTokenAdapter implements TokenStorageAdapter {
     return this.accessToken;
   }
 
-  public getRefreshToken(): string | null {
-    // Refresh token is managed strictly via HttpOnly cookies
-    return null;
-  }
-
   public setAccessToken(accessToken: string): void {
     this.accessToken = accessToken;
   }
 
-  public setRefreshToken(_refreshToken: string): void {
-    // No-op: refresh token is strictly HttpOnly
-  }
-
-  public setTokens(tokens: { accessToken: string; refreshToken?: string }): void {
-    this.accessToken = tokens.accessToken;
+  public setTokens(accessToken: string): void {
+    this.accessToken = accessToken;
   }
 
   public clearTokens(): void {
@@ -201,15 +141,11 @@ export class InMemoryTokenAdapter implements TokenStorageAdapter {
     if (typeof window !== 'undefined') {
       try {
         window.localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-        window.localStorage.removeItem(STORAGE_KEYS.LEGACY_TOKEN);
-        window.localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
         window.localStorage.removeItem('flux_cached_user');
       } catch (err) {
         logger.debug('[TokenStorage] Error removing storage keys', { err });
       }
       deleteCookieValue(STORAGE_KEYS.ACCESS_TOKEN);
-      deleteCookieValue(STORAGE_KEYS.LEGACY_TOKEN);
-      deleteCookieValue(STORAGE_KEYS.REFRESH_TOKEN);
     }
   }
 }
@@ -235,14 +171,9 @@ export class TokenStorage {
     return this.adapter.getAccessToken();
   }
 
-  public getRefreshToken(): string | null {
-    return this.adapter.getRefreshToken();
-  }
-
   public getTokens(): AuthTokens {
     return {
       accessToken: this.getAccessToken(),
-      refreshToken: this.getRefreshToken(),
     };
   }
 
@@ -250,22 +181,8 @@ export class TokenStorage {
     this.adapter.setAccessToken(token);
   }
 
-  public setRefreshToken(token: string): void {
-    this.adapter.setRefreshToken(token);
-  }
-
-  public setTokens(
-    tokensOrAccess: { accessToken: string; refreshToken?: string } | string,
-    optionalRefresh?: string,
-  ): void {
-    if (typeof tokensOrAccess === 'string') {
-      this.adapter.setTokens({
-        accessToken: tokensOrAccess,
-        refreshToken: optionalRefresh,
-      });
-    } else {
-      this.adapter.setTokens(tokensOrAccess);
-    }
+  public setTokens(accessToken: string): void {
+    this.adapter.setTokens(accessToken);
   }
 
   public clearTokens(): void {
@@ -282,17 +199,10 @@ export class TokenStorage {
 export const tokenStorage = new TokenStorage();
 
 /**
- * Retrieves the current access token (checking both modern and legacy keys).
+ * Retrieves the current access token.
  */
 export function getAuthToken(): string | null {
   return tokenStorage.getAccessToken();
-}
-
-/**
- * Retrieves the current refresh token.
- */
-export function getRefreshToken(): string | null {
-  return tokenStorage.getRefreshToken();
 }
 
 /**
@@ -303,17 +213,10 @@ export function setAuthToken(token: string): void {
 }
 
 /**
- * Persists the refresh token.
+ * Persists the access token.
  */
-export function setRefreshToken(token: string): void {
-  tokenStorage.setRefreshToken(token);
-}
-
-/**
- * Persists both access and refresh tokens atomically.
- */
-export function setTokens(accessToken: string, refreshToken?: string): void {
-  tokenStorage.setTokens(accessToken, refreshToken);
+export function setTokens(accessToken: string): void {
+  tokenStorage.setTokens(accessToken);
 }
 
 /**

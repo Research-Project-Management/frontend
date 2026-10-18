@@ -529,7 +529,4 @@ export function Panel() {
   );
 }
 
-// Backward compatibility aliases
-export const SourcePanel = Panel;
-export const WikiChatFeatures = Panel;
 export default Panel;

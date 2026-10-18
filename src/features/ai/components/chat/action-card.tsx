@@ -53,14 +53,12 @@ const CATEGORY_SURFACE: Record<ToolCategory, string> = {
 const AGENT_LABELS: Record<string, { label: string }> = {
   work_item_agent: { label: 'Work Item Agent' },
   project_agent: { label: 'Project Agent' },
-  cycle_agent: { label: 'Cycle Agent' },
   workspace_agent: { label: 'Workspace Agent' },
 };
 
 function getToolIcon(tool: string, category: ToolCategory) {
-  if (tool.includes('work_item') || tool.includes('item')) return ListTodo;
+  if (tool.includes('work_item') || tool.includes('task') || tool.includes('item')) return ListTodo;
   if (tool.includes('project')) return FolderKanban;
-  if (tool.includes('cycle')) return Layers3;
   if (tool.includes('page')) return FileText;
   if (tool.includes('comment')) return MessageSquare;
   if (tool.includes('label')) return Tag;
@@ -150,7 +148,6 @@ function ActionRow({ action }: { action: AgentAction }) {
   const [open, setOpen] = useState(false);
 
   if (action.type === 'agent_handoff') {
-    const fromLabel = AGENT_LABELS[action.from ?? '']?.label ?? action.from;
     const toLabel = AGENT_LABELS[action.to ?? '']?.label ?? action.to;
     return (
       <div className="flex items-center gap-2 py-1 text-xs text-muted-foreground">
@@ -162,7 +159,7 @@ function ActionRow({ action }: { action: AgentAction }) {
 
   const toolMeta = TOOL_LABELS[action.tool ?? ''] ?? {
     label: action.tool ?? 'Unknown Tool',
-    icon: '⚙️',
+    icon: 'settings-2',
     category: 'read' as ToolCategory,
   };
 

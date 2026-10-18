@@ -27,7 +27,7 @@ import { useCollections } from '@/features/library/sdk/queries/collections.queri
 import { useItems as usePapers } from '@/features/library/sdk/queries/catalog.queries';
 import type { Collection, Item as Paper } from '@/features/library/domain/types/library.types';
 import { LibraryEmptyState } from '@/features/library/ui/content/LibraryEmptyState';
-import { storageFileService, type StorageItem } from '@/features/storage';
+import { storageDriveService, type StorageItem } from '@/features/storage';
 import { StorageEmptyState } from '@/features/storage/components/layout/StorageEmptyState';
 import { uploadDocument } from '../../services/chat.service';
 
@@ -165,7 +165,7 @@ export function SourcePickerModal({
   useEffect(() => {
     if (open && activeTab === 'storage' && storageFiles.length === 0) {
       setStorageLoading(true);
-      storageFileService
+      storageDriveService
         .getMyFiles()
         .then((res) => {
           const raw = Array.isArray(res) ? res : res?.files || [];

@@ -23,15 +23,7 @@ export interface UseUploadOptions {
   onProgress?: (id: string, progress: number) => void;
 }
 
-// Backward compatible options interface
-export type UploadOptions =
-  | UseUploadOptions
-  | {
-      prefix?: string;
-      onProgress?: (progress: number) => void;
-      onSuccess?: (url: string) => void;
-      onError?: (error: Error) => void;
-    };
+export type UploadOptions = UseUploadOptions;
 
 /**
  * Universal file upload hook with XMLHttpRequest progress tracking,
@@ -41,8 +33,8 @@ export function useUpload() {
   const [uploads, setUploads] = useState<Record<string, UploadItem>>({});
   const abortControllers = useRef<Record<string, AbortController>>({});
 
-  const [legacyProgress, setLegacyProgress] = useState(0);
-  const [legacyError, setLegacyError] = useState<Error | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<Error | null>(null);
   const lastUploadId = useRef<string | null>(null);
 
   const isUploading = Object.values(uploads).some((u) => u.status === 'uploading');
@@ -61,7 +53,7 @@ export function useUpload() {
   const uploadFileInternal = useCallback(
     async (
       file: File,
-      options: UseUploadOptions = {},
+      options: UploadOptions = {},
     ): Promise<{ id: string; url: string; fileId?: string }> => {
       const id = typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
@@ -69,8 +61,8 @@ export function useUpload() {
       const prefix = options.prefix ?? 'general';
 
       lastUploadId.current = id;
-      setLegacyError(null);
-      setLegacyProgress(0);
+      setError(null);
+      setProgress(0);
 
       // Initial state
       setUploads((prev) => ({
@@ -91,7 +83,7 @@ export function useUpload() {
 
       if (!validation.valid && validation.error) {
         updateUploadState(id, { status: 'error', error: validation.error });
-        setLegacyError(validation.error);
+        setError(validation.error);
         options.onError?.(id, validation.error);
         throw validation.error;
       }
@@ -109,7 +101,7 @@ export function useUpload() {
           onProgress: (percentComplete) => {
             updateUploadState(id, { progress: percentComplete });
             if (lastUploadId.current === id) {
-              setLegacyProgress(percentComplete);
+              setProgress(percentComplete);
             }
             options.onProgress?.(id, percentComplete);
           },
@@ -129,7 +121,7 @@ export function useUpload() {
 
         if (!isAborted) {
           if (lastUploadId.current === id) {
-            setLegacyError(uploadError);
+            setError(uploadError);
           }
           options.onError?.(id, uploadError);
         }
@@ -142,61 +134,9 @@ export function useUpload() {
   );
 
   const uploadFile = useCallback(
-    async (file: File, optionsOrPrefix?: string | UploadOptions): Promise<string> => {
-      let options: UseUploadOptions = {};
-      let legacyOnSuccess: ((url: string) => void) | undefined;
-      let legacyOnError: ((error: Error) => void) | undefined;
-      let legacyOnProgress: ((progress: number) => void) | undefined;
-
-      if (typeof optionsOrPrefix === 'string') {
-        options.prefix = optionsOrPrefix;
-      } else if (optionsOrPrefix) {
-        options.prefix = optionsOrPrefix.prefix;
-        options.maxSize = (optionsOrPrefix as UseUploadOptions).maxSize;
-        options.allowedTypes = (optionsOrPrefix as UseUploadOptions).allowedTypes;
-
-        if ('onSuccess' in optionsOrPrefix) {
-          const os = optionsOrPrefix.onSuccess;
-          if (os && os.length === 1) {
-            legacyOnSuccess = os as (url: string) => void;
-          } else {
-            options.onSuccess = os as (id: string, url: string) => void;
-          }
-        }
-
-        if ('onError' in optionsOrPrefix) {
-          const oe = optionsOrPrefix.onError;
-          if (oe && oe.length === 1) {
-            legacyOnError = oe as (err: Error) => void;
-          } else {
-            options.onError = oe as (id: string, err: Error) => void;
-          }
-        }
-
-        if ('onProgress' in optionsOrPrefix) {
-          const op = optionsOrPrefix.onProgress;
-          if (op && op.length === 1) {
-            legacyOnProgress = op as (prog: number) => void;
-          } else {
-            options.onProgress = op as (id: string, prog: number) => void;
-          }
-        }
-      }
-
-      try {
-        const { url } = await uploadFileInternal(file, {
-          ...options,
-          onProgress: (id, prog) => {
-            options.onProgress?.(id, prog);
-            legacyOnProgress?.(prog);
-          },
-        });
-        legacyOnSuccess?.(url);
-        return url;
-      } catch (err) {
-        legacyOnError?.(err as Error);
-        throw err;
-      }
+    async (file: File, options: UploadOptions = {}): Promise<string> => {
+      const { url } = await uploadFileInternal(file, options);
+      return url;
     },
     [uploadFileInternal],
   );
@@ -204,17 +144,8 @@ export function useUpload() {
   const uploadFileDetailed = useCallback(
     async (
       file: File,
-      optionsOrPrefix?: string | UploadOptions,
+      options: UploadOptions = {},
     ): Promise<{ url: string; fileId: string }> => {
-      let options: UseUploadOptions = {};
-      if (typeof optionsOrPrefix === 'string') {
-        options.prefix = optionsOrPrefix;
-      } else if (optionsOrPrefix) {
-        options.prefix = optionsOrPrefix.prefix;
-        options.maxSize = (optionsOrPrefix as UseUploadOptions).maxSize;
-        options.allowedTypes = (optionsOrPrefix as UseUploadOptions).allowedTypes;
-      }
-
       const { url, fileId } = await uploadFileInternal(file, options);
       return { url, fileId: fileId || '' };
     },
@@ -222,7 +153,7 @@ export function useUpload() {
   );
 
   const uploadFiles = useCallback(
-    async (files: File[], options?: UploadOptions): Promise<string[]> => {
+    async (files: File[], options: UploadOptions = {}): Promise<string[]> => {
       return Promise.all(files.map((file) => uploadFile(file, options)));
     },
     [uploadFile],
@@ -250,8 +181,8 @@ export function useUpload() {
   const clearAll = useCallback(() => {
     Object.keys(abortControllers.current).forEach((id) => cancelUpload(id));
     setUploads({});
-    setLegacyProgress(0);
-    setLegacyError(null);
+    setProgress(0);
+    setError(null);
   }, [cancelUpload]);
 
   const abortUpload = useCallback(() => {
@@ -269,8 +200,8 @@ export function useUpload() {
     uploadFileDetailed,
     uploadFiles,
     isUploading,
-    progress: legacyProgress,
-    error: legacyError,
+    progress,
+    error,
     abortUpload,
   };
 }

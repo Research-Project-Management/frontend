@@ -15,9 +15,6 @@ export const userLabelKeys = {
   list: () => ['labels', 'user'] as const,
 };
 
-// Backward compatibility key alias
-export const workspaceLabelKeys = userLabelKeys;
-
 // ── 1. Fetch Labels (Flat User model) ──────────────────────────────
 
 export function useUserLabels() {
@@ -33,11 +30,9 @@ export function useUserLabels() {
   });
 }
 
-export const useWorkspaceLabels = useUserLabels;
-
 // ── 2. Create Label ────────────────────────────────────────────────────────────
 
-export function useCreateWorkspaceLabel() {
+export function useCreateUserLabel() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -46,7 +41,7 @@ export function useCreateWorkspaceLabel() {
       return res.label!;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceLabelKeys.all });
+      queryClient.invalidateQueries({ queryKey: userLabelKeys.all });
       toast.success('Label created');
     },
     onError: (err: unknown) => {
@@ -57,7 +52,7 @@ export function useCreateWorkspaceLabel() {
 
 // ── 3. Update Label ────────────────────────────────────────────────────────────
 
-export function useUpdateWorkspaceLabel() {
+export function useUpdateUserLabel() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -72,7 +67,7 @@ export function useUpdateWorkspaceLabel() {
       return res.label!;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceLabelKeys.all });
+      queryClient.invalidateQueries({ queryKey: userLabelKeys.all });
       toast.success('Label updated');
     },
     onError: (err: unknown) => {
@@ -83,7 +78,7 @@ export function useUpdateWorkspaceLabel() {
 
 // ── 4. Delete Label ────────────────────────────────────────────────────────────
 
-export function useDeleteWorkspaceLabel() {
+export function useDeleteUserLabel() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -91,7 +86,7 @@ export function useDeleteWorkspaceLabel() {
       await apiDelete<{ message?: string }>(`/api/labels/${labelId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceLabelKeys.all });
+      queryClient.invalidateQueries({ queryKey: userLabelKeys.all });
       toast.success('Label deleted');
     },
     onError: (err: unknown) => {
@@ -99,7 +94,3 @@ export function useDeleteWorkspaceLabel() {
     },
   });
 }
-
-export const useCreateUserLabel = useCreateWorkspaceLabel;
-export const useUpdateUserLabel = useUpdateWorkspaceLabel;
-export const useDeleteUserLabel = useDeleteWorkspaceLabel;

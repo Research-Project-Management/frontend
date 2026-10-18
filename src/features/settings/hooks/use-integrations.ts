@@ -104,7 +104,11 @@ export function useIntegrations() {
   });
 
   return {
-    ...query,
+    data: query.data,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    refetch: query.refetch,
     integrations: (query.data && query.data.length > 0) ? query.data : FALLBACK_INTEGRATIONS,
     connect: connectMutation.mutateAsync,
     isConnecting: connectMutation.isPending,

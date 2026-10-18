@@ -21,21 +21,16 @@ import { logger } from '@/shared/lib/logger';
 import {
   tokenStorage,
   getAuthToken,
-  getRefreshToken,
   setAuthToken,
-  setRefreshToken,
   setTokens,
   removeAuthToken,
   hasAuthToken,
 } from '@/shared/lib/token-storage';
 
-// Re-export token management functions for backward compatibility
 export {
   tokenStorage,
   getAuthToken,
-  getRefreshToken,
   setAuthToken,
-  setRefreshToken,
   setTokens,
   removeAuthToken,
   hasAuthToken,
@@ -120,16 +115,12 @@ let refreshPromise: Promise<RefreshTokenResult> | null = null;
 async function silentRefresh(): Promise<RefreshTokenResult> {
   try {
     const refreshEndpointUrl = `${getEffectiveBaseUrl()}/auth/refresh`;
-    const storedRefreshToken = getRefreshToken();
-    const requestPayload = storedRefreshToken
-      ? JSON.stringify({ refreshToken: storedRefreshToken })
-      : JSON.stringify({});
 
     const refreshResponse = await fetch(refreshEndpointUrl, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: requestPayload,
+      body: JSON.stringify({}),
     });
 
     if (!refreshResponse.ok) {
@@ -146,13 +137,11 @@ async function silentRefresh(): Promise<RefreshTokenResult> {
 
     const refreshData = (await refreshResponse.json()) as {
       accessToken?: string;
-      token?: string;
-      refreshToken?: string;
     };
 
-    const newAccessToken = refreshData.accessToken || refreshData.token;
+    const newAccessToken = refreshData?.accessToken;
     if (newAccessToken) {
-      setTokens(newAccessToken, refreshData.refreshToken);
+      setAuthToken(newAccessToken);
       return {
         success: true,
         accessToken: newAccessToken,
@@ -190,13 +179,8 @@ const inFlightRequests = new Map<string, Promise<unknown>>();
 
 // ─── 4. Query String Builder ──────────────────────────────────────────────────
 
-function buildUrl(path: string, params?: RequestOptions['params'], relativeOnly = false): string {
-  let base: string;
-  if (relativeOnly) {
-    base = path.startsWith('/') ? path : `/${path}`;
-  } else {
-    base = path.startsWith('http') ? path : `${getEffectiveBaseUrl()}${path}`;
-  }
+function buildUrl(path: string, params?: RequestOptions['params']): string {
+  const base = path.startsWith('http') ? path : `${getEffectiveBaseUrl()}${path}`;
   if (!params) return base;
 
   const query = new URLSearchParams();
@@ -314,22 +298,6 @@ export async function rawFetch(
       }
     }
     if (err instanceof TypeError && err.message?.includes('Failed to fetch')) {
-      // Fallback to relative proxy route via Next.js rewrites if direct cross-origin failed
-      if (typeof window !== 'undefined' && url.startsWith('http') && path.startsWith('/')) {
-        try {
-          const fallbackUrl = buildUrl(path, params, true);
-          return await fetch(fallbackUrl, {
-            method,
-            credentials: 'include',
-            headers,
-            body: body !== undefined ? (isFormData ? (body as BodyInit) : JSON.stringify(body)) : undefined,
-            signal: finalSignal,
-            ...rest,
-          });
-        } catch (fallbackErr: unknown) {
-          logger.debug('Relative proxy fallback also failed', { fallbackErr });
-        }
-      }
       throw new ApiError({
         message: 'Cannot connect to backend server. Please ensure backend is running.',
         statusCode: 503,

@@ -5,7 +5,7 @@ import { usePageStore } from '@/features/editor/core';
 import { sessionCoordinator } from '@/features/editor/core';
 import { compilerCoordinator } from '@/features/editor/subsystems/compiler';
 import { editorCommandBus } from '@/features/editor/core';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer/model/lru-document-cache';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { LatexCompilerEngine } from '@/features/editor/subsystems/compiler';

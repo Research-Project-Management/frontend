@@ -27,7 +27,7 @@ export default function MessagesRoute() {
         />
       </header>
 
-      {/* Mock Content */}
+      {/* Module not yet available: empty state */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none">
         <div className="size-12 rounded-xl bg-muted/60 flex items-center justify-center text-muted-foreground mb-3 border border-border/50">
           <MessageSquare className="size-6 text-foreground/70" strokeWidth={1.5} />

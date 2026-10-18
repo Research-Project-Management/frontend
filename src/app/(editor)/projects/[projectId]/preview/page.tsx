@@ -16,7 +16,7 @@ import { Button } from '@/shared/components/ui/button';
 import {
   editorCommandBus,
   useCompileStore,
-  useLayoutStore,
+  useWorkspaceStore,
 } from '@/features/editor/core';
 
 const PdfViewer = dynamic(
@@ -29,7 +29,7 @@ export default function DetachedPdfPreviewPage() {
   const projectId = params?.projectId;
 
   useEffect(() => {
-    useLayoutStore.getState().setPdfDetached(true);
+    useWorkspaceStore.getState().setPdfDetached(true);
 
     if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
 

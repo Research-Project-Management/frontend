@@ -18,9 +18,6 @@ export interface AiUIState {
   searchQuery: string;
   isSearchVisible: boolean;
 
-  // ── AI Model Configuration ───────────────────────────────────────────────────
-  selectedModel: string;
-
   // ── Actions ──────────────────────────────────────────────────────────────────
   toggleSidebar: () => void;
   setSidebarOpen: (isOpen: boolean) => void;
@@ -31,7 +28,6 @@ export interface AiUIState {
   setSearchQuery: (query: string) => void;
   toggleSearchVisible: () => void;
   setSearchVisible: (visible: boolean) => void;
-  setSelectedModel: (model: string) => void;
 }
 
 export const useAiUIStore = create<AiUIState>()(
@@ -43,7 +39,6 @@ export const useAiUIStore = create<AiUIState>()(
       activeModal: null,
       searchQuery: '',
       isSearchVisible: false,
-      selectedModel: 'Claude Sonnet 3.7',
 
       toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
       setSidebarOpen: (isOpen: boolean) => set({ isSidebarOpen: isOpen }),
@@ -57,14 +52,11 @@ export const useAiUIStore = create<AiUIState>()(
       setSearchQuery: (query: string) => set({ searchQuery: query }),
       toggleSearchVisible: () => set((state) => ({ isSearchVisible: !state.isSearchVisible })),
       setSearchVisible: (visible: boolean) => set({ isSearchVisible: visible }),
-
-      setSelectedModel: (model: string) => set({ selectedModel: model }),
     }),
     {
       name: 'ai-ui-storage',
       partialize: (state) => ({
         isSidebarOpen: state.isSidebarOpen,
-        selectedModel: state.selectedModel,
       }),
     }
   )

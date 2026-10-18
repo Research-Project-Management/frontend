@@ -5,7 +5,6 @@ import { isTokenValid, getSafeRedirectUrl } from '@/shared/utils/auth-token.util
 const PROTECTED_PREFIXES = [
   '/home',
   '/projects',
-  '/dashboard',
   '/library',
   '/storage',
   '/settings',
@@ -14,16 +13,13 @@ const PROTECTED_PREFIXES = [
   '/editor',
   '/your-work',
   '/stickies',
-  '/archives',
   '/pages',
 ];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const rawToken =
-    request.cookies.get('accessToken')?.value ||
-    request.cookies.get('token')?.value;
+  const rawToken = request.cookies.get('accessToken')?.value;
 
   const hasRawToken = Boolean(rawToken && rawToken.trim());
   const isAuthenticated = isTokenValid(rawToken);
@@ -34,7 +30,6 @@ export function proxy(request: NextRequest) {
     if (hasRawToken && !isAuthenticated) {
       const response = NextResponse.next();
       response.cookies.delete('accessToken');
-      response.cookies.delete('token');
       return response;
     }
     return NextResponse.next();
@@ -53,7 +48,6 @@ export function proxy(request: NextRequest) {
     const response = NextResponse.next();
     if (hasRawToken && !isAuthenticated) {
       response.cookies.delete('accessToken');
-      response.cookies.delete('token');
     }
     return response;
   }
@@ -71,7 +65,6 @@ export function proxy(request: NextRequest) {
     const response = NextResponse.redirect(loginUrl);
     if (hasRawToken) {
       response.cookies.delete('accessToken');
-      response.cookies.delete('token');
     }
     return response;
   }

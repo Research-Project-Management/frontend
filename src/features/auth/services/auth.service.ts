@@ -2,10 +2,9 @@ import {
   apiGet,
   apiPost,
   apiPut,
-  setTokens,
+  setAuthToken,
   removeAuthToken,
   getAuthToken,
-  getRefreshToken,
 } from "@/shared/lib/api";
 import { isApiError } from "@/shared/types/api.types";
 import { fixMojibake } from "@/shared/lib/utils";
@@ -19,19 +18,16 @@ import type {
 } from '../types/auth.types';
 
 /**
- * Authenticates user credentials, stores access/refresh tokens, and returns user profile.
+ * Authenticates user credentials, stores access token, and returns user profile.
  */
 export const loginUser = async (payload: LoginPayload): Promise<AuthUser> => {
   const res = await apiPost<{
     user?: AuthUser;
     accessToken?: string;
-    token?: string;
-    refreshToken?: string;
   } & Partial<AuthUser>>('/auth/login', payload);
 
-  const accessToken = res.accessToken || res.token;
-  if (accessToken) {
-    setTokens(accessToken, res.refreshToken || '');
+  if (res.accessToken) {
+    setAuthToken(res.accessToken);
   }
 
   const user: AuthUser = (res.user || res) as AuthUser;
@@ -123,13 +119,11 @@ export const registerUser = async (
   const res = await apiPost<
     RegisterResponse & {
       accessToken?: string;
-      token?: string;
-      refreshToken?: string;
     }
   >('/auth/register', payload);
 
-  if (res.accessToken || res.token) {
-    setTokens(res.accessToken || res.token!, res.refreshToken || '');
+  if (res.accessToken) {
+    setAuthToken(res.accessToken);
   }
   return res;
 };
@@ -138,15 +132,10 @@ export const registerUser = async (
  * Revokes the server-side refresh token and clears all local credentials.
  */
 export const logoutUser = async (): Promise<void> => {
-  const refreshToken = getRefreshToken();
   removeAuthToken();
   setCachedUser(null);
   try {
-    if (refreshToken) {
-      await apiPost('/auth/logout', { refreshToken });
-    } else {
-      await apiPost('/auth/logout', {});
-    }
+    await apiPost('/auth/logout', {});
   } catch {
     // Graceful swallow of network failures during client logout
   }

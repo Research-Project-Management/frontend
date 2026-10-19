@@ -53,6 +53,7 @@ export interface AnnotationsPanelProps {
   paper: ReaderDocument;
   scopeId?: string;
   attachmentId?: string;
+  annotations?: ReaderAnnotation[];
   onNavigateToPage?: (pageNumber: number, annotationId?: string) => void;
   onAddToNote?: (text: string, pageNumber?: number) => void;
   selectedIds?: Set<string>;
@@ -64,6 +65,11 @@ export interface AnnotationsPanelProps {
 }
 
 const EMPTY_SELECTED_IDS = new Set<string>();
+
+const ZOTERO_COLOR_BY_HEX_MAP: ReadonlyMap<
+  string,
+  (typeof ZOTERO_COLORS)[number]
+> = new Map(ZOTERO_COLORS.map((c) => [c.hex.toLowerCase(), c]));
 
 function AnnotationEditForm({
   initialQuote,
@@ -158,6 +164,7 @@ export function AnnotationsPanel({
   paper,
   scopeId,
   attachmentId,
+  annotations: propAnnotations,
   onNavigateToPage,
   onAddToNote,
   selectedIds = EMPTY_SELECTED_IDS,
@@ -168,10 +175,10 @@ export function AnnotationsPanel({
   onBatchAddToNote,
 }: AnnotationsPanelProps) {
   const effectiveAttachmentId =
-    attachmentId || paper.attachments?.[0]?.id || paper.primaryFile?.fileId;
+    attachmentId || paper.attachments?.[0]?.id || paper.primaryFile?.fileId || undefined;
 
   const {
-    annotations,
+    annotations: queriedAnnotations,
     isLoading,
     isError,
     refetch,
@@ -184,6 +191,8 @@ export function AnnotationsPanel({
     isImporting,
   } = useAnnotations(scopeId, effectiveAttachmentId);
 
+  const annotations = propAnnotations ?? queriedAnnotations;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedColor, setSelectedColor] = useState<string>('all');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -193,12 +202,14 @@ export function AnnotationsPanel({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
 
+  const selectedIdsArray = useMemo(() => Array.from(selectedIds), [selectedIds]);
+
   // Zotero behavior: Only show colors and tags that actually exist in the current paper's annotations
   const existingColors = useMemo(() => {
     const map = new Map<string, (typeof ZOTERO_COLORS)[number]>();
     for (const a of annotations) {
       const hex = (a.color || '#ffd400').toLowerCase();
-      const match = ZOTERO_COLORS.find((c) => c.hex.toLowerCase() === hex);
+      const match = ZOTERO_COLOR_BY_HEX_MAP.get(hex);
       if (match && !map.has(match.id)) {
         map.set(match.id, match);
       }
@@ -227,40 +238,38 @@ export function AnnotationsPanel({
   }, [annotations]);
 
   const filteredAnnotations = useMemo(() => {
+    const qLower = searchQuery.trim().toLowerCase();
+    const colorLower = selectedColor === 'all' ? null : selectedColor.toLowerCase();
+
     const list = annotations.filter((a) => {
-      const matchSearch =
-        !searchQuery.trim() ||
-        (a.quoteText && a.quoteText.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (a.comment && a.comment.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (a.tags && a.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
-
-      const annotationColor = (a.color || '#ffd400').toLowerCase();
-      const matchColor =
-        selectedColor === 'all' ||
-        annotationColor === selectedColor.toLowerCase();
-
-      const matchTag =
-        !selectedTag ||
-        (a.tags && a.tags.includes(selectedTag));
-
-      const matchAuthor = authorFilter === 'all' || a.authorId === authorFilter;
-
-      return matchSearch && matchColor && matchTag && matchAuthor;
+      if (authorFilter !== 'all' && a.authorId !== authorFilter) return false;
+      if (selectedTag && (!a.tags || !a.tags.includes(selectedTag))) return false;
+      if (colorLower !== null && (a.color || '#ffd400').toLowerCase() !== colorLower) {
+        return false;
+      }
+      if (!qLower) return true;
+      return Boolean(
+        (a.quoteText && a.quoteText.toLowerCase().includes(qLower)) ||
+          (a.comment && a.comment.toLowerCase().includes(qLower)) ||
+          (a.tags && a.tags.some((t) => t.toLowerCase().includes(qLower))),
+      );
     });
 
     if (sortBy === 'position') {
       return PdfAnnotationEngine.sortAnnotationsInReadingOrder(list);
     }
 
-    return list.sort((a, b) => {
-      if (sortBy === 'newest') {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    if (sortBy === 'newest' || sortBy === 'oldest') {
+      const tsMap = new Map<string, number>();
+      for (const a of list) {
+        const ts = Date.parse(a.createdAt);
+        tsMap.set(a.id, Number.isNaN(ts) ? 0 : ts);
       }
-      if (sortBy === 'oldest') {
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      }
-      return (a.color || '').localeCompare(b.color || '');
-    });
+      const dir = sortBy === 'newest' ? -1 : 1;
+      return list.sort((a, b) => ((tsMap.get(a.id) ?? 0) - (tsMap.get(b.id) ?? 0)) * dir);
+    }
+
+    return list.sort((a, b) => (a.color || '').localeCompare(b.color || ''));
   }, [annotations, searchQuery, selectedColor, selectedTag, authorFilter, sortBy]);
 
   const handleSaveEdit = async (
@@ -650,8 +659,8 @@ export function AnnotationsPanel({
 
               // Target items for context menu actions
               const targetIds =
-                isSelected && selectedIds.size > 0
-                  ? Array.from(selectedIds)
+                isSelected && selectedIdsArray.length > 0
+                  ? selectedIdsArray
                   : [annotation.id];
 
               return (

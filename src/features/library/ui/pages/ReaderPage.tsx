@@ -53,6 +53,11 @@ const Viewer = dynamic(
   },
 );
 
+const EpubAndSnapshotViewer = dynamic(
+  () => import("@/features/library/ui/reader/viewer/EpubAndSnapshotViewer"),
+  { ssr: false },
+);
+
 export interface ReaderPageProps {
   paperId?: string | null;
   onBack?: () => void;
@@ -241,6 +246,11 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     handleNavigateToPage(prevPage);
   }, [pageHistory, handleNavigateToPage]);
 
+  // Ensure panels are closed by default when entering the reader view
+  useEffect(() => {
+    setIsInspectorOpen(false);
+  }, [setIsInspectorOpen]);
+
   // Escape key exits distraction-free reading mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -338,7 +348,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     }
   }, [effectiveAttachmentId, triggerOcr]);
 
-  const { exportAnnotatedPdf } = useExportAnnotatedPdf(scopeId || "me");
+  const { exportAnnotatedPdf } = useExportAnnotatedPdf(scopeId || "user");
 
   const handleExportAnnotatedPdf = useCallback(async () => {
     const currentPaperId = paper?.id || activeTabId;
@@ -359,6 +369,73 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     }
   }, []);
 
+  const handleDeleteAnnotationProp = useCallback(
+    (ann: { id: string; version?: number }) => {
+      if (deleteAnnotation) deleteAnnotation(ann.id, ann.version);
+    },
+    [deleteAnnotation],
+  );
+
+  const handleUpdateAnnotationProp = useCallback(
+    (
+      id: string,
+      version: number | undefined,
+      dto: { color?: string; comment?: string; tags?: string[] },
+    ) => {
+      if (updateAnnotation) return updateAnnotation(id, version, dto);
+      return Promise.resolve();
+    },
+    [updateAnnotation],
+  );
+
+  const handleToggleSidebar = useCallback(() => {
+    setIsSidebarOpen((v) => !v);
+  }, [setIsSidebarOpen]);
+
+  const handleToggleToolLocked = useCallback(() => {
+    setIsToolLocked((v) => !v);
+  }, []);
+
+  const handleZoomIn = useCallback(() => {
+    setZoom((z) => Math.min(2.5, +(z + 0.15).toFixed(2)));
+  }, [setZoom]);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom((z) => Math.max(0.5, +(z - 0.15).toFixed(2)));
+  }, [setZoom]);
+
+  const handleFitWidth = useCallback(() => {
+    setFitMode("fit-width");
+    setZoom(1.0);
+  }, [setZoom]);
+
+  const handleToggleSearch = useCallback(() => {
+    setIsSearchOpen((v) => !v);
+  }, []);
+
+  const handleCloseSearch = useCallback(() => {
+    setIsSearchOpen(false);
+  }, []);
+
+  const handleCloseSidebar = useCallback(() => {
+    setIsSidebarOpen(false);
+  }, [setIsSidebarOpen]);
+
+  const handleCloseInspector = useCallback(() => {
+    setIsInspectorOpen(false);
+  }, [setIsInspectorOpen]);
+
+  const handleClearPendingText = useCallback(() => {
+    setPendingNoteText("");
+  }, [setPendingNoteText]);
+
+  const handleSelectItem = useCallback(
+    (id: string) => {
+      router.push(`/library/papers/${id}`);
+    },
+    [router],
+  );
+
   const sharedViewerProps = {
     blobUrl: pdfBlobUrl,
     isLoading: pdfLoading,
@@ -367,13 +444,8 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     onAddToNote: handleAddToNote,
     onAnnotate: handleAnnotateWithLock,
     annotations,
-    onDeleteAnnotation: (ann: { id: string; version?: number }) =>
-      deleteAnnotation && deleteAnnotation(ann.id, ann.version),
-    onUpdateAnnotation: (
-      id: string,
-      version: number | undefined,
-      dto: { color?: string; comment?: string; tags?: string[] },
-    ) => updateAnnotation && updateAnnotation(id, version, dto),
+    onDeleteAnnotation: handleDeleteAnnotationProp,
+    onUpdateAnnotation: handleUpdateAnnotationProp,
     fulltext,
     isLoadingFulltext,
     paper: paper || undefined,
@@ -389,6 +461,70 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
   const retractionDetails = paper?.retractionDetails as
     { reason?: string; noticeUrl?: string } | undefined;
+
+  // Detect EPUB or Web Snapshot attachment when primary file is .epub / .html or when no PDF exists
+  const epubOrSnapshotInfo = (() => {
+    if (!paper) return null;
+    type RawAttItem = {
+      url?: string;
+      fileUrl?: string;
+      mimeType?: string;
+      filename?: string;
+      attachmentType?: string;
+      linkMode?: string;
+    };
+    const rawAtts: RawAttItem[] = Array.isArray(paper.attachments)
+      ? (paper.attachments as RawAttItem[])
+      : [];
+    const primaryMime = paper.primaryFile?.mimeType?.toLowerCase() || "";
+    const primaryName = (
+      paper.filename ||
+      paper.primaryFile?.filename ||
+      ""
+    ).toLowerCase();
+
+    if (
+      primaryMime.includes("epub") ||
+      primaryName.endsWith(".epub") ||
+      (paperUrl && /\.epub(?:$|\?)/i.test(paperUrl))
+    ) {
+      return {
+        mode: "epub" as const,
+        url: paperUrl || paper.primaryFile?.url || "",
+      };
+    }
+
+    const epubAtt = rawAtts.find(
+      (a: RawAttItem) =>
+        a.mimeType?.toLowerCase().includes("epub") ||
+        a.filename?.toLowerCase().endsWith(".epub"),
+    );
+    if (epubAtt && (epubAtt.url || epubAtt.fileUrl)) {
+      return {
+        mode: "epub" as const,
+        url: (epubAtt.fileUrl || epubAtt.url) as string,
+      };
+    }
+
+    if (!paperUrl) {
+      const snapshotAtt = rawAtts.find(
+        (a: RawAttItem) =>
+          a.attachmentType === "snapshot" ||
+          a.attachmentType === "web_snapshot" ||
+          a.linkMode === "imported_url" ||
+          a.mimeType === "text/html" ||
+          a.filename?.toLowerCase().endsWith(".html"),
+      );
+      if (snapshotAtt && (snapshotAtt.url || snapshotAtt.fileUrl)) {
+        return {
+          mode: "snapshot" as const,
+          url: (snapshotAtt.fileUrl || snapshotAtt.url) as string,
+        };
+      }
+    }
+
+    return null;
+  })();
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
@@ -408,10 +544,10 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       )}
 
       {/* 2. ZOTERO 7 DEDICATED READER TOOLBAR (Row 2) */}
-      {paperUrl && (
+      {(paperUrl || epubOrSnapshotInfo) && (
         <ReaderToolbar
           isSidebarOpen={isSidebarOpen}
-          onToggleSidebar={() => setIsSidebarOpen((v) => !v)}
+          onToggleSidebar={handleToggleSidebar}
           visiblePage={visiblePage}
           numPages={numPages}
           onNavigateToPage={handleNavigateToPageWithHistory}
@@ -426,17 +562,12 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           activeColor={activeColor}
           onSelectColor={setActiveColor}
           isToolLocked={isToolLocked}
-          onToggleToolLocked={() => setIsToolLocked((v) => !v)}
+          onToggleToolLocked={handleToggleToolLocked}
           zoom={zoom}
-          onZoomIn={() => setZoom((z) => Math.min(2.5, +(z + 0.15).toFixed(2)))}
-          onZoomOut={() =>
-            setZoom((z) => Math.max(0.5, +(z - 0.15).toFixed(2)))
-          }
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
           onSetZoom={setZoom}
-          onFitWidth={() => {
-            setFitMode("fit-width");
-            setZoom(1.0);
-          }}
+          onFitWidth={handleFitWidth}
           rotation={rotation}
           onRotate={handleRotate}
           themeMode={themeMode}
@@ -445,9 +576,9 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           onSelectViewMode={setViewMode}
           fitMode={fitMode}
           onSelectFitMode={setFitMode}
-          onToggleSearch={() => setIsSearchOpen((v) => !v)}
+          onToggleSearch={handleToggleSearch}
           isInspectorOpen={isInspectorOpen}
-          onToggleInspector={() => setIsInspectorOpen(!isInspectorOpen)}
+          onToggleInspector={toggleInspector}
           isScanned={isScanned}
           ocrStatus={ocrStatus}
           onTriggerOcr={handleTriggerOcr}
@@ -491,8 +622,8 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         {!isReadingMode && (
           <Sidebar
             isOpen={isSidebarOpen}
-            onClose={() => setIsSidebarOpen(false)}
-            onToggleOpen={() => setIsSidebarOpen((v) => !v)}
+            onClose={handleCloseSidebar}
+            onToggleOpen={handleToggleSidebar}
             currentPage={visiblePage}
             totalPages={numPages}
             onJumpToPage={handleNavigateToPageWithHistory}
@@ -507,12 +638,13 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
             onBatchChangeColor={handleBatchChangeColor}
             onBatchDelete={handleBatchDelete}
             onBatchAddToNote={handleBatchAddToNote}
+            annotations={annotations}
             annotationsCount={annotations.length}
             onAddToNote={handleAddToNote}
           />
         )}
 
-        {/* 4. MAIN PDF CANVAS */}
+        {/* 4. MAIN DOCUMENT CANVAS (PDF / EPUB / WEB SNAPSHOT) */}
         <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden relative">
           {isLoadingPapers ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-2.5">
@@ -535,6 +667,24 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 icon: ChevronLeft,
               }}
             />
+          ) : epubOrSnapshotInfo ? (
+            <EpubAndSnapshotViewer
+              url={epubOrSnapshotInfo.url}
+              mode={epubOrSnapshotInfo.mode}
+              title={paper.title}
+              sourceUrl={paper.url ?? undefined}
+              themeMode={themeMode}
+              zoom={zoom}
+              activeColor={activeColor}
+              onAddToNote={handleAddToNote}
+              onAnnotate={(text, pageNum, colorHex) =>
+                handleAnnotateWithLock(text, pageNum, colorHex)
+              }
+              onPageChange={(curr, total) => {
+                actions.setVisiblePage(curr);
+                actions.setNumPages(total);
+              }}
+            />
           ) : paperUrl ? (
             splitMode === "none" ? (
               <Viewer
@@ -543,7 +693,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 onVisiblePageChange={actions.setVisiblePage}
                 onTotalPagesChange={actions.setNumPages}
                 isSearchOpen={isSearchOpen}
-                onCloseSearch={() => setIsSearchOpen(false)}
+                onCloseSearch={handleCloseSearch}
                 initialSearchQuery={initialSearchQuery}
               />
             ) : (
@@ -562,7 +712,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                     onVisiblePageChange={actions.setVisiblePage}
                     onTotalPagesChange={actions.setNumPages}
                     isSearchOpen={isSearchOpen}
-                    onCloseSearch={() => setIsSearchOpen(false)}
+                    onCloseSearch={handleCloseSearch}
                     initialSearchQuery={initialSearchQuery}
                   />
                 </div>
@@ -575,7 +725,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
             <PlaneEmptyState
               variant="document"
               title={paper.title || "Paper Reference"}
-              description="No PDF file attached to this entry. You can review metadata or notes using the side panel."
+              description="No PDF, EPUB, or Web Snapshot attached to this entry. You can review metadata or notes using the side panel."
               action={{
                 label: "Open Details",
                 onClick: () => setIsInspectorOpen(true),
@@ -587,16 +737,14 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         {/* 5. UNIFIED INSPECTOR PANEL */}
         {!isReadingMode && (
           <ReaderInspector
-            paper={paper}
             item={paper}
             scopeId={scopeId}
-            projectId={projectId}
             canEdit={true}
-            onClose={() => setIsInspectorOpen(false)}
-            onSelectPaper={(id) => router.push(`/library/papers/${id}`)}
+            onClose={handleCloseInspector}
+            onSelectItem={handleSelectItem}
             onNavigateToAnnotation={handleNavigateToPageWithHistory}
             pendingNoteText={pendingNoteText}
-            onClearPendingText={() => setPendingNoteText("")}
+            onClearPendingText={handleClearPendingText}
           />
         )}
       </div>

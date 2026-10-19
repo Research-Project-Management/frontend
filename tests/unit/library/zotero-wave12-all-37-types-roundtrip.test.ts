@@ -30,7 +30,7 @@ import {
   getVenueFieldForType,
 } from '@/features/library/domain/types/item-types.types';
 import {
-  mapBackendItemToPaper,
+  mapBackendItem,
   getItemDisplayTitle,
   getPublicationVenue,
   getItemDisplayDate,
@@ -40,7 +40,7 @@ import {
   resolveInspectorFieldValue,
   buildInspectorFieldPatch,
   DIRECT_METADATA_FIELDS,
-} from '@/features/library/ui/inspector/InfoSection';
+} from '@/features/library/domain/item-field-schema';
 import {
   parseCreators,
   toItemCreators,
@@ -151,7 +151,7 @@ describe('Wave 12: Exhaustive All-37 Zotero Item Types & All-121 Fields Round-Tr
       if (field !== 'title' && field !== 'extra') {
         expect(
           DIRECT_METADATA_FIELDS.has(field),
-          `Field "${field}" missing from DIRECT_METADATA_FIELDS in InfoSection.tsx`,
+          `Field "${field}" missing from DIRECT_METADATA_FIELDS in domain/item-field-schema.ts`,
         ).toBe(true);
       }
     }
@@ -192,8 +192,8 @@ describe('Wave 12: Exhaustive All-37 Zotero Item Types & All-121 Fields Round-Tr
           ],
         };
 
-        // 2. Normalize via mapBackendItemToPaper
-        const paper = mapBackendItemToPaper(rawBackendPayload);
+        // 2. Normalize via mapBackendItem
+        const paper = mapBackendItem(rawBackendPayload);
         expect(paper.itemType).toBe(itemType);
 
         // Verify display title, display date, and venue extraction

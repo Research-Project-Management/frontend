@@ -37,7 +37,11 @@ import type {
 function getCollectionAncestorPath(
   collectionId: string,
   colMap: Map<string, Collection>,
+  memo?: Map<string, string>,
 ): string {
+  const cached = memo?.get(collectionId);
+  if (cached !== undefined) return cached;
+
   const parts: string[] = [];
   let curr = colMap.get(collectionId);
   const visited = new Set<string>();
@@ -46,83 +50,98 @@ function getCollectionAncestorPath(
     visited.add(curr.parentId);
     const parent = colMap.get(curr.parentId);
     if (parent?.name) {
-      parts.unshift(parent.name);
+      parts.push(parent.name);
     }
     curr = parent;
   }
-  return parts.join(" / ");
+  parts.reverse();
+  const resolved = parts.join(" / ");
+  memo?.set(collectionId, resolved);
+  return resolved;
 }
 
 // ── Shared Hook: Item Collections State & Undoable Toggle/Remove ────────────
 function useItemCollectionsManager(
-  paper: Item,
+  item: Item,
   effectiveScope: string,
   canEdit: boolean,
 ) {
   const updateItemMutation = useUpdateLibraryItemMutation(effectiveScope);
-  const updatePaper = useCallback(
+  const updateItem = useCallback(
     (
-      id: string,
-      payload: Partial<Item>,
+      itemId: string,
+      data: Partial<Item>,
       options?: { expectedVersion?: number; silent?: boolean },
     ) => {
       updateItemMutation.mutate({
-        id,
-        payload,
+        itemId,
+        data,
         expectedVersion: options?.expectedVersion,
         silent: options?.silent ?? true,
       });
     },
     [updateItemMutation],
   );
-  const { state: colState, createCollection } = useCollections(effectiveScope);
-  const collections = useMemo(
-    () => colState?.collections || [],
-    [colState?.collections],
-  );
+  const { collections = [], createCollection } = useCollections(effectiveScope);
 
   // Map collections for O(1) lookup
   const colMap = useMemo(() => {
     const map = new Map<string, Collection>();
     collections.forEach((c: Collection) => map.set(c.id, c));
-    (paper?.collections || []).forEach((c) => {
+    (item?.collections || []).forEach((c) => {
       if (c?.id && !map.has(c.id)) {
         map.set(c.id, c as Collection);
       }
     });
     return map;
-  }, [collections, paper?.collections]);
+  }, [collections, item?.collections]);
+
+  // Pre-compute ancestor paths and lowercased search tokens once per colMap change
+  const collectionSearchIndex = useMemo(() => {
+    const pathMemo = new Map<string, string>();
+    const index = new Map<
+      string,
+      { path: string; lowerPath: string; lowerName: string }
+    >();
+    colMap.forEach((col, id) => {
+      const path = getCollectionAncestorPath(id, colMap, pathMemo);
+      index.set(id, {
+        path,
+        lowerPath: path.toLowerCase(),
+        lowerName: (col.name || "").toLowerCase(),
+      });
+    });
+    return index;
+  }, [colMap]);
 
   // Set of all currently assigned collection IDs
   const assignedCollectionIdsSet = useMemo(() => {
     const ids = new Set<string>();
-    if (paper?.collectionId) ids.add(paper.collectionId);
-    if (Array.isArray(paper?.collectionIds)) {
-      paper.collectionIds.forEach((id) => id && ids.add(id));
+    if (Array.isArray(item?.collectionIds)) {
+      item.collectionIds.forEach((id) => id && ids.add(id));
     }
-    if (Array.isArray(paper?.collections)) {
-      paper.collections.forEach((c) => c?.id && ids.add(c.id));
+    if (Array.isArray(item?.collections)) {
+      item.collections.forEach((c) => c?.id && ids.add(c.id));
     }
     return ids;
-  }, [paper?.collectionId, paper?.collectionIds, paper?.collections]);
+  }, [item?.collectionIds, item?.collections]);
 
   // Toggle assigning or removing a collection with undo support
   const handleToggleCollection = useCallback(
     (targetColId: string) => {
-      if (!paper?.id || !canEdit) return;
+      if (!item?.id || !canEdit) return;
       const isAssigned = assignedCollectionIdsSet.has(targetColId);
       const prevIds = Array.from(assignedCollectionIdsSet);
       const remainingIds = isAssigned
         ? prevIds.filter((id) => id !== targetColId)
         : [...prevIds, targetColId];
 
-      updatePaper(
-        paper.id,
+      updateItem(
+        item.id,
         {
           collectionIds: remainingIds,
-          collectionId: remainingIds[0] || null,
         },
-        { expectedVersion: paper.version },
+        { expectedVersion: item.version },
       );
 
       const targetCol = colMap.get(targetColId);
@@ -141,13 +160,12 @@ function useItemCollectionsManager(
           action: {
             label: "Undo",
             onClick: () => {
-              updatePaper(
-                paper.id,
+              updateItem(
+                item.id,
                 {
                   collectionIds: prevIds,
-                  collectionId: prevIds[0] || null,
                 },
-                { expectedVersion: paper.version },
+                { expectedVersion: item.version },
               );
               toast.success(`Restored to "${colName}"`, { id: "col-assign" });
             },
@@ -158,11 +176,11 @@ function useItemCollectionsManager(
       }
     },
     [
-      paper?.id,
-      paper?.version,
+      item?.id,
+      item?.version,
       assignedCollectionIdsSet,
       canEdit,
-      updatePaper,
+      updateItem,
       colMap,
     ],
   );
@@ -170,8 +188,9 @@ function useItemCollectionsManager(
   return {
     collections,
     colMap,
+    collectionSearchIndex,
     assignedCollectionIdsSet,
-    updatePaper,
+    updateItem,
     createCollection,
     handleToggleCollection,
   };
@@ -179,8 +198,7 @@ function useItemCollectionsManager(
 
 // ── CollectionPickerPopover Component ────────────────────────────────────────
 export interface CollectionPickerPopoverProps {
-  item?: Item;
-  paper?: Item;
+  item: Item;
   scopeId?: string;
   canEdit?: boolean;
   align?: "start" | "center" | "end";
@@ -188,38 +206,42 @@ export interface CollectionPickerPopoverProps {
 }
 
 export function CollectionPickerPopover(props: CollectionPickerPopoverProps) {
-  const paper = (props.item || props.paper)!;
-  const { scopeId, canEdit = true, align = "end", children } = props;
+  const { item, scopeId, canEdit = true, align = "end", children } = props;
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreatingQuick, setIsCreatingQuick] = useState(false);
 
-  const effectiveScope = scopeId || paper?.projectId || "user";
+  const effectiveScope = scopeId || item?.projectId || "user";
   const {
     collections,
     colMap,
+    collectionSearchIndex,
     assignedCollectionIdsSet,
-    updatePaper,
+    updateItem,
     createCollection,
     handleToggleCollection,
-  } = useItemCollectionsManager(paper, effectiveScope, canEdit);
+  } = useItemCollectionsManager(item, effectiveScope, canEdit);
   const openModal = useLibraryUIStore((s) => s.openModal);
 
-  // Filter collections based on search query
+  // Filter collections based on search query using O(1) pre-computed index
   const filteredCollections = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return collections;
     return collections.filter((c: Collection) => {
+      const entry = collectionSearchIndex.get(c.id);
+      if (entry) {
+        return entry.lowerName.includes(q) || entry.lowerPath.includes(q);
+      }
       const name = c.name?.toLowerCase() || "";
       const path = getCollectionAncestorPath(c.id, colMap).toLowerCase();
       return name.includes(q) || path.includes(q);
     });
-  }, [collections, searchQuery, colMap]);
+  }, [collections, searchQuery, colMap, collectionSearchIndex]);
 
-  // Quick create a new collection from search query and assign paper to it immediately
+  // Quick create a new collection from search query and assign item to it immediately
   const handleQuickCreateAndAssign = async () => {
     const trimmed = searchQuery.trim();
-    if (!trimmed || !paper.id || !canEdit || isCreatingQuick) return;
+    if (!trimmed || !item.id || !canEdit || isCreatingQuick) return;
 
     setIsCreatingQuick(true);
     try {
@@ -232,13 +254,12 @@ export function CollectionPickerPopover(props: CollectionPickerPopoverProps) {
         (res as { id?: string })?.id;
       if (createdId) {
         const nextIds = [...Array.from(assignedCollectionIdsSet), createdId];
-        updatePaper(
-          paper.id,
+        updateItem(
+          item.id,
           {
             collectionIds: nextIds,
-            collectionId: nextIds[0] || null,
           },
-          { expectedVersion: paper.version },
+          { expectedVersion: item.version },
         );
         toast.success(`Created & added to "${trimmed}"`, { id: "col-assign" });
         setSearchQuery("");
@@ -403,41 +424,39 @@ export function CollectionPickerPopover(props: CollectionPickerPopoverProps) {
 
 // ── Main CollectionsSection Component ─────────────────────────────────────────
 interface CollectionsSectionProps {
-  item?: Item;
-  paper?: Item;
+  item: Item;
   scopeId?: string;
-  projectId?: string;
   hideHeader?: boolean;
   canEdit?: boolean;
 }
 
 export default function CollectionsSection(props: CollectionsSectionProps) {
-  const paper = (props.item || props.paper)!;
-  const { scopeId, projectId, hideHeader = false, canEdit = true } = props;
-  const effectiveScope = scopeId || projectId || paper?.projectId || "user";
+  const { item, scopeId, hideHeader = false, canEdit = true } = props;
+  const effectiveScope = scopeId || item?.projectId || "user";
   const openModal = useLibraryUIStore((s) => s.openModal);
   const {
     colMap,
+    collectionSearchIndex,
     assignedCollectionIdsSet,
     handleToggleCollection: handleRemoveFromCollection,
-  } = useItemCollectionsManager(paper, effectiveScope, canEdit);
+  } = useItemCollectionsManager(item, effectiveScope, canEdit);
   const { projects = [] } = useLibraryProjectContext();
 
   // Resolve active library root name and icon (My Library vs Project Library)
   const isProject = Boolean(
     (typeof effectiveScope === "string" &&
       effectiveScope.startsWith("project:")) ||
-    paper?.projectId,
+    item?.projectId,
   );
 
   const matchedProject = useMemo(() => {
     if (!isProject) return null;
     const cleanId = effectiveScope.replace(/^project:/, "");
     return (
-      projects.find((p) => p.id === cleanId || p.id === paper?.projectId) ||
+      projects.find((p) => p.id === cleanId || p.id === item?.projectId) ||
       null
     );
-  }, [isProject, effectiveScope, paper?.projectId, projects]);
+  }, [isProject, effectiveScope, item?.projectId, projects]);
 
   const libraryTitle = isProject
     ? matchedProject?.name || "Project Library"
@@ -454,11 +473,13 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
     assignedCollectionIdsSet.forEach((colId) => {
       const col = colMap.get(colId);
       const name = col?.name || "Collection";
-      const path = getCollectionAncestorPath(colId, colMap);
+      const path =
+        collectionSearchIndex.get(colId)?.path ??
+        getCollectionAncestorPath(colId, colMap);
       list.push({ id: colId, name, path });
     });
     return list.sort((a, b) => a.name.localeCompare(b.name));
-  }, [assignedCollectionIdsSet, colMap]);
+  }, [assignedCollectionIdsSet, colMap, collectionSearchIndex]);
 
   return (
     <div className="flex flex-col gap-0.5 select-none font-sans w-full">
@@ -529,7 +550,7 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
       {assignedCollectionIdsSet.size === 0 && canEdit && (
         <div className="pt-0.5 px-1.5">
           <CollectionPickerPopover
-            paper={paper}
+            item={item}
             scopeId={effectiveScope}
             canEdit={canEdit}
             align="start"
@@ -602,7 +623,7 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">
-                  {`Remove from "${col.name}" (item will remain in library)`}
+                  Remove from collection
                 </TooltipContent>
               </Tooltip>
             )}
@@ -614,7 +635,7 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
       {assignedCollections.length > 0 && canEdit && (
         <div className="pt-1 px-1.5">
           <CollectionPickerPopover
-            paper={paper}
+            item={item}
             scopeId={effectiveScope}
             canEdit={canEdit}
             align="start"

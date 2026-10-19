@@ -678,8 +678,6 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
         formatCslJson,
         formatCitation,
       } = await import("@/features/library/domain/citations");
-      const { buildFallbackCitation } =
-        await import("@/features/library/core/coordinator/batch-action.coordinator");
 
       expect(ITEM_TYPE_EXPORT_SPEC.conferencepaper).toEqual({
         bibtexType: "inproceedings",
@@ -703,12 +701,11 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
       const csl = formatCslJson(thesisItem);
       expect(csl.type).toBe("thesis");
 
-      // Verify buildFallbackCitation delegates identically to formatCitation
-      expect(buildFallbackCitation(thesisItem, "apa")).toBe(
-        formatCitation(thesisItem, "apa"),
+      expect(formatCitation(thesisItem, "apa")).toContain(
+        "Foundations of Distributed Graph Systems",
       );
-      expect(buildFallbackCitation(thesisItem, "ieee")).toBe(
-        formatCitation(thesisItem, "ieee"),
+      expect(formatCitation(thesisItem, "ieee")).toContain(
+        "Foundations of Distributed Graph Systems",
       );
     });
 

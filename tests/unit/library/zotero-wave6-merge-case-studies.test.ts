@@ -37,7 +37,7 @@ describe('Zotero Wave 6: Comprehensive Duplicate Detection & Merge Case Studies 
         year: 2023,
         doi: '10.48550/arXiv.2307.08691',
         publicationTitle: 'arXiv:2307.08691 [cs.LG]',
-        abstract:
+        abstractNote:
           'Scaling Transformer models to longer sequences is bottlenecked by the quadratic time and memory complexity of the attention layer. We propose FlashAttention-2 with improved work partitioning across GPU warps and thread blocks, achieving 2x speedup over FlashAttention-1 and reaching up to 73% of theoretical peak FLOPs/s on A100 GPUs.',
         authors: [{ firstName: 'Tri', lastName: 'Dao' }],
         tags: ['preprint', 'to-read', 'gpu-kernels'],
@@ -54,7 +54,7 @@ describe('Zotero Wave 6: Comprehensive Duplicate Detection & Merge Case Studies 
         volume: '12',
         issue: '4',
         pages: '1120-1135',
-        abstract: 'Short camera-ready summary of FlashAttention-2.',
+        abstractNote: 'Short camera-ready summary of FlashAttention-2.',
         authors: [{ firstName: 'Tri', lastName: 'Dao' }],
         tags: ['published', 'iclr-2024', 'gpu-kernels'],
         collections: ['col-published'],
@@ -82,7 +82,7 @@ describe('Zotero Wave 6: Comprehensive Duplicate Detection & Merge Case Studies 
 
       // User accepts the longer abstract override from the preprint while keeping published journal metadata
       const mergedPayload = buildMergedItemPayload(duplicatePair, bestMasterId, {
-        abstract: preprintItem.abstract,
+        abstract: preprintItem.abstractNote,
       });
 
       expect(mergedPayload.masterId).toBe('item-iclr-2024');
@@ -93,7 +93,7 @@ describe('Zotero Wave 6: Comprehensive Duplicate Detection & Merge Case Studies 
       expect(mergedPayload.resolvedFields.volume).toBe('12');
       expect(mergedPayload.resolvedFields.issue).toBe('4');
       expect(mergedPayload.resolvedFields.pages).toBe('1120-1135');
-      expect(mergedPayload.resolvedFields.abstract).toBe(preprintItem.abstract);
+      expect(mergedPayload.resolvedFields.abstract).toBe(preprintItem.abstractNote);
       // Tags and collections are unioned seamlessly
       expect(mergedPayload.resolvedFields.tags).toEqual([
         'published',
@@ -427,13 +427,13 @@ describe('Zotero Wave 6: Comprehensive Duplicate Detection & Merge Case Studies 
       const res = await QualityService.getDuplicates('proj-gnn');
 
       expect(res.duplicateGroups).toHaveLength(1);
-      expect(res.duplicateGroups[0].papers).toHaveLength(2);
-      expect(res.duplicateGroups[0].papers[0].itemType).toBe('conferencePaper');
-      expect(res.duplicateGroups[0].papers[1].itemType).toBe('journalArticle');
+      expect(res.duplicateGroups[0].items).toHaveLength(2);
+      expect(res.duplicateGroups[0].items[0].itemType).toBe('conferencePaper');
+      expect(res.duplicateGroups[0].items[1].itemType).toBe('journalArticle');
 
       // Verify that downstream type-mismatch detection in DuplicateMergeInspector / useDuplicateMergeState works accurately
       const distinctTypes = Array.from(
-        new Set(res.duplicateGroups[0].papers.map((i) => i.itemType).filter(Boolean)),
+        new Set(res.duplicateGroups[0].items.map((i) => i.itemType).filter(Boolean)),
       );
       const hasTypeMismatch = distinctTypes.length > 1;
       expect(hasTypeMismatch).toBe(true);
@@ -582,7 +582,7 @@ describe('Zotero Wave 6: Comprehensive Duplicate Detection & Merge Case Studies 
         year: 2024,
         publicationTitle: 'The Lancet Digital Health',
         doi: '10.1016/S2589-7500(24)00042-9',
-        abstract:
+        abstractNote:
           'Background: Sepsis remains a leading cause of mortality in intensive care units worldwide. Methods: We trained and externally validated a temporal transformer across 148,000 ICU admissions in 12 hospitals. Findings: The model achieved an AUROC of 0.91 four hours prior to clinical onset.',
         citationKey: 'conner2024scopus',
         tags: ['scopus-export', 'multicenter-cohort'],
@@ -700,7 +700,7 @@ describe('Zotero Wave 6: Comprehensive Duplicate Detection & Merge Case Studies 
         volume: '22',
         issue: '1',
         pages: '1-30',
-        abstract: 'Comprehensive empirical study of power-law scaling of Transformer cross-entropy loss.',
+        abstractNote: 'Comprehensive empirical study of power-law scaling of Transformer cross-entropy loss.',
         createdAt: '2023-06-15T12:00:00.000Z',
       } as Partial<Item> & { id: string; title: string } & Record<string, unknown>);
 
@@ -759,7 +759,7 @@ describe('Zotero Wave 6: Comprehensive Duplicate Detection & Merge Case Studies 
         publicationTitle: 'Nature',
         volume: '586',
         pages: '373-377',
-        abstract: 'Detailed abstract on carbonaceous sulfur hydride.',
+        abstractNote: 'Detailed abstract on carbonaceous sulfur hydride.',
         isRetracted: true,
       } as Partial<Item> & { id: string; title: string } & Record<string, unknown>);
 

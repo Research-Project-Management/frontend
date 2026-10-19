@@ -127,9 +127,8 @@ export function LibraryDisplayPopover({
       <PopoverTrigger asChild>
         <Button
           type="button"
-          size="sm"
+          variant="outline"
           className={cn(
-            "h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shrink-0 select-none inline-flex items-center justify-center",
             open && "bg-muted",
             className,
           )}
@@ -167,7 +166,7 @@ export function LibraryDisplayPopover({
                     Title
                   </span>
                 </TooltipTrigger>
-                <TooltipContent>Primary column (always visible)</TooltipContent>
+                <TooltipContent>Always visible</TooltipContent>
               </Tooltip>
               {COLUMN_ITEMS.map((item) => {
                 const isSelected = Boolean(columns[item.key]);
@@ -222,9 +221,7 @@ export function LibraryDisplayPopover({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {orderDirection === "asc"
-                    ? "Ascending (A to Z / Low to High)"
-                    : "Descending (Z to A / High to Low)"}
+                  {orderDirection === "asc" ? "Ascending" : "Descending"}
                 </TooltipContent>
               </Tooltip>
 

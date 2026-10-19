@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   toBibTeXEntry,
   formatRis,
@@ -11,7 +11,7 @@ import {
   getItemDisplayTitle,
   getPublicationVenue,
   getItemDisplayDate,
-  mapBackendItemToPaper,
+  mapBackendItem,
 } from '@/features/library/domain/metadata';
 import {
   resolveItemFieldValue,
@@ -20,7 +20,7 @@ import {
 import {
   resolveInspectorFieldValue,
   buildInspectorFieldPatch,
-} from '@/features/library/ui/inspector/InfoSection';
+} from '@/features/library/domain/item-field-schema';
 import {
   getPrimaryCreatorType,
   getTitleFieldForType,
@@ -206,7 +206,7 @@ describe('Wave 12: Multi-Type Scholarly, Legal & Technical Datasets & Base Field
       expect(getPublicationVenue(legalCaseRaw)).toBe('Supreme Court of the United States');
       expect(getItemDisplayDate(legalCaseRaw)).toBe(2021);
 
-      const mapped = mapBackendItemToPaper(legalCaseRaw);
+      const mapped = mapBackendItem(legalCaseRaw);
       expect(mapped.title).toBe('Google LLC v. Oracle America, Inc.');
       expect(mapped.publicationTitle).toBe('Supreme Court of the United States');
       expect(mapped.publisher).toBe('Supreme Court of the United States');
@@ -257,7 +257,7 @@ describe('Wave 12: Multi-Type Scholarly, Legal & Technical Datasets & Base Field
       );
       expect(getItemDisplayDate(statuteRaw)).toBe(2024);
 
-      const mapped = mapBackendItemToPaper(statuteRaw);
+      const mapped = mapBackendItem(statuteRaw);
       expect(mapped.title).toBe('Regulation (EU) 2024/1689 Artificial Intelligence Act');
       expect(mapped.year).toBe(2024);
 

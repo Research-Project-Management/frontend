@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { ExternalLink, Copy, CheckCircle2 } from "lucide-react";
-import type { Item } from "@/features/library/domain/types/library.types";
 import { SchemaFieldDefinition } from "@/features/library/domain/types/library.types";
 import { isValidValue } from "@/features/library/domain/metadata";
 import { InlineField } from "./InlineField";
@@ -14,8 +13,6 @@ import {
 
 export interface DynamicInspectorFieldProps {
   fieldDef: SchemaFieldDefinition;
-  item?: Item;
-  paper?: Item;
   val: string;
   displayDoi: string;
   copiedKey: string | null;
@@ -56,8 +53,6 @@ function toValidUrl(str: string): string {
 
 export function DynamicInspectorField({
   fieldDef,
-  item,
-  paper,
   val,
   displayDoi,
   copiedKey,

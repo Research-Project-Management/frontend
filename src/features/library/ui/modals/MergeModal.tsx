@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import type { Item } from "@/features/library/domain/types/items.types";
 import { formatAcademicAuthors } from "@/features/library/domain/academic-text";
-import { libraryServices } from "@/features/library/sdk/library.client";
 import { useDuplicateMergeState } from "@/features/library/core/coordinator/curation.coordinator";
 import {
   normalizeCompareValue,
@@ -40,7 +39,6 @@ export interface MergeModalProps {
   duplicates: Item[];
   recommendedMasterId?: string;
   scopeId?: string;
-  projectId?: string;
   onMerge: (
     masterPaper: Item,
     mergedFields: Partial<Item>,
@@ -54,14 +52,10 @@ export function MergeModal({
   onOpenChange,
   duplicates = [],
   recommendedMasterId,
-  scopeId,
-  projectId,
   onMerge,
   onDismissDuplicate,
 }: MergeModalProps) {
-  // Rich items state: uses server-provided cluster items directly, only hydrating bare stubs
-  const [items, setItems] = useState<Item[]>(duplicates);
-  const [, setIsLoadingFull] = useState<boolean>(false);
+  const items = duplicates;
 
   const {
     selectedMasterId,
@@ -85,66 +79,10 @@ export function MergeModal({
   // Action pending states
   const [isMerging, setIsMerging] = useState<boolean>(false);
 
-  // ── 1. Hydrate only bare stub items missing metadata when modal opens ───────
   useEffect(() => {
     if (!open || !duplicates || duplicates.length === 0) return;
-
-    setItems(duplicates);
     resetMergeState(recommendedMasterId || "");
-
-    // Only fetch from backend if an item is a bare stub missing basic bibliographic fields
-    const isBareStub = (d: Item) =>
-      !d.title &&
-      !d.doi &&
-      !d.year &&
-      !d.abstract &&
-      (!Array.isArray(d.authors) || d.authors.length === 0) &&
-      (!Array.isArray(d.creators) || d.creators.length === 0);
-
-    if (!duplicates.some(isBareStub)) {
-      return;
-    }
-
-    let isMounted = true;
-    setIsLoadingFull(true);
-
-    const effectiveScope = scopeId || projectId || "user";
-    Promise.all(
-      duplicates.map(async (dup) => {
-        if (!isBareStub(dup)) return dup;
-        try {
-          const full = await libraryServices.items.getItem(
-            effectiveScope,
-            dup.id,
-          );
-          return full || dup;
-        } catch {
-          return dup;
-        }
-      }),
-    )
-      .then((hydrated) => {
-        if (isMounted) {
-          setItems(hydrated);
-        }
-      })
-      .finally(() => {
-        if (isMounted) {
-          setIsLoadingFull(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [
-    open,
-    duplicates,
-    recommendedMasterId,
-    scopeId,
-    projectId,
-    resetMergeState,
-  ]);
+  }, [open, duplicates, recommendedMasterId, resetMergeState]);
 
   // ── 2. Action Handlers ──────────────────────────────────────────────────────
   const handleConfirmMerge = async () => {

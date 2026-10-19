@@ -2,7 +2,7 @@
 
 import React, { useMemo, useCallback, useState } from 'react';
 import { toast } from 'sonner';
-import { UploadCloud, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { UploadCloud, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useLibraryItemsQuery } from '@/features/library/sdk/queries/catalog.queries';
 import { useDetachItemFromCollectionMutation } from '@/features/library/sdk/queries/collections.queries';
@@ -10,23 +10,31 @@ import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.
 import { useSavedSearchResults } from '@/features/library/sdk/queries/saved-searches-relations.queries';
 import { ContentSkeleton } from './ContentSkeleton';
 import { ItemTable } from './ItemTable';
+import { DuplicatesContent } from './DuplicatesContent';
+import { FeedViewContent } from './FeedViewContent';
 import LibraryEmptyState from './LibraryEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { BatchBar } from './BatchBar';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import { useProcessModalStore, cleanFilenameToTitle } from '@/features/library/core/store/process-modal.store';
+import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
+import { createProvisionalUploadItem } from '@/features/library/domain/metadata';
 import { useQuickCopyCoordinator } from '@/features/library/core/coordinator/quick-copy.coordinator';
+import { useLibraryBatchCoordinator } from '@/features/library/core/coordinator/batch-action.coordinator';
 import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
-import { type Item, type Collection } from '@/features/library/domain/types/library.types';
+import {
+  type Item,
+  type Collection,
+  type DuplicateGroup,
+} from '@/features/library/domain/types/library.types';
 import type { LibraryOrderBy } from '@/features/library/ui/topbar/LibraryDisplayPopover';
 
 /** Fields requested from the server for the list view — kept at module scope to avoid inline array allocation. */
 const ITEM_LIST_FIELDS = [
-  'id', 'title', 'itemType', 'type', 'year', 'publicationTitle', 'journal',
+  'id', 'title', 'itemType', 'type', 'year', 'publicationTitle',
   'authors', 'creators', 'contributors', 'firstAuthor', 'doi', 'citationKey',
   'hasFile', 'attachmentCount', 'noteCount', 'readStatus', 'rating', 'isStarred',
-  'version', 'createdAt', 'updatedAt', 'deletedAt', 'collectionIds', 'collectionId',
+  'version', 'createdAt', 'updatedAt', 'deletedAt', 'collectionIds',
   'tags', 'labels', 'url',
 ] as const;
 
@@ -75,7 +83,12 @@ interface LibraryContentProps {
   canEdit?: boolean;
   onDirectFilesUpload?: (files: File[]) => void;
   onAddLink?: () => void;
-  onEmptyTrash?: () => void;
+  onSelectedDuplicateGroupChange?: (
+    group: DuplicateGroup | null,
+    groupKey: string | null,
+    dismissGroup: (groupKey: string) => void,
+    openMerge: (group: DuplicateGroup, groupKey?: string) => void,
+  ) => void;
 }
 
 export function LibraryContent({
@@ -85,8 +98,7 @@ export function LibraryContent({
   view,
   canEdit = true,
   onDirectFilesUpload,
-  onAddLink,
-  onEmptyTrash,
+  onSelectedDuplicateGroupChange,
 }: LibraryContentProps) {
   const nav = useLibraryNavigation();
 
@@ -94,7 +106,6 @@ export function LibraryContent({
     propSavedSearchId || (nav.filterParam === 'saved-search' ? nav.savedSearchId : null);
   const isSavedSearchView = Boolean(effectiveSavedSearchId);
 
-  const openModal = useLibraryUIStore((s) => s.openModal);
   const displayOptions = useLibraryUIStore((s) => s.displayOptions);
   const setDisplayOptions = useLibraryUIStore((s) => s.setDisplayOptions);
   const processingItems = useProcessModalStore((s) => s.processingItems);
@@ -111,7 +122,6 @@ export function LibraryContent({
       view: effectiveView,
       search: nav.search,
       type: nav.type,
-      itemType: nav.type,
       fromYear: nav.fromYear,
       toYear: nav.toYear,
       readStatus: nav.readStatus,
@@ -142,13 +152,16 @@ export function LibraryContent({
     ],
   );
 
+  const isDuplicates = effectiveView === 'duplicates';
+  const isFeed = effectiveView === 'feed';
+
   const {
     data,
     isLoading: isItemsLoading,
     isError: isItemsError,
     error: itemsError,
   } = useLibraryItemsQuery(scopeId, queryParams, {
-    enabled: !isSavedSearchView,
+    enabled: !isSavedSearchView && !isDuplicates && !isFeed,
   });
 
   const savedSearchQuery = useSavedSearchResults(
@@ -168,7 +181,7 @@ export function LibraryContent({
   const isLoading = isSavedSearchView ? savedSearchQuery.isLoading : isItemsLoading;
   const isError = isSavedSearchView ? savedSearchQuery.isError : isItemsError;
   const error = isSavedSearchView ? savedSearchQuery.error : itemsError;
-  const isTrash = view === 'trash';
+  const isTrash = effectiveView === 'trash';
 
   const items: Item[] = useMemo(() => {
     if (isSavedSearchView) {
@@ -196,78 +209,7 @@ export function LibraryContent({
 
     return activeProcessing
       .filter((p) => !p.itemId || !existingIds.has(p.itemId))
-      .map((p): Item => {
-        const title = p.extractedTitle || cleanFilenameToTitle(p.fileName);
-        return {
-          id: p.id,
-          title,
-          itemType: 'journalArticle',
-          authors: p.status === 'PROCESSING' ? ['Processing metadata...'] : ['Uploading raw file...'],
-          year: null,
-          doi: '',
-          abstract: '',
-          keywords: [],
-          editors: [],
-          journal: '',
-          publisher: '',
-          volume: '',
-          issue: '',
-          pages: '',
-          issn: '',
-          isbn: '',
-          url: '',
-          language: '',
-          journalAbbr: '',
-          journalAbbreviation: '',
-          shortTitle: '',
-          rights: '',
-          citationKey: '',
-          isRetracted: false,
-          isMyPublication: false,
-          extra: '',
-          extraFields: {},
-          creators: [],
-          contributors: [],
-          itemTags: [],
-          collectionIds: [],
-          collections: [],
-          notes: [],
-          notesList: [],
-          attachments: [
-            {
-              id: `att-${p.id}`,
-              filename: p.fileName,
-              size: p.fileSize,
-              mimeType: p.mimeType || 'application/pdf',
-              url: p.fileUrl || '',
-              linkMode: 'imported_file',
-              attachmentType: 'supplementary',
-            },
-          ],
-          fileUrl: '',
-          filename: '',
-          mimeType: '',
-          size: 0,
-          tags: [],
-          crossrefEnriched: false,
-          identifiers: [],
-          rating: 0,
-          isDeleted: false,
-          fields: {},
-          isStarred: false,
-          hasFile: true,
-          attachmentCount: 1,
-          noteCount: 0,
-          readStatus: 'unread',
-          version: 1,
-          createdAt: p.createdAt,
-          dateAdded: p.createdAt,
-          _isProcessing: true,
-          _processingStatus: p.status,
-          _processingProgress: p.progress,
-          _processingError: p.error,
-        };
-      });
+      .map((p): Item => createProvisionalUploadItem(p, targetScope, collectionId));
   }, [isTrash, isSavedSearchView, processingItems, scopeId, collectionId, items]);
 
   const displayedItems: Item[] = useMemo(() => {
@@ -283,6 +225,15 @@ export function LibraryContent({
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
+
+  const batchCoordinator = useLibraryBatchCoordinator({
+    items: displayedItems,
+    scopeId: scopeId || 'user',
+    collectionId,
+    view: effectiveView,
+    isTrash,
+    canEdit,
+  });
 
   // Zotero 7 Quick Copy Coordinator (Ctrl+Shift+C: Bibliography, Ctrl+Shift+A: In-text Citation)
   useQuickCopyCoordinator({
@@ -355,6 +306,26 @@ export function LibraryContent({
     [setDisplayOptions, setSorting, clearSelection],
   );
 
+  if (isDuplicates) {
+    return (
+      <DuplicatesContent
+        scopeId={scopeId}
+        canEdit={canEdit}
+        onSelectedGroupChange={onSelectedDuplicateGroupChange}
+      />
+    );
+  }
+
+  if (isFeed) {
+    return (
+      <FeedViewContent
+        feedId={nav.feedId}
+        scopeId={scopeId}
+        canEdit={canEdit}
+      />
+    );
+  }
+
   if (isLoading) {
     return <ContentSkeleton rowCount={10} />;
   }
@@ -378,9 +349,7 @@ export function LibraryContent({
         activeFilter={isSavedSearchView ? 'saved-search' : (view || nav.filterParam)}
         collectionId={collectionId}
         collectionName={activeCollection?.name}
-        onClearSearch={nav.clearSearch}
         onDirectFilesUpload={onDirectFilesUpload}
-        onAddLink={onAddLink || (() => openModal('ADD_LINK', { collectionId }))}
       />
     );
   }
@@ -397,27 +366,6 @@ export function LibraryContent({
           <UploadCloud className="size-10 text-primary animate-pulse mb-2" strokeWidth={1.5} />
           <p className="text-14 font-semibold text-foreground">Drop files to upload</p>
           <p className="text-12 text-foreground">PDF, BibTeX, RIS will be uploaded directly</p>
-        </div>
-      )}
-
-      {/* Informative Trash Notice Banner */}
-      {isTrash && (
-        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-muted border-b border-border text-xs text-foreground select-none shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <Trash2 className="size-3.5 text-foreground shrink-0" />
-            <span className="truncate">
-              Items in Trash will be removed permanently when emptied. References can be restored back to your library at any time.
-            </span>
-          </div>
-          {canEdit && onEmptyTrash && displayedItems.length > 0 && (
-            <button
-              type="button"
-              onClick={onEmptyTrash}
-              className="font-medium text-destructive hover:underline shrink-0 cursor-pointer ml-2 text-xs"
-            >
-              Empty Trash now
-            </button>
-          )}
         </div>
       )}
 
@@ -514,12 +462,9 @@ export function LibraryContent({
         </nav>
       )}
 
-      {/* Floating Multi-Selection Action Bar (owns its own selectedIds subscription) */}
+      {/* Floating Multi-Selection Action Bar */}
       <BatchBar
-        items={displayedItems}
-        collectionId={collectionId}
-        view={effectiveView}
-        canEdit={canEdit}
+        coordinator={batchCoordinator}
         collections={collections as Collection[]}
         isTrash={isTrash}
         scopeId={scopeId}

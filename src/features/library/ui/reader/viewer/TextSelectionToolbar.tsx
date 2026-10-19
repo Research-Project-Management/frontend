@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { StickyNote, Check, Quote, Copy } from "lucide-react";
 import { copyToClipboard, cn } from "@/shared/lib/utils";
 import { formatInTextCitation } from "@/features/library/domain/reader.domain";
@@ -51,13 +51,22 @@ export function TextSelectionToolbar({
 }: TextSelectionToolbarProps) {
   const [copiedSelection, setCopiedSelection] = useState(false);
   const [copiedCitation, setCopiedCitation] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    },
+    [],
+  );
 
   const handleCopySelection = async () => {
     if (!selectedText) return;
     const ok = await copyToClipboard(selectedText);
     if (ok) {
       setCopiedSelection(true);
-      setTimeout(() => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => {
         setCopiedSelection(false);
         onClose();
       }, 1200);
@@ -71,7 +80,8 @@ export function TextSelectionToolbar({
     const ok = await copyToClipboard(citeText);
     if (ok) {
       setCopiedCitation(true);
-      setTimeout(() => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => {
         setCopiedCitation(false);
         onClose();
       }, 1200);

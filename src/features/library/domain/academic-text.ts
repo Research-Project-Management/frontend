@@ -108,37 +108,7 @@ export function parseEmojiPrefix(text?: string | null): { emoji: string | null; 
   return { emoji: null, label: trimmed };
 }
 
-export interface OpenAccessLicenseBadge {
-  code: string;
-  label: string;
-  isOpenAccess: boolean;
-  url: string;
-}
-
-/**
- * Resolves Open Access license badge metadata (CC-BY-4.0, CC0-1.0, etc.)
- */
-export function resolveOpenAccessLicenseBadge(item: { license?: string | null }): OpenAccessLicenseBadge | null {
-  if (!item?.license) return null;
-  const raw = item.license.trim().toUpperCase();
-
-  if (raw === 'CC-BY-4.0' || raw === 'CC-BY' || raw === 'CC BY 4.0') {
-    return {
-      code: 'CC-BY-4.0',
-      label: 'CC BY 4.0',
-      isOpenAccess: true,
-      url: 'https://creativecommons.org/licenses/by/4.0/',
-    };
-  }
-
-  if (raw === 'CC0-1.0' || raw === 'CC0' || raw === 'CC0 1.0') {
-    return {
-      code: 'CC0-1.0',
-      label: 'CC0 1.0 Public Domain',
-      isOpenAccess: true,
-      url: 'https://creativecommons.org/publicdomain/zero/1.0/',
-    };
-  }
-
-  return null;
-}
+export {
+  resolveOpenAccessLicenseBadge,
+  type OpenAccessLicenseBadge,
+} from './system-views.policy';

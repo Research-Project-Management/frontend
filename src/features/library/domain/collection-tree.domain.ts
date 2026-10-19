@@ -45,7 +45,7 @@ export function buildCollectionTree(collections: Collection[]): CollectionHierar
       }
       state.set(curr, 1);
       path.push(curr);
-      const nextParent = map.get(curr)?.parentId;
+      const nextParent: string | null | undefined = map.get(curr)?.parentId;
       if (nextParent === curr) {
         for (let i = 0; i < path.length; i++) state.set(path[i], 3);
         return true;
@@ -207,7 +207,7 @@ export function filterCollections(cols: Collection[], searchQuery: string): Coll
     if (c.name.toLowerCase().includes(q)) {
       let currId: string | null | undefined = c.id;
       const visitedInPath = new Set<string>();
-      while (currId && !visitedInPath.has(currId)) {
+      while (currId && !matchingIds.has(currId) && !visitedInPath.has(currId)) {
         visitedInPath.add(currId);
         matchingIds.add(currId);
         currId = parentMap.get(currId);

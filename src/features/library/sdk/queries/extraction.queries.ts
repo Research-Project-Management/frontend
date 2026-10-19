@@ -2,13 +2,17 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { libraryServices } from "../library.client";
-import type { AttachmentDto } from "@/features/library/domain/types/library.types";
+import {
+  libraryServices,
+  UploadService,
+  ExportsService,
+} from "../library.client";
 import type { ItemAttachment } from "@/features/library/domain/types/library.types";
 import {
   itemKeys,
   libraryKeys,
   attachmentKeys,
+  normalizeScopeId,
 } from "@/features/library/sdk/query-keys";
 
 export { attachmentKeys };
@@ -22,10 +26,11 @@ export function useAttachments(
   scopeIdOrOptions?: string | { scopeId?: string; projectId?: string },
   itemId?: string,
 ) {
-  const scopeId =
+  const scopeId = normalizeScopeId(
     typeof scopeIdOrOptions === "string"
       ? scopeIdOrOptions
-      : scopeIdOrOptions?.scopeId || scopeIdOrOptions?.projectId || "user";
+      : scopeIdOrOptions?.scopeId || scopeIdOrOptions?.projectId || "user",
+  );
 
   const queryClient = useQueryClient();
 
@@ -168,7 +173,7 @@ export function useAttachments(
 // useRenameAttachment
 export function useRenameAttachment(scopeId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = scopeId || "user";
+  const effectiveScope = normalizeScopeId(scopeId);
 
   return useMutation({
     mutationFn: ({
@@ -199,6 +204,78 @@ export function useRenameAttachment(scopeId?: string) {
         description: err.message || "Could not rename file.",
         id: "attachment-rename",
       });
+    },
+  });
+}
+
+// useUploadAttachmentMutation
+export function useUploadAttachmentMutation(scopeId?: string) {
+  const effectiveScope = normalizeScopeId(scopeId);
+
+  return useMutation({
+    mutationFn: (
+      fileOrInput:
+        | File
+        | {
+            file: File;
+            scopeId?: string;
+            onProgress?: (percent: number) => void;
+            signal?: AbortSignal;
+          },
+    ) => {
+      if (
+        fileOrInput instanceof File ||
+        (typeof fileOrInput === "object" &&
+          "name" in fileOrInput &&
+          !("file" in fileOrInput))
+      ) {
+        return UploadService.uploadMultipart(effectiveScope, fileOrInput as File);
+      }
+      const { file, scopeId: overrideScope, onProgress, signal } = fileOrInput;
+      const targetScope = overrideScope
+        ? normalizeScopeId(overrideScope)
+        : effectiveScope;
+      return UploadService.uploadMultipart(targetScope, file, {
+        onProgress,
+        signal,
+      });
+    },
+  });
+}
+
+// useDownloadAnnotatedPdfMutation
+export function useDownloadAnnotatedPdfMutation(scopeId?: string) {
+  const effectiveScope = normalizeScopeId(scopeId);
+
+  return useMutation({
+    mutationFn: (
+      itemIdOrInput:
+        | string
+        | {
+            itemId: string;
+            filename?: string;
+            fallbackFilename?: string;
+            scopeId?: string;
+          },
+    ) => {
+      if (typeof itemIdOrInput === "string") {
+        return ExportsService.downloadAnnotatedPdf(
+          effectiveScope,
+          itemIdOrInput,
+        );
+      }
+      const targetScope = itemIdOrInput.scopeId
+        ? normalizeScopeId(itemIdOrInput.scopeId)
+        : effectiveScope;
+      const fallbackFilename =
+        itemIdOrInput.filename ||
+        itemIdOrInput.fallbackFilename ||
+        `annotated_${itemIdOrInput.itemId}.pdf`;
+      return ExportsService.downloadAnnotatedPdf(
+        targetScope,
+        itemIdOrInput.itemId,
+        fallbackFilename,
+      );
     },
   });
 }

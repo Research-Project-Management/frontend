@@ -26,7 +26,11 @@ const normalizeSearchCache = new Map<string, string>();
 export function normalizeSearchStr(str: string): string {
   if (!str) return '';
   const cached = normalizeSearchCache.get(str);
-  if (cached !== undefined) return cached;
+  if (cached !== undefined) {
+    normalizeSearchCache.delete(str);
+    normalizeSearchCache.set(str, cached);
+    return cached;
+  }
 
   const normalized = foldDiacritics(str)
     .replace(NON_WORD_WHITESPACE_RE, ' ')
@@ -34,7 +38,10 @@ export function normalizeSearchStr(str: string): string {
     .trim();
 
   if (normalizeSearchCache.size >= NORMALIZE_CACHE_LIMIT) {
-    normalizeSearchCache.clear();
+    const oldest = normalizeSearchCache.keys().next().value;
+    if (oldest !== undefined) {
+      normalizeSearchCache.delete(oldest);
+    }
   }
   normalizeSearchCache.set(str, normalized);
   return normalized;

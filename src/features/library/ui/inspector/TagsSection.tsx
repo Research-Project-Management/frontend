@@ -17,10 +17,8 @@ import {
 
 interface TagsSectionProps {
   item?: Item;
-  paper?: Item;
+  precomputedTags?: string[];
   onUpdateItem?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
-  onUpdatePaper?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
-  onUpdateTags?: (tags: string[]) => void;
   hideHeader?: boolean;
   forceAdding?: boolean;
   onCancelAdding?: () => void;
@@ -117,22 +115,21 @@ function TagItemInput({
             <MinusCircle className="size-3.5 shrink-0" />
           </button>
         </TooltipTrigger>
-        <TooltipContent side="top">{`Remove tag "${tag}"`}</TooltipContent>
+        <TooltipContent side="top">Remove tag</TooltipContent>
       </Tooltip>
     </div>
   );
 }
 
-export default function TagsSection(props: TagsSectionProps) {
-  const item = props.item || props.paper;
-  const onUpdateItem = props.onUpdateItem || props.onUpdatePaper;
-  const {
-    onUpdateTags,
-    hideHeader = false,
-    forceAdding = false,
-    onCancelAdding,
-    canEdit = true,
-  } = props;
+export default function TagsSection({
+  item,
+  onUpdateItem,
+  precomputedTags,
+  hideHeader = false,
+  forceAdding = false,
+  onCancelAdding,
+  canEdit = true,
+}: TagsSectionProps) {
 
   const [newTag, setNewTag] = useState("");
   const [isAdding, setIsAdding] = useState(forceAdding && canEdit);
@@ -145,12 +142,11 @@ export default function TagsSection(props: TagsSectionProps) {
   }, [forceAdding, canEdit]);
 
   const tags: string[] = React.useMemo(
-    () => (item ? normalizeTags(item) : []),
-    [item],
+    () => precomputedTags ?? (item ? normalizeTags(item) : []),
+    [precomputedTags, item],
   );
 
   const saveTags = (updatedTags: string[]) => {
-    if (onUpdateTags) onUpdateTags(updatedTags);
     if (onUpdateItem)
       onUpdateItem({ tags: updatedTags, silent: true }, { silent: true });
   };

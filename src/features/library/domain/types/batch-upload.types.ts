@@ -52,7 +52,7 @@ export interface ProcessingFileItem {
 }
 
 export interface InvalidationClient {
-  invalidateQueries: (filters: { queryKey: readonly unknown[] }) => Promise<void> | void;
+  invalidateQueries: (filters: { queryKey: readonly unknown[] }) => Promise<unknown> | void;
 }
 
 export interface ProcessBatchUploadOptions {

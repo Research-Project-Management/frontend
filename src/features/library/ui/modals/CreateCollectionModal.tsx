@@ -56,7 +56,7 @@ export default function CreateCollectionModal({
       name: "Untitled",
       description: "",
       color: "",
-      parent: defaultParentId ?? null,
+      parentId: defaultParentId ?? null,
     },
   });
 
@@ -74,20 +74,19 @@ export default function CreateCollectionModal({
         name: "Untitled",
         description: "",
         color: "",
-        parent: defaultParentId ?? null,
+        parentId: defaultParentId ?? null,
       });
     }
   }, [open, defaultParentId, reset]);
 
   const onValidSubmit = (data: CollectionFormValues) => {
     const rawParent =
-      data.parent === "root" || !data.parent ? null : data.parent;
+      data.parentId === "root" || !data.parentId ? null : data.parentId;
     onSubmit({
       name: data.name.trim() || "Untitled",
       description: data.description?.trim() || "",
       color: data.color || "",
       parentId: rawParent,
-      parent: rawParent,
     });
     onOpenChange(false);
     reset();
@@ -140,7 +139,7 @@ export default function CreateCollectionModal({
                 Create in
               </Label>
               <Controller
-                name="parent"
+                name="parentId"
                 control={control}
                 render={({ field }) => (
                   <Select

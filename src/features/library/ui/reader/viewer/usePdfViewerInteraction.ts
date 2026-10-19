@@ -49,130 +49,153 @@ export function usePdfViewerInteraction({
   const [areaSelection, setAreaSelection] =
     useState<AreaSelectionState | null>(null);
 
-  const handlePageMouseDown = (e: React.MouseEvent<HTMLDivElement>, pageNum: number) => {
-    if (activeTool !== 'area' || e.button !== 0) return;
-    e.preventDefault();
-    const pageRect = e.currentTarget.getBoundingClientRect();
-    const startX = e.clientX - pageRect.left;
-    const startY = e.clientY - pageRect.top;
-    setAreaSelection({
-      pageNum,
-      startX,
-      startY,
-      currentX: startX,
-      currentY: startY,
-      active: true,
-    });
-  };
+  const areaSelectionRef = useRef<AreaSelectionState | null>(null);
+  areaSelectionRef.current = areaSelection;
+  const inlineTextInputRef = useRef<InlineTextInputState | null>(null);
+  inlineTextInputRef.current = inlineTextInput;
 
-  const handlePageMouseMove = (e: React.MouseEvent<HTMLDivElement>, pageNum: number) => {
-    if (!areaSelection?.active || areaSelection.pageNum !== pageNum) return;
-    const pageRect = e.currentTarget.getBoundingClientRect();
-    const currentX = Math.max(0, Math.min(pageRect.width, e.clientX - pageRect.left));
-    const currentY = Math.max(0, Math.min(pageRect.height, e.clientY - pageRect.top));
-    setAreaSelection((prev) => (prev ? { ...prev, currentX, currentY } : null));
-  };
+  const handlePageMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>, pageNum: number) => {
+      if (activeTool !== 'area' || e.button !== 0) return;
+      e.preventDefault();
+      const pageRect = e.currentTarget.getBoundingClientRect();
+      const startX = e.clientX - pageRect.left;
+      const startY = e.clientY - pageRect.top;
+      setAreaSelection({
+        pageNum,
+        startX,
+        startY,
+        currentX: startX,
+        currentY: startY,
+        active: true,
+      });
+    },
+    [activeTool],
+  );
 
-  const handlePageMouseUp = (e: React.MouseEvent<HTMLDivElement>, pageNum: number) => {
-    if (!areaSelection?.active || areaSelection.pageNum !== pageNum) return;
-    const pageRect = e.currentTarget.getBoundingClientRect();
-    const xMin = Math.min(areaSelection.startX, areaSelection.currentX);
-    const yMin = Math.min(areaSelection.startY, areaSelection.currentY);
-    const widthPx = Math.abs(areaSelection.currentX - areaSelection.startX);
-    const heightPx = Math.abs(areaSelection.currentY - areaSelection.startY);
+  const handlePageMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>, pageNum: number) => {
+      const currArea = areaSelectionRef.current;
+      if (!currArea?.active || currArea.pageNum !== pageNum) return;
+      const pageRect = e.currentTarget.getBoundingClientRect();
+      const currentX = Math.max(0, Math.min(pageRect.width, e.clientX - pageRect.left));
+      const currentY = Math.max(0, Math.min(pageRect.height, e.clientY - pageRect.top));
+      setAreaSelection((prev) => (prev ? { ...prev, currentX, currentY } : null));
+    },
+    [],
+  );
 
-    setAreaSelection(null);
+  const handlePageMouseUp = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>, pageNum: number) => {
+      const currArea = areaSelectionRef.current;
+      if (!currArea?.active || currArea.pageNum !== pageNum) return;
+      const pageRect = e.currentTarget.getBoundingClientRect();
+      const xMin = Math.min(currArea.startX, currArea.currentX);
+      const yMin = Math.min(currArea.startY, currArea.currentY);
+      const widthPx = Math.abs(currArea.currentX - currArea.startX);
+      const heightPx = Math.abs(currArea.currentY - currArea.startY);
 
-    if (widthPx >= 16 && heightPx >= 16 && pageRect.width > 0 && pageRect.height > 0) {
-      const normX1 = xMin / pageRect.width;
-      const normY1 = yMin / pageRect.height;
-      const normW = widthPx / pageRect.width;
-      const normH = heightPx / pageRect.height;
+      setAreaSelection(null);
 
-      const rect: AnnotationRect = {
-        x1: normX1,
-        y1: normY1,
-        x2: normX1 + normW,
-        y2: normY1 + normH,
-        width: normW,
-        height: normH,
-      };
+      if (widthPx >= 16 && heightPx >= 16 && pageRect.width > 0 && pageRect.height > 0) {
+        const normX1 = xMin / pageRect.width;
+        const normY1 = yMin / pageRect.height;
+        const normW = widthPx / pageRect.width;
+        const normH = heightPx / pageRect.height;
 
-      onAnnotate?.('', pageNum, activeColor || '#ffd400', [rect], 'rect');
-    }
-  };
+        const rect: AnnotationRect = {
+          x1: normX1,
+          y1: normY1,
+          x2: normX1 + normW,
+          y2: normY1 + normH,
+          width: normW,
+          height: normH,
+        };
 
-  const handlePageClick = (e: React.MouseEvent<HTMLDivElement>, pageNum: number) => {
-    if (activeTool === 'text') {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-      setInlineTextInput({ pageNum, normX, normY, text: '' });
-      return;
-    }
+        onAnnotate?.('', pageNum, activeColor || '#ffd400', [rect], 'rect');
+      }
+    },
+    [activeColor, onAnnotate],
+  );
 
-    if (activeTool === 'note') {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-      const noteRect: AnnotationRect = {
-        x1: normX,
-        y1: normY,
-        x2: Math.min(1, normX + 0.03),
-        y2: Math.min(1, normY + 0.03),
-        width: 0.03,
-        height: 0.03,
-      };
-      onAnnotate?.('', pageNum, activeColor || '#ffd400', [noteRect], 'note');
-    }
-  };
+  const handlePageClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>, pageNum: number) => {
+      if (activeTool === 'text') {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+        setInlineTextInput({ pageNum, normX, normY, text: '' });
+        return;
+      }
 
-  const handleSaveInlineText = () => {
-    if (!inlineTextInput || !inlineTextInput.text.trim()) {
+      if (activeTool === 'note') {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+        const noteRect: AnnotationRect = {
+          x1: normX,
+          y1: normY,
+          x2: Math.min(1, normX + 0.03),
+          y2: Math.min(1, normY + 0.03),
+          width: 0.03,
+          height: 0.03,
+        };
+        onAnnotate?.('', pageNum, activeColor || '#ffd400', [noteRect], 'note');
+      }
+    },
+    [activeTool, activeColor, onAnnotate],
+  );
+
+  const handleSaveInlineText = useCallback(() => {
+    const currInput = inlineTextInputRef.current;
+    if (!currInput || !currInput.text.trim()) {
       setInlineTextInput(null);
       return;
     }
-    const text = inlineTextInput.text.trim();
+    const text = currInput.text.trim();
     const annotationRect: AnnotationRect = {
-      x1: inlineTextInput.normX,
-      y1: inlineTextInput.normY,
-      x2: Math.min(1, inlineTextInput.normX + 0.25),
-      y2: Math.min(1, inlineTextInput.normY + 0.04),
+      x1: currInput.normX,
+      y1: currInput.normY,
+      x2: Math.min(1, currInput.normX + 0.25),
+      y2: Math.min(1, currInput.normY + 0.04),
       width: 0.25,
       height: 0.04,
     };
-    onAnnotate?.(text, inlineTextInput.pageNum, activeColor || '#ffd400', [annotationRect], 'text');
+    onAnnotate?.(text, currInput.pageNum, activeColor || '#ffd400', [annotationRect], 'text');
     setInlineTextInput(null);
-  };
+  }, [activeColor, onAnnotate]);
 
-  const openAnnotationCard = (ann: ReaderAnnotation, el: HTMLElement) => {
-    const target = el.getBoundingClientRect();
-    const container = scrollContainerRef.current?.getBoundingClientRect();
-    const top =
-      target.bottom -
-      (container?.top || 0) +
-      (scrollContainerRef.current?.scrollTop || 0) +
-      6;
-    const left = Math.max(
-      10,
-      Math.min(
-        (container?.width || 800) - 340,
-        target.left -
-          (container?.left || 0) +
-          (scrollContainerRef.current?.scrollLeft || 0),
-      ),
-    );
+  const openAnnotationCard = useCallback(
+    (ann: ReaderAnnotation, el: HTMLElement) => {
+      const target = el.getBoundingClientRect();
+      const container = scrollContainerRef.current?.getBoundingClientRect();
+      const top =
+        target.bottom -
+        (container?.top || 0) +
+        (scrollContainerRef.current?.scrollTop || 0) +
+        6;
+      const left = Math.max(
+        10,
+        Math.min(
+          (container?.width || 800) - 340,
+          target.left -
+            (container?.left || 0) +
+            (scrollContainerRef.current?.scrollLeft || 0),
+        ),
+      );
 
-    setActiveHighlightTooltip({
-      id: ann.id,
-      quote: ann.quoteText,
-      comment: ann.comment,
-      color: ann.color || '#ffd400',
-      top,
-      left,
-      ann,
-    });
-  };
+      setActiveHighlightTooltip({
+        id: ann.id,
+        quote: ann.quoteText,
+        comment: ann.comment,
+        color: ann.color || '#ffd400',
+        top,
+        left,
+        ann,
+      });
+    },
+    [scrollContainerRef],
+  );
 
   const handleMouseUp = useCallback(() => {
     const selection = window.getSelection();

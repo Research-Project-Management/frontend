@@ -1,4 +1,3 @@
-import type { QueryClient } from "@tanstack/react-query";
 import type { CslStyle } from "@/features/library/domain/types/library.types";
 
 /**
@@ -6,6 +5,10 @@ import type { CslStyle } from "@/features/library/domain/types/library.types";
  * Following Supabase Studio pattern for strict key isolation and single source of truth.
  */
 export const DEFAULT_SCOPE = "user";
+
+export function normalizeScopeId(scopeId?: string | null): string {
+  return !scopeId || scopeId === "me" || scopeId === "personal" ? DEFAULT_SCOPE : scopeId;
+}
 
 export const libraryKeys = {
   all: ["library"] as const,
@@ -15,63 +18,64 @@ export const libraryKeys = {
     [
       ...libraryKeys.all,
       "items",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       (params ?? {}) as Record<string, unknown>,
     ] as const,
   counts: (scopeId?: string) =>
-    [...libraryKeys.all, "counts", scopeId || DEFAULT_SCOPE] as const,
+    [...libraryKeys.all, "counts", normalizeScopeId(scopeId)] as const,
   item: (scopeId?: string, itemId?: string) =>
     [
       ...libraryKeys.all,
-      "item",
-      scopeId || DEFAULT_SCOPE,
+      "items",
+      normalizeScopeId(scopeId),
+      "detail",
       itemId || "none",
     ] as const,
   fulltext: (scopeId?: string, itemId?: string) =>
     [
       ...libraryKeys.all,
       "fulltext",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       itemId || "none",
     ] as const,
   itemState: (scopeId?: string, itemId?: string) =>
     [
       ...libraryKeys.all,
       "item-state",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       itemId || "none",
     ] as const,
   itemTypes: (scopeId?: string) =>
-    [...libraryKeys.all, "item-types", scopeId || DEFAULT_SCOPE] as const,
+    [...libraryKeys.all, "item-types", normalizeScopeId(scopeId)] as const,
 
   // Collections (Folder Tree & Flat List)
   collections: (scopeId?: string) =>
-    [...libraryKeys.all, "collections", scopeId || DEFAULT_SCOPE] as const,
+    [...libraryKeys.all, "collections", normalizeScopeId(scopeId)] as const,
   collection: (scopeId?: string, collectionId?: string) =>
     [
       ...libraryKeys.all,
       "collection",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       collectionId || "none",
     ] as const,
 
   // Tags
   tags: (scopeId?: string) =>
-    [...libraryKeys.all, "tags", scopeId || DEFAULT_SCOPE] as const,
+    [...libraryKeys.all, "tags", normalizeScopeId(scopeId)] as const,
 
   // Attachments & Annotations
   attachments: (scopeId?: string, itemId?: string) =>
     [
       ...libraryKeys.all,
       "attachments",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       itemId || "none",
     ] as const,
   annotations: (scopeId?: string, attachmentId?: string) =>
     [
       ...libraryKeys.all,
       "annotations",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       attachmentId || "none",
     ] as const,
 
@@ -80,7 +84,7 @@ export const libraryKeys = {
     [
       ...libraryKeys.all,
       "notes",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       itemId || "none",
     ] as const,
 
@@ -89,26 +93,26 @@ export const libraryKeys = {
     [
       ...libraryKeys.all,
       "relations",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       itemId || "none",
     ] as const,
 
   // Saved Searches
   savedSearches: (scopeId?: string) =>
-    [...libraryKeys.all, "saved-searches", scopeId || DEFAULT_SCOPE] as const,
+    [...libraryKeys.all, "saved-searches", normalizeScopeId(scopeId)] as const,
 
   // Curation: Duplicates, Integrity & Retractions
   duplicates: (scopeId?: string) =>
-    [...libraryKeys.all, "duplicates", scopeId || DEFAULT_SCOPE] as const,
+    [...libraryKeys.all, "duplicates", normalizeScopeId(scopeId)] as const,
   integrity: (scopeId?: string) =>
     [
       ...libraryKeys.all,
       "curation",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       "integrity",
     ] as const,
   retractions: (scopeId?: string) =>
-    [...libraryKeys.all, "retractions", scopeId || DEFAULT_SCOPE] as const,
+    [...libraryKeys.all, "retractions", normalizeScopeId(scopeId)] as const,
 
   // Citations & Exports
   citation: (
@@ -120,7 +124,7 @@ export const libraryKeys = {
     [
       ...libraryKeys.all,
       "citation",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       itemId || "none",
       style || "apa",
       index || 1,
@@ -132,12 +136,12 @@ export const libraryKeys = {
 
   // Sync (Distributed Replication CDC)
   syncVersion: (scopeId?: string) =>
-    [...libraryKeys.all, "sync-version", scopeId || DEFAULT_SCOPE] as const,
+    [...libraryKeys.all, "sync-version", normalizeScopeId(scopeId)] as const,
   syncChanges: (scopeId?: string, params?: unknown) =>
     [
       ...libraryKeys.all,
       "sync-changes",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       typeof params === "string"
         ? { since: params }
         : ((params ?? {}) as Record<string, unknown>),
@@ -146,7 +150,7 @@ export const libraryKeys = {
     [
       ...libraryKeys.all,
       "sync-tombstones",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       typeof params === "string"
         ? { since: params }
         : ((params ?? {}) as Record<string, unknown>),
@@ -157,18 +161,18 @@ export const libraryKeys = {
     [
       ...libraryKeys.all,
       "metadata-sources",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       itemId || "none",
     ] as const,
 
   // Ingestion
   ingestion: (scopeId?: string) =>
-    [...libraryKeys.all, "ingest", scopeId || DEFAULT_SCOPE] as const,
+    [...libraryKeys.all, "ingest", normalizeScopeId(scopeId)] as const,
   ingestionRun: (scopeId?: string, runId?: string) =>
     [
       ...libraryKeys.all,
       "ingest",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       runId || "none",
     ] as const,
 };
@@ -178,7 +182,7 @@ export const libraryKeys = {
  */
 export const itemKeys = {
   all: (scopeId?: string) =>
-    [...libraryKeys.all, "items", scopeId || DEFAULT_SCOPE] as const,
+    [...libraryKeys.all, "items", normalizeScopeId(scopeId)] as const,
   byId: (scopeId?: string, itemId?: string) =>
     libraryKeys.item(scopeId, itemId),
   byCollection: (scopeId?: string, collectionId?: string) =>
@@ -205,7 +209,7 @@ export const tagKeys = {
 
 export const noteKeys = {
   all: (scopeId?: string) =>
-    [...libraryKeys.all, "notes", scopeId || DEFAULT_SCOPE] as const,
+    [...libraryKeys.all, "notes", normalizeScopeId(scopeId)] as const,
   lists: () => [...libraryKeys.all, "notes"] as const,
   list: (scopeId?: string, itemId?: string) =>
     libraryKeys.notes(scopeId, itemId),
@@ -213,7 +217,7 @@ export const noteKeys = {
     [
       ...libraryKeys.all,
       "notes",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       "detail",
       id || "none",
     ] as const,
@@ -266,7 +270,7 @@ export const citationKeys = {
       ...libraryKeys.all,
       "citation",
       "styles",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
     ] as const,
   item: (
     scopeId?: string,
@@ -279,7 +283,7 @@ export const citationKeys = {
       ...libraryKeys.all,
       "citation",
       "batch",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       itemIds.join(","),
       style,
     ] as const,
@@ -291,14 +295,14 @@ export const exportKeys = {
     [
       ...libraryKeys.exports(),
       "bundle",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       collectionId || "none",
     ] as const,
   collectionBibtex: (scopeId?: string, collectionId?: string) =>
     [
       ...libraryKeys.exports(),
       "bibtex",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       collectionId || "none",
     ] as const,
 };
@@ -307,7 +311,7 @@ export function invalidateCollections(
   qc: {
     invalidateQueries: (filters: {
       queryKey: readonly unknown[];
-    }) => Promise<void> | void;
+    }) => Promise<unknown> | void;
   },
   scopeId?: string,
 ): void {
@@ -339,7 +343,7 @@ export const readerQueryKeys = {
     [
       ...libraryKeys.all,
       "item-collections",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       itemId || "none",
     ] as const,
   tags: (scopeId?: string) => libraryKeys.tags(scopeId),
@@ -347,7 +351,7 @@ export const readerQueryKeys = {
     [
       ...libraryKeys.all,
       "item-tags",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       itemId || "none",
     ] as const,
   relations: (scopeId?: string, itemId?: string) =>
@@ -358,7 +362,7 @@ export const readerQueryKeys = {
     [
       ...libraryKeys.all,
       "bibtex",
-      scopeId || DEFAULT_SCOPE,
+      normalizeScopeId(scopeId),
       itemId || "none",
     ] as const,
   styles: (query?: string) =>
@@ -366,15 +370,10 @@ export const readerQueryKeys = {
   itemTypes: () => libraryKeys.itemTypes(),
 };
 
-export const readerAnnotationKeys = {
+export const annotationKeys = {
   all: [...libraryKeys.all, "annotations"] as const,
   byAttachment: (scopeId?: string, attachmentId?: string) =>
-    readerQueryKeys.annotations(scopeId, attachmentId),
+    libraryKeys.annotations(scopeId, attachmentId),
 };
 
-export const readerNoteKeys = {
-  all: [...libraryKeys.all, "notes"] as const,
-  list: (scopeId?: string, itemId?: string) =>
-    readerQueryKeys.notes(scopeId, itemId),
-  detail: (scopeId?: string, id?: string) => noteKeys.detail(scopeId, id),
-};
+

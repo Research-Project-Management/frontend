@@ -30,13 +30,7 @@ export function useDuplicateMergeState(
   }, [items, serverRecommendedMasterId]);
 
   const [selectedMasterId, setSelectedMasterId] = useState<string>(
-    () =>
-      (serverRecommendedMasterId &&
-      items.some((i) => i.id === serverRecommendedMasterId)
-        ? serverRecommendedMasterId
-        : selectBestMasterItemId(items)) ||
-      items[0]?.id ||
-      '',
+    () => recommendedMasterId,
   );
   const [fieldOverrides, setFieldOverrides] = useState<Record<string, unknown>>({});
   const [showConflictsOnly, setShowConflictsOnly] = useState<boolean>(false);
@@ -44,15 +38,11 @@ export function useDuplicateMergeState(
   // Sync master when items change and current master is no longer in the list
   useEffect(() => {
     if (items.length > 0 && !items.some((i) => i.id === selectedMasterId)) {
-      const nextMasterId =
-        (serverRecommendedMasterId &&
-        items.some((i) => i.id === serverRecommendedMasterId)
-          ? serverRecommendedMasterId
-          : selectBestMasterItemId(items)) || items[0].id;
+      const nextMasterId = recommendedMasterId || items[0].id;
       setSelectedMasterId(nextMasterId);
       setFieldOverrides({});
     }
-  }, [items, selectedMasterId, serverRecommendedMasterId]);
+  }, [items, selectedMasterId, recommendedMasterId]);
 
   const masterPaper = useMemo(
     () => items.find((p) => p.id === selectedMasterId) || items[0],
@@ -80,25 +70,28 @@ export function useDuplicateMergeState(
     [fieldOverrides.itemType, masterPaper?.itemType],
   );
 
+  const mergedExtraDefault = useMemo(() => {
+    if (!masterPaper) return undefined;
+    const mergedExtra = mergeZoteroExtraFields(items, masterPaper.id);
+    const masterExtra =
+      typeof masterPaper.extra === 'string'
+        ? masterPaper.extra.trim()
+        : typeof (masterPaper.extraFields as Record<string, unknown> | undefined)?.extra === 'string'
+          ? String((masterPaper.extraFields as Record<string, unknown>).extra).trim()
+          : '';
+    return mergedExtra && mergedExtra !== masterExtra ? mergedExtra : undefined;
+  }, [items, masterPaper]);
+
   const resolvedFieldOverrides = useMemo(() => {
     const out: Record<string, unknown> = { ...fieldOverrides };
     if (hasTypeMismatch && !out.itemType) {
       out.itemType = effectiveItemType;
     }
-    if (!('extra' in out) && masterPaper) {
-      const mergedExtra = mergeZoteroExtraFields(items, masterPaper.id);
-      const masterExtra =
-        typeof masterPaper.extra === 'string'
-          ? masterPaper.extra.trim()
-          : typeof (masterPaper.extraFields as Record<string, unknown> | undefined)?.extra === 'string'
-            ? String((masterPaper.extraFields as Record<string, unknown>).extra).trim()
-            : '';
-      if (mergedExtra && mergedExtra !== masterExtra) {
-        out.extra = mergedExtra;
-      }
+    if (!('extra' in out) && mergedExtraDefault) {
+      out.extra = mergedExtraDefault;
     }
     return out;
-  }, [fieldOverrides, hasTypeMismatch, effectiveItemType, items, masterPaper]);
+  }, [fieldOverrides, hasTypeMismatch, effectiveItemType, mergedExtraDefault]);
 
   const getEffectiveMergeSelections = useCallback(
     () => ({ ...resolvedFieldOverrides }),

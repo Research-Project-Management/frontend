@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import { primaryFileSchema } from './items.types';
+import { createNoteSchema, updateNoteSchema } from './notes.types';
+
+export { primaryFileSchema, createNoteSchema, updateNoteSchema };
 
 export const annotationRectSchema = z.object({
   x1: z.number(),
@@ -35,6 +39,7 @@ const baseAnnotationFields = {
 
 export const readerAnnotationSchema = z.object({
   id: z.string(),
+  itemId: z.string().optional(),
   paperId: z.string().optional(),
   attachmentId: z.string().optional(),
   pageNumber: z.number().int().positive().optional(),
@@ -48,6 +53,7 @@ export const readerAnnotationSchema = z.object({
 });
 
 export const createAnnotationSchema = z.object({
+  itemId: z.string().optional(),
   paperId: z.string().optional(),
   attachmentId: z.string().optional(),
   pageNumber: z.number().int().positive().optional(),
@@ -111,14 +117,6 @@ export const documentAttachmentSchema = z.object({
   updatedAt: z.string().optional(),
 }).passthrough();
 
-export const primaryFileSchema = z.object({
-  fileId: z.string().optional(),
-  url: z.string().optional(),
-  filename: z.string().optional(),
-  mimeType: z.string().optional(),
-  size: z.number().optional(),
-});
-
 export const readerNoteSchema = z.object({
   id: z.string(),
   projectId: z.string().optional(),
@@ -130,22 +128,6 @@ export const readerNoteSchema = z.object({
   version: z.number().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
-});
-
-export const createNoteSchema = z.object({
-  projectId: z.string().optional(),
-  itemId: z.string().nullable().optional(),
-  title: z.string().default('Untitled Note'),
-  contentJson: z.unknown().optional(),
-  contentMd: z.string().default(''),
-  tags: z.array(z.string()).default([]),
-});
-
-export const updateNoteSchema = z.object({
-  title: z.string().optional(),
-  contentJson: z.unknown().optional(),
-  contentMd: z.string().optional(),
-  tags: z.array(z.string()).optional(),
 });
 
 export const readerCollectionSchema = z.object({
@@ -175,17 +157,18 @@ export const documentTagSchema = z.union([
 ]);
 
 const documentPublicationFields = {
-  abstract: z.string().nullable().optional(),
   abstractNote: z.string().nullable().optional(),
   year: z.number().nullable().optional(),
   doi: z.string().nullable().optional(),
-  DOI: z.string().nullable().optional(),
-  journal: z.string().nullable().optional(),
   publicationTitle: z.string().nullable().optional(),
+  journalAbbreviation: z.string().nullable().optional(),
   publisher: z.string().nullable().optional(),
+  place: z.string().nullable().optional(),
   volume: z.string().nullable().optional(),
   issue: z.string().nullable().optional(),
   pages: z.string().nullable().optional(),
+  numberOfPages: z.string().nullable().optional(),
+  edition: z.string().nullable().optional(),
   date: z.string().nullable().optional(),
   number: z.string().nullable().optional(),
   reportNumber: z.string().nullable().optional(),
@@ -196,33 +179,19 @@ const documentPublicationFields = {
   authority: z.string().nullable().optional(),
   assignee: z.string().nullable().optional(),
   country: z.string().nullable().optional(),
-  numPages: z.string().nullable().optional(),
-  numberOfPages: z.string().nullable().optional(),
-  edition: z.string().nullable().optional(),
-  journalAbbr: z.string().nullable().optional(),
-  journalAbbreviation: z.string().nullable().optional(),
   accessDate: z.string().nullable().optional(),
-  accessedAt: z.string().nullable().optional(),
   pmid: z.string().nullable().optional(),
-  PMID: z.string().nullable().optional(),
   pmcid: z.string().nullable().optional(),
-  PMCID: z.string().nullable().optional(),
   issn: z.string().nullable().optional(),
-  ISSN: z.string().nullable().optional(),
   isbn: z.string().nullable().optional(),
-  ISBN: z.string().nullable().optional(),
-  archiveId: z.string().nullable().optional(),
-  archiveID: z.string().nullable().optional(),
   arxivId: z.string().nullable().optional(),
   callNumber: z.string().nullable().optional(),
-  type: z.string().nullable().optional(),
   genre: z.string().nullable().optional(),
 };
 
 export const readerDocumentSchema = z.object({
   id: z.string(),
   projectId: z.string().optional(),
-  collectionId: z.string().nullable().optional(),
   collectionIds: z.array(z.string()).optional(),
   collections: z.array(readerCollectionSchema).optional(),
   title: z.string(),
@@ -261,7 +230,7 @@ export const readerDocumentSchema = z.object({
 export const updateDocumentSchema = z.object({
   title: z.string().optional(),
   ...documentPublicationFields,
-  collectionId: z.string().nullable().optional(),
+  collectionIds: z.array(z.string()).optional(),
 });
 
 // ── Form Schemas for React Hook Form ──────────────────────────────────────────

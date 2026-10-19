@@ -16,7 +16,6 @@ import {
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import { logger } from "@/shared/lib/logger";
-import { generateCitationKey } from "@/features/library/domain/citations";
 import { readerService } from "@/features/library/sdk/library.client";
 import type { ReaderDocument } from "@/features/library/domain/types/reader.types";
 
@@ -66,7 +65,7 @@ export default function PaperBibtexDialog({
     };
   }, [open, paper?.id, paper?.projectId, format]);
 
-  const citationKey = generateCitationKey(paper);
+  const citationKey = paper?.citationKey || paper?.id || "citation";
   const fallbackString = format === "bibtex" ? paper?.bibtex || "" : "";
   const contentString =
     remoteContent ||

@@ -202,10 +202,6 @@ function extractNormalizedFieldValues(
   return [raw];
 }
 
-function extractItemFieldValues(item: Record<string, unknown>, field: string): unknown[] {
-  return extractNormalizedFieldValues(item, field.trim());
-}
-
 /**
  * Pre-compiles a single `SavedSearchCondition` into a zero-parse predicate closure
  * (Partial Evaluation Pattern: pre-computes normalizedField, targetStr, targetNum, and range bounds once).

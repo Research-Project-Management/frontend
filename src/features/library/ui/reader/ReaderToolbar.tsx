@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, memo } from "react";
 import {
   PanelLeft,
   PanelRight,
@@ -171,7 +171,7 @@ function ToolbarIconButton({
   );
 }
 
-export function ReaderToolbar({
+export const ReaderToolbar = memo(function ReaderToolbar({
   isSidebarOpen,
   onToggleSidebar,
   visiblePage,
@@ -245,7 +245,7 @@ export function ReaderToolbar({
         {/* Toggle Left Sidebar */}
         <ToolbarIconButton
           onClick={onToggleSidebar}
-          active={false}
+          active={isSidebarOpen}
           ariaLabel={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
           tooltip={
             isSidebarOpen ? "Close sidebar (Ctrl+\\)" : "Open sidebar (Ctrl+\\)"
@@ -730,7 +730,7 @@ export function ReaderToolbar({
         {/* Toggle Right Context Pane / Inspector */}
         <ToolbarIconButton
           onClick={onToggleInspector}
-          active={false}
+          active={isInspectorOpen}
           ariaLabel={
             isInspectorOpen ? "Close details pane" : "Open details pane"
           }
@@ -743,6 +743,6 @@ export function ReaderToolbar({
       </div>
     </div>
   );
-}
+});
 
 export default ReaderToolbar;

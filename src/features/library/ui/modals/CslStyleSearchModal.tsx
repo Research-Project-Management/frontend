@@ -25,128 +25,6 @@ export interface CslStyleSearchModalProps {
   currentStyleId?: string;
 }
 
-const POPULAR_STYLES_FALLBACK: CslStyleMetadata[] = [
-  {
-    id: "ieee",
-    name: "IEEE (Institute of Electrical and Electronics Engineers)",
-    title: "IEEE (Institute of Electrical and Electronics Engineers)",
-    titleShort: "IEEE",
-    category: "numeric",
-  },
-  {
-    id: "apa-7th",
-    name: "American Psychological Association 7th edition (APA)",
-    title: "American Psychological Association 7th edition (APA)",
-    titleShort: "APA",
-    category: "author-date",
-  },
-  {
-    id: "chicago",
-    name: "Chicago Manual of Style 17th edition (Author-Date)",
-    title: "Chicago Manual of Style 17th edition (Author-Date)",
-    titleShort: "Chicago",
-    category: "author-date",
-  },
-  {
-    id: "harvard",
-    name: "Harvard Reference Format 1 (Author-Date)",
-    title: "Harvard Reference Format 1 (Author-Date)",
-    titleShort: "Harvard",
-    category: "author-date",
-  },
-  {
-    id: "nature",
-    name: "Nature",
-    title: "Nature",
-    titleShort: "Nature",
-    category: "numeric",
-  },
-  {
-    id: "science",
-    name: "Science",
-    title: "Science",
-    titleShort: "Science",
-    category: "numeric",
-  },
-  {
-    id: "vancouver",
-    name: "Vancouver (ICMJE)",
-    title: "Vancouver (ICMJE)",
-    titleShort: "Vancouver",
-    category: "numeric",
-  },
-  {
-    id: "mla-9th",
-    name: "Modern Language Association 9th edition (MLA)",
-    title: "Modern Language Association 9th edition (MLA)",
-    titleShort: "MLA",
-    category: "author-date",
-  },
-  {
-    id: "cell",
-    name: "Cell",
-    title: "Cell",
-    titleShort: "Cell",
-    category: "author-date",
-  },
-  {
-    id: "the-lancet",
-    name: "The Lancet",
-    title: "The Lancet",
-    titleShort: "Lancet",
-    category: "numeric",
-  },
-  {
-    id: "american-chemical-society",
-    name: "American Chemical Society (ACS)",
-    title: "American Chemical Society (ACS)",
-    titleShort: "ACS",
-    category: "numeric",
-  },
-  {
-    id: "association-for-computing-machinery",
-    name: "ACM (Association for Computing Machinery)",
-    title: "ACM (Association for Computing Machinery)",
-    titleShort: "ACM",
-    category: "numeric",
-  },
-  {
-    id: "springer-lecture-notes-in-computer-science",
-    name: "Springer LNCS (Lecture Notes in Computer Science)",
-    title: "Springer LNCS (Lecture Notes in Computer Science)",
-    titleShort: "Springer LNCS",
-    category: "numeric",
-  },
-  {
-    id: "plos-one",
-    name: "PLOS ONE",
-    title: "PLOS ONE",
-    titleShort: "PLOS ONE",
-    category: "numeric",
-  },
-  {
-    id: "pnas",
-    name: "Proceedings of the National Academy of Sciences (PNAS)",
-    title: "Proceedings of the National Academy of Sciences (PNAS)",
-    titleShort: "PNAS",
-    category: "numeric",
-  },
-  {
-    id: "bibtex",
-    name: "BibTeX (LaTeX Standard)",
-    title: "BibTeX (LaTeX Standard)",
-    titleShort: "BibTeX",
-    category: "raw",
-  },
-  {
-    id: "ris",
-    name: "Research Information Systems (RIS)",
-    title: "Research Information Systems (RIS)",
-    titleShort: "RIS",
-    category: "raw",
-  },
-];
-
 export default function CslStyleSearchModal({
   open,
   onOpenChange,
@@ -200,29 +78,11 @@ export default function CslStyleSearchModal({
   const {
     data: searchData,
     isLoading,
-    isError,
   } = useSearchCslStyles(debouncedQuery, 50, {
     enabled: open,
   });
 
-  const styles = useMemo(() => {
-    // 1. Authoritative: Use server results when available (handles empty array correctly)
-    if (searchData?.styles) {
-      return searchData.styles;
-    }
-    // 2. Offline / network error fallback only:
-    if (isError || !searchData) {
-      if (!debouncedQuery) return POPULAR_STYLES_FALLBACK;
-      const q = debouncedQuery.toLowerCase();
-      return POPULAR_STYLES_FALLBACK.filter(
-        (s) =>
-          s.title.toLowerCase().includes(q) ||
-          s.id.toLowerCase().includes(q) ||
-          s.titleShort?.toLowerCase().includes(q),
-      );
-    }
-    return [];
-  }, [searchData, isError, debouncedQuery]);
+  const styles = useMemo(() => searchData?.styles ?? [], [searchData?.styles]);
 
   const handleItemClick = (item: CslStyleMetadata) => {
     const rawLabel = item.titleShort || item.title;

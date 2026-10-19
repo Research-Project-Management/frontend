@@ -10,8 +10,6 @@ import {
   ExternalLink,
   MoreVertical,
   Loader2,
-  ChevronLeft,
-  ChevronRight,
   Globe,
   Star,
   FileDown,
@@ -21,10 +19,6 @@ import {
   Link2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Document, Page } from "react-pdf";
-import { setupPdfWorker } from "@/shared/lib/pdfjs-worker";
-
-setupPdfWorker();
 import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
@@ -38,7 +32,6 @@ import {
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
 import { getItemFileUrl } from "@/features/library/domain/item-url";
-import { usePdf } from "@/features/library/ui/reader/hooks/use-pdf";
 import {
   downloadAnnotatedPdf,
   UploadService,
@@ -47,142 +40,15 @@ import {
   useAttachments,
   useRenameAttachment,
 } from "@/features/library/sdk/queries/extraction.queries";
-import SnapshotViewerModal from "@/features/library/ui/modals/SnapshotViewerModal";
+import { PdfPagePreview } from "./PdfPagePreview";
 import type {
   Item,
   ItemAttachment,
 } from "@/features/library/domain/types/library.types";
 
-import "react-pdf/dist/Page/TextLayer.css";
-import "react-pdf/dist/Page/AnnotationLayer.css";
-
-interface PdfPagePreviewProps {
-  paper: Item;
-  paperUrl: string;
-  onOpenReader: () => void;
-}
-
-function PdfPagePreview({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
-  const {
-    blobUrl: pdfBlobUrl,
-    isLoading: pdfLoading,
-    error: pdfError,
-    retry: retryPdf,
-  } = usePdf(paperUrl || null);
-
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [numPages, setNumPages] = useState<number>(0);
-  const previewRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState<number>(280);
-
-  useEffect(() => {
-    if (!previewRef.current) return;
-    const updateWidth = () => {
-      if (previewRef.current) {
-        const w = previewRef.current.getBoundingClientRect().width;
-        if (w > 0) setContainerWidth(Math.floor(w));
-      }
-    };
-    updateWidth();
-    const obs = new ResizeObserver(updateWidth);
-    obs.observe(previewRef.current);
-    return () => obs.disconnect();
-  }, []);
-
-  return (
-    <div
-      ref={previewRef}
-      onClick={onOpenReader}
-      className="relative w-full rounded-md border border-border bg-background overflow-hidden shadow-none flex flex-col items-center justify-center min-h-[220px] cursor-pointer group"
-    >
-      {pdfLoading ? (
-        <div className="h-60 flex flex-col items-center justify-center gap-2 text-foreground">
-          <Loader2 className="size-5 animate-spin text-foreground shrink-0" />
-          <span className="text-xs font-medium">Loading document...</span>
-        </div>
-      ) : pdfBlobUrl ? (
-        <Document
-          file={pdfBlobUrl}
-          onLoadSuccess={({ numPages: total }) => {
-            setNumPages(total);
-            setCurrentPage(1);
-          }}
-          loading={
-            <div className="h-60 flex flex-col items-center justify-center gap-2 text-foreground">
-              <Loader2 className="size-5 animate-spin text-foreground shrink-0" />
-              <span className="text-xs font-medium">Loading preview...</span>
-            </div>
-          }
-          error={
-            <div className="h-60 flex flex-col items-center justify-center p-4 text-center text-xs text-foreground">
-              <span>Document preview unavailable</span>
-            </div>
-          }
-        >
-          <Page
-            pageNumber={currentPage}
-            width={Math.max(200, containerWidth)}
-            renderAnnotationLayer={false}
-            renderTextLayer={false}
-          />
-        </Document>
-      ) : (
-        <div className="h-60 flex flex-col items-center justify-center gap-2 px-4 text-center text-xs text-foreground">
-          <span>{pdfError || "Preview unavailable"}</span>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              retryPdf();
-            }}
-            className="h-7 px-2.5 rounded-md border border-border text-foreground hover:bg-muted"
-          >
-            Retry preview
-          </button>
-        </div>
-      )}
-
-      {/* Navigation Arrows: [<] [>] floating at bottom center */}
-      {numPages > 1 && (
-        <div
-          className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            disabled={currentPage <= 1}
-            onClick={(e) => {
-              e.stopPropagation();
-              setCurrentPage((p) => Math.max(1, p - 1));
-            }}
-            aria-label="Previous page"
-            className="size-7 rounded-md bg-background border border-border text-foreground hover:bg-muted disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center cursor-pointer shadow-xs transition-colors"
-          >
-            <ChevronLeft className="size-4 shrink-0" />
-          </button>
-          <button
-            type="button"
-            disabled={currentPage >= numPages}
-            onClick={(e) => {
-              e.stopPropagation();
-              setCurrentPage((p) => Math.min(numPages, p + 1));
-            }}
-            aria-label="Next page"
-            className="size-7 rounded-md bg-background border border-border text-foreground hover:bg-muted disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center cursor-pointer shadow-xs transition-colors"
-          >
-            <ChevronRight className="size-4 shrink-0" />
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 interface AttachmentsSectionProps {
-  item?: Item;
-  paper?: Item;
+  item: Item;
   scopeId?: string;
-  projectId?: string;
   onAddAttachment?: () => void;
   isUploading?: boolean;
   hideHeader?: boolean;
@@ -194,10 +60,9 @@ interface AttachmentsSectionProps {
 const EMPTY_ATTACHMENTS: ItemAttachment[] = [];
 
 export default function AttachmentsSection(props: AttachmentsSectionProps) {
-  const paper = (props.item || props.paper)!;
   const {
+    item: paper,
     scopeId,
-    projectId,
     hideHeader = false,
     hidePdfPreview = false,
     canEdit = true,
@@ -211,7 +76,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
   const routeProjectId =
     typeof params?.projectId === "string" ? params.projectId : undefined;
   const rawScopeId =
-    scopeId || projectId || paper.projectId || routeProjectId || "user";
+    scopeId || paper.projectId || routeProjectId || "user";
 
   const {
     captureSnapshot,
@@ -220,11 +85,6 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
     isSettingPrimary,
     add: addAttachment,
   } = useAttachments(rawScopeId, paper.id || "");
-  const [activeSnapshot, setActiveSnapshot] = useState<{
-    url: string;
-    title: string;
-    sourceUrl?: string;
-  } | null>(null);
   const [isDownloadingAnnotated, setIsDownloadingAnnotated] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [isAddingLink, setIsAddingLink] = useState(false);
@@ -313,11 +173,10 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
     fileUrl?: string;
   };
 
-  const rawAttachments = paper.attachments || paper.files || EMPTY_ATTACHMENTS;
+  const rawAttachments = paper.attachments || EMPTY_ATTACHMENTS;
   const paperUrl = getItemFileUrl(paper);
 
   const paperFilename = paper.filename;
-  const openAccessPdfUrl = paper.openAccessPdfUrl;
 
   const primaryAttachment = useMemo(() => {
     return (
@@ -332,7 +191,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
   }, [rawAttachments, paperFilename]);
 
   const otherAttachments = useMemo(() => {
-    const list: AttachmentLike[] = (rawAttachments as AttachmentLike[]).filter(
+    return (rawAttachments as AttachmentLike[]).filter(
       (att) => {
         if (att.attachmentType === "primary_pdf" || att.type === "primary_pdf")
           return false;
@@ -344,27 +203,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
         return true;
       },
     );
-
-    if (
-      openAccessPdfUrl &&
-      openAccessPdfUrl !== paperUrl &&
-      !list.some(
-        (a) => a.url === openAccessPdfUrl || a.fileUrl === openAccessPdfUrl,
-      )
-    ) {
-      list.push({
-        id: "open-access-pdf",
-        filename: "Open Access Full Text.pdf",
-        url: openAccessPdfUrl,
-        size: 0,
-        linkMode: "linked_url",
-        attachmentType: "supplementary",
-        mimeType: "application/pdf",
-      });
-    }
-
-    return list;
-  }, [rawAttachments, paperFilename, openAccessPdfUrl, paperUrl]);
+  }, [rawAttachments, paperFilename]);
 
   const hasSnapshot = useMemo(() => {
     return (rawAttachments as AttachmentLike[]).some(
@@ -419,8 +258,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
   };
 
   const handleSetPrimary = async (attachmentId: string) => {
-    if (!paper.id || !attachmentId || attachmentId === "open-access-pdf")
-      return;
+    if (!paper.id || !attachmentId) return;
     try {
       await setPrimary(attachmentId);
     } catch {
@@ -713,12 +551,16 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
               att.linkMode === "imported_url" ||
               att.mimeType === "text/html" ||
               att.filename?.toLowerCase().endsWith(".html");
+            const isEpub =
+              att.mimeType?.toLowerCase().includes("epub") ||
+              att.filename?.toLowerCase().endsWith(".epub");
             const isLink =
               att.linkMode === "linked_url" ||
               (!att.fileId &&
                 att.url &&
                 /^https?:\/\//i.test(att.url) &&
-                !isSnapshot);
+                !isSnapshot &&
+                !isEpub);
 
             return (
               <div
@@ -726,15 +568,10 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                 className="flex items-center justify-between px-2 py-1 min-h-[28px] rounded-md hover:bg-muted border border-border transition-colors"
               >
                 <div
-                  className={`flex items-center gap-2 min-w-0 flex-1 mr-2 ${isSnapshot || isLink ? "cursor-pointer" : ""}`}
+                  className={`flex items-center gap-2 min-w-0 flex-1 mr-2 ${isSnapshot || isEpub || isLink ? "cursor-pointer" : ""}`}
                   onClick={
-                    isSnapshot
-                      ? () =>
-                          setActiveSnapshot({
-                            url: downloadUrl,
-                            title: att.filename || paper.title,
-                            sourceUrl: paper.url,
-                          })
+                    isEpub || isSnapshot
+                      ? handleOpenReader
                       : isLink && downloadUrl
                         ? () =>
                             window.open(
@@ -810,19 +647,13 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                       align="end"
                       className="w-64 p-1.5 text-xs font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5"
                     >
-                      {isSnapshot && (
+                      {(isSnapshot || isEpub) && (
                         <DropdownMenuItem
-                          onClick={() =>
-                            setActiveSnapshot({
-                              url: downloadUrl,
-                              title: att.filename || paper.title,
-                              sourceUrl: paper.url,
-                            })
-                          }
+                          onClick={handleOpenReader}
                           className="gap-2 cursor-pointer"
                         >
                           <BookOpen className="size-3.5 text-foreground shrink-0" />
-                          <span>View Snapshot</span>
+                          <span>{isEpub ? 'Open EPUB in Reader' : 'Open Snapshot in Reader'}</span>
                         </DropdownMenuItem>
                       )}
                       {!isLink && (
@@ -857,7 +688,6 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                       {canEdit &&
                         rawScopeId &&
                         att.id &&
-                        att.id !== "open-access-pdf" &&
                         !isSnapshot &&
                         !isLink && (
                           <DropdownMenuItem
@@ -872,7 +702,6 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                       {canEdit &&
                         rawScopeId &&
                         att.id &&
-                        att.id !== "open-access-pdf" &&
                         !isLink && (
                           <DropdownMenuItem
                             onClick={() =>
@@ -918,17 +747,6 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
             )}
           </button>
         )}
-
-        {/* Snapshot Viewer Modal */}
-        <SnapshotViewerModal
-          open={Boolean(activeSnapshot)}
-          onOpenChange={(open) => {
-            if (!open) setActiveSnapshot(null);
-          }}
-          snapshotUrl={activeSnapshot?.url || null}
-          title={activeSnapshot?.title || "Web Snapshot"}
-          sourceUrl={activeSnapshot?.sourceUrl}
-        />
       </div>
     </>
   );

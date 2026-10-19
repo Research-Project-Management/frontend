@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Wave 13: Architectural Flow Standardization, Pipeline Consolidation & Single Source of Truth
  *
  * Verifies:
@@ -29,15 +29,12 @@ import {
   buildInspectorFieldPatch,
 } from '@/features/library/domain/item-field-schema';
 import {
-  ALL_ZOTERO_SCHEMA_FIELDS,
   ALL_ZOTERO_PROMOTE_KEYS,
-  INTERNAL_AND_DEDICATED_METADATA_KEYS,
   isAllowedZoteroExtraKey,
-  mapBackendItemToPaper,
+  mapBackendItem,
   getItemDisplayTitle,
 } from '@/features/library/domain/metadata';
 import { resolveItemFieldValue } from '@/features/library/domain/diff';
-import * as InfoSectionExports from '@/features/library/ui/inspector/InfoSection';
 import * as DomainExports from '@/features/library/domain/item-field-schema';
 import type { Item } from '@/features/library/domain/types/library.types';
 
@@ -46,7 +43,6 @@ describe('Wave 13: Architectural Flow Standardization & Single Source of Truth',
     const all37Types = Object.keys(INITIAL_ITEM_TYPE_FIELDS_MAP);
     expect(all37Types.length).toBe(37);
     expect(ALL_SCHEMA_FIELD_KEYS.size).toBe(121);
-    expect(ALL_ZOTERO_SCHEMA_FIELDS.size).toBe(121);
 
     for (const [itemType, fields] of Object.entries(INITIAL_ITEM_TYPE_FIELDS_MAP)) {
       for (const field of fields) {
@@ -69,32 +65,24 @@ describe('Wave 13: Architectural Flow Standardization & Single Source of Truth',
     }
   });
 
-  it('derives INTERNAL_AND_DEDICATED_METADATA_KEYS automatically while keeping PMID, PMCID, and Original Date allowed in Zotero Extra lines', () => {
+  it('blocks dedicated Zotero schema fields while keeping PMID, PMCID, and Original Date allowed in Zotero Extra lines', () => {
     for (const field of ALL_SCHEMA_FIELD_KEYS) {
       const lower = field.toLowerCase();
       if (lower === 'pmid' || lower === 'pmcid' || lower === 'originaldate') {
         expect(isAllowedZoteroExtraKey(field)).toBe(true);
       } else {
-        expect(
-          INTERNAL_AND_DEDICATED_METADATA_KEYS.has(lower),
-          `Expected INTERNAL_AND_DEDICATED_METADATA_KEYS to block dedicated schema field ${field}`,
-        ).toBe(true);
         expect(isAllowedZoteroExtraKey(field)).toBe(false);
       }
     }
   });
 
-  it('maintains 100% reference identity between domain/item-field-schema, InfoSection.tsx, and domain/index.ts', () => {
-    expect(InfoSectionExports.ALL_SCHEMA_FIELD_KEYS).toBe(ALL_SCHEMA_FIELD_KEYS);
-    expect(InfoSectionExports.FIRST_CLASS_ITEM_COLUMNS).toBe(FIRST_CLASS_ITEM_COLUMNS);
-    expect(InfoSectionExports.DIRECT_METADATA_FIELDS).toBe(DIRECT_METADATA_FIELDS);
-    expect(InfoSectionExports.FIELD_FALLBACK_CHAINS).toBe(FIELD_FALLBACK_CHAINS);
-    expect(InfoSectionExports.MULTI_KEY_SYNC_SETTERS).toBe(MULTI_KEY_SYNC_SETTERS);
-    expect(InfoSectionExports.INSPECTOR_FIELD_DESCRIPTORS).toBe(INSPECTOR_FIELD_DESCRIPTORS);
-    expect(InfoSectionExports.resolveInspectorFieldValue).toBe(resolveInspectorFieldValue);
-    expect(InfoSectionExports.buildInspectorFieldPatch).toBe(buildInspectorFieldPatch);
-
+  it('maintains 100% reference identity for domain/item-field-schema exports', () => {
+    expect(DomainExports.ALL_SCHEMA_FIELD_KEYS).toBe(ALL_SCHEMA_FIELD_KEYS);
+    expect(DomainExports.FIRST_CLASS_ITEM_COLUMNS).toBe(FIRST_CLASS_ITEM_COLUMNS);
     expect(DomainExports.DIRECT_METADATA_FIELDS).toBe(DIRECT_METADATA_FIELDS);
+    expect(DomainExports.FIELD_FALLBACK_CHAINS).toBe(FIELD_FALLBACK_CHAINS);
+    expect(DomainExports.MULTI_KEY_SYNC_SETTERS).toBe(MULTI_KEY_SYNC_SETTERS);
+    expect(DomainExports.INSPECTOR_FIELD_DESCRIPTORS).toBe(INSPECTOR_FIELD_DESCRIPTORS);
     expect(DomainExports.resolveInspectorFieldValue).toBe(resolveInspectorFieldValue);
     expect(DomainExports.buildInspectorFieldPatch).toBe(buildInspectorFieldPatch);
   });
@@ -127,7 +115,7 @@ describe('Wave 13: Architectural Flow Standardization & Single Source of Truth',
         expect((patch.extraFields as Record<string, unknown>).existingKey).toBe('keep-me');
       }
 
-      const hydrated = mapBackendItemToPaper({ ...baseItem, ...patch });
+      const hydrated = mapBackendItem({ ...baseItem, ...patch });
       expect(getItemDisplayTitle(hydrated)).toBe(sampleTitle);
       expect(resolveInspectorFieldValue(hydrated, expectedKey)).toBe(sampleTitle);
       expect(resolveItemFieldValue(hydrated as Record<string, unknown>, 'title')).toBe(sampleTitle);
@@ -166,7 +154,7 @@ describe('Wave 13: Architectural Flow Standardization & Single Source of Truth',
         };
       }
 
-      const hydrated = mapBackendItemToPaper(itemState);
+      const hydrated = mapBackendItem(itemState);
 
       for (const field of fields) {
         if (field === 'extra') continue;

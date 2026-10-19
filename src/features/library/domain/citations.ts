@@ -69,6 +69,23 @@ export function toAsciiKeyPart(raw: string): string {
   return foldDiacritics(stripLatexMarkup(raw)).replace(/[^a-z0-9]/g, '');
 }
 
+const CITATION_KEY_STOP_WORDS: ReadonlySet<string> = new Set([
+  'a',
+  'an',
+  'the',
+  'on',
+  'of',
+  'for',
+  'in',
+  'to',
+  'is',
+  'and',
+  'with',
+  'by',
+  'as',
+  'at',
+]);
+
 /**
  * Computes or accesses a BibTeX-compliant citation key.
  * Format: {firstAuthorSurname}{year}{firstSignificantTitleWord}
@@ -132,11 +149,10 @@ export function generateCitationKey(
   let titlePart = '';
   const effectiveTitle = getItemDisplayTitle(rec) || item.title;
   if (effectiveTitle && isValidValue(effectiveTitle)) {
-    const stopWords = new Set(['a', 'an', 'the', 'on', 'of', 'for', 'in', 'to', 'is', 'and', 'with', 'by', 'as', 'at']);
     const cleanTitle = foldDiacritics(stripLatexMarkup(String(effectiveTitle)));
     const words = cleanTitle.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
     for (const w of words) {
-      if (!stopWords.has(w)) {
+      if (!CITATION_KEY_STOP_WORDS.has(w)) {
         titlePart = w;
         break;
       }
@@ -149,8 +165,8 @@ export function generateCitationKey(
     baseKey = String(extraCiteKey).trim().replace(/\s+/g, '');
   } else if (authorPart || yearPart || titlePart) {
     baseKey = `${authorPart || 'ref'}${yearPart}${titlePart}`;
-  } else if (item.key && isValidValue(item.key)) {
-    baseKey = String(item.key).trim().replace(/\s+/g, '');
+  } else if (rec.key && isValidValue(rec.key)) {
+    baseKey = String(rec.key).trim().replace(/\s+/g, '');
   } else if (item.id) {
     baseKey = `item_${item.id.slice(0, 8)}`;
   } else {
@@ -550,6 +566,10 @@ const DATE_EXPORT_KEYS = [
   'filingDate',
 ] as const;
 
+const CSL_CONTAINER_CANDIDATE_KEYS: readonly string[] = VENUE_CONTAINER_KEYS.filter(
+  (k) => k !== 'meetingName' && k !== 'conferenceName',
+);
+
 interface NormalizedExportPartial {
   citeKey: string;
   title: string;
@@ -558,6 +578,7 @@ interface NormalizedExportPartial {
   rawDate: string;
   accessDate: string;
   venue: string;
+  containerTitle: string;
   journal: string;
   booktitle: string;
   journalAbbr: string;
@@ -612,6 +633,7 @@ function extractNormalizedExportPartial(
   const title = getItemDisplayTitle(item) || item.title || '';
   const yearVal = item.year || getItemDisplayDate(item) || parsedExtra.originalDate || '';
   const venue = pick(VENUE_CONTAINER_KEYS) || getPublicationVenue(item);
+  const containerTitle = pick(CSL_CONTAINER_CANDIDATE_KEYS);
   const journal =
     pick(['journal']) ||
     (bibtexType === 'article' ? pick(['publicationTitle']) : '');
@@ -633,6 +655,7 @@ function extractNormalizedExportPartial(
     rawDate: pick(DATE_EXPORT_KEYS),
     accessDate,
     venue,
+    containerTitle,
     journal,
     booktitle,
     journalAbbr: pick(['journalAbbr', 'journalAbbreviation']),
@@ -1085,16 +1108,9 @@ export function formatCslJson(item: BibTeXExportableItem): Record<string, unknow
   const accessedParts = parseIsoDateParts(p.accessDate);
   if (accessedParts) csl.accessed = { 'date-parts': [accessedParts] };
 
-  const containerVal = pickFromRecord(
-    item as Record<string, unknown>,
-    (item.extraFields as Record<string, unknown>) || {},
-    parseZoteroExtraField(item.extra || item.extraFields),
-    VENUE_CONTAINER_KEYS.filter((k) => k !== 'meetingName' && k !== 'conferenceName'),
-  );
-
   const cslFieldSpecs: ReadonlyArray<readonly [string, string, boolean]> = [
     ['title-short', p.shortTitle, true],
-    ['container-title', containerVal, true],
+    ['container-title', p.containerTitle, true],
     ['container-title-short', p.journalAbbr, true],
     ['collection-title', p.series, true],
     ['collection-number', p.seriesNumber, false],
@@ -1154,3 +1170,37 @@ export function getCleanStyleLabel(id: string, fullTitle?: string): string {
   const cleanId = id.toUpperCase();
   return cleanId.length <= 10 ? cleanId : id.slice(0, 10);
 }
+
+export const DEFAULT_CITATION_STYLES = [
+  { id: 'apa-7th', label: 'APA (7th Edition)' },
+  { id: 'ieee', label: 'IEEE Style' },
+  { id: 'mla-9th', label: 'MLA (9th Edition)' },
+  { id: 'chicago', label: 'Chicago (Author-Date)' },
+  { id: 'nature', label: 'Nature' },
+  { id: 'harvard', label: 'Harvard' },
+  { id: 'vancouver', label: 'Vancouver' },
+  { id: 'tcvn', label: 'TCVN (Tiêu chuẩn Việt Nam)' },
+] as const;
+
+/**
+ * Formats a StyleSummary or style object into a standardized, human-friendly
+ * citation style label for dropdown menus and pickers.
+ */
+export function formatCitationStyleLabel(style: {
+  id: string;
+  name?: string;
+  shortTitle?: string;
+}): string {
+  const id = style.id.toLowerCase().trim();
+  if (id === 'apa-7th' || id === 'apa') return 'APA (7th Edition)';
+  if (id === 'mla-9th' || id === 'mla') return 'MLA (9th Edition)';
+  if (id === 'ieee') return 'IEEE Style';
+  if (id === 'chicago' || id === 'chicago-author-date') return 'Chicago (Author-Date)';
+  if (id === 'harvard' || id === 'harvard1') return 'Harvard';
+  if (id === 'nature') return 'Nature';
+  if (id === 'vancouver') return 'Vancouver';
+  if (id === 'tcvn' || id === 'tcvn-author-date') return 'TCVN (Tiêu chuẩn Việt Nam)';
+  if (id === 'tcvn-numeric') return 'TCVN (Đánh số)';
+  return style.shortTitle || style.name || style.id;
+}
+

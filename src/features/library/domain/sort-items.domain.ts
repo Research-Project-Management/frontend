@@ -157,7 +157,7 @@ export function sortLibraryItems(
   if (serverSorted || !column) {
     let hasProcessing = false;
     for (let i = 0; i < items.length; i++) {
-      if ((items[i] as { _isProcessing?: boolean })._isProcessing) {
+      if (items[i]._isProcessing) {
         hasProcessing = true;
         break;
       }
@@ -169,7 +169,7 @@ export function sortLibraryItems(
   const regular: Item[] = [];
 
   for (const item of items) {
-    if ((item as { _isProcessing?: boolean })._isProcessing) {
+    if (item._isProcessing) {
       processing.push(item);
     } else {
       regular.push(item);

@@ -43,11 +43,9 @@ export interface CreatorEntry {
 
 export interface CreatorFieldsProps {
   item?: Item;
-  paper?: Item;
   typeDefinition: SchemaItemTypeDefinition;
   canEdit?: boolean;
   onUpdateItem?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
-  onUpdatePaper?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
 }
 
 const MAX_COLLAPSED_AUTHORS = 3;
@@ -231,10 +229,12 @@ export function toItemCreators(
   });
 }
 
-export function CreatorFields(props: CreatorFieldsProps) {
-  const item = props.item || props.paper;
-  const onUpdateItem = props.onUpdateItem || props.onUpdatePaper;
-  const { typeDefinition, canEdit = true } = props;
+export function CreatorFields({
+  item,
+  onUpdateItem,
+  typeDefinition,
+  canEdit = true,
+}: CreatorFieldsProps) {
 
   const [isAuthorsExpanded, setIsAuthorsExpanded] = useState(false);
   const [focusAuthorIndex, setFocusAuthorIndex] = useState<number | null>(null);

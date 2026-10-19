@@ -22,7 +22,7 @@ export interface PageAnnotationOverlayProps {
   onSelectAnnotation: (ann: ReaderAnnotation, el: HTMLElement) => void;
 }
 
-export function PageAnnotationOverlay({
+export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
   annotations,
   pulsingAnnotationId,
   onSelectAnnotation,
@@ -177,7 +177,7 @@ export function PageAnnotationOverlay({
       })}
     </div>
   );
-}
+});
 
 export interface AnnotationQuickEditCardProps {
   tooltip: ActiveHighlightTooltipState;

@@ -23,6 +23,8 @@ import {
 import {
   generateCitationKey,
   formatBibTeX,
+  toBibTeXEntry,
+  formatCitation,
   formatRis,
   formatCslJson,
 } from '@/features/library/domain/citations';
@@ -34,10 +36,6 @@ import {
   formatInTextCitation,
   formatAnnotationCitation,
 } from '@/features/library/domain/reader.domain';
-import {
-  buildFallbackCitation,
-  buildFallbackBibtex,
-} from '@/features/library/core/coordinator/batch-action.coordinator';
 import type { Item } from '@/features/library/domain/types/library.types';
 import type { ReaderAnnotation, ReaderDocument } from '@/features/library/domain/types/reader.types';
 
@@ -304,7 +302,7 @@ describe('Wave 2: Zotero 7 Official Documentation & Power-User User Stories', ()
         itemType: 'journalArticle',
         authors: ['Yann LeCun', 'Yoshua Bengio', 'Geoffrey Hinton'],
         year: 2015,
-        journal: 'Nature',
+        publicationTitle: 'Nature',
         volume: '521',
         pages: '436-444',
         doi: '10.1038/nature14539',
@@ -352,7 +350,7 @@ describe('Wave 2: Zotero 7 Official Documentation & Power-User User Stories', ()
     ];
 
     it('maps all Zotero/CSL item types to accurate BibTeX entry types (@article, @inproceedings, @book with editor, @phdthesis with school, @misc with urldate, @incollection, @techreport)', () => {
-      const batchBibtex = buildFallbackBibtex(heterogeneousItems);
+      const batchBibtex = heterogeneousItems.map((it) => toBibTeXEntry(it)).join('\n\n');
 
       // 1. Journal Article -> @article + journal
       expect(batchBibtex).toContain('@article{lecun2015deep,');
@@ -425,12 +423,12 @@ describe('Wave 2: Zotero 7 Official Documentation & Power-User User Stories', ()
     });
 
     it('builds APA and IEEE fallback citations for quick copy across heterogeneous items', () => {
-      const apaArticle = buildFallbackCitation(heterogeneousItems[0], 'apa');
+      const apaArticle = formatCitation(heterogeneousItems[0], 'apa');
       expect(apaArticle).toBe(
         'LeCun, Y., Bengio, Y., Hinton, G. (2015). Deep Learning. Nature, 521, 436-444. https://doi.org/10.1038/nature14539',
       );
 
-      const ieeeArticle = buildFallbackCitation(heterogeneousItems[0], 'ieee');
+      const ieeeArticle = formatCitation(heterogeneousItems[0], 'ieee');
       expect(ieeeArticle).toBe(
         'Y. LeCun, Y. Bengio, G. Hinton, "Deep Learning," Nature, vol. 521, pp. 436-444, 2015. doi: 10.1038/nature14539.',
       );

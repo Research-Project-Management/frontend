@@ -7,9 +7,9 @@ export interface LibraryProjectScope {
   id: string;
   name: string;
   role?: string;
-  permissions?: string[];
+  permissions?: string[] | Record<string, unknown>;
   effectivePermissions?: string[];
-  members?: Array<{ id: string; userId: string; role: string }>;
+  members?: Array<{ id?: string; userId: string; role: string }>;
   [key: string]: unknown;
 }
 
@@ -36,7 +36,13 @@ export function useLibraryProjectContext(): UseLibraryProjectContextReturn {
   const { user, isAuthenticated } = useAuth();
 
   return {
-    projects: projects as LibraryProjectScope[],
+    projects: projects.map((p): LibraryProjectScope => ({
+      ...p,
+      id: p.id,
+      name: p.name,
+      role: typeof p.role === 'string' ? p.role : undefined,
+      permissions: p.permissions,
+    })),
     isLoadingProjects: isLoading,
     currentUser: user ? { id: user.id, email: user.email, name: user.name } : null,
     currentUserId: user?.id,

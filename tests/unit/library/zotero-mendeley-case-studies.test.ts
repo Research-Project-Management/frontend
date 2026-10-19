@@ -257,9 +257,9 @@ describe('Real-World Zotero & Mendeley Datasets & User Case-Study Stress Tests',
       year: 0, // dirty missing year
       publicationTitle: 'N/A', // dirty placeholder venue
       doi: 'null', // dirty placeholder DOI
-      abstract: 'none',
+      abstractNote: 'none',
       tags: ['mendeley-import', 'to-read', 'null'],
-      collectionId: 'col-reading-list',
+      collectionIds: ['col-reading-list'],
       attachments: [{ id: 'att-pdf-1', name: 'vaswani2017_annotated.pdf', url: '/files/v1.pdf' }],
       notes: [{ id: 'n-1', content: 'Check multi-head attention equations' }],
     };
@@ -281,7 +281,7 @@ describe('Real-World Zotero & Mendeley Datasets & User Case-Study Stress Tests',
       year: 2017,
       arxivId: '1706.03762',
       repository: 'arXiv',
-      abstract:
+      abstractNote:
         'The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder.',
       url: 'https://arxiv.org/abs/1706.03762',
       tags: ['arxiv', 'transformers', 'deep-learning'],
@@ -424,7 +424,7 @@ describe('Real-World Zotero & Mendeley Datasets & User Case-Study Stress Tests',
         title: 'bert: Pre-training of Deep Bidirectional Transformers',
         authors: ['Ávila, Carlos'],
         year: 2019,
-        journal: 'NAACL',
+        publicationTitle: 'NAACL',
       },
       {
         id: 'sort-5',

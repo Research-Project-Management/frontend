@@ -17,8 +17,6 @@ import {
   GitMerge,
   ShieldAlert,
 } from "lucide-react";
-import { toast } from "sonner";
-import { copyToClipboard } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
@@ -36,73 +34,38 @@ import {
 } from "@/shared/components/ui/tooltip";
 import type {
   Collection,
-  Item,
   CslStyle,
 } from "@/features/library/domain/types/library.types";
-import { isItemRetracted } from "@/features/library/domain/retraction";
 import {
   useLibraryBatchCoordinator,
+} from "@/features/library/core/coordinator/batch-action.coordinator";
+import {
   executeCopyMultiCite,
   executeCopyInTextCite,
   executeExportAllBibtex,
   executeDownloadBibFile,
-} from "@/features/library/core/coordinator/batch-action.coordinator";
+} from "@/features/library/core/coordinator/citation-export.coordinator";
+import { useCitationStyles } from "@/features/library/sdk/queries/citation.queries";
+import { formatCitationStyleLabel } from "@/features/library/domain/citations";
+
+export type BatchActionCoordinator = ReturnType<typeof useLibraryBatchCoordinator>;
 
 export interface BatchBarProps {
-  coordinator?: ReturnType<typeof useLibraryBatchCoordinator>;
-  items?: Item[];
-  collectionId?: string;
-  view?: string;
-  canEdit?: boolean;
-  selectedCount?: number;
-  selectedItems?: Item[];
+  coordinator: BatchActionCoordinator;
   collections: Collection[];
-  onClearSelection?: () => void;
-  onBatchMove?: (collectionId: string | null) => void;
-  onBatchDelete?: () => void;
-  onBatchRestore?: () => void;
-  onBatchMerge?: () => void;
-  onBatchDetach?: () => void;
   isTrash?: boolean;
   scopeId?: string;
-  projectId?: string;
 }
 
 export function BatchBar({
-  coordinator: propCoordinator,
-  items,
-  collectionId,
-  view,
-  canEdit = true,
-  selectedCount: propSelectedCount,
-  selectedItems: propSelectedItems,
+  coordinator,
   collections,
-  onClearSelection: propOnClearSelection,
-  onBatchMove: propOnBatchMove,
-  onBatchDelete: propOnBatchDelete,
-  onBatchRestore: propOnBatchRestore,
-  onBatchMerge: propOnBatchMerge,
-  onBatchDetach: propOnBatchDetach,
   isTrash = false,
   scopeId: propsScopeId,
-  projectId: propsProjectId,
 }: BatchBarProps) {
   const params = useParams() as { projectId?: string };
   const effectiveScopeId =
-    propsScopeId || propsProjectId || params?.projectId || "user";
-
-  const internalCoordinator = useLibraryBatchCoordinator({
-    items,
-    scopeId: effectiveScopeId,
-    collectionId,
-    view,
-    isTrash,
-    canEdit,
-  });
-
-  // Use explicit coordinator or fallback to internal coordinator when items are provided
-  const coordinator =
-    propCoordinator ?? (items !== undefined ? internalCoordinator : undefined);
+    propsScopeId || params?.projectId || "user";
 
   const activeScope = useLibraryUIStore((s) => s.activeScope);
   const isProjectScope = activeScope.type === "project";
@@ -115,93 +78,69 @@ export function BatchBar({
     setMounted(true);
   }, []);
 
-  const selectedCount = coordinator
-    ? coordinator.selectedCount
-    : (propSelectedCount ?? 0);
-  const resolvedItems = coordinator
-    ? coordinator.selectedItems
-    : (propSelectedItems ?? []);
-  const onClearSelection = coordinator
-    ? coordinator.clearSelection
-    : propOnClearSelection;
-  const onBatchMove = coordinator ? coordinator.batchMove : propOnBatchMove;
-  const onBatchDelete = coordinator
-    ? coordinator.batchDelete
-    : propOnBatchDelete;
-  const onBatchRestore = coordinator
-    ? coordinator.batchRestore
-    : propOnBatchRestore;
-  const onBatchDetach = coordinator
-    ? coordinator.batchDetach
-    : propOnBatchDetach;
-  const onBatchMerge = coordinator ? coordinator.batchMerge : propOnBatchMerge;
+  const {
+    selectedCount,
+    selectedItems: resolvedItems,
+    clearSelection: onClearSelection,
+    batchMove: onBatchMove,
+    batchDelete: onBatchDelete,
+    batchRestore: onBatchRestore,
+    batchDetach: onBatchDetach,
+    batchMerge: onBatchMerge,
+    isAllProcessingSelected,
+    retractedSelected,
+  } = coordinator;
 
-  React.useEffect(() => {
-    if (coordinator || selectedCount === 0 || !onClearSelection) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClearSelection();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [coordinator, selectedCount, onClearSelection]);
+  const { data: serverStyles = [] } = useCitationStyles(effectiveScopeId);
+
+  const citationStyles = React.useMemo(() => {
+    return (serverStyles || [])
+      .filter(
+        (s) =>
+          s.id !== "bibtex" &&
+          s.id !== "ris" &&
+          s.id !== "auto" &&
+          s.id !== "auto-numeric",
+      )
+      .map((s) => ({
+        id: s.id,
+        label: formatCitationStyleLabel(s),
+      }));
+  }, [serverStyles]);
 
   if (selectedCount === 0) return null;
 
-  const isAllProcessingSelected = coordinator
-    ? coordinator.isAllProcessingSelected
-    : resolvedItems.length > 0 &&
-      resolvedItems.every(
-        (item: Item) =>
-          Boolean(item._isProcessing) ||
-          item.id.startsWith("temp-") ||
-          item.id.startsWith("provisional-"),
-      );
+  const handleCopyMultiCite = (style: CslStyle | "latex" = "apa") =>
+    executeCopyMultiCite(
+      resolvedItems,
+      effectiveScopeId,
+      style,
+      retractedSelected.length,
+    );
 
-  const retractedSelected = coordinator
-    ? coordinator.retractedSelected
-    : resolvedItems.filter((i: Item) => isItemRetracted(i));
+  const handleCopyInTextCite = (style: CslStyle = "apa") =>
+    executeCopyInTextCite(
+      resolvedItems,
+      effectiveScopeId,
+      style,
+      retractedSelected.length,
+    );
 
-  const handleCopyMultiCite = coordinator
-    ? coordinator.copyMultiCite
-    : (style: CslStyle | "latex" = "apa") =>
-        executeCopyMultiCite(
-          resolvedItems,
-          effectiveScopeId,
-          style,
-          retractedSelected.length,
-        );
+  const handleExportAllBibtex = () =>
+    executeExportAllBibtex(
+      resolvedItems,
+      effectiveScopeId,
+      selectedCount,
+      retractedSelected.length,
+    );
 
-  const handleCopyInTextCite = coordinator
-    ? coordinator.copyInTextCite
-    : (style: CslStyle = "apa") =>
-        executeCopyInTextCite(
-          resolvedItems,
-          effectiveScopeId,
-          style,
-          retractedSelected.length,
-        );
-
-  const handleExportAllBibtex = coordinator
-    ? coordinator.exportAllBibtex
-    : () =>
-        executeExportAllBibtex(
-          resolvedItems,
-          effectiveScopeId,
-          selectedCount,
-          retractedSelected.length,
-        );
-
-  const handleDownloadBibFile = coordinator
-    ? coordinator.downloadBibFile
-    : () =>
-        executeDownloadBibFile(
-          resolvedItems,
-          effectiveScopeId,
-          selectedCount,
-          retractedSelected.length,
-        );
+  const handleDownloadBibFile = () =>
+    executeDownloadBibFile(
+      resolvedItems,
+      effectiveScopeId,
+      selectedCount,
+      retractedSelected.length,
+    );
 
   if (!mounted || typeof document === "undefined") {
     return null;
@@ -261,9 +200,7 @@ export function BatchBar({
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={8}>
-                  {isAllProcessingSelected
-                    ? "Cannot move files while uploading or processing"
-                    : "Move to collection"}
+                  Move to
                 </TooltipContent>
               </Tooltip>
               <DropdownMenuContent
@@ -322,9 +259,7 @@ export function BatchBar({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={8}>
-                {isAllProcessingSelected
-                  ? "Cannot merge files while uploading or processing"
-                  : "Merge items"}
+                Merge items
               </TooltipContent>
             </Tooltip>
           )}
@@ -353,62 +288,32 @@ export function BatchBar({
               align="center"
               side="top"
               sideOffset={8}
-              className="w-56 p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200"
+              className="w-auto min-w-[240px] max-w-[320px] p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200"
             >
-              <DropdownMenuItem
-                onClick={() => handleCopyMultiCite("apa")}
-                className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-              >
-                <span>APA (7th Edition)</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleCopyMultiCite("ieee")}
-                className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-              >
-                <span>IEEE Style</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleCopyMultiCite("mla")}
-                className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-              >
-                <span>MLA (9th Edition)</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleCopyMultiCite("chicago")}
-                className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-              >
-                <span>Chicago (Author-Date)</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleCopyMultiCite("nature")}
-                className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-              >
-                <span>Nature</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleCopyMultiCite("harvard")}
-                className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-              >
-                <span>Harvard</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleCopyMultiCite("vancouver")}
-                className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-              >
-                <span>Vancouver</span>
-              </DropdownMenuItem>
+              {citationStyles.map((style) => (
+                <DropdownMenuItem
+                  key={style.id}
+                  onClick={() => handleCopyMultiCite(style.id as CslStyle)}
+                  className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors whitespace-nowrap"
+                >
+                  <span>{style.label}</span>
+                </DropdownMenuItem>
+              ))}
+
+              <div className="h-px my-1 bg-border" />
+
               <DropdownMenuItem
                 onClick={() => handleCopyMultiCite("latex")}
-                className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors font-mono text-11"
+                className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors whitespace-nowrap font-mono text-11"
               >
-                <span>LaTeX (\cite&#123;...&#125;)</span>
+                <span>LaTeX \cite</span>
               </DropdownMenuItem>
-              <div className="h-px my-1 bg-border" />
+
               <DropdownMenuItem
                 onClick={() => handleCopyInTextCite("apa")}
-                className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-primary font-medium rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors whitespace-nowrap"
               >
-                <span>In-Text Citation (e.g. Smith et al., 2023)</span>
+                <span>In-Text Citation</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -467,9 +372,7 @@ export function BatchBar({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top" sideOffset={8}>
-                    {isAllProcessingSelected
-                      ? "Cannot restore files while uploading or processing"
-                      : "Restore"}
+                    Restore
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -488,9 +391,7 @@ export function BatchBar({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top" sideOffset={8}>
-                    {isAllProcessingSelected
-                      ? "Cannot delete files while uploading or processing"
-                      : "Delete permanently"}
+                    Delete permanently
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -512,9 +413,7 @@ export function BatchBar({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top" sideOffset={8}>
-                    {isAllProcessingSelected
-                      ? "Cannot remove files while uploading or processing"
-                      : "Remove from collection (keep in library)"}
+                    Remove from collection
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -533,9 +432,7 @@ export function BatchBar({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top" sideOffset={8}>
-                    {isAllProcessingSelected
-                      ? "Cannot delete files while uploading or processing"
-                      : "Move to trash"}
+                    Move to trash
                   </TooltipContent>
                 </Tooltip>
               )}

@@ -27,7 +27,6 @@ import type { Item } from "@/features/library/domain/types/library.types";
 import {
   ALL_ITEM_TYPES_FLAT,
   FIELD_LABELS,
-  getItemTypeDefinition,
   humanizeFieldName,
   SchemaFieldDefinition,
 } from "@/features/library/domain/types/library.types";
@@ -47,9 +46,7 @@ export type TypeConversionItemLike = {
 export interface TypeConversionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Accept either item or paper for flexible caller integration */
   item?: Item | TypeConversionItemLike;
-  paper?: Item | TypeConversionItemLike;
   targetType: string;
   scopeId?: string;
   initialPreview?: TypeConversionPreview | null;
@@ -78,14 +75,12 @@ function resolveFieldLabel(fieldKey: string): string {
 export function TypeConversionModal({
   open,
   onOpenChange,
-  item,
-  paper,
+  item: currentItem,
   targetType,
   scopeId: propScopeId,
   initialPreview,
   onSuccess,
 }: TypeConversionModalProps) {
-  const currentItem = item || paper;
   const itemId = currentItem?.id || "";
   const sourceType = currentItem?.itemType || "journalArticle";
   const scopeId = propScopeId || currentItem?.projectId || "user";
@@ -117,11 +112,6 @@ export function TypeConversionModal({
       ALL_ITEM_TYPES_FLAT.find((t) => t.value === targetType)?.label ||
       targetType
     );
-  }, [targetType]);
-
-  // Target schema definition
-  const targetTypeDef = useMemo(() => {
-    return getItemTypeDefinition(targetType);
   }, [targetType]);
 
   // ── Preview Loading ────────────────────────────────────────────────────────
@@ -204,60 +194,14 @@ export function TypeConversionModal({
 
   // ── Column 3: New Available Fields Calculations ────────────────────────────
   const newAvailableFields = useMemo((): SchemaFieldDefinition[] => {
-    // 1. Prefer authoritative Backend preview.newAvailableFields when provided
-    if (
-      Array.isArray(preview?.newAvailableFields) &&
-      preview.newAvailableFields.length > 0
-    ) {
-      return preview.newAvailableFields.map((f) => ({
-        field: f.field,
-        label: f.label || resolveFieldLabel(f.field),
-        type: (f.type as SchemaFieldDefinition["type"]) || "text",
-        category: (f.category as SchemaFieldDefinition["category"]) || "core",
-      }));
-    }
-
-    if (!targetTypeDef?.fields) return [];
-    const preservedSet = new Set(
-      (preview?.preservedFields ?? []).map((f) => f.toLowerCase()),
-    );
-    const mappedTargetSet = new Set(
-      mappedFields.map((m) => m.toField.toLowerCase()),
-    );
-    const persistentIgnore = new Set([
-      "title",
-      "abstract",
-      "abstractnote",
-      "extra",
-      "dateadded",
-      "datemodified",
-    ]);
-
-    const projected: Record<string, unknown> = preview?.projectedItem
-      ? { ...preview.projectedItem }
-      : {};
-
-    return targetTypeDef.fields.filter((f: SchemaFieldDefinition) => {
-      const lower = f.field.toLowerCase();
-      if (persistentIgnore.has(lower)) return false;
-      if (preservedSet.has(lower)) return false;
-      if (mappedTargetSet.has(lower)) return false;
-      const existingVal = projected[f.field];
-      if (
-        existingVal !== undefined &&
-        existingVal !== null &&
-        existingVal !== ""
-      )
-        return false;
-      return true;
-    });
-  }, [
-    preview?.newAvailableFields,
-    targetTypeDef,
-    preview?.preservedFields,
-    mappedFields,
-    preview?.projectedItem,
-  ]);
+    if (!Array.isArray(preview?.newAvailableFields)) return [];
+    return preview.newAvailableFields.map((f) => ({
+      field: f.field,
+      label: f.label || resolveFieldLabel(f.field),
+      type: (f.type as SchemaFieldDefinition["type"]) || "text",
+      category: (f.category as SchemaFieldDefinition["category"]) || "core",
+    }));
+  }, [preview?.newAvailableFields]);
 
   // ── Confirm Handler ────────────────────────────────────────────────────────
   const handleConfirm = async () => {
@@ -269,7 +213,7 @@ export function TypeConversionModal({
         expectedVersion: currentItem?.version,
         retainUnmappedInExtra: retainUnmapped,
       });
-      const updatedItem = result?.item ?? result?.paper;
+      const updatedItem = result?.item;
       if (updatedItem) {
         onSuccess?.(updatedItem);
       }

@@ -44,51 +44,60 @@ vi.mock('@/features/library/sdk/queries/reader.queries', async (importOriginal) 
   };
 });
 
-vi.mock('@/features/library', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/features/library')>();
-  return {
-    ...actual,
-    useLibraryUIStore: vi.fn((selector) =>
-      selector({
-        isInspectorOpen: true,
-        toggleInspector: vi.fn(),
-        activeInspectorTab: 'info',
-        setActiveInspectorTab: vi.fn(),
-        setIsInspectorOpen: vi.fn(),
-        inspectorWidth: 360,
-        setInspectorWidth: vi.fn(),
-        activeItemId: 'test-paper-1',
-        selectOnly: vi.fn(),
-        openModal: vi.fn(),
-      })
-    ),
-    useLibraryItemDetailQuery: vi.fn().mockReturnValue({
-      data: {
-        id: 'test-paper-1',
-        title: 'Attention Is All You Need',
-        itemType: 'journalArticle',
-        creators: [{ firstName: 'Ashish', lastName: 'Vaswani', creatorType: 'author' }],
-      },
-      isLoading: false,
-    }),
-    useUpdateLibraryItemMutation: vi.fn().mockReturnValue({
-      mutate: vi.fn(),
-      isPending: false,
-    }),
-    useCollections: vi.fn().mockReturnValue({
-      state: { collections: [] },
-    }),
-    useRelations: vi.fn().mockReturnValue({
-      relatedItems: [],
-    }),
-    useRetraction: vi.fn().mockReturnValue({
-      unflagItem: vi.fn(),
-      checkItem: vi.fn(),
-      isCheckingItem: false,
-      isUnflagging: false,
-    }),
-  };
-});
+vi.mock('@/features/library/core/store/library-ui.store', () => ({
+  useLibraryUIStore: vi.fn((selector) =>
+    selector({
+      isInspectorOpen: true,
+      toggleInspector: vi.fn(),
+      activeInspectorTab: 'info',
+      setActiveInspectorTab: vi.fn(),
+      setIsInspectorOpen: vi.fn(),
+      inspectorWidth: 360,
+      setInspectorWidth: vi.fn(),
+      activeItemId: 'test-paper-1',
+      selectOnly: vi.fn(),
+      openModal: vi.fn(),
+    })
+  ),
+}));
+
+vi.mock('@/features/library/sdk/queries/catalog.queries', () => ({
+  useLibraryItemDetailQuery: vi.fn().mockReturnValue({
+    data: {
+      id: 'test-paper-1',
+      title: 'Attention Is All You Need',
+      itemType: 'journalArticle',
+      creators: [{ firstName: 'Ashish', lastName: 'Vaswani', creatorType: 'author' }],
+    },
+    isLoading: false,
+  }),
+  useUpdateLibraryItemMutation: vi.fn().mockReturnValue({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+}));
+
+vi.mock('@/features/library/sdk/queries/collections.queries', () => ({
+  useCollections: vi.fn().mockReturnValue({
+    collections: [],
+    isLoading: false,
+  }),
+}));
+
+vi.mock('@/features/library/sdk/queries/relations.queries', () => ({
+  useRelations: vi.fn().mockReturnValue({
+    relatedItems: [],
+  }),
+}));
+
+vi.mock('@/features/library/sdk/queries/ingestion.queries', () => ({
+  useRetraction: vi.fn().mockReturnValue({
+    unflagItem: vi.fn(),
+    checkItem: vi.fn(),
+    isCheckingItem: false,
+    isUnflagging: false,
+  }),
+}));
 
 describe('ReaderInspector Shared LibraryInspector Parity', () => {
   afterEach(() => {
@@ -108,7 +117,6 @@ describe('ReaderInspector Shared LibraryInspector Parity', () => {
         <TooltipProvider>
           <ReaderInspector
             item={testItem}
-            paper={testItem}
             scopeId="user"
             canEdit={true}
           />

@@ -49,6 +49,27 @@ export function useTags(scopeId?: string, options?: { enabled?: boolean }) {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({
+      tagId,
+      data,
+    }: {
+      tagId: string;
+      data: { name?: string; color?: string; type?: string; shortcut?: number | null };
+    }) => TagsService.update(effectiveScope, tagId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
+      toast.success('Tag updated', { id: 'tag-mutation' });
+    },
+    onError: (err: Error) => {
+      toast.error('Failed to update tag', {
+        description: err.message || 'Please try again.',
+        id: 'tag-mutation',
+      });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (tagId: string) => TagsService.delete(effectiveScope, tagId),
     onSuccess: () => {
@@ -89,6 +110,8 @@ export function useTags(scopeId?: string, options?: { enabled?: boolean }) {
     refetch: tagsQuery.refetch,
     createTag: createMutation.mutateAsync,
     isCreating: createMutation.isPending,
+    updateTag: updateMutation.mutateAsync,
+    isUpdating: updateMutation.isPending,
     deleteTag: deleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
     deleteAutomaticTags: deleteAutomaticMutation.mutateAsync,
@@ -128,7 +151,6 @@ export function useNotes(scopeId?: string, itemId?: string) {
           queryKey: itemKeys.byId(scopeId, targetItemId),
         });
       }
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
       toast.success('Note saved', { id: 'note-mutation-toast' });
     },
     onError: (err: Error) => {
@@ -157,7 +179,6 @@ export function useNotes(scopeId?: string, itemId?: string) {
           queryKey: itemKeys.byId(scopeId, itemId),
         });
       }
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
       toast.success('Note updated', { id: 'note-mutation-toast' });
     },
     onError: (err: Error) => {
@@ -177,7 +198,6 @@ export function useNotes(scopeId?: string, itemId?: string) {
       if (itemId) {
         queryClient.invalidateQueries({ queryKey: itemKeys.byId(scopeId, itemId) });
       }
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
       toast.success('Note deleted', { id: 'note-mutation-toast' });
     },
     onError: (err: Error) => {
@@ -188,7 +208,46 @@ export function useNotes(scopeId?: string, itemId?: string) {
     },
   });
 
-  const state = {
+  const extractFromAnnotationsMutation = useMutation({
+    mutationFn: (options?: {
+      noteId?: string;
+      tagColor?: boolean;
+      includeComments?: boolean;
+    }) => {
+      if (!itemId) {
+        throw new Error('itemId is required to extract annotations');
+      }
+      return NotesService.extractFromAnnotations(scopeId, itemId, options);
+    },
+    onSuccess: (res: unknown) => {
+      queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, itemId) });
+      queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
+      if (itemId) {
+        queryClient.invalidateQueries({ queryKey: itemKeys.byId(scopeId, itemId) });
+      }
+      const extractedInfo = res as { totalExtracted?: number; message?: string } | null;
+      if (extractedInfo && extractedInfo.totalExtracted === 0) {
+        toast.info('No PDF annotations found', {
+          description: 'Highlight text or add annotations in the PDF reader first.',
+          id: 'note-mutation-toast',
+        });
+      } else {
+        toast.success('Compiled note from PDF annotations', {
+          id: 'note-mutation-toast',
+        });
+      }
+    },
+    onError: (err: Error) => {
+      toast.error('Could not compile note from annotations', {
+        description:
+          err.message ||
+          'Make sure this document has PDF highlights or annotations first.',
+        id: 'note-mutation-toast',
+      });
+    },
+  });
+
+  return {
     notes: (notesQuery.data || []) as Note[],
     isLoading: notesQuery.isLoading,
     isError: notesQuery.isError,
@@ -196,21 +255,13 @@ export function useNotes(scopeId?: string, itemId?: string) {
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
-  };
-
-  const actions = {
+    isExtractingFromAnnotations: extractFromAnnotationsMutation.isPending,
     refetch: notesQuery.refetch,
     createNote: createMutation.mutateAsync,
     updateNote: (id: string, version: number, dto: UpdateNoteDTO) =>
       updateMutation.mutateAsync({ id, version, dto }),
     deleteNote: (id: string, version?: number) =>
       deleteMutation.mutateAsync({ id, version }),
-  };
-
-  return {
-    state,
-    actions,
-    ...state,
-    ...actions,
+    extractFromAnnotations: extractFromAnnotationsMutation.mutateAsync,
   };
 }

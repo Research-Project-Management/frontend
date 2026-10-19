@@ -41,7 +41,7 @@ export function SavedSearchContextMenu({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex size-6 shrink-0 items-center justify-center rounded-md text-foreground opacity-0 group-hover/item:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-muted focus-visible:opacity-100 hover:bg-muted active:bg-muted transition-all duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground opacity-0 group-hover/item:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-background data-[state=open]:border-border data-[state=open]:shadow-2xs data-[state=open]:text-foreground focus-visible:opacity-100 border border-transparent hover:border-border/50 hover:bg-background hover:shadow-2xs active:scale-95 transition-all duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -49,7 +49,7 @@ export function SavedSearchContextMenu({
           aria-label={`Options for ${savedSearch.name}`}
         >
           <MoreVertical
-            className="size-3.5 shrink-0 text-foreground"
+            className="size-3.5 shrink-0"
             strokeWidth={1.5}
           />
         </button>

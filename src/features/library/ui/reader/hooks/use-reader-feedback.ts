@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 
 export const READER_TOAST_IDS = {
@@ -22,7 +22,14 @@ export const READER_TOAST_IDS = {
  */
 export function useReaderClipboard(resetDelay = 2000) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
 
   const copy = useCallback(
     async (text: string | null | undefined, label?: string): Promise<boolean> => {

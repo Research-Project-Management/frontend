@@ -1,14 +1,16 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { Item } from '@/features/library/domain/types/library.types';
 import {
   DIRECT_METADATA_FIELDS,
   FIELD_FALLBACK_CHAINS,
   resolveInspectorFieldValue,
   buildInspectorFieldPatch,
+} from '@/features/library/domain/item-field-schema';
+import {
   parseCreators,
   toItemCreators,
   areCreatorsEqual,
-} from '@/features/library/ui/inspector/InfoSection';
+} from '@/features/library/ui/inspector/fields/CreatorFields';
 import {
   formatAndSanitizeExtraMetadata,
   isAllowedZoteroExtraKey,

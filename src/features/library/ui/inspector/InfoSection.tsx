@@ -4,12 +4,10 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import type { Item } from "@/features/library/domain/types/library.types";
 import { cleanDoi } from "@/features/library/domain/identifiers";
 import {
-  isValidValue,
   cleanValue,
   parseZoteroExtraField,
 } from "@/features/library/domain/metadata";
 import {
-  LIBRARY_ITEM_TYPES,
   getItemTypeDefinition,
   normalizeCanonicalItemType,
   mapRegistryItemTypes,
@@ -19,84 +17,23 @@ import {
 import { toast } from "sonner";
 import { copyToClipboard as copyText } from "@/shared/lib/utils";
 import { useItemTypes } from "@/features/library/sdk/queries/catalog.queries";
-import { useConversion } from "@/features/library/sdk/queries/saved-searches-relations.queries";
-import {
-  CreatorFields,
-  type CreatorEntry,
-  parseCreators,
-  areCreatorsEqual,
-  toItemCreators,
-} from "./fields/CreatorFields";
+import { useItemTypeConversion } from "@/features/library/sdk/queries/saved-searches-relations.queries";
+import { CreatorFields } from "./fields/CreatorFields";
 import { GeneralFields } from "./fields/GeneralFields";
 import { DynamicInspectorField } from "./fields/DynamicInspectorField";
 import { ExtraAuditFields } from "./fields/ExtraAuditFields";
-import { InlineField } from "./fields/InlineField";
-import { InlineTextarea } from "./fields/InlineTextarea";
-
-export type { CreatorEntry };
-export {
-  InlineField,
-  InlineTextarea,
-  parseCreators,
-  areCreatorsEqual,
-  toItemCreators,
-  isValidValue,
-  cleanValue,
-};
+import {
+  INSPECTOR_FIELD_DESCRIPTORS,
+  prepareInspectorFieldContext,
+  resolveInspectorFieldValue,
+  buildInspectorFieldPatch,
+} from "@/features/library/domain/item-field-schema";
 
 export interface InfoSectionProps {
   item?: Item;
-  paper?: Item;
   onUpdateItem?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
-  onUpdatePaper?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
   canEdit?: boolean;
   scopeId?: string;
-}
-
-import {
-  ALL_SCHEMA_FIELD_KEYS,
-  FIRST_CLASS_ITEM_COLUMNS,
-  DIRECT_METADATA_FIELDS,
-  FIELD_FALLBACK_CHAINS,
-  MULTI_KEY_SYNC_SETTERS,
-  INSPECTOR_FIELD_DESCRIPTORS,
-  resolveInspectorFieldValue,
-  buildInspectorFieldPatch,
-  type InspectorFieldDescriptor,
-  type FieldLookupSource,
-} from "@/features/library/domain/item-field-schema";
-
-export {
-  ALL_SCHEMA_FIELD_KEYS,
-  FIRST_CLASS_ITEM_COLUMNS,
-  DIRECT_METADATA_FIELDS,
-  FIELD_FALLBACK_CHAINS,
-  MULTI_KEY_SYNC_SETTERS,
-  INSPECTOR_FIELD_DESCRIPTORS,
-  resolveInspectorFieldValue,
-  buildInspectorFieldPatch,
-  type InspectorFieldDescriptor,
-  type FieldLookupSource,
-};
-
-/** Format ISO date into locale format (e.g. 8/20/2026, 3:53:43 PM) */
-export function formatAuditDate(dateStr?: string | Date | null): string {
-  if (!dateStr) return "";
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return "";
-    return d.toLocaleString("en-US", {
-      month: "numeric",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-    });
-  } catch {
-    return "";
-  }
 }
 
 const EXCLUDED_DYNAMIC_LOOP_FIELDS = new Set([
@@ -111,24 +48,24 @@ const EXCLUDED_DYNAMIC_LOOP_FIELDS = new Set([
   "datemodified",
 ]);
 
-export default function InfoSection(props: InfoSectionProps) {
-  const item = props.item || props.paper;
-  const onUpdateItem = props.onUpdateItem || props.onUpdatePaper;
-  const { canEdit = true, scopeId: propScopeId } = props;
+export default function InfoSection({
+  item,
+  onUpdateItem,
+  canEdit = true,
+  scopeId: propScopeId,
+}: InfoSectionProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const currentItemType = normalizeCanonicalItemType(item?.itemType);
   const scopeId = propScopeId || item?.projectId || "user";
 
-  const { previewAsync, convertAsync } = useConversion(scopeId);
+  useItemTypeConversion(scopeId);
   const { types: registryItemTypes } = useItemTypes(scopeId || undefined);
 
-  const itemTypeDefinitions = useMemo(() => {
-    const serverDefinitions = mapRegistryItemTypes(registryItemTypes);
-    return serverDefinitions.length > 0
-      ? serverDefinitions
-      : Object.values(LIBRARY_ITEM_TYPES);
-  }, [registryItemTypes]);
+  const itemTypeDefinitions = useMemo(
+    () => mapRegistryItemTypes(registryItemTypes),
+    [registryItemTypes],
+  );
 
   const selectableItemTypes = useMemo(
     () =>
@@ -159,7 +96,15 @@ export default function InfoSection(props: InfoSectionProps) {
     [item?.extra],
   );
 
-  const displayDoi = cleanDoi(item?.doi || item?.DOI || parsedExtraMap.doi);
+  const displayDoi = useMemo(
+    () => cleanDoi(item?.doi || parsedExtraMap.doi),
+    [item?.doi, parsedExtraMap.doi],
+  );
+
+  const preparedFieldContext = useMemo(
+    () => prepareInspectorFieldContext(item, parsedExtraMap, displayDoi),
+    [item, parsedExtraMap, displayDoi],
+  );
 
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -188,13 +133,17 @@ export default function InfoSection(props: InfoSectionProps) {
   /** Helper to retrieve value for a field definition key from item */
   const getFieldValue = useCallback(
     (fieldKey: string): string => {
-      const rawVal = resolveInspectorFieldValue(item, fieldKey);
+      const rawVal = resolveInspectorFieldValue(
+        item,
+        fieldKey,
+        preparedFieldContext,
+      );
       const descriptor = INSPECTOR_FIELD_DESCRIPTORS[fieldKey.toLowerCase()];
       return descriptor?.formatDisplay
         ? descriptor.formatDisplay(rawVal)
         : cleanValue(rawVal);
     },
-    [item],
+    [item, preparedFieldContext],
   );
 
   /**
@@ -251,26 +200,20 @@ export default function InfoSection(props: InfoSectionProps) {
       {/* General Section: Warning, Item Type Selector, Title */}
       <GeneralFields
         item={item}
-        paper={item}
         currentItemType={currentItemType}
         selectableItemTypes={selectableItemTypes}
         typeDefinition={typeDefinition}
         canEdit={canEdit}
         scopeId={scopeId}
         onUpdateItem={onUpdateItem}
-        onUpdatePaper={onUpdateItem}
-        previewAsync={previewAsync}
-        convertAsync={convertAsync}
       />
 
       {/* Creators / Authors */}
       <CreatorFields
         item={item}
-        paper={item}
         typeDefinition={typeDefinition}
         canEdit={canEdit}
         onUpdateItem={onUpdateItem}
-        onUpdatePaper={onUpdateItem}
       />
 
       {/* Dynamic Schema Fields for Selected Item Type in Canonical Zotero Order */}
@@ -278,8 +221,6 @@ export default function InfoSection(props: InfoSectionProps) {
         <DynamicInspectorField
           key={fieldDef.field}
           fieldDef={fieldDef}
-          item={item}
-          paper={item}
           val={getFieldValue(fieldDef.field)}
           displayDoi={displayDoi}
           copiedKey={copiedKey}
@@ -292,10 +233,8 @@ export default function InfoSection(props: InfoSectionProps) {
       {/* Extra Field, Date Added, Modified */}
       <ExtraAuditFields
         item={item}
-        paper={item}
         canEdit={canEdit}
         onUpdateItem={onUpdateItem}
-        onUpdatePaper={onUpdateItem}
       />
     </div>
   );

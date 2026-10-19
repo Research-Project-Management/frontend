@@ -117,7 +117,7 @@ export function ProjectLibrariesSection({
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
 
   return (
-    <div className="flex flex-col gap-1 w-full">
+    <div className="mt-1.5 flex flex-col gap-0.5 w-full">
       <div className="relative group/root flex items-center w-full">
         <button
           type="button"
@@ -145,11 +145,11 @@ export function ProjectLibrariesSection({
                 setIsProjectsExpanded((v) => !v);
               }}
               aria-label={isProjectsExpanded ? 'Collapse Project Libraries' : 'Expand Project Libraries'}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-muted active:bg-muted transition-colors duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground border border-transparent hover:border-border/50 hover:bg-background hover:shadow-2xs active:scale-95 transition-all duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <ChevronRight
                 className={cn(
-                  'size-3.5 text-foreground transition-transform duration-150 shrink-0',
+                  'size-3.5 transition-transform duration-150 shrink-0',
                   isProjectsExpanded && 'rotate-90'
                 )}
                 strokeWidth={1.5}
@@ -168,7 +168,7 @@ export function ProjectLibrariesSection({
       </div>
 
       {isProjectsExpanded && (
-        <div className="flex flex-col gap-1 w-full">
+        <div className="flex flex-col gap-0.5 w-full">
           {projects.length === 0 ? (
             <div className="pl-6 pr-2.5 py-1.5 text-11 text-muted-foreground italic select-none">
               No project libraries
@@ -183,7 +183,7 @@ export function ProjectLibrariesSection({
                   : isProjectActive && getLibraryPermissions(activeScope).canManageCollections;
 
               return (
-                <div key={project.id} className="flex flex-col gap-1 w-full">
+                <div key={project.id} className="flex flex-col gap-0.5 w-full">
                   <button
                     type="button"
                     onClick={() => {
@@ -223,7 +223,7 @@ export function ProjectLibrariesSection({
 
                   {/* Project Contents (Rendered when this project is active) */}
                   {isProjectActive && (
-                    <div className="flex flex-col gap-1 w-full">
+                    <div className="flex flex-col gap-0.5 w-full">
                       {projectTree.length > 0 && (
                         <CollectionTree
                           tree={projectTree}
@@ -270,7 +270,7 @@ export function ProjectLibrariesSection({
                       />
 
                       {/* Project Duplicate Items Nav Item (Zotero Group Library parity) */}
-                      <div className="my-1 flex flex-col gap-0.5">
+                      <div className="flex flex-col gap-0.5 w-full">
                         <SidebarNavItem
                           href={`${basePath}/duplicates`}
                           icon={Files}

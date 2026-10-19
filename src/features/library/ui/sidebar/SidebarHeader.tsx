@@ -8,6 +8,7 @@ import {
   SlidersHorizontal,
   PanelLeft,
 } from "lucide-react";
+import { cn } from "@/shared/lib/utils";
 import { Input } from "@/shared/components/ui/input";
 import {
   Tooltip,
@@ -49,11 +50,16 @@ export function SidebarHeader({
   };
 
   return (
-    <div className="mb-3 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground select-none">
+    <div
+      className={cn(
+        "mb-3 flex items-center h-8 font-semibold text-sm tracking-tight text-foreground select-none",
+        isSearchExpanded || searchQuery ? "px-0 w-full" : "justify-between px-2 w-full"
+      )}
+    >
       {isSearchExpanded || searchQuery ? (
-        <div className="relative flex items-center transition-all duration-300 ease-in-out w-full h-8 rounded-md border border-border bg-background overflow-hidden group font-normal text-12 hover:border-border-hover focus-within:border-primary focus-within:ring-1 focus-within:ring-ring">
+        <div className="relative flex items-center w-full h-8 rounded-md border border-border bg-background overflow-hidden font-normal text-13">
           <Search
-            className="absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 left-2 translate-x-0 text-foreground pointer-events-none shrink-0"
+            className="absolute top-1/2 -translate-y-1/2 size-3.5 z-10 left-2.5 translate-x-0 text-muted-foreground pointer-events-none shrink-0"
             strokeWidth={1.5}
           />
           <Input
@@ -74,7 +80,7 @@ export function SidebarHeader({
                 setIsSearchExpanded(false);
               }
             }}
-            className="h-full text-12 font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground placeholder:font-normal transition-opacity duration-200 pl-7 pr-7 text-foreground"
+            className="h-full text-13 font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 focus-visible:border-none focus-visible:outline-none focus:outline-none outline-none shadow-none w-full placeholder:text-muted-foreground placeholder:font-normal pl-8 pr-7 text-foreground"
           />
           <Tooltip>
             <TooltipTrigger asChild>
@@ -85,11 +91,11 @@ export function SidebarHeader({
                   e.stopPropagation();
                 }}
                 onClick={handleClearSearch}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center size-5 text-foreground hover:bg-muted transition-colors cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center size-5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
                 aria-label="Clear search"
               >
                 <X
-                  className="size-3 shrink-0 text-foreground"
+                  className="size-3 shrink-0"
                   strokeWidth={1.5}
                 />
               </button>
@@ -106,7 +112,7 @@ export function SidebarHeader({
         </div>
       ) : (
         <>
-          <span className="truncate min-w-0 font-semibold text-16 tracking-tight text-foreground">
+          <span className="shrink-0 font-semibold text-15 tracking-tight text-foreground">
             Library
           </span>
 

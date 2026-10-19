@@ -12,10 +12,10 @@ import {
   useReaderFulltext,
   useAnnotations,
 } from '@/features/library/sdk/queries/reader.queries';
-import { readerAnnotationKeys } from '@/features/library/sdk/query-keys';
+import { annotationKeys } from '@/features/library/sdk/query-keys';
 import { useReadingProgress } from './use-reading-progress';
 import { useAnnotationBatch } from './use-annotation-batch';
-import { useLibraryReaderStore } from '@/features/library/core/store/reader.store';
+import { useReaderStore } from '@/features/library/core/store/reader.store';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import type {
   ReaderDocument,
@@ -35,8 +35,8 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   );
   const scopeId = isProject ? rawProjectId! : 'user';
 
-  const storeReadingId = useLibraryReaderStore((s) => s.readingPaperId);
-  const closeReader = useLibraryReaderStore((s) => s.closeReader);
+  const storeReadingId = useReaderStore((s) => s.readingPaperId);
+  const closeReader = useReaderStore((s) => s.closeReader);
   const effectivePaperId = overridePaperId || storeReadingId || params?.paperId || '';
 
   const paperQuery = useReaderItem(scopeId, effectivePaperId);
@@ -182,7 +182,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
           tags: [],
         });
         qc.invalidateQueries({
-          queryKey: readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
+          queryKey: annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
         });
         return created;
       } catch (err) {

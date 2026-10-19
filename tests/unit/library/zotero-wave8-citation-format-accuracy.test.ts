@@ -7,10 +7,10 @@ import {
 import {
   generateCitationKey,
   toBibTeXEntry,
+  formatCitation,
   formatRis,
   formatCslJson,
 } from '@/features/library/domain/citations';
-import { buildFallbackCitation } from '@/features/library/core/coordinator/batch-action.coordinator';
 import type { Item } from '@/features/library/domain/types/library.types';
 
 describe('Zotero Wave 8: Citation, Export & Metadata Format Grounding & Accuracy Remediation', () => {
@@ -274,14 +274,14 @@ describe('Zotero Wave 8: Citation, Export & Metadata Format Grounding & Accuracy
         { family: 'Laxminarayan', given: 'Ramanan' },
       ]);
 
-      // IEEE fallback citation includes vol., no., pp., year, and doi:
-      const ieee = buildFallbackCitation(sampleItem, 'ieee');
+      // IEEE formatted citation includes vol., no., pp., year, and doi:
+      const ieee = formatCitation(sampleItem, 'ieee');
       expect(ieee).toBe(
         'World Health Organization, R. Laxminarayan, "Global Surveillance of Antimicrobial Resistance," The Lancet Infectious Diseases, vol. 24, no. 3, pp. 210-225, 2024. doi: 10.1016/S1473-3099(24)00001-X.',
       );
 
-      // APA fallback citation includes volume(issue), pages, and https://doi.org/
-      const apa = buildFallbackCitation(sampleItem, 'apa');
+      // APA formatted citation includes volume(issue), pages, and https://doi.org/
+      const apa = formatCitation(sampleItem, 'apa');
       expect(apa).toBe(
         'World Health Organization, Laxminarayan, R. (2024). Global Surveillance of Antimicrobial Resistance. The Lancet Infectious Diseases, 24(3), 210-225. https://doi.org/10.1016/S1473-3099(24)00001-X',
       );

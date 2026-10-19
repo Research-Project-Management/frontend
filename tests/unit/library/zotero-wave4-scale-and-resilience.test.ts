@@ -176,11 +176,11 @@ ER  -`;
   // ===========================================================================
   describe('User Story 3: Zotero Hierarchical Collection Tree Navigation, Breadcrumbs, & Move Guards', () => {
     const flatCollections: Collection[] = [
-      { id: 'col-cs', name: 'Computer Science', parentId: null, description: '', color: '#3b82f6', icon: '📁', scopeId: 'user', itemCount: 10, paperCount: 10, createdAt: '', updatedAt: '' },
-      { id: 'col-nlp', name: 'NLP', parentId: 'col-cs', description: '', color: '#3b82f6', icon: '📁', scopeId: 'user', itemCount: 15, paperCount: 15, createdAt: '', updatedAt: '' },
-      { id: 'col-llm', name: 'Large Language Models', parentId: 'col-nlp', description: '', color: '#3b82f6', icon: '📁', scopeId: 'user', itemCount: 25, paperCount: 25, createdAt: '', updatedAt: '' },
-      { id: 'col-align', name: 'Alignment & RLHF', parentId: 'col-llm', description: '', color: '#3b82f6', icon: '📁', scopeId: 'user', itemCount: 8, paperCount: 8, createdAt: '', updatedAt: '' },
-      { id: 'col-vision', name: 'Computer Vision', parentId: 'col-cs', description: '', color: '#3b82f6', icon: '📁', scopeId: 'user', itemCount: 12, paperCount: 12, createdAt: '', updatedAt: '' },
+      { id: 'col-cs', name: 'Computer Science', parentId: null, description: '', color: '#3b82f6', icon: '📁', scopeId: 'user', itemCount: 10, createdAt: '', updatedAt: '' },
+      { id: 'col-nlp', name: 'NLP', parentId: 'col-cs', description: '', color: '#3b82f6', icon: '📁', scopeId: 'user', itemCount: 15, createdAt: '', updatedAt: '' },
+      { id: 'col-llm', name: 'Large Language Models', parentId: 'col-nlp', description: '', color: '#3b82f6', icon: '📁', scopeId: 'user', itemCount: 25, createdAt: '', updatedAt: '' },
+      { id: 'col-align', name: 'Alignment & RLHF', parentId: 'col-llm', description: '', color: '#3b82f6', icon: '📁', scopeId: 'user', itemCount: 8, createdAt: '', updatedAt: '' },
+      { id: 'col-vision', name: 'Computer Vision', parentId: 'col-cs', description: '', color: '#3b82f6', icon: '📁', scopeId: 'user', itemCount: 12, createdAt: '', updatedAt: '' },
     ];
 
     it('builds a 4-level hierarchical tree, resolves breadcrumbs, and collects recursive descendant IDs', () => {
@@ -212,9 +212,9 @@ ER  -`;
 
     it('safely handles corrupted cyclic parentId references without infinite loops', () => {
       const cyclicCollections: Collection[] = [
-        { id: 'cycle-a', name: 'Node A', parentId: 'cycle-c', description: '', color: '', icon: '', scopeId: 'user', itemCount: 1, paperCount: 1, createdAt: '', updatedAt: '' },
-        { id: 'cycle-b', name: 'Node B', parentId: 'cycle-a', description: '', color: '', icon: '', scopeId: 'user', itemCount: 1, paperCount: 1, createdAt: '', updatedAt: '' },
-        { id: 'cycle-c', name: 'Node C', parentId: 'cycle-b', description: '', color: '', icon: '', scopeId: 'user', itemCount: 1, paperCount: 1, createdAt: '', updatedAt: '' },
+        { id: 'cycle-a', name: 'Node A', parentId: 'cycle-c', description: '', color: '', icon: '', scopeId: 'user', itemCount: 1, createdAt: '', updatedAt: '' },
+        { id: 'cycle-b', name: 'Node B', parentId: 'cycle-a', description: '', color: '', icon: '', scopeId: 'user', itemCount: 1, createdAt: '', updatedAt: '' },
+        { id: 'cycle-c', name: 'Node C', parentId: 'cycle-b', description: '', color: '', icon: '', scopeId: 'user', itemCount: 1, createdAt: '', updatedAt: '' },
       ];
 
       const tree = buildCollectionTree(cyclicCollections);
@@ -263,13 +263,11 @@ ER  -`;
             : [{ id: 't3', name: 'systems', color: '#6b7280' }],
           collectionIds: [`col-depth-${i % 4}`],
           doi: i % 3 === 0 ? `10.1000/flux.2026.${i}` : '',
-          abstract: '',
+          abstractNote: '',
           publicationTitle: 'Journal of AI Research',
           publisher: 'Flux Press',
           url: '',
           isStarred: false,
-          isFavorite: false,
-          isRead: i % 2 !== 0,
           isTrashed: false,
           isRetracted: false,
           noteCount: 0,

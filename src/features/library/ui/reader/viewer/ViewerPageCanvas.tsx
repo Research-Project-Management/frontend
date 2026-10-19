@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Page } from 'react-pdf';
 import { Check, X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import { getCappedDevicePixelRatio, releaseCanvasMemory } from '@/shared/lib/pdfjs-worker';
 import type { ReaderAnnotation } from '@/features/library/domain/types/reader.types';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
 import { calculatePageAspectRatio } from '@/features/library/domain/pdf-viewport.model';
@@ -75,6 +76,27 @@ export const ViewerPageCanvas = React.memo(function ViewerPageCanvas({
   onSaveInlineText,
   onOpenAnnotationCard,
 }: ViewerPageCanvasProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const pageCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    if (!inWindow && containerRef.current) {
+      releaseCanvasMemory(containerRef.current);
+    }
+  }, [inWindow]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    return () => {
+      if (pageCanvasRef.current) {
+        pageCanvasRef.current.width = 0;
+        pageCanvasRef.current.height = 0;
+        pageCanvasRef.current = null;
+      }
+      releaseCanvasMemory(container);
+    };
+  }, []);
+
   const aspectRatio = cachedDim
     ? calculatePageAspectRatio(cachedDim, rotation)
     : calculatePageAspectRatio({ width: 600, height: 848 }, rotation);
@@ -84,7 +106,10 @@ export const ViewerPageCanvas = React.memo(function ViewerPageCanvas({
     <div
       data-page-num={pageNum}
       style={{ width: effectivePageWidth }}
-      ref={(el) => onRegisterPageRef(pageNum, el)}
+      ref={(el) => {
+        containerRef.current = el;
+        onRegisterPageRef(pageNum, el);
+      }}
       onClick={(e) => onPageClick(e, pageNum)}
       onMouseDown={(e) => onPageMouseDown(e, pageNum)}
       onMouseMove={(e) => onPageMouseMove(e, pageNum)}
@@ -104,6 +129,16 @@ export const ViewerPageCanvas = React.memo(function ViewerPageCanvas({
           rotate={rotation}
           renderTextLayer={true}
           renderAnnotationLayer={true}
+          devicePixelRatio={getCappedDevicePixelRatio(2)}
+          canvasRef={(node) => {
+            if (node) {
+              pageCanvasRef.current = node;
+            } else if (pageCanvasRef.current) {
+              pageCanvasRef.current.width = 0;
+              pageCanvasRef.current.height = 0;
+              pageCanvasRef.current = null;
+            }
+          }}
           onLoadSuccess={(page) => {
             const origW =
               (page as { originalWidth?: number; width?: number }).originalWidth ||

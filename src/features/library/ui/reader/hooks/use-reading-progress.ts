@@ -80,7 +80,7 @@ export function useReadingProgress({
   useEffect(() => {
     if (paper?.id && markedPaperIdRef.current !== paper.id) {
       markedPaperIdRef.current = paper.id;
-      readerService.state.markAsRead(scopeId || 'me', paper.id).catch(() => undefined);
+      readerService.state.markAsRead(scopeId || 'user', paper.id).catch(() => undefined);
     }
   }, [scopeId, paper?.id]);
 }

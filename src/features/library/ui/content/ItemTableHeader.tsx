@@ -239,6 +239,13 @@ export function ItemTableHeader({
             </div>
           </th>
         )}
+
+        {/* Actions Column Header */}
+        <th
+          scope="col"
+          aria-label="Actions"
+          className="w-11 px-1 h-8 py-0 align-middle bg-background border-b border-border"
+        />
       </tr>
     </thead>
   );

@@ -6,21 +6,39 @@ import {
   formatAndSanitizeExtraMetadata,
   isValidValue,
 } from "@/features/library/domain/metadata";
-import { formatAuditDate } from "@/features/library/ui/inspector/InfoSection";
 import { InlineTextarea } from "./InlineTextarea";
+
+/** Format ISO date into locale format (e.g. 8/20/2026, 3:53:43 PM) */
+export function formatAuditDate(dateStr?: string | Date | null): string {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleString("en-US", {
+      month: "numeric",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+  } catch {
+    return "";
+  }
+}
 
 export interface ExtraAuditFieldsProps {
   item?: Item;
-  paper?: Item;
   canEdit?: boolean;
   onUpdateItem?: (data: Partial<Item>) => void;
-  onUpdatePaper?: (data: Partial<Item>) => void;
 }
 
-export function ExtraAuditFields(props: ExtraAuditFieldsProps) {
-  const item = props.item || props.paper;
-  const onUpdateItem = props.onUpdateItem || props.onUpdatePaper;
-  const { canEdit = true } = props;
+export function ExtraAuditFields({
+  item,
+  onUpdateItem,
+  canEdit = true,
+}: ExtraAuditFieldsProps) {
 
   const formattedExtraMetadata = useMemo(() => {
     if (!item) return "";

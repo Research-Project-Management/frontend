@@ -5,8 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import type { Item } from "@/features/library/domain/types/library.types";
-import { libraryKeys } from "@/features/library/sdk/query-keys";
-import { itemKeys } from "@/features/library/sdk/query-keys";
+import { itemKeys, patchItemAcrossScopeCaches } from "@/features/library/sdk/queries/catalog.queries";
 import { type TypeConversionPreview } from "@/features/library/sdk/queries/saved-searches-relations.queries";
 import {
   SchemaItemTypeDefinition,
@@ -34,41 +33,24 @@ const TypeConversionModal = dynamic(
 
 export interface GeneralFieldsProps {
   item?: Item;
-  paper?: Item;
   currentItemType: string;
   selectableItemTypes: Array<{ value: string; label: string }>;
   typeDefinition: SchemaItemTypeDefinition;
   canEdit?: boolean;
   scopeId?: string;
   onUpdateItem?: (data: Partial<Item>) => void;
-  onUpdatePaper?: (data: Partial<Item>) => void;
-  previewAsync: (params: {
-    itemId: string;
-    targetType: string;
-    retainUnmappedInExtra?: boolean;
-  }) => Promise<TypeConversionPreview>;
-  convertAsync: (params: {
-    itemId: string;
-    targetType: string;
-    expectedVersion?: number;
-    retainUnmappedInExtra?: boolean;
-    silent?: boolean;
-  }) => Promise<unknown>;
 }
 
-export function GeneralFields(props: GeneralFieldsProps) {
+export function GeneralFields({
+  item,
+  onUpdateItem,
+  currentItemType,
+  selectableItemTypes,
+  typeDefinition,
+  canEdit = true,
+  scopeId,
+}: GeneralFieldsProps) {
   const queryClient = useQueryClient();
-  const item = props.item || props.paper;
-  const onUpdateItem = props.onUpdateItem || props.onUpdatePaper;
-  const {
-    currentItemType,
-    selectableItemTypes,
-    typeDefinition,
-    canEdit = true,
-    scopeId,
-    previewAsync,
-    convertAsync,
-  } = props;
 
   const [isConversionDialogOpen, setIsConversionDialogOpen] = useState(false);
   const [targetConversionType, setTargetConversionType] = useState<string>("");
@@ -204,20 +186,22 @@ export function GeneralFields(props: GeneralFieldsProps) {
         <TypeConversionModal
           open={isConversionDialogOpen}
           onOpenChange={setIsConversionDialogOpen}
-          paper={item}
+          item={item}
           targetType={targetConversionType}
           scopeId={scopeId}
           initialPreview={previewData}
           onSuccess={(updatedItem: Item) => {
             const targetScope = scopeId || item.projectId || "user";
             if (updatedItem?.id) {
-              queryClient.setQueryData(
-                libraryKeys.item(targetScope, updatedItem.id),
+              patchItemAcrossScopeCaches(
+                queryClient,
+                targetScope,
+                updatedItem.id,
                 updatedItem,
               );
             }
             queryClient.invalidateQueries({
-              queryKey: libraryKeys.item(targetScope, item.id),
+              queryKey: itemKeys.byId(targetScope, item.id),
             });
             queryClient.invalidateQueries({
               queryKey: itemKeys.all(targetScope),

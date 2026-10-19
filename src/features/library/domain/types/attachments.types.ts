@@ -62,10 +62,7 @@ export const attachmentSchema = z.object({
   annotations: z.array(z.record(z.string(), z.unknown())).optional(),
 });
 
-export const itemAttachmentSchema = attachmentSchema;
-
 export type ItemAttachment = z.infer<typeof attachmentSchema>;
-export type AttachmentDto = ItemAttachment;
 export type AttachmentRevision = z.infer<typeof attachmentRevisionSchema>;
 export type LinkMode = z.infer<typeof linkModeSchema>;
 export type AttachmentType = z.infer<typeof attachmentTypeSchema>;

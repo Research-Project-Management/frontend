@@ -2,43 +2,16 @@ import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
 import { logger } from '@/shared/lib/logger';
 import { libraryServices } from '@/features/library/sdk/library.client';
-import {
-  generateCitationKey,
-  toBibTeXEntry,
-  formatCitation,
-} from '@/features/library/domain/citations';
 import type { Item, CslStyle } from '@/features/library/domain/types/library.types';
 
 /**
  * Stateless Citation & Bibliography Export Application Service.
  *
- * Centralizes client/server citation formatting, BibTeX synthesis,
- * retraction safety alerts, clipboard feedback, and file download triggers.
- * Consumed by both `useLibraryBatchCoordinator` and `useQuickCopyCoordinator`.
+ * Delegates all citation formatting and BibTeX synthesis strictly to the
+ * authoritative Backend Library Services (`libraryServices.citations` and
+ * `libraryServices.exports`), handling retraction safety alerts, clipboard
+ * feedback, and browser file downloads on the client.
  */
-
-export function buildFallbackCitation(item: Item, style: CslStyle = 'apa'): string {
-  return formatCitation(item, style);
-}
-
-export function buildFallbackBibtex(items: Item[]): string {
-  const usedKeys = new Set<string>();
-  return items
-    .map((item) => {
-      if (item.bibtex && item.bibtex.trim()) {
-        return item.bibtex.trim();
-      }
-      const key = generateCitationKey(item, usedKeys);
-      usedKeys.add(key);
-      return toBibTeXEntry({
-        ...item,
-        title: item.title || 'Untitled',
-        citationKey: item.citationKey || key,
-      });
-    })
-    .filter(Boolean)
-    .join('\n\n');
-}
 
 export async function copyWithToastHelper(
   text: string,
@@ -89,7 +62,7 @@ export function triggerBrowserTextDownload(
     link.click();
   } finally {
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 }
 
@@ -101,13 +74,8 @@ export async function executeCopyMultiCite(
 ): Promise<void> {
   warnIfRetractedHelper(retractedCount, items.length, 'citation formatting');
   if (style === 'latex') {
-    const usedKeys = new Set<string>();
     const keys = items
-      .map((p) => {
-        const k = (p.citationKey || p.key || generateCitationKey(p, usedKeys))?.trim();
-        if (k) usedKeys.add(k);
-        return k;
-      })
+      .map((p) => (p.citationKey || p.id)?.trim())
       .filter(Boolean);
     const citeCmd = `\\cite{${keys.join(', ')}}`;
     await copyWithToastHelper(citeCmd, `Copied ${citeCmd} to clipboard`);
@@ -194,15 +162,7 @@ export async function executeExportAllBibtex(
     logger.warn('Backend BibTeX export failed', { error: err });
   }
 
-  const fallbackBib = buildFallbackBibtex(items);
-  if (fallbackBib) {
-    await copyWithToastHelper(
-      fallbackBib,
-      `Copied BibTeX for ${selectedCount} reference(s) to clipboard`,
-    );
-  } else {
-    toast.error('Unable to export BibTeX for selected items', { id: 'library-clipboard' });
-  }
+  toast.error('Unable to export BibTeX for selected items', { id: 'library-clipboard' });
 }
 
 export async function executeDownloadBibFile(
@@ -215,30 +175,19 @@ export async function executeDownloadBibFile(
   const itemIds = items.map((p) => p.id).filter(Boolean);
   if (itemIds.length === 0) return;
 
-  let bibtexContent: string | null = null;
-  let downloadFilename = `references-selected-${selectedCount}.bib`;
-
   try {
     const res = await libraryServices.exports.exportLibrary(scopeId, {
       format: 'bibtex',
       itemIds,
     });
     if (res?.content) {
-      bibtexContent = res.content;
-      if (res.filename) downloadFilename = res.filename;
+      const downloadFilename = res.filename || `references-selected-${selectedCount}.bib`;
+      triggerBrowserTextDownload(res.content, downloadFilename, 'text/plain;charset=utf-8');
+      return;
     }
   } catch (err) {
     logger.warn('Backend BibTeX export failed', { error: err });
   }
 
-  if (!bibtexContent) {
-    bibtexContent = buildFallbackBibtex(items) || null;
-  }
-
-  if (!bibtexContent) {
-    toast.error('Unable to generate BibTeX file for download', { id: 'library-clipboard' });
-    return;
-  }
-
-  triggerBrowserTextDownload(bibtexContent, downloadFilename, 'text/plain;charset=utf-8');
+  toast.error('Unable to generate BibTeX file for download', { id: 'library-clipboard' });
 }

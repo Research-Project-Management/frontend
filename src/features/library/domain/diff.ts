@@ -16,7 +16,9 @@ import {
 } from './metadata';
 import {
   FIELD_FALLBACK_CHAINS,
+  prepareInspectorFieldContext,
   resolveInspectorFieldValue,
+  type PreparedInspectorFieldContext,
 } from './item-field-schema';
 
 export interface MergeFieldDefinition {
@@ -148,7 +150,11 @@ const EXTRA_FIELD_FALLBACKS: Record<string, readonly string[]> = {
  * `getItemDisplayDate`, `getPublicationVenue`, `FIELD_FALLBACK_CHAINS`, `resolveInspectorFieldValue`)
  * and `extraFields` when the primary key is empty.
  */
-export function resolveItemFieldValue(item: Record<string, unknown> | undefined, key: string): unknown {
+export function resolveItemFieldValue(
+  item: Record<string, unknown> | undefined,
+  key: string,
+  precomputedContext?: PreparedInspectorFieldContext | null,
+): unknown {
   if (!item) return undefined;
   const direct = item[key];
   if (!isFieldEmpty(direct)) return direct;
@@ -194,7 +200,11 @@ export function resolveItemFieldValue(item: Record<string, unknown> | undefined,
   }
 
   if (key !== 'creators' && key !== 'extra') {
-    const inspectorResolved = resolveInspectorFieldValue(item as Partial<Item>, key);
+    const inspectorResolved = resolveInspectorFieldValue(
+      item as Partial<Item>,
+      key,
+      precomputedContext,
+    );
     if (!isFieldEmpty(inspectorResolved)) return inspectorResolved;
   }
 
@@ -304,6 +314,7 @@ export function selectBestMasterItemId(
   for (const item of items) {
     let score = 0;
     const rec = item as Record<string, unknown>;
+    const itemCtx = prepareInspectorFieldContext(item);
 
     // Penalize retracted items heavily so a retracted record isn't auto-selected over a valid one
     if (rec.isRetracted === true || rec.retractionStatus === 'retracted') {
@@ -311,7 +322,7 @@ export function selectBestMasterItemId(
     }
 
     const itemType = String(item.itemType || 'journalArticle').trim();
-    const doi = String(resolveItemFieldValue(rec, 'doi') || '').trim();
+    const doi = String(resolveItemFieldValue(rec, 'doi', itemCtx) || '').trim();
     const isArxivDoi = /10\.48550\/arxiv/i.test(doi);
 
     if (
@@ -333,7 +344,7 @@ export function selectBestMasterItemId(
 
     // Count populated canonical fields
     for (const field of MERGEABLE_FIELDS) {
-      const val = resolveItemFieldValue(rec, field.key);
+      const val = resolveItemFieldValue(rec, field.key, itemCtx);
       if (!isFieldEmpty(val)) {
         score += 5;
       }
@@ -379,8 +390,9 @@ export function mergeZoteroExtraFields(
   const seenNormalizedLines = new Set<string>();
   const existingTexIds = new Set<string>();
 
+  const masterCtx = prepareInspectorFieldContext(master);
   const masterCiteKey = String(
-    resolveItemFieldValue(master as Record<string, unknown>, 'citationKey') || '',
+    resolveItemFieldValue(master as Record<string, unknown>, 'citationKey', masterCtx) || '',
   ).trim();
 
   const addLine = (rawLine: string) => {
@@ -411,6 +423,8 @@ export function mergeZoteroExtraFields(
 
   for (const item of orderedItems) {
     const rec = item as Record<string, unknown>;
+    const itemCtx =
+      item.id === master.id ? masterCtx : prepareInspectorFieldContext(item);
     const ef =
       rec.extraFields && typeof rec.extraFields === 'object'
         ? (rec.extraFields as Record<string, unknown>)
@@ -430,7 +444,7 @@ export function mergeZoteroExtraFields(
     }
 
     // Also harvest explicit PMID / PMCID / arXiv from item or extraFields if not yet in Extra lines
-    const pmid = resolveItemFieldValue(rec, 'pmid');
+    const pmid = resolveItemFieldValue(rec, 'pmid', itemCtx);
     if (typeof pmid === 'string' && isValidValue(pmid)) {
       addLine(`PMID: ${pmid.trim()}`);
     }
@@ -445,7 +459,9 @@ export function mergeZoteroExtraFields(
 
     // Collect alternate citationKey from non-master items into tex.ids
     if (item.id !== master.id) {
-      const altCiteKey = String(resolveItemFieldValue(rec, 'citationKey') || '').trim();
+      const altCiteKey = String(
+        resolveItemFieldValue(rec, 'citationKey', itemCtx) || '',
+      ).trim();
       if (altCiteKey && altCiteKey !== masterCiteKey) {
         existingTexIds.add(altCiteKey);
       }
@@ -509,19 +525,39 @@ export function inspectItemDifferences(
 ): MergeInspectionResult {
   const masterItem = items.find((p) => p.id === masterId) || items[0];
 
+  // Pre-compute InspectorFieldContext once per item (O(N) instead of O(N * F))
+  const itemContexts = new Map<string, PreparedInspectorFieldContext | null>();
+  for (const it of items) {
+    if (it?.id) {
+      itemContexts.set(it.id, prepareInspectorFieldContext(it));
+    }
+  }
+  const masterCtx = masterItem
+    ? itemContexts.get(masterItem.id) ?? prepareInspectorFieldContext(masterItem)
+    : null;
+
   let conflictCount = 0;
   let identicalCount = 0;
   let missingInMasterCount = 0;
 
   const fields: ItemFieldDiff[] = customFields.map((field) => {
-    const rawMaster = resolveItemFieldValue(masterItem as Record<string, unknown>, field.key);
+    const rawMaster = resolveItemFieldValue(
+      masterItem as Record<string, unknown>,
+      field.key,
+      masterCtx,
+    );
     const normMaster = normalizeCompareValue(rawMaster);
 
     const uniqueNormalized = new Set<string>();
     let anyEmptyCandidate = false;
 
     const options: FieldOptionValue[] = items.map((item, idx) => {
-      const rawVal = resolveItemFieldValue(item as Record<string, unknown>, field.key);
+      const ctx = itemContexts.get(item.id);
+      const rawVal = resolveItemFieldValue(
+        item as Record<string, unknown>,
+        field.key,
+        ctx,
+      );
       const isEmpty = isFieldEmpty(rawVal);
       const effectiveRawVal = isEmpty ? (Array.isArray(rawVal) ? [] : undefined) : rawVal;
       const displayVal = formatFieldValueDisplay(field.key, effectiveRawVal);
@@ -786,12 +822,12 @@ export function aggregateItemAssets(items: readonly Item[]): AggregatedAssetsSum
       rawTags.push(it.tags);
     }
 
-    if (it.collectionId && isValidValue(it.collectionId)) {
-      colSet.add(it.collectionId);
+    const singleColId = (it as Record<string, unknown>).collectionId;
+    if (typeof singleColId === 'string' && isValidValue(singleColId)) {
+      colSet.add(singleColId.trim());
     }
-    const rawColIds = (it as Record<string, unknown>).collectionIds;
-    if (Array.isArray(rawColIds)) {
-      rawColIds.forEach((c: unknown) => {
+    if (Array.isArray(it.collectionIds)) {
+      it.collectionIds.forEach((c: unknown) => {
         if (typeof c === 'string' && isValidValue(c)) colSet.add(c.trim());
       });
     }

@@ -14,7 +14,10 @@ import {
   getTitleFieldForType,
   getDateFieldForType,
 } from "@/features/library/domain/types/library.types";
-import { INITIAL_ITEM_TYPE_FIELDS_MAP } from "@/features/library/domain/types/item-fields.constants";
+import {
+  INITIAL_ITEM_TYPE_FIELDS_MAP,
+  ALL_SCHEMA_FIELD_KEYS,
+} from "@/features/library/domain/types/item-fields.constants";
 import { normalizeAuthors } from "./creators";
 
 const LATEX_DIACRITIC_MAP: ReadonlyArray<
@@ -574,13 +577,6 @@ export function formatItemTypeLabel(rawType?: string | null): string {
 }
 
 /**
- * All 121 canonical Zotero Schema v42 field names derived automatically from the 37 item types.
- */
-export const ALL_ZOTERO_SCHEMA_FIELDS: ReadonlySet<string> = new Set<string>(
-  Object.values(INITIAL_ITEM_TYPE_FIELDS_MAP).flat(),
-);
-
-/**
  * Genuine Zotero 7 `Extra` keys that are also valid schema fields on specific item types
  * (`PMID`/`PMCID` on `journalArticle`, `originalDate` on `book`/`bookSection`) and must remain
  * allowed as explicit `Key: Value` lines in the Zotero `Extra` textarea.
@@ -593,7 +589,7 @@ const ALLOWED_ZOTERO_EXTRA_LINE_KEYS = new Set<string>([
 
 export const INTERNAL_AND_DEDICATED_METADATA_KEYS = new Set<string>([
   // Automatically derived from all 121 Zotero Schema v42 fields across all 37 item types
-  ...Array.from(ALL_ZOTERO_SCHEMA_FIELDS)
+  ...Array.from(ALL_SCHEMA_FIELD_KEYS)
     .map((f) => f.toLowerCase())
     .filter((k) => !ALLOWED_ZOTERO_EXTRA_LINE_KEYS.has(k)),
   // Internal / system / audit / duplicate / retraction / ingestion telemetry state
@@ -726,8 +722,6 @@ export const INTERNAL_AND_DEDICATED_METADATA_KEYS = new Set<string>([
   "extrafields",
 ]);
 
-export const INTERNAL_EXTRA_KEYS = INTERNAL_AND_DEDICATED_METADATA_KEYS;
-
 /**
  * Genuine Zotero 7 `Extra` / CSL overflow identifier keys that may be promoted
  * from structured `extraFields` / JSONB into the `Extra` display when they are NOT
@@ -768,6 +762,18 @@ export function formatExtraDisplay(item: Item): string {
   return "—";
 }
 
+const DEDICATED_FIELDS_BY_TYPE_MAP: ReadonlyMap<string, ReadonlySet<string>> =
+  new Map(
+    Object.entries(INITIAL_ITEM_TYPE_FIELDS_MAP).map(([type, fields]) => [
+      type,
+      new Set(
+        fields.map((f) => f.toLowerCase().replace(/[\s_-]+/g, "")),
+      ),
+    ]),
+  );
+
+const EMPTY_DEDICATED_FIELDS_SET: ReadonlySet<string> = new Set();
+
 /**
  * Formats and cleans extra metadata text for the Inspector's Extra tab,
  * stripping internal system/audit state and already-displayed first-class Inspector fields
@@ -792,13 +798,9 @@ export function formatAndSanitizeExtraMetadata(
       effectiveExtraFields.itemType) ||
     undefined;
 
-  const dedicatedFieldsForType = new Set<string>(
-    resolvedItemType && INITIAL_ITEM_TYPE_FIELDS_MAP[resolvedItemType]
-      ? INITIAL_ITEM_TYPE_FIELDS_MAP[resolvedItemType].map((f) =>
-          f.toLowerCase().replace(/[\s_-]+/g, ""),
-        )
-      : [],
-  );
+  const dedicatedFieldsForType: ReadonlySet<string> =
+    (resolvedItemType && DEDICATED_FIELDS_BY_TYPE_MAP.get(resolvedItemType)) ||
+    EMPTY_DEDICATED_FIELDS_SET;
 
   const isDedicatedFieldOnCurrentType = (rawKey: string): boolean => {
     const normKey = rawKey
@@ -998,11 +1000,12 @@ export function getItemDisplayDate(
 }
 
 /**
+/**
  * All Zotero Schema v42 field keys promoted from `extraFields` / `metadata` onto top-level `Item`
- * during `mapBackendItemToPaper`. Automatically derived from `ALL_ZOTERO_SCHEMA_FIELDS`.
+ * during `mapBackendItem`. Automatically derived from `ALL_SCHEMA_FIELD_KEYS`.
  */
 export const ALL_ZOTERO_PROMOTE_KEYS: readonly string[] = Array.from(
-  ALL_ZOTERO_SCHEMA_FIELDS,
+  ALL_SCHEMA_FIELD_KEYS,
 ).filter((k) => k !== "title" && k !== "extra");
 
 const PUBLISHER_CANDIDATE_KEYS = [
@@ -1046,7 +1049,7 @@ function pickFirstValidField(
 }
 
 /**
- * Step 1 of `mapBackendItemToPaper`: Merges `raw.metadata`, `raw.extraFields`, and top-level `raw`
+ * Step 1 of `mapBackendItem`: Merges `raw.metadata`, `raw.extraFields`, and top-level `raw`
  * into a single normalized partial record while promoting all Zotero Schema v42 keys.
  */
 function mergeRawItemPartials(rec: Record<string, unknown>): {
@@ -1081,9 +1084,30 @@ function mergeRawItemPartials(rec: Record<string, unknown>): {
   return { mapped, ef };
 }
 
+const CANONICAL_SCALAR_PROJECTIONS: ReadonlyArray<
+  readonly [string, readonly string[]]
+> = [
+  ["abstractNote", ["abstractNote", "abstract"]],
+  ["publicationTitle", ["publicationTitle", "journal"]],
+  ["journalAbbreviation", ["journalAbbreviation", "journalAbbr"]],
+  ["doi", ["doi", "DOI"]],
+  ["issn", ["issn", "ISSN"]],
+  ["isbn", ["isbn", "ISBN"]],
+  ["pmid", ["pmid", "PMID"]],
+  ["pmcid", ["pmcid", "PMCID"]],
+  ["arxivId", ["arxivId", "archiveID", "archiveId"]],
+  ["license", ["license", "rights"]],
+  ["accessDate", ["accessDate", "accessedAt"]],
+  ["citationKey", ["citationKey", "key"]],
+  ["retractionReason", ["retractionReason", "reason"]],
+  ["itemType", ["itemType", "type"]],
+  ["volume", ["volume", "reporterVolume", "codeVolume"]],
+  ["pages", ["pages", "firstPage", "codePages"]],
+];
+
 /**
- * Step 2 of `mapBackendItemToPaper`: Projects Zotero Schema v42 base fields (`title`, `publicationTitle`,
- * `publisher`, `date`/`year`, `abstract`, `volume`, `pages`, `place`, `authors`) onto top-level `Item` properties.
+ * Step 2 of `mapBackendItem`: Projects Zotero Schema v42 base fields and legacy backend aliases
+ * onto canonical top-level `Item` properties.
  */
 function projectCanonicalBaseFields(
   mapped: Record<string, unknown>,
@@ -1111,8 +1135,80 @@ function projectCanonicalBaseFields(
     mapped.authors = normalizedAuthors;
   }
 
+  for (const [targetKey, sourceKeys] of CANONICAL_SCALAR_PROJECTIONS) {
+    if (!isValidValue(mapped[targetKey])) {
+      const val = pickFirstValidField(rec, ef, sourceKeys);
+      if (isValidValue(val)) {
+        mapped[targetKey] = String(val).trim();
+      }
+    }
+  }
+
+  if (!isValidValue(mapped.numberOfPages)) {
+    const numPagesVal = pickFirstValidField(rec, ef, [
+      "numberOfPages",
+      "numPages",
+    ]);
+    if (isValidValue(numPagesVal)) {
+      mapped.numberOfPages = numPagesVal;
+    }
+  }
+
+  if (!Array.isArray(mapped.notes) || mapped.notes.length === 0) {
+    if (Array.isArray(rec.notesList) && rec.notesList.length > 0) {
+      mapped.notes = rec.notesList;
+    }
+  }
+  if (!Array.isArray(mapped.attachments) || mapped.attachments.length === 0) {
+    if (Array.isArray(rec.files) && rec.files.length > 0) {
+      mapped.attachments = rec.files;
+    }
+  }
+  if (
+    !Array.isArray(mapped.collectionIds) ||
+    mapped.collectionIds.length === 0
+  ) {
+    const derivedCollectionIds = new Set<string>();
+    if (typeof rec.collectionId === "string" && rec.collectionId.trim()) {
+      derivedCollectionIds.add(rec.collectionId.trim());
+    }
+    if (Array.isArray(rec.collections)) {
+      for (const c of rec.collections) {
+        if (c && typeof c === "object") {
+          const cid = (c as { id?: unknown }).id;
+          if (typeof cid === "string" && cid.trim()) {
+            derivedCollectionIds.add(cid.trim());
+          }
+        }
+      }
+    }
+    if (Array.isArray(rec.collectionItems)) {
+      for (const ci of rec.collectionItems) {
+        if (ci && typeof ci === "object") {
+          const obj = ci as {
+            collectionId?: unknown;
+            collection?: { id?: unknown };
+          };
+          const cid = obj.collectionId ?? obj.collection?.id;
+          if (typeof cid === "string" && cid.trim()) {
+            derivedCollectionIds.add(cid.trim());
+          }
+        }
+      }
+    }
+    if (derivedCollectionIds.size > 0) {
+      mapped.collectionIds = Array.from(derivedCollectionIds);
+    }
+  }
+  if (mapped.isFavorite === undefined && typeof rec.isStarred === "boolean") {
+    mapped.isFavorite = rec.isStarred;
+  }
+  if (mapped.notesCount === undefined && typeof rec.noteCount === "number") {
+    mapped.notesCount = rec.noteCount;
+  }
+
   const resolvedVenue = getPublicationVenue(mapped);
-  if (!isValidValue(rec.publicationTitle) && isValidValue(resolvedVenue)) {
+  if (!isValidValue(mapped.publicationTitle) && isValidValue(resolvedVenue)) {
     mapped.publicationTitle = resolvedVenue;
   }
 
@@ -1139,20 +1235,6 @@ function projectCanonicalBaseFields(
     if (!isValidValue(rec.date)) mapped.date = cleanDate;
   }
 
-  const baseProjections: ReadonlyArray<readonly [string, readonly string[]]> = [
-    ["abstract", ["abstractNote", "abstract"]],
-    ["volume", ["reporterVolume", "codeVolume"]],
-    ["pages", ["firstPage", "codePages"]],
-  ];
-  for (const [targetKey, sourceKeys] of baseProjections) {
-    if (!isValidValue(rec[targetKey])) {
-      const val = pickFirstValidField(rec, ef, sourceKeys);
-      if (isValidValue(val)) {
-        mapped[targetKey] = String(val).trim();
-      }
-    }
-  }
-
   if (!isValidValue(rec.place) && !isValidValue(ef.place)) {
     const fallbackPlace = pickFirstValidField(rec, ef, [
       "repositoryLocation",
@@ -1164,31 +1246,149 @@ function projectCanonicalBaseFields(
   }
 }
 
+const EMPTY_BACKEND_ITEM_DEFAULTS: Item = {
+  id: "",
+  title: "Untitled",
+  itemType: "journalArticle",
+  authors: [],
+  editors: [],
+  creators: [],
+  contributors: [],
+  year: 0,
+  publicationTitle: "",
+  journalAbbreviation: "",
+  publisher: "",
+  volume: "",
+  issue: "",
+  pages: "",
+  isbn: "",
+  issn: "",
+  doi: "",
+  url: "",
+  abstractNote: "",
+  keywords: [],
+  language: "",
+  shortTitle: "",
+  license: "",
+  citationKey: "",
+  extra: "",
+  extraFields: {},
+  fields: {},
+  tags: [],
+  itemTags: [],
+  collections: [],
+  collectionIds: [],
+  attachments: [],
+  notes: [],
+  fileUrl: "",
+  filename: "",
+  mimeType: "",
+  size: 0,
+  hasFile: false,
+  fileCount: 0,
+  notesCount: 0,
+  noteCount: 0,
+  attachmentCount: 0,
+  isFavorite: false,
+  isStarred: false,
+  isRead: false,
+  readStatus: "unread",
+  rating: 0,
+  isRetracted: false,
+  isMyPublication: false,
+  crossrefEnriched: false,
+  ragStatus: "none",
+  identifiers: [],
+  version: 1,
+  isDeleted: false,
+  createdAt: "1970-01-01T00:00:00.000Z",
+  updatedAt: "1970-01-01T00:00:00.000Z",
+};
+
 /**
  * Declaratively normalizes a raw backend item or Zotero Schema v42 record into a canonical UI `Item`,
  * composing `mergeRawItemPartials` and `projectCanonicalBaseFields`.
  */
-export function mapBackendItemToPaper(
+export function mapBackendItem(
   raw?: Partial<Item> | Record<string, unknown> | null,
 ): Item {
   if (!raw || typeof raw !== "object") {
-    return {
-      id: "",
-      title: "Untitled",
-      authors: [],
-      year: 0,
-      createdAt: "",
-      updatedAt: "",
-    } as unknown as Item;
+    return { ...EMPTY_BACKEND_ITEM_DEFAULTS };
   }
 
   const rec = raw as Record<string, unknown>;
   const { mapped, ef } = mergeRawItemPartials(rec);
   projectCanonicalBaseFields(mapped, rec, ef);
-  return mapped as unknown as Item;
+  return {
+    ...EMPTY_BACKEND_ITEM_DEFAULTS,
+    ...(mapped as Partial<Item>),
+    createdAt:
+      typeof mapped.createdAt === "string" && mapped.createdAt.trim()
+        ? mapped.createdAt
+        : EMPTY_BACKEND_ITEM_DEFAULTS.createdAt,
+    updatedAt:
+      typeof mapped.updatedAt === "string" && mapped.updatedAt.trim()
+        ? mapped.updatedAt
+        : EMPTY_BACKEND_ITEM_DEFAULTS.updatedAt,
+  };
 }
 
-export const mapBackendPaperToItem = mapBackendItemToPaper;
+export interface ProvisionalUploadItemInput {
+  id: string;
+  filename?: string;
+  fileName?: string;
+  extractedTitle?: string;
+  fileSize?: number;
+  mimeType?: string;
+  fileUrl?: string;
+  status: "uploading" | "extracting" | "completed" | "error" | "UPLOADING" | "PROCESSING" | "SUCCEEDED" | "FAILED";
+  progress: number;
+  error?: string;
+  createdAt: string;
+}
+
+/**
+ * Creates a canonical provisional `Item` representing an active background file upload/extraction.
+ */
+export function createProvisionalUploadItem(
+  p: ProvisionalUploadItemInput,
+  scopeId?: string,
+  collectionId?: string | null,
+): Item {
+  const rawName = p.filename ?? p.fileName ?? "";
+  const title = p.extractedTitle || cleanFilenameToTitle(rawName);
+  const isExtracting = p.status === "extracting" || p.status === "PROCESSING";
+  return {
+    ...EMPTY_BACKEND_ITEM_DEFAULTS,
+    id: p.id,
+    title,
+    itemType: "journalArticle",
+    authors: isExtracting ? ["Processing metadata..."] : ["Uploading raw file..."],
+    year: null,
+    scopeId: scopeId ?? null,
+    collectionIds: collectionId ? [collectionId] : [],
+    attachments: [
+      {
+        id: `att-${p.id}`,
+        filename: rawName,
+        size: p.fileSize ?? 0,
+        mimeType: p.mimeType || "application/pdf",
+        url: p.fileUrl || "",
+        linkMode: "imported_file",
+        attachmentType: "supplementary",
+      },
+    ],
+    hasFile: true,
+    fileCount: 1,
+    attachmentCount: 1,
+    createdAt: p.createdAt,
+    dateAdded: p.createdAt,
+    _isProcessing: true,
+    _processingStatus: p.status,
+    _processingProgress: p.progress,
+    _processingError: p.error,
+  };
+}
 
 const EXTRA_KEY_ALIASES: Record<string, readonly string[]> = {
   doi: ["doi", "DOI"],
@@ -1224,28 +1424,32 @@ const EXTRA_KEY_ALIASES: Record<string, readonly string[]> = {
   reportnumber: ["reportNumber", "number"],
 };
 
-const PARSED_EXTRA_STRING_CACHE = new Map<string, Record<string, string>>();
-const PARSED_EXTRA_OBJECT_CACHE = new WeakMap<object, Record<string, string>>();
-const MAX_PARSED_EXTRA_STRING_CACHE_SIZE = 1024;
+const PARSED_EXTRA_STRING_CACHE = new Map<string, Readonly<Record<string, string>>>();
+const PARSED_EXTRA_OBJECT_CACHE = new WeakMap<object, Readonly<Record<string, string>>>();
+const MAX_EXTRA_CACHE_SIZE = 5000;
 
 /**
  * Parses Zotero's "Extra" field cheater syntax (both `Key: Value` lines and `{:Key: Value}` blocks)
  * into a dictionary supporting both exact, lowercase, and canonical field lookups.
  */
 export function parseZoteroExtraField(extra?: unknown): Record<string, string> {
-  const result: Record<string, string> = {};
-  if (!extra) return result;
+  if (!extra) return {};
 
   if (typeof extra === "string") {
     const trimmed = extra.trim();
-    if (!trimmed) return result;
+    if (!trimmed) return {};
     const cached = PARSED_EXTRA_STRING_CACHE.get(trimmed);
-    if (cached) return { ...cached };
+    if (cached) {
+      PARSED_EXTRA_STRING_CACHE.delete(trimmed);
+      PARSED_EXTRA_STRING_CACHE.set(trimmed, cached);
+      return cached;
+    }
   } else if (typeof extra === "object" && !Array.isArray(extra)) {
     const cached = PARSED_EXTRA_OBJECT_CACHE.get(extra);
-    if (cached) return { ...cached };
+    if (cached) return cached;
   }
 
+  const result: Record<string, string> = {};
   const setKey = (rawKey: string, rawVal: string) => {
     const k = rawKey.trim();
     const v = rawVal.trim();
@@ -1270,13 +1474,26 @@ export function parseZoteroExtraField(extra?: unknown): Record<string, string> {
         setKey(k, String(v));
       }
     }
-    PARSED_EXTRA_OBJECT_CACHE.set(extra, result);
-    return { ...result };
+    const frozen = Object.freeze(result);
+    PARSED_EXTRA_OBJECT_CACHE.set(extra, frozen);
+    return frozen;
   }
 
   if (typeof extra !== "string") return result;
   const trimmed = extra.trim();
   if (!trimmed) return result;
+
+  const cacheAndReturn = (res: Record<string, string>): Readonly<Record<string, string>> => {
+    const frozen = Object.freeze(res);
+    if (PARSED_EXTRA_STRING_CACHE.size >= MAX_EXTRA_CACHE_SIZE) {
+      const oldest = PARSED_EXTRA_STRING_CACHE.keys().next().value;
+      if (oldest !== undefined) {
+        PARSED_EXTRA_STRING_CACHE.delete(oldest);
+      }
+    }
+    PARSED_EXTRA_STRING_CACHE.set(trimmed, frozen);
+    return frozen;
+  };
 
   // 1. Parse JSON if formatted as JSON object
   if (trimmed.startsWith("{") && !trimmed.startsWith("{:")) {
@@ -1290,13 +1507,7 @@ export function parseZoteroExtraField(extra?: unknown): Record<string, string> {
             setKey(k, String(v));
           }
         }
-        if (
-          PARSED_EXTRA_STRING_CACHE.size >= MAX_PARSED_EXTRA_STRING_CACHE_SIZE
-        ) {
-          PARSED_EXTRA_STRING_CACHE.clear();
-        }
-        PARSED_EXTRA_STRING_CACHE.set(trimmed, result);
-        return { ...result };
+        return cacheAndReturn(result);
       }
     } catch {
       // Fall through to line-by-line Zotero Extra parsing
@@ -1323,11 +1534,7 @@ export function parseZoteroExtraField(extra?: unknown): Record<string, string> {
     }
   }
 
-  if (PARSED_EXTRA_STRING_CACHE.size >= MAX_PARSED_EXTRA_STRING_CACHE_SIZE) {
-    PARSED_EXTRA_STRING_CACHE.clear();
-  }
-  PARSED_EXTRA_STRING_CACHE.set(trimmed, result);
-  return { ...result };
+  return cacheAndReturn(result);
 }
 
 /**

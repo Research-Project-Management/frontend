@@ -8,6 +8,7 @@ export interface LibraryNavigationFilters {
   search?: string;
   filter?: string;
   savedSearchId?: string;
+  feedId?: string;
   isSavedSearchView: boolean;
   fromYear?: number;
   toYear?: number;
@@ -31,6 +32,7 @@ export function parseLibrarySearchParams(searchParams: {
   const search = searchParams.get('q') || undefined;
   const filter = searchParams.get('filter') || undefined;
   const savedSearchId = searchParams.get('savedSearchId') || undefined;
+  const feedId = searchParams.get('feedId') || undefined;
   const isSavedSearchView = filter === 'saved-search' && Boolean(savedSearchId);
 
   const fromYearRaw = searchParams.get('fromYear');
@@ -76,6 +78,7 @@ export function parseLibrarySearchParams(searchParams: {
     search,
     filter,
     savedSearchId,
+    feedId,
     isSavedSearchView,
     fromYear,
     toYear,
@@ -301,6 +304,7 @@ export function useLibraryNavigation() {
       selectedItemId: filters.selectedItemId,
       isSavedSearchView: filters.isSavedSearchView,
       savedSearchId: filters.savedSearchId,
+      feedId: filters.feedId,
       filterParam: filters.filter,
       searchParams,
 

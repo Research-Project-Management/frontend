@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { Search, X } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui/button";
+import { Input } from "@/shared/components/ui/input";
 import {
   Popover,
   PopoverContent,
@@ -21,18 +22,16 @@ import { FilterFacetSections } from "./filter-popover/FilterFacetSections";
 
 export interface LibraryFilterPopoverProps {
   scopeId?: string;
-  projectId?: string;
   items?: Item[];
   className?: string;
 }
 
 export function LibraryFilterPopover({
   scopeId: propScopeId,
-  projectId: propProjectId,
   items,
   className,
 }: LibraryFilterPopoverProps) {
-  const scopeId = propScopeId || propProjectId || "user";
+  const scopeId = propScopeId || "user";
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -102,13 +101,13 @@ export function LibraryFilterPopover({
             className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none shrink-0"
             strokeWidth={1.5}
           />
-          <input
+          <Input
             ref={searchInputRef}
             type="text"
             placeholder="Search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 w-full pl-8 pr-7 text-13 bg-background border border-border hover:border-border-hover rounded-md outline-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-ring text-foreground placeholder:text-muted-foreground placeholder:font-normal shadow-none transition-colors"
+            className="h-8 w-full pl-8 pr-7 text-13 bg-background border-border hover:border-border-hover rounded-md focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring text-foreground placeholder:text-muted-foreground shadow-none"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           />

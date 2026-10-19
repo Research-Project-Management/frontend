@@ -1,18 +1,37 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { libraryServices } from '../library.client';
 import type { CslStyle } from '@/features/library/domain/types/library.types';
-import { citationKeys, exportKeys } from '@/features/library/sdk/query-keys';
+import { citationKeys, exportKeys, normalizeScopeId } from '@/features/library/sdk/query-keys';
 
 export { citationKeys, exportKeys };
 
-export function useCitationStyles(scopeId?: string) {
-  return useQuery({
+export function useCitationStyles(scopeId?: string, options?: { enabled?: boolean }) {
+  const query = useQuery({
     queryKey: citationKeys.styles(scopeId),
     queryFn: () => libraryServices.citations.getStyles(scopeId),
+    enabled: options?.enabled ?? true,
     staleTime: 1000 * 60 * 60 * 24,
   });
+
+  const rawData = query.data;
+  const styles: string[] = Array.isArray(rawData)
+    ? rawData
+        .map((s: unknown) => {
+          if (typeof s === 'string') return s;
+          if (s && typeof s === 'object' && 'id' in s) {
+            return String((s as { id: string }).id);
+          }
+          return '';
+        })
+        .filter(Boolean)
+    : [];
+
+  return {
+    ...query,
+    styles,
+  };
 }
 
 export function useCslCitation(
@@ -26,6 +45,21 @@ export function useCslCitation(
     queryFn: () => libraryServices.citations.formatCitation(scopeId, itemId || '', style, index),
     enabled: Boolean(itemId),
     staleTime: 1000 * 60 * 30,
+  });
+}
+
+export function useFormatCitationMutation(scopeId?: string) {
+  const effectiveScope = normalizeScopeId(scopeId);
+  return useMutation({
+    mutationFn: ({
+      itemId,
+      style = 'apa',
+      index = 1,
+    }: {
+      itemId: string;
+      style?: CslStyle;
+      index?: number;
+    }) => libraryServices.citations.formatCitation(effectiveScope, itemId, style, index),
   });
 }
 

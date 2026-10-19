@@ -7,8 +7,6 @@ import {
   StickyNote,
   ShieldAlert,
   AlertCircle,
-  RotateCcw,
-  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/shared/components/ui/checkbox';
@@ -26,6 +24,7 @@ import {
   useIsActiveItem,
 } from '@/features/library/core/store/library-ui.store';
 import { ItemContextMenu } from './ItemContextMenu';
+import { ItemRowActions } from './ItemRowActions';
 import type { Item, Collection } from '@/features/library/domain/types/library.types';
 import { cleanAcademicText, formatAcademicAuthors } from '@/features/library/domain/academic-text';
 import {
@@ -33,13 +32,13 @@ import {
   getItemDisplayDate,
   getPublicationVenue,
 } from '@/features/library/domain/metadata';
+import { getItemTypeDefinition } from '@/features/library/domain/types/item-types.types';
 
 export interface ItemTableRowProps {
   item: Item;
   index: number;
   scopeId?: string;
   columns: Record<string, boolean>;
-  density?: 'comfortable' | 'compact';
   isTrash?: boolean;
   collections?: Collection[];
   onRowClick: (e: React.MouseEvent, item: Item, index: number) => void;
@@ -68,7 +67,6 @@ export const ItemTableRow = React.memo(function ItemTableRow({
   scopeId,
   isLast = false,
   columns,
-  density = 'comfortable',
   isTrash = false,
   collections = EMPTY_COLLECTIONS,
   onRowClick,
@@ -115,7 +113,6 @@ export const ItemTableRow = React.memo(function ItemTableRow({
     const venue = cleanAcademicText(
       getPublicationVenue(item) ||
         item.publicationTitle ||
-        item.journal ||
         item.publisher ||
         '',
     );
@@ -128,6 +125,12 @@ export const ItemTableRow = React.memo(function ItemTableRow({
       venueText: venue,
     };
   }, [item]);
+
+  const itemTypeLabel = React.useMemo(() => {
+    if (!item.itemType) return '-';
+    const def = getItemTypeDefinition(item.itemType);
+    return def?.label || item.itemType;
+  }, [item.itemType]);
 
   const isStarred =
     Boolean(item.isStarred) ||
@@ -283,46 +286,6 @@ export const ItemTableRow = React.memo(function ItemTableRow({
                 )}
               />
             </div>
-            {isProcessing && processingStatus === 'FAILED' && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex items-center shrink-0">
-                    <AlertCircle className="size-3.5 text-destructive shrink-0" strokeWidth={1.5} />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>{processingError || 'Extraction failed'}</TooltipContent>
-              </Tooltip>
-            )}
-            {isRetracted && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex items-center shrink-0">
-                    <ShieldAlert className="size-3.5 text-destructive shrink-0" strokeWidth={1.5} />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>This item has been retracted</TooltipContent>
-              </Tooltip>
-            )}
-            {hasAttachment && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex items-center shrink-0">
-                    <Paperclip className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>{`${attachmentCount} attachment(s)`}</TooltipContent>
-              </Tooltip>
-            )}
-            {hasNotes && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex items-center shrink-0">
-                    <StickyNote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>{`${noteCount} note(s)`}</TooltipContent>
-              </Tooltip>
-            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <span
@@ -336,6 +299,67 @@ export const ItemTableRow = React.memo(function ItemTableRow({
               </TooltipTrigger>
               <TooltipContent>{cleanTitle}</TooltipContent>
             </Tooltip>
+
+            {/* Trailing Status Indicators (Aligned after title so all titles start on a strict vertical axis) */}
+            {(hasAttachment || hasNotes || isRetracted || (isProcessing && processingStatus === 'FAILED')) && (
+              <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                {isProcessing && processingStatus === 'FAILED' && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex items-center shrink-0">
+                        <AlertCircle className="size-3.5 text-destructive shrink-0" strokeWidth={1.5} />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{processingError || 'Extraction failed'}</TooltipContent>
+                  </Tooltip>
+                )}
+                {isRetracted && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex items-center shrink-0">
+                        <ShieldAlert className="size-3.5 text-destructive shrink-0" strokeWidth={1.5} />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Retracted item</TooltipContent>
+                  </Tooltip>
+                )}
+                {hasAttachment && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isTrash) return;
+                          if (onOpenItem) {
+                            onOpenItem(item.id);
+                          } else {
+                            router.push(`/library/papers/${item.id}`);
+                          }
+                        }}
+                        className="inline-flex items-center justify-center size-5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors cursor-pointer shrink-0 outline-none"
+                        aria-label="Open attachment"
+                      >
+                        <Paperclip className="size-3.5 shrink-0" strokeWidth={1.5} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {attachmentCount > 1 ? `Open attachment (${attachmentCount})` : 'Open attachment'}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+                {hasNotes && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex items-center justify-center size-5 text-muted-foreground shrink-0">
+                        <StickyNote className="size-3.5 shrink-0" strokeWidth={1.5} />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{noteCount > 1 ? `${noteCount} notes` : '1 note'}</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            )}
           </div>
         </td>
 
@@ -364,50 +388,41 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         {/* Year */}
         {columns.year !== false && (
           <td className="px-2 h-8 py-0 align-middle text-center text-13 font-mono tabular-nums text-foreground font-normal">
-            {(() => {
-              const displayDate = getItemDisplayDate(item);
-              if (typeof displayDate === 'number') return displayDate;
-              if (typeof displayDate === 'string') {
-                return displayDate.match(/\b(1[7-9]\d{2}|20\d{2})\b/)?.[1] || displayDate;
-              }
-              return '-';
-            })()}
+            {displayYear}
           </td>
         )}
 
         {/* Publication Venue */}
         {columns.publication !== false && (
-          <td className="px-3 h-8 py-0 align-middle truncate text-12 font-serif italic text-muted-foreground font-normal">
+          <td className="px-3 h-8 py-0 align-middle truncate text-13 text-foreground font-normal">
             {isProcessing && !item.publicationTitle ? (
               <span className="text-foreground text-12 italic">Recognizing venue...</span>
+            ) : venueText ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="block truncate">{venueText}</span>
+                </TooltipTrigger>
+                <TooltipContent>{venueText}</TooltipContent>
+              </Tooltip>
             ) : (
-              (() => {
-                const venueText = cleanAcademicText(
-                  getPublicationVenue(item) ||
-                    item.publicationTitle ||
-                    item.journal ||
-                    item.publisher ||
-                    '',
-                );
-                return venueText ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="block truncate">{venueText}</span>
-                    </TooltipTrigger>
-                    <TooltipContent>{venueText}</TooltipContent>
-                  </Tooltip>
-                ) : (
-                  <span>-</span>
-                );
-              })()
+              <span className="text-foreground">-</span>
             )}
           </td>
         )}
 
         {/* Item Type Label */}
         {columns.itemType && (
-          <td className="px-3 h-8 py-0 align-middle truncate text-12 font-mono text-foreground font-normal">
-            {item.itemType || '-'}
+          <td className="px-3 h-8 py-0 align-middle truncate text-13 text-foreground font-normal">
+            {itemTypeLabel && itemTypeLabel !== '-' ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="block truncate">{itemTypeLabel}</span>
+                </TooltipTrigger>
+                <TooltipContent>{itemTypeLabel}</TooltipContent>
+              </Tooltip>
+            ) : (
+              <span className="text-foreground">-</span>
+            )}
           </td>
         )}
 
@@ -419,9 +434,10 @@ export const ItemTableRow = React.memo(function ItemTableRow({
                 value={item.doi}
                 type="doi"
                 href={`https://doi.org/${item.doi}`}
+                className="max-w-full truncate"
               />
             ) : (
-              '-'
+              <span className="text-foreground">-</span>
             )}
           </td>
         )}
@@ -429,13 +445,14 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         {/* Citation Key */}
         {columns.citationKey && (
           <td className="px-3 h-8 py-0 align-middle truncate text-foreground font-normal">
-            {item.citationKey || item.key ? (
+            {item.citationKey ? (
               <ArchivalTag
-                value={item.citationKey || item.key!}
+                value={item.citationKey}
                 type="bibtex"
+                className="max-w-full truncate"
               />
             ) : (
-              '-'
+              <span className="text-foreground">-</span>
             )}
           </td>
         )}
@@ -443,60 +460,44 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         {/* Citations Count */}
         {columns.citations && (
           <td className="px-2 h-8 py-0 align-middle text-center text-13 font-mono tabular-nums text-foreground font-normal">
-            {item.citationCount != null && Number(item.citationCount) > 0 ? item.citationCount : '-'}
+            {item.citationCount != null && Number(item.citationCount) > 0 ? (
+              item.citationCount
+            ) : (
+              <span className="text-foreground">-</span>
+            )}
           </td>
         )}
 
-        {/* Trash deletedAt & Quick Actions */}
+        {/* Trash deletedAt column */}
         {isTrash && (
           <td className="px-3 h-8 py-0 align-middle text-12 font-mono tabular-nums text-foreground font-normal">
-            <div className="flex items-center justify-between gap-1 w-full">
-              <span className="truncate">
-                {item.deletedAt
-                  ? new Date(item.deletedAt).toLocaleDateString()
-                  : '-'}
-              </span>
-              <div className="hidden group-hover:flex items-center gap-1 shrink-0 ml-1">
-                {onRestore && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label="Restore reference"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRestore(item.id);
-                        }}
-                        className="size-6 rounded flex items-center justify-center hover:bg-muted text-foreground transition-colors cursor-pointer"
-                      >
-                        <RotateCcw className="size-3.5" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>Restore reference</TooltipContent>
-                  </Tooltip>
-                )}
-                {onPurge && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label="Permanently delete reference"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openModal('DELETE_ITEMS', { itemIds: [item.id], permanent: true });
-                        }}
-                        className="size-6 rounded flex items-center justify-center hover:bg-destructive/15 text-foreground hover:text-destructive transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>Permanently delete reference</TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-            </div>
+            <span className="truncate">
+              {item.deletedAt
+                ? new Date(item.deletedAt).toLocaleDateString()
+                : '-'}
+            </span>
           </td>
         )}
+
+        {/* Dedicated Actions Menu Column (Always present on every row) */}
+        <td
+          className="w-11 px-1.5 h-8 py-0 align-middle text-right shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ItemRowActions
+            item={item}
+            scopeId={scopeId}
+            isTrash={isTrash}
+            collections={collections}
+            onToggleStar={!isProcessing && onToggleStar ? handleToggleStarContextMenu : undefined}
+            onDelete={!isProcessing && onDelete ? handleDeleteContextMenu : undefined}
+            onRestore={!isProcessing && onRestore ? handleRestoreContextMenu : undefined}
+            onPurge={!isProcessing && onPurge ? handlePurgeContextMenu : undefined}
+            onMoveToCollection={!isProcessing && onMoveToCollection ? handleMoveToCollection : undefined}
+            onDetachFromCollection={!isProcessing && onDetachFromCollection ? () => onDetachFromCollection(item.id) : undefined}
+            onOpenItem={onOpenItem}
+          />
+        </td>
       </tr>
     </ItemContextMenu>
   );

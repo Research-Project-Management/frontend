@@ -130,7 +130,7 @@ export function useQuickCopyCoordinator({
         let text = '';
         if (itemIds.length === 1) {
           const res = await libraryServices.citations.formatCitation(scopeId, itemIds[0], style);
-          text = res.inText || (res as { citation?: string }).citation || '';
+          text = res.inText || '';
         } else {
           const res = await libraryServices.citations.batchFormat(scopeId, itemIds, style);
           text =

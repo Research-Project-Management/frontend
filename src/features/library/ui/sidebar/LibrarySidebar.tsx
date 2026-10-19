@@ -3,7 +3,6 @@
 import { useId, useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
 import { motion, LayoutGroup } from 'framer-motion';
 import { Library, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
@@ -11,16 +10,18 @@ import { toast } from 'sonner';
 
 import { cn } from "@/shared/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { useCollections, invalidateCollections } from '@/features/library/sdk/queries/collections.queries';
-import { itemKeys } from '@/features/library/sdk/query-keys';
-import { CollectionsService } from '@/features/library/sdk/library.client';
+import {
+  useCollections,
+  useCollectionsQuery,
+  useMoveCollectionItemsMutation,
+} from '@/features/library/sdk/queries/collections.queries';
 import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useLibraryPermissions } from '@/features/library/core/coordinator/permissions.coordinator';
 import { useLibraryProjectContext } from '@/features/library/core/adapters/project-context.adapter';
 
 import CreateCollectionModal from '@/features/library/ui/modals/CreateCollectionModal';
-import TrashModal from '@/features/library/ui/modals/TrashModal';
+import DeleteModal from '@/features/library/ui/modals/DeleteModal';
 import type { SavedSearch } from '@/features/library/domain/types/saved-searches.types';
 
 import { buildTree, filterCollections } from '@/features/library/domain/collection-tree.domain';
@@ -30,6 +31,7 @@ import { SidebarHeader } from './SidebarHeader';
 import { SidebarResizer } from './SidebarResizer';
 import { CollectionTree } from './CollectionTree';
 import { SidebarSystemNav } from './SidebarSystemNav';
+import { FeedsListSection } from './FeedsListSection';
 import { ProjectLibrariesSection, resolveProjectRole, type ProjectLike } from './ProjectLibrariesSection';
 
 /**
@@ -43,7 +45,6 @@ export function LibrarySidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const id = useId();
 
   const activeScope = useLibraryUIStore((s) => s.activeScope);
@@ -54,15 +55,19 @@ export function LibrarySidebar() {
   const setSidebarWidth = useLibraryUIStore((s) => s.setSidebarWidth);
   const toggleSidebar = useLibraryUIStore((s) => s.toggleSidebar);
   const openModal = useLibraryUIStore((s) => s.openModal);
-  const effectiveScopeId = activeScope.type === 'project' ? activeScope.id : 'user';
+  const isInProjectContext = activeScope.type === 'project' && Boolean(activeScope.id);
+  const projectId = isInProjectContext ? activeScope.id : '';
+  const effectiveScopeId = isInProjectContext ? activeScope.id : 'user';
+  const moveMutation = useMoveCollectionItemsMutation(effectiveScopeId);
 
-  const userCollectionService = useCollections('user');
-  const projectCollectionService = useCollections({
-    scopeId: activeScope.type === 'project' ? activeScope.id : '',
-    enabled: activeScope.type === 'project' && Boolean(activeScope.id),
+  const userCollectionsQuery = useCollectionsQuery('user');
+  const projectCollectionsQuery = useCollectionsQuery(projectId, {
+    enabled: isInProjectContext,
   });
-  const collectionService =
-    activeScope.type === 'project' ? projectCollectionService : userCollectionService;
+  const collectionService = useCollections({
+    scopeId: effectiveScopeId,
+    enabled: false,
+  });
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -86,6 +91,7 @@ export function LibrarySidebar() {
   const basePath = '/library';
   const currentFilter = searchParams.get('filter');
   const currentSavedSearchId = searchParams.get('savedSearchId');
+  const currentFeedId = searchParams.get('feedId');
 
   const { projects, currentUserId } = useLibraryProjectContext();
 
@@ -128,7 +134,7 @@ export function LibrarySidebar() {
   } = useSavedSearches(effectiveScopeId);
 
   const handleEditSavedSearch = (ss: SavedSearch) => {
-    openModal('CREATE_SAVED_SEARCH', { savedSearch: ss });
+    openModal('SAVED_SEARCH', { savedSearch: ss });
   };
 
   const handleDuplicateSavedSearch = async (ss: SavedSearch) => {
@@ -158,25 +164,44 @@ export function LibrarySidebar() {
     setRenameSavedSearchValue('');
   };
 
+  const userCollections = useMemo(
+    () => userCollectionsQuery.data ?? [],
+    [userCollectionsQuery.data],
+  );
+
+  const projectCollections = useMemo(
+    () => (isInProjectContext ? projectCollectionsQuery.data ?? [] : []),
+    [isInProjectContext, projectCollectionsQuery.data],
+  );
+
+  const collections = useMemo(
+    () => (activeScope.type === 'project' ? projectCollections : userCollections),
+    [activeScope.type, projectCollections, userCollections],
+  );
+
   const handleBatchMoveItems = useCallback(
     async (ids: string[], targetCollectionId: string | null) => {
       if (!ids.length) return;
+      let targetScopeId = effectiveScopeId;
+      if (targetCollectionId) {
+        const isUserCol = userCollections.some((c) => c.id === targetCollectionId);
+        const isProjCol = projectCollections.some((c) => c.id === targetCollectionId);
+        if (isUserCol) {
+          targetScopeId = 'user';
+        } else if (isProjCol && projectId) {
+          targetScopeId = projectId;
+        }
+      }
+
       const toastId = toast.loading(`Moving ${ids.length} item(s)...`, {
         id: 'batch-move',
       });
       try {
-        await CollectionsService.moveItems(
-          effectiveScopeId,
-          targetCollectionId || 'unfiled',
-          ids,
-        );
-        queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });
-        if (targetCollectionId) {
-          queryClient.invalidateQueries({
-            queryKey: itemKeys.byCollection(effectiveScopeId, targetCollectionId),
-          });
-        }
-        invalidateCollections(queryClient, effectiveScopeId);
+        await moveMutation.mutateAsync({
+          targetCollectionId,
+          itemIds: ids,
+          scopeId: targetScopeId,
+        });
         toast.success('Documents moved', {
           description: `Moved ${ids.length} item(s) to target collection.`,
           id: toastId,
@@ -191,22 +216,7 @@ export function LibrarySidebar() {
         });
       }
     },
-    [effectiveScopeId, queryClient],
-  );
-
-  const userCollections = useMemo(
-    () => userCollectionService.state.collections ?? [],
-    [userCollectionService.state.collections],
-  );
-
-  const projectCollections = useMemo(
-    () => (activeScope.type === 'project' ? projectCollectionService.state.collections ?? [] : []),
-    [activeScope.type, projectCollectionService.state.collections],
-  );
-
-  const collections = useMemo(
-    () => (activeScope.type === 'project' ? projectCollections : userCollections),
-    [activeScope.type, projectCollections, userCollections],
+    [effectiveScopeId, moveMutation, projectCollections, projectId, userCollections],
   );
 
   const userTree = useMemo(
@@ -219,10 +229,20 @@ export function LibrarySidebar() {
     [projectCollections, searchQuery],
   );
 
+  const allCollectionsByScope = useMemo(
+    () => ({
+      user: userCollections,
+      project: projectCollections,
+      projectId,
+    }),
+    [userCollections, projectCollections, projectId],
+  );
+
   const { modals, rename, handlers } = useCollectionCoordinator({
     collectionService,
     effectiveScopeId,
     collections,
+    allCollectionsByScope,
   });
 
   const [isMounted, setIsMounted] = useState(false);
@@ -259,7 +279,7 @@ export function LibrarySidebar() {
             onSearchChange={setSearchQuery}
             canManageCollections={canManageCollections}
             onOpenCreateRoot={handlers.openCreateRoot}
-            onOpenCreateSavedSearch={() => openModal('CREATE_SAVED_SEARCH')}
+            onOpenCreateSavedSearch={() => openModal('SAVED_SEARCH')}
             onToggleCollapse={toggleSidebar}
           />
 
@@ -267,7 +287,7 @@ export function LibrarySidebar() {
           <LayoutGroup id={`library-nav-${id}`}>
             <nav
               aria-label="Library Navigation"
-              className="flex-1 overflow-x-hidden overflow-y-auto flex flex-col gap-1 sidebar-scrollbar scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              className="flex-1 overflow-x-hidden overflow-y-auto flex flex-col gap-0.5 sidebar-scrollbar scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             >
               {/* 1. My Library */}
               <div className="relative group/root flex items-center w-full">
@@ -318,11 +338,11 @@ export function LibrarySidebar() {
                         setIsLibraryExpanded((v) => !v);
                       }}
                       aria-label={isLibraryExpanded ? 'Collapse My Library' : 'Expand My Library'}
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-muted active:bg-muted cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary before:absolute before:-inset-2 md:before:hidden"
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground border border-transparent hover:border-border/50 hover:bg-background hover:shadow-2xs active:scale-95 cursor-pointer transition-all duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary before:absolute before:-inset-2 md:before:hidden"
                     >
                       <ChevronRight
                         className={cn(
-                          'size-3.5 text-foreground transition-transform duration-150 shrink-0',
+                          'size-3.5 transition-transform duration-150 shrink-0',
                           isLibraryExpanded && 'rotate-90'
                         )}
                         strokeWidth={1.5}
@@ -342,7 +362,7 @@ export function LibrarySidebar() {
 
               {/* Sub-items directly nested under My Library */}
               {isLibraryExpanded && (
-                <div className="flex flex-col gap-1 w-full">
+                <div className="flex flex-col gap-0.5 w-full">
                   <SidebarSystemNav
                     basePath={basePath}
                     pathname={pathname}
@@ -351,6 +371,7 @@ export function LibrarySidebar() {
                     navId={id}
                     savedSearches={savedSearches}
                     currentSavedSearchId={currentSavedSearchId}
+                    currentFeedId={currentFeedId}
                     onDropItems={handleBatchMoveItems}
                     onSelectUserScope={() => {
                       setActiveScope({
@@ -375,13 +396,13 @@ export function LibrarySidebar() {
                       tree={userTree}
                       allCollections={userCollections}
                       basePath={basePath}
-                      activeId={activeId ?? null}
+                      activeId={isUserScope ? (activeId ?? null) : null}
                       navId={id}
                       renamingId={rename.renamingId}
                       renameValue={rename.renameValue}
                       isSearching={searchQuery.trim().length > 0}
                       searchQuery={searchQuery}
-                      canManageCollections={canManageCollections}
+                      canManageCollections={true}
                       onStartRename={handlers.startRename}
                       onSubmitRename={handlers.submitRename}
                       onRenameValueChange={rename.setRenameValue}
@@ -392,14 +413,34 @@ export function LibrarySidebar() {
                       onCreateSub={handlers.openCreateSub}
                       onExportBibtex={handlers.handleExportBibtex}
                       onExportBundle={handlers.handleExportBundle}
-                      onLinkClick={handleMobileLinkClick}
+                      onLinkClick={() => {
+                        if (!isUserScope) {
+                          setActiveScope({
+                            type: 'user',
+                            id: 'user',
+                            name: 'Library',
+                            role: 'owner',
+                          });
+                        }
+                        handleMobileLinkClick();
+                      }}
                       onDropItems={handleBatchMoveItems}
                     />
                   </SidebarSystemNav>
                 </div>
               )}
 
-              {/* 2. Project Libraries (Collaborative Research Groups) */}
+              {/* 2. Feeds (Root Level - Zotero Standard) */}
+              <FeedsListSection
+                basePath={basePath}
+                navId={id}
+                currentFilter={currentFilter}
+                currentFeedId={currentFeedId}
+                isActiveScope={true}
+                onItemClick={handleMobileLinkClick}
+              />
+
+              {/* 3. Project Libraries (Collaborative Research Groups) */}
               <ProjectLibrariesSection
                 projects={projects}
                 activeScope={activeScope}
@@ -411,7 +452,7 @@ export function LibrarySidebar() {
                 savedSearches={savedSearches}
                 currentSavedSearchId={currentSavedSearchId}
                 currentFilter={currentFilter}
-                activeId={activeId ?? null}
+                activeId={!isUserScope ? (activeId ?? null) : null}
                 isSearching={searchQuery.trim().length > 0}
                 searchQuery={searchQuery}
                 renamingId={rename.renamingId}
@@ -448,6 +489,7 @@ export function LibrarySidebar() {
           </LayoutGroup>
         </div>
 
+
         {/* Drag Handle for Resizing */}
         <SidebarResizer
           width={sidebarWidth}
@@ -463,22 +505,57 @@ export function LibrarySidebar() {
             modals.setCreateOpen(v);
             if (!v) {
               modals.setCreateParentId(null);
+              modals.setCreateScopeId(null);
             }
           }}
           onSubmit={handlers.handleCreate}
-          isPending={collectionService.state.isCreating}
-          collections={collections}
+          isPending={collectionService.isCreating}
+          collections={
+            modals.createScopeId === 'user'
+              ? userCollections
+              : modals.createScopeId && modals.createScopeId !== 'user'
+                ? projectCollections
+                : collections
+          }
           defaultParentId={modals.createParentId}
-          rootLabel={activeScope.type === 'project' ? (activeScope.name || 'Project') : 'My Library'}
-          rootType={activeScope.type === 'project' ? 'project' : 'user'}
+          rootLabel={
+            modals.createScopeId === 'user'
+              ? 'My Library'
+              : activeScope.type === 'project'
+                ? (activeScope.name || 'Project')
+                : 'My Library'
+          }
+          rootType={
+            modals.createScopeId === 'user'
+              ? 'user'
+              : activeScope.type === 'project'
+                ? 'project'
+                : 'user'
+          }
         />
 
-        <TrashModal
+        <DeleteModal
           open={modals.isTrashOpen}
           onOpenChange={modals.setIsTrashOpen}
-          target={modals.trashTarget}
-          onConfirm={handlers.handleConfirmTrash}
-          isPending={collectionService.state.isDeleting}
+          title={
+            modals.trashTarget?.type === 'collection'
+              ? modals.trashTarget.withItems
+                ? 'Delete collection and items'
+                : 'Delete collection'
+              : 'Move to trash'
+          }
+          description={
+            modals.trashTarget?.type === 'collection'
+              ? modals.trashTarget.withItems
+                ? `Are you sure you want to delete collection "${modals.trashTarget.title || 'this collection'}" and move all of its items to the trash?`
+                : `Are you sure you want to delete collection "${modals.trashTarget.title || 'this collection'}"? Items inside this collection will not be deleted and will remain in your library.`
+              : 'Are you sure you want to move this item to the trash? You can restore it at any time.'
+          }
+          onConfirm={async () => {
+            await handlers.handleConfirmTrash();
+            modals.setIsTrashOpen(false);
+          }}
+          isDeleting={collectionService.isDeleting}
         />
       </>
     );

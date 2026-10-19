@@ -13,7 +13,7 @@
  */
 
 import type { Item } from "@/features/library/domain/types/library.types";
-import { INITIAL_ITEM_TYPE_FIELDS_MAP } from "@/features/library/domain/types/item-fields.constants";
+import { ALL_SCHEMA_FIELD_KEYS } from "@/features/library/domain/types/item-fields.constants";
 import {
   BASE_FIELD_MAPPINGS,
   normalizeCanonicalItemType,
@@ -23,25 +23,20 @@ import { cleanDoi, extractArxivId } from "./identifiers";
 import { generateCitationKey } from "./citations";
 import { isValidValue, cleanValue, parseZoteroExtraField } from "./metadata";
 
-/**
- * All 121 canonical Zotero Schema v42 field names derived automatically from the
- * 37 bibliographic item types in `INITIAL_ITEM_TYPE_FIELDS_MAP` / `ITEM_TYPE_FIELDS_MAP`.
- */
-export const ALL_SCHEMA_FIELD_KEYS: ReadonlySet<string> = new Set<string>(
-  Object.values(INITIAL_ITEM_TYPE_FIELDS_MAP).flat(),
-);
+export { ALL_SCHEMA_FIELD_KEYS };
 
 /**
- * First-class columns on the backend Prisma `Item` / `Paper` table.
+ * First-class columns on the backend Prisma `Item` table.
  */
 export const FIRST_CLASS_ITEM_COLUMNS: ReadonlySet<string> = new Set([
   "title",
-  "abstract",
+  "abstractNote",
   "publicationTitle",
-  "journal",
+  "journalAbbreviation",
   "volume",
   "issue",
   "pages",
+  "numberOfPages",
   "publisher",
   "place",
   "edition",
@@ -49,26 +44,19 @@ export const FIRST_CLASS_ITEM_COLUMNS: ReadonlySet<string> = new Set([
   "seriesTitle",
   "seriesNumber",
   "doi",
-  "DOI",
   "isbn",
-  "ISBN",
   "issn",
-  "ISSN",
   "pmid",
-  "PMID",
   "pmcid",
-  "PMCID",
   "arxivId",
   "url",
   "openAccessPdfUrl",
   "year",
   "publicationDate",
   "date",
-  "accessedAt",
+  "accessDate",
   "itemType",
-  "type",
   "language",
-  "rights",
   "license",
   "archive",
   "archiveLocation",
@@ -76,26 +64,25 @@ export const FIRST_CLASS_ITEM_COLUMNS: ReadonlySet<string> = new Set([
   "libraryCatalog",
   "citationKey",
   "shortTitle",
-  "journalAbbr",
   "citationCount",
   "referenceCount",
 ]);
 
 /**
  * Universal bidirectional field aliases between Zotero Schema v42 field keys and
- * Prisma `Item` / `Paper` columns.
+ * canonical `Item` columns.
  */
 export const CANONICAL_FIELD_ALIASES: Record<string, readonly string[]> = {
-  abstractNote: ["abstract", "abstractNote"],
-  abstract: ["abstract", "abstractNote"],
-  journalAbbreviation: ["journalAbbr", "journalAbbreviation"],
-  journalAbbr: ["journalAbbr", "journalAbbreviation"],
+  abstractNote: ["abstractNote", "abstract"],
+  abstract: ["abstractNote", "abstract"],
+  journalAbbreviation: ["journalAbbreviation", "journalAbbr"],
+  journalAbbr: ["journalAbbreviation", "journalAbbr"],
   publicationTitle: ["publicationTitle", "journal"],
   journal: ["publicationTitle", "journal"],
-  accessDate: ["accessedAt", "accessDate"],
-  accessedAt: ["accessedAt", "accessDate"],
-  rights: ["rights", "license"],
-  license: ["rights", "license"],
+  accessDate: ["accessDate", "accessedAt"],
+  accessedAt: ["accessDate", "accessedAt"],
+  rights: ["license", "rights"],
+  license: ["license", "rights"],
   ISBN: ["isbn", "ISBN"],
   isbn: ["isbn", "ISBN"],
   ISSN: ["issn", "ISSN"],
@@ -106,13 +93,13 @@ export const CANONICAL_FIELD_ALIASES: Record<string, readonly string[]> = {
   pmcid: ["pmcid", "PMCID"],
   DOI: ["doi", "DOI"],
   doi: ["doi", "DOI"],
-  archiveID: ["arxivId", "archiveId", "archiveID"],
-  archiveId: ["arxivId", "archiveId", "archiveID"],
-  arxivId: ["arxivId", "archiveId", "archiveID"],
+  archiveID: ["archiveID", "archiveId", "arxivId"],
+  archiveId: ["archiveID", "archiveId", "arxivId"],
+  arxivId: ["archiveID", "archiveId", "arxivId"],
   citationKey: ["citationKey"],
   citeKey: ["citationKey"],
-  numPages: ["numPages", "numberOfPages"],
-  numberOfPages: ["numPages", "numberOfPages"],
+  numPages: ["numberOfPages", "numPages"],
+  numberOfPages: ["numberOfPages", "numPages"],
   versionNumber: ["versionNumber", "version"],
   version: ["versionNumber", "version"],
   meetingName: ["meetingName", "conferenceName"],
@@ -152,7 +139,7 @@ const WRITE_SYNC_OVERRIDES: Record<string, readonly string[]> = {
   country: ["country"],
   organization: ["organization", "authority"],
   reportnumber: ["reportNumber", "number"],
-  websitetype: ["websiteType", "type"],
+  websitetype: ["websiteType"],
 };
 
 /**
@@ -475,19 +462,17 @@ const buildArchiveIdPatch = (
   const rawArxiv = cleanVal.replace(/^arxiv:\s*/i, "");
   return {
     arxivId: rawArxiv || "",
-    archiveId: cleanVal || "",
     archiveID: cleanVal || "",
     extraFields: {
       ...currentExtraFields,
       arxivId: rawArxiv || null,
-      archiveId: cleanVal || null,
       archiveID: cleanVal || null,
     },
   };
 };
 
 const getCitationKeyValue = ({ p }: FieldLookupSource): string =>
-  cleanValue(p.citationKey || p.key || generateCitationKey(p));
+  cleanValue(p.citationKey || generateCitationKey(p));
 
 const buildNumPagesPatch = (
   val: string,
@@ -497,7 +482,6 @@ const buildNumPagesPatch = (
   const parsed = parseInt(val, 10);
   const validNum = isNaN(parsed) ? val || null : parsed;
   return {
-    numPages: validNum,
     numberOfPages: validNum,
     extraFields: {
       ...currentExtraFields,
@@ -541,7 +525,7 @@ export const INSPECTOR_FIELD_DESCRIPTORS: Record<
       cleanValue(displayDoi || p.doi || p.DOI || ef.doi),
     patch: (val) => {
       const cleaned = cleanDoi(val);
-      return { doi: cleaned || "", DOI: cleaned || "" };
+      return { doi: cleaned || "" };
     },
   },
   archiveid: { get: getArchiveIdValue, patch: buildArchiveIdPatch },
@@ -600,23 +584,64 @@ export const INSPECTOR_FIELD_DESCRIPTORS: Record<
   filingdate: { patch: buildMappedDatePatch("filingDate", false) },
 };
 
+export interface PreparedInspectorFieldContext {
+  p: Record<string, unknown>;
+  ef: Record<string, unknown>;
+  displayDoi: string;
+}
+
+const PREPARED_ITEM_CONTEXT_CACHE = new WeakMap<
+  object,
+  PreparedInspectorFieldContext
+>();
+
+/**
+ * Pre-computes the merged `extra` + `extraFields` lookup dictionary and `displayDoi`
+ * once per `Item` ($O(1)$ per field lookup instead of re-parsing `item.extra` $O(F)$ times).
+ */
+export function prepareInspectorFieldContext(
+  item: Item | Partial<Item> | undefined,
+  preParsedExtraMap?: Record<string, string>,
+  preCleanedDoi?: string,
+): PreparedInspectorFieldContext | null {
+  if (!item) return null;
+  const canUseWeakCache =
+    typeof item === "object" &&
+    preParsedExtraMap === undefined &&
+    preCleanedDoi === undefined;
+  if (canUseWeakCache) {
+    const cached = PREPARED_ITEM_CONTEXT_CACHE.get(item);
+    if (cached) return cached;
+  }
+  const p = item as Record<string, unknown>;
+  const parsedExtraMap = preParsedExtraMap ?? parseZoteroExtraField(item.extra);
+  const rawEf = (item.extraFields as Record<string, unknown>) || {};
+  const ef: Record<string, unknown> =
+    Object.keys(parsedExtraMap).length > 0
+      ? { ...parsedExtraMap, ...rawEf }
+      : rawEf;
+  const displayDoi =
+    preCleanedDoi ?? cleanDoi(item.doi || (p.DOI as string | undefined) || parsedExtraMap.doi);
+  const ctx: PreparedInspectorFieldContext = { p, ef, displayDoi };
+  if (canUseWeakCache) {
+    PREPARED_ITEM_CONTEXT_CACHE.set(item, ctx);
+  }
+  return ctx;
+}
+
 /**
  * Pure helper to resolve the display value of any Zotero schema field from an Item.
  */
 export function resolveInspectorFieldValue(
   item: Item | Partial<Item> | undefined,
   fieldKey: string,
+  precomputedContext?: PreparedInspectorFieldContext | null,
 ): string {
   if (!item) return "";
-  const p = item as Record<string, unknown>;
+  const ctx = precomputedContext ?? prepareInspectorFieldContext(item);
+  if (!ctx) return "";
+  const { p, ef, displayDoi } = ctx;
   const keyLower = fieldKey.toLowerCase();
-  const parsedExtraMap = parseZoteroExtraField(item.extra);
-  const rawEf = (item.extraFields as Record<string, unknown>) || {};
-  const ef: Record<string, unknown> =
-    Object.keys(parsedExtraMap).length > 0
-      ? { ...parsedExtraMap, ...rawEf }
-      : rawEf;
-  const displayDoi = cleanDoi(item.doi || item.DOI || parsedExtraMap.doi);
 
   const descriptor = INSPECTOR_FIELD_DESCRIPTORS[keyLower];
   if (descriptor?.get) {

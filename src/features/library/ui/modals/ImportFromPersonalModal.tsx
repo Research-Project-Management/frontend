@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Search,
   Loader2,
@@ -23,8 +23,11 @@ import { Input } from "@/shared/components/ui/input";
 import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { cn } from "@/shared/lib/utils";
-import { libraryServices } from "@/features/library/sdk/library.client";
-import { useViewItems } from "@/features/library/sdk/queries/catalog.queries";
+import {
+  useViewItems,
+  useLibraryCountsQuery,
+  useImportFromUserMutation,
+} from "@/features/library/sdk/queries/catalog.queries";
 import { useCollections } from "@/features/library/sdk/queries/collections.queries";
 import {
   formatCreatorCompact,
@@ -32,13 +35,12 @@ import {
 } from "@/features/library/domain/creators";
 import type {
   Item,
-  Collection,
 } from "@/features/library/domain/types/library.types";
 
 interface ImportFromPersonalModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  projectId: string;
+  scopeId: string;
   projectName: string;
   existingTitles?: string[];
   onSuccess?: () => void;
@@ -47,126 +49,148 @@ interface ImportFromPersonalModalProps {
 export default function ImportFromPersonalModal({
   open,
   onOpenChange,
-  projectId,
+  scopeId,
   projectName,
   existingTitles = [],
   onSuccess,
 }: ImportFromPersonalModalProps) {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedScope, setSelectedScope] = useState<string>("all"); // 'all' | 'unfiled' | collectionId
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [isImporting, setIsImporting] = useState(false);
+  const [selectedIdsSet, setSelectedIdsSet] = useState<Set<string>>(
+    () => new Set(),
+  );
 
-  // 1. Query personal collections
-  const { state: collectionsState } = useCollections("user");
-  const personalCollections: Collection[] = collectionsState.collections || [];
+  useEffect(() => {
+    const trimmed = search.trim();
+    if (!trimmed) {
+      setDebouncedSearch("");
+      return;
+    }
+    const timer = setTimeout(() => setDebouncedSearch(trimmed), 200);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  // 2. Query all personal items
-  const { data, isLoading } = useViewItems("user", "all");
-  const personalItems: Item[] = useMemo(() => data?.items ?? [], [data?.items]);
+  // 1. Query personal collections & authoritative server counts
+  const { collections: personalCollections = [] } = useCollections("user");
+  const { data: userLibraryCounts } = useLibraryCountsQuery("user");
+
+  // O(1) collection name lookup map
+  const collectionNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of personalCollections) {
+      if (c.id && c.name) map.set(c.id, c.name);
+    }
+    return map;
+  }, [personalCollections]);
+
+  // 2. Query personal items via Backend with view, collectionId, and search
+  const activeView = selectedScope === "unfiled" ? "unfiled" : "all";
+  const activeCollectionId =
+    selectedScope !== "all" && selectedScope !== "unfiled"
+      ? selectedScope
+      : undefined;
+
+  const { data, isLoading } = useViewItems("user", activeView, {
+    enabled: open,
+    limit: 200,
+    search: debouncedSearch || undefined,
+    collectionId: activeCollectionId,
+  });
+  const filteredItems: Item[] = useMemo(() => data?.items ?? [], [data?.items]);
+
+  // Authoritative counts from Backend
+  const collectionCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      all: userLibraryCounts?.total ?? data?.total ?? filteredItems.length,
+      unfiled: userLibraryCounts?.unfiled ?? 0,
+    };
+    for (const col of personalCollections) {
+      counts[col.id] = col.itemCount ?? 0;
+    }
+    return counts;
+  }, [userLibraryCounts?.total, userLibraryCounts?.unfiled, data?.total, filteredItems.length, personalCollections]);
 
   // Normalized existing titles set for O(1) duplicate detection
   const existingSet = useMemo(() => {
     return new Set(existingTitles.map((t) => t.toLowerCase().trim()));
   }, [existingTitles]);
 
-  // Calculate item counts for each scope
-  const collectionCounts = useMemo(() => {
-    const counts: Record<string, number> = {
-      all: personalItems.length,
-      unfiled: 0,
-    };
-    for (const it of personalItems) {
-      if (!it.collectionId) {
-        counts.unfiled = (counts.unfiled || 0) + 1;
-      } else {
-        counts[it.collectionId] = (counts[it.collectionId] || 0) + 1;
+  const indexedItems = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        titleLower: string;
+        authorText: string;
       }
+    >();
+    for (const it of filteredItems) {
+      const titleLower = (it.title || "").toLowerCase().trim();
+      const authorText = formatCreatorCompact(normalizeAuthors(it));
+      map.set(it.id, { titleLower, authorText });
     }
-    return counts;
-  }, [personalItems]);
-
-  // Filter items based on selected scope and search query
-  const filteredItems = useMemo(() => {
-    let list = personalItems;
-
-    // Filter by collection scope
-    if (selectedScope === "unfiled") {
-      list = list.filter((it) => !it.collectionId);
-    } else if (selectedScope !== "all") {
-      list = list.filter((it) => it.collectionId === selectedScope);
-    }
-
-    // Filter by search query
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter((it) => {
-        const titleMatch = it.title?.toLowerCase().includes(q);
-        const authorMatch = it.authors?.some((a: unknown) => {
-          if (typeof a === "string") return a.toLowerCase().includes(q);
-          if (a && typeof a === "object") {
-            const authorObj = a as {
-              firstName?: string;
-              lastName?: string;
-              name?: string;
-            };
-            return `${authorObj.firstName || ""} ${authorObj.lastName || ""} ${authorObj.name || ""}`
-              .toLowerCase()
-              .includes(q);
-          }
-          return false;
-        });
-        const yearMatch = it.year?.toString().includes(q);
-        const doiMatch = it.doi?.toLowerCase().includes(q);
-        return titleMatch || Boolean(authorMatch) || yearMatch || doiMatch;
-      });
-    }
-
-    return list;
-  }, [personalItems, selectedScope, search]);
+    return map;
+  }, [filteredItems]);
 
   // Filter items eligible for selection (not already in the project)
   const selectableItems = useMemo(() => {
     return filteredItems.filter((it) => {
-      const titleLower = (it.title || "").toLowerCase().trim();
+      const titleLower =
+        indexedItems.get(it.id)?.titleLower ??
+        (it.title || "").toLowerCase().trim();
       return !existingSet.has(titleLower);
     });
-  }, [filteredItems, existingSet]);
+  }, [filteredItems, existingSet, indexedItems]);
 
-  const isAllSelectableSelected =
-    selectableItems.length > 0 &&
-    selectableItems.every((it) => selectedIds.includes(it.id));
+  const isAllSelectableSelected = useMemo(
+    () =>
+      selectableItems.length > 0 &&
+      selectableItems.every((it) => selectedIdsSet.has(it.id)),
+    [selectableItems, selectedIdsSet],
+  );
 
   const toggleSelectAll = () => {
     if (isAllSelectableSelected) {
       const viewIds = new Set(selectableItems.map((it) => it.id));
-      setSelectedIds((prev) => prev.filter((id) => !viewIds.has(id)));
+      setSelectedIdsSet((prev) => {
+        const next = new Set<string>();
+        prev.forEach((id) => {
+          if (!viewIds.has(id)) next.add(id);
+        });
+        return next;
+      });
     } else {
-      const viewIds = selectableItems.map((it) => it.id);
-      setSelectedIds((prev) => Array.from(new Set([...prev, ...viewIds])));
+      setSelectedIdsSet((prev) => {
+        const next = new Set(prev);
+        for (const it of selectableItems) next.add(it.id);
+        return next;
+      });
     }
   };
 
   const toggleSelect = (id: string, isAlreadyInProject: boolean) => {
     if (isAlreadyInProject) return;
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
-    );
+    setSelectedIdsSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
+  const importMutation = useImportFromUserMutation(scopeId);
+  const isImporting = importMutation.isPending;
+
   const handleImport = async () => {
-    if (!selectedIds.length || !projectId) return;
-    setIsImporting(true);
+    if (selectedIdsSet.size === 0 || !scopeId) return;
+    const selectedIds = Array.from(selectedIdsSet);
     try {
-      const res = await (
-        libraryServices.items.importFromUser ??
-        libraryServices.items.importFromPersonal
-      )(projectId, selectedIds);
+      const res = await importMutation.mutateAsync(selectedIds);
       toast.success(
         `Imported ${res.importedCount ?? selectedIds.length} reference(s) into ${projectName}`,
         { id: "import-user-refs" },
       );
-      setSelectedIds([]);
+      setSelectedIdsSet(new Set());
       onSuccess?.();
       onOpenChange(false);
     } catch (err: unknown) {
@@ -174,16 +198,7 @@ export default function ImportFromPersonalModal({
         description: err instanceof Error ? err.message : String(err),
         id: "import-personal-refs",
       });
-    } finally {
-      setIsImporting(false);
     }
-  };
-
-  // Helper to map collection ID to collection name
-  const getCollectionName = (colId?: string | null) => {
-    if (!colId) return null;
-    const found = personalCollections.find((c) => c.id === colId);
-    return found?.name || null;
   };
 
   return (
@@ -374,13 +389,19 @@ export default function ImportFromPersonalModal({
                 </div>
               ) : (
                 filteredItems.map((item) => {
-                  const isSelected = selectedIds.includes(item.id);
-                  const titleLower = (item.title || "").toLowerCase().trim();
+                  const isSelected = selectedIdsSet.has(item.id);
+                  const indexed = indexedItems.get(item.id);
+                  const titleLower =
+                    indexed?.titleLower ??
+                    (item.title || "").toLowerCase().trim();
                   const isAlreadyInProject = existingSet.has(titleLower);
-                  const authorText = formatCreatorCompact(
-                    normalizeAuthors(item),
-                  );
-                  const colName = getCollectionName(item.collectionId);
+                  const authorText =
+                    indexed?.authorText ??
+                    formatCreatorCompact(normalizeAuthors(item));
+                  const firstColId = item.collectionIds?.[0];
+                  const colName = firstColId
+                    ? collectionNameMap.get(firstColId) || null
+                    : null;
 
                   return (
                     <div
@@ -439,7 +460,7 @@ export default function ImportFromPersonalModal({
         {/* Footer */}
         <DialogFooter className="px-5 py-3 border-t border-border bg-background flex items-center justify-between sm:justify-between shrink-0">
           <span className="text-11 text-foreground font-mono">
-            {selectedIds.length} reference(s) selected
+            {selectedIdsSet.size} reference(s) selected
           </span>
           <div className="flex items-center gap-2">
             <Button
@@ -455,13 +476,13 @@ export default function ImportFromPersonalModal({
               type="button"
               size="sm"
               onClick={handleImport}
-              disabled={selectedIds.length === 0 || isImporting}
+              disabled={selectedIdsSet.size === 0 || isImporting}
               className="h-8 text-13 font-medium gap-1.5 cursor-pointer rounded-md shadow-none"
             >
               {isImporting && (
                 <Loader2 className="size-3.5 animate-spin shrink-0" />
               )}
-              <span>Import to Project ({selectedIds.length})</span>
+              <span>Import to Project ({selectedIdsSet.size})</span>
             </Button>
           </div>
         </DialogFooter>

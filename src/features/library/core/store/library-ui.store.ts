@@ -20,22 +20,20 @@ export type InspectorSectionId =
 export type ViewMode = 'table' | 'grid';
 
 export type LibraryModalType =
+  | 'UPLOAD_PDF'
+  | 'ADD_BY_IDENTIFIER'
   | 'CREATE_COLLECTION'
   | 'RENAME_COLLECTION'
-  | 'DELETE_COLLECTION'
-  | 'IMPORT_PAPER'
-  | 'UPLOAD_FILES'
-  | 'EDIT_METADATA'
-  | 'DELETE_ITEMS'
-  | 'MOVE_ITEMS'
+  | 'SAVED_SEARCH'
+  | 'DELETE_CONFIRM'
   | 'MERGE_DUPLICATES'
-  | 'EXPORT_BIBTEX'
-  | 'SHARE_COLLECTION'
-  | 'ADD_LINK'
+  | 'EXPORT_LIBRARY'
   | 'IMPORT_FROM_USER'
-  | 'TRASH_CONFIRM'
-  | 'CREATE_SAVED_SEARCH'
-  | (string & {});
+  | 'SHORTCUTS_HELP'
+  | 'TYPE_CONVERSION'
+  | 'CSL_STYLE_MANAGER'
+  | 'FEEDS_MANAGER'
+  | 'ADD_FEED';
 
 // 1. Scope & Navigation Context Slice
 export interface LibraryScopeSlice {
@@ -144,6 +142,8 @@ const createScopeSlice: StateCreator<
       return {
         activeCollectionId,
         activeSavedSearchId: nextSavedSearchId,
+        selectedIds: state.selectedIds.size === 0 ? state.selectedIds : new Set<string>(),
+        activeItemId: null,
       };
     }),
 
@@ -159,6 +159,8 @@ const createScopeSlice: StateCreator<
       return {
         activeSavedSearchId,
         activeCollectionId: nextCollectionId,
+        selectedIds: state.selectedIds.size === 0 ? state.selectedIds : new Set<string>(),
+        activeItemId: null,
       };
     }),
 });
@@ -170,7 +172,7 @@ const createLayoutSlice: StateCreator<
   LibraryLayoutSlice
 > = (set) => ({
   isSidebarOpen: true,
-  sidebarWidth: 240,
+  sidebarWidth: 260,
   inspectorWidth: 360,
   isInspectorOpen: false,
   activeInspectorTab: 'info',

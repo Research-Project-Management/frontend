@@ -1,10 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { useTags } from '@/features/library/sdk/queries/tags-notes.queries';
 import type { TagWithCount } from '@/features/library/domain/types/tags.types';
-import { itemKeys, libraryKeys } from '@/features/library/sdk/query-keys';
 import { useLibraryCountsQuery, useItemTypes } from '@/features/library/sdk/queries/catalog.queries';
 import type { Item } from '@/features/library/domain/types/library.types';
 import {
@@ -52,12 +50,10 @@ export interface UseLibraryFacetCountsParams {
 
 export function useLibraryFacetCounts({
   scopeId,
-  items,
   searchQuery,
   isOpen = true,
 }: UseLibraryFacetCountsParams) {
   const { searchParams, updateQuery } = useLibraryNavigation();
-  const queryClient = useQueryClient();
   const { data: counts } = useLibraryCountsQuery(scopeId);
   const { tags } = useTags(scopeId, { enabled: isOpen });
 
@@ -291,50 +287,6 @@ export function useLibraryFacetCounts({
       }
     }
 
-    if (existingTypeMap.size === 0) {
-      let sourceItems: Item[] = Array.isArray(items) && items.length > 0 ? items : [];
-      if (!sourceItems || sourceItems.length === 0) {
-        const targetScope = scopeId || 'user';
-        const cacheKeys = [
-          itemKeys.all(targetScope),
-          itemKeys.all('user'),
-          ['items', targetScope],
-          ['items', 'user'],
-          libraryKeys.items(targetScope),
-        ];
-        for (const k of cacheKeys) {
-          const raw = queryClient.getQueryData<Item[] | { items?: Item[]; papers?: Item[] }>(k);
-          if (Array.isArray(raw) && raw.length > 0) {
-            sourceItems = raw;
-            break;
-          } else if (raw && 'items' in raw && Array.isArray(raw.items) && raw.items.length > 0) {
-            sourceItems = raw.items;
-            break;
-          } else if (raw && 'papers' in raw && Array.isArray(raw.papers) && raw.papers.length > 0) {
-            sourceItems = raw.papers;
-            break;
-          }
-        }
-      }
-
-      if (Array.isArray(sourceItems) && sourceItems.length > 0) {
-        for (const item of sourceItems) {
-          if (!item || item.deletedAt) continue;
-          const raw = item.itemType || item.type;
-          if (raw && typeof raw === 'string' && raw.trim()) {
-            const trimmed = raw.trim();
-            const lower = trimmed.toLowerCase();
-            const existing = existingTypeMap.get(lower);
-            if (existing) {
-              existing.count += 1;
-            } else {
-              existingTypeMap.set(lower, { canonicalKey: trimmed, count: 1 });
-            }
-          }
-        }
-      }
-    }
-
     for (const activeType of itemTypes) {
       const lower = activeType.toLowerCase().trim();
       if (lower && !existingTypeMap.has(lower)) {
@@ -376,7 +328,7 @@ export function useLibraryFacetCounts({
     });
 
     return options.sort((a, b) => a.label.localeCompare(b.label));
-  }, [counts, items, scopeId, queryClient, itemTypes, serverItemTypes, isOpen]);
+  }, [counts, itemTypes, serverItemTypes, isOpen]);
 
   const matchingTypeItems = useMemo(() => {
     if (!isOpen) return [];

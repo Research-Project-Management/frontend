@@ -47,7 +47,8 @@ export function useViewerSearch({
 
   useEffect(() => {
     if (isSearchOpen) {
-      setTimeout(() => searchInputRef.current?.focus(), 80);
+      const timerId = setTimeout(() => searchInputRef.current?.focus(), 80);
+      return () => clearTimeout(timerId);
     } else {
       setSearchQuery('');
       setDebouncedSearchQuery('');
@@ -55,17 +56,27 @@ export function useViewerSearch({
     }
   }, [isSearchOpen]);
 
+  const indexedSections = useMemo(() => {
+    if (!fulltext?.sections) return null;
+    return fulltext.sections.map((sec) => ({
+      page: sec.page || 1,
+      title: sec.title,
+      lowerCorpus: [
+        sec.title ? sec.title.toLowerCase() : '',
+        ...(sec.paragraphs ? sec.paragraphs.map((p) => p.toLowerCase()) : []),
+      ].join('\n'),
+    }));
+  }, [fulltext?.sections]);
+
   const searchMatches = useMemo(() => {
     const q = debouncedSearchQuery.trim().toLowerCase();
     if (!q || q.length < 2) return [];
 
     const list: { page: number; title?: string }[] = [];
-    if (fulltext?.sections) {
-      for (const sec of fulltext.sections) {
-        const titleMatch = sec.title && sec.title.toLowerCase().includes(q);
-        const paraMatch = sec.paragraphs && sec.paragraphs.some((p) => p.toLowerCase().includes(q));
-        if (titleMatch || paraMatch) {
-          list.push({ page: sec.page || 1, title: sec.title });
+    if (indexedSections) {
+      for (const sec of indexedSections) {
+        if (sec.lowerCorpus.includes(q)) {
+          list.push({ page: sec.page, title: sec.title });
         }
       }
     }
@@ -78,7 +89,7 @@ export function useViewerSearch({
       }
     }
     return list;
-  }, [debouncedSearchQuery, fulltext?.sections, numPages, pageRefs]);
+  }, [debouncedSearchQuery, indexedSections, numPages, pageRefs]);
 
   const handleNextMatch = useCallback(() => {
     if (searchMatches.length === 0) return;

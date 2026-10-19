@@ -46,7 +46,7 @@ export function SavedSearchListSection({
   }
 
   return (
-    <div className="my-1 flex flex-col gap-0.5">
+    <div className="mt-1.5 flex flex-col gap-0.5 w-full">
       <div className="px-6 py-1 text-11 font-medium text-foreground flex items-center justify-between">
         <span>Saved Searches</span>
       </div>

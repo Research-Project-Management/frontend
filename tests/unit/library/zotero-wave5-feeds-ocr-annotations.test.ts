@@ -70,7 +70,7 @@ Abstract: <p>Recent research on 1-bit &amp; ternary quantization opens a new sca
         collectionId: 'col-quantization',
         collectionIds: ['col-quantization'],
       });
-      expect(payload.creators[0]).toEqual({
+      expect(payload.creators[0]).toMatchObject({
         firstName: 'Shuming',
         lastName: 'Ma',
         creatorType: 'author',

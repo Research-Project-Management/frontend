@@ -21,7 +21,7 @@ import { API_BASE_URL } from '@/config/env';
 import { getAuthToken } from '@/shared/lib/token-storage';
 import type { RequestOptions } from '@/shared/types/api.types';
 import { isProjectScope, getItemFileUrl } from '@/features/library/domain/item-url';
-import { mapBackendItemToPaper, mapBackendPaperToItem } from '@/features/library/domain/metadata';
+import { mapBackendItem } from '@/features/library/domain/metadata';
 import type {
   Item,
   PaginatedItemsResponse,
@@ -45,7 +45,7 @@ import type {
   CslStyle,
   ReferenceData,
   CslStyleMetadata,
-  AttachmentDto,
+  ItemAttachment,
   SearchResponse,
   SearchSortBy,
   SearchSortOrder,
@@ -74,7 +74,7 @@ import {
   itemSchema,
 } from '@/features/library/domain/types/library.types';
 
-export { isProjectScope, getItemFileUrl, mapBackendItemToPaper, mapBackendPaperToItem };
+export { isProjectScope, getItemFileUrl, mapBackendItem };
 export type {
   TagWithCount,
   ItemStateData,
@@ -94,39 +94,7 @@ export type LibrarySubdomain =
   | 'sync'
   | 'reader';
 
-// Base URL & Per-Domain Endpoints
-
-export function getLibraryServiceHost(domain?: LibrarySubdomain): string {
-  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-    try {
-      const override = window.localStorage.getItem('FLUX_LIBRARY_SERVICE_URL');
-      if (override && override.trim()) {
-        return normalizeServiceHost(override.trim());
-      }
-    } catch {
-      // Ignore storage access errors
-    }
-  }
-
-  const domainEnvMap: Record<LibrarySubdomain, string | undefined> = {
-    catalog: process.env.NEXT_PUBLIC_LIBRARY_CATALOG_URL,
-    extraction: process.env.NEXT_PUBLIC_LIBRARY_EXTRACTION_URL,
-    ingestion: process.env.NEXT_PUBLIC_LIBRARY_INGESTION_URL,
-    citation: process.env.NEXT_PUBLIC_LIBRARY_CITATION_URL,
-    search: process.env.NEXT_PUBLIC_LIBRARY_SEARCH_URL,
-    sync: process.env.NEXT_PUBLIC_LIBRARY_SYNC_URL,
-    reader: process.env.NEXT_PUBLIC_LIBRARY_READER_URL,
-  };
-
-  const rawConfigured =
-    (domain ? domainEnvMap[domain] : undefined) ||
-    process.env.NEXT_PUBLIC_LIBRARY_SERVICES_URL ||
-    process.env.NEXT_PUBLIC_LIBRARY_SERVICE_URL ||
-    process.env.NEXT_PUBLIC_LIBRARIES_SERVICE_URL ||
-    '';
-
-  return normalizeServiceHost(rawConfigured);
-}
+// Base URL & Endpoint Resolution
 
 function normalizeServiceHost(raw: string): string {
   const trimmed = raw.trim().replace(/\/+$/, '');
@@ -138,13 +106,23 @@ function normalizeServiceHost(raw: string): string {
     .replace(/\/api\/v1$/i, '');
 }
 
+export function getLibraryServiceHost(_domain?: LibrarySubdomain): string {
+  const rawConfigured =
+    process.env.NEXT_PUBLIC_LIBRARY_SERVICES_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    (typeof API_BASE_URL === 'string' && API_BASE_URL !== 'undefined' && API_BASE_URL !== 'null'
+      ? API_BASE_URL
+      : '');
+  return normalizeServiceHost(rawConfigured);
+}
+
 export function resolveLibraryUrl(
-  domain: LibrarySubdomain,
+  _domain: LibrarySubdomain,
   resourcePath: string,
   scopeId?: string,
   suffix = '',
 ): string {
-  const host = getLibraryServiceHost(domain);
+  const host = getLibraryServiceHost();
   const cleanResource = resourcePath.startsWith('/') ? resourcePath : `/${resourcePath}`;
   const cleanSuffix = suffix ? (suffix.startsWith('/') ? suffix : `/${suffix}`) : '';
 
@@ -155,10 +133,10 @@ export function resolveLibraryUrl(
   return host ? `${host}${basePath}` : basePath;
 }
 
-export function resolveLibraryRawPath(path: string, domain?: LibrarySubdomain): string {
+export function resolveLibraryRawPath(path: string, _domain?: LibrarySubdomain): string {
   if (!path) return path;
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  const host = getLibraryServiceHost(domain);
+  const host = getLibraryServiceHost();
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   return host ? `${host}${cleanPath}` : cleanPath;
 }
@@ -246,7 +224,6 @@ function getCatalogUrl(scopeId?: string, suffix = ''): string {
     return resolveLibraryUrl('catalog', '/items', scopeId);
   }
   const cleanSuffix = suffix.startsWith('/') ? suffix : `/${suffix}`;
-  // If cleanSuffix starts with /items, /citations, /convert-type, /tags, etc.
   const resourcePath = cleanSuffix.startsWith('/items') ? cleanSuffix : `/items${cleanSuffix}`;
   return resolveLibraryUrl('catalog', resourcePath, scopeId);
 }
@@ -306,101 +283,183 @@ export function sanitizeItemPayload(data: Record<string, unknown>): Record<strin
   return cleaned;
 }
 
+const inFlightPdfBlobRequests = new Map<string, Promise<Blob>>();
+const MAX_CACHED_PDF_BLOBS = 3;
+const MAX_CACHED_PDF_BLOB_BYTES = 30 * 1024 * 1024;
+const PDF_BLOB_CACHE_TTL_MS = 2 * 60 * 1000;
+
+interface CachedPdfBlobEntry {
+  blob: Blob;
+  cachedAt: number;
+}
+
+const pdfBlobLruCache = new Map<string, CachedPdfBlobEntry>();
+
+function getCachedPdfBlob(url: string): Blob | null {
+  const entry = pdfBlobLruCache.get(url);
+  if (!entry) return null;
+  if (Date.now() - entry.cachedAt > PDF_BLOB_CACHE_TTL_MS) {
+    pdfBlobLruCache.delete(url);
+    return null;
+  }
+  pdfBlobLruCache.delete(url);
+  pdfBlobLruCache.set(url, entry);
+  return entry.blob;
+}
+
+function setCachedPdfBlob(url: string, blob: Blob): void {
+  if (blob.size <= 0 || blob.size > MAX_CACHED_PDF_BLOB_BYTES) return;
+  if (pdfBlobLruCache.has(url)) {
+    pdfBlobLruCache.delete(url);
+  } else if (pdfBlobLruCache.size >= MAX_CACHED_PDF_BLOBS) {
+    const oldestKey = pdfBlobLruCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      pdfBlobLruCache.delete(oldestKey);
+    }
+  }
+  pdfBlobLruCache.set(url, { blob, cachedAt: Date.now() });
+}
+
+function awaitWithSignal<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) {
+    return Promise.reject(new DOMException('The operation was aborted.', 'AbortError'));
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      reject(new DOMException('The operation was aborted.', 'AbortError'));
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (val) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(val);
+      },
+      (err) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(err);
+      },
+    );
+  });
+}
+
 export const fetchPdfBlob = async (url: string, signal?: AbortSignal): Promise<Blob> => {
   if (!url || typeof url !== 'string') {
     throw new Error('Invalid document URL provided.');
   }
 
+  if (signal?.aborted) {
+    throw new DOMException('The operation was aborted.', 'AbortError');
+  }
+
   const targetUrl = url.trim();
-  const isLocalStatic = targetUrl.startsWith('/papers/') || targetUrl.startsWith('/public/');
-  const libraryHost = getLibraryServiceHost('extraction') || getLibraryServiceHost('catalog');
-  const rawApiBase =
-    libraryHost ||
-    (typeof API_BASE_URL === 'string' && API_BASE_URL !== 'undefined' && API_BASE_URL !== 'null'
-      ? API_BASE_URL.trim()
-      : '');
-
-  const baseUrl =
-    typeof window !== 'undefined' && window.location?.origin
-      ? window.location.origin
-      : rawApiBase;
-
-  let resolvedUrl = targetUrl;
-  let isTrustedOrigin = false;
-  try {
-    if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
-      resolvedUrl = targetUrl;
-    } else if (isLocalStatic) {
-      resolvedUrl = targetUrl;
-    } else if (rawApiBase) {
-      const cleanBase = rawApiBase.replace(/\/+$/, '');
-      const cleanPath = targetUrl.replace(/^\/+/, '');
-      resolvedUrl = `${cleanBase}/${cleanPath}`;
-    } else {
-      resolvedUrl = targetUrl;
-    }
-
-    if (baseUrl) {
-      const resolvedOrigin = new URL(resolvedUrl, baseUrl).origin;
-      const apiOrigin = rawApiBase ? new URL(rawApiBase, baseUrl).origin : new URL(baseUrl).origin;
-      const libOrigin = libraryHost ? new URL(libraryHost, baseUrl).origin : apiOrigin;
-      isTrustedOrigin =
-        resolvedOrigin === new URL(baseUrl).origin ||
-        resolvedOrigin === apiOrigin ||
-        resolvedOrigin === libOrigin ||
-        targetUrl.startsWith('/api/');
-    } else {
-      isTrustedOrigin = targetUrl.startsWith('/api/');
-    }
-  } catch {
-    isTrustedOrigin = targetUrl.startsWith('/api/');
+  const cachedBlob = getCachedPdfBlob(targetUrl);
+  if (cachedBlob) {
+    return cachedBlob;
   }
 
-  const headers: Record<string, string> = {};
-  const token = api.getAuthToken();
-  if (token && isTrustedOrigin && !isLocalStatic) {
-    headers.Authorization = `Bearer ${token}`;
+  const existingInFlight = inFlightPdfBlobRequests.get(targetUrl);
+  if (existingInFlight) {
+    return awaitWithSignal(existingInFlight, signal);
   }
 
-  const response = await fetch(resolvedUrl, {
-    credentials: isTrustedOrigin && !isLocalStatic ? 'include' : 'same-origin',
-    headers,
-    signal,
-  });
+  const executeFetch = async (): Promise<Blob> => {
+    const isLocalStatic = targetUrl.startsWith('/papers/') || targetUrl.startsWith('/public/');
+    const libraryHost = getLibraryServiceHost();
+    const rawApiBase =
+      libraryHost ||
+      (typeof API_BASE_URL === 'string' && API_BASE_URL !== 'undefined' && API_BASE_URL !== 'null'
+        ? API_BASE_URL.trim()
+        : '');
 
-  if (!response.ok) {
-    if (response.status === 401) throw new Error('Unauthorized: Session expired or invalid authentication.');
-    if (response.status === 403) throw new Error('Forbidden: You do not have permission to view this document.');
-    if (response.status === 404) throw new Error('Not Found: The requested document could not be found.');
-    throw new Error(`Failed to fetch PDF (${response.status}): ${response.statusText}`);
-  }
+    const baseUrl =
+      typeof window !== 'undefined' && window.location?.origin
+        ? window.location.origin
+        : rawApiBase;
 
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json') || contentType.includes('text/html')) {
-    let errorDetail = '';
+    let resolvedUrl = targetUrl;
+    let isTrustedOrigin = false;
     try {
-      const text = typeof response.text === 'function' ? await response.text() : '';
-      if (text.trim().startsWith('{')) {
-        const parsed = JSON.parse(text) as Record<string, unknown>;
-        errorDetail = (parsed?.message || parsed?.error || text) as string;
+      if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+        resolvedUrl = targetUrl;
+      } else if (isLocalStatic) {
+        resolvedUrl = targetUrl;
+      } else if (rawApiBase) {
+        const cleanBase = rawApiBase.replace(/\/+$/, '');
+        const cleanPath = targetUrl.replace(/^\/+/, '');
+        resolvedUrl = `${cleanBase}/${cleanPath}`;
       } else {
-        errorDetail = text.slice(0, 140);
+        resolvedUrl = targetUrl;
+      }
+
+      if (baseUrl) {
+        const resolvedOrigin = new URL(resolvedUrl, baseUrl).origin;
+        const apiOrigin = rawApiBase ? new URL(rawApiBase, baseUrl).origin : new URL(baseUrl).origin;
+        const libOrigin = libraryHost ? new URL(libraryHost, baseUrl).origin : apiOrigin;
+        isTrustedOrigin =
+          resolvedOrigin === new URL(baseUrl).origin ||
+          resolvedOrigin === apiOrigin ||
+          resolvedOrigin === libOrigin ||
+          targetUrl.startsWith('/api/');
+      } else {
+        isTrustedOrigin = targetUrl.startsWith('/api/');
       }
     } catch {
-      // Ignore parse failure
+      isTrustedOrigin = targetUrl.startsWith('/api/');
     }
-    throw new Error(
-      errorDetail
-        ? `Server returned an error instead of PDF: ${errorDetail}`
-        : 'Server returned HTML or JSON instead of a binary PDF file.',
-    );
-  }
 
-  const blob = await response.blob();
-  if (blob.size === 0) {
-    throw new Error('Received an empty file from server.');
-  }
-  return blob;
+    const headers: Record<string, string> = {};
+    const token = api.getAuthToken();
+    if (token && isTrustedOrigin && !isLocalStatic) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(resolvedUrl, {
+      credentials: isTrustedOrigin && !isLocalStatic ? 'include' : 'same-origin',
+      headers,
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) throw new Error('Unauthorized: Session expired or invalid authentication.');
+      if (response.status === 403) throw new Error('Forbidden: You do not have permission to view this document.');
+      if (response.status === 404) throw new Error('Not Found: The requested document could not be found.');
+      throw new Error(`Failed to fetch PDF (${response.status}): ${response.statusText}`);
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json') || contentType.includes('text/html')) {
+      let errorDetail = '';
+      try {
+        const text = typeof response.text === 'function' ? await response.text() : '';
+        if (text.trim().startsWith('{')) {
+          const parsed = JSON.parse(text) as Record<string, unknown>;
+          errorDetail = (parsed?.message || parsed?.error || text) as string;
+        } else {
+          errorDetail = text.slice(0, 140);
+        }
+      } catch {
+        // Ignore parse failure
+      }
+      throw new Error(
+        errorDetail
+          ? `Server returned an error instead of PDF: ${errorDetail}`
+          : 'Server returned HTML or JSON instead of a binary PDF file.',
+      );
+    }
+
+    const blob = await response.blob();
+    if (blob.size === 0) {
+      throw new Error('Received an empty file from server.');
+    }
+    setCachedPdfBlob(targetUrl, blob);
+    return blob;
+  };
+
+  const promise = executeFetch().finally(() => {
+    inFlightPdfBlobRequests.delete(targetUrl);
+  });
+  inFlightPdfBlobRequests.set(targetUrl, promise);
+  return awaitWithSignal(promise, signal);
 };
 
 function toIngestionSubmission(payload: UnifiedIngestionPayload): Record<string, unknown> {
@@ -410,23 +469,99 @@ function toIngestionSubmission(payload: UnifiedIngestionPayload): Record<string,
     source,
     collectionId: p.collectionId,
     allowDuplicates: p.allowDuplicates,
+    overrides: p.overrides,
+    idempotencyKey: p.idempotencyKey,
   };
-  if (source === 'doi') return { ...base, doi: p.doi };
-  if (source === 'arxiv') return { ...base, arxivId: p.arxivId };
-  if (source === 'isbn') return { ...base, isbn: p.isbn };
-  if (source === 'pmid') return { ...base, pmid: p.pmid };
-  if (source === 'bibtex' || source === 'ris') return { ...base, content: p.content };
+  if (source === 'doi') {
+    return {
+      ...base,
+      kind: 'IDENTIFIER',
+      identifierType: 'DOI',
+      value: p.doi,
+      identifierValue: p.doi,
+      doi: p.doi,
+    };
+  }
+  if (source === 'arxiv') {
+    return {
+      ...base,
+      kind: 'IDENTIFIER',
+      identifierType: 'ARXIV',
+      value: p.arxivId,
+      identifierValue: p.arxivId,
+      arxivId: p.arxivId,
+    };
+  }
+  if (source === 'isbn') {
+    return {
+      ...base,
+      kind: 'IDENTIFIER',
+      identifierType: 'ISBN',
+      value: p.isbn,
+      identifierValue: p.isbn,
+      isbn: p.isbn,
+    };
+  }
+  if (source === 'pmid') {
+    return {
+      ...base,
+      kind: 'IDENTIFIER',
+      identifierType: 'PMID',
+      value: p.pmid,
+      identifierValue: p.pmid,
+      pmid: p.pmid,
+    };
+  }
+  if (source === 'bibtex') {
+    return {
+      ...base,
+      kind: 'RECORD',
+      format: 'BIBTEX',
+      recordFormat: 'BIBTEX',
+      content: p.content || p.bibtex,
+    };
+  }
+  if (source === 'ris') {
+    return {
+      ...base,
+      kind: 'RECORD',
+      format: 'RIS',
+      recordFormat: 'RIS',
+      content: p.content || p.ris,
+    };
+  }
+  if (source === 'url') {
+    return {
+      ...base,
+      kind: 'URL',
+      url: p.url,
+      previewToken: p.previewToken,
+    };
+  }
   if (source === 'pdf') {
     return {
       ...base,
+      kind: 'FILE',
       fileId: p.fileId,
       filename: p.filename,
       autoExtract: p.autoExtract,
       enableOcr: p.enableOcr,
     };
   }
-  if (source === 'manual') return { ...base, item: p.item };
-  return base;
+  if (source === 'zotero' || source === 'connector') {
+    return {
+      ...base,
+      kind: 'CONNECTOR',
+      connectionId: p.connectionId,
+      externalObjectId: p.externalItemKey || p.externalObjectId,
+      externalVersion: p.externalVersion,
+    };
+  }
+  if (source === 'manual') return { ...base, kind: 'RECORD', item: p.item };
+  return {
+    ...base,
+    kind: p.kind || (p.fileId ? 'FILE' : 'URL'),
+  };
 }
 
 function unwrapList<T>(res: unknown, key: string): T[] {
@@ -451,11 +586,10 @@ function unwrapRecord<T>(res: unknown, key: string): T | null {
   return res as T;
 }
 
-function unwrapItemResponse(res: unknown): Item & { item: Item; paper: Item } {
+function unwrapItemResponse(res: unknown): Item {
   const obj = res && typeof res === 'object' ? (res as Record<string, unknown>) : {};
-  const rawItem = ((obj.item || obj.paper || obj.data || res) ?? {}) as Item;
-  const item = mapBackendItemToPaper(rawItem);
-  return { ...item, item, paper: item };
+  const rawItem = ((obj.item || obj.data || res) ?? {}) as Item;
+  return mapBackendItem(rawItem);
 }
 
 function unwrapResolvedReference(raw: unknown): ReferenceData | null {
@@ -468,783 +602,6 @@ function unwrapResolvedReference(raw: unknown): ReferenceData | null {
   }
   return null;
 }
-
-// CANONICAL UNIFIED LIBRARY CLIENT SDK
-
-export const libraryServices = {
-  // 1. Items & Catalog Operations
-  items: {
-    list: (scopeId?: string, params?: ItemQueryParams) => ItemsService.getAll(scopeId, params),
-    getAll: (scopeId?: string, params?: ItemQueryParams) => ItemsService.getAll(scopeId, params),
-    getItem: (scopeId: string | undefined, itemId: string) => ItemsService.getItem(scopeId, itemId),
-    getById: (scopeId: string | undefined, itemId: string) => ItemsService.getItem(scopeId, itemId),
-    create: (scopeId: string | undefined, collectionId: string, itemData: Record<string, unknown>) =>
-      ItemsService.create(scopeId || 'user', collectionId, itemData as Partial<Item>),
-    update: (scopeId: string | undefined, itemId: string, itemData: Record<string, unknown>) =>
-      ItemsService.update(scopeId || 'user', itemId, itemData as Partial<Item>),
-    delete: (scopeId: string | undefined, itemId: string) =>
-      ItemsService.delete(scopeId || 'user', itemId),
-    purge: (scopeId: string | undefined, itemId: string) =>
-      ItemsService.purge(scopeId || 'user', itemId),
-    restore: (scopeId: string | undefined, itemId: string) =>
-      ItemsService.restore(scopeId || 'user', itemId),
-    bulkDelete: (scopeId: string | undefined, itemIds: string[]) =>
-      ItemsService.bulkTrash(scopeId || 'user', itemIds),
-    bulkPurge: (scopeId: string | undefined, itemIds: string[]) =>
-      ItemsService.bulkPurge(scopeId || 'user', itemIds),
-    bulkRestore: (scopeId: string | undefined, itemIds: string[]) =>
-      ItemsService.bulkRestore(scopeId || 'user', itemIds),
-    getCounts: (scopeId?: string) => ItemsService.getCounts(scopeId),
-    importFromUser: (projectId: string, itemIds: string[]) =>
-      ItemsService.importFromUser(projectId, itemIds),
-    importFromPersonal: (projectId: string, itemIds: string[]) =>
-      ItemsService.importFromPersonal(projectId, itemIds),
-    fetchPdfBlob,
-    getFulltext: (scopeId: string | undefined, itemId: string) =>
-      ItemsService.getFulltext(scopeId, itemId) as Promise<DocumentFulltext | null>,
-    reindexItem: (scopeId: string | undefined, itemId: string) =>
-      ItemsService.reindexItem(scopeId, itemId),
-    getMetadataSources: (scopeId: string | undefined, itemId: string) =>
-      ItemsService.getMetadataSources(scopeId, itemId),
-    getByCollection: (scopeId: string | undefined, collectionId: string, search?: string) =>
-      ItemsService.getByCollection(scopeId || 'user', collectionId, search),
-  },
-
-  // 2. Collections Operations
-  collections: {
-    list: (scopeId?: string) => CollectionsService.getAll(scopeId),
-    getAll: (scopeId?: string) => CollectionsService.getAll(scopeId),
-    get: (scopeId: string | undefined, collectionId: string) =>
-      CollectionsService.getById(scopeId, collectionId),
-    getById: (scopeId: string | undefined, collectionId: string) =>
-      CollectionsService.getById(scopeId, collectionId),
-    create: (scopeId: string | undefined, data: CreateCollectionDTO) =>
-      CollectionsService.create(scopeId, data),
-    update: (scopeId: string | undefined, collectionId: string, data: UpdateCollectionDTO) =>
-      CollectionsService.update(scopeId, collectionId, data),
-    delete: (scopeId: string | undefined, collectionId: string) =>
-      CollectionsService.delete(scopeId, collectionId),
-    moveItems: (scopeId: string | undefined, targetCollectionId: string, itemIds: string[]) =>
-      CollectionsService.moveItems(scopeId, targetCollectionId, itemIds),
-    detachItems: (scopeId: string | undefined, collectionId: string, itemIds: string[]) =>
-      CollectionsService.bulkDetachItems(scopeId, collectionId, itemIds),
-    exportBibtex: (scopeId: string | undefined, collectionId: string) =>
-      CollectionsService.exportBibtex(scopeId, collectionId),
-    exportBundle: (scopeId: string | undefined, collectionId: string) =>
-      CollectionsService.exportBundle(scopeId, collectionId),
-  },
-
-  // 3. Tags & Notes Operations
-  tags: {
-    list: (scopeId?: string) => TagsService.list(scopeId),
-    attachToItem: (scopeId: string | undefined, itemId: string, tagName: string, color?: string) =>
-      libraryClient.post<TagWithCount>(
-        resolveLibraryUrl('catalog', `/items/${encodeURIComponent(itemId)}/tags`, scopeId),
-        { name: tagName, color },
-      ),
-    detachFromItem: (scopeId: string | undefined, itemId: string, tagId: string) =>
-      TagsService.removeFromItem(scopeId, tagId, itemId),
-    rename: (scopeId: string | undefined, tagId: string, name: string) =>
-      TagsService.update(scopeId, tagId, { name }),
-    delete: (scopeId: string | undefined, tagId: string) =>
-      TagsService.delete(scopeId, tagId),
-  },
-
-  notes: {
-    getByItem: (scopeId: string | undefined, itemId: string) =>
-      NotesService.list(scopeId, itemId),
-    create: (scopeId: string | undefined, itemId: string, content: string, title?: string) =>
-      NotesService.create(scopeId, { itemId, contentMd: content, title }),
-    update: (scopeId: string | undefined, noteId: string, content: string, title?: string) =>
-      NotesService.update(scopeId, noteId, undefined, { contentMd: content, title }),
-    delete: (scopeId: string | undefined, noteId: string) =>
-      NotesService.delete(scopeId, noteId),
-  },
-
-  // 4. Saved Searches Operations
-  savedSearches: {
-    list: (scopeId?: string) => SavedSearchesService.getAll(scopeId),
-    create: (scopeId: string | undefined, input: CreateSavedSearchInput) =>
-      SavedSearchesService.create(scopeId, input),
-    update: (scopeId: string | undefined, id: string, input: UpdateSavedSearchInput) =>
-      SavedSearchesService.update(scopeId, id, input),
-    delete: (scopeId: string | undefined, id: string) =>
-      SavedSearchesService.delete(scopeId, id),
-    preview: (scopeId: string | undefined, conditions: SavedSearchConditionGroup) =>
-      SavedSearchesService.preview(scopeId, conditions),
-    execute: (scopeId: string | undefined, id: string, params?: { page?: number; limit?: number }) =>
-      SavedSearchesService.getResults(scopeId, id, params),
-  },
-
-  // 5. Relations Operations
-  relations: {
-    list: (scopeId: string | undefined, itemId: string) =>
-      RelationsService.getRelated(scopeId, itemId).then((r) => r.relatedItems),
-    link: (scopeId: string | undefined, itemId: string, targetItemId: string) =>
-      RelationsService.link(scopeId, itemId, targetItemId),
-    unlink: (scopeId: string | undefined, itemId: string, targetItemId: string) =>
-      RelationsService.unlink(scopeId, itemId, targetItemId),
-  },
-
-  // 6. Citations & Bibliography Operations
-  citations: {
-    formatCitation: (scopeId: string | undefined, itemId: string, style: CslStyle = 'apa', index = 1) => {
-      const pQuery = isProjectScope(scopeId) ? `&projectId=${encodeURIComponent(scopeId!)}` : '';
-      return libraryClient.get<FormattedCitation>(
-        `${getCitationUrl(scopeId, 'items')}/${encodeURIComponent(itemId)}/citation?style=${encodeURIComponent(style)}&index=${index}${pQuery}`,
-      );
-    },
-    batchFormat: (scopeId: string | undefined, itemIds: string[], style: CslStyle = 'apa') => {
-      const projectId = isProjectScope(scopeId) ? scopeId : undefined;
-      return libraryClient.post<{
-        style: CslStyle;
-        total: number;
-        combinedInText?: string;
-        bibliographyText?: string;
-        bibliographyHtml?: string;
-        citations: Array<{ paperId: string; itemId?: string; citation: FormattedCitation }>;
-      }>(getCitationUrl(scopeId, 'batch-items'), {
-        itemIds,
-        style,
-        ...(projectId ? { projectId } : {}),
-      });
-    },
-    getStyles: (scopeId?: string) => {
-      const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
-      return libraryClient.get<import('@/features/library/domain/types/library.types').StyleSummary[]>(
-        `${getCitationUrl(scopeId, 'styles')}${pQuery}`,
-      );
-    },
-    searchStyles: (query = '', limit = 30) =>
-      libraryClient.get<{ styles: CslStyleMetadata[]; total: number }>(
-        `/api/v1/library/citation/styles/search?q=${encodeURIComponent(query)}&limit=${limit}`,
-      ),
-    uploadCustomStyle: (xml: string, title?: string) =>
-      libraryClient.post<{ styleId?: string; id?: string; title: string; message: string }>(
-        `/api/v1/library/citation/styles/custom`,
-        { xml, title },
-      ).then((res) => ({
-        ...res,
-        id: res.id || res.styleId || '',
-        styleId: res.styleId || res.id || '',
-      })),
-    resolveDoi: async (doi: string, _scopeId?: string): Promise<ReferenceData | null> => {
-      const rawDoi = typeof doi === 'string' ? doi.trim() : '';
-      if (!rawDoi) throw new Error('Invalid DOI provided');
-      try {
-        const referenceResponse = await libraryClient.post<unknown>(
-          `/api/v1/library/citation/resolve`,
-          { doi: rawDoi, query: rawDoi },
-          { silent: true },
-        );
-        const unwrapped = unwrapResolvedReference(referenceResponse);
-        if (unwrapped) return unwrapped;
-      } catch {
-        return null;
-      }
-      return null;
-    },
-    search: async (query: string, _scopeId?: string): Promise<ReferenceData[]> => {
-      if (!query || !query.trim()) return [];
-      const trimmedQuery = query.trim();
-      try {
-        const response = await libraryClient.get<{
-          works?: ReferenceData[];
-          results?: ReferenceData[];
-          data?: ReferenceData[];
-        }>(`/api/v1/library/citation/crossref/search?query=${encodeURIComponent(trimmedQuery)}&rows=10`, { silent: true });
-        if (response?.works && Array.isArray(response.works)) return response.works;
-        if (response?.results && Array.isArray(response.results)) return response.results;
-        if (response?.data && Array.isArray(response.data)) return response.data;
-        if (Array.isArray(response)) return response as ReferenceData[];
-        return [];
-      } catch {
-        return [];
-      }
-    },
-    resolve: async (query: string, scopeId?: string): Promise<ReferenceData | null> => {
-      const trimmed = typeof query === 'string' ? query.trim() : '';
-      if (!trimmed) return null;
-      try {
-        const referenceResponse = await libraryClient.post<unknown>(
-          `/api/v1/library/citation/resolve`,
-          { query: trimmed },
-          { silent: true },
-        );
-        const unwrapped = unwrapResolvedReference(referenceResponse);
-        if (unwrapped) return unwrapped;
-      } catch {
-        // Fall back to search
-      }
-      const results = await libraryServices.citations.search(trimmed, scopeId);
-      return results.length > 0 ? results[0] : null;
-    },
-  },
-
-  exports: {
-    exportLibrary: (
-      scopeId?: string,
-      options?: {
-        format?: string;
-        collectionId?: string;
-        tagId?: string;
-        itemIds?: string[];
-        projectId?: string;
-      },
-    ) => {
-      const projectId = options?.projectId || (isProjectScope(scopeId) ? scopeId : undefined);
-      return libraryClient.post<{ content: string; filename: string; itemCount: number }>(
-        getExportsUrl(scopeId),
-        { ...options, ...(projectId ? { projectId } : {}) },
-      );
-    },
-    exportByCitationKeys: (scopeId: string, keys: string[]) =>
-      libraryClient.post<{ content: string; filename: string; itemCount: number }>(
-        `${getExportsUrl(scopeId)}/by-keys`,
-        { keys, format: 'bibtex' },
-      ),
-    exportAnnotatedPdf: (scopeId?: string, itemId?: string) => {
-      const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
-      return libraryClient.get<{ filename: string; mimeType: string; base64: string }>(
-        `${getExportsUrl(scopeId)}/items/${encodeURIComponent(itemId || '')}/annotated-pdf${pQuery}`,
-      );
-    },
-    downloadAnnotatedPdf: async (
-      scopeId: string | undefined,
-      itemId: string,
-      fallbackFilename = `annotated_${itemId}.pdf`,
-    ): Promise<{ filename: string; mimeType: string }> => {
-      const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
-      const endpoint = `${getExportsUrl(scopeId)}/items/${encodeURIComponent(itemId)}/annotated-pdf${pQuery}`;
-      let resolvedFilename = fallbackFilename;
-      const res = await libraryClient.get<{ filename: string; mimeType: string; base64: string }>(endpoint);
-      if (!res || !res.base64) {
-        throw new Error('Failed to generate annotated PDF: No content received');
-      }
-      if (res.filename) {
-        resolvedFilename = res.filename;
-      }
-      const byteCharacters = atob(res.base64);
-      const byteArray = new Uint8Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteArray[i] = byteCharacters.charCodeAt(i);
-      }
-      const blob = new Blob([byteArray], { type: res.mimeType || 'application/pdf' });
-      if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = resolvedFilename;
-        document.body.appendChild(a);
-        try {
-          a.click();
-        } finally {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }
-      }
-      return { filename: resolvedFilename, mimeType: 'application/pdf' };
-    },
-  },
-
-  // 7. Extraction, Attachments & Upload Operations
-  attachments: {
-    list: async (scopeId: string, itemId: string): Promise<AttachmentDto[]> => {
-      const res = await libraryClient.get<{ attachments: AttachmentDto[] }>(getItemAttachmentUrl(scopeId, itemId));
-      return res.attachments || [];
-    },
-    get: async (scopeId: string, attachmentId: string): Promise<AttachmentDto> => {
-      const res = await libraryClient.get<{ attachment?: AttachmentDto } | AttachmentDto>(getAttachmentUrl(scopeId, attachmentId));
-      if (res && typeof res === 'object' && 'attachment' in res && res.attachment) {
-        return res.attachment;
-      }
-      return res as AttachmentDto;
-    },
-    delete: async (scopeId: string, attachmentId: string): Promise<boolean> => {
-      const res = await libraryClient.delete<{ success: boolean }>(getAttachmentUrl(scopeId, attachmentId));
-      return res.success;
-    },
-    create: async (scopeId: string, itemId: string, data: Record<string, unknown>): Promise<AttachmentDto> => {
-      const res = await libraryClient.post<{ attachment?: AttachmentDto } | AttachmentDto>(
-        getItemAttachmentUrl(scopeId, itemId),
-        data,
-      );
-      return (res as { attachment?: AttachmentDto }).attachment ?? (res as AttachmentDto);
-    },
-    captureSnapshot: async (scopeId: string, itemId: string, url?: string): Promise<AttachmentDto> => {
-      const res = await libraryClient.post<{ attachment?: AttachmentDto } | AttachmentDto>(
-        getItemAttachmentUrl(scopeId, itemId, 'snapshot'),
-        url ? { url } : {},
-      );
-      return (res as { attachment?: AttachmentDto }).attachment ?? (res as AttachmentDto);
-    },
-    rename: async (scopeId: string, attachmentId: string, dto: { filename?: string; pattern?: string }) => {
-      return libraryClient.patch<{ attachment: AttachmentDto; oldFilename: string; newFilename: string }>(
-        getAttachmentUrl(scopeId, attachmentId, 'rename'),
-        dto,
-      );
-    },
-    batchRename: async (scopeId: string, dto: { itemIds?: string[]; attachmentIds?: string[]; pattern?: string }) =>
-      libraryClient.post<{
-        renamedCount: number;
-        results: Array<{ attachmentId: string; itemId: string; oldFilename: string; newFilename: string }>;
-      }>(resolveLibraryUrl('extraction', '/attachments/batch-rename', scopeId), dto),
-    reExtract: async (scopeId: string | undefined, attachmentId: string) => {
-      return libraryClient.post<{ status: string; attachmentId: string; message: string }>(
-        getAttachmentUrl(scopeId, attachmentId, 're-extract'),
-        {},
-      );
-    },
-    setPrimary: (scopeId: string, itemId: string, attachmentId: string) =>
-      libraryClient.post<{ success: boolean }>(
-        getItemAttachmentUrl(scopeId, itemId, `${encodeURIComponent(attachmentId)}/set-primary`),
-        {},
-      ),
-  },
-
-  upload: {
-    uploadMultipart: async (
-      scopeId: string | undefined,
-      file: File,
-      options?: { onProgress?: (percent: number) => void; signal?: AbortSignal },
-    ): Promise<{ fileId: string; url: string; filename: string; size: number; mimeType: string }> => {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (isProjectScope(scopeId)) {
-        formData.append('projectId', scopeId!);
-      }
-      const uploadUrl = resolveLibraryUrl('extraction', '/upload', scopeId);
-      const res = await libraryClient.post<{
-        fileId: string;
-        url: string;
-        filename?: string;
-        size?: number;
-        mimeType?: string;
-      }>(uploadUrl, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        signal: options?.signal,
-      }, scopeId);
-      return {
-        fileId: res.fileId,
-        url: res.url,
-        filename: res.filename || file.name,
-        size: res.size ?? file.size,
-        mimeType: res.mimeType || file.type || 'application/pdf',
-      };
-    },
-  },
-
-  // 8. Ingestion & Curation Operations
-  ingestion: {
-    ingest: async (scopeId: string | undefined, payload: UnifiedIngestionPayload): Promise<UnifiedIngestionResponse> => {
-      const validated = UnifiedIngestionPayloadSchema.parse(payload);
-      const submission = {
-        ...toIngestionSubmission(validated),
-        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
-      };
-      const res = await libraryClient.post<Record<string, unknown>>(
-        getIngestionUrl(scopeId, 'submit'),
-        submission,
-        { timeout: 30000 },
-      );
-      const accepted = (res && typeof res === 'object' && 'data' in res && res.data ? res.data : res) as Record<string, unknown>;
-      return UnifiedIngestionResponseSchema.parse({
-        success: true,
-        data: {
-          runId: accepted.runId,
-          status: accepted.status,
-          itemId: accepted.existingItemId,
-          deduplicated: accepted.deduplicated,
-        },
-      });
-    },
-    getRunStatus: async (scopeId: string | undefined, runId: string): Promise<IngestionRunSnapshotResponse> => {
-      const res = await libraryClient.get<Record<string, unknown>>(
-        getIngestionUrl(scopeId, `runs/${encodeURIComponent(runId)}`),
-      );
-      const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
-      return IngestionRunSnapshotResponseSchema.parse(enveloped);
-    },
-    getRunProgress: async (scopeId: string | undefined, runId: string) => {
-      const res = await libraryClient.get<{ data?: unknown } | unknown>(
-        getIngestionUrl(scopeId, `status/${encodeURIComponent(runId)}/progress`),
-      );
-      return (res && typeof res === 'object' && 'data' in res && res.data ? res.data : res) as import('@/features/library/domain/types/batch-upload.types').IngestionProgressResponse;
-    },
-    captureUrl: async (scopeId: string | undefined, url: string): Promise<UrlCapturePreviewResponse> => {
-      const res = await libraryClient.post<Record<string, unknown>>(
-        getIngestionUrl(scopeId, 'capture-url'),
-        { url },
-      );
-      const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
-      return UrlCapturePreviewResponseSchema.parse(enveloped);
-    },
-    confirmUrl: (
-      scopeId: string | undefined,
-      payload: {
-        url: string;
-        previewToken?: string;
-        title?: string;
-        abstract?: string;
-        doi?: string;
-        year?: number;
-        publicationTitle?: string;
-        itemType?: string;
-        collectionId?: string;
-      },
-    ) =>
-      libraryClient.post<{ id: string; title: string; doi?: string; year?: number; citationKey?: string }>(
-        getIngestionUrl(scopeId, 'confirm-url'),
-        {
-          ...payload,
-          ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
-        },
-      ),
-  },
-
-  curation: {
-    getDuplicates: async (
-      scopeId?: string,
-    ): Promise<{ duplicateGroups: DuplicateGroup[]; totalDuplicates: number }> => {
-      interface RawDuplicateCluster {
-        clusterId: string;
-        matchReason: string;
-        confidence: number;
-        recommendedMasterId?: string;
-        items: Array<Record<string, unknown>>;
-      }
-      const res = await libraryClient.get<
-        RawDuplicateCluster[] | { data?: RawDuplicateCluster[]; clusters?: RawDuplicateCluster[]; duplicates?: DuplicateGroup[] }
-      >(getCurationUrl(scopeId, 'duplicates'));
-
-      if (res && typeof res === 'object' && 'duplicates' in res && Array.isArray(res.duplicates)) {
-        return {
-          duplicateGroups: res.duplicates,
-          totalDuplicates: res.duplicates.reduce((acc, g) => acc + (g.papers?.length || 0), 0),
-        };
-      }
-
-      const clusters: RawDuplicateCluster[] = Array.isArray(res)
-        ? res
-        : (res && 'data' in res && Array.isArray(res.data)
-            ? res.data
-            : res && 'clusters' in res && Array.isArray(res.clusters)
-              ? res.clusters
-              : []);
-
-      const duplicateGroups: DuplicateGroup[] = clusters.map((c) => {
-        const parsedPapers = (c.items || []).map((it) => {
-          const rawTags = Array.isArray(it.tags)
-            ? it.tags
-                .map((t: unknown) =>
-                  typeof t === 'string'
-                    ? t
-                    : t && typeof t === 'object' && 'name' in t
-                      ? String((t as { name: unknown }).name)
-                      : '',
-                )
-                .filter(Boolean)
-            : undefined;
-          return itemSchema.parse({
-            ...it,
-            id: it.id,
-            title: it.title,
-            itemType: it.itemType || 'journalArticle',
-            doi: it.doi || '',
-            authors: it.authors || [],
-            year: it.year || null,
-            citationKey: it.citationKey || '',
-            collectionId: it.collectionId || null,
-            ...(rawTags ? { tags: rawTags } : {}),
-          });
-        });
-        return {
-          matchType: c.matchReason === 'EXACT_DOI' ? 'DOI' : 'TITLE_AUTHOR_YEAR',
-          confidence: c.confidence >= 1 ? 'high' : 'medium',
-          key: c.clusterId,
-          ...(c.recommendedMasterId ? { recommendedMasterId: c.recommendedMasterId } : {}),
-          papers: parsedPapers,
-          items: parsedPapers,
-        };
-      });
-
-      return {
-        duplicateGroups,
-        totalDuplicates: duplicateGroups.reduce(
-          (acc, g) => acc + (g.papers?.length || 0),
-          0,
-        ),
-      };
-    },
-    mergeDuplicates: (scopeId: string | undefined, masterId: string, duplicateIds: string[], overrides?: Record<string, unknown>) =>
-      libraryClient.post<{ success: boolean; masterItem: Item }>(getCurationUrl(scopeId, 'merge'), {
-        masterId,
-        duplicateIds,
-        overrides,
-        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
-      }),
-    mergePapers: async (
-      scopeId: string | undefined,
-      masterPaperId: string,
-      sourcePaperIds: string[],
-      fieldSelections?: Record<string, unknown>,
-    ) => {
-      interface MergeApiResponse {
-        primaryItem?: unknown;
-        masterPaper?: unknown;
-        mergedCount?: number;
-        softDeletedItemIds?: string[];
-        softDeletedPaperIds?: string[];
-        data?: {
-          masterPaper?: unknown;
-          mergedCount?: number;
-          softDeletedPaperIds?: string[];
-        };
-      }
-      const res = await libraryClient.post<MergeApiResponse>(
-        getCurationUrl(scopeId, 'merge'),
-        {
-          primaryItemId: masterPaperId,
-          duplicateItemIds: sourcePaperIds,
-          fieldSelections,
-        },
-      );
-      const masterPaper = res?.primaryItem || res?.masterPaper || res?.data?.masterPaper;
-      const mergedCount = res?.mergedCount ?? res?.data?.mergedCount ?? sourcePaperIds.length;
-      const softDeletedPaperIds =
-        res?.softDeletedItemIds ||
-        res?.softDeletedPaperIds ||
-        res?.data?.softDeletedPaperIds ||
-        [];
-      return {
-        success: true,
-        data: { masterPaper, mergedCount, softDeletedPaperIds },
-        masterPaper,
-        primaryItem: masterPaper,
-      };
-    },
-    getIntegrityReport: async (scopeId?: string): Promise<LibraryIntegrityReport> => {
-      const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
-      return libraryClient.get<LibraryIntegrityReport>(`${getCurationUrl(scopeId, 'integrity')}${pQuery}`);
-    },
-    dismissDuplicate: (scopeId: string | undefined, itemAId: string, itemBId: string) =>
-      libraryClient.post<{ success: boolean }>(getCurationUrl(scopeId, 'dismiss-duplicate'), {
-        itemAId,
-        itemBId,
-      }),
-    dismissDuplicates: (scopeId: string | undefined, itemIds: string[]) =>
-      libraryClient.post<{ dismissed: boolean; itemIds: string[] }>(
-        getCurationUrl(scopeId, 'duplicates/dismiss'),
-        { itemIds },
-      ),
-  },
-
-  retraction: {
-    getStats: (scopeId?: string) =>
-      libraryClient.get<RetractionStats>(getRetractionUrl(scopeId, 'stats')),
-    getRetractedItems: (scopeId?: string) =>
-      libraryClient.get<Item[]>(
-        getRetractionUrl(scopeId, 'items'),
-        { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
-      ),
-    checkItem: (scopeId: string | undefined, itemId: string) =>
-      libraryClient.post<{
-        itemId: string;
-        isRetracted: boolean;
-        status?: 'retracted' | 'clean' | 'unknown';
-        nature?: string;
-        details?: Record<string, unknown>;
-      }>(
-        getRetractionUrl(scopeId, `items/${encodeURIComponent(itemId)}/check`),
-        {},
-        { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
-      ),
-    checkLibrary: (scopeId: string | undefined, itemIds?: string[]) =>
-      libraryClient.post<{ scanned: number; newlyRetracted: number }>(
-        getRetractionUrl(scopeId, 'check-all'),
-        { itemIds },
-        { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
-      ),
-    flagItem: ((
-      scopeId: string | undefined,
-      itemIdOrInput: string | FlagRetractionInput,
-      data?: FlagRetractionInput,
-    ) => {
-      if (typeof itemIdOrInput === 'string') {
-        return libraryClient.post<Item>(
-          getRetractionUrl(scopeId, `items/${encodeURIComponent(itemIdOrInput)}/flag`),
-          data || {},
-          { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
-        );
-      }
-      return libraryClient.post<{ success: boolean }>(getRetractionUrl(scopeId, 'flag'), itemIdOrInput);
-    }) as {
-      (scopeId: string | undefined, itemId: string, data: FlagRetractionInput): Promise<Item>;
-      (scopeId: string | undefined, input: FlagRetractionInput): Promise<{ success: boolean }>;
-    },
-    unflagItem: (scopeId: string | undefined, itemId: string) =>
-      libraryClient.delete<Item>(
-        getRetractionUrl(scopeId, `items/${encodeURIComponent(itemId)}/flag`),
-        { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
-      ),
-  },
-
-  // 9. Search & Sync Operations
-  search: {
-    search: (params: {
-      query?: string;
-      q?: string;
-      limit?: number;
-      cursor?: string;
-      collectionId?: string;
-      tagId?: string;
-      itemType?: string;
-      yearFrom?: number;
-      yearTo?: number;
-      sortBy?: SearchSortBy;
-      sortOrder?: SearchSortOrder;
-    }, scopeId?: string) => {
-      const effectiveQuery = params.query ?? params.q ?? '';
-      const queryParams: Record<string, string> = { query: effectiveQuery };
-      if (params.limit !== undefined) queryParams.limit = String(params.limit);
-      if (params.cursor) queryParams.cursor = params.cursor;
-      if (params.collectionId) queryParams.collectionId = params.collectionId;
-      if (params.tagId) queryParams.tagId = params.tagId;
-      if (params.itemType) queryParams.itemType = params.itemType;
-      if (params.yearFrom !== undefined) queryParams.yearFrom = String(params.yearFrom);
-      if (params.yearTo !== undefined) queryParams.yearTo = String(params.yearTo);
-      if (params.sortBy) queryParams.sortBy = params.sortBy;
-      if (params.sortOrder) queryParams.sortOrder = params.sortOrder;
-
-      return libraryClient.get<SearchResponse>(
-        resolveLibraryUrl('search', '/search', scopeId),
-        { params: queryParams },
-      );
-    },
-    searchAnchors: (attachmentId: string, term: string, pageIndex?: number, scopeId?: string) => {
-      const params: Record<string, string> = { term };
-      if (pageIndex !== undefined) params.pageIndex = String(pageIndex);
-      return libraryClient.get<Array<{
-        pageIndex: number;
-        text: string;
-        startOffset?: number;
-        endOffset?: number;
-        highlightBoxes?: Array<{ x: number; y: number; width: number; height: number }>;
-      }>>(
-        resolveLibraryUrl(
-          'search',
-          `/search/attachments/${encodeURIComponent(attachmentId)}/anchors`,
-          scopeId,
-        ),
-        { params },
-      );
-    },
-  },
-
-  sync: {
-    getDiagnostics: (scopeId?: string) =>
-      libraryClient.get<unknown>(getSyncUrl(scopeId, 'diagnostics')),
-    getVersion: (scopeId?: string) =>
-      libraryClient.get<{ version: string; scope: 'user' | 'project'; scopeId: string }>(getSyncUrl(scopeId, 'version')),
-    getChanges: (scopeId?: string, params?: { since?: string; limit?: number; compact?: boolean }) =>
-      libraryClient.get<{ since: string; count: number; hasMore: boolean; changes: Array<Record<string, unknown>> }>(
-        getSyncUrl(scopeId, 'changes'),
-        {
-          params: {
-            since: params?.since ?? '0',
-            limit: params?.limit ?? 100,
-            ...(params?.compact !== undefined ? { compact: params.compact } : {}),
-          },
-        },
-      ),
-    getTombstones: (scopeId?: string, params?: { since?: string; limit?: number }) =>
-      libraryClient.get<{ since: string; count: number; hasMore: boolean; tombstones: Array<Record<string, unknown>> }>(
-        getSyncUrl(scopeId, 'tombstones'),
-        {
-          params: {
-            ...(params?.since !== undefined ? { since: params.since } : {}),
-            limit: params?.limit ?? 100,
-          },
-        },
-      ),
-  },
-
-  // 10. PDF Reader & Annotations Operations
-  reader: {
-    getDocument: async (scopeId: string | undefined, itemId: string): Promise<ReaderDocument> => {
-      const item = await ItemsService.getItem(scopeId, itemId);
-      return item as ReaderDocument;
-    },
-    getAnnotations: async (scopeId: string | undefined, attachmentId: string): Promise<ReaderAnnotation[]> => {
-      if (!attachmentId) return [];
-      const url = resolveLibraryUrl('reader', `/attachments/${encodeURIComponent(attachmentId)}/annotations`, scopeId);
-      const res = await libraryClient.get<ReaderAnnotation[] | { data?: ReaderAnnotation[]; annotations?: ReaderAnnotation[] }>(url);
-      return unwrapList<ReaderAnnotation>(res, 'annotations');
-    },
-    createAnnotation: async (scopeId: string | undefined, attachmentId: string, dto: CreateAnnotationDto): Promise<ReaderAnnotation> => {
-      const url = resolveLibraryUrl('reader', `/attachments/${encodeURIComponent(attachmentId)}/annotations`, scopeId);
-      return libraryClient.post<ReaderAnnotation>(url, dto);
-    },
-    updateAnnotation: async (
-      scopeId: string | undefined,
-      attachmentId: string,
-      annotationId: string,
-      expectedVersion: number | undefined,
-      dto: UpdateAnnotationDto,
-    ): Promise<ReaderAnnotation> => {
-      const url = resolveLibraryUrl(
-        'reader',
-        `/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
-        scopeId,
-      );
-      return libraryClient.patch<ReaderAnnotation>(url, { ...dto, expectedVersion });
-    },
-    deleteAnnotation: async (
-      scopeId: string | undefined,
-      attachmentId: string,
-      annotationId: string,
-      expectedVersion?: number,
-    ): Promise<boolean> => {
-      const url = resolveLibraryUrl(
-        'reader',
-        `/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
-        scopeId,
-      );
-      const res = await libraryClient.delete<{ success?: boolean } | boolean>(url, {
-        params: expectedVersion !== undefined ? { expectedVersion } : undefined,
-      });
-      return typeof res === 'boolean' ? res : Boolean(res?.success);
-    },
-    batchAnnotations: async (
-      scopeId: string | undefined,
-      attachmentId: string,
-      payload: { upserts: unknown[]; deletes: string[] },
-    ): Promise<unknown> => {
-      const url = resolveLibraryUrl(
-        'reader',
-        `/attachments/${encodeURIComponent(attachmentId)}/annotations/batch`,
-        scopeId,
-      );
-      return libraryClient.post<unknown>(url, payload);
-    },
-    getState: async (scopeId: string | undefined, paperId: string): Promise<DocumentReadingState | null> => {
-      const state = await StateService.getState(scopeId, paperId);
-      return (state as DocumentReadingState | null) ?? null;
-    },
-    updateState: async (
-      scopeId: string | undefined,
-      paperId: string,
-      patch: Partial<DocumentReadingState>,
-    ): Promise<DocumentReadingState> => {
-      const updated = await StateService.updateState(scopeId, paperId, patch);
-      return updated as DocumentReadingState;
-    },
-    markAsRead: async (scopeId: string | undefined, paperId: string): Promise<{ success: boolean }> => {
-      await StateService.markAsRead(scopeId, paperId);
-      return { success: true };
-    },
-  },
-};
 
 // DOMAIN SERVICES & FACADES
 
@@ -1264,6 +621,20 @@ export interface ItemMetadataSourcesResponse {
   sources: ItemMetadataSourceItem[];
 }
 
+export interface ItemTypesResponse {
+  success: boolean;
+  registryVersion: number;
+  schemaVersion: number;
+  source: string;
+  itemTypes: SchemaItemTypeDefinition[];
+  data: SchemaItemTypeDefinition[];
+  baseFieldMappings?: Record<string, Record<string, string>>;
+  reverseBaseFieldMappings?: Record<string, Record<string, string>>;
+  creatorRoles?: Record<string, string>;
+  cslTypeMap?: Record<string, string>;
+  cslFieldMap?: Record<string, string>;
+}
+
 // 1. ItemsService
 export const ItemsService = {
   importFromUser: (projectId: string, itemIds: string[]) => {
@@ -1275,9 +646,6 @@ export const ItemsService = {
       { itemIds },
     );
   },
-
-  importFromPersonal: (projectId: string, itemIds: string[]) =>
-    ItemsService.importFromUser(projectId, itemIds),
 
   getCounts: (scopeId?: string) =>
     libraryClient.get<{
@@ -1323,13 +691,10 @@ export const ItemsService = {
           tag: Array.isArray(rawTag)
             ? rawTag.join(',')
             : (rawTag as string | undefined) ||
-              (Array.isArray(params.tags) ? params.tags.join(',') : (params.tags as string | undefined)),
-          tags: Array.isArray(params.tags)
-            ? params.tags.join(',')
-            : (params.tags as string | undefined),
+              (Array.isArray(rawParams?.tags) ? (rawParams.tags as string[]).join(',') : (rawParams?.tags as string | undefined)),
         }
       : undefined;
-    return libraryClient.get<PaginatedItemsResponse>(
+    return libraryClient.get<PaginatedItemsResponse & { pagination?: CursorPaginationMeta }>(
       getCatalogUrl(scopeId),
       {
         params: formattedParams,
@@ -1339,15 +704,14 @@ export const ItemsService = {
       const rawItems: Item[] = Array.isArray(res)
         ? res
         : res?.items || [];
-      const items = rawItems.map((it) => mapBackendItemToPaper(it));
-      const meta = (res?.pagination || res?.meta) as CursorPaginationMeta | undefined;
+      const items = rawItems.map((it) => mapBackendItem(it));
+      const meta = (res?.meta || res?.pagination) as CursorPaginationMeta | undefined;
       const total =
         meta?.totalCount ??
         res?.total ??
         items.length;
       return {
         items,
-        papers: items,
         total,
         meta,
         pagination: meta,
@@ -1355,9 +719,15 @@ export const ItemsService = {
     });
   },
 
-  getById: (scopeId: string, itemId: string) =>
-    libraryClient.get<Item | { item?: Item; paper?: Item }>(
-      getCatalogUrl(scopeId, encodeURIComponent(itemId)),
+  list: (
+    scopeId?: string,
+    params?: ItemQueryParams,
+    options?: { signal?: AbortSignal },
+  ) => ItemsService.getAll(scopeId, params, options),
+
+  getById: (scopeId: string | undefined, itemId: string) =>
+    libraryClient.get<Item | { item?: Item }>(
+      getCatalogUrl(scopeId || 'user', encodeURIComponent(itemId)),
     ).then(unwrapItemResponse),
 
   getMetadataSources: (scopeId: string | undefined, itemId: string) =>
@@ -1365,125 +735,131 @@ export const ItemsService = {
       getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/metadata-sources`),
     ),
 
-  getByCollection: (scopeId: string, collectionId: string, search?: string) =>
+  getByCollection: (scopeId: string | undefined, collectionId: string, search?: string) =>
     libraryClient.get<Record<string, unknown> | Item[]>(
-      getCatalogUrl(scopeId),
+      getCatalogUrl(scopeId || 'user'),
       { params: { collectionId, ...(search ? { search } : {}) } },
     ).then((res) => {
-      const rawPapers: Item[] = Array.isArray(res)
+      const rawItems: Item[] = Array.isArray(res)
         ? res
-        : (((res as Record<string, unknown>)?.items || (res as Record<string, unknown>)?.papers || (res as Record<string, unknown>)?.data || []) as Item[]);
-      const papers = rawPapers.map((it) => mapBackendItemToPaper(it));
+        : (((res as Record<string, unknown>)?.items || (res as Record<string, unknown>)?.data || []) as Item[]);
+      const items = rawItems.map((it) => mapBackendItem(it));
       return {
         collection: res && !Array.isArray(res) ? (res as Record<string, unknown>).collection : undefined,
-        items: papers,
-        papers,
-        data: papers,
+        items,
       };
     }),
 
-  create: (scopeId: string, collectionId: string, data: Partial<Item>): Promise<Item & { item: Item; paper: Item }> => {
+  create: (
+    scopeId: string | undefined,
+    collectionId: string,
+    data: Partial<Item> | Record<string, unknown>,
+  ): Promise<Item> => {
     const payload = sanitizeItemPayload(data as Record<string, unknown>);
     if (collectionId) {
       payload.collectionId = collectionId;
     }
     return libraryClient.post<Record<string, unknown>>(
-      getCatalogUrl(scopeId),
+      getCatalogUrl(scopeId || 'user'),
       payload,
     ).then(unwrapItemResponse);
   },
 
   update: async (
-    scopeId: string,
+    scopeId: string | undefined,
     itemId: string,
-    data: Partial<Item>,
+    data: Partial<Item> | Record<string, unknown>,
     expectedVersion?: number,
-  ): Promise<Item & { item: Item; paper: Item }> => {
+  ): Promise<Item> => {
     const payload = sanitizeItemPayload(data as Record<string, unknown>);
     const resolvedVersion =
       expectedVersion ??
       (data as { expectedVersion?: number })?.expectedVersion ??
-      data.version;
+      (data as Partial<Item>)?.version;
     if (resolvedVersion !== undefined && typeof resolvedVersion === 'number') {
       payload.expectedVersion = resolvedVersion;
     }
     const res = await libraryClient.patch<Record<string, unknown>>(
-      getCatalogUrl(scopeId, encodeURIComponent(itemId)),
+      getCatalogUrl(scopeId || 'user', encodeURIComponent(itemId)),
       payload,
     );
     return unwrapItemResponse(res);
   },
 
   patch: (
-    scopeId: string,
+    scopeId: string | undefined,
     itemId: string,
-    data: Partial<Item>,
+    data: Partial<Item> | Record<string, unknown>,
     expectedVersion?: number,
-  ): Promise<Item & { item: Item; paper: Item }> =>
+  ): Promise<Item> =>
     ItemsService.update(scopeId, itemId, data, expectedVersion),
 
   replace: async (
-    scopeId: string,
+    scopeId: string | undefined,
     itemId: string,
-    data: Partial<Item>,
+    data: Partial<Item> | Record<string, unknown>,
     expectedVersion?: number,
-  ): Promise<Item & { item: Item; paper: Item }> => {
+  ): Promise<Item> => {
     const payload = sanitizeItemPayload(data as Record<string, unknown>);
     if (expectedVersion !== undefined) {
       payload.expectedVersion = expectedVersion;
     }
     const res = await libraryClient.put<Record<string, unknown>>(
-      getCatalogUrl(scopeId, encodeURIComponent(itemId)),
+      getCatalogUrl(scopeId || 'user', encodeURIComponent(itemId)),
       payload,
     );
     return unwrapItemResponse(res);
   },
 
-  delete: (scopeId: string, itemId: string) =>
+  delete: (scopeId: string | undefined, itemId: string) =>
     libraryClient.delete(
-      getCatalogUrl(scopeId, encodeURIComponent(itemId)),
+      getCatalogUrl(scopeId || 'user', encodeURIComponent(itemId)),
     ),
 
-  restore: (scopeId: string, itemId: string, expectedVersion?: number) => {
+  restore: (scopeId: string | undefined, itemId: string, expectedVersion?: number) => {
     const versionQuery = expectedVersion !== undefined
       ? `?expectedVersion=${encodeURIComponent(String(expectedVersion))}`
       : '';
     return libraryClient.post<Record<string, unknown>>(
-      getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/restore${versionQuery}`),
+      getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/restore${versionQuery}`),
       {},
     ).then((res) => {
-      const { item } = unwrapItemResponse(res);
-      return { success: true, data: item, item, paper: item };
+      const item = unwrapItemResponse(res);
+      return { success: true, item };
     });
   },
 
-  purge: (scopeId: string, itemId: string) =>
+  purge: (scopeId: string | undefined, itemId: string) =>
     libraryClient.delete<{ success: boolean; data: { purged: boolean } }>(
-      getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/purge`),
+      getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/purge`),
     ),
 
-  bulkPurge: (scopeId: string, itemIds: string[]) =>
+  bulkPurge: (scopeId: string | undefined, itemIds: string[]) =>
     libraryClient.post<{ success: boolean; count: number; purgedIds: string[] }>(
-      getCatalogUrl(scopeId, 'bulk-purge'),
+      getCatalogUrl(scopeId || 'user', 'bulk-purge'),
       { itemIds },
     ),
 
-  bulkTrash: (scopeId: string, itemIds: string[]) =>
+  bulkTrash: (scopeId: string | undefined, itemIds: string[]) =>
     libraryClient.post<{ success: boolean; count: number; trashedIds: string[] }>(
-      getCatalogUrl(scopeId, 'bulk-trash'),
+      getCatalogUrl(scopeId || 'user', 'bulk-trash'),
       { itemIds },
     ),
 
-  bulkRestore: (scopeId: string, itemIds: string[]) =>
+  bulkDelete: (scopeId: string | undefined, itemIds: string[]) =>
+    ItemsService.bulkTrash(scopeId, itemIds),
+
+  bulkRestore: (scopeId: string | undefined, itemIds: string[]) =>
     libraryClient.post<{ success: boolean; count: number; restoredIds: string[] }>(
-      getCatalogUrl(scopeId, 'bulk-restore'),
+      getCatalogUrl(scopeId || 'user', 'bulk-restore'),
       { itemIds },
     ),
 
-  reindex: (scopeId: string, itemId: string) =>
-    libraryClient.post<{ message: string; itemId: string }>(
-      getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/reindex`),
-    ),
+  reindex: (scopeId: string | undefined, itemId: string) =>
+    libraryClient.post<{ success?: boolean; message?: string; itemId?: string; data?: unknown }>(
+      getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/reindex`),
+      {},
+    ).then((res) => res?.data || res || { success: true }),
 
   getItemTypes: (_scopeId?: string) =>
     libraryClient.get<Record<string, unknown>>(
@@ -1491,72 +867,54 @@ export const ItemsService = {
       { rawEnvelope: true },
     ),
 
-  getItemType: (_scopeId: string, itemType: string) =>
+  getItemType: (_scopeId: string | undefined, itemType: string) =>
     libraryClient.get<{ success: boolean; itemType: unknown; data: unknown }>(
       `/api/v1/library/item-types/${encodeURIComponent(itemType)}`,
     ),
 
   previewConvertType: (
-    scopeId: string,
+    scopeId: string | undefined,
     itemId: string,
     targetType: string,
     retainUnmappedInExtra: boolean = true,
   ) =>
     libraryClient.post<{ success: boolean; preview: unknown; data: unknown }>(
-      getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/convert-type/preview`),
+      getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/convert-type/preview`),
       { targetType, retainUnmappedInExtra },
     ),
 
-  previewTypeConversion: (
-    scopeId: string,
-    itemId: string,
-    targetType: string,
-    retainUnmappedInExtra: boolean = true,
-  ) =>
-    ItemsService.previewConvertType(
-      scopeId,
-      itemId,
-      targetType,
-      retainUnmappedInExtra,
-    ),
-
   convertType: (
-    scopeId: string,
+    scopeId: string | undefined,
     itemId: string,
     targetType: string,
     expectedVersion?: number,
     retainUnmappedInExtra: boolean = true,
   ) =>
-    libraryClient.post<{ success: boolean; paper: Item; item: Item; conversionReport: unknown }>(
-      getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/convert-type`),
+    libraryClient.post<{ success: boolean; item?: Item; conversionReport: unknown }>(
+      getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/convert-type`),
       { targetType, expectedVersion, retainUnmappedInExtra },
-    ),
+    ).then((res) => ({
+      success: Boolean(res?.success ?? true),
+      item: unwrapItemResponse(res?.item || res),
+      conversionReport: res?.conversionReport,
+    })),
 
-  reindexItem: (scopeId: string | undefined, itemId: string) =>
-    libraryClient.post<{ success: boolean; data?: unknown }>(
-      getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/reindex`),
-      {},
-    ).then((res) => res?.data || res || { success: true }),
-
-  getFulltext: (scopeId: string | undefined, itemId: string) =>
+  getFulltext: (scopeId: string | undefined, itemId: string): Promise<DocumentFulltext | null> =>
     libraryClient.get<Record<string, unknown>>(
       getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/fulltext`),
-    ).then((res) => (res as { data?: unknown })?.data || res || null).catch(() => null),
+    ).then((res) => ((res as { data?: unknown })?.data || res || null) as DocumentFulltext | null).catch(() => null),
 
   getItemFileUrl,
-
-  getItem: (scopeId: string | undefined, itemId: string) =>
-    ItemsService.getById(scopeId || 'user', itemId),
 
   updateItem: (scopeId: string | undefined, itemId: string, data: Partial<Item>) =>
     ItemsService.update(scopeId || 'user', itemId, data),
 
   fetchPdfBlob,
 
-  markMyPublication: (scopeId: string, itemId: string) =>
+  markMyPublication: (scopeId: string | undefined, itemId: string) =>
     ItemsService.setMyPublication(scopeId, itemId, true),
 
-  unmarkMyPublication: (scopeId: string, itemId: string) =>
+  unmarkMyPublication: (scopeId: string | undefined, itemId: string) =>
     ItemsService.setMyPublication(scopeId, itemId, false),
 
   parseCitations: (scopeId: string | undefined, rawCitations: string) =>
@@ -1586,18 +944,16 @@ export const ItemsService = {
     targetItemId: string,
   ) => RelationsService.unlink(scopeId, itemId, targetItemId),
 
-  setMyPublication: (scopeId: string, itemId: string, isMyPublication: boolean) =>
+  setMyPublication: (scopeId: string | undefined, itemId: string, isMyPublication: boolean) =>
     isMyPublication
       ? libraryClient.post<{ success: boolean; data: Item; item: Item }>(
-          getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/my-publication`),
+          getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/my-publication`),
           {},
-        ).then((res) => res?.item || res?.data || res)
+        ).then((res) => unwrapItemResponse(res?.item || res?.data || res))
       : libraryClient.delete<{ success: boolean; data: Item; item: Item }>(
-          getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/my-publication`),
-        ).then((res) => res?.item || res?.data || res),
+          getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/my-publication`),
+        ).then((res) => unwrapItemResponse(res?.item || res?.data || res)),
 };
-
-export const ItemService = ItemsService;
 
 // 2. CollectionsService
 export const CollectionsService = {
@@ -1605,6 +961,8 @@ export const CollectionsService = {
     libraryClient.get<{ collections: Collection[] }>(
       resolveLibraryUrl('catalog', '/collections', scopeId),
     ),
+
+  list: (scopeId?: string) => CollectionsService.getAll(scopeId),
 
   getTree: (scopeId?: string) =>
     libraryClient.get<{ tree: Collection[] }>(
@@ -1618,6 +976,9 @@ export const CollectionsService = {
       resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(effectiveId)}`, effectiveScope),
     );
   },
+
+  get: (scopeId: string | undefined, collectionId: string) =>
+    CollectionsService.getById(scopeId, collectionId),
 
   create: (scopeId: string | undefined, data: CreateCollectionDTO) =>
     libraryClient.post<{ collection: Collection }>(
@@ -1642,9 +1003,6 @@ export const CollectionsService = {
       resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}/move-items`, scopeId),
       { itemIds },
     ),
-
-  movePapers: (scopeId: string | undefined, collectionId: string, paperIds: string[]) =>
-    CollectionsService.moveItems(scopeId, collectionId, paperIds),
 
   reorder: (
     scopeId: string | undefined,
@@ -1690,34 +1048,34 @@ export const CollectionsService = {
       { itemIds },
     ),
 
+  detachItems: (
+    scopeId: string | undefined,
+    collectionId: string,
+    itemIds: string[],
+  ) => CollectionsService.bulkDetachItems(scopeId, collectionId, itemIds),
+
   getItemCollections: (scopeId: string | undefined, itemId: string) =>
     libraryClient.get<{ success?: boolean; collections: Collection[] }>(
       getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/collections`),
     ).then((res) => res?.collections || (Array.isArray(res) ? res : [])),
 
-  exportBibtex: (scopeId: string | undefined, collectionId: string) => {
-    const projectQuery = isProjectScope(scopeId) ? `&projectId=${encodeURIComponent(scopeId!)}` : '';
-    return libraryClient.get<{ bibtex: string; total: number; filename: string }>(
-      `/api/v1/library/exports?format=bibtex&collectionId=${encodeURIComponent(collectionId)}${projectQuery}`,
-    );
-  },
+  exportBibtex: (scopeId: string | undefined, collectionId: string) =>
+    libraryClient.get<{ bibtex: string; total: number; filename: string }>(
+      `${getExportsUrl(scopeId)}?format=bibtex&collectionId=${encodeURIComponent(collectionId)}`,
+    ),
 
-  exportBundle: (_scopeId: string | undefined, collectionId: string) =>
+  exportBundle: (scopeId: string | undefined, collectionId: string) =>
     libraryClient.get<{
       collection: { id: string; name: string };
-      totalPapers: number;
-      totalFiles: number;
+      totalItems?: number;
+      filesIncluded?: number;
+      totalFiles?: number;
       bibtex: string;
-      files: Array<{ paperId: string; title: string; filename: string; fileUrl: string }>;
+      files: Array<{ itemId?: string; title: string; filename: string; fileUrl: string }>;
     }>(
-      `/api/v1/library/exports/${encodeURIComponent(collectionId)}/export-bundle`,
+      getExportsUrl(scopeId, `${encodeURIComponent(collectionId)}/export-bundle`),
     ),
 };
-
-export const getCollections = CollectionsService.getAll;
-export const createCollection = CollectionsService.create;
-export const updateCollection = CollectionsService.update;
-export const deleteCollection = CollectionsService.delete;
 
 // 3. TagsService
 function getTagsUrl(scopeId?: string, suffix = ''): string {
@@ -1726,10 +1084,13 @@ function getTagsUrl(scopeId?: string, suffix = ''): string {
 
 export const TagsService = {
   list: async (scopeId?: string): Promise<TagWithCount[]> => {
-    const raw = await libraryClient.get<TagWithCount[] | { data: TagWithCount[] }>(getTagsUrl(scopeId));
+    const raw = await libraryClient.get<
+      TagWithCount[] | { data?: TagWithCount[]; tags?: TagWithCount[] }
+    >(getTagsUrl(scopeId));
     if (Array.isArray(raw)) return raw;
-    if (raw && typeof raw === 'object' && Array.isArray(raw.data)) {
-      return raw.data;
+    if (raw && typeof raw === 'object') {
+      if (Array.isArray(raw.tags)) return raw.tags;
+      if (Array.isArray(raw.data)) return raw.data;
     }
     return [];
   },
@@ -1740,7 +1101,9 @@ export const TagsService = {
     color?: string,
     type: string = 'manual',
   ): Promise<TagWithCount> => {
-    const raw = await libraryClient.post<TagWithCount | { data: TagWithCount }>(
+    const raw = await libraryClient.post<
+      TagWithCount | { data?: TagWithCount; tag?: TagWithCount }
+    >(
       getTagsUrl(scopeId),
       {
         name,
@@ -1749,20 +1112,33 @@ export const TagsService = {
         ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
       },
     );
-    return (raw && 'data' in raw && raw.data ? raw.data : raw) as TagWithCount;
+    if (raw && typeof raw === 'object') {
+      if ('tag' in raw && raw.tag) return raw.tag;
+      if ('data' in raw && raw.data) return raw.data;
+    }
+    return raw as TagWithCount;
   },
 
   update: async (
     scopeId: string | undefined,
     tagId: string,
-    data: { name?: string; color?: string; type?: string },
+    data: { name?: string; color?: string; type?: string; shortcut?: number | null },
   ): Promise<TagWithCount> => {
-    const raw = await libraryClient.patch<TagWithCount | { data: TagWithCount }>(
+    const raw = await libraryClient.patch<
+      TagWithCount | { data?: TagWithCount; tag?: TagWithCount }
+    >(
       getTagsUrl(scopeId, encodeURIComponent(tagId)),
       data,
     );
-    return (raw && 'data' in raw && raw.data ? raw.data : raw) as TagWithCount;
+    if (raw && typeof raw === 'object') {
+      if ('tag' in raw && raw.tag) return raw.tag;
+      if ('data' in raw && raw.data) return raw.data;
+    }
+    return raw as TagWithCount;
   },
+
+  rename: (scopeId: string | undefined, tagId: string, name: string) =>
+    TagsService.update(scopeId, tagId, { name }),
 
   updateColor: (
     scopeId: string | undefined,
@@ -1792,6 +1168,19 @@ export const TagsService = {
     );
   },
 
+  attachToItem: async (
+    scopeId: string | undefined,
+    itemId: string,
+    tagName: string,
+    color?: string,
+  ): Promise<TagWithCount> => {
+    const tag = await TagsService.create(scopeId, tagName, color);
+    if (tag?.id) {
+      await TagsService.assignToItem(scopeId, tag.id, itemId);
+    }
+    return tag;
+  },
+
   removeFromItem: async (
     scopeId: string | undefined,
     tagId: string,
@@ -1801,6 +1190,9 @@ export const TagsService = {
       getTagsUrl(scopeId, `${encodeURIComponent(tagId)}/items/${encodeURIComponent(itemId)}`),
     );
   },
+
+  detachFromItem: (scopeId: string | undefined, itemId: string, tagId: string) =>
+    TagsService.removeFromItem(scopeId, tagId, itemId),
 };
 
 // 4. NotesService
@@ -1850,6 +1242,9 @@ export const NotesService = {
     }
     return (raw && typeof raw === 'object' ? (raw.data || raw.notes) : []) || [];
   },
+
+  getByItem: (scopeId: string | undefined, itemId: string) =>
+    NotesService.list(scopeId, itemId),
 
   get: async (scopeId: string | undefined, id: string): Promise<Note> => {
     const raw = await libraryClient.get<Note | { success?: boolean; data?: Note; note?: Note }>(
@@ -1956,7 +1351,7 @@ export const StateService = {
   markAsRead: async (scopeId?: string, itemId?: string): Promise<ItemStateData> => {
     if (!itemId) throw new Error('itemId is required');
     const res = await libraryClient.post<ItemStateData | { data: ItemStateData }>(
-      getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/state/read`),
+      getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/state/mark-read`),
       {},
     );
     return unwrapState(res) ?? ({} as ItemStateData);
@@ -1973,27 +1368,14 @@ export const StateService = {
   },
 };
 
-// 6. ItemTypesService
-export interface ItemTypesResponse {
-  success: boolean;
-  registryVersion: number;
-  schemaVersion: number;
-  source: string;
-  itemTypes: SchemaItemTypeDefinition[];
-  data: SchemaItemTypeDefinition[];
-  baseFieldMappings?: Record<string, Record<string, string>>;
-  reverseBaseFieldMappings?: Record<string, Record<string, string>>;
-  creatorRoles?: Record<string, string>;
-  cslTypeMap?: Record<string, string>;
-  cslFieldMap?: Record<string, string>;
-}
-
-// 7. SavedSearchesService
+// 6. SavedSearchesService
 export const SavedSearchesService = {
   getAll: (scopeId?: string) =>
     libraryClient.get<SavedSearch[]>(
       resolveLibraryUrl('catalog', '/saved-searches', scopeId),
     ),
+
+  list: (scopeId?: string) => SavedSearchesService.getAll(scopeId),
 
   getById: (scopeId: string | undefined, id: string) =>
     libraryClient.get<SavedSearch>(
@@ -2034,29 +1416,36 @@ export const SavedSearchesService = {
     id: string,
     params?: {
       limit?: number;
+      page?: number;
       cursor?: string;
       sortBy?: string;
       sortOrder?: string;
     },
   ) =>
     libraryClient.get<SavedSearchResultsResponse>(
-      resolveLibraryUrl('catalog', `/saved-searches/${encodeURIComponent(id)}/results`, scopeId),
+      resolveLibraryUrl('catalog', `/saved-searches/${encodeURIComponent(id)}/execute`, scopeId),
       params ? { params } : undefined,
     ),
+
+  execute: (scopeId: string | undefined, id: string, params?: { page?: number; limit?: number }) =>
+    SavedSearchesService.getResults(scopeId, id, params),
 };
 
-// 8. RelationsService
+// 7. RelationsService
 export const RelationsService = {
   getRelated: (scopeId: string | undefined, itemId: string) =>
-    libraryClient.get<{ relatedItems?: RelatedItem[]; relatedPapers?: RelatedItem[]; total?: number }>(
+    libraryClient.get<{ relatedItems?: RelatedItem[]; total?: number }>(
       getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/relations`),
     ).then((res) => {
-      const items = res?.relatedItems ?? res?.relatedPapers ?? [];
+      const items = res?.relatedItems ?? [];
       return {
         relatedItems: items,
         total: res?.total ?? items.length,
       };
     }),
+
+  list: (scopeId: string | undefined, itemId: string) =>
+    RelationsService.getRelated(scopeId, itemId).then((r) => r.relatedItems),
 
   link: (
     scopeId: string | undefined,
@@ -2079,29 +1468,676 @@ export const RelationsService = {
     ),
 };
 
-// 9. Upload & Attachment Helpers
-export const UploadService = libraryServices.upload;
-
-// 10. Citation & Export Domain Services
+// 8. Citations & Exports Services
 export const CitationService = {
-  ...libraryServices.citations,
-  fetchByDoi: libraryServices.citations.resolveDoi,
+  formatCitation: (scopeId: string | undefined, itemId: string, style: CslStyle = 'apa', index = 1) => {
+    const pQuery = isProjectScope(scopeId) ? `&projectId=${encodeURIComponent(scopeId!)}` : '';
+    return libraryClient.get<FormattedCitation>(
+      `${getCitationUrl(scopeId, 'items')}/${encodeURIComponent(itemId)}/citation?style=${encodeURIComponent(style)}&index=${index}${pQuery}`,
+    );
+  },
+
+  batchFormat: (scopeId: string | undefined, itemIds: string[], style: CslStyle = 'apa') => {
+    const projectId = isProjectScope(scopeId) ? scopeId : undefined;
+    return libraryClient.post<{
+      style: CslStyle;
+      total: number;
+      combinedInText?: string;
+      bibliographyText?: string;
+      bibliographyHtml?: string;
+      citations: Array<{ itemId?: string; citation: FormattedCitation }>;
+    }>(getCitationUrl(scopeId, 'batch-items'), {
+      itemIds,
+      style,
+      ...(projectId ? { projectId } : {}),
+    });
+  },
+
+  getStyles: (scopeId?: string) => {
+    const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
+    return libraryClient.get<import('@/features/library/domain/types/library.types').StyleSummary[]>(
+      `${getCitationUrl(scopeId, 'styles')}${pQuery}`,
+    );
+  },
+
+  searchStyles: (query = '', limit = 30) =>
+    libraryClient.get<{ styles: CslStyleMetadata[]; total: number }>(
+      `/api/v1/library/citation/styles/search?q=${encodeURIComponent(query)}&limit=${limit}`,
+    ),
+
+  uploadCustomStyle: (xml: string, title?: string) =>
+    libraryClient.post<{ styleId?: string; id?: string; title: string; message: string }>(
+      `/api/v1/library/citation/styles/custom`,
+      { xml, title },
+    ).then((res) => ({
+      ...res,
+      id: res.id || res.styleId || '',
+      styleId: res.styleId || res.id || '',
+    })),
+
+  resolveDoi: async (doi: string, _scopeId?: string): Promise<ReferenceData | null> => {
+    const rawDoi = typeof doi === 'string' ? doi.trim() : '';
+    if (!rawDoi) throw new Error('Invalid DOI provided');
+    try {
+      const referenceResponse = await libraryClient.post<unknown>(
+        `/api/v1/library/citation/resolve`,
+        { doi: rawDoi, query: rawDoi },
+        { silent: true },
+      );
+      const unwrapped = unwrapResolvedReference(referenceResponse);
+      if (unwrapped) return unwrapped;
+    } catch {
+      return null;
+    }
+    return null;
+  },
+
+  fetchByDoi: (doi: string, scopeId?: string) => CitationService.resolveDoi(doi, scopeId),
+
+  search: async (query: string, _scopeId?: string): Promise<ReferenceData[]> => {
+    if (!query || !query.trim()) return [];
+    const trimmedQuery = query.trim();
+    try {
+      const response = await libraryClient.get<{
+        works?: ReferenceData[];
+        results?: ReferenceData[];
+        data?: ReferenceData[];
+      }>(`/api/v1/library/citation/crossref/search?query=${encodeURIComponent(trimmedQuery)}&rows=10`, { silent: true });
+      if (response?.works && Array.isArray(response.works)) return response.works;
+      if (response?.results && Array.isArray(response.results)) return response.results;
+      if (response?.data && Array.isArray(response.data)) return response.data;
+      if (Array.isArray(response)) return response as ReferenceData[];
+      return [];
+    } catch {
+      return [];
+    }
+  },
+
+  resolve: async (query: string, scopeId?: string): Promise<ReferenceData | null> => {
+    const trimmed = typeof query === 'string' ? query.trim() : '';
+    if (!trimmed) return null;
+    try {
+      const referenceResponse = await libraryClient.post<unknown>(
+        `/api/v1/library/citation/resolve`,
+        { query: trimmed },
+        { silent: true },
+      );
+      const unwrapped = unwrapResolvedReference(referenceResponse);
+      if (unwrapped) return unwrapped;
+    } catch {
+      // Fall back to search
+    }
+    const results = await CitationService.search(trimmed, scopeId);
+    return results.length > 0 ? results[0] : null;
+  },
 };
 
-export const fetchReferenceByDoi = libraryServices.citations.resolveDoi;
-export const exportAnnotatedPdf = libraryServices.exports.exportAnnotatedPdf;
-export const downloadAnnotatedPdf = libraryServices.exports.downloadAnnotatedPdf;
-export const exportLibrary = libraryServices.exports.exportLibrary;
+export const ExportsService = {
+  exportLibrary: (
+    scopeId?: string,
+    options?: {
+      format?: string;
+      collectionId?: string;
+      tagId?: string;
+      itemIds?: string[];
+      projectId?: string;
+    },
+  ) => {
+    const projectId = options?.projectId || (isProjectScope(scopeId) ? scopeId : undefined);
+    return libraryClient.post<{ content: string; filename: string; itemCount: number }>(
+      getExportsUrl(scopeId),
+      { ...options, ...(projectId ? { projectId } : {}) },
+    );
+  },
 
-// 11. Ingestion, Curation & Sync Services
-export const IngestionService = libraryServices.ingestion;
-export const QualityService = libraryServices.curation;
-export const SyncService = libraryServices.sync;
+  exportByCitationKeys: (scopeId: string, keys: string[]) =>
+    libraryClient.post<{ content: string; filename: string; itemCount: number }>(
+      `${getExportsUrl(scopeId)}/by-keys`,
+      { keys, format: 'bibtex' },
+    ),
+
+  exportAnnotatedPdf: (scopeId?: string, itemId?: string) => {
+    const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
+    return libraryClient.get<{ filename: string; mimeType: string; base64: string }>(
+      `${getExportsUrl(scopeId)}/items/${encodeURIComponent(itemId || '')}/annotated-pdf${pQuery}`,
+    );
+  },
+
+  downloadAnnotatedPdf: async (
+    scopeId: string | undefined,
+    itemId: string,
+    fallbackFilename = `annotated_${itemId}.pdf`,
+  ): Promise<{ filename: string; mimeType: string }> => {
+    const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
+    const endpoint = `${getExportsUrl(scopeId)}/items/${encodeURIComponent(itemId)}/annotated-pdf${pQuery}`;
+    let resolvedFilename = fallbackFilename;
+    const res = await libraryClient.get<{ filename: string; mimeType: string; base64: string }>(endpoint);
+    if (!res || !res.base64) {
+      throw new Error('Failed to generate annotated PDF: No content received');
+    }
+    if (res.filename) {
+      resolvedFilename = res.filename;
+    }
+    const byteCharacters = atob(res.base64);
+    const sliceSize = 32_768;
+    const byteArrays: Uint8Array<ArrayBuffer>[] = [];
+    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+      const end = Math.min(offset + sliceSize, byteCharacters.length);
+      const bytes = new Uint8Array(end - offset);
+      for (let i = offset; i < end; i++) {
+        bytes[i - offset] = byteCharacters.charCodeAt(i);
+      }
+      byteArrays.push(bytes);
+    }
+    const blob = new Blob(byteArrays, { type: res.mimeType || 'application/pdf' });
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = resolvedFilename;
+      document.body.appendChild(a);
+      try {
+        a.click();
+      } finally {
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      }
+    }
+    return { filename: resolvedFilename, mimeType: 'application/pdf' };
+  },
+};
+
+export const downloadAnnotatedPdf = ExportsService.downloadAnnotatedPdf;
+
+// 9. Extraction, Attachments & Upload Services
+export const AttachmentsService = {
+  list: async (scopeId: string, itemId: string): Promise<ItemAttachment[]> => {
+    const res = await libraryClient.get<{ attachments: ItemAttachment[] }>(getItemAttachmentUrl(scopeId, itemId));
+    return res.attachments || [];
+  },
+
+  get: async (scopeId: string, attachmentId: string): Promise<ItemAttachment> => {
+    const res = await libraryClient.get<{ attachment?: ItemAttachment } | ItemAttachment>(getAttachmentUrl(scopeId, attachmentId));
+    if (res && typeof res === 'object' && 'attachment' in res && res.attachment) {
+      return res.attachment;
+    }
+    return res as ItemAttachment;
+  },
+
+  delete: async (scopeId: string, attachmentId: string): Promise<boolean> => {
+    const res = await libraryClient.delete<{ success: boolean }>(getAttachmentUrl(scopeId, attachmentId));
+    return res.success;
+  },
+
+  create: async (scopeId: string, itemId: string, data: Record<string, unknown>): Promise<ItemAttachment> => {
+    const res = await libraryClient.post<{ attachment?: ItemAttachment } | ItemAttachment>(
+      getItemAttachmentUrl(scopeId, itemId),
+      data,
+    );
+    return (res as { attachment?: ItemAttachment }).attachment ?? (res as ItemAttachment);
+  },
+
+  captureSnapshot: async (scopeId: string, itemId: string, url?: string): Promise<ItemAttachment> => {
+    const res = await libraryClient.post<{ attachment?: ItemAttachment } | ItemAttachment>(
+      getItemAttachmentUrl(scopeId, itemId, 'snapshot'),
+      url ? { url } : {},
+    );
+    return (res as { attachment?: ItemAttachment }).attachment ?? (res as ItemAttachment);
+  },
+
+  rename: async (scopeId: string, attachmentId: string, dto: { filename?: string; pattern?: string }) =>
+    libraryClient.patch<{ attachment: ItemAttachment; oldFilename: string; newFilename: string }>(
+      getAttachmentUrl(scopeId, attachmentId, 'rename'),
+      dto,
+    ),
+
+  batchRename: async (scopeId: string, dto: { itemIds?: string[]; attachmentIds?: string[]; pattern?: string }) =>
+    libraryClient.post<{
+      renamedCount: number;
+      results: Array<{ attachmentId: string; itemId: string; oldFilename: string; newFilename: string }>;
+    }>(resolveLibraryUrl('extraction', '/attachments/batch-rename', scopeId), dto),
+
+  reExtract: async (scopeId: string | undefined, attachmentId: string) =>
+    libraryClient.post<{ status: string; attachmentId: string; message: string }>(
+      getAttachmentUrl(scopeId, attachmentId, 're-extract'),
+      {},
+    ),
+
+  setPrimary: (scopeId: string, itemId: string, attachmentId: string) =>
+    libraryClient.post<{ success: boolean }>(
+      getItemAttachmentUrl(scopeId, itemId, `${encodeURIComponent(attachmentId)}/set-primary`),
+      {},
+    ),
+};
+
+export const UploadService = {
+  uploadMultipart: async (
+    scopeId: string | undefined,
+    file: File,
+    options?: { onProgress?: (percent: number) => void; signal?: AbortSignal },
+  ): Promise<{ fileId: string; url: string; filename: string; size: number; mimeType: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (isProjectScope(scopeId)) {
+      formData.append('projectId', scopeId!);
+    }
+    const uploadUrl = resolveLibraryUrl('extraction', '/upload', scopeId);
+    const res = await libraryClient.post<{
+      fileId: string;
+      url: string;
+      filename?: string;
+      size?: number;
+      mimeType?: string;
+    }>(uploadUrl, formData, {
+      signal: options?.signal,
+    }, scopeId);
+    return {
+      fileId: res.fileId,
+      url: res.url,
+      filename: res.filename || file.name,
+      size: res.size ?? file.size,
+      mimeType: res.mimeType || file.type || 'application/pdf',
+    };
+  },
+};
+
+// 10. Ingestion, Curation & Retraction Services
+export const IngestionService = {
+  ingest: async (scopeId: string | undefined, payload: UnifiedIngestionPayload): Promise<UnifiedIngestionResponse> => {
+    const validated = UnifiedIngestionPayloadSchema.parse(payload);
+    const submission = {
+      ...toIngestionSubmission(validated),
+      ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+    };
+    const res = await libraryClient.post<Record<string, unknown>>(
+      getIngestionUrl(scopeId, 'submit'),
+      submission,
+      { timeout: 30000 },
+    );
+    const accepted = (res && typeof res === 'object' && 'data' in res && res.data ? res.data : res) as Record<string, unknown>;
+    return UnifiedIngestionResponseSchema.parse({
+      success: true,
+      data: {
+        runId: accepted.runId,
+        status: accepted.status,
+        itemId: accepted.existingItemId,
+        deduplicated: accepted.deduplicated,
+      },
+    });
+  },
+
+  getRunStatus: async (scopeId: string | undefined, runId: string): Promise<IngestionRunSnapshotResponse> => {
+    const res = await libraryClient.get<Record<string, unknown>>(
+      getIngestionUrl(scopeId, `runs/${encodeURIComponent(runId)}`),
+    );
+    const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
+    return IngestionRunSnapshotResponseSchema.parse(enveloped);
+  },
+
+  getRunProgress: async (scopeId: string | undefined, runId: string) => {
+    const res = await libraryClient.get<{ data?: unknown } | unknown>(
+      getIngestionUrl(scopeId, `status/${encodeURIComponent(runId)}/progress`),
+    );
+    return (res && typeof res === 'object' && 'data' in res && res.data ? res.data : res) as import('@/features/library/domain/types/batch-upload.types').IngestionProgressResponse;
+  },
+
+  captureUrl: async (scopeId: string | undefined, url: string): Promise<UrlCapturePreviewResponse> => {
+    const res = await libraryClient.post<Record<string, unknown>>(
+      getIngestionUrl(scopeId, 'capture-url'),
+      { url },
+    );
+    const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
+    return UrlCapturePreviewResponseSchema.parse(enveloped);
+  },
+
+  confirmUrl: (
+    scopeId: string | undefined,
+    payload: {
+      url: string;
+      previewToken?: string;
+      title?: string;
+      abstract?: string;
+      doi?: string;
+      year?: number;
+      publicationTitle?: string;
+      itemType?: string;
+      collectionId?: string;
+    },
+  ) =>
+    libraryClient.post<{ id: string; title: string; doi?: string; year?: number; citationKey?: string }>(
+      getIngestionUrl(scopeId, 'confirm-url'),
+      {
+        ...payload,
+        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+      },
+    ),
+
+  fetchFeed: async (url: string): Promise<{
+    feedTitle: string;
+    entries: Array<{
+      title: string;
+      authors: string[];
+      published?: string;
+      summary?: string;
+      doi?: string;
+      arxivId?: string;
+      link?: string;
+    }>;
+  }> => {
+    const res = await libraryClient.post<{
+      feedTitle?: string;
+      entries?: Array<{
+        title: string;
+        authors: string[];
+        published?: string;
+        summary?: string;
+        doi?: string;
+        arxivId?: string;
+        link?: string;
+      }>;
+      data?: {
+        feedTitle?: string;
+        entries?: Array<{
+          title: string;
+          authors: string[];
+          published?: string;
+          summary?: string;
+          doi?: string;
+          arxivId?: string;
+          link?: string;
+        }>;
+      };
+    }>(getIngestionUrl(undefined, 'fetch-feed'), { url });
+    const payload = res && typeof res === 'object' && 'data' in res && res.data ? res.data : res;
+    return {
+      feedTitle: payload?.feedTitle || 'Academic Feed',
+      entries: Array.isArray(payload?.entries) ? payload.entries : [],
+    };
+  },
+};
+
+export const CurationService = {
+  getDuplicates: async (
+    scopeId?: string,
+  ): Promise<{ duplicateGroups: DuplicateGroup[]; totalDuplicates: number }> => {
+    interface RawDuplicateCluster {
+      clusterId: string;
+      matchReason: string;
+      confidence: number;
+      recommendedMasterId?: string;
+      items: Array<Record<string, unknown>>;
+    }
+    const res = await libraryClient.get<
+      RawDuplicateCluster[] | { data?: RawDuplicateCluster[]; clusters?: RawDuplicateCluster[]; duplicates?: DuplicateGroup[] }
+    >(getCurationUrl(scopeId, 'duplicates'));
+
+    if (res && typeof res === 'object' && 'duplicates' in res && Array.isArray(res.duplicates)) {
+      return {
+        duplicateGroups: res.duplicates,
+        totalDuplicates: res.duplicates.reduce((acc, g) => acc + (g.items?.length || 0), 0),
+      };
+    }
+
+    const clusters: RawDuplicateCluster[] = Array.isArray(res)
+      ? res
+      : (res && 'data' in res && Array.isArray(res.data)
+          ? res.data
+          : res && 'clusters' in res && Array.isArray(res.clusters)
+            ? res.clusters
+            : []);
+
+    const duplicateGroups: DuplicateGroup[] = clusters.map((c) => {
+      const parsedItems = (c.items || []).map((it) => {
+        const rawTags = Array.isArray(it.tags)
+          ? it.tags
+              .map((t: unknown) =>
+                typeof t === 'string'
+                  ? t
+                  : t && typeof t === 'object' && 'name' in t
+                    ? String((t as { name: unknown }).name)
+                    : '',
+              )
+              .filter(Boolean)
+          : undefined;
+        const mapped = {
+          ...mapBackendItem(it),
+          ...(rawTags ? { tags: rawTags } : {}),
+        };
+        const validated = itemSchema.parse(mapped);
+        return {
+          ...mapped,
+          ...validated,
+        };
+      });
+      return {
+        matchType: c.matchReason === 'EXACT_DOI' ? 'DOI' : 'TITLE_AUTHOR_YEAR',
+        confidence: c.confidence >= 1 ? 'high' : 'medium',
+        key: c.clusterId,
+        ...(c.recommendedMasterId ? { recommendedMasterId: c.recommendedMasterId } : {}),
+        items: parsedItems,
+      };
+    });
+
+    return {
+      duplicateGroups,
+      totalDuplicates: duplicateGroups.reduce(
+        (acc, g) => acc + (g.items?.length || 0),
+        0,
+      ),
+    };
+  },
+
+  mergeDuplicates: async (
+    scopeId: string | undefined,
+    primaryItemId: string,
+    duplicateItemIds: string[],
+    fieldSelections?: Record<string, unknown>,
+  ) => {
+    interface MergeApiResponse {
+      primaryItem?: unknown;
+      masterItem?: unknown;
+      mergedCount?: number;
+      softDeletedItemIds?: string[];
+      data?: {
+        primaryItem?: unknown;
+        masterItem?: unknown;
+        mergedCount?: number;
+        softDeletedItemIds?: string[];
+      };
+    }
+    const res = await libraryClient.post<MergeApiResponse>(
+      getCurationUrl(scopeId, 'merge'),
+      {
+        primaryItemId,
+        duplicateItemIds,
+        fieldSelections,
+        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+      },
+    );
+    const rawMaster =
+      res?.primaryItem ||
+      res?.masterItem ||
+      res?.data?.primaryItem ||
+      res?.data?.masterItem;
+    const primaryItem = rawMaster ? mapBackendItem(rawMaster as Record<string, unknown>) : undefined;
+    const mergedCount = res?.mergedCount ?? res?.data?.mergedCount ?? duplicateItemIds.length;
+    const softDeletedItemIds =
+      res?.softDeletedItemIds ||
+      res?.data?.softDeletedItemIds ||
+      [];
+    return {
+      success: true,
+      primaryItem,
+      mergedCount,
+      softDeletedItemIds,
+    };
+  },
+
+  getIntegrityReport: async (scopeId?: string): Promise<LibraryIntegrityReport> => {
+    const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
+    return libraryClient.get<LibraryIntegrityReport>(`${getCurationUrl(scopeId, 'integrity')}${pQuery}`);
+  },
+
+  dismissDuplicate: (scopeId: string | undefined, itemAId: string, itemBId: string) =>
+    libraryClient.post<{ dismissed: boolean; itemIds: string[] }>(
+      getCurationUrl(scopeId, 'duplicates/dismiss'),
+      {
+        itemIds: [itemAId, itemBId],
+      },
+    ),
+
+  dismissDuplicates: (scopeId: string | undefined, itemIds: string[]) =>
+    libraryClient.post<{ dismissed: boolean; itemIds: string[] }>(
+      getCurationUrl(scopeId, 'duplicates/dismiss'),
+      { itemIds },
+    ),
+};
+
+export const RetractionService = {
+  getStats: (scopeId?: string) =>
+    libraryClient.get<RetractionStats>(getRetractionUrl(scopeId, 'stats')),
+
+  getRetractedItems: (scopeId?: string) =>
+    libraryClient.get<Item[]>(
+      getRetractionUrl(scopeId, 'items'),
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
+    ),
+
+  checkItem: (scopeId: string | undefined, itemId: string) =>
+    libraryClient.post<{
+      itemId: string;
+      isRetracted: boolean;
+      status?: 'retracted' | 'clean' | 'unknown';
+      nature?: string;
+      details?: Record<string, unknown>;
+    }>(
+      getRetractionUrl(scopeId, `items/${encodeURIComponent(itemId)}/check`),
+      {},
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
+    ),
+
+  checkLibrary: (scopeId: string | undefined, itemIds?: string[]) =>
+    libraryClient.post<{ scanned: number; newlyRetracted: number }>(
+      getRetractionUrl(scopeId, 'check-all'),
+      { itemIds },
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
+    ),
+
+  flagItem: ((
+    scopeId: string | undefined,
+    itemIdOrInput: string | FlagRetractionInput,
+    data?: FlagRetractionInput,
+  ) => {
+    if (typeof itemIdOrInput === 'string') {
+      return libraryClient.post<Item>(
+        getRetractionUrl(scopeId, `items/${encodeURIComponent(itemIdOrInput)}/flag`),
+        data || {},
+        { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
+      );
+    }
+    return libraryClient.post<{ success: boolean }>(getRetractionUrl(scopeId, 'flag'), itemIdOrInput);
+  }) as {
+    (scopeId: string | undefined, itemId: string, data: FlagRetractionInput): Promise<Item>;
+    (scopeId: string | undefined, input: FlagRetractionInput): Promise<{ success: boolean }>;
+  },
+
+  unflagItem: (scopeId: string | undefined, itemId: string) =>
+    libraryClient.delete<Item>(
+      getRetractionUrl(scopeId, `items/${encodeURIComponent(itemId)}/flag`),
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
+    ),
+};
+
+// 11. Search & Sync Services
+export const SearchService = {
+  search: (params: {
+    query?: string;
+    q?: string;
+    limit?: number;
+    cursor?: string;
+    collectionId?: string;
+    tagId?: string;
+    itemType?: string;
+    yearFrom?: number;
+    yearTo?: number;
+    sortBy?: SearchSortBy;
+    sortOrder?: SearchSortOrder;
+  }, scopeId?: string) => {
+    const effectiveQuery = params.query ?? params.q ?? '';
+    const queryParams: Record<string, string> = { query: effectiveQuery };
+    if (params.limit !== undefined) queryParams.limit = String(params.limit);
+    if (params.cursor) queryParams.cursor = params.cursor;
+    if (params.collectionId) queryParams.collectionId = params.collectionId;
+    if (params.tagId) queryParams.tagId = params.tagId;
+    if (params.itemType) queryParams.itemType = params.itemType;
+    if (params.yearFrom !== undefined) queryParams.yearFrom = String(params.yearFrom);
+    if (params.yearTo !== undefined) queryParams.yearTo = String(params.yearTo);
+    if (params.sortBy) queryParams.sortBy = params.sortBy;
+    if (params.sortOrder) queryParams.sortOrder = params.sortOrder;
+
+    return libraryClient.get<SearchResponse>(
+      resolveLibraryUrl('search', '/search', scopeId),
+      { params: queryParams },
+    );
+  },
+
+  searchAnchors: (attachmentId: string, term: string, pageIndex?: number, scopeId?: string) => {
+    const params: Record<string, string> = { term };
+    if (pageIndex !== undefined) params.pageIndex = String(pageIndex);
+    return libraryClient.get<Array<{
+      pageIndex: number;
+      text: string;
+      startOffset?: number;
+      endOffset?: number;
+      highlightBoxes?: Array<{ x: number; y: number; width: number; height: number }>;
+    }>>(
+      resolveLibraryUrl(
+        'search',
+        `/search/attachments/${encodeURIComponent(attachmentId)}/anchors`,
+        scopeId,
+      ),
+      { params },
+    );
+  },
+};
+
+export const SyncService = {
+  getDiagnostics: (scopeId?: string) =>
+    libraryClient.get<unknown>(getSyncUrl(scopeId, 'diagnostics')),
+
+  getVersion: (scopeId?: string) =>
+    libraryClient.get<{ version: string; scope: 'user' | 'project'; scopeId: string }>(getSyncUrl(scopeId, 'version')),
+
+  getChanges: (scopeId?: string, params?: { since?: string; limit?: number; compact?: boolean }) =>
+    libraryClient.get<{ since: string; count: number; hasMore: boolean; changes: Array<Record<string, unknown>> }>(
+      getSyncUrl(scopeId, 'changes'),
+      {
+        params: {
+          since: params?.since ?? '0',
+          limit: params?.limit ?? 100,
+          ...(params?.compact !== undefined ? { compact: params.compact } : {}),
+        },
+      },
+    ),
+
+  getTombstones: (scopeId?: string, params?: { since?: string; limit?: number }) =>
+    libraryClient.get<{ since: string; count: number; hasMore: boolean; tombstones: Array<Record<string, unknown>> }>(
+      getSyncUrl(scopeId, 'tombstones'),
+      {
+        params: {
+          ...(params?.since !== undefined ? { since: params.since } : {}),
+          limit: params?.limit ?? 100,
+        },
+      },
+    ),
+};
 
 // 12. Reader Services
-
 const ReaderDocumentsService = {
-  get: libraryServices.reader.getDocument,
+  get: async (scopeId: string | undefined, itemId: string): Promise<ReaderDocument> => {
+    const item = await ItemsService.getById(scopeId || 'user', itemId);
+    return item as ReaderDocument;
+  },
 
   update: async (
     scopeId: string | undefined,
@@ -2116,7 +2152,7 @@ const ReaderDocumentsService = {
     return updated as ReaderDocument;
   },
 
-  reindex: ItemsService.reindexItem,
+  reindex: ItemsService.reindex,
 
   getFulltext: async (
     scopeId: string | undefined,
@@ -2131,18 +2167,69 @@ const ReaderDocumentsService = {
 };
 
 const ReaderAnnotationsService = {
-  getByAttachment: libraryServices.reader.getAnnotations,
-  create: libraryServices.reader.createAnnotation,
-  update: libraryServices.reader.updateAnnotation,
-  delete: libraryServices.reader.deleteAnnotation,
-  batch: libraryServices.reader.batchAnnotations,
+  getByAttachment: async (scopeId: string | undefined, attachmentId: string): Promise<ReaderAnnotation[]> => {
+    if (!attachmentId) return [];
+    const url = resolveLibraryUrl('reader', `/attachments/${encodeURIComponent(attachmentId)}/annotations`, scopeId);
+    const res = await libraryClient.get<ReaderAnnotation[] | { data?: ReaderAnnotation[]; annotations?: ReaderAnnotation[] }>(url);
+    return unwrapList<ReaderAnnotation>(res, 'annotations');
+  },
+
+  create: async (scopeId: string | undefined, attachmentId: string, dto: CreateAnnotationDto): Promise<ReaderAnnotation> => {
+    const url = resolveLibraryUrl('reader', `/attachments/${encodeURIComponent(attachmentId)}/annotations`, scopeId);
+    return libraryClient.post<ReaderAnnotation>(url, dto);
+  },
+
+  update: async (
+    scopeId: string | undefined,
+    attachmentId: string,
+    annotationId: string,
+    expectedVersion: number | undefined,
+    dto: UpdateAnnotationDto,
+  ): Promise<ReaderAnnotation> => {
+    const url = resolveLibraryUrl(
+      'reader',
+      `/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
+      scopeId,
+    );
+    return libraryClient.patch<ReaderAnnotation>(url, { ...dto, expectedVersion });
+  },
+
+  delete: async (
+    scopeId: string | undefined,
+    attachmentId: string,
+    annotationId: string,
+    expectedVersion?: number,
+  ): Promise<boolean> => {
+    const url = resolveLibraryUrl(
+      'reader',
+      `/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
+      scopeId,
+    );
+    const res = await libraryClient.delete<{ success?: boolean } | boolean>(url, {
+      params: expectedVersion !== undefined ? { expectedVersion } : undefined,
+    });
+    return typeof res === 'boolean' ? res : Boolean(res?.success);
+  },
+
+  batch: async (
+    scopeId: string | undefined,
+    attachmentId: string,
+    payload: { upserts: unknown[]; deletes: string[] },
+  ): Promise<unknown> => {
+    const url = resolveLibraryUrl(
+      'reader',
+      `/attachments/${encodeURIComponent(attachmentId)}/annotations/batch`,
+      scopeId,
+    );
+    return libraryClient.put<unknown>(url, payload);
+  },
 
   extractNotes: async (
     scopeId: string | undefined,
-    paperId: string,
+    itemId: string,
   ): Promise<{ totalExtracted: number; note?: unknown }> => {
     try {
-      const res = await NotesService.extractNotes(scopeId, paperId);
+      const res = await NotesService.extractNotes(scopeId, itemId);
       return { totalExtracted: 1, note: res };
     } catch {
       return { totalExtracted: 0 };
@@ -2153,34 +2240,57 @@ const ReaderAnnotationsService = {
     scopeId: string | undefined,
     attachmentId: string,
   ): Promise<{ importedCount: number }> => {
-    const url = resolveLibraryUrl('reader', `/attachments/${encodeURIComponent(attachmentId)}/import-annotations`, scopeId);
-    return libraryClient.post<{ importedCount: number }>(url, {}).catch(() => ({ importedCount: 0 }));
+    const url = resolveLibraryUrl(
+      'reader',
+      `/attachments/${encodeURIComponent(attachmentId)}/annotations/import-external`,
+      scopeId,
+    );
+    return libraryClient.post<{ importedCount: number }>(url, {});
   },
 };
 
 const ReaderStateService = {
   getState: async (scopeId: string | undefined, itemId: string): Promise<DocumentReadingState | null> => {
     try {
-      return await libraryServices.reader.getState(scopeId, itemId);
+      const state = await StateService.getState(scopeId, itemId);
+      return (state as DocumentReadingState | null) ?? null;
     } catch {
       return null;
     }
   },
-  updateState: libraryServices.reader.updateState,
+
+  updateState: async (
+    scopeId: string | undefined,
+    itemId: string,
+    patch: Partial<DocumentReadingState>,
+  ): Promise<DocumentReadingState> => {
+    const updated = await StateService.updateState(scopeId, itemId, patch);
+    return updated as DocumentReadingState;
+  },
+
   markAsRead: (scopeId: string | undefined, itemId: string) =>
     StateService.markAsRead(scopeId, itemId),
 };
 
 const ReaderAttachmentsService = {
-  reExtract: libraryServices.attachments.reExtract,
+  reExtract: AttachmentsService.reExtract,
 };
 
 const ReaderCitationsService = {
-  exportLibrary: libraryServices.exports.exportLibrary,
-  downloadAnnotatedPdf: libraryServices.exports.downloadAnnotatedPdf,
+  exportLibrary: ExportsService.exportLibrary,
+  downloadAnnotatedPdf: ExportsService.downloadAnnotatedPdf,
 };
 
 export const readerService = {
+  getDocument: ReaderDocumentsService.get,
+  getAnnotations: ReaderAnnotationsService.getByAttachment,
+  createAnnotation: ReaderAnnotationsService.create,
+  updateAnnotation: ReaderAnnotationsService.update,
+  deleteAnnotation: ReaderAnnotationsService.delete,
+  batchAnnotations: ReaderAnnotationsService.batch,
+  getState: ReaderStateService.getState,
+  updateState: ReaderStateService.updateState,
+  markAsRead: ReaderStateService.markAsRead,
   documents: ReaderDocumentsService,
   items: ReaderDocumentsService,
   annotations: ReaderAnnotationsService,
@@ -2191,6 +2301,30 @@ export const readerService = {
   fetchPdfBlob,
   getItemFileUrl,
   isProjectScope,
+};
+
+export const ItemService = ItemsService;
+export const QualityService = CurationService;
+export const fetchReferenceByDoi = CitationService.resolveDoi;
+
+export const libraryServices = {
+  items: ItemsService,
+  collections: CollectionsService,
+  tags: TagsService,
+  notes: NotesService,
+  state: StateService,
+  savedSearches: SavedSearchesService,
+  relations: RelationsService,
+  citations: CitationService,
+  exports: ExportsService,
+  attachments: AttachmentsService,
+  upload: UploadService,
+  ingestion: IngestionService,
+  curation: CurationService,
+  retraction: RetractionService,
+  search: SearchService,
+  sync: SyncService,
+  reader: readerService,
 };
 
 export default libraryServices;

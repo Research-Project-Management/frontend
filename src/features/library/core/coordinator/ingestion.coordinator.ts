@@ -1,25 +1,15 @@
 import { toast } from 'sonner';
 import {
   IngestionService, UploadService } from '@/features/library/sdk/library.client';
-import { libraryKeys } from '@/features/library/sdk/query-keys';
-import { invalidateCollections } from '@/features/library/sdk/queries/collections.queries';
+import { itemKeys, collectionKeys } from '@/features/library/sdk/query-keys';
 import type {
   IngestionProgressItem,
   ProcessingFileItem,
-  ProcessModalState,
   ProcessBatchUploadOptions,
   ProcessModalStoreApi,
   InvalidationClient,
 } from '@/features/library/domain/types/batch-upload.types';
 import { cleanFilenameToTitle } from '@/features/library/domain/metadata';
-
-export type {
-  ProcessingFileItem,
-  ProcessModalState,
-  ProcessBatchUploadOptions,
-  ProcessModalStoreApi,
-};
-export { cleanFilenameToTitle };
 
 // Stage 1: Provisional Item Creation & Modal Initialization
 
@@ -89,110 +79,13 @@ function initializeBatchModalState(
   }));
 }
 
-// Stage 2: Ingestion Run Polling
+import {
+  pollIngestionRunCompletion,
+  type PollRunOutcome,
+  type PollIngestionRunOptions,
+} from '@/features/library/sdk/queries/ingestion.queries';
 
-export interface PollRunOutcome {
-  ok: boolean;
-  timedOut?: boolean;
-  title?: string;
-  itemId?: string;
-  error?: string;
-}
-
-export interface PollIngestionRunOptions {
-  fallbackTitle: string;
-  initialItemId?: string;
-  pollIntervalMs?: number;
-  maxWaitMs?: number;
-  slowPollThresholdMs?: number;
-  onSlowPollThreshold?: () => void;
-  signal?: AbortSignal;
-}
-
-export async function pollIngestionRunCompletion(
-  scopeId: string,
-  runId: string,
-  opts: PollIngestionRunOptions,
-): Promise<PollRunOutcome> {
-  const startTime = Date.now();
-  const maxWaitMs = opts.maxWaitMs ?? 120000;
-  const pollIntervalMs = opts.pollIntervalMs ?? 1200;
-  let finalTitle = opts.fallbackTitle;
-  let finalItemId = opts.initialItemId;
-  let slowThresholdTriggered = false;
-
-  while (Date.now() - startTime < maxWaitMs) {
-    if (opts.signal?.aborted) {
-      return { ok: false, error: 'Polling aborted' };
-    }
-    await new Promise((r) => setTimeout(r, pollIntervalMs));
-    if (opts.signal?.aborted) {
-      return { ok: false, error: 'Polling aborted' };
-    }
-
-    if (
-      !slowThresholdTriggered &&
-      opts.slowPollThresholdMs !== undefined &&
-      opts.onSlowPollThreshold &&
-      Date.now() - startTime >= opts.slowPollThresholdMs
-    ) {
-      slowThresholdTriggered = true;
-      opts.onSlowPollThreshold();
-    }
-
-    try {
-      const runStatus = await IngestionService.getRunStatus(scopeId, runId);
-      const statusPayload = runStatus as {
-        data?: {
-          status?: string;
-          title?: string;
-          itemId?: string;
-          lastError?: string;
-          errorMessage?: string;
-        };
-        status?: string;
-        title?: string;
-        itemId?: string;
-        lastError?: string;
-        errorMessage?: string;
-      } | null;
-      const statusData = statusPayload?.data || statusPayload;
-      const currentStatus = (statusData?.status || '').toUpperCase();
-
-      if (
-        currentStatus === 'COMPLETED' ||
-        currentStatus === 'READY' ||
-        currentStatus === 'SUCCEEDED' ||
-        currentStatus === 'NEEDS_REVIEW'
-      ) {
-        if (statusData?.title && statusData.title !== 'Uploaded Document') {
-          finalTitle = statusData.title;
-        }
-        if (statusData?.itemId) {
-          finalItemId = statusData.itemId;
-        }
-        return { ok: true, title: finalTitle, itemId: finalItemId };
-      }
-
-      if (
-        currentStatus === 'FAILED_FINAL' ||
-        currentStatus === 'FAILED_RETRYABLE' ||
-        currentStatus === 'CANCELLED' ||
-        currentStatus === 'FAILED'
-      ) {
-        return {
-          ok: false,
-          error: statusData?.lastError || statusData?.errorMessage || 'Extraction failed',
-        };
-      }
-    } catch {
-      // Retry on transient poll network glitch
-    }
-  }
-
-  // Non-blocking graceful handoff: file was safely stored and queued on server
-  return { ok: true, timedOut: true, title: finalTitle, itemId: finalItemId };
-}
+export { pollIngestionRunCompletion, type PollRunOutcome, type PollIngestionRunOptions };
 
 // Stage 3: Cache Synchronization
 
@@ -202,16 +95,15 @@ async function synchronizeBatchCaches(
   effectiveCollection?: string,
 ): Promise<void> {
   await Promise.all([
-    queryClient.invalidateQueries({ queryKey: libraryKeys.items(scopeId) }),
-    queryClient.invalidateQueries({ queryKey: libraryKeys.counts(scopeId) }),
-    queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
+    queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) }),
+    queryClient.invalidateQueries({ queryKey: itemKeys.counts(scopeId) }),
+    queryClient.invalidateQueries({ queryKey: collectionKeys.all(scopeId) }),
     effectiveCollection
       ? queryClient.invalidateQueries({
-          queryKey: libraryKeys.items(scopeId, { collectionId: effectiveCollection }),
+          queryKey: itemKeys.byCollection(scopeId, effectiveCollection),
         })
       : Promise.resolve(),
   ]);
-  invalidateCollections(queryClient as Parameters<typeof invalidateCollections>[0], scopeId);
 }
 
 // Public Coordinator Entry Point
@@ -373,12 +265,45 @@ export async function executeBatchUpload(
         });
 
         const resRecord = res as {
-          data?: { item?: { title?: string; id?: string } };
+          data?: {
+            runId?: string;
+            itemId?: string;
+            item?: { title?: string; id?: string };
+          };
+          runId?: string;
+          itemId?: string;
           item?: { title?: string; id?: string };
         } | null;
+
+        const bibRunId = resRecord?.data?.runId || resRecord?.runId;
         const itemPayload = resRecord?.data?.item || resRecord?.item;
-        const extractedTitle = itemPayload?.title || file.name;
-        markFileSucceeded(file, index, provisionalId, extractedTitle, itemPayload?.id, false);
+        let extractedTitle = itemPayload?.title || file.name;
+        let resolvedItemId =
+          itemPayload?.id || resRecord?.data?.itemId || resRecord?.itemId;
+
+        if (bibRunId) {
+          const pollOutcome = await pollIngestionRunCompletion(
+            scopeId,
+            bibRunId,
+            {
+              fallbackTitle: extractedTitle,
+              initialItemId: resolvedItemId,
+            },
+          );
+          if (!pollOutcome.ok) {
+            markFileFailed(
+              file,
+              index,
+              provisionalId,
+              pollOutcome.error || 'Bibliography import failed',
+            );
+            return;
+          }
+          extractedTitle = pollOutcome.title || extractedTitle;
+          resolvedItemId = pollOutcome.itemId || resolvedItemId;
+        }
+
+        markFileSucceeded(file, index, provisionalId, extractedTitle, resolvedItemId, true);
         return;
       }
 
@@ -471,10 +396,6 @@ export async function executeBatchUpload(
         finalTitle = pollOutcome.title || identifiedTitle;
         finalItemId = pollOutcome.itemId || completedItemId;
       }
-
-      // Trigger immediate incremental cache invalidation so each item pops up live
-      void queryClient.invalidateQueries({ queryKey: libraryKeys.items(scopeId) });
-      void queryClient.invalidateQueries({ queryKey: libraryKeys.counts(scopeId) });
 
       markFileSucceeded(file, index, provisionalId, finalTitle, finalItemId, true);
     } catch (err: unknown) {

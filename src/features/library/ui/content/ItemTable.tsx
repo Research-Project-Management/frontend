@@ -6,24 +6,26 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { toast } from "sonner";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
-import { libraryServices } from "@/features/library/sdk/library.client";
-import { useToggleStarItemMutation } from "@/features/library/sdk/queries/catalog.queries";
 import {
+  useToggleStarItemMutation,
+  useUpdateLibraryItemMutation,
   useDeleteLibraryItemsMutation,
   useBatchRestoreItemsMutation,
   useBatchPurgeItemsMutation,
 } from "@/features/library/sdk/queries/catalog.queries";
 import {
   useCollectionsQuery,
-  invalidateCollections,
+  useMoveCollectionItemsMutation,
 } from "@/features/library/sdk/queries/collections.queries";
-import { itemKeys } from "@/features/library/sdk/query-keys";
+import { itemKeys, tagKeys } from "@/features/library/sdk/query-keys";
 import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
   type LibraryDisplayOptions,
   type LibraryOrderBy,
 } from "@/features/library/ui/topbar/LibraryDisplayPopover";
 import { sortLibraryItems } from "@/features/library/domain/sort-items.domain";
+import { normalizeTags } from "@/features/library/domain/metadata";
+import { useTags } from "@/features/library/sdk/queries/tags-notes.queries";
 import { ItemTableHeader } from "./ItemTableHeader";
 import { ItemTableRow } from "./ItemTableRow";
 import type { Item } from "@/features/library/domain/types/library.types";
@@ -96,10 +98,13 @@ export const ItemTable = React.memo(function ItemTable({
 
   // Mutations & Queries
   const toggleStarMutation = useToggleStarItemMutation(scopeId);
+  const updateItemMutation = useUpdateLibraryItemMutation(scopeId);
   const deleteMutation = useDeleteLibraryItemsMutation(scopeId);
   const restoreMutation = useBatchRestoreItemsMutation(scopeId);
   const purgeMutation = useBatchPurgeItemsMutation(scopeId);
+  const moveMutation = useMoveCollectionItemsMutation(scopeId);
   const { data: collections = [] } = useCollectionsQuery(scopeId);
+  const { tags: scopeTags } = useTags(scopeId);
 
   const handleMoveToCollection = useCallback(
     async (itemId: string, targetCollectionId: string) => {
@@ -109,16 +114,10 @@ export const ItemTable = React.memo(function ItemTable({
       }
       const toastId = toast.loading("Moving reference...", { id: "move-doc" });
       try {
-        await libraryServices.collections.moveItems(
-          scopeId,
+        await moveMutation.mutateAsync({
           targetCollectionId,
-          [itemId],
-        );
-        queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
-        queryClient.invalidateQueries({
-          queryKey: itemKeys.byCollection(scopeId, targetCollectionId),
+          itemIds: [itemId],
         });
-        invalidateCollections(queryClient, scopeId);
         toast.success("Reference moved", {
           description: "Reference successfully moved to collection.",
           id: toastId,
@@ -133,7 +132,7 @@ export const ItemTable = React.memo(function ItemTable({
         });
       }
     },
-    [propOnMoveToCollection, scopeId, queryClient],
+    [propOnMoveToCollection, moveMutation],
   );
 
   // Sorting state derived directly from displayOptions
@@ -227,6 +226,7 @@ export const ItemTable = React.memo(function ItemTable({
     if (columns.citationKey) count++;
     if (columns.citations) count++;
     if (isTrash) count++;
+    count++; // Dedicated Actions column
     return count;
   }, [columns, isTrash]);
 
@@ -372,7 +372,7 @@ export const ItemTable = React.memo(function ItemTable({
       const ids = rawIds.filter((id) => !isProcessingItem(id));
       if (ids.length > 0) {
         if (isTrash) {
-          openModal("DELETE_ITEMS", { itemIds: ids, permanent: true });
+          openModal("DELETE_CONFIRM", { itemIds: ids, permanent: true });
         } else if (onDetachItem && collectionId && !e.shiftKey) {
           // Zotero 7: In collection, Delete removes from collection without deleting paper from library
           ids.forEach((id) => onDetachItem(id));
@@ -386,6 +386,76 @@ export const ItemTable = React.memo(function ItemTable({
     } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
       e.preventDefault();
       selectAll(items.map((it) => it.id));
+    } else if (
+      !e.ctrlKey &&
+      !e.metaKey &&
+      !e.altKey &&
+      /^[1-9]$/.test(e.key) &&
+      !isTrash
+    ) {
+      const shortcutNum = parseInt(e.key, 10);
+      const matchedTag = scopeTags.find((t) => t.shortcut === shortcutNum);
+      if (!matchedTag) return;
+
+      const currentSelectedIds = useLibraryUIStore.getState().selectedIds;
+      const targetIds =
+        currentSelectedIds.size > 0
+          ? Array.from(currentSelectedIds)
+          : currentActiveId
+            ? [currentActiveId]
+            : [];
+      if (targetIds.length === 0) return;
+
+      e.preventDefault();
+      const targetItems = targetIds
+        .map((id) => itemsById.get(id))
+        .filter((it): it is Item => Boolean(it && !it._isProcessing));
+      if (targetItems.length === 0) return;
+
+      const tagLower = matchedTag.name.toLowerCase();
+      // If all target items already have this tag, remove it; otherwise add it to all
+      const allHaveTag = targetItems.every((it) =>
+        normalizeTags(it).some((t) => t.toLowerCase() === tagLower),
+      );
+
+      void (async () => {
+        try {
+          await Promise.all(
+            targetItems.map((it) => {
+              const currentTags = normalizeTags(it);
+              const nextTags = allHaveTag
+                ? currentTags.filter((t) => t.toLowerCase() !== tagLower)
+                : currentTags.some((t) => t.toLowerCase() === tagLower)
+                  ? currentTags
+                  : [...currentTags, matchedTag.name];
+              return updateItemMutation.mutateAsync({
+                itemId: it.id,
+                data: { tags: nextTags },
+                silent: true,
+              });
+            }),
+          );
+          queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
+          queryClient.invalidateQueries({
+            queryKey: tagKeys.list(scopeId),
+          });
+          for (const it of targetItems) {
+            queryClient.invalidateQueries({
+              queryKey: itemKeys.byId(scopeId, it.id),
+            });
+          }
+          toast.success(
+            allHaveTag
+              ? `Removed tag "${matchedTag.name}" (#${shortcutNum})`
+              : `Added tag "${matchedTag.name}" (#${shortcutNum})`,
+            { id: "shortcut-tag-toggle" },
+          );
+        } catch {
+          toast.error(`Failed to toggle tag "${matchedTag.name}"`, {
+            id: "shortcut-tag-toggle",
+          });
+        }
+      })();
     }
   };
 
@@ -449,36 +519,53 @@ export const ItemTable = React.memo(function ItemTable({
     [onPermanentDeleteItems, purgeMutation, itemsById],
   );
 
-  // Dynamically balance proportional column widths using Golden Ratio (phi ≈ 1.618)
+  // Dynamically compute table minimum width to prevent column squashing when fields are toggled
+  const tableMinWidth = useMemo(() => {
+    let width = 280; // Baseline Title column (Checkbox + status badges + title text)
+    if (columns.authors !== false) width += 180;
+    if (columns.year !== false) width += 72;
+    if (columns.publication !== false) width += 180;
+    if (columns.itemType) width += 130;
+    if (columns.doi) width += 180;
+    if (columns.citationKey) width += 160;
+    if (columns.citations) width += 84;
+    if (isTrash) width += 140;
+    width += 44; // Dedicated Actions column
+    return Math.max(640, width);
+  }, [
+    columns.authors,
+    columns.year,
+    columns.publication,
+    columns.itemType,
+    columns.doi,
+    columns.citationKey,
+    columns.citations,
+    isTrash,
+  ]);
+
+  // Dynamically balance proportional column widths using Golden Ratio
   const colWidths = useMemo(() => {
     const showAuthors = columns.authors !== false;
     const showPub = columns.publication !== false;
 
-    // Calculate space consumed by active fixed-width columns based on Fibonacci progression (55px, 89px, 144px)
-    let fixedPx = 0;
-    if (columns.year !== false) fixedPx += 89;
-    if (columns.itemType) fixedPx += 89;
-    if (columns.doi) fixedPx += 144;
-    if (columns.citationKey) fixedPx += 144;
-    if (columns.citations) fixedPx += 55;
-    if (isTrash) fixedPx += 160;
+    let fixedPx = 44; // Actions column
+    if (columns.year !== false) fixedPx += 72;
+    if (columns.itemType) fixedPx += 130;
+    if (columns.doi) fixedPx += 180;
+    if (columns.citationKey) fixedPx += 160;
+    if (columns.citations) fixedPx += 84;
+    if (isTrash) fixedPx += 140;
 
     let authorsWidth: string | undefined = undefined;
     let pubWidth: string | undefined = undefined;
 
-    // Golden Ratio column proportions: Title : Authors : Publication = phi^2 : phi : 1 = 2.618 : 1.618 : 1.000
-    // => Title = 50.0%, Authors = 30.9%, Publication = 19.1% (Adjacent ratios = 1.618)
-    // When fixed columns consume higher width (> 200px), scaled by 1/phi^2:
-    // => Authors = 23.6%, Publication = 14.6% (Ratio 23.6 / 14.6 = 1.618)
     if (showAuthors && showPub) {
-      authorsWidth = fixedPx > 200 ? "23.6%" : "30.9%";
-      pubWidth = fixedPx > 200 ? "14.6%" : "19.1%";
+      authorsWidth = fixedPx > 200 ? "22%" : "30.9%";
+      pubWidth = fixedPx > 200 ? "16%" : "19.1%";
     } else if (showAuthors) {
-      // Title : Authors = phi : 1 => Title = 61.8%, Authors = 38.2%
-      authorsWidth = fixedPx > 200 ? "30.9%" : "38.2%";
+      authorsWidth = fixedPx > 200 ? "28%" : "38.2%";
     } else if (showPub) {
-      // Title : Publication = phi : 1 => Title = 61.8%, Publication = 38.2%
-      pubWidth = fixedPx > 200 ? "23.6%" : "38.2%";
+      pubWidth = fixedPx > 200 ? "24%" : "38.2%";
     }
 
     return {
@@ -515,21 +602,25 @@ export const ItemTable = React.memo(function ItemTable({
         }}
         className="flex-1 w-full overflow-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden text-13 focus:outline-none pb-4"
       >
-        <table className="w-full min-w-[640px] table-fixed text-left border-collapse">
+        <table
+          style={{ minWidth: `${tableMinWidth}px` }}
+          className="w-full table-fixed text-left border-collapse"
+        >
           <colgroup>
-            <col />
+            <col style={{ minWidth: "260px" }} />
             {columns.authors !== false && (
-              <col style={{ width: colWidths.authors }} />
+              <col style={{ width: colWidths.authors, minWidth: "160px" }} />
             )}
-            {columns.year !== false && <col style={{ width: "89px" }} />}
+            {columns.year !== false && <col style={{ width: "72px" }} />}
             {columns.publication !== false && (
-              <col style={{ width: colWidths.publication }} />
+              <col style={{ width: colWidths.publication, minWidth: "160px" }} />
             )}
-            {columns.itemType && <col style={{ width: "89px" }} />}
-            {columns.doi && <col style={{ width: "144px" }} />}
-            {columns.citationKey && <col style={{ width: "144px" }} />}
-            {columns.citations && <col style={{ width: "55px" }} />}
-            {isTrash && <col style={{ width: "160px" }} />}
+            {columns.itemType && <col style={{ width: "130px" }} />}
+            {columns.doi && <col style={{ width: "180px" }} />}
+            {columns.citationKey && <col style={{ width: "160px" }} />}
+            {columns.citations && <col style={{ width: "84px" }} />}
+            {isTrash && <col style={{ width: "140px" }} />}
+            <col style={{ width: "44px" }} />
           </colgroup>
           <ItemTableHeader
             columns={columns}
@@ -569,7 +660,6 @@ export const ItemTable = React.memo(function ItemTable({
                   scopeId={scopeId}
                   isLast={isLast}
                   columns={columns}
-                  density={displayOptions.density}
                   isTrash={isTrash}
                   collections={collections}
                   onRowClick={handleRowClick}

@@ -5,13 +5,15 @@ import dynamic from 'next/dynamic';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
-import { libraryServices } from '@/features/library/sdk/library.client';
 import { useCreateCollectionMutation } from '@/features/library/sdk/queries/collections.queries';
 import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
-import { useDeleteLibraryItemsMutation, useBatchPurgeItemsMutation } from '@/features/library/sdk/queries/catalog.queries';
+import { useDeleteLibraryItemsMutation, useBatchPurgeItemsMutation, itemKeys } from '@/features/library/sdk/queries/catalog.queries';
 import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
-import { executeTrackedIdentifierIngestion } from '@/features/library/sdk/queries/ingestion.queries';
-import { itemKeys, libraryKeys } from '@/features/library/sdk/query-keys';
+import {
+  executeTrackedIdentifierIngestion,
+  useMergeDuplicates,
+  useDismissDuplicatesMutation,
+} from '@/features/library/sdk/queries/ingestion.queries';
 import type { CollectionFormValues, Item, CreateSavedSearchInput } from '@/features/library/domain/types/library.types';
 import type { SavedSearch } from '@/features/library/domain/types/saved-searches.types';
 
@@ -27,6 +29,9 @@ const TypeConversionModal = dynamic(
 const MergeModal = dynamic(() => import('./MergeModal'), { ssr: false });
 const UploadFilesModal = dynamic(() => import('./UploadFilesModal'), { ssr: false });
 const ProcessModal = dynamic(() => import('./ProcessModal'), { ssr: false });
+const ExternalLibrarySyncModal = dynamic(() => import('./ExternalLibrarySyncModal'), { ssr: false });
+const FeedsManagerModal = dynamic(() => import('./FeedsManagerModal'), { ssr: false });
+const AddFeedModal = dynamic(() => import('./AddFeedModal'), { ssr: false });
 
 /**
  * LibraryModals Container
@@ -41,6 +46,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
     item?: Item;
     items?: Item[];
     duplicates?: Item[];
+    recommendedMasterId?: string;
     targetType?: string;
     collectionId?: string;
     parentId?: string | null;
@@ -50,6 +56,9 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
     files?: File[];
     initialFiles?: File[];
     savedSearch?: SavedSearch | null;
+    provider?: 'zotero' | 'mendeley';
+    onConfirm?: () => Promise<void>;
+    onDismissDuplicate?: (itemIds: string[]) => void | Promise<void>;
     [key: string]: unknown;
   };
   const closeModal = useLibraryUIStore((s) => s.closeModal);
@@ -65,20 +74,23 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
   const addProcessingItem = useProcessModalStore((s) => s.addProcessingItem);
   const dismissProcessingItem = useProcessModalStore((s) => s.dismissProcessingItem);
 
-  // 1. Create Collection Modal
+  // 1. Create Collection Modal & External Sync Modal & Feeds Manager Modal
   const isCreateCollectionOpen = activeModal === 'CREATE_COLLECTION';
+  const isExternalSyncOpen = activeModal === 'EXPORT_LIBRARY';
+  const isFeedsManagerOpen = activeModal === 'FEEDS_MANAGER';
+  const isAddFeedOpen = activeModal === 'ADD_FEED';
 
-  // Collections & Queries (lazy enabled only when create collection modal is open)
+  // Collections & Queries (lazy enabled only when create collection, external sync, or feeds modal is open)
   const { data: collections = [] } = useCollectionsQuery(effectiveScope, {
-    enabled: isCreateCollectionOpen,
+    enabled: isCreateCollectionOpen || isExternalSyncOpen || isFeedsManagerOpen,
   });
 
   // Mutations & Sub-resources
   const createCollectionMutation = useCreateCollectionMutation(effectiveScope);
   const deleteItemsMutation = useDeleteLibraryItemsMutation(effectiveScope);
   const purgeItemsMutation = useBatchPurgeItemsMutation(effectiveScope);
-  const isSavedSearchModalOpen =
-    activeModal === 'SAVED_SEARCH' || activeModal === 'CREATE_SAVED_SEARCH';
+  const mergeDuplicatesMutation = useMergeDuplicates(effectiveScope);
+  const isSavedSearchModalOpen = activeModal === 'SAVED_SEARCH';
   const {
     createSavedSearch,
     updateSavedSearch,
@@ -95,11 +107,17 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
     closeModal();
   };
 
-  // 2. Delete Items Modal
-  const isDeleteItemsOpen = activeModal === 'DELETE_ITEMS';
+  // 2. Delete Confirmation Modal (Items or Empty Trash)
+  const isDeleteConfirmOpen = activeModal === 'DELETE_CONFIRM';
   const itemIdsToDelete: string[] = payload?.itemIds || [];
   const isPermanentDelete = Boolean(payload?.permanent);
-  const handleDeleteItems = async () => {
+  const customDeleteConfirmCallback = payload?.onConfirm;
+  const handleDeleteConfirm = async () => {
+    if (customDeleteConfirmCallback) {
+      await customDeleteConfirmCallback();
+      closeModal();
+      return;
+    }
     if (itemIdsToDelete.length === 0) return;
     if (isPermanentDelete) {
       await purgeItemsMutation.mutateAsync(itemIdsToDelete);
@@ -111,10 +129,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
   };
 
   // 3. Add Link / Identifier Modal (DOI, arXiv, PMID, ISBN, URL, BibTeX, RIS)
-  const isAddLinkOpen =
-    activeModal === 'ADD_LINK' ||
-    activeModal === 'IMPORT_IDENTIFIER' ||
-    activeModal === 'IMPORT_PAPER';
+  const isAddLinkOpen = activeModal === 'ADD_BY_IDENTIFIER';
   const [isSubmittingLink, setIsSubmittingLink] = React.useState(false);
 
   const handleAddLinkSubmit = async (data: { url: string; title?: string }) => {
@@ -139,10 +154,10 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
   };
 
   // 4. Import from User Library Modal (When in Project Scope)
-  const isImportFromUserOpen = activeModal === 'IMPORT_FROM_USER' || activeModal === 'IMPORT_FROM_PERSONAL';
+  const isImportFromUserOpen = activeModal === 'IMPORT_FROM_USER';
 
   // 5. Convert Item Type Modal
-  const isConvertOpen = activeModal === 'CONVERT_ITEM_TYPE';
+  const isConvertOpen = activeModal === 'TYPE_CONVERSION';
 
   // 6. Merge Duplicates Modal
   const isMergeOpen = activeModal === 'MERGE_DUPLICATES';
@@ -152,31 +167,24 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
     mergedFields: Record<string, unknown>,
     duplicateIdsToDelete: string[],
   ) => {
-    await libraryServices.curation.mergePapers(
-      effectiveScope,
-      masterPaper.id,
-      duplicateIdsToDelete,
-      mergedFields,
-    );
-    queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-    queryClient.invalidateQueries({ queryKey: libraryKeys.duplicates(effectiveScope) });
+    await mergeDuplicatesMutation.mutateAsync({
+      primaryItemId: masterPaper.id,
+      duplicateItemIds: duplicateIdsToDelete,
+      overrides: Object.keys(mergedFields).length > 0 ? mergedFields : undefined,
+    });
     clearSelection();
     closeModal();
   };
+
+  const dismissDuplicatesMutation = useDismissDuplicatesMutation(effectiveScope);
 
   const handleDismissDuplicates = async (itemIds: string[]) => {
-    await libraryServices.curation.dismissDuplicates(effectiveScope, itemIds);
-    queryClient.invalidateQueries({ queryKey: libraryKeys.duplicates(effectiveScope) });
-    queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
+    if (payload?.onDismissDuplicate) {
+      await payload.onDismissDuplicate(itemIds);
+    } else {
+      await dismissDuplicatesMutation.mutateAsync(itemIds);
+    }
     clearSelection();
-    closeModal();
-  };
-
-  // 7. Empty Trash Confirmation
-  const isTrashConfirmOpen = activeModal === 'TRASH_CONFIRM';
-  const trashConfirmCallback = payload?.onConfirm as (() => Promise<void>) | undefined;
-  const handleTrashConfirm = async () => {
-    await trashConfirmCallback?.();
     closeModal();
   };
 
@@ -195,18 +203,30 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
         />
       )}
 
-      {isDeleteItemsOpen && (
+      {isDeleteConfirmOpen && (
         <DeleteModal
-          open={isDeleteItemsOpen}
+          open={isDeleteConfirmOpen}
           onOpenChange={(open) => !open && closeModal()}
-          title={isPermanentDelete ? 'Permanently Delete Items' : 'Move to Trash'}
-          description={
-            isPermanentDelete
-              ? `Are you sure you want to permanently delete ${itemIdsToDelete.length} selected ${itemIdsToDelete.length === 1 ? 'item' : 'items'}? This action cannot be undone.`
-              : `Are you sure you want to move ${itemIdsToDelete.length} selected ${itemIdsToDelete.length === 1 ? 'item' : 'items'} to the trash?`
+          title={
+            customDeleteConfirmCallback
+              ? 'Empty Trash'
+              : isPermanentDelete
+                ? 'Permanently Delete Items'
+                : 'Move to Trash'
           }
-          confirmLabel={isPermanentDelete ? 'Permanently Delete' : 'Move to Trash'}
-          onConfirm={handleDeleteItems}
+          description={
+            customDeleteConfirmCallback
+              ? 'Are you sure you want to permanently empty the trash? All items will be permanently deleted and cannot be recovered.'
+              : isPermanentDelete
+                ? `Are you sure you want to permanently delete ${itemIdsToDelete.length} selected ${itemIdsToDelete.length === 1 ? 'item' : 'items'}? This action cannot be undone.`
+                : `Are you sure you want to move ${itemIdsToDelete.length} selected ${itemIdsToDelete.length === 1 ? 'item' : 'items'} to the trash?`
+          }
+          confirmLabel={
+            customDeleteConfirmCallback || isPermanentDelete
+              ? 'Permanently Delete'
+              : 'Move to Trash'
+          }
+          onConfirm={handleDeleteConfirm}
           isDeleting={isPermanentDelete ? purgeItemsMutation.isPending : deleteItemsMutation.isPending}
         />
       )}
@@ -224,7 +244,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
         <ImportFromPersonalModal
           open={isImportFromUserOpen}
           onOpenChange={(open) => !open && closeModal()}
-          projectId={effectiveScope}
+          scopeId={effectiveScope}
           projectName={activeScope?.name || 'Project'}
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
@@ -254,15 +274,16 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           open={isMergeOpen}
           onOpenChange={(open) => !open && closeModal()}
           duplicates={mergeDuplicates}
+          recommendedMasterId={payload?.recommendedMasterId}
           scopeId={effectiveScope}
           onMerge={handleMergeDuplicates}
           onDismissDuplicate={handleDismissDuplicates}
         />
       )}
 
-      {activeModal === 'UPLOAD_FILES' && (
+      {activeModal === 'UPLOAD_PDF' && (
         <UploadFilesModal
-          open={activeModal === 'UPLOAD_FILES'}
+          open={activeModal === 'UPLOAD_PDF'}
           onOpenChange={(open) => !open && closeModal()}
           scopeId={effectiveScope}
           defaultCollectionId={payload?.collectionId || ''}
@@ -271,16 +292,6 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
             queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
             closeModal();
           }}
-        />
-      )}
-
-      {isTrashConfirmOpen && (
-        <DeleteModal
-          open={isTrashConfirmOpen}
-          onOpenChange={(open) => !open && closeModal()}
-          title="Empty Trash"
-          description="Are you sure you want to permanently empty the trash? All items will be permanently deleted and cannot be recovered."
-          onConfirm={handleTrashConfirm}
         />
       )}
 
@@ -308,6 +319,34 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
             closeModal();
           }}
           isPending={isCreatingSS || isUpdatingSS}
+        />
+      )}
+
+      {isExternalSyncOpen && (
+        <ExternalLibrarySyncModal
+          open={isExternalSyncOpen}
+          onOpenChange={(open) => !open && closeModal()}
+          defaultProvider={payload?.provider || 'zotero'}
+          scopeId={effectiveScope}
+          collections={collections}
+          defaultCollectionId={payload?.collectionId || null}
+        />
+      )}
+
+      {isFeedsManagerOpen && (
+        <FeedsManagerModal
+          open={isFeedsManagerOpen}
+          onOpenChange={(open) => !open && closeModal()}
+          scopeId={effectiveScope}
+          collections={collections}
+          defaultCollectionId={payload?.collectionId || null}
+        />
+      )}
+
+      {isAddFeedOpen && (
+        <AddFeedModal
+          open={isAddFeedOpen}
+          onOpenChange={(open) => !open && closeModal()}
         />
       )}
 

@@ -29,6 +29,7 @@ export const noteListResponseSchema = z.object({
 });
 
 export const createNoteSchema = z.object({
+  projectId: z.string().optional(),
   itemId: z.string().nullable().optional(),
   title: z.string().optional().default('Untitled Note'),
   contentJson: z.record(z.string(), z.unknown()).optional(),

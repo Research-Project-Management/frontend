@@ -13,10 +13,7 @@ interface AbstractSectionProps {
 }
 
 function getAbstractValue(item: Item): string {
-  const typedItem = item as Item & {
-    abstractNote?: string;
-  };
-  return typedItem.abstract || typedItem.abstractNote || "";
+  return item.abstractNote || "";
 }
 
 export default function AbstractSection({
@@ -64,7 +61,6 @@ export default function AbstractSection({
     if (trimmed !== existing) {
       if (handleUpdate) {
         handleUpdate({
-          abstract: trimmed || undefined,
           abstractNote: trimmed || undefined,
         });
       }
@@ -110,7 +106,7 @@ export default function AbstractSection({
             }
           }}
           className={cn(
-            "w-full text-13 leading-relaxed text-foreground font-serif resize-none overflow-hidden outline-none break-words select-text rounded-md",
+            "w-full text-13 leading-normal text-foreground font-sans font-normal resize-none overflow-hidden outline-none break-words select-text rounded-md",
             "p-2 bg-transparent border-0 focus:outline-none focus:ring-0",
             canEdit && "cursor-text",
             !canEdit && "cursor-default",

@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { libraryServices } from '@/features/library/sdk/library.client';
 import { useItemTypes } from '@/features/library/sdk/queries/catalog.queries';
 import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
 import { useTags } from '@/features/library/sdk/queries/tags-notes.queries';
+import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
 import {
   mapRegistryItemTypes,
-  ALL_ITEM_TYPES_FLAT,
   type Collection,
 } from '@/features/library/domain/types/library.types';
 import type {
@@ -51,17 +50,24 @@ export function useSavedSearchBuilder({
 
   const { types: registryItemTypes } = useItemTypes(targetScope);
   const itemTypeOptions = useMemo(() => {
-    const serverDefinitions = mapRegistryItemTypes(registryItemTypes);
-    if (serverDefinitions.length > 0) {
-      return serverDefinitions
-        .map((t) => ({ value: t.itemType, label: t.label }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-    }
-    return ALL_ITEM_TYPES_FLAT;
+    return mapRegistryItemTypes(registryItemTypes)
+      .filter(
+        (t) =>
+          t.isBibliographic !== false &&
+          !t.isSpecial &&
+          t.itemType !== 'attachment' &&
+          t.itemType !== 'note' &&
+          t.itemType !== 'annotation',
+      )
+      .map((t) => ({ value: t.itemType, label: t.label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   }, [registryItemTypes]);
 
-  const { data: collections = [] } = useCollectionsQuery(targetScope);
-  const { tags = [] } = useTags(targetScope);
+  const { data: collections = [] } = useCollectionsQuery(targetScope, {
+    enabled: open,
+  });
+  const { tags = [] } = useTags(targetScope, { enabled: open });
+  const { previewConditions } = useSavedSearches(targetScope, { enabled: false });
   const tagList = useMemo(
     () =>
       Array.from(
@@ -221,7 +227,7 @@ export function useSavedSearchBuilder({
           },
         };
 
-        const res = await libraryServices.savedSearches.preview(targetScope, conditionGroup);
+        const res = await previewConditions(conditionGroup);
         if (!cancelled) {
           setPreviewCount(res.count ?? 0);
           setPreviewSamples(res.sampleItems || []);

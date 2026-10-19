@@ -107,64 +107,117 @@ export const itemMetaSchema = z.object({
 export const itemSchema = z.object({
   id: z.string().optional().default(''),
   title: z.string().optional().default('Untitled Item'),
-  authors: z.array(z.string()).optional().default([]),
-  year: z.coerce.number().int().nullish(),
-  doi: z.string().optional().default(''),
-  DOI: z.string().optional(),
-  abstract: z.string().optional().default(''),
-  abstractNote: z.string().optional(),
-  keywords: z.array(z.string()).optional().default([]),
   itemType: z.string().optional().default('journalArticle'),
-  type: z.string().optional(),
+  authors: z.array(z.string()).optional().default([]),
   editors: z.array(z.string()).optional().default([]),
-  journal: z.string().optional().default(''),
-  publicationTitle: z.string().optional(),
+  creators: z.array(creatorCreditSchema).optional().default([]),
+  contributors: z.array(contributorRelationSchema).optional().default([]),
+  year: z.coerce.number().int().nullish(),
+  date: z.string().optional(),
   publicationDate: z.string().optional(),
+  publicationTitle: z.string().optional().default(''),
+  journalAbbreviation: z.string().optional().default(''),
   publisher: z.string().optional().default(''),
   place: z.string().optional(),
   volume: z.string().optional().default(''),
   issue: z.string().optional().default(''),
-  section: z.string().optional(),
-  partNumber: z.string().optional(),
-  partTitle: z.string().optional(),
   pages: z.string().optional().default(''),
+  numberOfPages: z.union([z.string(), z.number()]).nullish(),
+  numberOfVolumes: z.union([z.string(), z.number()]).nullish(),
+  edition: z.union([z.string(), z.number()]).nullish(),
   series: z.string().optional(),
   seriesTitle: z.string().optional(),
   seriesText: z.string().optional(),
   seriesNumber: z.string().optional(),
-  issn: z.string().optional().default(''),
-  ISSN: z.string().optional(),
+  section: z.string().optional(),
+  partNumber: z.string().optional(),
+  partTitle: z.string().optional(),
   isbn: z.string().optional().default(''),
-  ISBN: z.string().optional(),
-  arxivId: z.string().optional(),
-  archiveID: z.string().optional(),
-  archiveId: z.string().optional(),
+  issn: z.string().optional().default(''),
+  doi: z.string().optional().default(''),
   pmid: z.string().optional(),
-  PMID: z.string().optional(),
   pmcid: z.string().optional(),
-  PMCID: z.string().optional(),
+  arxivId: z.string().optional(),
   url: z.string().optional().default(''),
+  accessDate: z.string().optional(),
+  abstractNote: z.string().optional().default(''),
+  keywords: z.array(z.string()).optional().default([]),
   language: z.string().optional().default(''),
-  journalAbbr: z.string().optional().default(''),
-  journalAbbreviation: z.string().optional().default(''),
   shortTitle: z.string().optional().default(''),
-  rights: z.string().optional().default(''),
-  license: z.string().optional(),
+  license: z.string().optional().default(''),
+  callNumber: z.string().optional(),
+  CallNumber: z.string().optional(),
+  archive: z.string().optional(),
+  archiveLocation: z.string().optional(),
+  libraryCatalog: z.string().optional(),
   citationKey: z.string().optional().default(''),
   citationCount: z.union([z.number(), z.string()]).nullish(),
   referenceCount: z.union([z.number(), z.string()]).nullish(),
   openAccessPdfUrl: z.string().nullish(),
+  extra: z.string().optional().default(''),
+  extraFields: z.record(z.string(), z.unknown()).optional().default({}),
+  fields: z.record(z.string(), z.unknown()).optional().default({}),
+  metadata: z.record(z.string(), z.unknown()).nullish(),
+  meta: itemMetaSchema.optional(),
+  tags: z.array(z.string()).optional().default([]),
+  itemTags: z.array(itemTagRelationSchema).optional().default([]),
+  collections: z.array(collectionRelationSchema).optional().default([]),
+  collectionIds: z.array(z.string()).optional().default([]),
+  attachments: z.array(attachmentSchema).optional().default([]),
+  notes: z.array(noteSchema).optional().default([]),
+  primaryFile: primaryFileSchema.nullish(),
+  fileId: z.string().nullish(),
+  fileUrl: z.string().optional().default(''),
+  filename: z.string().optional().default(''),
+  mimeType: z.string().optional().default(''),
+  size: z.number().optional().default(0),
+  hasFile: z.boolean().optional().default(false),
+  fileCount: z.number().optional().default(0),
+  notesCount: z.number().optional().default(0),
+  noteCount: z.number().optional().default(0),
+  attachmentCount: z.number().optional().default(0),
+  isFavorite: z.boolean().optional().default(false),
+  isStarred: z.boolean().optional().default(false),
+  isRead: z.boolean().optional().default(false),
+  readStatus: z.enum(['unread', 'reading', 'completed']).optional().default('unread'),
+  readProgress: z.number().optional(),
+  lastReadPage: z.number().optional(),
+  lastReadAt: z.string().nullish(),
+  rating: z.number().optional().default(0),
   isRetracted: z.boolean().optional().default(false),
+  retractionStatus: z.string().optional(),
   retractionNature: z.string().nullish(),
+  retractionReason: z.string().optional(),
+  retractionDate: z.string().optional(),
+  retractionNoticeDoi: z.string().optional(),
+  noticeUrl: z.string().optional(),
   retractionDetails: z.record(z.string(), z.unknown()).nullish(),
   retractionCheckedAt: z.string().nullish(),
+  qualityScore: z.number().optional(),
+  qualityIssues: z.array(z.string()).optional(),
   isMyPublication: z.boolean().optional().default(false),
   publicationConfirmedAt: z.string().nullish(),
-  date: z.string().optional(),
-  edition: z.union([z.string(), z.number()]).nullish(),
-  numPages: z.union([z.string(), z.number()]).nullish(),
-  numberOfPages: z.union([z.string(), z.number()]).nullish(),
-  numberOfVolumes: z.union([z.string(), z.number()]).nullish(),
+  crossrefEnriched: z.boolean().optional().default(false),
+  ragStatus: z.enum(['none', 'indexing', 'indexed', 'failed']).optional().default('none'),
+  ragDocId: z.string().nullish(),
+  identifiers: z.array(identifierSchema).optional().default([]),
+  firstAuthor: z.string().nullish(),
+  provenance: provenanceSchema.nullish(),
+  version: z.number().optional().default(1),
+  uploadedBy: userSchema.optional(),
+  user: userSchema.optional(),
+  userId: z.string().nullish(),
+  projectId: z.string().nullish(),
+  scopeId: z.string().nullish(),
+  createdAt: z.string().datetime().optional(),
+  updatedAt: z.string().datetime().optional(),
+  dateAdded: z.string().optional(),
+  deletedAt: z.string().nullish(),
+  isDeleted: z.boolean().optional().default(false),
+  isPending: z.boolean().optional(),
+  silent: z.boolean().optional(),
+
+  // Zotero item-type specific fields
   bookTitle: z.string().optional(),
   proceedingsTitle: z.string().optional(),
   conferenceName: z.string().optional(),
@@ -188,6 +241,7 @@ export const itemSchema = z.object({
   country: z.string().optional(),
   assignee: z.string().optional(),
   issuingAuthority: z.string().optional(),
+  authority: z.string().optional(),
   patentNumber: z.string().optional(),
   applicationNumber: z.string().optional(),
   reportNumber: z.string().optional(),
@@ -200,74 +254,14 @@ export const itemSchema = z.object({
   programmingLanguage: z.string().optional(),
   legalStatus: z.string().optional(),
   versionNumber: z.string().optional(),
-  libraryCatalog: z.string().optional(),
-  archive: z.string().optional(),
-  archiveLocation: z.string().optional(),
-  callNumber: z.string().optional(),
-  accessedAt: z.string().nullish(),
-  accessDate: z.string().optional(),
-  extra: z.string().optional().default(''),
-  extraFields: z.record(z.string(), z.unknown()).optional().default({}),
-  creators: z.array(creatorCreditSchema).optional().default([]),
-  contributors: z.array(contributorRelationSchema).optional().default([]),
-  itemTags: z.array(itemTagRelationSchema).optional().default([]),
-  collectionIds: z.array(z.string()).optional().default([]),
-  collections: z.array(collectionRelationSchema).optional().default([]),
-  notes: z.array(noteSchema).optional().default([]),
-  notesList: z.array(noteSchema).optional().default([]),
-  fileId: z.string().nullish(),
-  primaryFile: primaryFileSchema.nullish(),
-  attachments: z.array(attachmentSchema).optional().default([]),
-  fileUrl: z.string().optional().default(''),
-  filename: z.string().optional().default(''),
-  mimeType: z.string().optional().default(''),
-  size: z.number().optional().default(0),
-  tags: z.array(z.string()).optional().default([]),
-  crossrefEnriched: z.boolean().optional().default(false),
-  identifiers: z.array(identifierSchema).optional().default([]),
-  rating: z.number().optional().default(0),
-  collectionId: z.string().nullish(),
-  uploadedBy: userSchema.optional(),
-  user: userSchema.optional(),
-  userId: z.string().nullish(),
-  projectId: z.string().nullish(),
-  scopeId: z.string().nullish(),
-  deletedAt: z.string().nullish(),
-  isDeleted: z.boolean().optional().default(false),
-  fields: z.record(z.string(), z.unknown()).optional().default({}),
-  metadata: z.record(z.string(), z.unknown()).nullish(),
-  meta: itemMetaSchema.optional(),
-  authority: z.string().optional(),
   number: z.string().optional(),
   bibtex: z.string().optional(),
-  noticeUrl: z.string().optional(),
-  retractionReason: z.string().optional(),
-  reason: z.string().optional(),
-  retractionDate: z.string().optional(),
-  isPending: z.boolean().optional(),
-  files: z.array(attachmentSchema).optional(),
-  silent: z.boolean().optional(),
-  createdAt: z.string().datetime().optional(),
-  updatedAt: z.string().datetime().optional(),
-  dateAdded: z.string().optional(),
-  lastReadAt: z.string().nullish(),
-  isStarred: z.boolean().optional().default(false),
-  hasFile: z.boolean().optional().default(false),
-  attachmentCount: z.number().optional().default(0),
-  noteCount: z.number().optional().default(0),
-  firstAuthor: z.string().nullish(),
-  readStatus: z.enum(['unread', 'reading', 'completed']).optional().default('unread'),
-  version: z.number().optional().default(1),
-  provenance: provenanceSchema.nullish(),
 
   // Transient / Optimistic UI attributes
   _isProcessing: z.boolean().optional(),
   _processingStatus: z.string().optional(),
   _processingProgress: z.number().optional(),
   _processingError: z.string().optional(),
-
-  key: z.string().optional(),
-  retractionStatus: z.string().optional(),
 });
 
 // ── Mutation & Response Schemas ─────────────────────────────────────────────
@@ -292,8 +286,6 @@ export const cursorPaginationMetaSchema = z.object({
 
 export const paginatedItemsResponseSchema = z.object({
   items: z.array(itemSchema),
-  papers: z.array(itemSchema).optional(),
-  pagination: cursorPaginationMetaSchema.optional(),
   meta: z.union([cursorPaginationMetaSchema, itemMetaSchema, z.record(z.string(), z.unknown())]).optional(),
   total: z.number().optional(),
 });
@@ -309,45 +301,38 @@ export type CollectionRelation = z.infer<typeof collectionRelationSchema>;
 export type ItemTagRelation = z.infer<typeof itemTagRelationSchema>;
 
 export type Item = z.infer<typeof itemSchema>;
-export type Paper = Item;
-export type ItemDto = Item;
-
-export type CreateItemInput = z.infer<typeof createItemSchema>;
-export type UpdateItemInput = z.infer<typeof updateItemSchema>;
-
-export type CreateItemDTO = CreateItemInput;
-export type UpdateItemDTO = UpdateItemInput;
+export type CreateItemDTO = z.infer<typeof createItemSchema>;
+export type UpdateItemDTO = z.infer<typeof updateItemSchema>;
 
 export type CursorPaginationMeta = z.infer<typeof cursorPaginationMetaSchema>;
 export type PaginatedItemsResponse = z.infer<typeof paginatedItemsResponseSchema>;
 
 export interface ItemQueryParams {
-  collectionId?: string;
-  collectionIds?: string[];
-  includeSubcollections?: boolean;
-  recursive?: boolean;
-  search?: string;
-  smartFilter?: 'unfiled' | 'missing-doi' | 'missing-pdf' | 'with-notes';
-  limit?: number;
   page?: number;
-  skip?: number;
+  limit?: number;
   cursor?: string;
-  view?: string;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-  orderBy?: string;
-  orderDirection?: 'asc' | 'desc';
-  tagId?: string;
+  search?: string;
+  collectionId?: string;
+  includeSubcollections?: boolean;
   tag?: string;
-  tags?: string[];
-  type?: string;
   itemType?: string;
   year?: number;
   fromYear?: number;
   toYear?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  isFavorite?: boolean;
+  isRead?: boolean;
   readStatus?: 'unread' | 'reading' | 'completed' | string;
+  isRetracted?: boolean;
+  hasPdf?: boolean;
   hasFile?: boolean;
   hasNotes?: boolean;
+  unfiled?: boolean;
+  smartFilter?: 'unfiled' | 'missing-doi' | 'missing-pdf' | 'with-notes';
+  view?: string;
+  projectId?: string;
   fields?: readonly string[] | string[];
 }
+
 

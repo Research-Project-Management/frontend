@@ -1,13 +1,12 @@
 import { z } from 'zod';
-import { itemSchema, Item } from './items.types';
+import { itemSchema } from './items.types';
 
 export const duplicateGroupSchema = z.object({
   matchType: z.enum(['DOI', 'TITLE_AUTHOR_YEAR']),
   confidence: z.enum(['high', 'medium']),
   key: z.string(),
   recommendedMasterId: z.string().optional(),
-  papers: z.array(itemSchema),
-  items: z.array(itemSchema).optional(),
+  items: z.array(itemSchema),
 });
 
 export const mergeStrategySchema = z.object({
@@ -17,17 +16,14 @@ export const mergeStrategySchema = z.object({
 });
 
 export const flaggedItemIssueSchema = z.object({
-  itemId: z.string().optional(),
-  paperId: z.string().optional(),
+  itemId: z.string(),
   title: z.string().default('Untitled'),
   issues: z.array(z.string()).default([]),
 });
 
 export const libraryIntegrityReportSchema = z.object({
   totalItems: z.number().optional().default(0),
-  totalPapers: z.number().optional().default(0),
   healthyItems: z.number().optional().default(0),
-  healthyPapers: z.number().optional().default(0),
   healthScorePercentage: z.number().default(100),
   missingDoiCount: z.number().default(0),
   missingYearCount: z.number().default(0),
@@ -41,14 +37,3 @@ export type MergeStrategy = z.infer<typeof mergeStrategySchema>;
 export type FlaggedItemIssue = z.infer<typeof flaggedItemIssueSchema>;
 export type LibraryIntegrityReport = z.infer<typeof libraryIntegrityReportSchema>;
 
-export interface DuplicateCluster {
-  id: string;
-  reason: 'doi' | 'title';
-  items: Item[];
-}
-
-export interface DuplicatesState {
-  clusters: DuplicateCluster[];
-  selectedClusterId: string | null;
-  isMerging: boolean;
-}

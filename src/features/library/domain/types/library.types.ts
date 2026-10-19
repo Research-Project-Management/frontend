@@ -33,6 +33,7 @@ export * from './ingestion.types';
 export * from './item-types.types';
 export * from './relations.types';
 export * from './forms.types';
+export * from './feeds.types';
 export type {
   ReaderDocument,
   ReaderAnnotation,

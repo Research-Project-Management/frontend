@@ -28,11 +28,13 @@ import { usePdfViewerInteraction } from "./usePdfViewerInteraction";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import { cn } from "@/shared/lib/utils";
-import { setupPdfWorker } from "@/shared/lib/pdfjs-worker";
+import { setupPdfWorker, getSharedPdfDocumentOptions } from "@/shared/lib/pdfjs-worker";
 
 export { ZOTERO_COLORS, DocumentPageSkeleton };
 
 setupPdfWorker();
+const SHARED_PDF_OPTIONS = getSharedPdfDocumentOptions();
+const EMPTY_ANNOTATIONS: ReaderAnnotation[] = [];
 
 interface ViewerProps {
   blobUrl: string | null;
@@ -110,22 +112,36 @@ export default function Viewer({
   const [pulsingAnnotationId, setPulsingAnnotationId] = useState<string | null>(
     null,
   );
+  const pdfDocRef = useRef<{
+    cleanup?: () => Promise<void> | void;
+    destroy?: () => Promise<void> | void;
+  } | null>(null);
 
   useEffect(() => {
     if (blobUrl) {
       setDocError(null);
     }
+    return () => {
+      const doc = pdfDocRef.current;
+      pdfDocRef.current = null;
+      void doc?.cleanup?.();
+      void doc?.destroy?.();
+    };
   }, [blobUrl]);
 
-  const pageAnnotationsMap = useMemo(() => {
-    const map: Record<number, ReaderAnnotation[]> = {};
+  const annotationsByPage = useMemo(() => {
+    const map = new Map<number, ReaderAnnotation[]>();
     for (const ann of annotations || []) {
       const p =
         ann.pageIndex !== undefined && ann.pageIndex !== null
           ? ann.pageIndex + 1
           : ann.pageNumber || 1;
-      if (!map[p]) map[p] = [];
-      map[p].push(ann);
+      const list = map.get(p);
+      if (list) {
+        list.push(ann);
+      } else {
+        map.set(p, [ann]);
+      }
     }
     return map;
   }, [annotations]);
@@ -243,9 +259,14 @@ export default function Viewer({
     return () => obs.disconnect();
   }, [numPages, onVisiblePageChange]);
 
-  const onDocumentLoadSuccess = ({ numPages: n }: { numPages: number }) => {
-    setNumPages(n);
-    onTotalPagesChange?.(n);
+  const onDocumentLoadSuccess = (doc: {
+    numPages: number;
+    cleanup?: () => Promise<void> | void;
+    destroy?: () => Promise<void> | void;
+  }) => {
+    pdfDocRef.current = doc;
+    setNumPages(doc.numPages);
+    onTotalPagesChange?.(doc.numPages);
     setDocError(null);
   };
 
@@ -262,22 +283,29 @@ export default function Viewer({
       const annId = targetPage.annotationId;
       setPulsingAnnotationId(annId);
 
+      let activeTimerId: ReturnType<typeof setTimeout> | null = null;
+      let cancelled = false;
+
       const attemptFocus = (retries = 8) => {
+        if (cancelled) return;
         const el = document.querySelector(
           `[data-annotation-id="${annId}"]`,
         ) as HTMLElement | null;
         if (el) {
           el.scrollIntoView({ behavior: "smooth", block: "center" });
         } else if (retries > 0) {
-          setTimeout(() => attemptFocus(retries - 1), 120);
+          activeTimerId = setTimeout(() => attemptFocus(retries - 1), 120);
         }
       };
 
-      const focusTimer = setTimeout(() => attemptFocus(), 80);
-      const clearTimer = setTimeout(() => setPulsingAnnotationId(null), 2500);
+      activeTimerId = setTimeout(() => attemptFocus(), 80);
+      const clearTimer = setTimeout(() => {
+        if (!cancelled) setPulsingAnnotationId(null);
+      }, 2500);
 
       return () => {
-        clearTimeout(focusTimer);
+        cancelled = true;
+        if (activeTimerId) clearTimeout(activeTimerId);
         clearTimeout(clearTimer);
       };
     }
@@ -329,6 +357,20 @@ export default function Viewer({
         pinnedPage: targetPage?.pageNumber,
       });
 
+    const pageAnns = annotationsByPage.get(pageNum) ?? EMPTY_ANNOTATIONS;
+    const pagePulsingId =
+      pulsingAnnotationId && pageAnns.some((a) => a.id === pulsingAnnotationId)
+        ? pulsingAnnotationId
+        : null;
+    const pageInlineInput =
+      interaction.inlineTextInput?.pageNum === pageNum
+        ? interaction.inlineTextInput
+        : null;
+    const pageAreaSelection =
+      interaction.areaSelection?.pageNum === pageNum
+        ? interaction.areaSelection
+        : null;
+
     return (
       <ViewerPageCanvas
         key={pageNum}
@@ -340,10 +382,10 @@ export default function Viewer({
         activeTool={activeTool}
         activeColor={activeColor}
         cachedDim={pageDimensions[pageNum]}
-        pageAnnotations={pageAnnotationsMap[pageNum]}
-        pulsingAnnotationId={pulsingAnnotationId}
-        inlineTextInput={interaction.inlineTextInput}
-        areaSelection={interaction.areaSelection}
+        pageAnnotations={pageAnns}
+        pulsingAnnotationId={pagePulsingId}
+        inlineTextInput={pageInlineInput}
+        areaSelection={pageAreaSelection}
         customTextRenderer={customTextRenderer}
         onRegisterPageRef={handleRegisterPageRef}
         onPageDimensionsLoad={handlePageDimensionsLoad}
@@ -416,6 +458,7 @@ export default function Viewer({
         ) : (
           <Document
             file={blobUrl}
+            options={SHARED_PDF_OPTIONS}
             className="w-full min-w-full flex flex-col items-center"
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={onDocumentLoadError}

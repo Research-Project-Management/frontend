@@ -14,7 +14,6 @@ export const collectionSchema = z.object({
   createdBy: userSchema.optional(),
   itemCount: z.number().optional().default(0),
   recursiveItemCount: z.number().optional(),
-  paperCount: z.number().optional().default(0),
   createdAt: z.string().optional().default(''),
   updatedAt: z.string().optional().default(''),
 });
@@ -26,7 +25,6 @@ export interface CollectionInput {
   description?: string;
   color?: string;
   icon?: string;
-  parent?: string | null;
   parentId?: string | null;
 }
 
@@ -37,7 +35,9 @@ export interface MoveToTrashTarget {
   id?: string;
   ids?: string[];
   title?: string;
-  type?: 'paper' | 'papers' | 'collection';
+  type?: 'item' | 'items' | 'collection';
+  withItems?: boolean;
+  scopeId?: string;
   count?: number;
   items?: Array<{ id: string; title: string }>;
 }

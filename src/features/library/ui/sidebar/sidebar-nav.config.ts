@@ -50,10 +50,10 @@ export const SYSTEM_BOTTOM_NAV_ITEMS: SystemNavItemConfig[] = [
   {
     id: 'duplicates',
     label: 'Duplicate Items',
-    href: (basePath) => `${basePath}/duplicates`,
+    href: (basePath) => `${basePath}?filter=duplicates`,
     icon: Files,
     isActive: (pathname, currentFilter, _isUserScope, basePath) =>
-      pathname === `${basePath}/duplicates` || (pathname === basePath && currentFilter === 'duplicates'),
+      pathname === basePath && currentFilter === 'duplicates',
     getBadge: (stats) => stats.duplicateCount || null,
   },
   {

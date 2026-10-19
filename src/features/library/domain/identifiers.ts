@@ -7,14 +7,30 @@
 
 import { stripLatexMarkup } from './metadata';
 
+const BRACKET_PAIRS: ReadonlyArray<readonly [string, number, number]> = [
+  [')', 41, 40], // ')' and '('
+  [']', 93, 91], // ']' and '['
+  ['}', 125, 123], // '}' and '{'
+  ['>', 62, 60], // '>' and '<'
+];
+
+function hasMoreCloseThanOpen(str: string, closeCode: number, openCode: number): boolean {
+  let closeCount = 0;
+  let openCount = 0;
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    if (code === closeCode) closeCount++;
+    else if (code === openCode) openCount++;
+  }
+  return closeCount > openCount;
+}
+
 export function trimUnmatchedClosingBrackets(str: string): string {
   let s = str;
-  const pairs: Array<[string, string]> = [[')', '('], [']', '['], ['}', '{'], ['>', '<']];
-  for (const [closeChar, openChar] of pairs) {
+  for (const [closeChar, closeCode, openCode] of BRACKET_PAIRS) {
     while (
       s.endsWith(closeChar) &&
-      (s.match(new RegExp(`\\${closeChar}`, 'g')) || []).length >
-      (s.match(new RegExp(`\\${openChar}`, 'g')) || []).length
+      hasMoreCloseThanOpen(s, closeCode, openCode)
     ) {
       s = s.slice(0, -1);
     }
@@ -352,6 +368,28 @@ export function cleanPaperTitle(raw?: string | null): string {
   return cleaned.trim();
 }
 
+const TITLE_CASE_STOP_WORDS: ReadonlySet<string> = new Set([
+  'a',
+  'an',
+  'the',
+  'and',
+  'but',
+  'or',
+  'for',
+  'nor',
+  'on',
+  'at',
+  'to',
+  'from',
+  'by',
+  'with',
+  'in',
+  'of',
+  'over',
+  'into',
+  'onto',
+]);
+
 /**
  * Converts a title to standard academic title case, lowercasing common prepositions/articles
  * except when at the start or end of the title.
@@ -361,33 +399,11 @@ export function normalizeAcademicTitleCase(title?: string | null): string {
   const cleaned = cleanPaperTitle(title);
   if (!cleaned) return '';
 
-  const stopWords = new Set([
-    'a',
-    'an',
-    'the',
-    'and',
-    'but',
-    'or',
-    'for',
-    'nor',
-    'on',
-    'at',
-    'to',
-    'from',
-    'by',
-    'with',
-    'in',
-    'of',
-    'over',
-    'into',
-    'onto',
-  ]);
-
   const words = cleaned.split(' ');
   return words
     .map((word, index) => {
       const lower = word.toLowerCase();
-      if (index > 0 && index < words.length - 1 && stopWords.has(lower)) {
+      if (index > 0 && index < words.length - 1 && TITLE_CASE_STOP_WORDS.has(lower)) {
         return lower;
       }
       return lower.charAt(0).toUpperCase() + lower.slice(1);

@@ -289,6 +289,14 @@ export const ITEM_TYPE_FIELDS_MAP: Record<string, string[]> = {
   ...INITIAL_ITEM_TYPE_FIELDS_MAP,
 };
 
+/**
+ * All 121 canonical Zotero Schema v42 field names derived automatically from the
+ * 37 bibliographic item types in `INITIAL_ITEM_TYPE_FIELDS_MAP`.
+ */
+export const ALL_SCHEMA_FIELD_KEYS: ReadonlySet<string> = new Set<string>(
+  Object.values(INITIAL_ITEM_TYPE_FIELDS_MAP).flat(),
+);
+
 export interface SchemaFieldEntry {
   field?: string;
   key?: string;

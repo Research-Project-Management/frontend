@@ -41,11 +41,13 @@ export interface ParsedFeedEntry {
   feedFormat: FeedFormat;
 }
 
+import type { CreatorCredit } from './types/items.types';
+
 export interface CreateLibraryItemFromFeedPayload {
   title: string;
   itemType: 'journalArticle' | 'preprint' | 'webpage';
   authors: string[];
-  creators: Array<{ firstName: string; lastName: string; creatorType: 'author' }>;
+  creators: CreatorCredit[];
   doi?: string;
   arxivId?: string;
   url?: string;
@@ -80,10 +82,33 @@ function unwrapCdataAndEntities(raw: string): string {
   return text.trim();
 }
 
+const TAG_REGEX_SINGLE_CACHE = new Map<string, RegExp>();
+const TAG_REGEX_GLOBAL_CACHE = new Map<string, RegExp>();
+
+function getSingleTagRegex(tag: string): RegExp {
+  let rx = TAG_REGEX_SINGLE_CACHE.get(tag);
+  if (!rx) {
+    const escapedTag = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    rx = new RegExp(`<${escapedTag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${escapedTag}>`, 'i');
+    TAG_REGEX_SINGLE_CACHE.set(tag, rx);
+  }
+  return rx;
+}
+
+function getGlobalTagRegex(tag: string): RegExp {
+  let rx = TAG_REGEX_GLOBAL_CACHE.get(tag);
+  if (!rx) {
+    const escapedTag = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    rx = new RegExp(`<${escapedTag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${escapedTag}>`, 'gi');
+    TAG_REGEX_GLOBAL_CACHE.set(tag, rx);
+  }
+  rx.lastIndex = 0;
+  return rx;
+}
+
 function extractFirstTagText(xmlBlock: string, tagNames: readonly string[]): string {
   for (const tag of tagNames) {
-    const escapedTag = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`<${escapedTag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${escapedTag}>`, 'i');
+    const regex = getSingleTagRegex(tag);
     const match = xmlBlock.match(regex);
     if (match && match[1]) {
       const cleaned = unwrapCdataAndEntities(match[1]);
@@ -96,8 +121,7 @@ function extractFirstTagText(xmlBlock: string, tagNames: readonly string[]): str
 function extractAllTagTexts(xmlBlock: string, tagNames: readonly string[]): string[] {
   const results: string[] = [];
   for (const tag of tagNames) {
-    const escapedTag = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`<${escapedTag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${escapedTag}>`, 'gi');
+    const regex = getGlobalTagRegex(tag);
     let match: RegExpExecArray | null;
     while ((match = regex.exec(xmlBlock)) !== null) {
       if (match[1]) {
@@ -388,11 +412,27 @@ export function mapFeedEntryToCreateItemPayload(
     entry.arxivId && (!entry.doi || entry.doi.toLowerCase().includes('arxiv')),
   );
 
+  const creators: CreatorCredit[] = (entry.creators && entry.creators.length > 0)
+    ? entry.creators.map((c, idx) => ({
+        creatorType: c.creatorType || 'author',
+        firstName: c.firstName,
+        lastName: c.lastName,
+        fullName: [c.firstName, c.lastName].filter(Boolean).join(' ') || (c.lastName || 'Unknown Author'),
+        orderIndex: idx,
+        fieldMode: 0,
+      }))
+    : (entry.authors || []).map((author, idx) => ({
+        creatorType: 'author',
+        fullName: author,
+        orderIndex: idx,
+        fieldMode: 0,
+      }));
+
   return {
     title: entry.title,
     itemType: isPreprint ? 'preprint' : 'journalArticle',
     authors: entry.authors,
-    creators: entry.creators,
+    creators,
     doi: entry.doi,
     arxivId: entry.arxivId,
     url: entry.url || entry.pdfUrl,

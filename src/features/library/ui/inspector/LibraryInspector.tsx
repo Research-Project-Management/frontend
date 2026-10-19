@@ -12,7 +12,7 @@ import {
 import { useLibraryUIStore, type InspectorSectionId } from '@/features/library/core/store/library-ui.store';
 import { useLibraryItemDetailQuery, useUpdateLibraryItemMutation } from '@/features/library/sdk/queries/catalog.queries';
 import { useRelations } from '@/features/library/sdk/queries/saved-searches-relations.queries';
-import { libraryKeys, itemKeys } from '@/features/library/sdk/query-keys';
+import { itemKeys } from '@/features/library/sdk/query-keys';
 import { normalizeTags } from '@/features/library/domain/metadata';
 
 /**
@@ -178,14 +178,11 @@ function InspectorSection({
 
 export interface LibraryInspectorProps {
   item?: Item | null;
-  paper?: Item | null;
   collection?: Collection | null;
   scopeId?: string;
-  projectId?: string;
   canEdit?: boolean;
   onClose?: () => void;
   onSelectItem?: (itemId: string) => void;
-  onSelectPaper?: (paperId: string) => void;
   pendingNoteText?: string;
   onClearPendingText?: () => void;
   onNavigateToAnnotation?: (pageNumber: number, annotationId?: string) => void;
@@ -208,13 +205,10 @@ export function LibraryInspector(props: LibraryInspectorProps) {
 
 function LibraryInspectorContent({
   item: propItem,
-  paper: propPaper,
   scopeId,
-  projectId,
   canEdit = true,
   onClose: propOnClose,
   onSelectItem,
-  onSelectPaper,
   pendingNoteText,
   onClearPendingText,
   onNavigateToAnnotation,
@@ -232,7 +226,7 @@ function LibraryInspectorContent({
   const activeItemId = useLibraryUIStore((s) => s.activeItemId);
   const selectOnly = useLibraryUIStore((s) => s.selectOnly);
   const openModal = useLibraryUIStore((s) => s.openModal);
-  const handleSelectItem = onSelectItem || onSelectPaper || selectOnly;
+  const handleSelectItem = onSelectItem || selectOnly;
   const width = useLibraryUIStore((s) => s.inspectorWidth);
   const setInspectorWidth = useLibraryUIStore((s) => s.setInspectorWidth);
   const { isDragging, handleMouseDown } = usePanelResize({
@@ -263,8 +257,8 @@ function LibraryInspectorContent({
   }, []);
 
   // Scope & Item resolution
-  const targetScope = scopeId || projectId || 'user';
-  const incomingItem = propItem || propPaper || null;
+  const targetScope = scopeId || 'user';
+  const incomingItem = propItem || null;
 
   // If item was not passed directly as a prop, query by activeItemId
   const queryItemId = !incomingItem && activeItemId ? activeItemId : undefined;
@@ -279,7 +273,7 @@ function LibraryInspectorContent({
   // without triggering an unneeded network fetch of the entire library
   const cachedListItem = useMemo(() => {
     if (!queryItemId) return null;
-    const directCached = queryClient.getQueryData<Item | { item?: Item }>(libraryKeys.item(targetScope, queryItemId));
+    const directCached = queryClient.getQueryData<Item | { item?: Item }>(itemKeys.byId(targetScope, queryItemId));
     const resolvedDirect = (directCached && 'item' in directCached && directCached.item ? directCached.item : directCached) as Item | undefined;
     if (resolvedDirect && resolvedDirect.id === queryItemId) return resolvedDirect;
 
@@ -329,8 +323,8 @@ function LibraryInspectorContent({
       effectiveItem.version;
     const isSilent = Boolean(options?.silent || payload.silent);
     updateMutation.mutate({
-      id: effectiveItem.id,
-      payload,
+      itemId: effectiveItem.id,
+      data: payload,
       expectedVersion: typeof version === 'number' ? version : undefined,
       silent: isSilent,
     });
@@ -377,7 +371,6 @@ function LibraryInspectorContent({
   const itemCollectionIds = useMemo(() => {
     if (!effectiveItem) return [];
     const ids = new Set<string>();
-    if (effectiveItem.collectionId) ids.add(effectiveItem.collectionId);
     if (Array.isArray(effectiveItem.collectionIds)) {
       effectiveItem.collectionIds.forEach((id: string) => id && ids.add(id));
     }
@@ -405,7 +398,6 @@ function LibraryInspectorContent({
     effectiveItem?.openAccessPdfUrl
   );
   const hasAbstract = Boolean(
-    effectiveItem?.abstract ||
     effectiveItem?.abstractNote
   );
   const hasNotes = noteCount > 0 || isAddingNote;
@@ -592,6 +584,7 @@ function LibraryInspectorContent({
                 >
                   <TagsSection
                     item={effectiveItem}
+                    precomputedTags={tagsList}
                     onUpdateItem={handleUpdateItem}
                     hideHeader
                     forceAdding={isAddingTag}
@@ -636,7 +629,6 @@ function LibraryInspectorContent({
                   <CiteSection
                     item={effectiveItem}
                     scopeId={targetScope}
-                    hideHeader
                   />
                 </InspectorSection>
               </div>

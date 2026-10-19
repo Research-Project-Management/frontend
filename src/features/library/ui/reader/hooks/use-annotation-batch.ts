@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/shared/lib/utils';
 import { readerService } from '@/features/library/sdk/library.client';
-import { readerAnnotationKeys } from '@/features/library/sdk/query-keys';
+import { annotationKeys } from '@/features/library/sdk/query-keys';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { PdfAnnotationEngine } from '@/features/library/domain/reader.domain';
 import type {
@@ -90,7 +90,7 @@ export function useAnnotationBatch({
         });
 
         qc.invalidateQueries({
-          queryKey: readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
+          queryKey: annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
         });
 
         setRedoStack((prev) => [...prev, action]);
@@ -98,11 +98,12 @@ export function useAnnotationBatch({
       } else if (action.type === 'color') {
         const existing =
           qc.getQueryData<ReaderAnnotation[]>(
-            readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
+            annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
           ) || [];
+        const existingMap = new Map(existing.map((a) => [a.id, a]));
 
         const upserts = action.items.map((item) => {
-          const found = existing.find((a) => a.id === item.id);
+          const found = existingMap.get(item.id);
           return {
             id: item.id,
             pageIndex: found?.pageIndex ?? 0,
@@ -117,7 +118,7 @@ export function useAnnotationBatch({
         });
 
         qc.invalidateQueries({
-          queryKey: readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
+          queryKey: annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
         });
 
         setRedoStack((prev) => [...prev, action]);
@@ -146,7 +147,7 @@ export function useAnnotationBatch({
         });
 
         qc.invalidateQueries({
-          queryKey: readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
+          queryKey: annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
         });
 
         setUndoStack((prev) => [...prev, action]);
@@ -154,11 +155,12 @@ export function useAnnotationBatch({
       } else if (action.type === 'color') {
         const existing =
           qc.getQueryData<ReaderAnnotation[]>(
-            readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
+            annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
           ) || [];
+        const existingMap = new Map(existing.map((a) => [a.id, a]));
 
         const upserts = action.items.map((item) => {
-          const found = existing.find((a) => a.id === item.id);
+          const found = existingMap.get(item.id);
           return {
             id: item.id,
             pageIndex: found?.pageIndex ?? 0,
@@ -173,7 +175,7 @@ export function useAnnotationBatch({
         });
 
         qc.invalidateQueries({
-          queryKey: readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
+          queryKey: annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
         });
 
         setUndoStack((prev) => [...prev, action]);
@@ -222,13 +224,14 @@ export function useAnnotationBatch({
       try {
         const existing =
           qc.getQueryData<ReaderAnnotation[]>(
-            readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
+            annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
           ) || [];
+        const existingMap = new Map(existing.map((a) => [a.id, a]));
 
         const historyItems: { id: string; prevColor: string; newColor: string; version: number }[] = [];
 
         const upserts = ids.map((id) => {
-          const found = existing.find((a) => a.id === id);
+          const found = existingMap.get(id);
           if (found) {
             historyItems.push({
               id,
@@ -251,7 +254,7 @@ export function useAnnotationBatch({
         });
 
         qc.invalidateQueries({
-          queryKey: readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
+          queryKey: annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
         });
 
         setUndoStack((prev) => [...prev.slice(-20), { type: 'color', items: historyItems }]);
@@ -284,7 +287,7 @@ export function useAnnotationBatch({
       try {
         const existing =
           qc.getQueryData<ReaderAnnotation[]>(
-            readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
+            annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
           ) || [];
 
         const targetSet = new Set(ids);
@@ -296,7 +299,7 @@ export function useAnnotationBatch({
         });
 
         qc.invalidateQueries({
-          queryKey: readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
+          queryKey: annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
         });
 
         setUndoStack((prev) => [...prev.slice(-20), { type: 'delete', items: deletedItems }]);
@@ -334,7 +337,7 @@ export function useAnnotationBatch({
       const idSet = new Set(ids);
       const existing =
         qc.getQueryData<ReaderAnnotation[]>(
-          readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
+          annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
         ) || [];
 
       const selected = PdfAnnotationEngine.sortAnnotationsInReadingOrder(

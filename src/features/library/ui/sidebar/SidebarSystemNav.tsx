@@ -5,6 +5,7 @@ import { History } from 'lucide-react';
 import { SidebarNavItem } from './SidebarNavItem';
 import { SYSTEM_BOTTOM_NAV_ITEMS, type SystemNavStats } from './sidebar-nav.config';
 import { SavedSearchListSection } from './SavedSearchListSection';
+import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import type { SavedSearch } from '@/features/library/domain/types/saved-searches.types';
 
 interface SidebarSystemNavProps {
@@ -12,15 +13,14 @@ interface SidebarSystemNavProps {
   pathname: string;
   currentFilter: string | null;
   isUserScope?: boolean;
-  isPersonalScope?: boolean;
   navId: string;
   savedSearches?: SavedSearch[] | Array<{ id: string; name: string }>;
   currentSavedSearchId?: string | null;
+  currentFeedId?: string | null;
   retractedCount?: number;
   stats?: SystemNavStats;
   onDropItems?: (itemIds: string[], targetCollectionId: string | null) => void;
   onSelectUserScope?: () => void;
-  onSelectPersonalScope?: () => void;
   onDeleteSavedSearch?: (id: string) => void;
   onEditSavedSearch?: (savedSearch: SavedSearch) => void;
   onStartRenameSavedSearch?: (id: string, name: string) => void;
@@ -36,14 +36,13 @@ export function SidebarSystemNav({
   basePath,
   pathname,
   currentFilter,
-  isUserScope: propIsUserScope,
-  isPersonalScope,
+  isUserScope = false,
   navId,
   savedSearches,
   currentSavedSearchId,
+  currentFeedId,
   onDropItems,
-  onSelectUserScope: propOnSelectUserScope,
-  onSelectPersonalScope,
+  onSelectUserScope = () => {},
   onDeleteSavedSearch,
   onEditSavedSearch,
   onStartRenameSavedSearch,
@@ -54,8 +53,7 @@ export function SidebarSystemNav({
   renameSavedSearchValue = '',
   children,
 }: SidebarSystemNavProps) {
-  const isUserScope = propIsUserScope ?? isPersonalScope ?? false;
-  const onSelectUserScope = propOnSelectUserScope ?? onSelectPersonalScope ?? (() => {});
+  const openModal = useLibraryUIStore((s) => s.openModal);
 
   const isRecentReadActive =
     isUserScope &&
@@ -97,7 +95,7 @@ export function SidebarSystemNav({
       />
 
       {/* 3. System Bottom Filters */}
-      <div className="my-1 flex flex-col gap-0.5">
+      <div className="flex flex-col gap-0.5 w-full">
         {SYSTEM_BOTTOM_NAV_ITEMS.map((item) => {
           const isActive = item.isActive(pathname, currentFilter, isUserScope, basePath);
 

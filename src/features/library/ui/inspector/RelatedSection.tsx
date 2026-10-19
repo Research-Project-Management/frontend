@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { FileText, X, ExternalLink, Loader2, Search, Plus, Folder, Library, } from 'lucide-react';
 import { useRelations } from '@/features/library/sdk/queries/saved-searches-relations.queries';
-import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
+import { useViewItems, useLibraryCountsQuery } from '@/features/library/sdk/queries/catalog.queries';
 import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { Button } from '@/shared/components/ui/button';
@@ -26,15 +26,11 @@ import { toast } from 'sonner';
 import type { Item, RelatedItem, Collection } from '@/features/library/domain/types/library.types';
 import { cn } from '@/shared/lib/utils';
 import { cleanAcademicText } from '@/features/library/domain/academic-text';
-import { getPublicationVenue } from '@/features/library/domain/metadata';
 
 interface RelatedSectionProps {
   item?: Item;
-  paper?: Item;
   scopeId?: string;
-  projectId?: string;
   onSelectItem?: (itemId: string) => void;
-  onSelectPaper?: (paperId: string) => void;
   hideHeader?: boolean;
   forceAdding?: boolean;
   isAddOpen?: boolean;
@@ -43,11 +39,10 @@ interface RelatedSectionProps {
 }
 
 export default function RelatedSection(props: RelatedSectionProps) {
-  const item = props.item || props.paper;
-  const onSelectItem = props.onSelectItem || props.onSelectPaper;
   const {
+    item,
     scopeId,
-    projectId,
+    onSelectItem,
     hideHeader = false,
     forceAdding = false,
     isAddOpen,
@@ -57,7 +52,6 @@ export default function RelatedSection(props: RelatedSectionProps) {
 
   const activeScopeId =
     scopeId ||
-    projectId ||
     item?.projectId ||
     'user';
 
@@ -65,12 +59,41 @@ export default function RelatedSection(props: RelatedSectionProps) {
   const isModalOpen = isAddOpen !== undefined ? isAddOpen : internalAddOpen;
   const setModalOpen = onAddOpenChange || setInternalAddOpen;
 
+  // Modal State
+  const [selectedTargetIds, setSelectedTargetIds] = useState<Set<string>>(new Set());
+  const [selectedCollectionFilter, setSelectedCollectionFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) {
+      setDebouncedSearch('');
+      return;
+    }
+    const timerId = setTimeout(() => {
+      setDebouncedSearch(trimmed);
+    }, 200);
+    return () => clearTimeout(timerId);
+  }, [searchQuery]);
+
   const { relatedItems, isLoading, link, unlink, isLinking } = useRelations(
     activeScopeId,
     item?.id || '',
   );
-  const { data: allItemsRes } = useViewItems(activeScopeId, 'all', { enabled: isModalOpen });
+  const activeCollectionId =
+    selectedCollectionFilter && selectedCollectionFilter !== 'all'
+      ? selectedCollectionFilter
+      : undefined;
+
+  const { data: allItemsRes } = useViewItems(activeScopeId, 'all', {
+    enabled: isModalOpen,
+    limit: 100,
+    search: debouncedSearch || undefined,
+    collectionId: activeCollectionId,
+  });
   const { data: collections = [] } = useCollectionsQuery(activeScopeId);
+  const { data: libraryCounts } = useLibraryCountsQuery(activeScopeId);
 
   useEffect(() => {
     if (forceAdding && canEdit) {
@@ -78,31 +101,16 @@ export default function RelatedSection(props: RelatedSectionProps) {
     }
   }, [forceAdding, canEdit, setModalOpen]);
 
-  // Modal State
-  const [selectedTargetIds, setSelectedTargetIds] = useState<Set<string>>(new Set());
-  const [selectedCollectionFilter, setSelectedCollectionFilter] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // Calculate item counts for collections
+  // Authoritative item counts from Backend
   const collectionCounts = useMemo(() => {
-    const all = allItemsRes?.items || [];
     const counts: Record<string, number> = {
-      all: all.length,
+      all: libraryCounts?.total ?? allItemsRes?.total ?? (allItemsRes?.items?.length || 0),
     };
-    for (const it of all) {
-      if (it.collectionId) {
-        counts[it.collectionId] = (counts[it.collectionId] || 0) + 1;
-      }
-      if (Array.isArray(it.collections)) {
-        for (const c of it.collections) {
-          const colObj = typeof c === 'object' && c !== null ? (c as { id?: string; collectionId?: string; collection?: { id?: string } }) : null;
-          const cid = typeof c === 'string' ? c : colObj?.collectionId || colObj?.id || colObj?.collection?.id;
-          if (cid) counts[cid] = (counts[cid] || 0) + 1;
-        }
-      }
+    for (const col of collections) {
+      counts[col.id] = col.itemCount ?? 0;
     }
     return counts;
-  }, [allItemsRes?.items]);
+  }, [libraryCounts?.total, allItemsRes?.total, allItemsRes?.items?.length, collections]);
 
   const relatedList: RelatedItem[] = relatedItems;
 
@@ -118,50 +126,19 @@ export default function RelatedSection(props: RelatedSectionProps) {
     [onSelectItem, selectOnly],
   );
 
-
   // Filter available items for linking (excluding current item & already linked items)
   const availableItems = useMemo(() => {
     const all = allItemsRes?.items || [];
     const linkedIdSet = new Set(relatedList.map((r) => r.id));
 
-    return all.filter((targetItem: Item) => {
-      if (!targetItem?.id || targetItem.id === item?.id) return false;
-      if (linkedIdSet.has(targetItem.id)) return false;
-
-      // Filter by Collection if selected in left sidebar
-      if (selectedCollectionFilter && selectedCollectionFilter !== 'all') {
-        const itemColIds = targetItem.collectionIds || [];
-        const itemCols = targetItem.collections || [];
-        const singleColId = targetItem.collectionId;
-
-        const inColIds = itemColIds.includes(selectedCollectionFilter);
-        const inColObjs = itemCols.some(
-          (c) => c.id === selectedCollectionFilter,
-        );
-        const inSingle = singleColId === selectedCollectionFilter;
-
-        if (!inColIds && !inColObjs && !inSingle) return false;
-      }
-
-      // Filter by search query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const cleanTitle = cleanAcademicText(targetItem.title).toLowerCase();
-        const rawTitle = (targetItem.title || '').toLowerCase();
-        const authorMatch = (targetItem.authors || []).some((a: string) =>
-          a.toLowerCase().includes(q),
-        );
-        const yearMatch = String(targetItem.year || '').includes(q);
-        const venueMatch = getPublicationVenue(targetItem).toLowerCase().includes(q);
-
-        if (!cleanTitle.includes(q) && !rawTitle.includes(q) && !authorMatch && !yearMatch && !venueMatch) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [allItemsRes?.items, relatedList, item?.id, selectedCollectionFilter, searchQuery]);
+    return all
+      .filter((targetItem: Item) => {
+        if (!targetItem?.id || targetItem.id === item?.id) return false;
+        if (linkedIdSet.has(targetItem.id)) return false;
+        return true;
+      })
+      .slice(0, 100);
+  }, [allItemsRes?.items, relatedList, item?.id]);
 
   const handleToggleSelect = (id: string) => {
     setSelectedTargetIds((prev) => {

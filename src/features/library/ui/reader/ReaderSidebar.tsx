@@ -1,10 +1,16 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { Document, Page } from "react-pdf";
-import { setupPdfWorker } from "@/shared/lib/pdfjs-worker";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import {
+  setupPdfWorker,
+  getSharedPdfDocumentOptions,
+  releaseCanvasMemory,
+} from "@/shared/lib/pdfjs-worker";
 
 setupPdfWorker();
+const SHARED_PDF_OPTIONS = getSharedPdfDocumentOptions();
 import { ChevronRight, Search, X, Loader2 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { PlaneEmptyState } from "@/shared/components/ui/PlaneEmptyState";
@@ -18,38 +24,36 @@ import AnnotationsPanel from "./panel/AnnotationsPanel";
 import { ReaderLeftRail, type ReaderSidebarTab } from "./ReaderLeftRail";
 import { usePanelResize } from "@/features/library/ui/hooks/usePanelResize";
 
-function LazyThumbnailPage({
+interface PdfDocumentHandle {
+  cleanup?: () => Promise<void> | void;
+  destroy?: () => Promise<void> | void;
+}
+
+const LazyThumbnailPage = React.memo(function LazyThumbnailPage({
   pageNum,
-  currentPage,
   isCurrent,
+  showPdfCanvas = true,
   onJumpToPage,
 }: {
   pageNum: number;
-  currentPage: number;
   isCurrent: boolean;
+  showPdfCanvas?: boolean;
   onJumpToPage: (page: number) => void;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const [isIntersecting, setIsIntersecting] = useState(false);
+  const pageCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     const el = buttonRef.current;
-    if (!el || typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (entry) {
-          setIsIntersecting(entry.isIntersecting);
-        }
-      },
-      { rootMargin: "240px 0px" },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      if (pageCanvasRef.current) {
+        pageCanvasRef.current.width = 0;
+        pageCanvasRef.current.height = 0;
+        pageCanvasRef.current = null;
+      }
+      releaseCanvasMemory(el);
+    };
   }, []);
-
-  const shouldRenderCanvas =
-    isIntersecting || Math.abs(pageNum - currentPage) <= 6;
 
   return (
     <button
@@ -64,12 +68,22 @@ function LazyThumbnailPage({
       )}
     >
       <div className="w-full aspect-[1/1.4] rounded-sm bg-background border border-border overflow-hidden flex items-center justify-center">
-        {shouldRenderCanvas ? (
+        {showPdfCanvas ? (
           <Page
             pageNumber={pageNum}
             width={100}
+            devicePixelRatio={1}
             renderTextLayer={false}
             renderAnnotationLayer={false}
+            canvasRef={(node) => {
+              if (node) {
+                pageCanvasRef.current = node;
+              } else if (pageCanvasRef.current) {
+                pageCanvasRef.current.width = 0;
+                pageCanvasRef.current.height = 0;
+                pageCanvasRef.current = null;
+              }
+            }}
             loading={
               <div className="size-full flex items-center justify-center text-foreground text-11 font-mono">
                 {pageNum}
@@ -92,7 +106,7 @@ function LazyThumbnailPage({
       </span>
     </button>
   );
-}
+});
 
 export interface ReaderSidebarProps {
   isOpen: boolean;
@@ -115,6 +129,7 @@ export interface ReaderSidebarProps {
   ) => Promise<void>;
   onBatchDelete?: (targetIds?: string[]) => Promise<void>;
   onBatchAddToNote?: (targetIds?: string[]) => void;
+  annotations?: import("@/features/library/domain/types/reader.types").ReaderAnnotation[];
   annotationsCount?: number;
   onAddToNote?: (text: string, pageNumber?: number) => void;
 }
@@ -139,12 +154,32 @@ export function ReaderSidebar({
   onBatchChangeColor,
   onBatchDelete,
   onBatchAddToNote,
+  annotations,
   annotationsCount = 0,
   onAddToNote,
 }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<ReaderSidebarTab>("outline");
   const [outlineFilter, setOutlineFilter] = useState("");
   const [width, setWidth] = useState(288);
+  const thumbContainerRef = useRef<HTMLDivElement | null>(null);
+  const pdfDocRef = useRef<PdfDocumentHandle | null>(null);
+
+  useEffect(() => {
+    return () => {
+      const doc = pdfDocRef.current;
+      pdfDocRef.current = null;
+      void doc?.cleanup?.();
+      void doc?.destroy?.();
+    };
+  }, [pdfBlobUrl]);
+
+  const numRows = Math.ceil(Math.max(0, totalPages) / 2);
+  const thumbVirtualizer = useVirtualizer({
+    count: numRows,
+    getScrollElement: () => thumbContainerRef.current,
+    estimateSize: () => 196,
+    overscan: 4,
+  });
 
   const { isDragging, handleMouseDown } = usePanelResize({
     width,
@@ -243,6 +278,7 @@ export function ReaderSidebar({
 
           {/* Content Body */}
           <div
+            ref={thumbContainerRef}
             className={cn(
               "flex-1 min-h-0",
               activeTab === "annotations"
@@ -313,6 +349,7 @@ export function ReaderSidebar({
                   paper={paper}
                   scopeId={scopeId || "user"}
                   attachmentId={attachmentId}
+                  annotations={annotations}
                   onNavigateToPage={onJumpToPage}
                   selectedIds={selectedIds}
                   onSelectIds={onSelectIds}
@@ -341,6 +378,10 @@ export function ReaderSidebar({
             ) : pdfBlobUrl ? (
               <Document
                 file={pdfBlobUrl}
+                options={SHARED_PDF_OPTIONS}
+                onLoadSuccess={(doc) => {
+                  pdfDocRef.current = doc as unknown as PdfDocumentHandle;
+                }}
                 loading={
                   <div className="flex flex-col items-center justify-center p-8 text-center gap-2">
                     <Loader2
@@ -359,56 +400,77 @@ export function ReaderSidebar({
                   />
                 }
               >
-                <div className="grid grid-cols-2 gap-2 p-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (pageNum) => (
-                      <LazyThumbnailPage
-                        key={pageNum}
-                        pageNum={pageNum}
-                        currentPage={currentPage}
-                        isCurrent={pageNum === currentPage}
-                        onJumpToPage={onJumpToPage}
-                      />
-                    ),
-                  )}
+                <div
+                  className="relative w-full p-1"
+                  style={{ height: `${thumbVirtualizer.getTotalSize()}px` }}
+                >
+                  {thumbVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const p1 = virtualRow.index * 2 + 1;
+                    const p2 = p1 + 1 <= totalPages ? p1 + 1 : null;
+                    return (
+                      <div
+                        key={virtualRow.key}
+                        data-index={virtualRow.index}
+                        ref={thumbVirtualizer.measureElement}
+                        className="absolute top-0 left-0 w-full grid grid-cols-2 gap-2 pb-2"
+                        style={{
+                          transform: `translateY(${virtualRow.start}px)`,
+                        }}
+                      >
+                        <LazyThumbnailPage
+                          pageNum={p1}
+                          isCurrent={p1 === currentPage}
+                          showPdfCanvas={true}
+                          onJumpToPage={onJumpToPage}
+                        />
+                        {p2 !== null && (
+                          <LazyThumbnailPage
+                            pageNum={p2}
+                            isCurrent={p2 === currentPage}
+                            showPdfCanvas={true}
+                            onJumpToPage={onJumpToPage}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </Document>
             ) : (
-              <div className="grid grid-cols-2 gap-2 p-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                  (pageNum) => {
-                    const isCurrent = pageNum === currentPage;
-                    return (
-                      <button
-                        key={pageNum}
-                        type="button"
-                        onClick={() => onJumpToPage(pageNum)}
-                        className={cn(
-                          "flex flex-col items-center p-1.5 rounded-md border transition-colors group cursor-pointer",
-                          isCurrent
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-border-hover bg-card",
-                        )}
-                      >
-                        <div className="w-full aspect-[1/1.4] rounded-sm bg-background border border-border flex items-center justify-center text-foreground group-hover:text-foreground transition-colors">
-                          <span className="text-11 font-mono tabular-nums">
-                            {pageNum}
-                          </span>
-                        </div>
-                        <span
-                          className={cn(
-                            "text-11 font-mono tabular-nums mt-1",
-                            isCurrent
-                              ? "font-medium text-primary"
-                              : "text-foreground",
-                          )}
-                        >
-                          Page {pageNum}
-                        </span>
-                      </button>
-                    );
-                  },
-                )}
+              <div
+                className="relative w-full p-1"
+                style={{ height: `${thumbVirtualizer.getTotalSize()}px` }}
+              >
+                {thumbVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const p1 = virtualRow.index * 2 + 1;
+                  const p2 = p1 + 1 <= totalPages ? p1 + 1 : null;
+                  return (
+                    <div
+                      key={virtualRow.key}
+                      data-index={virtualRow.index}
+                      ref={thumbVirtualizer.measureElement}
+                      className="absolute top-0 left-0 w-full grid grid-cols-2 gap-2 pb-2"
+                      style={{
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                    >
+                      <LazyThumbnailPage
+                        pageNum={p1}
+                        isCurrent={p1 === currentPage}
+                        showPdfCanvas={false}
+                        onJumpToPage={onJumpToPage}
+                      />
+                      {p2 !== null && (
+                        <LazyThumbnailPage
+                          pageNum={p2}
+                          isCurrent={p2 === currentPage}
+                          showPdfCanvas={false}
+                          onJumpToPage={onJumpToPage}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

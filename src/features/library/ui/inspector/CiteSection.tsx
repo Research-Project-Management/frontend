@@ -34,16 +34,12 @@ import type {
 } from "@/features/library/domain/types/library.types";
 import { getCleanStyleLabel } from "@/features/library/domain/citations";
 import { triggerBrowserTextDownload } from "@/features/library/core/coordinator/citation-export.coordinator";
-export { getCleanStyleLabel };
 import CslStyleSearchModal from "@/features/library/ui/modals/CslStyleSearchModal";
 import DOMPurify from "dompurify";
 
 export interface CiteSectionProps {
   item?: Item;
-  paper?: Item;
   scopeId?: string;
-  projectId?: string;
-  hideHeader?: boolean;
 }
 
 export type CitationFormat = string;
@@ -81,9 +77,7 @@ function sanitizeCslHtml(html?: string): string {
 }
 
 // ─── CiteSection Component ───────────────────────────────────────────────────
-export default function CiteSection(props: CiteSectionProps) {
-  const item = props.item || props.paper;
-  const { scopeId, projectId } = props;
+export default function CiteSection({ item, scopeId }: CiteSectionProps) {
   const [activeFormat, setActiveFormat] = useState<CitationFormat>("apa-7th");
   const [copied, setCopied] = useState(false);
   const [copiedInText, setCopiedInText] = useState(false);
@@ -93,35 +87,15 @@ export default function CiteSection(props: CiteSectionProps) {
     label: string;
   } | null>(null);
 
-  const activeScopeId = scopeId || projectId || item?.projectId || "user";
+  const activeScopeId = scopeId || item?.projectId || "user";
 
   // 1. Backend CSL style registry is the single source of truth for styles
   const { data: serverStyles = [] } = useCitationStyles(activeScopeId);
 
   const dropdownStyles = useMemo(() => {
-    if (serverStyles && serverStyles.length > 0) {
-      const secondaries = serverStyles.filter((s) => !s.isPrimary);
-      return secondaries.length > 0 ? secondaries : serverStyles.slice(4);
-    }
-    return [
-      {
-        id: "chicago",
-        name: "Chicago Manual of Style (Author-Date)",
-        shortTitle: "Chicago",
-      },
-      {
-        id: "harvard",
-        name: "Harvard Reference Format 1 (Author-Date)",
-        shortTitle: "Harvard",
-      },
-      { id: "nature", name: "Nature", shortTitle: "Nature" },
-      { id: "vancouver", name: "Vancouver", shortTitle: "Vancouver" },
-      {
-        id: "ris",
-        name: "Research Information Systems (RIS)",
-        shortTitle: "RIS",
-      },
-    ];
+    if (!serverStyles || serverStyles.length === 0) return [];
+    const secondaries = serverStyles.filter((s) => !s.isPrimary);
+    return secondaries.length > 0 ? secondaries : serverStyles.slice(4);
   }, [serverStyles]);
 
   const handleSelectSearchedStyle = useCallback(
@@ -143,7 +117,7 @@ export default function CiteSection(props: CiteSectionProps) {
     currentCslStyle,
   );
 
-  const rawCiteKey = item?.citationKey || item?.key || item?.id || "";
+  const rawCiteKey = item?.citationKey || item?.id || "";
   const citeKey = useMemo(() => {
     return (rawCiteKey || "ref").replace(/[^a-zA-Z0-9_-]/g, "");
   }, [rawCiteKey]);

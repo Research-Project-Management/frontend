@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   useReaderStore,
   normalizeReaderZoom,
@@ -256,10 +256,10 @@ describe('Zotero 7 Wave 3 — Advanced Researcher Workflows & Edge-Case Verifica
         name: 'Quantum AI Lab',
         role: 'coordinator',
       });
-      uiStore.selectAll(['proj-item-1', 'proj-item-2']);
-      uiStore.setActiveItem('proj-item-1');
       uiStore.setActiveCollectionId('proj-col-99');
       uiStore.setActiveSavedSearchId('proj-search-42');
+      uiStore.selectAll(['proj-item-1', 'proj-item-2']);
+      uiStore.setActiveItem('proj-item-1');
 
       let state = useLibraryUIStore.getState();
       expect(state.selectedIds.size).toBe(2);

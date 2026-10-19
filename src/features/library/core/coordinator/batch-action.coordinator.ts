@@ -1,19 +1,16 @@
 'use client';
 
 import { useMemo, useCallback, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import { CollectionsService } from '@/features/library/sdk/library.client';
 import { useBatchRestoreItemsMutation } from '@/features/library/sdk/queries/catalog.queries';
-import { useBatchDetachItemsMutation } from '@/features/library/sdk/queries/collections.queries';
-import { itemKeys } from '@/features/library/sdk/query-keys';
-import { invalidateCollections } from '@/features/library/sdk/queries/collections.queries';
+import {
+  useBatchDetachItemsMutation,
+  useMoveCollectionItemsMutation,
+} from '@/features/library/sdk/queries/collections.queries';
 import { isItemRetracted } from '@/features/library/domain/retraction';
 import type { Item, CslStyle } from '@/features/library/domain/types/library.types';
 import {
-  buildFallbackCitation,
-  buildFallbackBibtex,
   copyWithToastHelper,
   warnIfRetractedHelper,
   triggerBrowserTextDownload,
@@ -24,8 +21,6 @@ import {
 } from './citation-export.coordinator';
 
 export {
-  buildFallbackCitation,
-  buildFallbackBibtex,
   copyWithToastHelper,
   warnIfRetractedHelper,
   triggerBrowserTextDownload,
@@ -71,7 +66,6 @@ export function useLibraryBatchCoordinator({
   isTrash = false,
   canEdit = true,
 }: UseLibraryBatchCoordinatorOptions = {}) {
-  const queryClient = useQueryClient();
   const effectiveScope = scopeId || 'user';
 
   // Store Selection Actions
@@ -85,6 +79,7 @@ export function useLibraryBatchCoordinator({
   // Batch Mutations
   const restoreMutation = useBatchRestoreItemsMutation(effectiveScope);
   const batchDetachMutation = useBatchDetachItemsMutation(effectiveScope);
+  const moveMutation = useMoveCollectionItemsMutation(effectiveScope);
 
   // Selected Items Resolution
   const selectedItems = useMemo(() => {
@@ -155,23 +150,11 @@ export function useLibraryBatchCoordinator({
 
       const toastId = toast.loading(`Moving ${movableIds.length} item(s)...`, { id: 'batch-move' });
       try {
-        await CollectionsService.moveItems(
-          effectiveScope,
-          targetCollectionId || 'unfiled',
-          movableIds,
-        );
-        queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-        if (targetCollectionId) {
-          queryClient.invalidateQueries({
-            queryKey: itemKeys.byCollection(effectiveScope, targetCollectionId),
-          });
-        }
-        if (collectionId) {
-          queryClient.invalidateQueries({
-            queryKey: itemKeys.byCollection(effectiveScope, collectionId),
-          });
-        }
-        invalidateCollections(queryClient, effectiveScope);
+        await moveMutation.mutateAsync({
+          targetCollectionId,
+          itemIds: movableIds,
+          sourceCollectionId: collectionId,
+        });
         toast.success(`Moved ${movableIds.length} item(s)`, { id: toastId });
         clearSelection();
       } catch (err: unknown) {
@@ -187,9 +170,8 @@ export function useLibraryBatchCoordinator({
       isTrash,
       selectedIds,
       processingIds,
-      effectiveScope,
       collectionId,
-      queryClient,
+      moveMutation,
       clearSelection,
     ],
   );
@@ -206,10 +188,10 @@ export function useLibraryBatchCoordinator({
     if (deletableIds.length === 0) return;
 
     if (isTrash) {
-      openModal('DELETE_ITEMS', { itemIds: deletableIds, permanent: true });
+      openModal('DELETE_CONFIRM', { itemIds: deletableIds, permanent: true });
       return;
     }
-    openModal('DELETE_ITEMS', { itemIds: deletableIds });
+    openModal('DELETE_CONFIRM', { itemIds: deletableIds });
   }, [canEdit, selectedIds, processingIds, isTrash, openModal]);
 
   // Action: Batch Restore from Trash
@@ -322,7 +304,7 @@ export function useLibraryBatchCoordinator({
       batchMove,
       batchDelete,
       batchRestore,
-      batchDetach,
+      batchDetach: collectionId ? batchDetach : undefined,
       batchMerge,
       copyMultiCite,
       copyInTextCite,

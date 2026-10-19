@@ -54,7 +54,7 @@ export function CollectionTree({
   }
 
   return (
-    <div className="flex flex-col gap-1 w-full">
+    <div className="flex flex-col gap-0.5 w-full">
       {tree.map((node) => (
         <CollectionNode
           key={node.id}

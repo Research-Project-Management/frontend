@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import React, { useMemo, useState, useCallback, useRef } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Files, Rss, Star, Inbox, Award, ShieldAlert, History } from 'lucide-react';
 import { LibraryTopbar, type BreadcrumbItem } from '@/features/library/ui/topbar/LibraryTopbar';
 import { LibraryContent, mapOrderByToSavedSearchSortBy } from '@/features/library/ui/content/LibraryContent';
 import { LibraryInspector } from '@/features/library/ui/inspector/LibraryInspector';
+import { DuplicateMergeInspector } from '@/features/library/ui/inspector/DuplicateMergeInspector';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
 
@@ -16,16 +17,16 @@ const LibraryModals = dynamic(
   () => import('@/features/library/ui/modals/LibraryModals').then((m) => m.LibraryModals), { ssr: false }
 );
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import { useLibraryPermissions } from '@/features/library/core/coordinator/permissions.coordinator';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
-import { libraryServices } from '@/features/library/sdk/library.client';
-import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
+import { useCollectionsQuery, invalidateCollections } from '@/features/library/sdk/queries/collections.queries';
 import { useSavedSearches, useSavedSearchResults } from '@/features/library/sdk/queries/saved-searches-relations.queries';
-import { useTrash, useLibraryCountsQuery, useItemTypes } from '@/features/library/sdk/queries/catalog.queries';
-import { libraryKeys } from '@/features/library/sdk/query-keys';
-import { invalidateCollections } from '@/features/library/sdk/queries/collections.queries';
+import { useTrash, useLibraryCountsQuery, useItemTypes, useItems, useLibraryDeltaSync, itemKeys } from '@/features/library/sdk/queries/catalog.queries';
+import { useMergeDuplicates } from '@/features/library/sdk/queries/ingestion.queries';
 import { formatItemTypeLabel } from '@/features/library/domain/metadata';
 import { parseEmojiPrefix } from '@/features/library/domain/academic-text';
+import type { Item, DuplicateGroup } from '@/features/library/domain/types/library.types';
 
 interface LibraryPageProps {
   scopeId?: string;
@@ -44,6 +45,20 @@ const FILTER_TITLE_MAP: Record<string, string> = {
   duplicates: 'Duplicate Items',
   recent: 'Recently Read',
   'recently-read': 'Recently Read',
+  feed: 'Feeds',
+};
+
+const FILTER_ICON_MAP: Record<string, React.ComponentType<{ className?: string; strokeWidth?: number | string }>> = {
+  starred: Star,
+  unfiled: Inbox,
+  duplicates: Files,
+  'my-publications': Award,
+  publications: Award,
+  retracted: ShieldAlert,
+  trash: Trash2,
+  recent: History,
+  'recently-read': History,
+  feed: Rss,
 };
 
 /**
@@ -56,6 +71,7 @@ export function ModernLibraryPage({
   view,
   title,
 }: LibraryPageProps) {
+  const router = useRouter();
   const nav = useLibraryNavigation();
   const queryClient = useQueryClient();
   const params = useParams() as { collectionId?: string; projectId?: string };
@@ -66,6 +82,18 @@ export function ModernLibraryPage({
   const setIsInspectorOpen = useLibraryUIStore((s) => s.setIsInspectorOpen);
   const displayOptions = useLibraryUIStore((s) => s.displayOptions);
   const startBatchUpload = useProcessModalStore((s) => s.startBatchUpload);
+  const feeds = useFeedsStore((s) => s.feeds);
+  const loadFeeds = useFeedsStore((s) => s.loadFeeds);
+  const triggerRefresh = useFeedsStore((s) => s.triggerRefresh);
+
+  React.useEffect(() => {
+    loadFeeds();
+  }, [loadFeeds]);
+
+  const currentFeed = useMemo(() => {
+    if (!nav.feedId) return feeds[0];
+    return feeds.find((f) => f.id === nav.feedId) || feeds[0];
+  }, [feeds, nav.feedId]);
 
   const effectiveScopeId =
     propScopeId ||
@@ -79,15 +107,29 @@ export function ModernLibraryPage({
   const isSavedSearchView = nav.isSavedSearchView;
   const effectiveView = view || (nav.filterParam && nav.filterParam !== 'saved-search' ? nav.filterParam : undefined);
 
-  const resolvedTitle = title || (effectiveView ? FILTER_TITLE_MAP[effectiveView] : undefined);
+  const filterTitle = effectiveView === 'feed'
+    ? (currentFeed ? currentFeed.name : 'Feeds')
+    : (effectiveView ? FILTER_TITLE_MAP[effectiveView] : undefined);
+  const resolvedTitle =
+    filterTitle ||
+    (title && title !== 'Library' && title !== 'My Library' ? title : undefined);
 
   // Warm up dynamic item types schema from backend authoritative registry
   useItemTypes(effectiveScopeId);
+  useLibraryDeltaSync(effectiveScopeId);
 
   const { data: collections = [] } = useCollectionsQuery(effectiveScopeId);
   const { savedSearches = [] } = useSavedSearches(effectiveScopeId);
+  const collectionMap = useMemo(() => {
+    const map = new Map<string, (typeof collections)[number]>();
+    for (const c of collections) {
+      if (c?.id) map.set(c.id, c);
+    }
+    return map;
+  }, [collections]);
+
   const currentCollection = effectiveCollectionId
-    ? collections.find((c) => c.id === effectiveCollectionId)
+    ? collectionMap.get(effectiveCollectionId)
     : undefined;
   const currentSavedSearch = nav.savedSearchId
     ? savedSearches.find((s) => s.id === nav.savedSearchId)
@@ -118,43 +160,90 @@ export function ModernLibraryPage({
 
   // Breadcrumb navigation with full ancestor chain
   const breadcrumbs = useMemo<BreadcrumbItem[] | undefined>(() => {
-    const rootName = activeScope.type === 'user' ? 'Library' : (activeScope.name || 'Library');
+    const rootName = activeScope.type === 'user' ? 'My Library' : (activeScope.name || 'Library');
     if (isSavedSearchView && currentSavedSearch) {
       const { label: cleanName } = parseEmojiPrefix(currentSavedSearch.name);
       return [
-        { name: rootName },
+        { id: '__root__', name: rootName },
         { id: currentSavedSearch.id, name: cleanName },
       ];
     }
-    if (resolvedTitle && resolvedTitle !== 'My Library' && resolvedTitle !== 'Library' && !currentCollection) {
+    if (effectiveView === 'feed') {
       return [
-        { name: rootName },
-        { name: resolvedTitle },
+        { id: '__feeds__', name: 'Feeds', icon: Rss, clickable: false },
+        ...(currentFeed
+          ? [
+              {
+                id: currentFeed.id,
+                name: currentFeed.name,
+                switcherPlaceholder: 'Find feed...',
+                switcherOptions: feeds.map((f) => ({
+                  id: f.id,
+                  name: f.name,
+                  isActive: f.id === currentFeed.id,
+                  icon: Rss,
+                })),
+                onSelectSwitcherOption: (feedId: string) => {
+                  router.push(`/library?filter=feed&feedId=${feedId}`);
+                },
+              },
+            ]
+          : []),
       ];
+    }
+    // For smart filters/pages (e.g. Duplicates, Trash, Starred, Unfiled, etc.), show single title with icon instead of breadcrumbs
+    if (effectiveView && !currentCollection) {
+      return undefined;
+    }
+    if (resolvedTitle && resolvedTitle !== 'My Library' && resolvedTitle !== 'Library' && !currentCollection) {
+      return undefined;
     }
     if (!currentCollection) return undefined;
 
-    const crumbs: BreadcrumbItem[] = [{ name: rootName }];
+    const crumbs: BreadcrumbItem[] = [{ id: '__root__', name: rootName, clickable: false }];
     const chain: NonNullable<typeof currentCollection>[] = [];
     let curr: typeof currentCollection | undefined = currentCollection;
     const visited = new Set<string>();
     while (curr && !visited.has(curr.id)) {
       visited.add(curr.id);
-      chain.unshift(curr);
+      chain.push(curr);
       if (curr.parentId) {
-        const parentId: string = curr.parentId;
-        curr = collections.find((c) => c.id === parentId);
+        curr = collectionMap.get(curr.parentId);
       } else {
         break;
       }
     }
-    for (const c of chain) {
-      crumbs.push({ id: c.id, name: c.name });
+    for (let i = chain.length - 1; i >= 0; i--) {
+      const c = chain[i]!;
+      const siblings = collections.filter(
+        (col) => (col.parentId || null) === (c.parentId || null),
+      );
+      crumbs.push({
+        id: c.id,
+        name: c.name,
+        switcherPlaceholder: 'Find collection...',
+        switcherOptions: siblings.map((s) => ({
+          id: s.id,
+          name: s.name,
+          isActive: s.id === c.id,
+        })),
+        onSelectSwitcherOption: (colId: string) => {
+          nav.navigateToCollection(colId);
+        },
+      });
     }
     return crumbs;
-  }, [isSavedSearchView, currentSavedSearch, currentCollection, collections, activeScope.name, activeScope.type, resolvedTitle]);
+  }, [isSavedSearchView, currentSavedSearch, currentCollection, collectionMap, collections, activeScope.name, activeScope.type, resolvedTitle, effectiveView, currentFeed, feeds, router, nav]);
 
   const handleNavigateCrumb = (crumbId?: string) => {
+    if (!crumbId || crumbId === '__root__') {
+      router.push('/library');
+      return;
+    }
+    if (effectiveView === 'feed') {
+      router.push(`/library?filter=feed&feedId=${crumbId}`);
+      return;
+    }
     nav.navigateToCollection(crumbId);
   };
 
@@ -169,8 +258,8 @@ export function ModernLibraryPage({
       queryClient,
       onSuccess: () => {
         invalidateCollections(queryClient, effectiveScopeId);
-        void queryClient.invalidateQueries({ queryKey: ['library', 'items'] });
-        void queryClient.invalidateQueries({ queryKey: ['library', 'counts'] });
+        void queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });
+        void queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScopeId) });
       },
     });
   };
@@ -179,23 +268,22 @@ export function ModernLibraryPage({
   const handleDirectFolderUpload = (files: File[], _folderName: string) => processUpload(files);
 
 
+  const { createItem } = useItems({
+    scopeId: effectiveScopeId,
+    collectionId: effectiveCollectionId,
+    enabled: false,
+  });
+
   // Manual reference creation handler
   const handleNewManualItem = async (itemType: string) => {
     const label = formatItemTypeLabel(itemType);
     const toastId = toast.loading(`Creating ${label}...`, { id: 'create-ref' });
     try {
-      const newItem = await libraryServices.items.create(effectiveScopeId, effectiveCollectionId || '', {
+      const newItem = await createItem({
         itemType,
         title: `Untitled ${label}`,
-        collectionId: effectiveCollectionId,
+        collectionIds: effectiveCollectionId ? [effectiveCollectionId] : undefined,
       });
-      queryClient.invalidateQueries({ queryKey: libraryKeys.items(effectiveScopeId) });
-      if (effectiveCollectionId) {
-        queryClient.invalidateQueries({
-          queryKey: libraryKeys.items(effectiveScopeId, { collectionId: effectiveCollectionId }),
-        });
-      }
-      invalidateCollections(queryClient, effectiveScopeId);
 
       const createdId = newItem?.id;
       if (createdId) {
@@ -217,21 +305,21 @@ export function ModernLibraryPage({
     }
   };
 
-  const isTrash = view === 'trash';
-  const { state: trashState, actions: trashActions } = useTrash(effectiveScopeId, { enabled: isTrash });
+  const isTrash = effectiveView === 'trash';
+  const { trashItems, emptyTrash } = useTrash(effectiveScopeId, { enabled: isTrash });
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
 
   // Opens the confirmation dialog instead of using window.confirm.
   // The actual deletion is dispatched via onConfirm inside LibraryModals.
   const handleEmptyTrash = () => {
-    if (trashState.trashItems.length === 0) {
+    if (trashItems.length === 0) {
       toast.info('Trash is already empty', { id: 'empty-trash' });
       return;
     }
-    openModal('TRASH_CONFIRM', {
+    openModal('DELETE_CONFIRM', {
       onConfirm: async () => {
         try {
-          await trashActions.emptyTrash();
+          await emptyTrash();
           clearSelection();
         } catch (err: unknown) {
           toast.error('Failed to empty trash', { id: 'empty-trash-error' });
@@ -243,7 +331,7 @@ export function ModernLibraryPage({
 
   const { data: countsData } = useLibraryCountsQuery(effectiveScopeId);
   const displayCount = useMemo(() => {
-    if (isTrash) return trashState.trashItems.length;
+    if (isTrash) return trashItems.length;
     if (isSavedSearchView) {
       if (typeof savedSearchResults.data?.meta?.totalCount === 'number') {
         return savedSearchResults.data.meta.totalCount;
@@ -258,12 +346,12 @@ export function ModernLibraryPage({
       if (showSubcollections && currentCollection.recursiveItemCount !== undefined) {
         return currentCollection.recursiveItemCount;
       }
-      return currentCollection.itemCount ?? currentCollection.paperCount ?? 0;
+      return currentCollection.itemCount ?? 0;
     }
     return countsData?.total;
   }, [
     isTrash,
-    trashState.trashItems.length,
+    trashItems.length,
     isSavedSearchView,
     savedSearchResults.data?.meta?.totalCount,
     savedSearchResults.data?.items,
@@ -272,6 +360,47 @@ export function ModernLibraryPage({
     displayOptions?.includeSubcollections,
     countsData?.total,
   ]);
+
+  const mergeMutation = useMergeDuplicates(effectiveScopeId);
+  const [selectedDuplicateGroup, setSelectedDuplicateGroup] = useState<DuplicateGroup | null>(null);
+  const [selectedDuplicateGroupKey, setSelectedDuplicateGroupKey] = useState<string | null>(null);
+  const dismissDuplicateGroupRef = useRef<((groupKey: string) => void) | null>(null);
+  const openMergeModalRef = useRef<((group: DuplicateGroup, groupKey?: string) => void) | null>(null);
+
+  const handleSelectedDuplicateGroupChange = useCallback(
+    (
+      group: DuplicateGroup | null,
+      groupKey: string | null,
+      dismissGroup: (groupKey: string) => void,
+      openMerge: (group: DuplicateGroup, groupKey?: string) => void,
+    ) => {
+      setSelectedDuplicateGroup(group);
+      setSelectedDuplicateGroupKey(groupKey);
+      dismissDuplicateGroupRef.current = dismissGroup;
+      openMergeModalRef.current = openMerge;
+    },
+    [],
+  );
+
+  const selectedDuplicateGroupItems = useMemo(() => {
+    if (effectiveView !== 'duplicates' || !selectedDuplicateGroup) return [];
+    return (selectedDuplicateGroup.items || []) as Item[];
+  }, [effectiveView, selectedDuplicateGroup]);
+
+  const handleExecuteDuplicateMerge = useCallback(
+    async (
+      masterPaper: Item,
+      mergedFields: Partial<Item>,
+      duplicateIdsToDelete: string[],
+    ) => {
+      await mergeMutation.mutateAsync({
+        primaryItemId: masterPaper.id,
+        duplicateItemIds: duplicateIdsToDelete,
+        overrides: Object.keys(mergedFields).length > 0 ? mergedFields : undefined,
+      });
+    },
+    [mergeMutation],
+  );
 
   const savedSearchTitle = currentSavedSearch
     ? parseEmojiPrefix(currentSavedSearch.name).label
@@ -290,17 +419,30 @@ export function ModernLibraryPage({
       <div className="flex flex-1 flex-col min-w-0 min-h-0">
         <LibraryTopbar
           title={displayTitle}
-          icon={isTrash ? Trash2 : undefined}
-          count={displayCount}
+          icon={
+            isTrash
+              ? Trash2
+              : (effectiveView ? FILTER_ICON_MAP[effectiveView] : undefined)
+          }
+          count={effectiveView === 'feed' ? undefined : displayCount}
           breadcrumbs={breadcrumbs}
           onNavigateCrumb={handleNavigateCrumb}
           scopeId={effectiveScopeId}
           canEdit={canEdit}
           isTrash={isTrash}
           onEmptyTrash={canEdit && isTrash ? handleEmptyTrash : undefined}
+          isFeed={effectiveView === 'feed'}
+          onRefreshFeed={
+            effectiveView === 'feed'
+              ? () => {
+                  triggerRefresh();
+                  toast.info(`Refreshing "${currentFeed?.name || 'feed'}"...`);
+                }
+              : undefined
+          }
           onDirectFilesUpload={canEdit ? handleDirectFilesUpload : undefined}
           onDirectFolderUpload={canEdit ? handleDirectFolderUpload : undefined}
-          onAddLink={canEdit ? () => openModal('ADD_LINK', { collectionId: effectiveCollectionId }) : undefined}
+          onAddLink={canEdit ? () => openModal('ADD_BY_IDENTIFIER', { collectionId: effectiveCollectionId }) : undefined}
           onNewManualItem={canEdit ? handleNewManualItem : undefined}
           onAddCollection={
             canEdit
@@ -322,15 +464,42 @@ export function ModernLibraryPage({
             view={effectiveView}
             canEdit={canEdit}
             onDirectFilesUpload={canEdit ? handleDirectFilesUpload : undefined}
-            onAddLink={canEdit ? () => openModal('ADD_LINK', { collectionId: effectiveCollectionId }) : undefined}
-            onEmptyTrash={canEdit && isTrash ? handleEmptyTrash : undefined}
+            onAddLink={canEdit ? () => openModal('ADD_BY_IDENTIFIER', { collectionId: effectiveCollectionId }) : undefined}
+            onSelectedDuplicateGroupChange={
+              effectiveView === 'duplicates' ? handleSelectedDuplicateGroupChange : undefined
+            }
           />
         </div>
       </div>
 
-      {/* Inspector Panel (Right side details, metadata, attachments) */}
+      {/* Inspector Panel (Right side details, metadata, attachments, or duplicate merge workbench) */}
       <ErrorBoundary variant="section" featureName="Metadata Inspector">
-        <LibraryInspector scopeId={effectiveScopeId} canEdit={canEdit} />
+        {effectiveView === 'duplicates' && selectedDuplicateGroupItems.length >= 2 ? (
+          <div className="hidden md:flex w-80 lg:w-96 xl:w-[420px] h-full shrink-0 flex-col overflow-hidden border-l border-border bg-background">
+            <DuplicateMergeInspector
+              items={selectedDuplicateGroupItems}
+              recommendedMasterId={selectedDuplicateGroup?.recommendedMasterId}
+              scopeId={effectiveScopeId}
+              canEdit={canEdit}
+              onOpenModal={() => {
+                if (selectedDuplicateGroup) {
+                  openMergeModalRef.current?.(
+                    selectedDuplicateGroup,
+                    selectedDuplicateGroupKey || undefined,
+                  );
+                }
+              }}
+              onMerge={handleExecuteDuplicateMerge}
+              onDismiss={() => {
+                if (selectedDuplicateGroupKey) {
+                  dismissDuplicateGroupRef.current?.(selectedDuplicateGroupKey);
+                }
+              }}
+            />
+          </div>
+        ) : (
+          <LibraryInspector scopeId={effectiveScopeId} canEdit={canEdit} />
+        )}
       </ErrorBoundary>
 
       {/* Modals (Centralized Dialog Bus) */}

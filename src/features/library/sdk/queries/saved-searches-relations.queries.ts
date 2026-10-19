@@ -126,6 +126,7 @@ export function useSavedSearchResults(
       return SavedSearchesService.getResults(effectiveScope || 'user', id, params);
     },
     enabled: !!id && !!effectiveScope,
+    gcTime: 5 * 60 * 1000,
   });
 }
 
@@ -248,43 +249,19 @@ export function useRelations(
 
 // CONVERSION QUERY HOOKS
 
-export interface DroppedField {
-  field: string;
-  label: string;
-  value: unknown;
-}
+import type {
+  DroppedField,
+  FieldMappingChange,
+  CreatorRoleChange,
+  TypeConversionPreview,
+} from '@/features/library/domain/types/library.types';
 
-export interface FieldMappingChange {
-  fromField: string;
-  toField: string;
-  value: unknown;
-  rule: 'direct' | 'base-semantic' | 'special-rule';
-}
-
-export interface CreatorRoleChange {
-  creator: Record<string, unknown>;
-  fromRole: string;
-  toRole: string;
-  reason: 'preserved' | 'primary-fallback' | 'secondary-fallback';
-}
-
-export interface TypeConversionPreview {
-  sourceType: string;
-  targetType: string;
-  preservedFields: string[];
-  mappedFields: FieldMappingChange[];
-  droppedFields: DroppedField[];
-  creatorChanges: CreatorRoleChange[];
-  newAvailableFields?: Array<{
-    field: string;
-    label: string;
-    category?: string;
-    type?: string;
-  }>;
-  projectedItem: Record<string, unknown>;
-  unmappedRetained: Record<string, unknown>;
-  hasLoss: boolean;
-}
+export type {
+  DroppedField,
+  FieldMappingChange,
+  CreatorRoleChange,
+  TypeConversionPreview,
+};
 
 export function useItemTypeConversion(scopeId?: string) {
   const queryClient = useQueryClient();
@@ -373,4 +350,3 @@ export function useItemTypeConversion(scopeId?: string) {
   };
 }
 
-export const useConversion = useItemTypeConversion;

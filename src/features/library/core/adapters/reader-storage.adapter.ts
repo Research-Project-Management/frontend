@@ -4,9 +4,144 @@ export const DEFAULT_READER_TABS: ReaderTab[] = [
   { id: 'library', title: 'My Library', type: 'library' },
 ];
 
+export const MAX_READER_TABS = 15;
+export const MAX_BOOKMARKED_ITEMS = 200;
+export const MAX_READER_LRU_ITEMS = 150;
+
 const READER_TABS_STORAGE_KEY = 'flux_reader_tabs';
 const READER_ACTIVE_TAB_STORAGE_KEY = 'flux_reader_active_tab';
 const READER_BOOKMARKS_STORAGE_KEY = 'flux_reader_bookmarks';
+const READER_LRU_INDEX_STORAGE_KEY = 'flux_reader_lru_index';
+const READER_PROGRESS_PREFIX = 'flux_reader_progress_';
+const READER_ANNOTATIONS_PREFIX = 'flux_reader_annotations_';
+
+/**
+ * Evicts the oldest inactive paper tabs when the tab count exceeds MAX_READER_TABS.
+ * Always preserves the 'library' tab and the currently active tab.
+ */
+export function enforceMaxReaderTabs(tabs: ReaderTab[], activeTabId: string): ReaderTab[] {
+  if (tabs.length <= MAX_READER_TABS) return tabs;
+  const result = [...tabs];
+  while (result.length > MAX_READER_TABS) {
+    const evictIdx = result.findIndex((t) => t.id !== 'library' && t.id !== activeTabId);
+    if (evictIdx === -1) break;
+    result.splice(evictIdx, 1);
+  }
+  return result;
+}
+
+/**
+ * Evicts the oldest bookmarked items when the bookmark dictionary exceeds MAX_BOOKMARKED_ITEMS.
+ */
+export function enforceMaxBookmarkedItems(
+  bookmarks: Record<string, number[]>,
+): Record<string, number[]> {
+  const keys = Object.keys(bookmarks);
+  if (keys.length <= MAX_BOOKMARKED_ITEMS) return bookmarks;
+  const keepKeys = keys.slice(keys.length - MAX_BOOKMARKED_ITEMS);
+  const bounded: Record<string, number[]> = {};
+  for (const k of keepKeys) {
+    if (bookmarks[k] && bookmarks[k].length > 0) {
+      bounded[k] = bookmarks[k];
+    }
+  }
+  return bounded;
+}
+
+function readLruIndex(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(READER_LRU_INDEX_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((id): id is string => typeof id === 'string' && id.length > 0)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function evictReaderItemStorageKeys(paperId: string): void {
+  try {
+    localStorage.removeItem(`${READER_PROGRESS_PREFIX}${paperId}`);
+    localStorage.removeItem(`${READER_ANNOTATIONS_PREFIX}${paperId}`);
+  } catch {
+    // Ignore storage removal error
+  }
+}
+
+/**
+ * Updates the bounded LRU index (`flux_reader_lru_index`, max 150 item IDs)
+ * and evicts the oldest item's progress/annotation keys when the cap is exceeded.
+ */
+export function touchReaderItemLruIndex(paperId: string): void {
+  if (typeof window === 'undefined' || !paperId || paperId === 'library') return;
+  try {
+    const current = readLruIndex().filter((id) => id !== paperId);
+    current.push(paperId);
+    while (current.length > MAX_READER_LRU_ITEMS) {
+      const oldestId = current.shift();
+      if (oldestId) {
+        evictReaderItemStorageKeys(oldestId);
+      }
+    }
+    localStorage.setItem(READER_LRU_INDEX_STORAGE_KEY, JSON.stringify(current));
+  } catch {
+    // Ignore storage write error
+  }
+}
+
+function safeSetReaderStorageItem(key: string, value: string, paperId?: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, value);
+    if (paperId) {
+      touchReaderItemLruIndex(paperId);
+    }
+  } catch {
+    // Handle QuotaExceededError gracefully by evicting oldest LRU items and retrying once
+    try {
+      const lru = readLruIndex();
+      const evictCount = Math.max(1, Math.min(20, Math.ceil(lru.length / 4)));
+      const evicted = lru.splice(0, evictCount);
+      for (const oldId of evicted) {
+        evictReaderItemStorageKeys(oldId);
+      }
+      localStorage.setItem(READER_LRU_INDEX_STORAGE_KEY, JSON.stringify(lru));
+      localStorage.setItem(key, value);
+      if (paperId) {
+        touchReaderItemLruIndex(paperId);
+      }
+    } catch {
+      // Ignore if storage remains full
+    }
+  }
+}
+
+/**
+ * Persists per-paper reading progress (`flux_reader_progress_${paperId}`) with bounded LRU eviction.
+ */
+export function saveReaderProgressToStorage(paperId: string, progress: unknown): void {
+  if (!paperId || paperId === 'library') return;
+  safeSetReaderStorageItem(
+    `${READER_PROGRESS_PREFIX}${paperId}`,
+    JSON.stringify(progress),
+    paperId,
+  );
+}
+
+/**
+ * Persists per-paper annotations cache (`flux_reader_annotations_${paperId}`) with bounded LRU eviction.
+ */
+export function saveReaderAnnotationsToStorage(paperId: string, annotations: unknown): void {
+  if (!paperId || paperId === 'library') return;
+  safeSetReaderStorageItem(
+    `${READER_ANNOTATIONS_PREFIX}${paperId}`,
+    JSON.stringify(annotations),
+    paperId,
+  );
+}
 
 /**
  * Normalizes zoom input whether provided as a float scale (e.g. 1.25)
@@ -79,7 +214,7 @@ export function loadReaderStorageState(): {
     if (rawBookmarks) {
       const parsedBookmarks = JSON.parse(rawBookmarks);
       if (parsedBookmarks && typeof parsedBookmarks === 'object' && !Array.isArray(parsedBookmarks)) {
-        bookmarks = parsedBookmarks as Record<string, number[]>;
+        bookmarks = enforceMaxBookmarkedItems(parsedBookmarks as Record<string, number[]>);
       }
     }
   } catch {
@@ -103,9 +238,10 @@ export function loadReaderStorageState(): {
             ),
         )
         .map(normalizeReaderTab);
-      const tabs: ReaderTab[] = [DEFAULT_READER_TABS[0], ...filtered];
+      const rawTabs: ReaderTab[] = [DEFAULT_READER_TABS[0], ...filtered];
       const activeTabId =
-        rawActive && tabs.some((t) => t.id === rawActive) ? rawActive : tabs[0].id;
+        rawActive && rawTabs.some((t) => t.id === rawActive) ? rawActive : rawTabs[0].id;
+      const tabs = enforceMaxReaderTabs(rawTabs, activeTabId);
       return { tabs, activeTabId, bookmarks };
     }
   } catch {
@@ -120,12 +256,13 @@ export function loadReaderStorageState(): {
  */
 export function saveReaderTabsToStorage(tabs: ReaderTab[], activeTabId: string): void {
   if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(READER_TABS_STORAGE_KEY, JSON.stringify(tabs));
-    localStorage.setItem(READER_ACTIVE_TAB_STORAGE_KEY, activeTabId);
-  } catch {
-    // Ignore storage write error
-  }
+  const boundedTabs = enforceMaxReaderTabs(tabs, activeTabId);
+  safeSetReaderStorageItem(
+    READER_TABS_STORAGE_KEY,
+    JSON.stringify(boundedTabs),
+    activeTabId !== 'library' ? activeTabId : undefined,
+  );
+  safeSetReaderStorageItem(READER_ACTIVE_TAB_STORAGE_KEY, activeTabId);
 }
 
 /**
@@ -133,9 +270,6 @@ export function saveReaderTabsToStorage(tabs: ReaderTab[], activeTabId: string):
  */
 export function saveReaderBookmarksToStorage(bookmarks: Record<string, number[]>): void {
   if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(READER_BOOKMARKS_STORAGE_KEY, JSON.stringify(bookmarks));
-  } catch {
-    // Ignore storage write error
-  }
+  const bounded = enforceMaxBookmarkedItems(bookmarks);
+  safeSetReaderStorageItem(READER_BOOKMARKS_STORAGE_KEY, JSON.stringify(bounded));
 }

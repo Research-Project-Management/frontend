@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ShieldAlert, X, Trash2, RotateCcw } from "lucide-react";
+import { ShieldAlert, X, RotateCcw } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import {
   Tooltip,
@@ -10,16 +10,14 @@ import {
 } from "@/shared/components/ui/tooltip";
 import { useUpdateLibraryItemMutation } from "@/features/library/sdk/queries/catalog.queries";
 import { useRetraction } from "@/features/library/sdk/queries/ingestion.queries";
-import {
-  useBatchRestoreItemsMutation,
-  useBatchPurgeItemsMutation,
-} from "@/features/library/sdk/queries/catalog.queries";
+import { useBatchRestoreItemsMutation } from "@/features/library/sdk/queries/catalog.queries";
 import type { Item } from "@/features/library/domain/types/library.types";
 import {
   isItemRetracted,
   getRetractionInfo,
 } from "@/features/library/domain/retraction";
 import { RetractionNoticeModal } from "@/features/library/ui/modals/RetractionNoticeModal";
+import DeleteModal from "@/features/library/ui/modals/DeleteModal";
 
 interface InspectorHeaderProps {
   item: Item;
@@ -36,13 +34,13 @@ export function InspectorHeader({
 }: InspectorHeaderProps) {
   const [titleDraft, setTitleDraft] = useState(item.title || "");
   const [isRetractionModalOpen, setIsRetractionModalOpen] = useState(false);
+  const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
 
   const isTrash = Boolean(item.deletedAt);
   const effectiveCanEdit = canEdit && !isTrash;
 
   const updateMutation = useUpdateLibraryItemMutation(scopeId);
   const restoreMutation = useBatchRestoreItemsMutation(scopeId);
-  const purgeMutation = useBatchPurgeItemsMutation(scopeId);
   const { unflagItem, isUnflagging } = useRetraction(scopeId);
 
   const isRetracted = isItemRetracted(item);
@@ -59,8 +57,8 @@ export function InspectorHeader({
     if (cleanTitle && cleanTitle !== item.title) {
       setTitleDraft(cleanTitle);
       updateMutation.mutate({
-        id: item.id,
-        payload: { title: cleanTitle },
+        itemId: item.id,
+        data: { title: cleanTitle },
       });
     } else if (!cleanTitle && item.title) {
       setTitleDraft(item.title);
@@ -109,6 +107,26 @@ export function InspectorHeader({
           </TooltipContent>
         </Tooltip>
 
+        {/* ♻️ Restore Action Icon on Header (Quick restore for trashed item) */}
+        {isTrash && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setIsRestoreModalOpen(true)}
+                disabled={restoreMutation.isPending}
+                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer shrink-0 transition-colors disabled:opacity-50 relative before:absolute before:-inset-1.5 md:before:hidden"
+                aria-label="Restore reference to library"
+              >
+                <RotateCcw className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={6}>
+              Restore reference to library
+            </TooltipContent>
+          </Tooltip>
+        )}
+
         {/* 🚨 Sleek Retraction Badge on Header (Click to open Retraction Notice Modal) */}
         {isRetracted && (
           <Tooltip>
@@ -150,60 +168,24 @@ export function InspectorHeader({
         )}
       </div>
 
-      {/* 🗑️ Trash Notice Alert Banner */}
+      {/* ♻️ Restore Confirmation Modal */}
       {isTrash && (
-        <div className="p-3 border-b border-border bg-muted shrink-0 select-none animate-in fade-in duration-200">
-          <div className="rounded-md border border-border bg-background p-2.5 text-xs text-foreground flex items-start gap-2.5 select-none shadow-xs">
-            <Trash2
-              className="size-4 text-muted-foreground shrink-0 mt-0.5"
-              strokeWidth={1.5}
-            />
-            <div className="flex-1 min-w-0 space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold text-foreground text-12">
-                  This reference is in Trash
-                </span>
-                {item.deletedAt && (
-                  <span className="text-10 text-muted-foreground font-mono">
-                    Deleted {new Date(item.deletedAt).toLocaleDateString()}
-                  </span>
-                )}
-              </div>
-              <p className="text-11 text-muted-foreground leading-snug">
-                This item is read-only. You can restore it to your active
-                library or permanently delete it.
-              </p>
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => restoreMutation.mutate([item.id])}
-                  disabled={restoreMutation.isPending}
-                  className="h-7 px-2.5 text-11 font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-md cursor-pointer flex items-center gap-1.5 transition-colors disabled:opacity-50 relative before:absolute before:-inset-1.5 md:before:hidden"
-                >
-                  <RotateCcw className="size-3" />
-                  <span>Restore</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        "Permanently delete this reference? This action cannot be undone.",
-                      )
-                    ) {
-                      purgeMutation.mutate([item.id]);
-                    }
-                  }}
-                  disabled={purgeMutation.isPending}
-                  className="h-7 px-2.5 text-11 font-medium border border-destructive/40 text-destructive hover:bg-destructive/10 rounded-md cursor-pointer flex items-center gap-1.5 transition-colors disabled:opacity-50 relative before:absolute before:-inset-1.5 md:before:hidden"
-                >
-                  <Trash2 className="size-3" />
-                  <span>Delete permanently</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <DeleteModal
+          open={isRestoreModalOpen}
+          onOpenChange={setIsRestoreModalOpen}
+          title="Restore reference"
+          description="Are you sure you want to restore this reference to your active library?"
+          itemName={item.title || "Untitled Document"}
+          confirmLabel="Restore"
+          cancelLabel="Cancel"
+          buttonVariant="primary"
+          icon={<RotateCcw className="size-4 shrink-0 text-primary" strokeWidth={1.5} />}
+          isDeleting={restoreMutation.isPending}
+          onConfirm={async () => {
+            await restoreMutation.mutateAsync([item.id]);
+            setIsRestoreModalOpen(false);
+          }}
+        />
       )}
 
       {/* 🚨 Retraction Notice Modal Dialog */}

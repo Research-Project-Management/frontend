@@ -66,10 +66,16 @@ export function TopbarSearch({
 
   const active = isExpanded || Boolean(effectiveValue);
 
+  useEffect(() => {
+    if (isExpanded) {
+      const timerId = setTimeout(() => inputRef.current?.focus(), 50);
+      return () => clearTimeout(timerId);
+    }
+  }, [isExpanded]);
+
   const expand = () => {
     if (!isExpanded) {
       setIsExpanded(true);
-      setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
 

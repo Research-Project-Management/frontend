@@ -585,6 +585,11 @@ export function formatAnnotationCitation(
   return { label, url, markdown };
 }
 
+const FOLDED_PAGE_TEXT_CACHE = new WeakMap<
+  { pageNumber: number; text: string },
+  { rawText: string; foldedText: string }
+>();
+
 /**
  * Searches extracted PDF pages (`{ pageNumber, text }`) with diacritic & case insensitivity,
  * returning ordered `PdfTextMatch` items with surrounding snippet context.
@@ -606,8 +611,16 @@ export function searchPdfPages(
 
   for (const page of pages) {
     if (!page.text) continue;
-    const rawText = page.text.normalize('NFC');
-    const foldedText = foldDiacritics(rawText);
+    let cached = FOLDED_PAGE_TEXT_CACHE.get(page);
+    if (!cached) {
+      const rawText = page.text.normalize('NFC');
+      cached = {
+        rawText,
+        foldedText: foldDiacritics(rawText),
+      };
+      FOLDED_PAGE_TEXT_CACHE.set(page, cached);
+    }
+    const { rawText, foldedText } = cached;
 
     let searchPos = 0;
     while (searchPos <= foldedText.length - foldedQuery.length) {

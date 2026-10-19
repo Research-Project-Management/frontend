@@ -6,9 +6,13 @@ import {
   loadReaderStorageState,
   saveReaderTabsToStorage,
   saveReaderBookmarksToStorage,
+  enforceMaxReaderTabs,
+  enforceMaxBookmarkedItems,
+  MAX_READER_TABS,
+  MAX_BOOKMARKED_ITEMS,
 } from '../adapters/reader-storage.adapter';
 
-export { normalizeReaderZoom };
+export { normalizeReaderZoom, MAX_READER_TABS, MAX_BOOKMARKED_ITEMS };
 
 export type ReaderFitMode = 'page-width' | 'page-fit' | 'auto' | 'custom';
 export type ReaderTheme = 'light' | 'sepia' | 'dark';
@@ -78,19 +82,22 @@ export const useReaderStore = create<ReaderStoreState>((set, get) => ({
     const existing = tabs.find((t) => t.id === paperId);
     let nextTabs = tabs;
     if (!existing) {
-      nextTabs = [
-        ...tabs,
-        normalizeReaderTab({
-          id: paperId,
-          title: title || 'Loading...',
-          type: 'paper',
-          currentPage: 1,
-          zoom: 1.0,
-          fitMode: 'page-width',
-          rotation: 0,
-          theme: 'light',
-        }),
-      ];
+      nextTabs = enforceMaxReaderTabs(
+        [
+          ...tabs,
+          normalizeReaderTab({
+            id: paperId,
+            title: title || 'Loading...',
+            type: 'paper',
+            currentPage: 1,
+            zoom: 1.0,
+            fitMode: 'page-width',
+            rotation: 0,
+            theme: 'light',
+          }),
+        ],
+        paperId,
+      );
     } else if (title && existing.title !== title) {
       nextTabs = tabs.map((t) => (t.id === paperId ? { ...t, title } : t));
     }
@@ -141,7 +148,7 @@ export const useReaderStore = create<ReaderStoreState>((set, get) => ({
               }
             : t,
         )
-      : [...tabs, normalized];
+      : enforceMaxReaderTabs([...tabs, normalized], normalized.id);
     saveReaderTabsToStorage(nextTabs, normalized.id);
     set({
       tabs: nextTabs,
@@ -231,15 +238,19 @@ export const useReaderStore = create<ReaderStoreState>((set, get) => ({
 
   toggleBookmark: (paperId: string, pageNumber: number) => {
     const safePage = Math.max(1, Math.floor(pageNumber));
-    const current = get().bookmarks[paperId] || EMPTY_BOOKMARKS;
+    const prevBookmarks = get().bookmarks;
+    const current = prevBookmarks[paperId] || EMPTY_BOOKMARKS;
     const exists = current.includes(safePage);
     const nextPages = exists
       ? current.filter((p) => p !== safePage)
       : [...current, safePage].sort((a, b) => a - b);
-    const nextBookmarks = {
-      ...get().bookmarks,
-      [paperId]: nextPages,
-    };
+
+    const updated: Record<string, number[]> = { ...prevBookmarks };
+    delete updated[paperId];
+    if (nextPages.length > 0) {
+      updated[paperId] = nextPages;
+    }
+    const nextBookmarks = enforceMaxBookmarkedItems(updated);
     saveReaderBookmarksToStorage(nextBookmarks);
     set({ bookmarks: nextBookmarks });
     return !exists;
@@ -250,4 +261,3 @@ export const useReaderStore = create<ReaderStoreState>((set, get) => ({
   },
 }));
 
-export const useLibraryReaderStore = useReaderStore;

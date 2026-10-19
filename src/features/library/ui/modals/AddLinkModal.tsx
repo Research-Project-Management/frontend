@@ -76,37 +76,11 @@ export default function AddLinkModal({
     if (!trimmedUrl) return;
 
     const trimmedTitle = data.title?.trim();
-    let isPdf = false;
-    let derivedName = "linked-document";
-    try {
-      const parsed = new URL(trimmedUrl);
-      const pathname = parsed.pathname;
-      const lastSeg = pathname.split("/").filter(Boolean).pop() || "";
-      if (lastSeg) derivedName = decodeURIComponent(lastSeg);
-      isPdf =
-        pathname.toLowerCase().endsWith(".pdf") ||
-        pathname.toLowerCase().includes("/pdf/");
-    } catch {
-      const simpleName = trimmedUrl.split("/").pop()?.split("?")[0] || "";
-      if (simpleName) derivedName = simpleName;
-      isPdf = trimmedUrl.toLowerCase().includes(".pdf");
-    }
-
-    const mimeType = isPdf ? "application/pdf" : "text/html";
-    const finalFilename = isPdf
-      ? derivedName.toLowerCase().endsWith(".pdf")
-        ? derivedName
-        : `${derivedName}.pdf`
-      : derivedName || "webpage";
 
     try {
       await onSubmit({
         url: trimmedUrl,
         title: trimmedTitle || undefined,
-        fileUrl: trimmedUrl,
-        filename: finalFilename,
-        mimeType,
-        size: 0,
       });
 
       reset({ url: "", title: "" });

@@ -2,8 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { libraryServices } from '../library.client';
-import { pollIngestionRunCompletion } from '@/features/library/core/coordinator/ingestion.coordinator';
+import { libraryServices, IngestionService } from '../library.client';
 import type { UnifiedIngestionPayload, FlagRetractionInput } from '@/features/library/domain/types/library.types';
 import {
   itemKeys,
@@ -11,6 +10,7 @@ import {
   curationKeys,
   retractionKeys,
   invalidateCollections,
+  normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
 import {
   cleanDoi,
@@ -20,6 +20,131 @@ import {
 } from '@/features/library/domain/identifiers';
 
 export { ingestKeys, curationKeys, retractionKeys };
+
+// ── Ingestion Run Polling (Pure SDK Helper) ───────────────────────────────────
+
+export interface PollRunOutcome {
+  ok: boolean;
+  timedOut?: boolean;
+  title?: string;
+  itemId?: string;
+  error?: string;
+}
+
+export interface PollIngestionRunOptions {
+  fallbackTitle: string;
+  initialItemId?: string;
+  pollIntervalMs?: number;
+  maxWaitMs?: number;
+  slowPollThresholdMs?: number;
+  onSlowPollThreshold?: () => void;
+  signal?: AbortSignal;
+}
+
+function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
+  if (!signal) {
+    return new Promise((r) => setTimeout(r, ms));
+  }
+  if (signal.aborted) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    const onAbort = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+export async function pollIngestionRunCompletion(
+  scopeId: string,
+  runId: string,
+  opts: PollIngestionRunOptions,
+): Promise<PollRunOutcome> {
+  const startTime = Date.now();
+  const maxWaitMs = opts.maxWaitMs ?? 120000;
+  const pollIntervalMs = opts.pollIntervalMs ?? 1200;
+  let finalTitle = opts.fallbackTitle;
+  let finalItemId = opts.initialItemId;
+  let slowThresholdTriggered = false;
+
+  while (Date.now() - startTime < maxWaitMs) {
+    if (opts.signal?.aborted) {
+      return { ok: false, error: 'Polling aborted' };
+    }
+    await abortableSleep(pollIntervalMs, opts.signal);
+    if (opts.signal?.aborted) {
+      return { ok: false, error: 'Polling aborted' };
+    }
+
+    if (
+      !slowThresholdTriggered &&
+      opts.slowPollThresholdMs !== undefined &&
+      opts.onSlowPollThreshold &&
+      Date.now() - startTime >= opts.slowPollThresholdMs
+    ) {
+      slowThresholdTriggered = true;
+      opts.onSlowPollThreshold();
+    }
+
+    try {
+      const runStatus = await IngestionService.getRunStatus(scopeId, runId);
+      const statusPayload = runStatus as {
+        data?: {
+          status?: string;
+          title?: string;
+          itemId?: string;
+          lastError?: string;
+          errorMessage?: string;
+        };
+        status?: string;
+        title?: string;
+        itemId?: string;
+        lastError?: string;
+        errorMessage?: string;
+      } | null;
+      const statusData = statusPayload?.data || statusPayload;
+      const currentStatus = (statusData?.status || '').toUpperCase();
+
+      if (
+        currentStatus === 'COMPLETED' ||
+        currentStatus === 'READY' ||
+        currentStatus === 'SUCCEEDED' ||
+        currentStatus === 'NEEDS_REVIEW'
+      ) {
+        if (statusData?.title && statusData.title !== 'Uploaded Document') {
+          finalTitle = statusData.title;
+        }
+        if (statusData?.itemId) {
+          finalItemId = statusData.itemId;
+        }
+        return { ok: true, title: finalTitle, itemId: finalItemId };
+      }
+
+      if (
+        currentStatus === 'FAILED_FINAL' ||
+        currentStatus === 'FAILED_RETRYABLE' ||
+        currentStatus === 'CANCELLED' ||
+        currentStatus === 'FAILED'
+      ) {
+        return {
+          ok: false,
+          error: statusData?.lastError || statusData?.errorMessage || 'Extraction failed',
+        };
+      }
+    } catch {
+      // Retry on transient poll network glitch
+    }
+  }
+
+  // Non-blocking graceful handoff: file was safely stored and queued on server
+  return { ok: true, timedOut: true, title: finalTitle, itemId: finalItemId };
+}
 
 // ── Identifier / Link Ingestion & Polling Orchestration ───────────────────────
 
@@ -245,6 +370,7 @@ export function useDuplicateGroups(scopeId?: string) {
     queryKey: curationKeys.duplicates(scopeId),
     queryFn: () => libraryServices.curation.getDuplicates(scopeId),
     enabled: true,
+    gcTime: 3 * 60 * 1000,
   });
 }
 
@@ -254,27 +380,26 @@ export function useMergeDuplicates(scopeId?: string) {
 
   return useMutation({
     mutationFn: ({
-      masterPaperId,
-      sourcePaperIds,
-      masterId,
-      duplicateIds,
-      fieldSelections,
+      primaryItemId,
+      duplicateItemIds,
+      overrides,
     }: {
-      masterPaperId?: string;
-      sourcePaperIds?: string[];
-      masterId?: string;
-      duplicateIds?: string[];
-      fieldSelections?: Record<string, unknown>;
+      primaryItemId: string;
+      duplicateItemIds: string[];
+      overrides?: Record<string, unknown>;
     }) => {
-      const effectiveMasterId = masterId || masterPaperId || '';
-      const effectiveSourceIds = duplicateIds || sourcePaperIds || [];
-      return libraryServices.curation.mergePapers(effectiveScope, effectiveMasterId, effectiveSourceIds, fieldSelections);
+      return libraryServices.curation.mergeDuplicates(
+        effectiveScope,
+        primaryItemId,
+        duplicateItemIds,
+        overrides,
+      );
     },
-    onSuccess: (response: Awaited<ReturnType<typeof libraryServices.curation.mergePapers>>) => {
+    onSuccess: (response: Awaited<ReturnType<typeof libraryServices.curation.mergeDuplicates>>) => {
       queryClient.invalidateQueries({ queryKey: curationKeys.duplicates(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: curationKeys.integrity(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      const count = response.data?.mergedCount ?? 1;
+      const count = response.mergedCount ?? 1;
       toast.success('Duplicates merged', {
         description: `Consolidated ${count} duplicate record(s) into master. Notes and citations preserved.`,
         id: 'library-merge',
@@ -289,12 +414,124 @@ export function useMergeDuplicates(scopeId?: string) {
   });
 }
 
+export function useFetchAcademicFeed() {
+  return useMutation({
+    mutationFn: (url: string) => libraryServices.ingestion.fetchFeed(url),
+    onError: (error: Error) => {
+      toast.error('Failed to fetch feed', {
+        description: error.message || 'Could not load feed from URL.',
+        id: 'feed-fetch',
+      });
+    },
+  });
+}
+
+export function usePreviewCaptureUrlMutation(scopeId?: string) {
+  const effectiveScope = normalizeScopeId(scopeId);
+
+  return useMutation({
+    mutationFn: (urlOrInput: string | { url: string; scopeId?: string }) => {
+      const targetUrl = typeof urlOrInput === 'string' ? urlOrInput : urlOrInput.url;
+      const targetScope =
+        typeof urlOrInput === 'object' && urlOrInput.scopeId
+          ? normalizeScopeId(urlOrInput.scopeId)
+          : effectiveScope;
+      return libraryServices.ingestion.captureUrl(targetScope, targetUrl);
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to preview URL', {
+        description: error.message || 'Could not extract metadata from URL.',
+        id: 'capture-url-preview',
+      });
+    },
+  });
+}
+
+export interface ConfirmCaptureUrlInput {
+  url: string;
+  previewToken?: string;
+  title?: string;
+  abstract?: string;
+  doi?: string;
+  year?: number;
+  publicationTitle?: string;
+  itemType?: string;
+  collectionId?: string;
+  scopeId?: string;
+}
+
+export function useConfirmCaptureUrlMutation(scopeId?: string) {
+  const queryClient = useQueryClient();
+  const effectiveScope = normalizeScopeId(scopeId);
+
+  return useMutation({
+    mutationFn: (payload: ConfirmCaptureUrlInput) => {
+      const { scopeId: overrideScope, ...confirmPayload } = payload;
+      const targetScope = overrideScope ? normalizeScopeId(overrideScope) : effectiveScope;
+      return libraryServices.ingestion.confirmUrl(targetScope, confirmPayload);
+    },
+    onSuccess: (_data, variables) => {
+      const targetScope = variables.scopeId ? normalizeScopeId(variables.scopeId) : effectiveScope;
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
+      queryClient.invalidateQueries({ queryKey: itemKeys.counts(targetScope) });
+      if (variables.collectionId) {
+        queryClient.invalidateQueries({
+          queryKey: itemKeys.byCollection(targetScope, variables.collectionId),
+        });
+      }
+      invalidateCollections(queryClient, targetScope);
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to save captured URL', {
+        description: error.message || 'Could not confirm URL import.',
+        id: 'capture-url-confirm',
+      });
+    },
+  });
+}
+
+export function useIngestMutation(scopeId?: string) {
+  const queryClient = useQueryClient();
+  const effectiveScope = normalizeScopeId(scopeId);
+
+  return useMutation({
+    mutationFn: (payload: UnifiedIngestionPayload) =>
+      libraryServices.ingestion.ingest(effectiveScope, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
+      queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) });
+      const colId = (variables as { collectionId?: string })?.collectionId;
+      if (colId) {
+        queryClient.invalidateQueries({
+          queryKey: itemKeys.byCollection(effectiveScope, colId),
+        });
+      }
+      invalidateCollections(queryClient, effectiveScope);
+    },
+  });
+}
+
+export function useDismissDuplicatesMutation(scopeId?: string) {
+  const queryClient = useQueryClient();
+  const effectiveScope = normalizeScopeId(scopeId);
+
+  return useMutation({
+    mutationFn: (itemIds: string[]) =>
+      libraryServices.curation.dismissDuplicates(effectiveScope, itemIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: curationKeys.duplicates(effectiveScope) });
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
+    },
+  });
+}
+
 // ── Retraction Queries ────────────────────────────────────────────────────────
 
 export const invalidateRetraction = (qc: QueryClient, scopeId?: string) => {
-  qc.invalidateQueries({ queryKey: retractionKeys.all(scopeId) });
-  qc.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
-  qc.invalidateQueries({ queryKey: itemKeys.counts(scopeId) });
+  const effectiveScope = normalizeScopeId(scopeId);
+  qc.invalidateQueries({ queryKey: retractionKeys.all(effectiveScope) });
+  qc.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
+  qc.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) });
 };
 
 /**
@@ -302,7 +539,7 @@ export const invalidateRetraction = (qc: QueryClient, scopeId?: string) => {
  * (e.g. the editor linter and citation picker), without stats or mutations.
  */
 export function useRetractedItems(scopeId?: string, enabled = true) {
-  const effectiveScope = scopeId || 'user';
+  const effectiveScope = normalizeScopeId(scopeId);
   return useQuery({
     queryKey: retractionKeys.items(effectiveScope),
     queryFn: () => libraryServices.retraction.getRetractedItems(effectiveScope),
@@ -313,7 +550,7 @@ export function useRetractedItems(scopeId?: string, enabled = true) {
 
 export function useRetraction(scopeId?: string, options?: { includeItems?: boolean }) {
   const queryClient = useQueryClient();
-  const effectiveScope = scopeId || 'user';
+  const effectiveScope = normalizeScopeId(scopeId);
 
   const statsQuery = useQuery({
     queryKey: retractionKeys.stats(effectiveScope),

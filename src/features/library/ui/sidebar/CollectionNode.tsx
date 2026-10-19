@@ -98,7 +98,7 @@ export const CollectionNode = memo(function CollectionNode({
   const paddingLeft = 24 + depth * 16;
 
   return (
-    <div className="flex flex-col gap-1 w-full">
+    <div className="flex flex-col gap-0.5 w-full">
       <div className="group/node relative flex items-center w-full">
         {isActive && (
           <motion.div
@@ -183,11 +183,11 @@ export const CollectionNode = memo(function CollectionNode({
                         setIsOpen((v) => !v);
                       }}
                       aria-label={effectiveIsOpen ? `Collapse ${node.name}` : `Expand ${node.name}`}
-                      className="flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-muted active:bg-muted cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-2 md:before:hidden"
+                      className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground border border-transparent hover:border-border/50 hover:bg-background hover:shadow-2xs active:scale-95 cursor-pointer transition-all duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-2 md:before:hidden"
                     >
                       <ChevronRight
                         className={cn(
-                          'size-3.5 text-foreground transition-transform duration-150 shrink-0',
+                          'size-3.5 transition-transform duration-150 shrink-0',
                           effectiveIsOpen && 'rotate-90'
                         )}
                         strokeWidth={1.5}
@@ -210,7 +210,7 @@ export const CollectionNode = memo(function CollectionNode({
       </div>
 
       {hasChildren && effectiveIsOpen && (
-        <div className="flex flex-col gap-1 w-full">
+        <div className="flex flex-col gap-0.5 w-full">
           {node.children.map((child) => (
             <CollectionNode
               key={child.id}

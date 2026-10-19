@@ -22,10 +22,7 @@ export interface LibraryEmptyStateProps {
   collectionId?: string;
   collectionName?: string;
   canEdit?: boolean;
-  onClearSearch?: () => void;
   onDirectFilesUpload?: (files: File[]) => void;
-  onAddLink?: () => void;
-  onAddCollection?: () => void;
   className?: string;
   title?: string;
   description?: string;
@@ -183,7 +180,7 @@ function DefaultLibraryEmptyState({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        'flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200 bg-background transition-colors',
+        'flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200 transition-colors',
         config.showDropzone && canEdit && isDragOver && 'border-2 border-dashed border-primary bg-primary/5 ring-1 ring-primary',
         className,
       )}
@@ -191,9 +188,7 @@ function DefaultLibraryEmptyState({
       <style dangerouslySetInnerHTML={{ __html: libraryIllustrationStyles }} />
 
       {/* 3D Isometric Multi-Layer Illustration */}
-      <div className="plane-illustration mb-6 flex items-center justify-center">
-        <IllustrationComponent />
-      </div>
+      <IllustrationComponent className="plane-illustration mb-6 shrink-0" />
 
       {/* Title (h2 ensures valid heading hierarchy after page h1) */}
       <h2 className="text-16 font-semibold text-foreground mb-2 tracking-tight">

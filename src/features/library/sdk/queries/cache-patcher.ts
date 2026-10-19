@@ -1,6 +1,13 @@
 import type { QueryClient } from '@tanstack/react-query';
 import type { Item } from '@/features/library/domain/types/library.types';
-import { itemKeys, invalidateCollections } from '@/features/library/sdk/query-keys';
+import type { InvalidationClient } from '@/features/library/domain/types/batch-upload.types';
+import {
+  itemKeys,
+  invalidateCollections,
+  normalizeScopeId,
+} from '@/features/library/sdk/query-keys';
+
+export type { InvalidationClient };
 
 /**
  * Safely patch an item inside TanStack Query cache across all formats:
@@ -70,21 +77,18 @@ export function patchItemInCacheData(
 }
 
 /**
- * Safely patch single item detail cache ({ item: Item, paper: Item } or Item)
+ * Safely patch single item detail cache (Item or { item: Item })
  */
 export function patchSingleItemCache<T>(oldData: T, patch: Partial<Item>): T {
   if (!oldData || typeof oldData !== 'object') return oldData;
-  const old = oldData as Record<string, unknown>;
-  if (old.item && typeof old.item === 'object') {
-    const updated = { ...(old.item as Record<string, unknown>), ...patch };
+  const record = oldData as Record<string, unknown>;
+  if ('item' in record && record.item && typeof record.item === 'object') {
     return {
-      ...old,
-      ...updated,
-      item: updated,
-      paper: updated,
+      ...record,
+      item: { ...(record.item as Record<string, unknown>), ...patch },
     } as T;
   }
-  return { ...old, ...patch } as T;
+  return { ...record, ...patch } as T;
 }
 
 /**
@@ -97,14 +101,100 @@ export function patchItemAcrossScopeCaches(
   itemId: string,
   patch: Partial<Item>,
 ): void {
-  const effectiveScope = scopeId || 'user';
+  const effectiveScope = normalizeScopeId(scopeId);
   queryClient.setQueryData(
     itemKeys.byId(effectiveScope, itemId),
     (old: unknown) => patchSingleItemCache(old, patch),
   );
   queryClient.setQueriesData(
-    { queryKey: ['library', 'items', effectiveScope] },
+    { queryKey: itemKeys.all(effectiveScope) },
     (old) => patchItemInCacheData(old, itemId, patch),
+  );
+}
+
+/**
+ * Safely remove one or more items from paginated/infinite/array list cache data.
+ */
+export function removeItemsFromCacheData(
+  oldData: unknown,
+  targetIds: ReadonlySet<string>,
+): unknown {
+  if (!oldData || typeof oldData !== 'object' || targetIds.size === 0) return oldData;
+
+  const filterItemsArray = (items: Item[]): Item[] => {
+    const next = items.filter((it) => !targetIds.has(it.id));
+    return next.length === items.length ? items : next;
+  };
+
+  const data = oldData as {
+    items?: Item[];
+    total?: number;
+    pages?: Array<{ items?: Item[] }>;
+  };
+
+  if (Array.isArray(data.items)) {
+    const nextItems = filterItemsArray(data.items);
+    if (nextItems === data.items) return oldData;
+    const removedCount = data.items.length - nextItems.length;
+    return {
+      ...data,
+      items: nextItems,
+      ...(typeof data.total === 'number'
+        ? { total: Math.max(0, data.total - removedCount) }
+        : {}),
+    };
+  }
+
+  if (Array.isArray(data.pages)) {
+    let anyPageMutated = false;
+    const nextPages = data.pages.map((page) => {
+      if (!page || !Array.isArray(page.items)) return page;
+      const nextItems = filterItemsArray(page.items);
+      if (nextItems === page.items) return page;
+      anyPageMutated = true;
+      return {
+        ...page,
+        items: nextItems,
+      };
+    });
+    if (!anyPageMutated) return oldData;
+    return {
+      ...data,
+      pages: nextPages,
+    };
+  }
+
+  if (Array.isArray(oldData)) {
+    return filterItemsArray(oldData as Item[]);
+  }
+
+  return oldData;
+}
+
+/**
+ * Deterministically removes deleted/purged items from both the item detail cache
+ * and all active item list caches within a given scopeId.
+ */
+export function removeItemsFromScopeCaches(
+  queryClient: QueryClient,
+  scopeId: string,
+  itemIds: string | string[],
+): void {
+  const effectiveScope = normalizeScopeId(scopeId);
+  const ids = Array.isArray(itemIds) ? itemIds : [itemIds];
+  const idSet = new Set(ids.filter(Boolean));
+  if (idSet.size === 0) return;
+
+  for (const id of idSet) {
+    queryClient.removeQueries({
+      queryKey: itemKeys.byId(effectiveScope, id),
+      exact: true,
+    });
+  }
+
+  queryClient.setQueriesData(
+    { queryKey: itemKeys.all(effectiveScope) },
+    (old) => removeItemsFromCacheData(old, idSet),
   );
 }
 
@@ -112,10 +202,10 @@ export function patchItemAcrossScopeCaches(
  * Invalidates all item, trash, count, and collection queries for a library scope.
  */
 export async function invalidateLibraryScopeCatalog(
-  queryClient: QueryClient,
+  queryClient: InvalidationClient,
   scopeId: string,
 ): Promise<void> {
-  const effectiveScope = scopeId || 'user';
+  const effectiveScope = normalizeScopeId(scopeId);
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) }),
     queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) }),

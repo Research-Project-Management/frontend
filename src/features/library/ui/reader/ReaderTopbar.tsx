@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import {
   Library,
   FileText,
@@ -45,7 +45,7 @@ export interface ReaderTopbarProps {
 
 export type TopbarProps = ReaderTopbarProps;
 
-export function ReaderTopbar({
+export const ReaderTopbar = memo(function ReaderTopbar({
   paper,
   tabs = [],
   activeTabId,
@@ -423,7 +423,7 @@ export function ReaderTopbar({
       </div>
     </header>
   );
-}
+});
 
 export { ReaderTopbar as Topbar };
 export default ReaderTopbar;

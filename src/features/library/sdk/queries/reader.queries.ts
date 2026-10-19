@@ -6,9 +6,10 @@ import { toast } from 'sonner';
 import { getErrorMessage } from '@/shared/lib/utils';
 import { libraryServices, readerService } from '../library.client';
 import {
+  itemKeys,
   readerQueryKeys,
-  readerAnnotationKeys,
-  readerNoteKeys,
+  annotationKeys,
+  noteKeys,
 } from '@/features/library/sdk/query-keys';
 import { PdfAnnotationEngine } from '@/features/library/domain/reader.domain';
 import type {
@@ -19,7 +20,6 @@ import type {
 export type CreateAnnotationDTO = CreateAnnotationDto;
 export type UpdateAnnotationDTO = UpdateAnnotationDto;
 
-export { readerAnnotationKeys };
 
 // ── 1. Document & Fulltext Queries ───────────────────────────────────────────
 
@@ -32,6 +32,7 @@ export function useReaderItem(scopeId?: string, itemId?: string) {
     },
     enabled: Boolean(itemId),
     staleTime: 1000 * 60 * 5,
+    gcTime: 3 * 60 * 1000,
   });
 }
 
@@ -44,6 +45,7 @@ export function useReaderFulltext(scopeId?: string, itemId?: string) {
     },
     enabled: Boolean(itemId),
     staleTime: 1000 * 60 * 10,
+    gcTime: 3 * 60 * 1000,
   });
 }
 
@@ -53,12 +55,13 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: readerAnnotationKeys.byAttachment(scopeId, attachmentId),
+    queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
     queryFn: () => {
       if (!attachmentId) return [];
       return readerService.annotations.getByAttachment(scopeId, attachmentId);
     },
     enabled: Boolean(attachmentId),
+    gcTime: 3 * 60 * 1000,
   });
 
   const createMutation = useMutation({
@@ -68,7 +71,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: readerAnnotationKeys.byAttachment(scopeId, attachmentId),
+        queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
       });
       toast.success('Annotation saved', { id: 'reader-annotation-toast' });
     },
@@ -101,7 +104,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: readerAnnotationKeys.byAttachment(scopeId, attachmentId),
+        queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
       });
       toast.success('Annotation updated', { id: 'reader-annotation-toast' });
     },
@@ -131,7 +134,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: readerAnnotationKeys.byAttachment(scopeId, attachmentId),
+        queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
       });
       toast.success('Annotation deleted', { id: 'reader-annotation-toast' });
     },
@@ -146,11 +149,12 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
   const extractNotesMutation = useMutation({
     mutationFn: (paperId: string) => readerService.annotations.extractNotes(scopeId, paperId),
     onSuccess: (res, paperId) => {
-      queryClient.invalidateQueries({ queryKey: readerNoteKeys.all });
       if (paperId) {
-        queryClient.invalidateQueries({ queryKey: readerQueryKeys.item(scopeId, paperId) });
+        queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, paperId) });
+        queryClient.invalidateQueries({ queryKey: itemKeys.byId(scopeId, paperId) });
+      } else {
+        queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
       }
-      queryClient.invalidateQueries({ queryKey: readerQueryKeys.all });
       if (!res?.totalExtracted) {
         toast.info('No annotations in this document to extract', {
           id: 'reader-annotation-toast',
@@ -177,7 +181,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({
-        queryKey: readerAnnotationKeys.byAttachment(scopeId, attachmentId),
+        queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
       });
       const count =
         res?.importedCount ??
@@ -257,7 +261,7 @@ export function useExportAnnotatedPdf(scopeId?: string) {
   };
 }
 
-export function useOcrExtraction(scopeId?: string) {
+export function useOcrExtraction(scopeId?: string, itemId?: string) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -265,9 +269,16 @@ export function useOcrExtraction(scopeId?: string) {
       if (!attachmentId) throw new Error('No attachment available to run OCR');
       toast.loading('Submitting OCR re-extraction job...', { id: 'reader-ocr-trigger' });
       await libraryServices.attachments.reExtract(scopeId, attachmentId);
+      return attachmentId;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: readerQueryKeys.all });
+    onSuccess: (attachmentId) => {
+      if (itemId) {
+        queryClient.invalidateQueries({ queryKey: itemKeys.byId(scopeId, itemId) });
+        queryClient.invalidateQueries({ queryKey: readerQueryKeys.fulltext(scopeId, itemId) });
+      }
+      queryClient.invalidateQueries({
+        queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
+      });
       toast.success('OCR job queued successfully', { id: 'reader-ocr-trigger' });
     },
     onError: (err: unknown) => {

@@ -77,24 +77,11 @@ export interface ReaderNavigationTarget {
   timestamp: number;
 }
 
-export interface ItemFieldDefinition {
-  field: string;
-  label: string;
-  type?: string;
-  required?: boolean;
-  mono?: boolean;
-  category?: string;
-}
-
-export type SchemaFieldDefinition = ItemFieldDefinition;
-
-export interface SchemaItemTypeDefinition {
-  itemType: string;
-  label: string;
-  fields?: ItemFieldDefinition[];
-  creatorTypes?: Array<{ creatorType: string; label: string; primary?: boolean }>;
-  primaryCreatorType?: string;
-}
+export type {
+  ItemFieldDefinition,
+  SchemaFieldDefinition,
+  SchemaItemTypeDefinition,
+} from './item-types.types';
 
 export interface DroppedField {
   field: string;
@@ -123,6 +110,12 @@ export interface TypeConversionPreview {
   mappedFields: FieldMappingChange[];
   droppedFields: DroppedField[];
   creatorChanges: CreatorRoleChange[];
+  newAvailableFields?: Array<{
+    field: string;
+    label: string;
+    category?: string;
+    type?: string;
+  }>;
   projectedItem: Record<string, unknown>;
   unmappedRetained: Record<string, unknown>;
   hasLoss: boolean;

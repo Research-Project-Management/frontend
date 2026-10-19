@@ -5,7 +5,8 @@ import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { EditorArea } from '@/features/editor/ui/editor/EditorArea';
-import { PdfToolbar } from '@/features/editor/subsystems/compiler';
+import { PdfToolbar, DetachedPdfPlaceholder } from '@/features/editor/subsystems/compiler';
+import { WorkbenchShell } from '@/features/editor/core/shell/WorkbenchShell';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
 import { useSettingsStore } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
@@ -196,6 +197,57 @@ describe('Split Editor Panes & Detached PDF Preview (Overleaf Parity)', () => {
 
       useWorkspaceStore.getState().togglePdfDetached();
       expect(useWorkspaceStore.getState().isPdfDetached).toBe(false);
+    });
+
+    it('renders DetachedPdfPlaceholder with re-attach button and dispatches preview:attach on click', () => {
+      const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
+      renderWithProviders(<DetachedPdfPlaceholder />);
+
+      expect(screen.getByText(/pdf is open in a separate window/i)).toBeInTheDocument();
+      const reattachBtn = screen.getByRole('button', { name: /re-attach pdf/i });
+      expect(reattachBtn).toBeInTheDocument();
+
+      fireEvent.click(reattachBtn);
+      expect(dispatchSpy).toHaveBeenCalledWith({ type: 'preview:attach' });
+    });
+
+    it('switches layout to editor-only when clicking Full-width editor on DetachedPdfPlaceholder', () => {
+      useSettingsStore.setState({ layout: 'split' });
+      renderWithProviders(<DetachedPdfPlaceholder />);
+
+      const fullWidthBtn = screen.getByRole('button', { name: /full-width editor/i });
+      expect(fullWidthBtn).toBeInTheDocument();
+
+      fireEvent.click(fullWidthBtn);
+      expect(useSettingsStore.getState().layout).toBe('editor-only');
+    });
+
+    it('allocates 100% flex to editor when preview is absent or null in WorkbenchShell', () => {
+      const { container } = render(
+        <WorkbenchShell
+          editor={<div data-testid="test-editor">Editor Content</div>}
+          preview={null}
+        />
+      );
+
+      const editorSection = container.querySelector('section');
+      expect(editorSection).toHaveStyle({ flex: '1 1 0%' });
+      // Splitter handle should NOT be rendered when preview is null
+      expect(container.querySelector('[aria-label*="PDF preview"]')).toBeNull();
+    });
+
+    it('allocates 100% flex to preview when editor is absent or null in WorkbenchShell', () => {
+      const { container } = render(
+        <WorkbenchShell
+          editor={null}
+          preview={<div data-testid="test-preview">Preview Content</div>}
+        />
+      );
+
+      const previewSection = container.querySelector('section');
+      expect(previewSection).toHaveStyle({ flex: '1 1 0%' });
+      // Splitter handle should NOT be rendered when editor is null
+      expect(container.querySelector('[aria-label*="PDF preview"]')).toBeNull();
     });
   });
 });

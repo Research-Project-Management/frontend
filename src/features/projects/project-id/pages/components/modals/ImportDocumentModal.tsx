@@ -114,7 +114,7 @@ export function ImportDocumentModal({
     const toastId = toast.loading(`Converting and importing ${selectedFile.name}...`);
 
     try {
-      const result = await manuscriptService.exportImport.convertDocument(
+      const result = await manuscriptService.export.convertDocument(
         projectId,
         selectedFile,
         format,

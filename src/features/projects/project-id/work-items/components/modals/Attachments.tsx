@@ -93,7 +93,6 @@ export function Attachments({
     title?: string;
     authors?: string[] | string;
     doi?: string;
-    DOI?: string;
     citationKey?: string;
     year?: string | number;
     extra?: { citationKey?: string; [key: string]: unknown };
@@ -168,7 +167,7 @@ export function Attachments({
     if (!selectedLibraryPaper) return;
     const paperId = selectedLibraryPaper.id || `paper-${Date.now()}`;
     const title = selectedLibraryPaper.title || 'Untitled Paper';
-    const doi = selectedLibraryPaper.doi || selectedLibraryPaper.DOI || undefined;
+    const doi = selectedLibraryPaper.doi || undefined;
     const citationKey =
       selectedLibraryPaper.citationKey ||
       selectedLibraryPaper.extra?.citationKey ||
@@ -870,7 +869,7 @@ export function Attachments({
                       : typeof paper.authors === 'string'
                       ? paper.authors
                       : '';
-                    const doi = paper.doi || paper.DOI;
+                    const doi = paper.doi;
                     const citationKey = paper.citationKey || paper.extra?.citationKey;
 
                     return (

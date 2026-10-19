@@ -1,9 +1,4 @@
-import AppLoading from '@/app/(app)/loading';
-import type { Metadata } from 'next';
-import { Suspense } from 'react';
-import HomePage from '@/features/storage/pages/HomePage';
-
-export const metadata: Metadata = { title: 'Folder · Storage · Flux' };
+import { redirect } from 'next/navigation';
 
 export default async function StorageFolderPage({
   params,
@@ -11,9 +6,5 @@ export default async function StorageFolderPage({
   params: Promise<{ folderId: string }>;
 }) {
   const { folderId } = await params;
-  return (
-    <Suspense fallback={<AppLoading />}>
-      <HomePage initialSection="my-files" initialFolderId={folderId} />
-    </Suspense>
-  );
+  redirect(`/storage?view=my-files&folder=${encodeURIComponent(folderId)}`);
 }

@@ -720,8 +720,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
               toast.error('Work item title is required');
               return;
             }
-            const createFn =
-              activeProjectActions.createWorkItem || activeProjectActions.create;
+            const createFn = activeProjectActions.create;
             if (createFn) {
               await createFn({
                 ...formData,

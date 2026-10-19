@@ -12,6 +12,8 @@ import {
   fetchTrashedProjects,
   restoreTrashedProjectApi,
   permanentDeleteProjectApi,
+  fetchDefaultStatesTemplate,
+  checkProjectIdentifierApi,
   type Project,
   type ProjectPermissions,
   type CreateProjectInput,
@@ -866,4 +868,26 @@ export const usePermanentDeleteProject = () => {
     },
   });
 };
+
+export const useDefaultStatesTemplate = () => {
+  return useQuery({
+    queryKey: ['projects', 'states', 'default-template'],
+    queryFn: fetchDefaultStatesTemplate,
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
+};
+
+export const useCheckProjectIdentifier = (
+  identifier?: string,
+  name?: string,
+  enabled = true,
+) => {
+  return useQuery({
+    queryKey: ['projects', 'check-identifier', identifier, name],
+    queryFn: () => checkProjectIdentifierApi(identifier, name),
+    enabled: enabled && (Boolean(identifier) || Boolean(name)),
+    staleTime: 5000,
+  });
+};
+
 

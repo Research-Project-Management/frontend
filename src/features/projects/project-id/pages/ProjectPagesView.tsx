@@ -200,7 +200,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
     if (!projectId) return;
     const toastId = toast.loading(`Importing ${file.name}...`);
     try {
-      await manuscriptService.exportImport.importProjectZip(projectId, file);
+      await manuscriptService.export.importProjectZip(projectId, file);
       await queryClient.invalidateQueries({ queryKey: pageKeys.all });
       toast.success('Project imported', { id: toastId });
     } catch (err) {
@@ -239,7 +239,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
       <PageContent maxWidth="full" noPadding className="pb-8">
         {isLoading ? (
           viewMode === 'grid' ? (
-            <div className="p-4 sm:p-6 pb-12 w-full max-w-7xl mx-auto">
+            <div className="p-4 sm:p-6 pb-12 w-full">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4.5">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div

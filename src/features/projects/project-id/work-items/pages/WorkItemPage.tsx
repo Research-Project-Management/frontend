@@ -318,7 +318,7 @@ export function WorkItemPage({
     const trimmedTitle = title?.trim();
     if (trimmedTitle) {
       if (projectState.isSaving) return;
-      (projectActions.createWorkItem || projectActions.create)({
+      projectActions.create({
         projectId,
         columnId: targetColumnId,
         title: trimmedTitle,
@@ -356,15 +356,13 @@ export function WorkItemPage({
     if (!updates) return;
 
     if (effectiveGroupBy !== 'state' || Object.keys(updates).length > 1) {
-      projectActions.updateWorkItem({
-        workItemId,
+      projectActions.update({
         id: workItemId,
         projectId,
         ...updates,
       });
     } else {
-      projectActions.moveWorkItem({
-        workItemId,
+      projectActions.move({
         id: workItemId,
         columnId: newColumnId,
         projectId,
@@ -378,8 +376,7 @@ export function WorkItemPage({
     if (effectiveGroupBy === 'none') {
       const targetItem = displayItems.find((i) => i.id === workItemId);
       if (targetItem) {
-        projectActions.reorderWorkItem({
-          workItemId,
+        projectActions.reorder({
           id: workItemId,
           columnId: targetItem.columnId,
           rank,
@@ -391,8 +388,7 @@ export function WorkItemPage({
 
     const updates = buildGroupMoveUpdates(effectiveGroupBy, newColumnId);
     if (updates && effectiveGroupBy !== 'state') {
-      projectActions.updateWorkItem({
-        workItemId,
+      projectActions.update({
         id: workItemId,
         projectId,
         ...updates,
@@ -400,8 +396,7 @@ export function WorkItemPage({
       return;
     }
 
-    projectActions.reorderWorkItem({
-      workItemId,
+    projectActions.reorder({
       id: workItemId,
       columnId: newColumnId,
       rank,
@@ -424,7 +419,7 @@ export function WorkItemPage({
     };
 
     try {
-      const result = (await (projectActions.createWorkItem || projectActions.create)(payload)) as {
+      const result = (await projectActions.create(payload)) as {
         subItem?: Item;
         workItem?: Item;
         item?: Item;
@@ -454,11 +449,10 @@ export function WorkItemPage({
       title: formData.title.trim(),
       projectId,
       id: activeModal.card.id,
-      workItemId: activeModal.card.id,
     };
 
     try {
-      await projectActions.updateWorkItem(payload);
+      await projectActions.update(payload);
     } catch {
       // Error handled by mutation hook
     }
@@ -472,14 +466,14 @@ export function WorkItemPage({
 
   const handleItemDeleteConfirm = useCallback(() => {
     if (modal.type === 'delete' && modal.item?.id) {
-      projectActions.deleteItem({ id: modal.item.id, projectId }).then(() => {
+      projectActions.delete({ id: modal.item.id, projectId }).then(() => {
         closeModal();
       });
     }
   }, [modal, projectActions, projectId, closeModal]);
 
   const handleDuplicateCard = useCallback((card: Item) => {
-    projectActions.duplicateWorkItem({ projectId, workItemId: card.id, id: card.id });
+    projectActions.duplicate({ projectId, id: card.id });
   }, [projectActions, projectId]);
 
   const handleJoinCard = useCallback((card: Item) => {
@@ -487,8 +481,7 @@ export function WorkItemPage({
     const currentAssigneeId = ItemHelpers.resolveAssigneeId(card);
     if (currentAssigneeId === currentUser.id) return;
 
-    projectActions.updateWorkItem({
-      workItemId: card.id,
+    projectActions.update({
       id: card.id,
       projectId,
       assigneeId: currentUser.id,
@@ -500,8 +493,7 @@ export function WorkItemPage({
     const currentAssigneeId = ItemHelpers.resolveAssigneeId(card);
     if (currentAssigneeId !== currentUser.id) return;
 
-    projectActions.updateWorkItem({
-      workItemId: card.id,
+    projectActions.update({
       id: card.id,
       projectId,
       assigneeId: null,
@@ -519,7 +511,7 @@ export function WorkItemPage({
 
   const handleQuickUpdateItem = useCallback(
     (itemId: string, data: Partial<Item>) => {
-      projectActions.updateWorkItem({ workItemId: itemId, id: itemId, projectId, ...data });
+      projectActions.update({ id: itemId, projectId, ...data });
     },
     [projectActions, projectId],
   );

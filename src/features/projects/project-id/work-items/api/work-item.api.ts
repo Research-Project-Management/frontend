@@ -194,21 +194,6 @@ export const workItemApi = {
         ? apiPost(`/api/projects/${projectId}/work-items/bulk-delete`, payload)
         : apiPost(`/api/work-items/bulk-delete`, payload);
     },
-
-    getProjectWorkItems: (projectId: string) =>
-      workItemApi.items.getProjectItems(projectId),
-    getWorkItems: () =>
-      workItemApi.items.getItems(),
-    getWorkItemById: (id: string) =>
-      workItemApi.items.getById(id),
-    createChildWorkItem: (id: string, data: CreateSubItemInput) =>
-      workItemApi.items.createChild(id, data),
-    createSubItem: (id: string, data: CreateSubItemInput) =>
-      workItemApi.items.createChild(id, data),
-    convertToRootWorkItem: (id: string) =>
-      workItemApi.items.convertToRoot(id),
-    reorderWorkItem: (input: ReorderItemInput) =>
-      workItemApi.items.reorder(input),
   },
 
   // ── 2. Workflow States (Kanban Columns) ────────────────────────────────────
@@ -469,14 +454,8 @@ export const workItemApi = {
     archive: (id: string) =>
       apiPost<{ message: string; workItem?: Item; item?: Item }>(`/api/work-items/${id}/archive`),
 
-    archiveWorkItem: (id: string) =>
-      workItemApi.archive.archive(id),
-
     restore: (id: string) =>
       apiPost<{ message: string; workItem?: Item; item?: Item }>(`/api/work-items/${id}/restore`),
-
-    restoreWorkItem: (id: string) =>
-      workItemApi.archive.restore(id),
 
     bulkArchive: (ids: string[], projectId?: string) => {
       const payload = { workItemIds: ids, ...(projectId && { projectId }) };
@@ -494,9 +473,6 @@ export const workItemApi = {
 
     getArchived: (projectId: string) =>
       apiGet<ArchivedItemsResponse | Item[]>(`/api/work-items/projects/${projectId}/archived`),
-
-    getArchivedWorkItems: (projectId: string) =>
-      workItemApi.archive.getArchived(projectId),
   },
 
   // ── 10. Analytics ─────────────────────────────────────────────────────────

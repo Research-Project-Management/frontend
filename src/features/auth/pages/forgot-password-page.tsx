@@ -88,15 +88,6 @@ const ForgotPasswordPage = () => {
             )}
           </div>
 
-          {error && (
-            <div
-              role='alert'
-              aria-live='assertive'
-              className='p-3 text-13 text-destructive bg-destructive/10 rounded-md border border-destructive/20 text-center font-medium'
-            >
-              {error}
-            </div>
-          )}
 
           <Button
             type='submit'

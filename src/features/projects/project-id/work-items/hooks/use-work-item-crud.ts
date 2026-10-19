@@ -545,7 +545,7 @@ export const useCreateSubItem = () => {
       projectId?: string;
     } & CreateSubItemInput) => {
       const targetId = (id || itemId || workItemId) ?? '';
-      return workItemApi.items.createSubItem(targetId, data);
+      return workItemApi.items.createChild(targetId, data);
     },
     onSuccess: (res, variables) => {
       const parentId = (variables.id || variables.itemId || variables.workItemId) ?? '';

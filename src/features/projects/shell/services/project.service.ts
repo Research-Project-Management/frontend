@@ -175,6 +175,16 @@ export const fetchDefaultStatesTemplate = () =>
     `/api/v1/projects/settings/states/default-template`,
   );
 
+export const checkProjectIdentifierApi = (identifier?: string, name?: string) => {
+  const params = new URLSearchParams();
+  if (identifier) params.append('identifier', identifier);
+  if (name) params.append('name', name);
+  const query = params.toString();
+  return apiGet<{ available: boolean; identifier: string; suggested: string }>(
+    `/api/v1/projects/check-identifier${query ? `?${query}` : ''}`,
+  );
+};
+
 // ── Trash & Permanent Delete ────────────────────────────────────────
 
 export const fetchTrashedProjects = (signal?: AbortSignal) =>
@@ -211,6 +221,7 @@ export const ProjectService = {
   reorderStates: reorderProjectStatesApi,
   deleteState: deleteProjectStateApi,
   getDefaultStatesTemplate: fetchDefaultStatesTemplate,
+  checkIdentifier: checkProjectIdentifierApi,
   // Trash & Permanent Delete
   getTrashed: fetchTrashedProjects,
   restoreTrashed: (projectId: string) => restoreTrashedProjectApi(projectId),

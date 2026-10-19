@@ -6,6 +6,7 @@ import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 
 export default function StorageRouteError({
   error,
+  reset,
 }: {
   error: Error & { digest?: string };
   reset?: () => void;
@@ -19,6 +20,7 @@ export default function StorageRouteError({
       title="Storage is currently unavailable"
       description="An issue occurred while loading your cloud storage files. Other data and workspaces remain safe."
       error={error}
+      reset={reset}
     />
   );
 }

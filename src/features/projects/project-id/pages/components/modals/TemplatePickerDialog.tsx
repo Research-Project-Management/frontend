@@ -148,7 +148,7 @@ export function TemplatePickerDialog({
     const toastId = toast.loading(`Scaffolding ${activeTemplate.title}...`);
 
     try {
-      const result = await manuscriptService.exportImport.scaffoldTemplate(
+      const result = await manuscriptService.export.scaffoldTemplate(
         projectId,
         activeTemplate.id
       );

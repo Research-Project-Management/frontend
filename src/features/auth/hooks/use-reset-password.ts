@@ -43,6 +43,7 @@ export const useResetPassword = () => {
     } catch (err: unknown) {
       const message = getErrorMessage(err) || 'Failed to reset password. The link may have expired.';
       setError(message);
+      toast.error(message, { id: 'auth-error' });
     } finally {
       setIsPending(false);
     }

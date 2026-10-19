@@ -1,8 +1,10 @@
-import type { Metadata } from 'next';
-import ClientEditor from '@/features/editor/core/shell/ClientEditor';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = { title: 'Draft · Editor · Flux' };
-
-export default function DraftEditorPage() {
-  return <ClientEditor />;
+export default async function DraftEditorRedirectPage({
+  params,
+}: {
+  params: Promise<{ projectId: string; draftId: string }>;
+}) {
+  const { projectId, draftId } = await params;
+  redirect(`/projects/${projectId}/pages/${draftId}`);
 }

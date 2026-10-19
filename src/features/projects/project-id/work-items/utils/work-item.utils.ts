@@ -36,8 +36,6 @@ export function resolveItemId(target?: { id?: string; itemId?: string; workItemI
   return target.id ?? target.workItemId ?? target.itemId ?? "";
 }
 export const resolveWorkItemId = resolveItemId;
-export const resolveColumnItemId = resolveItemId;
-export const resolveWorkItemColumnId = resolveColumnId;
 
 export function resolveStateId(state?: Pick<State, "id"> | null): string {
   return state?.id ?? "";

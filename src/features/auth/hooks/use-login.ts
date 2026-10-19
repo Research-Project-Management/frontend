@@ -47,7 +47,7 @@ export const useLogin = () => {
     onError: (err: unknown) => {
       const message =
         (err as { message?: string })?.message ?? 'Login failed. Please try again.';
-      toast.error(message);
+      toast.error(message, { id: 'auth-error' });
     },
   });
 
@@ -57,13 +57,14 @@ export const useLogin = () => {
       const params = new URLSearchParams(window.location.search);
       const urlErr = params.get('error');
       if (urlErr) {
+        let errorMsg = `Authentication failed: ${urlErr}`;
         if (urlErr === 'google_token_failed') {
-          setOauthError('Failed to authenticate with Google. Please try again.');
+          errorMsg = 'Failed to authenticate with Google. Please try again.';
         } else if (urlErr === 'oauth_error') {
-          setOauthError('OAuth authentication error occurred. Please try again.');
-        } else {
-          setOauthError(`Authentication failed: ${urlErr}`);
+          errorMsg = 'OAuth authentication error occurred. Please try again.';
         }
+        setOauthError(errorMsg);
+        toast.error(errorMsg, { id: 'auth-error' });
       }
     }
   }, []);

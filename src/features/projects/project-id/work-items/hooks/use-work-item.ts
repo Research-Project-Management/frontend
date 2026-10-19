@@ -86,7 +86,6 @@ export function useProject({ projectId }: UseProjectOptions) {
     () => ({
       items,
       workItems: items,
-      allWorkItems: items,
       columns,
       project,
       members,
@@ -104,10 +103,6 @@ export function useProject({ projectId }: UseProjectOptions) {
       error,
       isSaving,
       isDeleting,
-      isSavingItem: isSaving,
-      isDeletingItem: isDeleting,
-      isSavingWorkItem: isSaving,
-      isDeletingWorkItem: isDeleting,
     }),
     [items, columns, project, members, labels, labelMap, isLoading, isError, isSaving, isDeleting, error]
   );

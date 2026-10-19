@@ -58,7 +58,7 @@ export const useRegister = () => {
     onError: (err: unknown) => {
       const message =
         (err as { message?: string })?.message ?? 'Registration failed. Please try again.';
-      toast.error(message);
+      toast.error(message, { id: 'auth-error' });
     },
   });
 

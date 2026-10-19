@@ -51,6 +51,18 @@ export const integrationService = {
     return apiPost<SyncCollectionResult>(`/api/v1/integrations/${provider}/sync`, payload);
   },
 
+  /**
+   * Fetches BibTeX content of a remote Zotero/Mendeley collection for direct Library ingestion.
+   */
+  async getCollectionBibtex(
+    provider: IntegrationProvider,
+    collectionId: string,
+  ): Promise<{ provider: string; collectionId: string; bibtex: string; syncedAt: string }> {
+    return apiGet<{ provider: string; collectionId: string; bibtex: string; syncedAt: string }>(
+      `/api/v1/integrations/${provider}/collections/${encodeURIComponent(collectionId)}/bibtex`,
+    );
+  },
+
   // ============================================================================
   // GitHub Repository & Git Sync APIs
   // ============================================================================

@@ -136,11 +136,7 @@ export function CreateModal({
           </div>
 
           {/* Status & Labels Row: Button with dropdown/popover + selected chips */}
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-12 font-medium text-foreground">
-              Status & Labels
-            </Label>
-            <div className="flex flex-wrap items-center gap-1.5 min-h-8">
+          <div className="flex flex-wrap items-center gap-1.5 min-h-8">
               <Popover open={isLabelPopoverOpen} onOpenChange={setIsLabelPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -323,7 +319,6 @@ export function CreateModal({
                 );
               })}
             </div>
-          </div>
         </div>
 
         <DialogFooter className="flex justify-end gap-2 pt-3">

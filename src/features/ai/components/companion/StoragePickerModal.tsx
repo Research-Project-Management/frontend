@@ -14,18 +14,17 @@ import {
   Folder,
   ChevronRight,
   ChevronLeft,
-  FileText,
-  FileSpreadsheet,
-  FileCode,
-  FileImage,
-  File,
   Loader2,
   X,
   Check,
 } from 'lucide-react';
-import { getMyFiles } from '@/features/storage/services/drive.service';
-import type { StorageItem } from '@/features/storage/types/storage.types';
-import { StorageEmptyState } from '@/features/storage/components/layout/StorageEmptyState';
+import {
+  getAllFiles,
+  getFileIcon,
+  getFileType,
+  StorageEmptyState,
+  type StorageItem,
+} from '@/features/storage';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
@@ -41,26 +40,6 @@ interface StoragePickerModalProps {
 interface BreadcrumbItem {
   id: string | null;
   name: string;
-}
-
-
-function getFileIcon(name: string, mime?: string) {
-  const parts = (name || '').split('.');
-  const ext = parts.length > 1 ? parts.pop()!.toLowerCase() : '';
-
-  if (ext === 'pdf' || mime?.includes('pdf')) {
-    return <FileText className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />;
-  }
-  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext) || mime?.includes('image')) {
-    return <FileImage className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />;
-  }
-  if (['xls', 'xlsx', 'csv'].includes(ext) || mime?.includes('sheet') || mime?.includes('excel')) {
-    return <FileSpreadsheet className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />;
-  }
-  if (['ts', 'tsx', 'js', 'jsx', 'json', 'py', 'java', 'cpp', 'c', 'go', 'rs', 'md', 'html', 'css'].includes(ext)) {
-    return <FileCode className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />;
-  }
-  return <File className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />;
 }
 
 export function StoragePickerModal({
@@ -95,49 +74,38 @@ export function StoragePickerModal({
     }
   }, [isOpen]);
 
-  // Load root folders for the sidebar
-  const loadRootFolders = useCallback(async () => {
-    try {
-      setFoldersLoading(true);
-      setFoldersError(null);
-      const res = await getMyFiles(projectId || null, {
-        parentId: null,
-        limit: 100,
-      });
-      const list = res?.files || (Array.isArray(res) ? res : []);
-      const f = list.filter((item: StorageItem) => item.isFolder);
-      setRootFolders(f);
-    } catch (err: unknown) {
-      console.error('[StoragePickerModal] Failed to load root folders:', err);
-      setFoldersError(err instanceof Error ? err.message : 'Failed to load folders');
-    } finally {
-      setFoldersLoading(false);
-    }
-  }, [projectId]);
-
-  useEffect(() => {
-    if (isOpen) {
-      loadRootFolders();
-    }
-  }, [isOpen, loadRootFolders]);
-
-  // Load files & folders in current selectedFolderId
+  // Load files & folders in current selectedFolderId (also populates rootFolders when at root without search)
   const loadFiles = useCallback(async () => {
+    const isRootWithoutSearch = selectedFolderId === null && !search.trim();
     try {
       setLoading(true);
       setError(null);
-      const res = await getMyFiles(projectId || null, {
+      if (isRootWithoutSearch) {
+        setFoldersLoading(true);
+        setFoldersError(null);
+      }
+      const res = await getAllFiles(projectId || null, {
         parentId: selectedFolderId,
         search: search.trim() || undefined,
         limit: 100,
       });
-      const list = res?.files || (Array.isArray(res) ? res : []);
+      const list = res?.files || [];
       setItems(list);
+      if (isRootWithoutSearch) {
+        setRootFolders(list.filter((item: StorageItem) => item.isFolder));
+      }
     } catch (err: unknown) {
       console.error('[StoragePickerModal] Failed to load files:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load storage files');
+      const message = err instanceof Error ? err.message : 'Failed to load storage files';
+      setError(message);
+      if (isRootWithoutSearch) {
+        setFoldersError(message);
+      }
     } finally {
       setLoading(false);
+      if (isRootWithoutSearch) {
+        setFoldersLoading(false);
+      }
     }
   }, [projectId, selectedFolderId, search]);
 
@@ -170,7 +138,7 @@ export function StoragePickerModal({
 
   // Sidebar selection: Folder
   const handleSelectFolder = (folder: StorageItem) => {
-    const folderName = folder.filename || folder.name || 'Folder';
+    const folderName = folder.filename || 'Folder';
     setSelectedFolderId(folder.id);
     setBreadcrumbs([
       { id: null, name: 'All Files' },
@@ -181,7 +149,7 @@ export function StoragePickerModal({
 
   // Navigate into subfolder from main explorer
   const handleOpenFolder = (folder: StorageItem) => {
-    const folderName = folder.filename || folder.name || 'Folder';
+    const folderName = folder.filename || 'Folder';
     setSelectedFolderId(folder.id);
     setBreadcrumbs((prev) => [...prev, { id: folder.id, name: folderName }]);
     setSearch('');
@@ -217,7 +185,7 @@ export function StoragePickerModal({
   const handleDoubleClickFile = (file: StorageItem) => {
     const payload = {
       id: file.id,
-      name: file.filename || file.name || 'Untitled File',
+      name: file.filename || 'Untitled File',
       size: file.size || 0,
     };
     onSelectItem?.(payload);
@@ -231,7 +199,7 @@ export function StoragePickerModal({
     if (selectedFiles.size === 0) return;
     const list = Array.from(selectedFiles.values()).map((file) => ({
       id: file.id,
-      name: file.filename || file.name || 'Untitled File',
+      name: file.filename || 'Untitled File',
       size: file.size || 0,
     }));
 
@@ -320,7 +288,7 @@ export function StoragePickerModal({
               <div className="space-y-0.5 pt-0.5">
                 {rootFolders.map((folder) => {
                   const isSelected = selectedFolderId === folder.id;
-                  const name = folder.filename || folder.name || 'Folder';
+                  const name = folder.filename || 'Folder';
                   return (
                     <button
                       key={folder.id}
@@ -410,7 +378,7 @@ export function StoragePickerModal({
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                       {subfolders.map((folder) => {
-                        const name = folder.filename || folder.name || 'Folder';
+                        const name = folder.filename || 'Folder';
                         return (
                           <div
                             key={folder.id}
@@ -441,7 +409,7 @@ export function StoragePickerModal({
                     )}
                     {files.map((file, idx) => {
                       const isSelected = selectedFiles.has(file.id);
-                      const name = file.filename || file.name || 'Untitled File';
+                      const name = file.filename || 'Untitled File';
 
                       return (
                         <React.Fragment key={file.id}>
@@ -468,7 +436,7 @@ export function StoragePickerModal({
                             </div>
 
                             {/* File Icon */}
-                            {getFileIcon(name, file.mimeType)}
+                            {getFileIcon(getFileType(file), 3.5)}
 
                             {/* File Title */}
                             <span

@@ -172,6 +172,52 @@ export function downloadFileUrl(url: string, filename: string): void {
   a.remove();
 }
 
+/**
+ * Performs an authenticated fetch request with the current user's Bearer token.
+ */
+export async function fetchAuthorized(
+  url: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  const fullUrl = resolveFileUrl(url) || url;
+  const token = getAuthToken();
+  const headers = new Headers(init.headers);
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  return fetch(fullUrl, {
+    ...init,
+    headers,
+    credentials: init.credentials ?? 'include',
+  });
+}
+
+/**
+ * Downloads a protected file using an authenticated fetch request and triggers a browser Blob download.
+ */
+export async function downloadFileAuthorized(
+  url: string,
+  filename: string,
+): Promise<void> {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  const response = await fetchAuthorized(url);
+  if (!response.ok) {
+    throw new Error(`Download failed with status ${response.status}`);
+  }
+  const blob = await response.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
+  }
+}
+
 // ─── 6. File Upload Transport (XHR with Progress & Abort) ─────────────────────
 
 /**

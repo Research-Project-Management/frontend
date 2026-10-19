@@ -24,8 +24,8 @@ import { Input } from '@/shared/components/ui/input';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useChatMode } from '../../hooks/use-chat-mode';
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';
-import { useItems as usePapers } from '@/features/library/sdk/queries/catalog.queries';
-import type { Collection, Item as Paper } from '@/features/library/domain/types/library.types';
+import { useItems } from '@/features/library/sdk/queries/catalog.queries';
+import type { Collection, Item } from '@/features/library/domain/types/library.types';
 import { LibraryEmptyState } from '@/features/library/ui/content/LibraryEmptyState';
 import { storageDriveService, type StorageItem } from '@/features/storage';
 import { StorageEmptyState } from '@/features/storage/components/layout/StorageEmptyState';
@@ -96,12 +96,11 @@ function branchNameMatches(node: TreeNode, query: string): boolean {
   );
 }
 
-const isIndexedPaper = (paper: Paper): paper is Paper & { ragDocId: string } => {
-  const p = paper as unknown as { ragStatus?: string; ragDocId?: string };
-  return p.ragStatus === 'indexed' && typeof p.ragDocId === 'string' && p.ragDocId.length > 0;
+const isIndexedPaper = (paper: Item): paper is Item & { ragDocId: string } => {
+  return paper.ragStatus === 'indexed' && typeof paper.ragDocId === 'string' && paper.ragDocId.length > 0;
 };
 
-const compactAuthors = (paper: Paper) => {
+const compactAuthors = (paper: Item) => {
   if (!paper.authors.length) return '';
   if (paper.authors.length === 1) return paper.authors[0];
   return `${paper.authors[0]} et al.`;
@@ -130,27 +129,27 @@ export function SourcePickerModal({
   const [librarySearch, setLibrarySearch] = useState('');
 
   const effectiveScopeId = scopeId || projectId || 'user';
-  const { state: collectionsState } = useCollections(effectiveScopeId);
-  const { state: papersState } = usePapers({
+  const { collections, isLoading: collectionsLoading } = useCollections(effectiveScopeId);
+  const {
+    collectionItems,
+    items,
+    isLoadingCollection,
+    isLoadingAll,
+  } = useItems({
     scopeId: effectiveScopeId,
     collectionId: selectedCollectionId,
   });
 
-  const collections = collectionsState.collections;
-  const collectionsLoading = collectionsState.isLoading;
-
   const activePapers = useMemo(() => {
     const raw = selectedCollectionId
-      ? (Array.isArray(papersState.collectionPapers)
-          ? papersState.collectionPapers
-          : [])
-      : papersState.allPapers ?? [];
-    return (raw as Paper[]).filter(isIndexedPaper);
-  }, [papersState, selectedCollectionId]);
+      ? (Array.isArray(collectionItems) ? collectionItems : [])
+      : items ?? [];
+    return raw.filter(isIndexedPaper);
+  }, [collectionItems, items, selectedCollectionId]);
 
   const papersLoading = selectedCollectionId
-    ? papersState.isLoadingCollection
-    : papersState.isLoadingAll;
+    ? isLoadingCollection
+    : isLoadingAll;
 
   const tree = useMemo(() => buildTree(collections), [collections]);
 
@@ -166,9 +165,9 @@ export function SourcePickerModal({
     if (open && activeTab === 'storage' && storageFiles.length === 0) {
       setStorageLoading(true);
       storageDriveService
-        .getMyFiles()
+        .getAllFiles(projectId || null)
         .then((res) => {
-          const raw = Array.isArray(res) ? res : res?.files || [];
+          const raw = res?.files || [];
           const files = raw.filter((f: StorageItem) => !f.isFolder);
           setStorageFiles(files);
         })
@@ -179,18 +178,18 @@ export function SourcePickerModal({
           setStorageLoading(false);
         });
     }
-  }, [open, activeTab, storageFiles.length]);
+  }, [open, activeTab, storageFiles.length, projectId]);
 
   const filteredStorageFiles = useMemo(() => {
     if (!storageSearch.trim()) return storageFiles;
     const q = storageSearch.toLowerCase();
-    return storageFiles.filter((f) => (f.filename || f.name || '').toLowerCase().includes(q));
+    return storageFiles.filter((f) => (f.filename || '').toLowerCase().includes(q));
   }, [storageFiles, storageSearch]);
 
   // ── Selected Sources State ────────────────────────────────────────────────
   const [pendingSelection, setPendingSelection] = useState<Map<string, SelectedSource>>(new Map());
 
-  const togglePaper = (p: Paper) => {
+  const togglePaper = (p: Item) => {
     if (!isIndexedPaper(p)) return;
     setPendingSelection((prev) => {
       const next = new Map(prev);
@@ -215,7 +214,7 @@ export function SourcePickerModal({
       } else {
         next.set(file.id, {
           id: file.id,
-          name: file.filename || file.name || 'Document',
+          name: file.filename || 'Document',
           sourceType: 'storage',
           size: file.size,
         });
@@ -560,9 +559,9 @@ export function SourcePickerModal({
                             disabled={alreadyAdded}
                             onCheckedChange={() => !alreadyAdded && toggleStorageFile(file)}
                           />
-                          {getFileIcon(file.filename || file.name || '')}
+                          {getFileIcon(file.filename || '')}
                           <span className="truncate text-foreground font-medium">
-                            {file.filename || file.name}
+                            {file.filename}
                           </span>
                         </div>
                         <span className="text-11 text-muted-foreground shrink-0 ml-2">

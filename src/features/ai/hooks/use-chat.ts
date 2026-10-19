@@ -223,7 +223,7 @@ export function useChat() {
     if (!collectionId || preloadedCollectionRef.current === collectionId) return;
 
     preloadedCollectionRef.current = collectionId;
-    libraryServices.items.getByCollection('me', collectionId)
+    libraryServices.items.getByCollection('user', collectionId)
       .then((res) => {
         const resObj = res as unknown as Item[] | { papers?: Item[]; items?: Item[] };
         const papers: Item[] = Array.isArray(resObj) ? resObj : resObj?.papers || resObj?.items || [];

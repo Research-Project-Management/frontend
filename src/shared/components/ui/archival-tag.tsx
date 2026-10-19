@@ -8,6 +8,7 @@ export interface ArchivalTagProps extends React.HTMLAttributes<HTMLSpanElement> 
   value: string;
   type?: 'doi' | 'arxiv' | 'bibtex' | 'isbn' | 'generic';
   copyable?: boolean;
+  borderless?: boolean;
   href?: string;
   className?: string;
 }
@@ -18,17 +19,14 @@ export interface ArchivalTagProps extends React.HTMLAttributes<HTMLSpanElement> 
  * Implements The Archival Identifier Rule from DESIGN.md:
  * - Font: IBM Plex Mono (var(--font-ibm-plex-mono))
  * - Size: 11px (text-11)
- * - Background: #FAFAF9 (App Surface) / dark: #1A1A22 (Paper Canvas Dark)
- * - Border: 0.5px solid #E4E4E4 / dark: #2D2D31
  * - Color: #595959 / dark: #8A8A8E
- * - Padding: 1px 4px (px-1 py-px)
- * - Radius: 3px (rounded-[3px])
  * - No accent colors (blue/purple forbidden for archival codes)
  */
 export function ArchivalTag({
   value,
   type = 'generic',
   copyable = true,
+  borderless = true,
   href,
   className,
   children,
@@ -52,11 +50,11 @@ export function ArchivalTag({
 
   const tagClasses = cn(
     'inline-flex items-center font-mono text-[11px] leading-tight select-all',
-    'bg-[#FAFAF9] dark:bg-[#1A1A22]',
-    'border border-[#E4E4E4] dark:border-[#2D2D31]',
-    'text-[#595959] dark:text-[#8A8A8E]',
-    'px-1 py-[1px] rounded-[3px] tracking-normal',
-    copyable && 'cursor-pointer hover:border-border transition-colors',
+    'text-foreground tracking-normal',
+    borderless
+      ? 'bg-transparent border-0 p-0'
+      : 'bg-muted/50 border border-border px-1 py-[1px] rounded-xs',
+    copyable && 'cursor-pointer hover:underline transition-colors',
     className
   );
 

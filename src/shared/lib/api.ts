@@ -229,6 +229,10 @@ export async function rawFetch(
     ...(body !== undefined && !isFormData ? { 'Content-Type': 'application/json' } : {}),
     ...(extraHeaders as Record<string, string>),
   };
+  if (isFormData) {
+    delete headers['Content-Type'];
+    delete headers['content-type'];
+  }
   if (token) {
     const isRelative = !url.startsWith('http://') && !url.startsWith('https://');
     const isSameOrigin = typeof window !== 'undefined' && url.startsWith(window.location.origin);

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
 import { forgotPassword } from '../services/auth.service';
 import { forgotPasswordSchema, type ForgotPasswordSchema } from '../schemas/auth.schema';
 
@@ -32,6 +33,7 @@ export const useForgotPassword = () => {
       const message =
         (err as { message?: string })?.message ?? 'Failed to send reset link';
       setError(message);
+      toast.error(message, { id: 'auth-error' });
     } finally {
       setIsPending(false);
     }

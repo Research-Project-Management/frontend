@@ -123,8 +123,8 @@ export default function Recent() {
                 ? `/projects/${item.id}/work-items`
                 : item.type === 'page' && item.project
                   ? `/projects/${item.project.id}/pages/${item.id}`
-                  : item.type === 'file' && item.project
-                    ? `/projects/${item.project.id}/storage`
+                  : item.type === 'file'
+                    ? `/storage?highlight=${encodeURIComponent(item.id)}`
                     : `/storage`;
 
             const Icon =

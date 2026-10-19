@@ -1,15 +1,6 @@
-﻿import AppLoading from '@/app/(app)/loading';
-import type { Metadata } from 'next';
-import { Suspense } from 'react';
-import DuplicatesPage from '@/features/library/ui/pages/DuplicatesPage';
-
-export const metadata: Metadata = { title: 'Duplicate Items · Library · Flux' };
+import { redirect } from 'next/navigation';
 
 export default function LibraryDuplicatesPage() {
-  return (
-    <Suspense fallback={<AppLoading />}>
-      <DuplicatesPage />
-    </Suspense>
-  );
+  redirect('/library?filter=duplicates');
 }
 

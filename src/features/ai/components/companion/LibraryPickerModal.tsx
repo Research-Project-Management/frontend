@@ -179,7 +179,7 @@ export function LibraryPickerModal({
 
   const renderCollectionNode = (node: TreeNode, depth = 0) => {
     const isSelected = selectedCollectionId === node.id;
-    const count = node.itemCount ?? node.paperCount;
+    const count = node.itemCount;
 
     return (
       <React.Fragment key={node.id}>

@@ -33,7 +33,8 @@ import {
   getRandomProjectEmoji,
 } from "@/shared/components/icons";
 import { cn } from "@/shared/lib/utils";
-import { useCreateProject, useUpdateProject } from '../../hooks/use-project';
+import { useCreateProject, useUpdateProject, useDefaultStatesTemplate } from '../../hooks/use-project';
+import { ProjectService } from '../../services/project.service';
 import { CoverModal } from '@/shared/components/ui/cover-modal';
 import { uploadGenericFile } from '@/features/storage/services/upload.service';
 import { createProjectFormSchema, type CreateProjectFormValues } from '../../schemas/project.schema';
@@ -193,6 +194,19 @@ export function CreateProjectModal({
   );
   const ActivePriorityIcon = activePriorityOption.icon;
 
+  // Initial research state dynamically fetched from database templates
+  const { data: defaultStates = [] } = useDefaultStatesTemplate();
+  const initialProjectState = useMemo(() => {
+    return (
+      defaultStates.find((s) => s.isDefault) ||
+      defaultStates[0] || {
+        name: 'Proposal & Literature Review',
+        color: '#0284c7',
+        description: 'Drafting research idea, literature review, methodology design, and core objectives.',
+      }
+    );
+  }, [defaultStates]);
+
   const [hasManuallyEditedIdentifier, setHasManuallyEditedIdentifier] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
 
@@ -310,6 +324,25 @@ export function CreateProjectModal({
             setActiveModules(proj.modules);
           }
           setStep(2);
+        },
+        onError: (err: any) => {
+          const rawMessage =
+            err?.response?.data?.message ||
+            err?.message ||
+            'Failed to create project';
+          const message = Array.isArray(rawMessage) ? rawMessage.join(', ') : String(rawMessage);
+          if (
+            message.toLowerCase().includes('identifier') ||
+            message.toLowerCase().includes('already exists')
+          ) {
+            form.setError('identifier', {
+              type: 'manual',
+              message,
+            });
+            identifierInputRef.current?.focus();
+          } else {
+            toast.error(message);
+          }
         },
       }
     );
@@ -494,11 +527,14 @@ export function CreateProjectModal({
                 <div className="flex items-center flex-wrap gap-2 pt-1">
                   {/* 1. Initial State Indicator */}
                   <div
-                    title="Default initial stage for new projects"
+                    title={initialProjectState.description || 'Default initial stage for new projects'}
                     className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-muted/40 text-12 font-medium text-foreground select-none cursor-default"
                   >
-                    <span className="size-2 rounded-full shrink-0 bg-sky-500" />
-                    <span>Proposal Draft</span>
+                    <span
+                      className="size-2 rounded-full shrink-0"
+                      style={{ backgroundColor: initialProjectState.color || '#0284c7' }}
+                    />
+                    <span className="truncate max-w-[200px]">{initialProjectState.name}</span>
                   </div>
 
                   {/* 2. Priority Popover */}

@@ -24,7 +24,7 @@ import {
 import { StorageViewContainer } from '../components/layout/StorageViewContainer';
 import type { StorageItem, BreadcrumbSegment } from '@/features/storage/types/storage.types';
 import { canDropIntoFolder } from '../utils/storage.util';
-import { downloadFileUrl } from "@/shared/lib/file-client";
+import { downloadFileAuthorized } from '@/shared/lib/file-client';
 import Topbar from '../components/layout/Topbar';
 import { BulkActionBar } from '../components/actions/BulkActionBar';
 import StorageDropzoneOverlay from '../components/dropzone/StorageDropzoneOverlay';
@@ -54,12 +54,11 @@ export default function HomePage({
 
   const clearSelection = useStorageSelectionStore((s) => s.clearSelection);
   const selectedItem = usePreviewStore((s) => s.selectedItem);
+  const setSelectedItem = usePreviewStore((s) => s.setSelectedItem);
 
   const {
-    projectId,
     searchQuery,
     setSearchQuery,
-    setSelectedItem,
     queryParams,
   } = useStorageQueryParams();
 
@@ -104,7 +103,6 @@ export default function HomePage({
   // Upload handler for current active folder
   const activeUploadFolder = activeSection === 'my-files' ? currentFolderId : null;
   const { handleUploadFiles } = useTopbar({
-    projectId,
     parentId: activeUploadFolder,
     searchQuery,
     onSearchChange: setSearchQuery,
@@ -113,7 +111,7 @@ export default function HomePage({
   // ── Unified Section Infinite Query ─────────────────────────────────────────
   const activeQuery = useSectionFiles(
     activeSection,
-    projectId,
+    undefined,
     currentFolderId,
     queryParams,
   );
@@ -155,37 +153,34 @@ export default function HomePage({
     }
   }, [files, selectedItem, activeQuery.isLoading, setSelectedItem]);
 
-  // ── Navigation Handlers ────────────────────────────────────────────────────
+  // ── Navigation Handlers (clearSelection is automatic in store) ─────────────
   const handleFolderClick = useCallback(
     (folder: StorageItem) => {
-      clearSelection();
       navigateToFolder(folder.id);
     },
-    [clearSelection, navigateToFolder],
+    [navigateToFolder],
   );
 
   const handleBreadcrumbNavigate = useCallback(
     (folderId: string | null) => {
-      clearSelection();
       navigateToFolder(folderId);
     },
-    [clearSelection, navigateToFolder],
+    [navigateToFolder],
   );
 
   const handleOpenLocation = useCallback(
     (item: StorageItem) => {
-      clearSelection();
       navigateToFolder(item.parentId || null, item.id);
     },
-    [clearSelection, navigateToFolder],
+    [navigateToFolder],
   );
 
   const handleDownload = async (item: StorageItem) => {
     if (!item.url) return;
     try {
-      await downloadFileUrl(item.url, item.filename);
+      await downloadFileAuthorized(item.url, item.filename);
     } catch {
-      window.open(item.url, '_blank');
+      toast.error(`Failed to download "${item.filename}"`);
     }
   };
 
@@ -210,25 +205,9 @@ export default function HomePage({
     [draggingItem, moveItem],
   );
 
-  const handleMoveToParent = useCallback(
-    async (item: StorageItem) => {
-      const parentId =
-        breadcrumbs.length >= 2 ? breadcrumbs[breadcrumbs.length - 2].id : null;
-      try {
-        await moveItem({ itemId: item.id, parentId });
-        toast.success(
-          `Moved "${item.filename}" to ${parentId ? breadcrumbs[breadcrumbs.length - 2].name : ROOT_NAME}`,
-        );
-      } catch {
-        toast.error(`Failed to move "${item.filename}"`);
-      }
-    },
-    [breadcrumbs, moveItem],
-  );
-
   const handleFilesDrop = useCallback(
     (droppedFiles: File[]) => {
-      handleUploadFiles(droppedFiles, activeUploadFolder);
+      void handleUploadFiles(droppedFiles, activeUploadFolder);
     },
     [handleUploadFiles, activeUploadFolder],
   );
@@ -254,7 +233,6 @@ export default function HomePage({
     onFileClick: (item: StorageItem) => setSelectedItem(item),
     onDragStartFile: activeSection === 'my-files' ? handleDragStart : undefined,
     onDropOnFolder: activeSection === 'my-files' ? handleDropOnFolder : undefined,
-    onMoveToParent: activeSection === 'my-files' && currentFolderId ? handleMoveToParent : undefined,
   };
 
   // ── Topbar Metadata ────────────────────────────────────────────────────────
@@ -296,7 +274,6 @@ export default function HomePage({
           error={activeQuery.error || new Error('Internal Server Error')}
           viewProps={viewProps}
           searchQuery={searchQuery}
-          onClearSearch={() => setSearchQuery('')}
         />
       </StorageDropzoneOverlay>
       <BulkActionBar items={files} isTrash={isTrash} />

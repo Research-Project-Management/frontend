@@ -1,18 +1,52 @@
 import React from 'react';
-import { Folder, FileText, Video, Music, Archive, Image as ImageIcon, File as FileIcon } from 'lucide-react';
-import { downloadFileUrl } from "@/shared/lib/file-client";
-import { cn } from "@/shared/lib/utils";
-import { formatBytes } from "@/shared/utils/format";
-import type { FileType, StorageItem, BreadcrumbSegment } from '../types/storage.types';
+import {
+  Folder,
+  FileText,
+  FileSpreadsheet,
+  Video,
+  Music,
+  Archive,
+  Image as ImageIcon,
+  File as FileIcon,
+} from 'lucide-react';
+import { cn } from '@/shared/lib/utils';
+import { formatBytes } from '@/shared/utils/format';
+import type { FileType, StorageItem } from '../types/storage.types';
 
-export function getFileType(item: StorageItem): FileType {
+const SCIENTIFIC_TEXT_EXTENSIONS = new Set([
+  'csv',
+  'tsv',
+  'json',
+  'jsonl',
+  'md',
+  'markdown',
+  'ipynb',
+  'tex',
+  'bib',
+  'py',
+  'r',
+  'sql',
+  'yaml',
+  'yml',
+  'txt',
+  'log',
+]);
+
+export function isScientificTextFile(filename?: string): boolean {
+  if (!filename) return false;
+  const parts = filename.split('.');
+  if (parts.length < 2) return false;
+  const ext = parts.pop()?.toLowerCase() || '';
+  return SCIENTIFIC_TEXT_EXTENSIONS.has(ext);
+}
+
+export function getFileType(item: Pick<StorageItem, 'filename' | 'mimeType' | 'isFolder'>): FileType {
   if (item.isFolder) return 'folder';
 
   const mimeType = item.mimeType || '';
   if (mimeType.startsWith('image/')) return 'image';
 
-  // Fallback to extension check
-  const ext = item.filename?.split('.').pop()?.toLowerCase();
+  const ext = item.filename?.split('.').pop()?.toLowerCase() || '';
   if (
     [
       'jpg',
@@ -26,9 +60,13 @@ export function getFileType(item: StorageItem): FileType {
       'heic',
       'heif',
       'avif',
-    ].includes(ext || '')
-  )
+    ].includes(ext)
+  ) {
     return 'image';
+  }
+  if (['csv', 'tsv', 'xls', 'xlsx', 'ods'].includes(ext) || mimeType.includes('spreadsheet') || mimeType.includes('excel')) {
+    return 'spreadsheet';
+  }
   if (
     [
       'pdf',
@@ -41,30 +79,42 @@ export function getFileType(item: StorageItem): FileType {
       'bib',
       'cls',
       'sty',
-      'csv',
-      'tsv',
-    ].includes(ext || '')
-  )
+    ].includes(ext)
+  ) {
     return 'document';
-  if (['mp4', 'mov', 'avi', 'mkv', 'webm', 'm4v', 'flv'].includes(ext || ''))
+  }
+  if (['mp4', 'mov', 'avi', 'mkv', 'webm', 'm4v', 'flv'].includes(ext)) {
     return 'video';
-  if (['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'wma'].includes(ext || ''))
+  }
+  if (['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'wma'].includes(ext)) {
     return 'audio';
-  if (
-    ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'tgz'].includes(ext || '')
-  )
+  }
+  if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'tgz'].includes(ext)) {
     return 'archive';
+  }
 
   return 'other';
 }
 
-export function getFileIcon(type: FileType, size: number = 20) {
-  const className = `size-${size}`;
+const ICON_SIZE_CLASSES: Record<number, string> = {
+  3.5: 'size-3.5',
+  4: 'size-4',
+  5: 'size-5',
+  6: 'size-6',
+  8: 'size-8',
+  10: 'size-10',
+  12: 'size-12',
+};
+
+export function getFileIcon(type: FileType, size: number = 5) {
+  const className = ICON_SIZE_CLASSES[size] || 'size-5';
   switch (type) {
     case 'folder':
       return <Folder className={cn('shrink-0', className)} />;
     case 'document':
       return <FileText className={cn('shrink-0', className)} />;
+    case 'spreadsheet':
+      return <FileSpreadsheet className={cn('shrink-0', className)} />;
     case 'image':
       return <ImageIcon className={cn('shrink-0', className)} />;
     case 'video':
@@ -80,25 +130,22 @@ export function getFileIcon(type: FileType, size: number = 20) {
 
 export function getFileColor(type: FileType): string {
   switch (type) {
-    case 'folder':   return 'oklch(60% 0.04 255)';
-    case 'document': return 'oklch(63% 0.20 18)';
-    case 'image':    return 'oklch(65% 0.17 152)';
-    case 'video':    return 'oklch(63% 0.20 290)';
-    case 'audio':    return 'oklch(65% 0.20 340)';
-    case 'archive':  return 'oklch(72% 0.17 65)';
-    default:         return 'oklch(60% 0.04 255)';
-  }
-}
-
-export function getFileColorClass(type: FileType): string {
-  switch (type) {
-    case 'folder':   return 'text-blue-500';
-    case 'document': return 'text-rose-500';
-    case 'image':    return 'text-emerald-500';
-    case 'video':    return 'text-purple-500';
-    case 'audio':    return 'text-pink-500';
-    case 'archive':  return 'text-amber-500';
-    default:         return 'text-muted-foreground';
+    case 'folder':
+      return 'oklch(60% 0.04 255)';
+    case 'document':
+      return 'oklch(63% 0.20 18)';
+    case 'spreadsheet':
+      return 'oklch(62% 0.18 145)';
+    case 'image':
+      return 'oklch(65% 0.17 152)';
+    case 'video':
+      return 'oklch(63% 0.20 290)';
+    case 'audio':
+      return 'oklch(65% 0.20 340)';
+    case 'archive':
+      return 'oklch(72% 0.17 65)';
+    default:
+      return 'oklch(60% 0.04 255)';
   }
 }
 
@@ -113,7 +160,7 @@ export function formatMimeType(item: StorageItem): string {
   if (ext) {
     if (ext === 'PDF') return 'PDF Document';
     if (ext === 'DOCX' || ext === 'DOC') return 'Word Document';
-    if (ext === 'XLSX' || ext === 'XLS') return 'Excel Spreadsheet';
+    if (ext === 'XLSX' || ext === 'XLS' || ext === 'CSV' || ext === 'TSV' || ext === 'ODS') return 'Spreadsheet';
     if (ext === 'PPTX' || ext === 'PPT') return 'PowerPoint Presentation';
     if (['JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'].includes(ext)) return `${ext} Image`;
     if (['MP4', 'MOV', 'AVI', 'MKV'].includes(ext)) return `${ext} Video`;
@@ -131,23 +178,14 @@ export function formatDate(dateString?: string | null): string {
 
   const now = new Date();
   const diff = now.getTime() - date.getTime();
-  if (diff < 0) return date.toLocaleDateString();
+  if (diff < 0) return date.toLocaleDateString('en-US');
 
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   if (days === 0) return 'Today';
   if (days === 1) return 'Yesterday';
   if (days < 7) return `${days} days ago`;
   if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-  return date.toLocaleDateString();
-}
-
-export async function downloadStorageItem(item: StorageItem): Promise<void> {
-  if (!item.url) return;
-  try {
-    await downloadFileUrl(item.url, item.filename);
-  } catch {
-    window.open(item.url, '_blank');
-  }
+  return date.toLocaleDateString('en-US');
 }
 
 // ============================================================================
@@ -159,16 +197,20 @@ export function formatDetailedSize(bytes?: number): string {
     return '-';
   }
   const formatted = formatFileSize(bytes);
-  const localeBytes = bytes.toLocaleString();
+  const localeBytes = bytes.toLocaleString('en-US');
   return `${formatted} (${localeBytes} bytes)`;
 }
 
-export function formatFileLocation(item?: StorageItem | null, projectName?: string): string {
+export function formatFileLocation(
+  item?: StorageItem | null,
+  projectName?: string,
+  parentName?: string,
+): string {
   if (!item) return '-';
   if (projectName) {
-    return `${projectName}${item.parent ? ` / ${item.parent}` : ''}`;
+    return `${projectName}${parentName ? ` / ${parentName}` : ''}`;
   }
-  return item.parent ? `My Files / ${item.parent}` : 'My Files (Root)';
+  return parentName ? `My Files / ${parentName}` : 'My Files (Root)';
 }
 
 export function formatDetailedDate(dateString?: string | Date | null): string {
@@ -176,7 +218,7 @@ export function formatDetailedDate(dateString?: string | Date | null): string {
   try {
     const d = new Date(dateString);
     if (Number.isNaN(d.getTime())) return '-';
-    return d.toLocaleString('vi-VN', {
+    return d.toLocaleString('en-US', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -189,7 +231,7 @@ export function formatDetailedDate(dateString?: string | Date | null): string {
 }
 
 // ============================================================================
-// DRAG-AND-DROP & BREADCRUMB UTILITIES
+// DRAG-AND-DROP UTILITIES
 // ============================================================================
 
 export function createFolderDropHandlers(
@@ -218,20 +260,6 @@ export function createFolderDropHandlers(
       }
     },
   };
-}
-
-export function navigateBreadcrumbPath(
-  segments: BreadcrumbSegment[],
-  targetIndex: number,
-): BreadcrumbSegment[] {
-  return segments.slice(0, targetIndex + 1);
-}
-
-export function pushBreadcrumbFolder(
-  segments: BreadcrumbSegment[],
-  folder: { id: string; name: string },
-): BreadcrumbSegment[] {
-  return [...segments, { id: folder.id, name: folder.name }];
 }
 
 export function canDropIntoFolder(

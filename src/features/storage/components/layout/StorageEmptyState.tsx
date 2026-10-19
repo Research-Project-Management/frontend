@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
 import {
   storageIllustrationStyles,
@@ -15,8 +14,6 @@ import { useStorageUIStore } from '../../store/storage-ui.store';
 
 export interface StorageEmptyStateProps {
   searchQuery?: string;
-  onClearSearch?: () => void;
-  isReadOnly?: boolean;
   isTrash?: boolean;
   className?: string;
   title?: string;
@@ -50,17 +47,16 @@ export function StorageEmptyState({
   title,
   description,
 }: StorageEmptyStateProps) {
-  const pathname = usePathname();
   const activeSection = useStorageUIStore((s) => s.activeSection);
   const isSearchActive = Boolean(searchQuery.trim());
 
   // Determine storage view context variant
   const variant: StorageEmptyVariant = (() => {
     if (isSearchActive) return 'search';
-    if (isTrash || activeSection === 'trash' || pathname?.includes('/trash')) return 'trash';
-    if (activeSection === 'starred' || pathname?.includes('/starred')) return 'starred';
-    if (activeSection === 'shared' || pathname?.includes('/shared')) return 'shared';
-    if (activeSection === 'my-files' || pathname?.includes('/my-files')) return 'my-files';
+    if (isTrash || activeSection === 'trash') return 'trash';
+    if (activeSection === 'starred') return 'starred';
+    if (activeSection === 'shared') return 'shared';
+    if (activeSection === 'my-files') return 'my-files';
     return 'default';
   })();
 
@@ -121,7 +117,7 @@ export function StorageEmptyState({
     <div
       className={cn(
         'flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200 bg-background',
-        className
+        className,
       )}
     >
       <style dangerouslySetInnerHTML={{ __html: storageIllustrationStyles }} />

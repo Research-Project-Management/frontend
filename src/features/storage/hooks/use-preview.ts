@@ -2,12 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { updateFileMetadata, previewServices } from '@/features/storage/services/drive.service';
+import { previewServices } from '@/features/storage/services/drive.service';
 import type { StorageItem } from '@/features/storage/types/storage.types';
 import { resolveFileUrl } from '@/shared/lib/file-client';
-import { storageKeys } from '../constants/storage.keys';
-import { usePreviewStore } from '../store/storage-ui.store';
+import { useUpdateFileMetadata } from './use-storage';
 
 export function usePreview(item: StorageItem | null) {
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
@@ -15,7 +13,7 @@ export function usePreview(item: StorageItem | null) {
   const [description, setDescription] = useState('');
   const [isSaved, setIsSaved] = useState(true);
 
-  const queryClient = useQueryClient();
+  const updateMetadataMutation = useUpdateFileMetadata();
 
   const itemId = item?.id;
   const itemDescription = typeof item?.metaData?.description === 'string' ? item.metaData.description : '';
@@ -29,32 +27,6 @@ export function usePreview(item: StorageItem | null) {
       setPreviewDataUrl(null);
     }
   }, [itemId, itemDescription]);
-
-  const saveDescriptionMutation = useMutation({
-    mutationFn: (args: { fileId: string; description: string }) =>
-      updateFileMetadata(args.fileId, {
-        ...(item?.metaData || {}),
-        description: args.description,
-      }),
-    onSuccess: (_data, args) => {
-      setIsSaved(true);
-      toast.success('Description saved');
-      const current = usePreviewStore.getState().selectedItem;
-      if (current && current.id === args.fileId) {
-        usePreviewStore.getState().setSelectedItem({
-          ...current,
-          metaData: {
-            ...(current.metaData || {}),
-            description: args.description,
-          },
-        });
-      }
-      queryClient.invalidateQueries({ queryKey: storageKeys.all });
-    },
-    onError: () => {
-      toast.error('Failed to save description');
-    },
-  });
 
   const generateThumbnail = useCallback(async (fileItem: StorageItem) => {
     const isPdf =
@@ -92,10 +64,24 @@ export function usePreview(item: StorageItem | null) {
 
   const handleSaveDescription = () => {
     if (!item?.id) return;
-    saveDescriptionMutation.mutate({
-      fileId: item.id,
-      description: description.trim(),
-    });
+    updateMetadataMutation.mutate(
+      {
+        fileId: item.id,
+        metaData: {
+          ...(item.metaData || {}),
+          description: description.trim(),
+        },
+      },
+      {
+        onSuccess: () => {
+          setIsSaved(true);
+          toast.success('Description saved');
+        },
+        onError: () => {
+          toast.error('Failed to save description');
+        },
+      },
+    );
   };
 
   return {
@@ -107,7 +93,7 @@ export function usePreview(item: StorageItem | null) {
       setIsSaved(false);
     },
     isSaved,
-    isSavingDescription: saveDescriptionMutation.isPending,
+    isSavingDescription: updateMetadataMutation.isPending,
     handleSaveDescription,
   };
 }

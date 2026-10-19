@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
-import ListView, { type StorageViewProps } from '../views/ListView';
+import ListView from '../views/ListView';
 import GridView from '../views/GridView';
 import { useViewStore } from '../../store/storage-ui.store';
-
+import type { StorageViewProps } from '../../types/storage.types';
 import StorageEmptyState from './StorageEmptyState';
 import { PlaneErrorState, type PlaneErrorStateProps } from '@/shared/components/ui/PlaneErrorState';
 
@@ -15,7 +15,6 @@ export interface StorageViewContainerProps {
   error?: PlaneErrorStateProps['error'];
   viewProps: StorageViewProps;
   searchQuery?: string;
-  onClearSearch?: () => void;
 }
 
 export function StorageViewContainer({
@@ -24,7 +23,6 @@ export function StorageViewContainer({
   error = null,
   viewProps,
   searchQuery = '',
-  onClearSearch,
 }: StorageViewContainerProps) {
   const view = useViewStore((s) => s.view);
 
@@ -48,9 +46,7 @@ export function StorageViewContainer({
       ) : viewProps.items.length === 0 ? (
         <StorageEmptyState
           searchQuery={searchQuery}
-          onClearSearch={onClearSearch}
           isTrash={viewProps.isTrash}
-          isReadOnly={viewProps.isReadOnly}
         />
       ) : view === 'list' ? (
         <ListView {...viewProps} />

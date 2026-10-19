@@ -7,12 +7,10 @@ import {
   formatFileSize,
   formatMimeType,
   formatDate,
-} from '@/features/storage/utils/storage.util';
-import {
   formatDetailedSize,
   formatFileLocation,
   formatDetailedDate,
-} from '@/features/storage/utils/preview.util';
+} from '@/features/storage/utils/storage.util';
 import type { StorageItem } from '@/features/storage/types/storage.types';
 
 const createMockItem = (partial: Partial<StorageItem>): StorageItem => ({
@@ -138,14 +136,17 @@ describe('Storage Utilities & Domain Helpers', () => {
     it('formatFileLocation should show hierarchical path', () => {
       expect(
         formatFileLocation(
-          createMockItem({ id: '1', filename: 'test.pdf', isFolder: false, size: 10, parent: 'Datasets' }),
+          createMockItem({ id: '1', filename: 'test.pdf', isFolder: false, size: 10 }),
           'Quantum Project',
+          'Datasets',
         ),
       ).toBe('Quantum Project / Datasets');
 
       expect(
         formatFileLocation(
-          createMockItem({ id: '2', filename: 'test.pdf', isFolder: false, size: 10, parent: 'Datasets' }),
+          createMockItem({ id: '2', filename: 'test.pdf', isFolder: false, size: 10 }),
+          undefined,
+          'Datasets',
         ),
       ).toBe('My Files / Datasets');
 

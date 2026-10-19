@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   Folder,
@@ -19,20 +19,19 @@ import {
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
-import { cn } from "@/shared/lib/utils";
+import { cn } from '@/shared/lib/utils';
 import type { StorageItem } from '@/features/storage/types/storage.types';
-import { getAllFiles as getWorkspaceFiles, createFolder as createWorkspaceFolder } from '@/features/storage/services/drive.service';
-import { useMoveItem, useBatchMoveItems } from '@/features/storage/hooks/use-storage';
+import { getAllFiles as getWorkspaceFiles } from '@/features/storage/services/drive.service';
+import {
+  useMoveItem,
+  useBatchMoveItems,
+  useCreateFolder,
+} from '@/features/storage/hooks/use-storage';
+import { storageKeys } from '@/features/storage/constants/storage.keys';
 import {
   useStorageUIStore,
   useStorageSelectionStore,
 } from '@/features/storage/store/storage-ui.store';
-
-export type OpenMoveModalDetail = {
-  item?: StorageItem;
-  items?: StorageItem[];
-  projectId?: string;
-};
 
 interface MoveModalProps {
   projectId?: string;
@@ -45,12 +44,13 @@ interface BreadcrumbStep {
 
 export default function MoveModal({ projectId: propProjectId }: MoveModalProps) {
   const params = useParams() as { projectId?: string; id?: string };
-  const queryClient = useQueryClient();
   const clearSelection = useStorageSelectionStore((s) => s.clearSelection);
 
-  const [open, setOpen] = useState(false);
-  const [itemsToMove, setItemsToMove] = useState<StorageItem[]>([]);
-  const [scopeProjectId, setScopeProjectId] = useState<string | undefined>(propProjectId || params.projectId || params.id);
+  const itemsToMove = useStorageUIStore((s) => s.movingItems);
+  const closeMoveModal = useStorageUIStore((s) => s.closeMoveModal);
+  const open = itemsToMove.length > 0;
+
+  const targetScopeId = propProjectId || params.projectId || params.id || undefined;
 
   // Navigation state
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -65,40 +65,28 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
   // Inline new folder creation state
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
 
   const { mutateAsync: moveItemMutation, isPending: isMovingSingle } = useMoveItem();
   const { mutateAsync: batchMoveMutation, isPending: isMovingBatch } = useBatchMoveItems();
+  const { mutateAsync: createFolderMutation, isPending: isCreating } = useCreateFolder();
   const isMoving = isMovingSingle || isMovingBatch;
 
-  const targetScopeId = scopeProjectId || propProjectId || params.projectId;
-
-  const storeMovingItems = useStorageUIStore((s) => s.movingItems);
-  const closeMoveModal = useStorageUIStore((s) => s.closeMoveModal);
-
-  // Sync with store
+  // Reset navigation state when modal opens with a new selection
   useEffect(() => {
-    if (storeMovingItems.length > 0) {
-      setItemsToMove(storeMovingItems);
-      setScopeProjectId(propProjectId || params.projectId || params.id);
-
-      // Start at root
+    if (open) {
       setCurrentFolderId(null);
       setBreadcrumbs([{ id: null, name: 'My Drive' }]);
       setSelectedFolderId(null);
       setSelectedFolderName('My Drive');
       setIsCreatingFolder(false);
       setNewFolderName('');
-      setOpen(true);
     }
-  }, [storeMovingItems, propProjectId, params.projectId, params.id]);
+  }, [open]);
 
   // Fetch subfolders in the current folder being browsed
-  const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['storage-move-modal-folders', currentFolderId],
-    queryFn: async () => {
-      return getWorkspaceFiles(undefined, currentFolderId);
-    },
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: storageKeys.moveFolders(targetScopeId ?? null, currentFolderId),
+    queryFn: () => getWorkspaceFiles(targetScopeId, currentFolderId),
     enabled: open,
   });
 
@@ -146,21 +134,19 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
   // Create folder inside current level
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
-    setIsCreating(true);
     try {
-      await createWorkspaceFolder(newFolderName.trim(), {
+      await createFolderMutation({
+        name: newFolderName.trim(),
+        projectId: targetScopeId,
         parentId: currentFolderId,
       });
       toast.success(`Created folder "${newFolderName.trim()}"`);
       setNewFolderName('');
       setIsCreatingFolder(false);
       await refetch();
-      queryClient.invalidateQueries({ queryKey: ['storage'] });
     } catch (error) {
       toast.error('Failed to create folder');
       console.error(error);
-    } finally {
-      setIsCreating(false);
     }
   };
 
@@ -193,7 +179,6 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
       }
 
       clearSelection();
-      setOpen(false);
       closeMoveModal();
     } catch (error) {
       toast.error('Failed to move items');
@@ -210,13 +195,12 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
     <Dialog
       open={open}
       onOpenChange={(val) => {
-        setOpen(val);
         if (!val) closeMoveModal();
       }}
     >
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="sm:max-w-lg p-0 gap-0 overflow-hidden bg-popover text-popover-foreground border border-border rounded-lg "
+        className="sm:max-w-lg p-0 gap-0 overflow-hidden bg-popover text-popover-foreground border border-border rounded-lg"
       >
         <DialogHeader className="px-5 py-4 pr-10 border-b border-border">
           <div className="flex items-center gap-2">
@@ -258,10 +242,10 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
                     onClick={() => handleNavigateBreadcrumb(idx)}
                     disabled={isLast}
                     className={cn(
-                      "px-1.5 py-0.5 rounded-md transition-colors max-w-[130px] truncate",
+                      'px-1.5 py-0.5 rounded-md transition-colors max-w-[130px] truncate',
                       isLast
-                        ? "font-semibold text-foreground cursor-default"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                        ? 'font-semibold text-foreground cursor-default'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer',
                     )}
                   >
                     {step.name}
@@ -334,10 +318,10 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
               setSelectedFolderName(breadcrumbs[breadcrumbs.length - 1].name);
             }}
             className={cn(
-              "flex items-center justify-between px-3 py-2 rounded-md text-xs cursor-pointer border transition-all duration-150 select-none",
+              'flex items-center justify-between px-3 py-2 rounded-md text-xs cursor-pointer border transition-all duration-150 select-none',
               selectedFolderId === currentFolderId
-                ? "bg-muted border-primary text-primary font-medium"
-                : "border-transparent hover:bg-muted text-foreground"
+                ? 'bg-muted border-primary text-primary font-medium'
+                : 'border-transparent hover:bg-muted text-foreground',
             )}
           >
             <div className="flex items-center gap-2.5 min-w-0">
@@ -389,11 +373,11 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
                       }
                     }}
                     className={cn(
-                      "flex items-center justify-between px-3 py-2 rounded-md text-xs group transition-all duration-150 border select-none",
-                      isForbidden && "opacity-40 pointer-events-none bg-muted border-transparent",
+                      'flex items-center justify-between px-3 py-2 rounded-md text-xs group transition-all duration-150 border select-none',
+                      isForbidden && 'opacity-40 pointer-events-none bg-muted border-transparent',
                       isSelected
-                        ? "bg-muted border-primary text-primary font-medium"
-                        : "border-transparent hover:bg-muted text-foreground cursor-pointer"
+                        ? 'bg-muted border-primary text-primary font-medium'
+                        : 'border-transparent hover:bg-muted text-foreground cursor-pointer',
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -452,7 +436,7 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => setOpen(false)}
+              onClick={closeMoveModal}
               disabled={isMoving}
               className="h-8 px-3 text-xs cursor-pointer text-foreground hover:bg-muted"
             >

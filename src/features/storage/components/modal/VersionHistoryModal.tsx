@@ -26,9 +26,9 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useFileVersions, useUploadNewVersion, useRevertFileVersion } from '../../hooks/use-storage';
-import { getVersionDownloadUrl } from '../../services/drive.service';
-import { downloadFileUrl } from '@/shared/lib/file-client';
+import { getVersionDownloadUrl, downloadFileAuthorized } from '../../services/drive.service';
 import { formatFileSize, formatDate } from '../../utils/storage.util';
+import { resolveFileUrl } from '@/shared/lib/file-client';
 import type { StorageItem } from '../../types/storage.types';
 import { toast } from 'sonner';
 
@@ -102,7 +102,7 @@ export default function VersionHistoryModal({
     }
   };
 
-  const handleDownloadVersion = (versionNumber: number) => {
+  const handleDownloadVersion = async (versionNumber: number) => {
     const url = getVersionDownloadUrl(fileId, versionNumber);
     const dotIndex = file.filename.lastIndexOf('.');
     const versionedName =
@@ -110,8 +110,12 @@ export default function VersionHistoryModal({
         ? `${file.filename.slice(0, dotIndex)}_v${versionNumber}${file.filename.slice(dotIndex)}`
         : `${file.filename}_v${versionNumber}`;
 
-    downloadFileUrl(url, versionedName);
     toast.info(`Downloading version ${versionNumber}...`);
+    try {
+      await downloadFileAuthorized(url, versionedName);
+    } catch {
+      toast.error(`Failed to download version ${versionNumber}`);
+    }
   };
 
   const handleRevertConfirm = async (versionNumber: number) => {
@@ -409,7 +413,7 @@ export default function VersionHistoryModal({
                           <div className="flex items-center gap-1.5">
                             {ver.author?.avatar ? (
                               <img
-                                src={ver.author.avatar}
+                                src={resolveFileUrl(ver.author.avatar) || ''}
                                 alt={ver.author.name}
                                 className="size-4 rounded-full object-cover"
                               />

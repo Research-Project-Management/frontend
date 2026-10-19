@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
 import {
   X,
   Download,
@@ -27,13 +26,17 @@ import {
   getFileType,
   getFileIcon,
   getFileColor,
-  formatFileSize,
+  isScientificTextFile,
   formatMimeType,
   formatDetailedSize,
   formatFileLocation,
   formatDetailedDate,
 } from '../../utils/storage.util';
-import { resolveFileUrl, downloadFileUrl } from '@/shared/lib/file-client';
+import {
+  resolveFileUrl,
+  downloadFileAuthorized,
+  fetchAuthorized,
+} from '@/shared/lib/file-client';
 import { usePreview } from '../../hooks/use-preview';
 import { useStorageUIStore, usePreviewStore } from '../../store/storage-ui.store';
 
@@ -43,10 +46,38 @@ export default function Preview() {
   const openScientificViewer = useStorageUIStore((s) => s.openScientificViewer);
   const openVersionModal = useStorageUIStore((s) => s.openVersionModal);
   const [imageError, setImageError] = useState(false);
+  const [imageObjectUrl, setImageObjectUrl] = useState<string | null>(null);
 
   useEffect(() => {
     setImageError(false);
-  }, [item?.id, item?.url]);
+    setImageObjectUrl(null);
+    if (!item?.url || item.isFolder) return;
+    const type = getFileType(item);
+    if (type !== 'image') return;
+
+    let active = true;
+    let createdBlobUrl: string | null = null;
+    fetchAuthorized(item.url)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.blob();
+      })
+      .then((blob) => {
+        if (!active) return;
+        createdBlobUrl = URL.createObjectURL(blob);
+        setImageObjectUrl(createdBlobUrl);
+      })
+      .catch(() => {
+        if (active) setImageError(true);
+      });
+
+    return () => {
+      active = false;
+      if (createdBlobUrl) {
+        URL.revokeObjectURL(createdBlobUrl);
+      }
+    };
+  }, [item]);
 
   const {
     previewDataUrl,
@@ -66,26 +97,31 @@ export default function Preview() {
     item.filename.toLowerCase().endsWith('.pdf') ||
     item.mimeType === 'application/pdf';
   const ext = item.filename.split('.').pop()?.toLowerCase() || '';
-  const isScientificText = [
-    'csv',
-    'tsv',
-    'ipynb',
-    'tex',
-    'md',
-    'json',
-    'py',
-    'txt',
-    'bib',
-  ].includes(ext);
+  const isScientificText = isScientificTextFile(item.filename);
   const resolvedUrl = resolveFileUrl(item.url);
   const color = getFileColor(fileType);
 
   const handleDownload = async () => {
     if (!resolvedUrl) return;
     try {
-      await downloadFileUrl(resolvedUrl, item.filename);
+      await downloadFileAuthorized(resolvedUrl, item.filename);
     } catch {
       // ignore
+    }
+  };
+
+  const handleExpandInNewTab = async () => {
+    const targetUrl = resolvedUrl || item.url;
+    if (!targetUrl) return;
+    try {
+      const res = await fetchAuthorized(targetUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    } catch {
+      window.open(targetUrl, '_blank');
     }
   };
 
@@ -176,13 +212,18 @@ export default function Preview() {
           }}
         >
           {isImage ? (
-            !imageError && resolvedUrl ? (
+            !imageError && imageObjectUrl ? (
               <img
-                src={resolvedUrl}
+                src={imageObjectUrl}
                 alt={item.filename}
                 onError={() => setImageError(true)}
                 className="w-full h-full object-contain"
               />
+            ) : !imageError && resolvedUrl ? (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
+                <Loader2 className="size-3.5 animate-spin shrink-0" />
+                Loading image…
+              </div>
             ) : (
               <div className="flex flex-col items-center gap-2 py-8">
                 <div
@@ -290,7 +331,7 @@ export default function Preview() {
 
           {(isPdf || isImage) && (
             <button
-              onClick={() => window.open(resolvedUrl || item.url, '_blank')}
+              onClick={() => void handleExpandInNewTab()}
               className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
               title="Open in new tab"
             >

@@ -6,7 +6,6 @@
 // UI Store
 export {
   useStorageUIStore,
-  useStorageViewStore,
   useViewStore,
   usePreviewStore,
   useStorageSelectionStore,
@@ -15,14 +14,31 @@ export {
 
 // Types
 export type * from './types/storage.types';
-export type { UploadFileParams, CreateFileRecordParams } from './types/storage.types';
 
 // Services
 export * as storageDriveService from './services/drive.service';
+export { getAllFiles } from './services/drive.service';
 export * from './services/upload.service';
 
 // Hooks
 export * from './hooks/use-storage';
+
+// Utils & Public Components
+export {
+  getFileType,
+  getFileIcon,
+  getFileColor,
+  isScientificTextFile,
+  formatFileSize,
+  formatMimeType,
+  formatDate,
+  formatDetailedSize,
+  formatFileLocation,
+  formatDetailedDate,
+  createFolderDropHandlers,
+  canDropIntoFolder,
+} from './utils/storage.util';
+export { StorageEmptyState } from './components/layout/StorageEmptyState';
 
 // Pages
 export { default as StorageHomePage } from './pages/HomePage';

@@ -1,16 +1,14 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Star, Folder, CheckSquare, Square, Loader2, Upload, FolderPlus } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Star, Folder, CheckSquare, Square, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { resolveFileUrl } from "@/shared/lib/file-client";
+import { resolveFileUrl } from '@/shared/lib/file-client';
 import { useInfiniteSentinel } from '../../hooks/use-storage';
-import { Button } from '@/shared/components/ui/button';
-import type { StorageItem } from '@/features/storage/types/storage.types';
+import type { StorageItem, StorageViewProps } from '@/features/storage/types/storage.types';
 import { getFileType, getFileIcon, getFileColor, formatFileSize, createFolderDropHandlers } from '../../utils/storage.util';
-import { ItemActions, type StorageViewProps } from './ListView';
+import { ItemActions } from './StorageItemActions';
 import { useStorageSelectionStore } from '../../store/storage-ui.store';
-import StorageEmptyState from '../layout/StorageEmptyState';
 
 const GridFileIconItem = React.memo(function GridFileIconItem({ item }: { item: StorageItem }) {
   const [hasError, setHasError] = useState(false);
@@ -53,7 +51,6 @@ export const GridView = React.memo(function GridView({
   highlightedItemId,
   onDropOnFolder,
   onDragStartFile,
-  onMoveToParent,
   onOpenLocation,
   isReadOnly,
   hasMore,
@@ -72,10 +69,6 @@ export const GridView = React.memo(function GridView({
   const allItemIds = useMemo(() => items.map((i) => i.id), [items]);
   const folders = useMemo(() => items.filter((i) => i.isFolder), [items]);
   const files = useMemo(() => items.filter((i) => !i.isFolder), [items]);
-
-  if (items.length === 0) {
-    return <StorageEmptyState isTrash={isTrash} isReadOnly={isReadOnly} />;
-  }
 
   return (
     <div className="space-y-6 select-none pb-6">
@@ -121,12 +114,11 @@ export const GridView = React.memo(function GridView({
                     }}
                     className={`group flex items-center justify-between p-3 rounded-md border bg-card hover:bg-muted hover:border-border transition-colors cursor-pointer relative ${
                       isSelected
-                        ? "border-primary bg-muted ring-1 ring-primary"
-                        : "border-border"
-                    } ${dragOverFolderId === folder.id ? "border-primary bg-muted ring-1 ring-primary" : ""}`}
+                        ? 'border-primary bg-muted ring-1 ring-primary'
+                        : 'border-border'
+                    } ${dragOverFolderId === folder.id ? 'border-primary bg-muted ring-1 ring-primary' : ''}`}
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      {/* Checkbox */}
                       {!isReadOnly && (
                         <button
                           onClick={(e) => {
@@ -139,10 +131,10 @@ export const GridView = React.memo(function GridView({
                           }}
                           className={`size-5 rounded flex items-center justify-center transition-opacity cursor-pointer shrink-0 ${
                             isMultiSelected
-                              ? "opacity-100 text-primary"
-                              : "opacity-0 group-hover:opacity-60 hover:opacity-100 text-muted-foreground"
+                              ? 'opacity-100 text-primary'
+                              : 'opacity-0 group-hover:opacity-60 hover:opacity-100 text-muted-foreground'
                           }`}
-                          title={isMultiSelected ? "Deselect" : "Select"}
+                          title={isMultiSelected ? 'Deselect' : 'Select'}
                         >
                           {isMultiSelected ? (
                             <CheckSquare className="size-4 text-primary shrink-0" />
@@ -177,7 +169,6 @@ export const GridView = React.memo(function GridView({
                           onRestore={onRestore}
                           onDownload={onDownload}
                           isTrash={isTrash}
-                          onMoveToParent={onMoveToParent}
                           onOpenLocation={onOpenLocation}
                           alwaysVisible
                         />
@@ -226,8 +217,8 @@ export const GridView = React.memo(function GridView({
                     }}
                     className={`group bg-card border rounded-md overflow-hidden hover:border-border hover:bg-muted transition-colors cursor-pointer relative flex flex-col ${
                       isSelected
-                        ? "border-primary bg-muted ring-1 ring-primary"
-                        : "border-border"
+                        ? 'border-primary bg-muted ring-1 ring-primary'
+                        : 'border-border'
                     }`}
                     onClick={(e: React.MouseEvent) => {
                       if (!isReadOnly && (e.shiftKey || e.ctrlKey || e.metaKey)) {
@@ -244,7 +235,6 @@ export const GridView = React.memo(function GridView({
                   >
                     {/* Thumbnail Area */}
                     <div className="h-28 sm:h-32 flex items-center justify-center bg-muted overflow-hidden relative border-b border-border">
-                      {/* Selection Checkbox (top-left) */}
                       {!isReadOnly && (
                         <button
                           onClick={(e) => {
@@ -257,10 +247,10 @@ export const GridView = React.memo(function GridView({
                           }}
                           className={`absolute top-1.5 left-1.5 z-10 size-6 rounded-md flex items-center justify-center bg-background/80 backdrop-blur-sm transition-opacity cursor-pointer ${
                             isMultiSelected
-                              ? "opacity-100 text-primary"
-                              : "opacity-0 md:group-hover:opacity-100 text-foreground"
+                              ? 'opacity-100 text-primary'
+                              : 'opacity-0 md:group-hover:opacity-100 text-foreground'
                           }`}
-                          title={isMultiSelected ? "Deselect" : "Select"}
+                          title={isMultiSelected ? 'Deselect' : 'Select'}
                         >
                           {isMultiSelected ? (
                             <CheckSquare className="size-4 text-primary shrink-0" />
@@ -272,7 +262,6 @@ export const GridView = React.memo(function GridView({
 
                       <GridFileIconItem item={file} />
 
-                      {/* Overlay actions (top-right) */}
                       {!isReadOnly && (
                         <div className="absolute top-1.5 right-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10">
                           <div className="bg-background/90 backdrop-blur-sm rounded-md border border-border/60">
@@ -283,7 +272,6 @@ export const GridView = React.memo(function GridView({
                               onRestore={onRestore}
                               onDownload={onDownload}
                               isTrash={isTrash}
-                              onMoveToParent={onMoveToParent}
                               onOpenLocation={onOpenLocation}
                               alwaysVisible
                             />
@@ -309,7 +297,7 @@ export const GridView = React.memo(function GridView({
                           <div className="flex items-center gap-1" title={file.author.name}>
                             {file.author.avatar ? (
                               <img
-                                src={resolveFileUrl(file.author.avatar) || ""}
+                                src={resolveFileUrl(file.author.avatar) || ''}
                                 alt=""
                                 className="size-4 rounded-full object-cover"
                               />
@@ -346,4 +334,3 @@ export const GridView = React.memo(function GridView({
 });
 
 export default GridView;
-

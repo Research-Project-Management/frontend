@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import {
   useQuery,
   useInfiniteQuery,
@@ -11,21 +11,18 @@ import {
 import { toast } from 'sonner';
 import { useDebounce } from '@/shared/hooks/use-debounce';
 import { useIntersectionObserver } from '@/shared/hooks/use-intersection-observer';
-import { formatBytes } from '@/shared/utils/format';
 import { storageKeys } from '../constants/storage.keys';
-import type { StorageResponse } from '../types/storage.types';
 import {
   usePreviewStore,
   useStorageFilterStore,
   type StorageSection,
 } from '../store/storage-ui.store';
+import type { StorageItem } from '../types/storage.types';
 import {
   getAllFiles,
-  getMyFiles,
   getSharedFiles,
   getStarredFiles,
   getTrashedFiles,
-  getFileById,
   getFolderPath,
   createFolder,
   toggleStarItem,
@@ -36,20 +33,15 @@ import {
   batchDeleteItems,
   batchStarItems,
   updateFileMetadata,
-  moveToTrash,
   restoreItem,
   permanentlyDeleteItem,
   batchRestoreItems,
   batchPermanentlyDeleteItems,
-  getStorageUsage,
-  getStorageQuota,
   getFileVersions,
   uploadNewFileVersion,
   revertFileVersion,
   type FileQueryParams,
   type FolderPathResponse,
-  type StorageUsageResult,
-  type StorageQuotaResponse,
 } from '../services/drive.service';
 
 export const DRIVE_QUERY_OPTIONS = {
@@ -58,7 +50,7 @@ export const DRIVE_QUERY_OPTIONS = {
   placeholderData: keepPreviousData,
 };
 
-// ── Drive Queries & Mutations ────────────────────────────────────────────────
+// ── Drive Queries ────────────────────────────────────────────────────────────
 
 export function useSectionFiles(
   section: StorageSection,
@@ -68,20 +60,20 @@ export function useSectionFiles(
 ) {
   const effectiveParentId =
     section === 'my-files' ? (parentId ?? undefined) : undefined;
+  const canonicalSection: StorageSection =
+    section === 'home' && !effectiveParentId ? 'my-files' : section;
   const mergedParams: FileQueryParams = {
     ...(effectiveParentId ? { parentId: effectiveParentId } : {}),
     ...queryParams,
   };
 
   return useInfiniteQuery({
-    queryKey: [
-      ...storageKeys.scoped(scopeId),
-      'section',
-      section,
-      effectiveParentId ?? 'root',
-      'infinite',
+    queryKey: storageKeys.section(
+      scopeId,
+      canonicalSection,
+      effectiveParentId ?? null,
       mergedParams,
-    ],
+    ),
     queryFn: ({ pageParam = 1 }) => {
       const pageOpts = {
         ...mergedParams,
@@ -108,113 +100,48 @@ export function useSectionFiles(
   });
 }
 
-export function useHomeFiles(
-  scopeId?: string,
-  parentId?: string | null,
-  queryParams?: FileQueryParams,
-  options?: { enabled?: boolean },
-) {
-  const mergedParams: FileQueryParams = {
-    parentId: parentId ?? undefined,
-    ...queryParams,
-  };
-
-  return useInfiniteQuery({
-    queryKey: [
-      ...storageKeys.driveHomeFiles(scopeId, parentId),
-      'infinite',
-      mergedParams,
-    ],
-    queryFn: ({ pageParam = 1 }) =>
-      getAllFiles(scopeId, {
-        ...mergedParams,
-        page: pageParam as number,
-        limit: 40,
-      }),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
-    enabled: options?.enabled !== undefined ? options.enabled : true,
-    ...DRIVE_QUERY_OPTIONS,
-  });
-}
-
-export function useDriveFiles(
-  scopeId?: string,
-  parentId?: string | null,
-  options?: { enabled?: boolean },
-) {
-  return useQuery({
-    queryKey: storageKeys.driveFiles(scopeId, parentId),
-    queryFn: () => getAllFiles(scopeId, parentId),
-    enabled: options?.enabled !== undefined ? options.enabled : true,
-    ...DRIVE_QUERY_OPTIONS,
-  });
-}
-
-export const useAllFiles = useDriveFiles;
-export const useWorkspaceFiles = useDriveFiles;
-
-function createInfiniteStorageQuery(
-  getKey: (scopeId?: string) => readonly unknown[],
-  fetcher: (
-    scopeId?: string,
-    params?: FileQueryParams,
-  ) => Promise<StorageResponse>,
-) {
-  return function useInfiniteStorage(
-    scopeId?: string,
-    params?: FileQueryParams,
-    options?: { enabled?: boolean },
-  ) {
-    return useInfiniteQuery({
-      queryKey: [...getKey(scopeId), 'infinite', params],
-      queryFn: ({ pageParam = 1 }) =>
-        fetcher(scopeId, { ...params, page: pageParam as number, limit: 40 }),
-      initialPageParam: 1,
-      getNextPageParam: (lastPage) =>
-        lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
-      enabled: options?.enabled !== undefined ? options.enabled : true,
-      ...DRIVE_QUERY_OPTIONS,
-    });
-  };
-}
-
-export const useMyFiles = createInfiniteStorageQuery(
-  storageKeys.driveMyFiles,
-  getMyFiles,
-);
-export const useSharedFiles = createInfiniteStorageQuery(
-  storageKeys.driveShared,
-  getSharedFiles,
-);
-export const useStarredFiles = createInfiniteStorageQuery(
-  storageKeys.driveStarred,
-  getStarredFiles,
-);
-
-export function useFileById(id?: string) {
-  return useQuery({
-    queryKey: ['storage', 'file', id],
-    queryFn: () => getFileById(id!),
-    enabled: !!id,
-    ...DRIVE_QUERY_OPTIONS,
-  });
-}
-
 export function useFolderPath(folderId?: string | null) {
   return useQuery<FolderPathResponse>({
-    queryKey: ['storage', 'folder-path', folderId],
+    queryKey: storageKeys.folderPath(folderId ?? null),
     queryFn: () => getFolderPath(folderId!),
     enabled: !!folderId,
     staleTime: 30 * 1000,
   });
 }
 
-export const useCreateFolder = () => {
+// ── Shared Mutation Factory ──────────────────────────────────────────────────
+
+function useStorageMutation<TData, TVariables>(
+  mutationFn: (variables: TVariables) => Promise<TData>,
+  syncPreview?: (current: StorageItem, variables: TVariables) => StorageItem | null | undefined,
+) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
+    mutationFn,
+    onSuccess: (_data, variables) => {
+      if (syncPreview) {
+        const current = usePreviewStore.getState().selectedItem;
+        if (current) {
+          const next = syncPreview(current, variables);
+          if (next !== undefined) {
+            usePreviewStore.getState().setSelectedItem(next);
+          }
+        }
+      }
+      void queryClient.invalidateQueries({ queryKey: storageKeys.all });
+    },
+  });
+}
+
+const clearPreviewIfSingleMatch = (current: StorageItem, itemId: string) =>
+  current.id === itemId ? null : undefined;
+
+const clearPreviewIfBatchMatch = (current: StorageItem, ids: string[]) =>
+  ids.includes(current.id) ? null : undefined;
+
+export const useCreateFolder = () =>
+  useStorageMutation(
+    ({
       name,
       projectId,
       parentId,
@@ -223,302 +150,74 @@ export const useCreateFolder = () => {
       projectId?: string;
       parentId?: string | null;
     }) => createFolder(name, { projectId, parentId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: storageKeys.all });
-    },
-  });
-};
+  );
 
-export const useToggleStarItem = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (itemId: string) => toggleStarItem(itemId),
-    onSuccess: (_data, itemId) => {
-      const current = usePreviewStore.getState().selectedItem;
-      if (current && current.id === itemId) {
-        usePreviewStore.getState().setSelectedItem({
-          ...current,
-          starred: !current.starred,
-        });
-      }
-      queryClient.invalidateQueries({ queryKey: storageKeys.all });
-    },
-  });
-};
+export const useToggleStarItem = () =>
+  useStorageMutation(toggleStarItem, (current, itemId) =>
+    current.id === itemId ? { ...current, starred: !current.starred } : undefined,
+  );
 
-export const useDeleteItem = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (itemId: string) => deleteItem(itemId),
-    onSuccess: (_data, itemId) => {
-      const current = usePreviewStore.getState().selectedItem;
-      if (current && current.id === itemId) {
-        usePreviewStore.getState().setSelectedItem(null);
-      }
-      queryClient.invalidateQueries({ queryKey: storageKeys.all });
-    },
-  });
-};
+export const useDeleteItem = () =>
+  useStorageMutation(deleteItem, clearPreviewIfSingleMatch);
 
-export const useRenameItem = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ itemId, name }: { itemId: string; name: string }) =>
-      renameItem(itemId, name),
-    onSuccess: (_data, { itemId, name }) => {
-      const current = usePreviewStore.getState().selectedItem;
-      if (current && current.id === itemId) {
-        usePreviewStore.getState().setSelectedItem({
-          ...current,
-          filename: name,
-          name,
-        });
-      }
-      queryClient.invalidateQueries({ queryKey: storageKeys.all });
-    },
-  });
-};
+export const useRenameItem = () =>
+  useStorageMutation(
+    ({ itemId, name }: { itemId: string; name: string }) => renameItem(itemId, name),
+    (current, { itemId, name }) =>
+      current.id === itemId ? { ...current, filename: name } : undefined,
+  );
 
-export const useMoveItem = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      itemId,
-      parentId,
-    }: {
-      itemId: string;
-      parentId: string | null;
-    }) => moveItem(itemId, parentId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: storageKeys.all });
-    },
-  });
-};
+export const useMoveItem = () =>
+  useStorageMutation(({ itemId, parentId }: { itemId: string; parentId: string | null }) =>
+    moveItem(itemId, parentId),
+  );
 
-export const useBatchMoveItems = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      ids,
-      parentId,
-    }: {
-      ids: string[];
-      parentId: string | null;
-    }) => batchMoveItems(ids, parentId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: storageKeys.all });
-    },
-  });
-};
+export const useBatchMoveItems = () =>
+  useStorageMutation(({ ids, parentId }: { ids: string[]; parentId: string | null }) =>
+    batchMoveItems(ids, parentId),
+  );
 
-export const useBatchDeleteItems = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (ids: string[]) => batchDeleteItems(ids),
-    onSuccess: (_data, ids) => {
-      const current = usePreviewStore.getState().selectedItem;
-      if (current && ids.includes(current.id)) {
-        usePreviewStore.getState().setSelectedItem(null);
-      }
-      queryClient.invalidateQueries({ queryKey: storageKeys.all });
-    },
-  });
-};
+export const useBatchDeleteItems = () =>
+  useStorageMutation(batchDeleteItems, clearPreviewIfBatchMatch);
 
-export const useBatchStarItems = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ ids, starred }: { ids: string[]; starred: boolean }) =>
-      batchStarItems(ids, starred),
-    onSuccess: (_data, { ids, starred }) => {
-      const current = usePreviewStore.getState().selectedItem;
-      if (current && ids.includes(current.id)) {
-        usePreviewStore.getState().setSelectedItem({
-          ...current,
-          starred,
-        });
-      }
-      queryClient.invalidateQueries({ queryKey: storageKeys.all });
-    },
-  });
-};
+export const useBatchStarItems = () =>
+  useStorageMutation(
+    ({ ids, starred }: { ids: string[]; starred: boolean }) => batchStarItems(ids, starred),
+    (current, { ids, starred }) =>
+      ids.includes(current.id) ? { ...current, starred } : undefined,
+  );
 
-export const useUpdateFileMetadata = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      fileId,
-      metaData,
-    }: {
-      fileId: string;
-      metaData: Record<string, unknown>;
-    }) => updateFileMetadata(fileId, metaData),
-    onSuccess: (_data, { fileId, metaData }) => {
-      const current = usePreviewStore.getState().selectedItem;
-      if (current && current.id === fileId) {
-        usePreviewStore.getState().setSelectedItem({
-          ...current,
-          metaData,
-        });
-      }
-      queryClient.invalidateQueries({ queryKey: storageKeys.all });
-    },
-  });
-};
+export const useUpdateFileMetadata = () =>
+  useStorageMutation(
+    ({ fileId, metaData }: { fileId: string; metaData: Record<string, unknown> }) =>
+      updateFileMetadata(fileId, metaData),
+    (current, { fileId, metaData }) =>
+      current.id === fileId
+        ? { ...current, metaData: { ...(current.metaData || {}), ...metaData } }
+        : undefined,
+  );
 
 // ── Trash Hooks ──────────────────────────────────────────────────────────────
 
-export function useTrash(
-  scopeId?: string,
-  params?: FileQueryParams,
-  options?: { enabled?: boolean },
-) {
-  return useInfiniteQuery({
-    queryKey: [...storageKeys.driveTrashed(scopeId), 'infinite', params],
-    queryFn: ({ pageParam = 1 }) =>
-      getTrashedFiles(scopeId, {
-        ...params,
-        page: pageParam as number,
-        limit: 40,
-      }),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
-    enabled: options?.enabled !== undefined ? options.enabled : true,
-    ...DRIVE_QUERY_OPTIONS,
-  });
-}
+export const useRestoreItem = () =>
+  useStorageMutation(restoreItem, clearPreviewIfSingleMatch);
 
-export const useMoveToTrash = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (itemId: string) => moveToTrash(itemId),
-    onSuccess: (_data, itemId) => {
-      const current = usePreviewStore.getState().selectedItem;
-      if (current && current.id === itemId) {
-        usePreviewStore.getState().setSelectedItem(null);
-      }
-      queryClient.invalidateQueries({ queryKey: storageKeys.all });
-    },
-  });
-};
+export const usePermanentlyDeleteItem = () =>
+  useStorageMutation(permanentlyDeleteItem, clearPreviewIfSingleMatch);
 
-export const useRestoreItem = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (itemId: string) => restoreItem(itemId),
-    onSuccess: (_data, itemId) => {
-      const current = usePreviewStore.getState().selectedItem;
-      if (current && current.id === itemId) {
-        usePreviewStore.getState().setSelectedItem(null);
-      }
-      queryClient.invalidateQueries({ queryKey: storageKeys.all });
-    },
-  });
-};
+export const useBatchRestoreItems = () =>
+  useStorageMutation(batchRestoreItems, clearPreviewIfBatchMatch);
 
-export const usePermanentlyDeleteItem = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (itemId: string) => permanentlyDeleteItem(itemId),
-    onSuccess: (_data, itemId) => {
-      const current = usePreviewStore.getState().selectedItem;
-      if (current && current.id === itemId) {
-        usePreviewStore.getState().setSelectedItem(null);
-      }
-      queryClient.invalidateQueries({ queryKey: storageKeys.all });
-    },
-  });
-};
-
-export const useBatchRestoreItems = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (ids: string[]) => batchRestoreItems(ids),
-    onSuccess: (_data, ids) => {
-      const current = usePreviewStore.getState().selectedItem;
-      if (current && ids.includes(current.id)) {
-        usePreviewStore.getState().setSelectedItem(null);
-      }
-      queryClient.invalidateQueries({ queryKey: storageKeys.all });
-    },
-  });
-};
-
-export const useBatchPermanentDeleteItems = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (ids: string[]) => batchPermanentlyDeleteItems(ids),
-    onSuccess: (_data, ids) => {
-      const current = usePreviewStore.getState().selectedItem;
-      if (current && ids.includes(current.id)) {
-        usePreviewStore.getState().setSelectedItem(null);
-      }
-      queryClient.invalidateQueries({ queryKey: storageKeys.all });
-    },
-  });
-};
-
-// ── Quota Hooks ──────────────────────────────────────────────────────────────
-
-export interface UseStorageQuotaOptions {
-  projectId?: string;
-  enabled?: boolean;
-}
-
-export function useStorageUsage(scopeId?: string, projectId?: string) {
-  return useQuery<StorageUsageResult>({
-    queryKey: [...storageKeys.driveUsage(scopeId), projectId],
-    queryFn: () => getStorageUsage(scopeId, projectId),
-    enabled: true,
-    ...DRIVE_QUERY_OPTIONS,
-  });
-}
-
-export function useStorageQuota(options: UseStorageQuotaOptions = {}) {
-  const { projectId, enabled = true } = options;
-
-  const query = useQuery<StorageQuotaResponse>({
-    queryKey: storageKeys.quota(projectId),
-    queryFn: () => getStorageQuota({ projectId }),
-    staleTime: 60 * 1000,
-    refetchOnWindowFocus: true,
-    enabled,
-  });
-
-  const rawUsed = query.data?.usedBytes ?? query.data?.totalBytes ?? 0;
-  const rawLimit =
-    query.data?.limitBytes ?? query.data?.maxBytes ?? 5 * 1024 * 1024 * 1024;
-  const calculatedPercentage =
-    query.data?.percentage !== undefined && query.data?.percentage > 0
-      ? query.data.percentage
-      : rawLimit > 0
-        ? Math.round((Number(rawUsed) / Number(rawLimit)) * 100)
-        : 0;
-
-  return {
-    data: query.data,
-    quota: query.data,
-    isLoading: query.isLoading,
-    isError: query.isError,
-    error: query.error,
-    refetch: query.refetch,
-    isProjectScope: query.data?.scope === 'project',
-    ownerName: query.data?.owner?.name || null,
-    usedFormatted: query.data?.usedFormatted || formatBytes(Number(rawUsed)),
-    projectFormatted: query.data?.projectFormatted || '0 MB',
-    limitFormatted: query.data?.limitFormatted || formatBytes(Number(rawLimit)),
-    percentage: calculatedPercentage,
-  };
-}
+export const useBatchPermanentDeleteItems = () =>
+  useStorageMutation(batchPermanentlyDeleteItems, clearPreviewIfBatchMatch);
 
 // ── File Version Hooks ───────────────────────────────────────────────────────
 
 export function useFileVersions(fileId?: string) {
   return useQuery({
-    queryKey: ['file-versions', fileId],
+    queryKey: storageKeys.versions(fileId ?? null),
     queryFn: () =>
-      fileId ? getFileVersions(fileId) : Promise.reject('No fileId'),
+      fileId ? getFileVersions(fileId) : Promise.reject(new Error('No fileId')),
     enabled: Boolean(fileId),
     staleTime: 10 * 1000,
   });
@@ -528,7 +227,7 @@ export function useUploadNewVersion() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       fileId,
       file,
       changeComment,
@@ -538,16 +237,10 @@ export function useUploadNewVersion() {
       file: File;
       changeComment?: string;
       onProgress?: (progress: number) => void;
-    }) => {
-      return uploadNewFileVersion(fileId, file, changeComment, onProgress);
-    },
-    onSuccess: (_, variables) => {
+    }) => uploadNewFileVersion(fileId, file, changeComment, onProgress),
+    onSuccess: () => {
       toast.success('New version uploaded successfully!');
-      queryClient.invalidateQueries({
-        queryKey: ['file-versions', variables.fileId],
-      });
-      queryClient.invalidateQueries({ queryKey: ['drive-files'] });
-      queryClient.invalidateQueries({ queryKey: ['storage'] });
+      void queryClient.invalidateQueries({ queryKey: storageKeys.all });
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to upload new version');
@@ -559,22 +252,16 @@ export function useRevertFileVersion() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       fileId,
       versionNumber,
     }: {
       fileId: string;
       versionNumber: number;
-    }) => {
-      return revertFileVersion(fileId, versionNumber);
-    },
+    }) => revertFileVersion(fileId, versionNumber),
     onSuccess: (_, variables) => {
       toast.success(`Reverted to version ${variables.versionNumber}!`);
-      queryClient.invalidateQueries({
-        queryKey: ['file-versions', variables.fileId],
-      });
-      queryClient.invalidateQueries({ queryKey: ['drive-files'] });
-      queryClient.invalidateQueries({ queryKey: ['storage'] });
+      void queryClient.invalidateQueries({ queryKey: storageKeys.all });
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to revert version');
@@ -585,31 +272,22 @@ export function useRevertFileVersion() {
 // ── Query Params & Infinite Scroll Sentinel Hooks ────────────────────────────
 
 export function useStorageQueryParams() {
-  const { typeFilter, selectedTypes, sortBy } = useStorageFilterStore();
-  const [searchQuery, setSearchQuery] = useState('');
+  const { selectedTypes, sortBy, searchQuery, setSearchQuery } = useStorageFilterStore();
   const debouncedSearch = useDebounce(searchQuery, 300);
-  const setSelectedItem = usePreviewStore((s) => s.setSelectedItem);
 
   const queryParams: FileQueryParams = useMemo(
     () => ({
       search: debouncedSearch || undefined,
       sortBy,
-      types:
-        selectedTypes.length > 0
-          ? selectedTypes
-          : typeFilter !== 'all'
-            ? typeFilter
-            : undefined,
+      types: selectedTypes.length > 0 ? selectedTypes : undefined,
     }),
-    [debouncedSearch, sortBy, selectedTypes, typeFilter],
+    [debouncedSearch, sortBy, selectedTypes],
   );
 
   return {
-    projectId: undefined,
     searchQuery,
     setSearchQuery,
     debouncedSearch,
-    setSelectedItem,
     queryParams,
   };
 }
@@ -638,4 +316,3 @@ export function useInfiniteSentinel({
 
   return sentinelRef;
 }
-

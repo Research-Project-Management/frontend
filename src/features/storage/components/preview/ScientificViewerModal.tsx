@@ -2,12 +2,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  X,
   Download,
   Copy,
   Check,
   Search,
-  Table,
   FileCode,
   BookOpen,
   ChevronLeft,
@@ -25,10 +23,33 @@ import {
 import { renderMarkdown } from '@/features/ai/utils/render-markdown';
 import type { StorageItem } from '@/features/storage/types/storage.types';
 import { fetchAuthorized } from '@/features/storage/services/drive.service';
+import { isScientificTextFile } from '@/features/storage/utils/storage.util';
 import { resolveFileUrl, downloadFileUrl } from '@/shared/lib/file-client';
 import { copyToClipboard } from '@/shared/lib/utils';
 import { logger } from '@/shared/lib/logger';
 import { toast } from 'sonner';
+
+interface JupyterOutput {
+  text?: string | string[];
+  data?: {
+    'image/png'?: string;
+    'text/plain'?: string | string[];
+    [key: string]: unknown;
+  };
+}
+
+interface JupyterCell {
+  cell_type: string;
+  source: string | string[];
+  execution_count?: number | null;
+  outputs?: JupyterOutput[];
+}
+
+interface JupyterNotebook {
+  cells?: JupyterCell[];
+}
+
+const PAGE_SIZE = 20;
 
 interface ScientificViewerModalProps {
   open: boolean;
@@ -46,22 +67,22 @@ export default function ScientificViewerModal({
   const [copied, setCopied] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(20);
 
   const filename = file?.filename || '';
   const ext = filename.split('.').pop()?.toLowerCase() || '';
+  const isSupportedScientific = isScientificTextFile(filename);
 
   const isCsv = ext === 'csv' || ext === 'tsv';
   const isNotebook = ext === 'ipynb';
   const isLatex = ext === 'tex';
-  const isMarkdown = ext === 'md';
+  const isMarkdown = ext === 'md' || ext === 'markdown';
 
   // Fetch full text content when modal opens
   useEffect(() => {
     let isCancelled = false;
     const controller = new AbortController();
 
-    if (open && file?.url) {
+    if (open && file?.url && isSupportedScientific) {
       setLoading(true);
       const url = resolveFileUrl(file.url);
       if (!url) {
@@ -90,7 +111,7 @@ export default function ScientificViewerModal({
       isCancelled = true;
       controller.abort();
     };
-  }, [open, file?.id, file?.url]);
+  }, [open, file?.id, file?.url, isSupportedScientific]);
 
   // Copy handler
   const handleCopy = async () => {
@@ -154,31 +175,11 @@ export default function ScientificViewerModal({
 
   // Paged CSV rows
   const paginatedRows = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredRows.slice(start, start + pageSize);
-  }, [filteredRows, currentPage, pageSize]);
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredRows.slice(start, start + PAGE_SIZE);
+  }, [filteredRows, currentPage]);
 
-  const totalPages = Math.ceil(filteredRows.length / pageSize) || 1;
-
-interface JupyterOutput {
-  text?: string | string[];
-  data?: {
-    'image/png'?: string;
-    'text/plain'?: string | string[];
-    [key: string]: unknown;
-  };
-}
-
-interface JupyterCell {
-  cell_type: string;
-  source: string | string[];
-  execution_count?: number | null;
-  outputs?: JupyterOutput[];
-}
-
-interface JupyterNotebook {
-  cells?: JupyterCell[];
-}
+  const totalPages = Math.ceil(filteredRows.length / PAGE_SIZE) || 1;
 
   // ── Jupyter Notebook Parser ──────────────────────────────────────────
   const parsedNotebook = useMemo(() => {
@@ -351,7 +352,7 @@ interface JupyterNotebook {
                     {paginatedRows.map((row, rIdx) => (
                       <tr key={rIdx} className="hover:bg-muted/30 transition-colors">
                         <td className="px-3 py-1.5 text-muted-foreground/50 border-r border-border/40 text-11">
-                          {(currentPage - 1) * pageSize + rIdx + 1}
+                          {(currentPage - 1) * PAGE_SIZE + rIdx + 1}
                         </td>
                         {row.map((cell, cIdx) => (
                           <td

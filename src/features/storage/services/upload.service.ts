@@ -6,9 +6,9 @@
 
 import { apiPost, apiDelete, apiGet, getAuthToken } from '@/shared/lib/api';
 import { API_BASE_URL } from '@/config/env';
-
-import type { UploadFileParams, CreateFileRecordParams } from '../types/storage.types';
-export type { UploadFileParams, CreateFileRecordParams };
+import { resolveFileUrl } from '@/shared/lib/file-client';
+import type { UploadFileParams } from '../types/storage.types';
+export type { UploadFileParams };
 
 export interface PresignUploadDto {
   filename: string;
@@ -16,6 +16,8 @@ export interface PresignUploadDto {
   size?: number;
   projectId?: string;
   pageId?: string;
+  parentId?: string | null;
+  contentHash?: string;
   metaData?: Record<string, unknown> | null;
 }
 
@@ -24,6 +26,8 @@ export interface PresignUploadResult {
   storageKey: string;
   fileUuid: string;
   expiresIn: number;
+  deduplicated?: boolean;
+  fileId?: string;
   path?: string;
   url?: string;
 }
@@ -36,6 +40,7 @@ export interface CompletePresignedParams {
   mimeType?: string;
   projectId?: string;
   parentId?: string | null;
+  contentHash?: string;
 }
 
 export interface InitiateMultipartResult {
@@ -64,6 +69,26 @@ export interface ResumableUploadOptions {
   onProgress?: (progress: number) => void;
 }
 
+async function computeClientSha256Hex(blob: Blob): Promise<string | undefined> {
+  // Compute SHA-256 in browser using Web Crypto API for blobs <= 50MB
+  if (
+    typeof window === 'undefined' ||
+    !window.crypto?.subtle ||
+    blob.size <= 0 ||
+    blob.size > 50 * 1024 * 1024
+  ) {
+    return undefined;
+  }
+  try {
+    const buffer = await blob.arrayBuffer();
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  } catch {
+    return undefined;
+  }
+}
+
 // ── 1. Presigned & Direct Upload ─────────────────────────────────────────────
 
 export const presignUpload = (dto: PresignUploadDto) => {
@@ -80,19 +105,6 @@ export const completePresigned = (params: CompletePresignedParams) => {
     size: number;
     mimeType: string;
   }>('/api/v1/storage/files/presign/complete', params);
-};
-
-export const createFileRecord = (params: CreateFileRecordParams) => {
-  return apiPost<{ id: string; url: string; file: Record<string, unknown> }>('/api/v1/storage/files/upload', {
-    filename: params.filename,
-    size: params.size,
-    mimeType: params.mimeType,
-    url: params.url,
-    thumbnail: params.thumbnail,
-    parentId: params.parentId ?? null,
-    projectId: params.projectId,
-    metaData: params.metaData,
-  });
 };
 
 export const uploadDirectWithProgress = (
@@ -185,12 +197,25 @@ export const uploadBlobWithPresigned = async (
   const parentId = typeof options === 'object' ? options?.parentId : undefined;
 
   try {
+    const contentHash = await computeClientSha256Hex(blob);
     const presignRes = await presignUpload({
       filename: fileName,
       mimeType: blob.type || 'application/octet-stream',
       size: blob.size,
       projectId,
+      parentId,
+      contentHash,
     });
+
+    // Zero-byte Instant CAS Deduplication Hit
+    if (presignRes?.deduplicated && presignRes.fileId && presignRes.url) {
+      onProgress?.(100);
+      return {
+        url: presignRes.url,
+        path: presignRes.url,
+        fileId: presignRes.fileId,
+      };
+    }
 
     const uploadUrl = presignRes?.uploadUrl;
     if (uploadUrl && presignRes?.storageKey) {
@@ -229,6 +254,7 @@ export const uploadBlobWithPresigned = async (
         mimeType: blob.type || 'application/octet-stream',
         projectId,
         parentId,
+        contentHash,
       });
 
       return {
@@ -253,6 +279,7 @@ export const initiateMultipart = (
   totalSize: number,
   projectId?: string | null,
   parentId?: string | null,
+  expectedHash?: string,
 ) => {
   return apiPost<InitiateMultipartResult>('/api/v1/storage/files/multipart/initiate', {
     filename,
@@ -261,6 +288,7 @@ export const initiateMultipart = (
     sizeBytes: totalSize,
     projectId,
     parentId,
+    expectedHash,
   });
 };
 
@@ -334,8 +362,9 @@ export const abortMultipart = (sessionId: string) => {
 };
 
 /**
- * Resumable multi-chunk upload for large research datasets (>10MB).
- * Automatically handles chunking, sequential part uploads, progress reporting, and completion.
+ * Resumable multi-chunk upload for large research datasets (>15MB).
+ * Handles chunking, bounded parallel part uploads (concurrency=3), per-part exponential retry,
+ * progress reporting, and completion.
  */
 export const uploadLargeFileResumable = async (
   file: File,
@@ -345,18 +374,20 @@ export const uploadLargeFileResumable = async (
     throw new Error('Upload aborted');
   }
 
+  const expectedHash = await computeClientSha256Hex(file);
   const session = await initiateMultipart(
     file.name,
     file.type || 'application/octet-stream',
     file.size,
     options.projectId,
     options.parentId,
+    expectedHash,
   );
 
   const partSize = session.partSize;
   const totalParts = session.totalParts;
-  const parts: MultipartPartDto[] = [];
-  const partLoadedBytes = new Array(totalParts).fill(0);
+  const parts: MultipartPartDto[] = new Array(totalParts);
+  const partLoadedBytes = new Array<number>(totalParts).fill(0);
 
   const reportProgress = () => {
     if (options.onProgress) {
@@ -366,45 +397,74 @@ export const uploadLargeFileResumable = async (
     }
   };
 
-  try {
-    for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+  const uploadSinglePartWithRetry = async (partNumber: number): Promise<void> => {
+    const start = (partNumber - 1) * partSize;
+    const end = Math.min(start + partSize, file.size);
+    const chunk = file.slice(start, end);
+    const maxAttempts = 3;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       if (options.signal?.aborted) {
-        await abortMultipart(session.sessionId).catch(() => {});
         throw new Error('Upload aborted by user');
       }
-
-      const start = (partNumber - 1) * partSize;
-      const end = Math.min(start + partSize, file.size);
-      const chunk = file.slice(start, end);
-
-      const { uploadUrl } = await getMultipartPartUrl(session.sessionId, partNumber);
-
-      const partResult = await uploadPartToS3(
-        uploadUrl,
-        partNumber,
-        chunk,
-        options.signal,
-        (loaded) => {
-          partLoadedBytes[partNumber - 1] = loaded;
-          reportProgress();
-        },
-      );
-
-      partLoadedBytes[partNumber - 1] = chunk.size;
-      reportProgress();
-      parts.push(partResult);
+      try {
+        const { uploadUrl } = await getMultipartPartUrl(session.sessionId, partNumber);
+        const partResult = await uploadPartToS3(
+          uploadUrl,
+          partNumber,
+          chunk,
+          options.signal,
+          (loaded) => {
+            partLoadedBytes[partNumber - 1] = loaded;
+            reportProgress();
+          },
+        );
+        partLoadedBytes[partNumber - 1] = chunk.size;
+        reportProgress();
+        parts[partNumber - 1] = partResult;
+        return;
+      } catch (err) {
+        if (options.signal?.aborted || attempt === maxAttempts) {
+          throw err;
+        }
+        partLoadedBytes[partNumber - 1] = 0;
+        await new Promise((r) => setTimeout(r, 500 * attempt));
+      }
     }
+  };
+
+  try {
+    const CONCURRENCY = 3;
+    let nextPart = 1;
+
+    const worker = async () => {
+      while (nextPart <= totalParts) {
+        if (options.signal?.aborted) {
+          throw new Error('Upload aborted by user');
+        }
+        const currentPart = nextPart++;
+        await uploadSinglePartWithRetry(currentPart);
+      }
+    };
+
+    const workers = Array.from(
+      { length: Math.min(CONCURRENCY, totalParts) },
+      () => worker(),
+    );
+    await Promise.all(workers);
 
     const completeResult = await completeMultipart(session.sessionId, parts);
     if (options.onProgress) options.onProgress(100);
     return { fileId: completeResult.fileId, url: completeResult.url };
   } catch (err) {
-    await abortMultipart(session.sessionId).catch(() => {});
+    if (options.signal?.aborted) {
+      await abortMultipart(session.sessionId).catch(() => {});
+    }
     throw err;
   }
 };
 
-// ── 3. High-Level Facade Functions (Backwards Compatibility) ────────────────
+// ── 3. High-Level Facade Functions ──────────────────────────────────────────
 
 export const uploadFile = async (
   file: File,
@@ -426,12 +486,14 @@ export const uploadFile = async (
     onProgress: params.onProgress,
   });
 
-  const uploadUrl = uploadPath.startsWith('http') ? uploadPath : `${API_BASE_URL}${uploadPath}`;
+  const uploadUrl = resolveFileUrl(uploadPath) || uploadPath;
   return { fileId: fileId || '', url: uploadUrl };
 };
 
 export const uploadGenericFile = async (file: File, scopePrefix: string = 'flux'): Promise<string> => {
-  const fileName = `avatars/${scopePrefix || 'flux'}-${Date.now()}`;
+  const dotIdx = file.name.lastIndexOf('.');
+  const ext = dotIdx !== -1 ? file.name.slice(dotIdx) : '';
+  const fileName = `avatars/${scopePrefix || 'flux'}-${Date.now()}${ext}`;
   const { url: uploadPath } = await uploadBlobWithPresigned(file, fileName);
-  return uploadPath.startsWith('http') ? uploadPath : `${API_BASE_URL}${uploadPath}`;
+  return resolveFileUrl(uploadPath) || uploadPath;
 };

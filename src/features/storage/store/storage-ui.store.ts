@@ -74,13 +74,17 @@ interface StorageUIState {
   openScientificViewer: (item: StorageItem) => void;
   closeScientificViewer: () => void;
 
-  // Upload Trigger
-  uploadTriggerCount: number;
-  triggerUpload: () => void;
-
-  // Restore item trigger
-  restoringItemId: string | null;
-  setRestoringItemId: (id: string | null) => void;
+  // Duplicate Upload Prompt Modal
+  duplicatePrompt: {
+    file: File;
+    resolve: (mode: 'replace' | 'keep-both' | 'cancel') => void;
+  } | null;
+  setDuplicatePrompt: (
+    prompt: {
+      file: File;
+      resolve: (mode: 'replace' | 'keep-both' | 'cancel') => void;
+    } | null,
+  ) => void;
 }
 
 export const useStorageUIStore = create<StorageUIState>((set, get) => ({
@@ -107,6 +111,7 @@ export const useStorageUIStore = create<StorageUIState>((set, get) => ({
     }
   },
   navigateToSection: (section, folderId = null, highlightId = null) => {
+    useStorageSelectionStore.getState().clearSelection();
     set({
       activeSection: section,
       currentFolderId: section === 'my-files' ? folderId : null,
@@ -115,6 +120,7 @@ export const useStorageUIStore = create<StorageUIState>((set, get) => ({
     syncUrl(buildStorageUrl(section, section === 'my-files' ? folderId : null, highlightId));
   },
   navigateToFolder: (folderId, highlightId = null) => {
+    useStorageSelectionStore.getState().clearSelection();
     set({
       activeSection: 'my-files',
       currentFolderId: folderId,
@@ -146,11 +152,8 @@ export const useStorageUIStore = create<StorageUIState>((set, get) => ({
   openScientificViewer: (item) => set({ scientificViewerItem: item }),
   closeScientificViewer: () => set({ scientificViewerItem: null }),
 
-  uploadTriggerCount: 0,
-  triggerUpload: () => set((s) => ({ uploadTriggerCount: s.uploadTriggerCount + 1 })),
-
-  restoringItemId: null,
-  setRestoringItemId: (id) => set({ restoringItemId: id }),
+  duplicatePrompt: null,
+  setDuplicatePrompt: (prompt) => set({ duplicatePrompt: prompt }),
 }));
 
 // ============================================================================
@@ -177,75 +180,48 @@ export const useViewStore = create<ViewState>((set) => ({
   setView: (view) => set({ view }),
 }));
 
-export const useStorageViewStore = useViewStore;
-
 // ============================================================================
 // FILTER & SELECTION STORES
 // ============================================================================
 
 export const useStorageFilterStore = create<StorageFilterState>((set, get) => ({
-  typeFilter: 'all',
   selectedTypes: [],
   sortBy: 'date-desc',
+  searchQuery: '',
 
-  setTypeFilter: (typeFilter) =>
-    set({
-      typeFilter,
-      selectedTypes: typeFilter === 'all' ? [] : [typeFilter],
-    }),
+  setSearchQuery: (searchQuery) => set({ searchQuery }),
 
   toggleType: (type) => {
     const { selectedTypes } = get();
     if (type === 'all') {
-      set({ selectedTypes: [], typeFilter: 'all' });
+      set({ selectedTypes: [] });
       return;
     }
     const next = selectedTypes.includes(type)
       ? selectedTypes.filter((t) => t !== type)
       : [...selectedTypes, type];
-    set({
-      selectedTypes: next,
-      typeFilter:
-        next.length === 1 ? next[0] : next.length === 0 ? 'all' : next[0],
-    });
+    set({ selectedTypes: next });
   },
 
-  setSelectedTypes: (selectedTypes) =>
-    set({
-      selectedTypes,
-      typeFilter:
-        selectedTypes.length === 1
-          ? selectedTypes[0]
-          : selectedTypes.length === 0
-            ? 'all'
-            : selectedTypes[0],
-    }),
+  setSelectedTypes: (selectedTypes) => set({ selectedTypes }),
 
   setSortBy: (sortBy) => set({ sortBy }),
 
   resetFilters: () =>
     set({
-      typeFilter: 'all',
       selectedTypes: [],
       sortBy: 'date-desc',
+      searchQuery: '',
     }),
 
   isFilterActive: () => {
-    const { selectedTypes, sortBy, typeFilter } = get();
-    const hasTypes = selectedTypes.length > 0 || typeFilter !== 'all';
-    const hasSort = sortBy !== 'date-desc';
-    return hasTypes || hasSort;
+    const { selectedTypes, sortBy } = get();
+    return selectedTypes.length > 0 || sortBy !== 'date-desc';
   },
 
   getActiveFilterCount: () => {
-    const { selectedTypes, sortBy, typeFilter } = get();
-    let count = 0;
-    if (selectedTypes.length > 0) {
-      count += selectedTypes.length;
-    } else if (typeFilter !== 'all') {
-      count += 1;
-    }
-
+    const { selectedTypes, sortBy } = get();
+    let count = selectedTypes.length;
     if (sortBy !== 'date-desc') {
       count += 1;
     }
@@ -356,4 +332,3 @@ export const useStorageSelectionStore = create<StorageSelectionState>(
     },
   }),
 );
-

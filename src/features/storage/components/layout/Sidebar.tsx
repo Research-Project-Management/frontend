@@ -9,13 +9,12 @@ import {
   Users,
   Star,
   Trash,
-  PanelLeftClose,
 } from 'lucide-react';
-import { cn } from "@/shared/lib/utils";
+import { cn } from '@/shared/lib/utils';
 
 import { useStorageUIStore, buildStorageUrl, type StorageSection } from '../../store/storage-ui.store';
 
-export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
+export default function Sidebar() {
   const id = useId();
   const activeSection = useStorageUIStore((s) => s.activeSection);
   const navigateToSection = useStorageUIStore((s) => s.navigateToSection);
@@ -30,25 +29,18 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
   ];
 
   return (
-    <aside className='hidden md:flex h-full w-60 shrink-0 flex-col justify-between overflow-x-hidden border-r border-border bg-transparent p-2.5 py-4 select-none'>
+    <aside className="hidden md:flex h-full w-60 shrink-0 flex-col justify-between overflow-x-hidden border-r border-border bg-transparent p-2.5 py-4 select-none">
       <div className="w-full">
         {/* Header (Desktop) */}
-        <div className='mb-3 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground max-md:hidden'>
+        <div className="mb-3 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground max-md:hidden">
           <span>Storage</span>
-          <button
-            onClick={onToggle}
-            aria-label='Toggle Storage Sidebar'
-            className='p-1 hidden rounded-md cursor-pointer text-foreground hover:bg-muted transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring'
-          >
-            <PanelLeftClose className='size-4 text-foreground shrink-0' />
-          </button>
         </div>
 
         {/* Storage Navigation */}
         <LayoutGroup id={`storage-nav-${id}`}>
           <nav
-            aria-label='Storage Navigation'
-            className='flex flex-col gap-1 max-md:flex-row max-md:overflow-x-auto max-md:no-scrollbar max-md:py-0.5 max-md:gap-1.5'
+            aria-label="Storage Navigation"
+            className="flex flex-col gap-1 max-md:flex-row max-md:overflow-x-auto max-md:no-scrollbar max-md:py-0.5 max-md:gap-1.5"
           >
             {storageItems.map((item) => {
               const isActive = activeSection === item.section;
@@ -66,21 +58,21 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
                     'group relative flex h-8 items-center gap-2 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none max-md:shrink-0 max-md:h-8 max-md:px-3 max-md:rounded-full cursor-pointer',
                     isActive
                       ? 'bg-muted text-foreground font-medium'
-                      : 'text-foreground hover:bg-muted font-normal'
+                      : 'text-foreground hover:bg-muted font-normal',
                   )}
                 >
                   {isActive && (
                     <motion.div
                       layoutId={`storage-nav-active-${id}`}
-                      className='absolute inset-0 rounded-md max-md:rounded-full bg-muted border border-border/50'
+                      className="absolute inset-0 rounded-md max-md:rounded-full bg-muted border border-border/50"
                       initial={false}
                       transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                     />
                   )}
                   <item.icon
-                    className='relative z-10 size-4 shrink-0 text-foreground'
+                    className="relative z-10 size-4 shrink-0 text-foreground"
                   />
-                  <span className='relative z-10 min-w-0 truncate tracking-tight text-xs sm:text-13'>
+                  <span className="relative z-10 min-w-0 truncate tracking-tight text-xs sm:text-13">
                     {item.label}
                   </span>
                 </Link>

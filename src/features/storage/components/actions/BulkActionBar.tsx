@@ -28,7 +28,7 @@ import {
   useBatchPermanentDeleteItems,
   useBatchStarItems,
 } from '../../hooks/use-storage';
-import { downloadFileUrl } from "@/shared/lib/file-client";
+import { downloadFileAuthorized } from '../../services/drive.service';
 import type { StorageItem } from '../../types/storage.types';
 import {
   useStorageUIStore,
@@ -96,8 +96,8 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
 
     try {
       const zipUrl = `/api/v1/storage/files/bulk-download?ids=${encodeURIComponent(selectedIds.join(','))}`;
-      downloadFileUrl(zipUrl, `flux_research_export_${Date.now()}.zip`);
-      toast.success('Started downloading ZIP archive');
+      await downloadFileAuthorized(zipUrl, `flux_research_export_${Date.now()}.zip`);
+      toast.success('Downloaded ZIP archive');
     } catch (err) {
       console.error('Failed to trigger bulk ZIP download', err);
       toast.error('Failed to download ZIP archive');

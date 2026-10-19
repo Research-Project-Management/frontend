@@ -6,14 +6,14 @@
 
 import { apiGet, apiPost, apiPut, apiDelete, getAuthToken } from '@/shared/lib/api';
 import { API_BASE_URL } from '@/config/env';
-import { resolveFileUrl, downloadFileUrl } from '@/shared/lib/file-client';
+import { resolveFileUrl } from '@/shared/lib/file-client';
 import type {
-  StorageItem,
   StorageResponse,
   CreateFolderParams,
 } from '@/features/storage/types/storage.types';
 
 export interface FileQueryParams {
+  projectId?: string | null;
   parentId?: string | null;
   search?: string;
   sortBy?: string;
@@ -23,16 +23,14 @@ export interface FileQueryParams {
   page?: number;
 }
 
-export function buildQueryString(params?: FileQueryParams | string | null): string {
+export function buildQueryString(params?: FileQueryParams): string {
   if (!params) return '';
-  if (typeof params === 'string') {
-    return params && params !== 'null' && params !== 'root'
-      ? `?parentId=${encodeURIComponent(params)}`
-      : '';
-  }
 
   const searchParams = new URLSearchParams();
 
+  if (params.projectId && params.projectId !== 'null') {
+    searchParams.set('projectId', params.projectId);
+  }
   if (params.parentId && params.parentId !== 'null' && params.parentId !== 'root') {
     searchParams.set('parentId', params.parentId);
   }
@@ -63,10 +61,26 @@ export function buildQueryString(params?: FileQueryParams | string | null): stri
 export function resolveQueryParams(
   scopeIdOrParams?: string | FileQueryParams | null,
   params?: FileQueryParams | string | null,
-): FileQueryParams | string | null | undefined {
-  if (typeof scopeIdOrParams === 'object') return scopeIdOrParams;
-  if (params !== undefined) return params;
-  return scopeIdOrParams;
+): FileQueryParams | undefined {
+  if (typeof scopeIdOrParams === 'object' && scopeIdOrParams !== null) {
+    return scopeIdOrParams;
+  }
+  const projectId =
+    typeof scopeIdOrParams === 'string' && scopeIdOrParams && scopeIdOrParams !== 'null'
+      ? scopeIdOrParams
+      : undefined;
+
+  if (params !== undefined) {
+    if (typeof params === 'string' || params === null) {
+      return {
+        ...(projectId ? { projectId } : {}),
+        ...(params ? { parentId: params } : {}),
+      };
+    }
+    return projectId ? { projectId, ...params } : params;
+  }
+
+  return projectId ? { projectId } : undefined;
 }
 
 // ── Read Operations ──────────────────────────────────────────────────────────
@@ -75,35 +89,27 @@ export const getAllFiles = (
   scopeIdOrParams?: string | FileQueryParams | null,
   params?: FileQueryParams | string | null,
 ) => {
-  return apiGet<StorageResponse>(`/api/v1/storage/files/my-files${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`);
+  return apiGet<StorageResponse>(
+    `/api/v1/storage/files/my-files${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`,
+  );
 };
-
-export const getHomeFiles = getAllFiles;
-export const getMyFiles = getAllFiles;
 
 export const getStarredFiles = (
   scopeIdOrParams?: string | FileQueryParams | null,
   params?: FileQueryParams | string | null,
 ) => {
-  return apiGet<StorageResponse>(`/api/v1/storage/files/starred${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`);
+  return apiGet<StorageResponse>(
+    `/api/v1/storage/files/starred${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`,
+  );
 };
 
 export const getSharedFiles = (
   scopeIdOrParams?: string | FileQueryParams | null,
   params?: FileQueryParams | string | null,
 ) => {
-  return apiGet<StorageResponse>(`/api/v1/storage/files/shared${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`);
-};
-
-export const getPageFiles = (
-  pageId: string,
-  params?: FileQueryParams | string | null,
-) => {
-  return apiGet<StorageResponse>(`/api/v1/storage/files/pages/${pageId}${buildQueryString(params)}`);
-};
-
-export const getFileById = (id: string) => {
-  return apiGet<StorageItem>(`/api/v1/storage/files/${id}`);
+  return apiGet<StorageResponse>(
+    `/api/v1/storage/files/shared${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`,
+  );
 };
 
 export interface FolderPathResponse {
@@ -111,18 +117,15 @@ export interface FolderPathResponse {
 }
 
 export const getFolderPath = (folderId: string): Promise<FolderPathResponse> => {
-  return apiGet<FolderPathResponse | Array<{ id: string; name: string }>>(`/api/v1/storage/files/folder-path?folderId=${encodeURIComponent(folderId)}`).then((res) => {
-    if (Array.isArray(res)) {
-      return { path: res };
-    }
-    return res?.path ? res : { path: [] };
-  });
+  return apiGet<FolderPathResponse>(
+    `/api/v1/storage/files/folder-path?folderId=${encodeURIComponent(folderId)}`,
+  ).then((res) => (res?.path ? res : { path: [] }));
 };
 
 // ── Mutation Operations ──────────────────────────────────────────────────────
 
 export const createFolder = (name: string, params: CreateFolderParams = {}) => {
-  return apiPost(`/api/v1/storage/files/folder`, {
+  return apiPost('/api/v1/storage/files/folder', {
     name,
     parentId: params.parentId ?? null,
     ...(params.pageId ? { pageId: params.pageId } : {}),
@@ -135,7 +138,7 @@ export const moveItem = (itemId: string, parentId: string | null) => {
 };
 
 export const batchMoveItems = (ids: string[], parentId: string | null) => {
-  return apiPost(`/api/v1/storage/files/batch/move`, { ids, parentId });
+  return apiPost('/api/v1/storage/files/batch/move', { ids, parentId });
 };
 
 export const renameItem = (itemId: string, name: string) => {
@@ -151,35 +154,11 @@ export const deleteItem = (itemId: string) => {
 };
 
 export const batchDeleteItems = (ids: string[]) => {
-  return apiPost(`/api/v1/storage/files/batch/delete`, { ids });
+  return apiPost('/api/v1/storage/files/batch/delete', { ids });
 };
 
 export const batchStarItems = (ids: string[], starred: boolean) => {
-  return apiPost(`/api/v1/storage/files/batch/star`, { ids, starred });
-};
-
-export const checkDuplicateFile = (
-  scopeId?: string,
-  filename?: string,
-  parentId: string | null = null,
-) => {
-  return getAllFiles(scopeId, parentId).then((data: StorageResponse & { items?: StorageItem[] }) => {
-    const files: StorageItem[] = data?.files || data?.items || [];
-    const existingFile = files.find(
-      (item) => !item.isFolder && item.filename === filename,
-    );
-
-    return {
-      exists: !!existingFile,
-      existingFile: existingFile
-        ? { id: existingFile.id, filename: existingFile.filename }
-        : null,
-    };
-  });
-};
-
-export const shareItem = (itemId: string, userId: string, permission: 'view' | 'edit') => {
-  return apiPut(`/api/v1/storage/files/${itemId}/share`, { userId, permission });
+  return apiPost('/api/v1/storage/files/batch/star', { ids, starred });
 };
 
 export const updateFileMetadata = (itemId: string, metaData: Record<string, unknown>) => {
@@ -192,11 +171,9 @@ export const getTrashedFiles = (
   scopeIdOrParams?: string | FileQueryParams | null,
   params?: FileQueryParams | string | null,
 ) => {
-  return apiGet<StorageResponse>(`/api/v1/storage/files/trash${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`);
-};
-
-export const moveToTrash = (itemId: string) => {
-  return apiPost(`/api/v1/storage/files/${itemId}/trash`);
+  return apiGet<StorageResponse>(
+    `/api/v1/storage/files/trash${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`,
+  );
 };
 
 export const restoreItem = (itemId: string) => {
@@ -208,61 +185,11 @@ export const permanentlyDeleteItem = (itemId: string) => {
 };
 
 export const batchRestoreItems = (ids: string[]) => {
-  return apiPost(`/api/v1/storage/files/batch/restore`, { ids });
+  return apiPost('/api/v1/storage/files/batch/restore', { ids });
 };
 
 export const batchPermanentlyDeleteItems = (ids: string[]) => {
-  return apiPost(`/api/v1/storage/files/batch/permanent`, { ids });
-};
-
-// ── Quota Operations ─────────────────────────────────────────────────────────
-
-export interface StorageUsageResult {
-  usedBytes: number;
-  maxBytes: number;
-  percentage: number;
-  totalBytes: number;
-}
-
-export interface StorageQuotaResponse {
-  scope?: 'user' | 'project';
-  projectId?: string;
-  projectIdentifier?: string;
-  projectName?: string;
-  owner?: {
-    id: string;
-    name: string;
-    email: string;
-    avatar?: string | null;
-  };
-  totalBytes: number;
-  usedBytes: number;
-  projectBytes?: number;
-  limitBytes?: number;
-  maxBytes?: number;
-  usedFormatted?: string;
-  projectFormatted?: string;
-  limitFormatted?: string;
-  percentage: number;
-  note?: string;
-}
-
-export const getStorageUsage = (scopeId?: string, projectId?: string) => {
-  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
-  return apiGet<StorageUsageResult>(`/api/v1/storage/files/usage${query}`);
-};
-
-export const getStorageQuota = (
-  scopeOrOptions?: { projectId?: string } | string,
-  projectIdParam?: string,
-): Promise<StorageQuotaResponse> => {
-  const projectId =
-    typeof scopeOrOptions === 'object'
-      ? scopeOrOptions?.projectId
-      : projectIdParam || (typeof scopeOrOptions === 'string' ? scopeOrOptions : undefined);
-
-  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
-  return apiGet<StorageQuotaResponse>(`/api/v1/storage/files/usage${query}`);
+  return apiPost('/api/v1/storage/files/batch/permanent', { ids });
 };
 
 // ── Version Operations ───────────────────────────────────────────────────────
@@ -358,17 +285,6 @@ export const getVersionDownloadUrl = (fileId: string, versionNumber: number): st
 
 // ── Stream & Preview Operations ──────────────────────────────────────────────
 
-export const resolveStreamUrl = (fileIdOrPath: string | null | undefined): string | null => {
-  if (!fileIdOrPath) return null;
-  if (fileIdOrPath.startsWith('http://') || fileIdOrPath.startsWith('https://')) {
-    return fileIdOrPath;
-  }
-  if (!fileIdOrPath.includes('/') && !fileIdOrPath.includes('.')) {
-    return resolveFileUrl(`/api/v1/storage/files/${encodeURIComponent(fileIdOrPath)}/content`);
-  }
-  return resolveFileUrl(fileIdOrPath);
-};
-
 export const fetchAuthorized = async (
   url: string,
   errorTypeOrInit: string | RequestInit = 'content',
@@ -400,8 +316,26 @@ export const getFileBlob = async (url: string): Promise<Blob> => {
   return res.blob();
 };
 
-export const downloadFile = (url: string, filename: string): void => {
-  downloadFileUrl(url, filename);
+export const downloadFileAuthorized = async (
+  url: string,
+  filename: string,
+): Promise<void> => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  const fullUrl = resolveFileUrl(url);
+  if (!fullUrl) return;
+
+  const blob = await getFileBlob(fullUrl);
+  const blobUrl = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+  }
 };
 
 interface PdfJsModule {
@@ -474,4 +408,3 @@ export const previewServices = {
     }
   },
 };
-

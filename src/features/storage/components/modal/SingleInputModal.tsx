@@ -171,7 +171,7 @@ export function RenameModal() {
 
   useEffect(() => {
     if (renamingItem) {
-      setNewName(renamingItem.filename || renamingItem.name || '');
+      setNewName(renamingItem.filename || '');
       setErrorMessage(undefined);
     }
   }, [renamingItem]);

@@ -5,55 +5,31 @@ import type React from 'react';
 export type FileType =
   | 'folder'
   | 'document'
+  | 'spreadsheet'
   | 'image'
   | 'video'
   | 'audio'
   | 'archive'
   | 'other';
 
-export type StorageLevel = 'user' | 'project';
-
 export type StorageItem = {
   id: string;
   filename: string;
-  /** Alias for filename compatibility */
-  name?: string;
   isFolder: boolean;
   size?: number;
   mimeType?: string;
   url?: string;
-  thumbnail?: string;
+  thumbnail?: string | null;
   starred: boolean;
-  /** Alias for starred compatibility */
-  isStarred?: boolean;
   parentId?: string | null;
-  parent?: string | null;
+  projectId?: string | null;
   trashedAt?: string | null;
   metaData?: Record<string, unknown>;
-  sharedWith?: Array<{
-    id?: string;
-    fileId?: string;
-    userId?: string;
-    permission: 'view' | 'edit';
-    user?:
-      | {
-          id?: string;
-          name?: string;
-          email?: string;
-          avatar?: string;
-        }
-      | string;
-  }>;
   author: {
     id?: string;
     name: string;
     email: string;
     avatar: string;
-  };
-  /** Present when the file belongs to a project (linkedTo.entityType = 'Project') */
-  linkedTo?: {
-    entityType: 'Project' | 'Page' | null;
-    entityId: string | null;
   };
   project?: {
     id: string;
@@ -66,15 +42,10 @@ export type StorageItem = {
 export type StorageResponse = {
   files?: StorageItem[];
   project?: { id: string; name: string };
-  yourRole?: string;
   total?: number;
   page?: number;
   limit?: number;
   hasMore?: boolean;
-};
-
-export type StorageUsageResponse = {
-  totalBytes: number;
 };
 
 export type UploadFileParams = {
@@ -83,18 +54,6 @@ export type UploadFileParams = {
   pageId?: string | null;
   metaData?: Record<string, unknown>;
   onProgress?: (progress: number) => void;
-};
-
-export type CreateFileRecordParams = {
-  projectId?: string;
-  pageId?: string | null;
-  filename: string;
-  size: number;
-  mimeType?: string;
-  url: string;
-  thumbnail?: string | null;
-  metaData?: Record<string, unknown>;
-  parentId?: string | null;
 };
 
 export type CreateFolderParams = {
@@ -128,18 +87,11 @@ export type StorageSortBy =
   | 'size-desc'
   | 'size-asc';
 
-export interface StorageFilterOptions {
-  typeFilter?: StorageTypeFilter;
-  selectedTypes?: StorageTypeFilter[];
-  sortBy?: StorageSortBy;
-  searchQuery?: string;
-}
-
 export interface StorageFilterState {
-  typeFilter: StorageTypeFilter;
   selectedTypes: StorageTypeFilter[];
   sortBy: StorageSortBy;
-  setTypeFilter: (type: StorageTypeFilter) => void;
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
   toggleType: (type: StorageTypeFilter) => void;
   setSelectedTypes: (types: StorageTypeFilter[]) => void;
   setSortBy: (sort: StorageSortBy) => void;
@@ -162,8 +114,9 @@ export type StorageViewProps = {
   highlightedItemId?: string | null;
   onDropOnFolder?: (folder: StorageItem, e: React.DragEvent) => void;
   onDragStartFile?: (item: StorageItem, e: React.DragEvent) => void;
-  onMoveToParent?: (item: StorageItem) => void;
   onOpenLocation?: (item: StorageItem) => void;
   isReadOnly?: boolean;
+  hasMore?: boolean;
+  isFetchingNextPage?: boolean;
+  onLoadMore?: () => void;
 };
-

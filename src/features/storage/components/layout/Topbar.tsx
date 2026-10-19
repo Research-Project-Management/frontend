@@ -9,7 +9,6 @@ import {
   FolderPlus,
   Columns3,
   AlignJustify,
-  ListFilter,
   ChevronRight,
   ChevronDown,
   ArrowLeft,
@@ -24,7 +23,7 @@ import { StorageIcon } from '@/shared/components/icons';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Popover, PopoverTrigger, PopoverContent } from '@/shared/components/ui/popover';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/shared/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { useTopbar } from '../../hooks/use-topbar';
 import { CreateFolderModal, RenameModal } from '../modal/SingleInputModal';
@@ -95,7 +94,6 @@ export default function Topbar({
   const setView = useViewStore((s) => s.setView);
 
   const isSubfolder = Boolean(breadcrumbs && breadcrumbs.length > 1);
-  const currentFolderName = isSubfolder ? breadcrumbs![breadcrumbs!.length - 1]?.name : title || 'All Files';
 
   return (
     <header

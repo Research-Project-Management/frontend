@@ -32,11 +32,7 @@ class CitationBadgeWidget extends WidgetType {
   }
 
   override eq(other: CitationBadgeWidget): boolean {
-    return (
-      this.rawText === other.rawText &&
-      this.from === other.from &&
-      this.to === other.to
-    );
+    return this.rawText === other.rawText;
   }
 
   override ignoreEvent(event: Event): boolean {
@@ -62,9 +58,9 @@ class CitationBadgeWidget extends WidgetType {
     chip.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      // Place cursor inside the braces
+      const currentPos = view.posAtDOM(chip);
       const bracePos = this.rawText.indexOf('{');
-      const targetPos = bracePos !== -1 ? this.from + bracePos + 1 : this.from;
+      const targetPos = bracePos !== -1 ? Math.max(0, currentPos + bracePos + 1) : Math.max(0, currentPos);
       view.dispatch({
         selection: { anchor: targetPos, head: targetPos },
         scrollIntoView: true,
@@ -90,8 +86,7 @@ class ReferenceBadgeWidget extends WidgetType {
   override eq(other: ReferenceBadgeWidget): boolean {
     return (
       this.rawText === other.rawText &&
-      this.from === other.from &&
-      this.to === other.to
+      this.isEq === other.isEq
     );
   }
 
@@ -118,8 +113,9 @@ class ReferenceBadgeWidget extends WidgetType {
     chip.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
+      const currentPos = view.posAtDOM(chip);
       const bracePos = this.rawText.indexOf('{');
-      const targetPos = bracePos !== -1 ? this.from + bracePos + 1 : this.from;
+      const targetPos = bracePos !== -1 ? Math.max(0, currentPos + bracePos + 1) : Math.max(0, currentPos);
       view.dispatch({
         selection: { anchor: targetPos, head: targetPos },
         scrollIntoView: true,

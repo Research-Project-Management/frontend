@@ -14,6 +14,26 @@ import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import { documentSearchService } from '@/features/editor/sdk/manuscript.service';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 
+export function buildSearchRegex(
+  query: string,
+  options: { useRegex: boolean; wholeWord: boolean; caseSensitive: boolean },
+): RegExp | null {
+  let pattern = query;
+  if (!options.useRegex) {
+    pattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+  if (options.wholeWord) {
+    pattern = `\\b${pattern}\\b`;
+  }
+  const flags = options.caseSensitive ? 'g' : 'gi';
+
+  try {
+    return new RegExp(pattern, flags);
+  } catch {
+    return null;
+  }
+}
+
 interface UseProjectSearchActionsParams {
   engine: IEditorEngine | null;
   effectiveQuery: string;
@@ -42,19 +62,10 @@ export function useProjectSearchActions({
 
   const handleReplaceAllCurrentFile = useCallback(() => {
     if (!engine || !effectiveQuery) return;
+    const re = buildSearchRegex(effectiveQuery, { useRegex, wholeWord, caseSensitive });
+    if (!re) return;
+
     const content = engine.getContent();
-    let pattern = effectiveQuery;
-    if (!useRegex) pattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    if (wholeWord) pattern = `\\b${pattern}\\b`;
-    const flags = caseSensitive ? 'g' : 'gi';
-
-    let re: RegExp;
-    try {
-      re = new RegExp(pattern, flags);
-    } catch {
-      return;
-    }
-
     const replaced = content.replace(re, replaceText);
     if (replaced !== content) {
       engine.setContent(replaced);

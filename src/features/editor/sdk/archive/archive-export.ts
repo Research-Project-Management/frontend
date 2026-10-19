@@ -10,22 +10,25 @@
 import JSZip from 'jszip';
 import {
   fileService,
-  documentService,
+  pageService,
   versionService,
   manuscriptService,
-  StorageService,
 } from '@/features/editor/sdk/manuscript.service';
 import { resolveFileUrl } from '@/shared/lib/file-client';
+import { getAuthToken } from '@/shared/lib/api';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
-import { useSettingsStore } from '@/features/editor/core/store/settings.store';
+import { triggerFileDownload } from './document-download';
 
-export interface ExportZipOptions {
+export interface ArchiveExportOptions {
   parentPageId: string;
   projectTitle?: string;
   currentContent?: string;
   activeFileId?: string;
   activeFileTitle?: string;
+  mainFile?: string;
 }
+
+export type ExportZipOptions = ArchiveExportOptions;
 
 const ARXIV_ALLOWED_EXTENSIONS = new Set([
   'tex',
@@ -62,7 +65,7 @@ function isArxivAllowed(filename: string): boolean {
   return ARXIV_ALLOWED_EXTENSIONS.has(ext);
 }
 
-interface BundleZipOptions extends ExportZipOptions {
+interface BundleZipOptions extends ArchiveExportOptions {
   isArxiv?: boolean;
 }
 
@@ -74,6 +77,7 @@ async function bundleAndDownloadZip({
   projectTitle,
   currentContent,
   activeFileId,
+  mainFile = 'main.tex',
   isArxiv = false,
 }: BundleZipOptions): Promise<string> {
   const baseTitle = isArxiv
@@ -91,9 +95,9 @@ async function bundleAndDownloadZip({
 
     // 1. Fetch root page & child pages (files) and storage assets concurrently
     const [rootPage, childFiles, storageFiles] = await Promise.all([
-      documentService.getById(parentPageId).catch(() => null),
+      pageService.getById(parentPageId).catch(() => null),
       fileService.getByPageId(parentPageId).catch(() => []),
-      StorageService.getPageFiles(parentPageId).catch(() => []),
+      manuscriptService.storage.getPageFiles(parentPageId).catch(() => []),
     ]);
 
     const filesMap = new Map<string, string>();
@@ -113,7 +117,7 @@ async function bundleAndDownloadZip({
     }
 
     // 3. Ensure the main LaTeX document is included
-    const configuredMain = useSettingsStore.getState().mainFile || 'main.tex';
+    const configuredMain = mainFile || 'main.tex';
     const hasMain = Array.from(filesMap.entries()).some(
       ([k, v]) =>
         k.toLowerCase() === configuredMain.toLowerCase() ||
@@ -135,6 +139,11 @@ async function bundleAndDownloadZip({
       filesMap.set(rootTitle, rootStr);
     }
 
+    const token = getAuthToken();
+    const authHeaders: HeadersInit | undefined = token
+      ? { Authorization: `Bearer ${token}` }
+      : undefined;
+
     // 3.5. arXiv Publication Parity: Ensure compiled .bbl is retrieved from compiler artifacts if missing
     if (isArxiv) {
       const hasBbl = Array.from(filesMap.keys()).some((k) => k.toLowerCase().endsWith('.bbl'));
@@ -145,7 +154,7 @@ async function bundleAndDownloadZip({
           if (bblItem) {
             const bblName = bblItem.name;
             const bblUrl = manuscriptService.compiler.downloadAuxFileUrl(parentPageId, bblName);
-            const res = await fetch(bblUrl, { credentials: 'include' });
+            const res = await fetch(bblUrl, { credentials: 'include', headers: authHeaders });
             if (res.ok) {
               const bblContent = await res.text();
               filesMap.set(bblName, bblContent);
@@ -182,7 +191,7 @@ async function bundleAndDownloadZip({
             const resolvedUrl = resolveFileUrl(item.url);
             if (!resolvedUrl) return;
 
-            const res = await fetch(resolvedUrl, { credentials: 'include' });
+            const res = await fetch(resolvedUrl, { credentials: 'include', headers: authHeaders });
             if (res.ok) {
               const blob = await res.blob();
               // Don't overwrite if text file with the same name exists
@@ -207,25 +216,15 @@ async function bundleAndDownloadZip({
       compressionOptions: { level: isArxiv ? 9 : 6 },
     });
 
-    const baseTitle = isArxiv
-      ? (projectTitle || rootPage?.title || 'manuscript')
-      : (projectTitle || rootPage?.title || 'flux-project');
+    const resolvedTitle =
+      (projectTitle || rootPage?.title || baseTitle)
+        .replace(/[^\w\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '_') || cleanTitle;
 
-    const cleanTitle = baseTitle
-      .replace(/[^\w\s-]/g, '')
-      .trim()
-      .replace(/\s+/g, '_') || (isArxiv ? 'manuscript' : 'flux-project');
+    const filename = isArxiv ? `arxiv-${resolvedTitle}.zip` : `${resolvedTitle}.zip`;
 
-    const filename = isArxiv ? `arxiv-${cleanTitle}.zip` : `${cleanTitle}.zip`;
-
-    const downloadUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(downloadUrl);
+    triggerFileDownload(blob, filename);
 
     return filename;
   } catch (error) {
@@ -233,14 +232,7 @@ async function bundleAndDownloadZip({
       const serverBlob = await manuscriptService.export.exportProjectZip(parentPageId);
       if (serverBlob && serverBlob.size > 0) {
         const fallbackFilename = isArxiv ? `arxiv-${cleanTitle}.zip` : `${cleanTitle}.zip`;
-        const downloadUrl = URL.createObjectURL(serverBlob);
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = fallbackFilename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(downloadUrl);
+        triggerFileDownload(serverBlob, fallbackFilename);
         return fallbackFilename;
       }
     } catch {
@@ -296,9 +288,9 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
 
     // 1. Fetch root page, active child files, deleted files, and storage files concurrently
     const [rootPage, childFiles, storageFiles] = await Promise.all([
-      parentPageId ? documentService.getById(parentPageId).catch(() => null) : null,
+      parentPageId ? pageService.getById(parentPageId).catch(() => null) : null,
       parentPageId ? fileService.getByPageId(parentPageId).catch(() => []) : [],
-      parentPageId ? StorageService.getPageFiles(parentPageId).catch(() => []) : [],
+      parentPageId ? manuscriptService.storage.getPageFiles(parentPageId).catch(() => []) : [],
     ]);
 
     const deletedFiles = await fileService.getDeletedByPageId(parentPageId).catch(() => []);
@@ -397,6 +389,10 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
 
     // 4. Download and embed media/storage assets (images, figures)
     if (storageFiles && storageFiles.length > 0) {
+      const token = getAuthToken();
+      const authHeaders: HeadersInit | undefined = token
+        ? { Authorization: `Bearer ${token}` }
+        : undefined;
       await Promise.all(
         storageFiles.map(async (item) => {
           if (item.isFolder || !item.url || !item.filename) return;
@@ -404,7 +400,7 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
             const resolvedUrl = resolveFileUrl(item.url);
             if (!resolvedUrl) return;
 
-            const res = await fetch(resolvedUrl, { credentials: 'include' });
+            const res = await fetch(resolvedUrl, { credentials: 'include', headers: authHeaders });
             if (res.ok) {
               const blob = await res.blob();
               if (!filesMap.has(item.filename)) {
@@ -440,14 +436,7 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
 
     const filename = `${cleanTitle}${cleanLabel}.zip`;
 
-    const downloadUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(downloadUrl);
+    triggerFileDownload(blob, filename);
 
     return filename;
   } catch (error) {

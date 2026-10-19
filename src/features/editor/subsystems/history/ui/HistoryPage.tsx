@@ -38,30 +38,17 @@ import { cn } from '@/shared/lib/utils';
 
 import { manuscriptService, historyService, historyKeys } from '@/features/editor/sdk/manuscript.service';
 import { exportVersionAsZip } from '@/features/editor/sdk/archive/archive-export';
+import { clearYjsProviderPool } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
-import type { NodeTreeItem } from '@/features/editor/domain/types/node.types';
-import { editorCommandBus } from '@/features/editor/core';
-import { usePageStore } from '@/features/editor/core';
+import { editorCommandBus, usePageStore, workspaceCoordinator } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 import type {
   ProjectDiffResponse,
   ProjectSnapshotDetail,
 } from '@/features/editor/domain/types/history.types';
-import {
-  SideBySideDiffViewer,
-  alignHunkForSplitView,
-  type AlignedSplitRow,
-} from './SideBySideDiffViewer';
-import { UnifiedDiffViewer } from './UnifiedDiffViewer';
 import { VersionTimelineSidebar } from './VersionTimelineSidebar';
 import { DiffContentPane } from './DiffContentPane';
-
-export {
-  SideBySideDiffViewer,
-  UnifiedDiffViewer,
-  alignHunkForSplitView,
-  type AlignedSplitRow,
-};
 
 export interface HistoryPageProps {
   open?: boolean;
@@ -71,8 +58,6 @@ export interface HistoryPageProps {
   pageId?: string;
   initialVersion?: number;
 }
-
-export type ProjectHistoryModalProps = HistoryPageProps;
 
 export function HistoryPage({
   open = true,
@@ -85,13 +70,15 @@ export function HistoryPage({
   const router = useRouter();
   const queryClient = useQueryClient();
   const params = useParams<{ projectId?: string; pageId?: string }>();
-  const currentPage = usePageStore((s) => s.currentPage);
+  const currentPageId = usePageStore((s) => s.currentPage?.id ?? '');
+  const currentPageTitle = usePageStore((s) => s.currentPage?.title ?? '');
+  const currentPageProjectId = usePageStore((s) => extractProjectId(s.currentPage) ?? '');
 
-  const effectivePageId = propPageId || params?.pageId || currentPage?.id || '';
+  const effectivePageId = propPageId || params?.pageId || currentPageId || '';
   const effectiveProjectId =
     propProjectId ||
     params?.projectId ||
-    extractProjectId(currentPage) ||
+    currentPageProjectId ||
     effectivePageId ||
     '';
 
@@ -104,16 +91,12 @@ export function HistoryPage({
       onOpenChange(false);
       return;
     }
-    if (params?.projectId && effectivePageId) {
-      router.push(`/projects/${params.projectId}/pages/${effectivePageId}`);
-    } else if (effectivePageId) {
-      router.push(`/pages/${effectivePageId}`);
-    } else if (effectiveProjectId) {
-      router.push(`/projects/${effectiveProjectId}/pages`);
+    if (effectiveProjectId) {
+      router.push(`/projects/${effectiveProjectId}/editor`);
     } else {
       router.back();
     }
-  }, [onClose, onOpenChange, params?.projectId, effectivePageId, effectiveProjectId, router]);
+  }, [onClose, onOpenChange, effectiveProjectId, router]);
 
   // UI State
   const [filter, setFilter] = useState<'all' | 'labelled'>('all');
@@ -222,15 +205,6 @@ export function HistoryPage({
     enabled: canCompare && open,
   });
 
-  const { data: targetSnapshot } = useQuery<ProjectSnapshotDetail | null>({
-    queryKey: ['project-snapshot', effectiveProjectId, selectedTargetVersion],
-    queryFn: () =>
-      selectedTargetVersion
-        ? historyService.getProjectSnapshot(effectiveProjectId, selectedTargetVersion)
-        : null,
-    enabled: !!selectedTargetVersion && open,
-  });
-
   // Automatically select first file when diff loads
   useEffect(() => {
     if (diffData?.files && diffData.files.length > 0) {
@@ -288,7 +262,19 @@ export function HistoryPage({
       toast.success(`Project successfully restored to v${restoredVersion}`, { id: 'history-restore' });
       setConfirmingRestore(false);
       handleClose();
+      for (const m of lruDocumentCache.getDirtyModels()) {
+        lruDocumentCache.markClean(m.fileId);
+        void draftStorageService.clearDraft(m.fileId);
+      }
+      for (const m of lruDocumentCache.getAllModels()) {
+        void draftStorageService.clearDraft(m.fileId);
+      }
+      if (effectiveProjectId) {
+        void draftStorageService.clearProjectDrafts(effectiveProjectId);
+      }
+      draftStorageService.clearMemoryCaches();
       lruDocumentCache.clearAll();
+      clearYjsProviderPool();
       queryClient.invalidateQueries({ queryKey: historyKeys.versions(effectiveProjectId) });
       queryClient.invalidateQueries({ queryKey: ['project-history-diff'] });
       queryClient.invalidateQueries({ queryKey: ['project-snapshot'] });
@@ -296,9 +282,6 @@ export function HistoryPage({
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       editorCommandBus.dispatch({ type: 'filetree:updated' });
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
-      }
     },
     onError: (err: unknown) => {
       toast.error(`Failed to restore project: ${(err as Error)?.message || 'Unknown error'}`, { id: 'history-restore' });
@@ -335,40 +318,24 @@ export function HistoryPage({
           : fileData.content ?? (fileData.lines ? fileData.lines.join('\n') : '');
 
       // 2. Resolve document ID for active file
-      let docId = typeof fileData === 'object' && fileData !== null ? (fileData as { docId?: string }).docId : undefined;
-      if (!docId) {
-        if (
-          currentPage &&
-          (currentPage.title === activeFilePath ||
-            (currentPage as { name?: string }).name === activeFilePath ||
-            currentPage.id === activeFilePath)
-        ) {
-          docId = currentPage.id;
-        }
+      let docId: string | undefined;
+      const currentPage = usePageStore.getState().currentPage;
+      if (
+        currentPage &&
+        (currentPage.title === activeFilePath || currentPage.id === activeFilePath)
+      ) {
+        docId = currentPage.id;
       }
       if (!docId) {
-        const hierarchy = usePageStore.getState().fileHierarchy;
-        if (hierarchy && Array.isArray(hierarchy)) {
-          const findNode = (nodes: NodeTreeItem[]): NodeTreeItem | null => {
-            for (const node of nodes) {
-              if (
-                node.title === activeFilePath ||
-                node.slug === activeFilePath ||
-                node.title === activeFilePath.split('/').pop()
-              ) {
-                return node;
-              }
-              if (node.children?.length) {
-                const found = findNode(node.children);
-                if (found) return found;
-              }
-            }
-            return null;
-          };
-          const matched = findNode(hierarchy);
-          if (matched?.id) {
-            docId = matched.id;
-          }
+        const wsFiles = workspaceCoordinator.getProjectFiles() || [];
+        const matched = wsFiles.find(
+          (f) =>
+            f.title === activeFilePath ||
+            f.path === activeFilePath ||
+            f.title === activeFilePath.split('/').pop()
+        );
+        if (matched?.id) {
+          docId = matched.id;
         }
       }
       if (!docId) {
@@ -404,10 +371,14 @@ export function HistoryPage({
       toast.success(`File "${filePath}" restored from Version ${baseVersion}`, { id: `history-restore-${filePath}` });
       setConfirmingFileRestore(false);
       if (docId) {
+        lruDocumentCache.markClean(docId);
+        void draftStorageService.clearDraft(docId);
         lruDocumentCache.updateContent(docId, baseContent, false);
       }
       const cachedByPath = lruDocumentCache.findByPath(filePath);
       if (cachedByPath && cachedByPath.fileId !== docId) {
+        lruDocumentCache.markClean(cachedByPath.fileId);
+        void draftStorageService.clearDraft(cachedByPath.fileId);
         lruDocumentCache.updateContent(cachedByPath.fileId, baseContent, false);
       }
       queryClient.invalidateQueries({ queryKey: historyKeys.versions(effectiveProjectId) });
@@ -417,9 +388,6 @@ export function HistoryPage({
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       editorCommandBus.dispatch({ type: 'filetree:updated' });
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
-      }
       editorCommandBus.dispatch({
         type: 'document:content-updated',
         docId: docId || filePath,
@@ -472,7 +440,7 @@ export function HistoryPage({
     if (!effectiveProjectId || !selectedTargetVersion) return;
     setIsDownloadingZip(true);
     try {
-      const projectTitle = currentPage?.title || 'project';
+      const projectTitle = currentPageTitle || 'project';
       await exportVersionAsZip({
         projectId: effectiveProjectId,
         version: selectedTargetVersion,
@@ -762,6 +730,4 @@ export function HistoryPage({
 }
 
 export default HistoryPage;
-export const ProjectHistoryPage = HistoryPage;
-export const ProjectHistoryView = HistoryPage;
-export const ProjectHistoryModal = HistoryPage;
+

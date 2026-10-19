@@ -27,6 +27,8 @@ const SECTION_WEIGHTS: Record<string, number> = {
 const SECTION_REGEX = /^\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?(?:\[[^\]]*\])?\{/;
 const BEGIN_ENV_REGEX = /\\begin\{([a-zA-Z*]+)\}/;
 
+const MAX_FOLD_SCAN_LINES = 2500;
+
 function stripUnescapedComment(line: string): string {
   for (let i = 0; i < line.length; i++) {
     if (line[i] === '%') {
@@ -72,7 +74,8 @@ export function computeLatexFoldRange(
     }
 
     if (depth > 0) {
-      for (let l = line.number + 1; l <= state.doc.lines; l++) {
+      const maxEnvScanLine = Math.min(state.doc.lines, line.number + MAX_FOLD_SCAN_LINES);
+      for (let l = line.number + 1; l <= maxEnvScanLine; l++) {
         const nextLine = state.doc.line(l);
         const nextText = stripUnescapedComment(nextLine.text);
 
@@ -106,9 +109,10 @@ export function computeLatexFoldRange(
   if (secMatch) {
     const secType = secMatch[1];
     const curWeight = SECTION_WEIGHTS[secType] ?? 99;
-    let foldEndLine = state.doc.lines;
+    const maxSecScanLine = Math.min(state.doc.lines, line.number + MAX_FOLD_SCAN_LINES);
+    let foldEndLine = maxSecScanLine;
 
-    for (let l = line.number + 1; l <= state.doc.lines; l++) {
+    for (let l = line.number + 1; l <= maxSecScanLine; l++) {
       const nextLine = state.doc.line(l);
       const nextTrimmed = stripUnescapedComment(nextLine.text).trim();
 

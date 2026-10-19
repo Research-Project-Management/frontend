@@ -42,6 +42,7 @@ export interface DocumentCompilerState {
   setPdfUrl: (url: string | null) => void;
   setLastCompiledAt: (date: Date | null) => void;
   clearLogs: () => void;
+  resetCompiler: () => void;
   setPendingCompile: (pending: boolean) => void;
   setIsViewerPoppedOut: (poppedOut: boolean) => void;
 }
@@ -57,13 +58,13 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
 
   markDirty(fileId, content) {
     set((s) => {
-      s.dirtyContentMap.set(fileId, content);
-      if (s.dirtyFileIds.has(fileId)) {
+      if (s.dirtyFileIds.has(fileId) && s.dirtyContentMap.get(fileId) === content) {
         return s;
       }
       const nextDirtyFileIds = new Set(s.dirtyFileIds);
       nextDirtyFileIds.add(fileId);
       const nextMap = new Map(s.dirtyContentMap);
+      nextMap.set(fileId, content);
       return {
         dirtyContentMap: nextMap,
         dirtyFileIds: nextDirtyFileIds,
@@ -73,11 +74,11 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
 
   clearDirty(fileId) {
     set((s) => {
-      s.dirtyContentMap.delete(fileId);
-      if (!s.dirtyFileIds.has(fileId)) return s;
+      if (!s.dirtyFileIds.has(fileId) && !s.dirtyContentMap.has(fileId)) return s;
       const nextDirtyFileIds = new Set(s.dirtyFileIds);
       nextDirtyFileIds.delete(fileId);
       const nextMap = new Map(s.dirtyContentMap);
+      nextMap.delete(fileId);
       return {
         dirtyContentMap: nextMap,
         dirtyFileIds: nextDirtyFileIds,
@@ -154,6 +155,24 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
 
   clearLogs() {
     set({ compileLog: null, compileErrors: [] });
+  },
+
+  resetCompiler() {
+    const currentUrl = get().pdfUrl;
+    if (currentUrl && currentUrl.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(currentUrl);
+      } catch {
+        // Ignore revocation errors
+      }
+    }
+    set({
+      pdfUrl: null,
+      compileLog: null,
+      compileErrors: [],
+      compileStatus: 'idle',
+      pendingCompile: false,
+    });
   },
 
   setPendingCompile(pending) {

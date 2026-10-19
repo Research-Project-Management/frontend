@@ -65,14 +65,10 @@ vi.mock('@/features/editor/ui/hooks/useActiveDocument', () => ({
 
 vi.mock('@/features/editor/ui/hooks/usePageActions', () => ({
   usePageActions: () => ({
+    createFile: { mutate: vi.fn(), isPending: false },
+    setMainFile: { mutate: vi.fn(), isPending: false },
     updateThumbnail: { mutate: vi.fn() },
     updateTitle: { mutate: vi.fn(), isPending: false },
-  }),
-}));
-
-vi.mock('@/features/editor/ui/hooks/useFileActions', () => ({
-  useFileActions: () => ({
-    setMainFile: { mutate: vi.fn() },
   }),
 }));
 

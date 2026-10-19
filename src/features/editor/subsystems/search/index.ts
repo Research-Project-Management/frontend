@@ -10,4 +10,4 @@
  */
 
 export { default as SearchTab, default } from './ui/SearchTab';
-export { useProjectSearchActions } from './ui/useProjectSearchActions';
+export { buildSearchRegex, useProjectSearchActions } from './ui/useProjectSearchActions';

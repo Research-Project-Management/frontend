@@ -83,6 +83,8 @@ export const AUTHOR_COLORS = [
   '#4f46e5', // Indigo
 ] as const;
 
+export const AUTHOR_COLOR_PALETTE = AUTHOR_COLORS;
+
 export function getHashColor(str: string): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {

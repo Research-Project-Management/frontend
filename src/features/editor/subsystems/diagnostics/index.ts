@@ -10,11 +10,6 @@
  * - AI 1-Click Error AutoFix Integration.
  */
 
-import type {
-  IndexedDiagnosticItem,
-  FileDiagnosticsSummary,
-} from './coordinator/diagnostics.coordinator';
-
 // 1. Coordinator & Core Services
 export {
   diagnosticsCoordinator,
@@ -23,25 +18,19 @@ export {
   type FileDiagnosticsSummary,
   type DiagnosticsTelemetry,
   type DiagnosticsSnapshot,
-  type IDiagnosticsCoordinator,
 } from './coordinator/diagnostics.coordinator';
 
 // 2. Syntax Linter & Parser Engines
 export {
-  type LatexLinterOptions,
-  type LatexLintDiagnostic,
-  lintEnvironments,
-  lintUnmatchedBraces,
-  lintSpecialCharacters,
-  lintInlineMath,
-  lintLabelsAndReferences,
-  lintCommandsAndTypos,
-  lintRetractedCitations,
-} from './linter/latex-linter';
-export {
   runLatexLinter,
+  runLatexLinter as lintLatexRules,
+  lintLatexDocument,
+  clearLatexLinterCache,
   type LinterDiagnostic,
+  type LatexLintDiagnostic,
   type LinterOptions,
+  type LatexLinterOptions,
+  type RetractedItemInfo,
 } from './extensions/latex-linter-core';
 
 // 3. Engine Extensions (CodeMirror 6)
@@ -62,11 +51,3 @@ export {
   latexLinterWorkerClient,
 } from './extensions/latex-linter';
 
-// 4. Subsystem Deep Interface Port (The Seam)
-export interface DiagnosticsSubsystemPort {
-  readonly name: 'diagnostics';
-  setFileDiagnostics(fileKey: string, diagnostics: IndexedDiagnosticItem[]): void;
-  getDiagnosticsForFile(fileKey: string): IndexedDiagnosticItem[];
-  getProjectSummary(includeBadboxes?: boolean): FileDiagnosticsSummary;
-  clear(): void;
-}

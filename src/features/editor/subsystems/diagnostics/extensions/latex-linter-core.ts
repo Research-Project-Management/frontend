@@ -18,6 +18,13 @@
  *   8. Duplicate \label declarations and undefined \cite references.
  */
 
+export interface RetractedItemInfo {
+  title?: string;
+  reason?: string;
+  nature?: string;
+  noticeUrl?: string;
+}
+
 export interface LinterDiagnostic {
   from: number;
   to: number;
@@ -26,10 +33,18 @@ export interface LinterDiagnostic {
   source: string;
 }
 
+export type LatexLintDiagnostic = LinterDiagnostic;
+
 export interface LinterOptions {
   knownBibKeys?: string[];
   knownLabels?: string[];
-  retractedCitationsMap?: Map<string, { title?: string; reason?: string; nature?: string; noticeUrl?: string }>;
+  retractedCitationsMap?: Map<string, RetractedItemInfo>;
+}
+
+export type LatexLinterOptions = LinterOptions;
+
+export function clearLatexLinterCache(): void {
+  // No-op: single-pass state machine tokenizer runs directly without stale cache state
 }
 
 interface OpenEnv {
@@ -82,6 +97,17 @@ function isEscaped(text: string, index: number): boolean {
   return backslashCount % 2 === 1;
 }
 
+// Pre-compiled sticky regexes to avoid text.slice allocations
+const STICKY_VERBATIM_RE = /\\begin\{(verbatim\*?|lstlisting|minted|Verbatim|alltt|filecontents\*?|tcblisting)\}/y;
+const STICKY_INLINE_VERB_RE = /\\verb\*?([^\w\s])(.*?)\1/y;
+const STICKY_CMD_RE = /\\([a-zA-Z*]+)/y;
+const STICKY_OPEN_BRACE_RE = /\s*\{/y;
+const STICKY_ENV_NAME_RE = /\s*\{([a-zA-Z*0-9_-]+)\}/y;
+const STICKY_DELIM_RE = /\s*(?:\\[{}|()\[\]]|\S)/y;
+const STICKY_LABEL_RE = /\s*\{([^}]+)\}/y;
+const STICKY_CITE_RE = /(?:\*?(?:\[[^\]]*\])*)\s*\{([^}]+)\}/y;
+const STICKY_REF_RE = /(?:\*?(?:\[[^\]]*\])*)\s*\{([^}]+)\}/y;
+
 export function runLatexLinter(text: string, options: LinterOptions = {}): LinterDiagnostic[] {
   const diagnostics: LinterDiagnostic[] = [];
   if (!text || text.length === 0) return diagnostics;
@@ -90,6 +116,14 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
   if (/^%novalidate\b/m.test(text)) {
     return diagnostics;
   }
+
+  // Pre-calculate knownSets once outside the character loop to eliminate per-command allocations
+  const knownBibSet = options.knownBibKeys && options.knownBibKeys.length > 0
+    ? new Set(options.knownBibKeys.map((k) => k.toLowerCase()))
+    : null;
+  const knownLabelSet = options.knownLabels && options.knownLabels.length > 0
+    ? new Set(options.knownLabels)
+    : null;
 
   const length = text.length;
   const envStack: OpenEnv[] = [];
@@ -150,7 +184,8 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
 
     // 3. Verbatim & lstlisting Isolation (minted, Verbatim, alltt, tcblisting, filecontents)
     if (char === '\\' && !isEscaped(text, i)) {
-      const verbatimMatch = /^\\begin\{(verbatim\*?|lstlisting|minted|Verbatim|alltt|filecontents\*?|tcblisting)\}/.exec(text.slice(i));
+      STICKY_VERBATIM_RE.lastIndex = i;
+      const verbatimMatch = STICKY_VERBATIM_RE.exec(text);
       if (verbatimMatch) {
         const envName = verbatimMatch[1];
         const closeTag = `\\end{${envName}}`;
@@ -162,7 +197,8 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
       }
 
       // Check inline \verb|...| or \verb+...+: \verb([^\w\s])(.*?)\1
-      const inlineVerbMatch = /^\\verb\*?([^\w\s])(.*?)\1/.exec(text.slice(i));
+      STICKY_INLINE_VERB_RE.lastIndex = i;
+      const inlineVerbMatch = STICKY_INLINE_VERB_RE.exec(text);
       if (inlineVerbMatch) {
         i += inlineVerbMatch[0].length;
         continue;
@@ -248,7 +284,8 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
 
     // 5. LaTeX Control Sequences (\command)
     if (char === '\\' && !isEscaped(text, i)) {
-      const cmdMatch = /^\\([a-zA-Z*]+)/.exec(text.slice(i));
+      STICKY_CMD_RE.lastIndex = i;
+      const cmdMatch = STICKY_CMD_RE.exec(text);
       if (cmdMatch) {
         const cmdName = cmdMatch[1];
         const cmdFrom = i;
@@ -257,7 +294,8 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
         // 5-. Text-mode group inside math (\text{...}, \mbox{...}, ...): push a 'text' frame so
         // nested $...$ re-enters math without corrupting the outer math state.
         if (TEXT_GROUP_COMMANDS.has(cmdName) && isInMath()) {
-          const openMatch = /^\s*\{/.exec(text.slice(cmdTo));
+          STICKY_OPEN_BRACE_RE.lastIndex = cmdTo;
+          const openMatch = STICKY_OPEN_BRACE_RE.exec(text);
           if (openMatch) {
             const bracePos = cmdTo + openMatch[0].length - 1;
             braceStack.push({ from: bracePos, line: currentLine });
@@ -269,7 +307,8 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
         }
         // 5a. \begin{env}
         if (cmdName === 'begin') {
-          const envNameMatch = /^\s*\{([a-zA-Z*0-9_-]+)\}/.exec(text.slice(cmdTo));
+          STICKY_ENV_NAME_RE.lastIndex = cmdTo;
+          const envNameMatch = STICKY_ENV_NAME_RE.exec(text);
           if (envNameMatch) {
             const envName = envNameMatch[1];
             const fullTo = cmdTo + envNameMatch[0].length;
@@ -287,7 +326,8 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
 
         // 5b. \end{env}
         if (cmdName === 'end') {
-          const envNameMatch = /^\s*\{([a-zA-Z*0-9_-]+)\}/.exec(text.slice(cmdTo));
+          STICKY_ENV_NAME_RE.lastIndex = cmdTo;
+          const envNameMatch = STICKY_ENV_NAME_RE.exec(text);
           if (envNameMatch) {
             const envName = envNameMatch[1];
             const fullTo = cmdTo + envNameMatch[0].length;
@@ -334,7 +374,8 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
 
         // 5b-2. \left and \right delimiter matching (Overleaf Parity)
         if (cmdName === 'left') {
-          const delimMatch = /^\s*(?:\\[{}|()\[\]]|\S)/.exec(text.slice(cmdTo));
+          STICKY_DELIM_RE.lastIndex = cmdTo;
+          const delimMatch = STICKY_DELIM_RE.exec(text);
           const fullTo = delimMatch ? cmdTo + delimMatch[0].length : cmdTo;
           leftDelimStack.push({ from: cmdFrom, to: fullTo, line: currentLine });
           i = fullTo;
@@ -342,7 +383,8 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
         }
 
         if (cmdName === 'right') {
-          const delimMatch = /^\s*(?:\\[{}|()\[\]]|\S)/.exec(text.slice(cmdTo));
+          STICKY_DELIM_RE.lastIndex = cmdTo;
+          const delimMatch = STICKY_DELIM_RE.exec(text);
           const fullTo = delimMatch ? cmdTo + delimMatch[0].length : cmdTo;
           if (leftDelimStack.length === 0) {
             diagnostics.push({
@@ -361,7 +403,8 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
 
         // 5c. \label{...} - duplicate detection
         if (cmdName === 'label') {
-          const labelMatch = /^\s*\{([^}]+)\}/.exec(text.slice(cmdTo));
+          STICKY_LABEL_RE.lastIndex = cmdTo;
+          const labelMatch = STICKY_LABEL_RE.exec(text);
           if (labelMatch) {
             const labelKey = labelMatch[1].trim();
             const fullTo = cmdTo + labelMatch[0].length;
@@ -383,13 +426,13 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
 
         // 5d. \cite{...} - undefined citation check & retracted paper warning
         if (['cite', 'citep', 'citet', 'nocite', 'textcite', 'autocite'].includes(cmdName)) {
-          const citeMatch = /^(?:\*?(?:\[[^\]]*\])*)\s*\{([^}]+)\}/.exec(text.slice(cmdTo));
+          STICKY_CITE_RE.lastIndex = cmdTo;
+          const citeMatch = STICKY_CITE_RE.exec(text);
           if (citeMatch) {
             const keys = citeMatch[1].split(',').map((k) => k.trim());
-            if (options.knownBibKeys && options.knownBibKeys.length > 0) {
-              const knownSet = new Set(options.knownBibKeys.map((k) => k.toLowerCase()));
+            if (knownBibSet) {
               for (const k of keys) {
-                if (k && !knownSet.has(k.toLowerCase())) {
+                if (k && !knownBibSet.has(k.toLowerCase())) {
                   const keyOffset = text.indexOf(k, cmdTo);
                   if (keyOffset !== -1) {
                     diagnostics.push({
@@ -426,12 +469,12 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
 
         // 5d2. \ref{...} - undefined label reference check
         if (['ref', 'eqref', 'autoref', 'cref', 'Cref', 'pageref', 'vref'].includes(cmdName)) {
-          const refMatch = /^(?:\*?(?:\[[^\]]*\])*)\s*\{([^}]+)\}/.exec(text.slice(cmdTo));
-          if (refMatch && options.knownLabels && options.knownLabels.length > 0) {
+          STICKY_REF_RE.lastIndex = cmdTo;
+          const refMatch = STICKY_REF_RE.exec(text);
+          if (refMatch && knownLabelSet) {
             const labels = refMatch[1].split(',').map((l) => l.trim());
-            const knownSet = new Set(options.knownLabels);
             for (const l of labels) {
-              if (l && !knownSet.has(l)) {
+              if (l && !knownLabelSet.has(l)) {
                 const labelOffset = text.indexOf(l, cmdTo);
                 if (labelOffset !== -1) {
                   diagnostics.push({

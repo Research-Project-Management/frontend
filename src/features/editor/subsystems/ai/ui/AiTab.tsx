@@ -52,30 +52,28 @@ interface AiTabProps {
 
 export default function AiTab({ onClose }: AiTabProps) {
   const params = useParams<{ projectId?: string; pageId?: string; draftId?: string }>();
-  const currentPage = usePageStore((s) => s.currentPage);
+  const currentPageId = usePageStore((s) => s.currentPage?.id);
+  const currentPageTitle = usePageStore((s) => s.currentPage?.title);
+  const currentPageProjectId = usePageStore((s) => {
+    const p = s.currentPage?.projectId;
+    return typeof p === 'string' ? p : p?.id || null;
+  });
   const { engine, getContent } = useEditorInstance();
   const {
     insertAtCursor,
     replaceSelection,
     proposeDiff,
     copyCode,
+    notifyItemsAttached,
     notifyFileAttached,
     notifyFileError,
     notifyChatError,
     notifyChatCleared,
-    notifyLibraryAttached,
-    notifyStorageAttached,
-    notifyDocumentsAttached,
   } = useAiChatActions({ engine });
 
-  const currentProjectId =
-    params?.projectId ||
-    (typeof currentPage?.projectId === 'string'
-      ? currentPage.projectId
-      : currentPage?.projectId?.id) ||
-    null;
+  const currentProjectId = params?.projectId || currentPageProjectId || null;
 
-  const activePageId = params?.pageId || params?.draftId || currentPage?.id || null;
+  const activePageId = params?.pageId || params?.draftId || currentPageId || null;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputPrompt, setInputPrompt] = useState('');
@@ -197,8 +195,7 @@ export default function AiTab({ onClose }: AiTabProps) {
   // Listen for diff resolutions (Accept / Reject from CodeMirror inline diff)
   useEffect(() => {
     return editorCommandBus.subscribe('ai:diff-resolved', (cmd) => {
-      const action = cmd.action || cmd.payload?.action;
-      if (action === 'accept') {
+      if (cmd.action === 'accept') {
         setSelectionContext(null);
       }
     });
@@ -242,7 +239,7 @@ export default function AiTab({ onClose }: AiTabProps) {
     abortControllerRef.current = abortController;
 
     try {
-      const activeFilename = currentPage?.title || 'document.tex';
+      const activeFilename = currentPageTitle || 'document.tex';
       const fileContent = getContent();
       const finalDocIds = [
         ...attachedFiles.map((f) => f.id),
@@ -309,6 +306,20 @@ export default function AiTab({ onClose }: AiTabProps) {
     setCopiedIndex(blockId);
     setTimeout(() => setCopiedIndex(null), 2000);
   };
+
+  const handleAttachItems = useCallback(
+    (items: AttachedFile[], source: 'library' | 'storage' | 'documents') => {
+      setAttachedFiles((prev) => {
+        const existingIds = new Set(prev.map((f) => f.id));
+        const newOnes = items
+          .filter((it) => !existingIds.has(it.id))
+          .map((it) => ({ id: it.id, name: it.name, size: it.size }));
+        return [...prev, ...newOnes];
+      });
+      notifyItemsAttached(items.length, source);
+    },
+    [notifyItemsAttached],
+  );
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -436,36 +447,9 @@ export default function AiTab({ onClose }: AiTabProps) {
           setIsStorageModalOpen={setIsStorageModalOpen}
           isUploadedDocsModalOpen={isUploadedDocsModalOpen}
           setIsUploadedDocsModalOpen={setIsUploadedDocsModalOpen}
-          onLibraryAttached={(items) => {
-            setAttachedFiles((prev) => {
-              const existingIds = new Set(prev.map((f) => f.id));
-              const newOnes = items
-                .filter((it) => !existingIds.has(it.id))
-                .map((it) => ({ id: it.id, name: it.name, size: it.size }));
-              return [...prev, ...newOnes];
-            });
-            notifyLibraryAttached(items.length);
-          }}
-          onStorageAttached={(items) => {
-            setAttachedFiles((prev) => {
-              const existingIds = new Set(prev.map((f) => f.id));
-              const newOnes = items
-                .filter((it) => !existingIds.has(it.id))
-                .map((it) => ({ id: it.id, name: it.name, size: it.size }));
-              return [...prev, ...newOnes];
-            });
-            notifyStorageAttached(items.length);
-          }}
-          onDocumentsAttached={(items) => {
-            setAttachedFiles((prev) => {
-              const existingIds = new Set(prev.map((f) => f.id));
-              const newOnes = items
-                .filter((it: { id: string }) => !existingIds.has(it.id))
-                .map((it: { id: string; name: string; size?: number }) => ({ id: it.id, name: it.name, size: it.size }));
-              return [...prev, ...newOnes];
-            });
-            notifyDocumentsAttached(items.length);
-          }}
+          onLibraryAttached={(items) => handleAttachItems(items, 'library')}
+          onStorageAttached={(items) => handleAttachItems(items, 'storage')}
+          onDocumentsAttached={(items) => handleAttachItems(items, 'documents')}
         />
       </aside>
     </TooltipProvider>

@@ -331,34 +331,36 @@ export function buildXyCutTree(
     const hasColumnar = items.some((it) => !isSpanning(it));
 
     if (hasSpanning && hasColumnar) {
-      horizontalValleys.sort((a, b) => {
-        const scoreValley = (v: Valley) => {
-          const top = items.filter((it) => it.y + it.h / 2 <= v.center);
-          const bottom = items.filter((it) => it.y + it.h / 2 > v.center);
-          if (top.length === 0 || bottom.length === 0) return -1;
-          const topPureColumnar = top.every((it) => !isSpanning(it));
-          const bottomPureColumnar = bottom.every((it) => !isSpanning(it));
-          // If one side becomes purely columnar (allowing an immediate vertical split next), boost it
-          if (topPureColumnar !== bottomPureColumnar) {
-            const columnarItems = topPureColumnar ? top : bottom;
-            const spanningSideItems = topPureColumnar ? bottom : top;
-            const pureSpanningIsolation = spanningSideItems.every(isSpanning) ? 100000 : 0;
-            const colBounds = computeBoundingBox(columnarItems);
-            const vValleys = findProjectionValleys(
-              columnarItems,
-              'x',
-              colBounds.x,
-              colBounds.x + colBounds.w,
-              options.minColumnGutter,
-            );
-            if (vValleys.length > 0) {
-              return 10000 + pureSpanningIsolation + columnarItems.length * 1000 + v.width;
-            }
+      const scoreValley = (v: Valley) => {
+        const top = items.filter((it) => it.y + it.h / 2 <= v.center);
+        const bottom = items.filter((it) => it.y + it.h / 2 > v.center);
+        if (top.length === 0 || bottom.length === 0) return -1;
+        const topPureColumnar = top.every((it) => !isSpanning(it));
+        const bottomPureColumnar = bottom.every((it) => !isSpanning(it));
+        // If one side becomes purely columnar (allowing an immediate vertical split next), boost it
+        if (topPureColumnar !== bottomPureColumnar) {
+          const columnarItems = topPureColumnar ? top : bottom;
+          const spanningSideItems = topPureColumnar ? bottom : top;
+          const pureSpanningIsolation = spanningSideItems.every(isSpanning) ? 100000 : 0;
+          const colBounds = computeBoundingBox(columnarItems);
+          const vValleys = findProjectionValleys(
+            columnarItems,
+            'x',
+            colBounds.x,
+            colBounds.x + colBounds.w,
+            options.minColumnGutter,
+          );
+          if (vValleys.length > 0) {
+            return 10000 + pureSpanningIsolation + columnarItems.length * 1000 + v.width;
           }
-          return v.width;
-        };
-        return scoreValley(b) - scoreValley(a);
-      });
+        }
+        return v.width;
+      };
+      const valleyScores = new Map<Valley, number>();
+      for (const v of horizontalValleys) {
+        valleyScores.set(v, scoreValley(v));
+      }
+      horizontalValleys.sort((a, b) => (valleyScores.get(b) ?? 0) - (valleyScores.get(a) ?? 0));
     } else {
       // Pick the most prominent horizontal valley
       horizontalValleys.sort((a, b) => b.width - a.width);
@@ -414,11 +416,17 @@ export function flattenXyCutTree(node: LayoutCutNode): PdfTextItem[] {
   }
 
   const result: PdfTextItem[] = [];
-  if (node.first) {
-    result.push(...flattenXyCutTree(node.first));
-  }
-  if (node.second) {
-    result.push(...flattenXyCutTree(node.second));
+  const stack: LayoutCutNode[] = [node];
+  while (stack.length > 0) {
+    const curr = stack.pop()!;
+    if (curr.type === 'leaf') {
+      for (let i = 0; i < curr.items.length; i++) {
+        result.push(curr.items[i]);
+      }
+    } else {
+      if (curr.second) stack.push(curr.second);
+      if (curr.first) stack.push(curr.first);
+    }
   }
   return result;
 }

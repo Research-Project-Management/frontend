@@ -34,7 +34,7 @@ export * from './manuscript/manuscript-api.client';
 export * from './realtime/yjs-socket-provider';
 export * from './archive/archive-export';
 export * from './archive/archive-import';
-export { manuscriptService, manuscriptService as manuscriptApi };
+export { manuscriptService };
 export default manuscriptService;
 
 // ─── 1. Core Document & File Aliases ─────────────────────────────────────────
@@ -53,8 +53,6 @@ export const pageService = {
   updateTitle: manuscriptService.docs.updateTitle,
   create: manuscriptService.docs.create,
 };
-
-export const documentService = pageService;
 
 interface RawPageFileRecord {
   id: string;
@@ -168,23 +166,10 @@ export const flushPageContent = manuscriptService.docs.updateContent;
 export const syncIncremental = manuscriptService.docs.syncIncremental;
 export const compileLatex = manuscriptService.compiler.compile;
 export const fetchWordCount = manuscriptService.compiler.wordCount;
-export const compilePreview = manuscriptService.compiler.preview;
 export const listAuxFiles = manuscriptService.compiler.listAuxFiles;
 export const downloadAuxFileUrl = manuscriptService.compiler.downloadAuxFileUrl;
 export const downloadAllArtifactsZipUrl = manuscriptService.compiler.downloadAllArtifactsZipUrl;
 export const cleanAuxFiles = manuscriptService.compiler.cleanAuxFiles;
-
-export const compileService = {
-  flushPageContent,
-  syncIncremental,
-  compileLatex,
-  compilePreview,
-  fetchWordCount,
-  listAuxFiles,
-  downloadAuxFileUrl,
-  downloadAllArtifactsZipUrl,
-  cleanAuxFiles,
-};
 
 // ─── 3. SyncTeX Aliases ──────────────────────────────────────────────────────
 
@@ -288,13 +273,9 @@ export const documentSearchService = {
   batchReplace: manuscriptService.search.batchReplace,
 };
 
-// ─── 9. Collaboration Aliases ────────────────────────────────────────────────
-
-export const collaborationService = manuscriptService.collaboration;
-
-// ─── 10. AI Assistant & Error Repair Aliases ─────────────────────────────────
+// ─── 9. AI Assistant & Error Repair Aliases ──────────────────────────────────
 
 export const AcademicAiService = manuscriptService.AcademicAiService;
 export const suggestLatexFix = manuscriptService.suggestLatexFix;
-export const aiService = manuscriptService.ai;
+
 

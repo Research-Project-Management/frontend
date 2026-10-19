@@ -8,72 +8,21 @@
  */
 
 import React from 'react';
+import { useParams } from 'next/navigation';
 import {
   Columns2,
   Scan,
   Check,
   ExternalLink,
+  Eye,
 } from 'lucide-react';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSub, MenubarSubTrigger, MenubarSubContent, MenubarSeparator } from '@/shared/components/ui/menubar';
 import { cn } from "@/shared/lib/utils";
-import { editorCommandBus, usePageStore } from '@/features/editor/core';
+import { editorCommandBus } from '@/features/editor/core';
 import { useSettingsStore } from '@/features/editor/core';
 import { useWorkspaceStore } from '@/features/editor/core';
 import { useShallow } from 'zustand/react/shallow';
-
-function PenIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 512 512"
-      fill="currentColor"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M362.7 19.32c-25-25-65.5-25-90.51 0l-48.43 48.43 138.94 138.95 48.43-48.43c25-25 25-65.5 0-90.51l-48.43-48.44zm-76.86 118.97L41.34 382.79c-4.44 4.44-7.44 10.15-8.68 16.32L.34 499.72c-2.38 10.76 7.29 20.43 18.05 18.05l100.61-32.32c6.17-1.24 11.88-4.24 16.32-8.68l244.5-244.5-138.94-138.94z" />
-    </svg>
-  );
-}
-
-function PdfDocIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M3 6.5v9.5a1.5 1.5 0 0 0 1.5 1.5h8.5" />
-      <path d="M6 3a1 1 0 0 1 1-1h6.5l3.5 3.5v9a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V3z" />
-      <polyline points="13.5 2 13.5 5.5 17 5.5" />
-      <rect
-        x="7.5"
-        y="8.5"
-        width="8"
-        height="5"
-        rx="0.75"
-        fill="currentColor"
-        stroke="none"
-      />
-      <text
-        x="11.5"
-        y="12.2"
-        fill="var(--background)"
-        fontSize="3"
-        fontWeight="900"
-        letterSpacing="-0.2px"
-        textAnchor="middle"
-        stroke="none"
-        fontFamily="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-      >
-        PDF
-      </text>
-    </svg>
-  );
-}
+import { PenIcon, PdfDocIcon, toggleFocusMode, detachPdfPreview } from './LayoutSwitcher';
 
 function CommentPenIcon({ className }: { className?: string }) {
   return (
@@ -95,6 +44,7 @@ function CommentPenIcon({ className }: { className?: string }) {
 }
 
 export function ViewMenu() {
+  const params = useParams<{ projectId?: string; pageId?: string }>();
   const {
     layout,
     setLayout,
@@ -102,6 +52,8 @@ export function ViewMenu() {
     setEditorMode,
     reviewMode,
     setReviewMode,
+    isLocked,
+    setIsLocked,
     showEditorTabs,
     toggleShowEditorTabs,
     showEquationPreview,
@@ -114,6 +66,8 @@ export function ViewMenu() {
       setEditorMode: s.setEditorMode,
       reviewMode: s.reviewMode,
       setReviewMode: s.setReviewMode,
+      isLocked: s.isLocked,
+      setIsLocked: s.setIsLocked,
       showEditorTabs: s.showEditorTabs,
       toggleShowEditorTabs: s.toggleShowEditorTabs,
       showEquationPreview: s.showEquationPreview,
@@ -122,13 +76,18 @@ export function ViewMenu() {
   );
 
   const fileOutlineOpen = useWorkspaceStore((s) => s.fileOutlineOpen);
+  const currentEditingMode = isLocked ? 'viewing' : reviewMode ? 'reviewing' : 'editing';
 
-  const handleToggleFocusMode = () => {
-    if (typeof document === 'undefined') return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
+  const handleSelectEditingMode = (mode: 'editing' | 'reviewing' | 'viewing') => {
+    if (mode === 'viewing') {
+      setIsLocked(true);
+      setReviewMode(false);
+    } else if (mode === 'reviewing') {
+      setIsLocked(false);
+      setReviewMode(true);
     } else {
-      document.documentElement.requestFullscreen().catch(() => {});
+      setIsLocked(false);
+      setReviewMode(false);
     }
   };
 
@@ -206,12 +165,7 @@ export function ViewMenu() {
 
         {/* 4. Open PDF in separate tab */}
         <MenubarItem
-          onClick={() => {
-            const projectId = usePageStore.getState().projectId;
-            if (projectId) {
-              editorCommandBus.dispatch({ type: 'preview:detach' });
-            }
-          }}
+          onClick={() => detachPdfPreview(params?.projectId)}
           className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors text-xs font-medium select-none"
         >
           <div className="size-4 flex items-center justify-center shrink-0">
@@ -222,7 +176,7 @@ export function ViewMenu() {
 
         {/* 5. Focus mode */}
         <MenubarItem
-          onClick={handleToggleFocusMode}
+          onClick={toggleFocusMode}
           className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors text-xs font-medium select-none"
         >
           <div className="size-4 flex items-center justify-center shrink-0">
@@ -278,32 +232,46 @@ export function ViewMenu() {
           </MenubarSubTrigger>
           <MenubarSubContent className="min-w-40 text-xs">
             <MenubarItem
-              onClick={() => setReviewMode(false)}
+              onClick={() => handleSelectEditingMode('editing')}
               className={cn(
                 'flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm cursor-pointer transition-colors text-xs font-medium select-none',
-                !reviewMode
+                currentEditingMode === 'editing'
                   ? 'bg-muted text-foreground font-medium focus:bg-muted focus:text-foreground'
                   : 'text-foreground hover:bg-muted focus:bg-muted focus:text-foreground',
               )}
             >
               <div className="size-4 flex items-center justify-center shrink-0">
-                <PenIcon className={cn('size-3.5', !reviewMode ? 'text-primary' : 'opacity-70')} />
+                <PenIcon className={cn('size-3.5 text-foreground', currentEditingMode !== 'editing' && 'opacity-70')} />
               </div>
               <span className="flex-1 text-xs">Editing</span>
             </MenubarItem>
             <MenubarItem
-              onClick={() => setReviewMode(true)}
+              onClick={() => handleSelectEditingMode('reviewing')}
               className={cn(
                 'flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm cursor-pointer transition-colors text-xs font-medium select-none',
-                reviewMode
+                currentEditingMode === 'reviewing'
                   ? 'bg-muted text-foreground font-medium focus:bg-muted focus:text-foreground'
                   : 'text-foreground hover:bg-muted focus:bg-muted focus:text-foreground',
               )}
             >
               <div className="size-4 flex items-center justify-center shrink-0">
-                <CommentPenIcon className={cn('size-3.5', reviewMode ? 'text-primary' : 'opacity-70')} />
+                <CommentPenIcon className={cn('size-3.5 text-foreground', currentEditingMode !== 'reviewing' && 'opacity-70')} />
               </div>
               <span className="flex-1 text-xs">Reviewing</span>
+            </MenubarItem>
+            <MenubarItem
+              onClick={() => handleSelectEditingMode('viewing')}
+              className={cn(
+                'flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm cursor-pointer transition-colors text-xs font-medium select-none',
+                currentEditingMode === 'viewing'
+                  ? 'bg-muted text-foreground font-medium focus:bg-muted focus:text-foreground'
+                  : 'text-foreground hover:bg-muted focus:bg-muted focus:text-foreground',
+              )}
+            >
+              <div className="size-4 flex items-center justify-center shrink-0">
+                <Eye className={cn('size-3.5 text-foreground', currentEditingMode !== 'viewing' && 'opacity-70')} />
+              </div>
+              <span className="flex-1 text-xs">Viewing</span>
             </MenubarItem>
           </MenubarSubContent>
         </MenubarSub>

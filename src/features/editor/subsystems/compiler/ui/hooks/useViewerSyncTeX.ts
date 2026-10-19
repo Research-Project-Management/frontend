@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect } from 'react';
-import { usePageStore, useTabsStore, type EditorTab, editorCommandBus, getActiveEditorEngine, workspaceCoordinator } from '@/features/editor/core';
+import { usePageStore, useWorkspaceStore, type EditorTab, editorCommandBus, getActiveEditorEngine, workspaceCoordinator } from '@/features/editor/core';
 import type { NodeTreeItem } from '@/features/editor/domain/types/node.types';
 import { useViewerStore } from '@/features/editor/subsystems/compiler/coordinator/viewer.store';
 import {
@@ -20,7 +20,7 @@ import {
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { compilerCoordinator } from '@/features/editor/subsystems/compiler/coordinator/compiler.coordinator';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import type { SurfaceHandle } from '@/features/editor/subsystems/compiler/ui/PdfSurface';
+import type { PdfSurfaceHandle } from '@/features/editor/subsystems/compiler/ui/PdfSurface';
 
 export interface ViewerPageFileEntry {
   id: string;
@@ -38,7 +38,7 @@ export interface UseViewerSyncTeXOptions {
   numPages: number;
   pageNumber?: number;
   setPageNumber?: (p: number | ((prev: number) => number)) => void;
-  pdfSurfaceRef: React.RefObject<SurfaceHandle | null>;
+  pdfSurfaceRef: React.RefObject<PdfSurfaceHandle | null>;
   synctexMapRef: React.MutableRefObject<SyncTeXMap | null>;
   pageFiles: ViewerPageFileEntry[];
   pageDimensions?: PdfPageDimensions;
@@ -58,7 +58,13 @@ export function useViewerSyncTeX({
   pageFiles,
   pageDimensions,
 }: UseViewerSyncTeXOptions) {
-  const activeFilePage = usePageStore((s) => s.activeFilePage);
+  const activeFilePath = usePageStore((s) => {
+    const af = s.activeFilePage;
+    if (af && 'path' in af && typeof af.path === 'string' && af.path) {
+      return af.path;
+    }
+    return af?.title || undefined;
+  });
   const widthPt =
     pageDimensions?.widthPt && pageDimensions.widthPt > 0
       ? pageDimensions.widthPt
@@ -86,26 +92,6 @@ export function useViewerSyncTeX({
             path: wf.path || wf.title,
             content: typeof wf.content === 'string' ? wf.content : undefined,
           });
-        }
-      }
-      const treeStack: Array<{ node: NodeTreeItem; parentPath: string }> = (
-        usePageStore.getState().fileHierarchy ?? []
-      ).map((n) => ({ node: n, parentPath: '' }));
-      while (treeStack.length > 0) {
-        const { node, parentPath } = treeStack.pop()!;
-        const fullPath = parentPath ? `${parentPath}/${node.title}` : node.title;
-        const isFolder = Boolean((node as { isFolder?: boolean }).isFolder || (node.children && node.children.length > 0));
-        if (!isFolder && node.id && !candidateFiles.some((c) => c.id === node.id)) {
-          candidateFiles.push({
-            id: node.id,
-            title: node.title,
-            path: fullPath,
-          });
-        }
-        if (node.children?.length) {
-          for (const child of node.children) {
-            treeStack.push({ node: child, parentPath: fullPath });
-          }
         }
       }
 
@@ -159,8 +145,8 @@ export function useViewerSyncTeX({
       });
       if (bareMatch) return bareMatch;
 
-      // 5. Match open tabs in useTabsStore
-      const tabsByProject = useTabsStore.getState().tabsByProject;
+      // 5. Match open tabs in useWorkspaceStore
+      const tabsByProject = useWorkspaceStore.getState().tabsByProject;
       const allTabs = Object.values(tabsByProject).flat();
       const matchingTab = allTabs.find((t: EditorTab) => {
         const tPath = (t.path || t.title || '').replace(/\\/g, '/').toLowerCase();
@@ -271,13 +257,7 @@ export function useViewerSyncTeX({
 
       const rootId = projectId || pageId;
       if (!rootId) return;
-      const filename =
-        overrideFilePath ||
-        (activeFilePage && 'path' in activeFilePage && typeof activeFilePage.path === 'string'
-          ? activeFilePage.path
-          : undefined) ||
-        activeFilePage?.title ||
-        'main.tex';
+      const filename = overrideFilePath || activeFilePath || 'main.tex';
 
       const effectiveScale =
         autoFit && containerWidth && containerWidth > 0
@@ -351,7 +331,7 @@ export function useViewerSyncTeX({
       unsubJump();
       unsubForward();
     };
-  }, [pageId, projectId, activeFilePage, scale, autoFit, containerWidth, widthPt, numPages, setPageNumber, pdfSurfaceRef, synctexMapRef]);
+  }, [pageId, projectId, activeFilePath, scale, autoFit, containerWidth, widthPt, numPages, setPageNumber, pdfSurfaceRef, synctexMapRef]);
 
   // SyncTeX reverse search event listener
   useEffect(() => {

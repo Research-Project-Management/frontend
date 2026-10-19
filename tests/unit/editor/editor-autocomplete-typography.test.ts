@@ -218,7 +218,7 @@ describe('Editor Autocompletion & Typography (Overleaf Parity)', () => {
 
   describe('5. Real-Time LaTeX Code Check Diagnostics (Overleaf Parity)', () => {
     it('should detect unclosed environment and unescaped characters in document', async () => {
-      const { runLatexLinter } = await import('@/features/editor/subsystems/diagnostics/linter/latex-linter');
+      const { runLatexLinter } = await import('@/features/editor/subsystems/diagnostics/linter/latex-linter.rules');
       const text = '\\begin{equation}\nx = y\n\n\\section{Introduction}\nHere is a 50% discount and an unescaped_variable.';
       const diagnostics = runLatexLinter(text);
 

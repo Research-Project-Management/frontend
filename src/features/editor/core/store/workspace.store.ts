@@ -13,11 +13,7 @@
 
 import { create } from 'zustand';
 import { persist, subscribeWithSelector } from 'zustand/middleware';
-import type {
-  WorkspaceTab,
-  SplitMode,
-  ActiveSidePanel,
-} from '@/features/editor/domain/types/workspace.types';
+import type { WorkspaceTab } from '@/features/editor/domain/types/workspace.types';
 
 // ── Layout Enums & Types ──────────────────────────────────────────────────────
 
@@ -45,10 +41,6 @@ export interface LayoutState {
   // File Outline (Overleaf Parity: Integrated accordion inside Files tab)
   fileOutlineOpen: boolean;
 
-  // Right Review Pane (Overleaf Parity: Review comments & Track Changes alongside CodeMirror)
-  reviewPanelOpen: boolean;
-  reviewPanelWidth: number;
-
   // Center Splitter (Editor vs Preview)
   splitRatio: number;
 
@@ -65,15 +57,11 @@ export interface LayoutState {
   toggleSidebarLeft: () => void;
   setSidebarLeftOpen: (open: boolean) => void;
   setSidebarLeftWidth: (width: number) => void;
-  setActiveSidebarTab: (tab: ActivityBarTab | 'outline') => void;
-  selectActivityTab: (tab: ActivityBarTab | 'outline') => void;
+  setActiveSidebarTab: (tab: ActivityBarTab) => void;
+  selectActivityTab: (tab: ActivityBarTab) => void;
 
   toggleFileOutline: () => void;
   setFileOutlineOpen: (open: boolean) => void;
-
-  toggleReviewPanel: () => void;
-  setReviewPanelOpen: (open: boolean) => void;
-  setReviewPanelWidth: (width: number) => void;
 
   setSplitRatio: (ratio: number) => void;
 
@@ -94,11 +82,6 @@ export interface WorkspaceStoreState extends LayoutState {
   readonly activeByProject: Record<string, string | null>;
   readonly secondaryActiveByProject: Record<string, string | null>;
 
-  // Legacy & Bridge Properties
-  readonly splitMode: SplitMode;
-  readonly activeSidePanel: ActiveSidePanel;
-  readonly isPdfVisible: boolean;
-
   // Tab Actions
   openTab: (projectId: string, tab: Omit<WorkspaceTab, 'lastAccessedAt'>) => void;
   closeTab: (projectId: string, tabId: string, router?: (nextId: string | null) => void) => void;
@@ -107,13 +90,6 @@ export interface WorkspaceStoreState extends LayoutState {
   setSecondaryActiveTab: (projectId: string, tabId: string | null) => void;
   markTabDirty: (projectId: string, tabId: string, isDirty: boolean) => void;
   updateTabTitle: (projectId: string, tabId: string, title: string) => void;
-
-  // Bridge Layout Actions
-  setSplitMode: (mode: SplitMode) => void;
-  setActiveSidePanel: (panel: ActiveSidePanel) => void;
-  toggleSidePanel: (panel: NonNullable<ActiveSidePanel>) => void;
-  togglePdfVisible: () => void;
-  setPdfVisible: (visible: boolean) => void;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -133,8 +109,6 @@ const DEFAULT_LAYOUT = {
   sidebarLeftWidth: 260,
   activeSidebarTab: 'files' as ActivityBarTab,
   fileOutlineOpen: true,
-  reviewPanelOpen: false,
-  reviewPanelWidth: 340,
   splitRatio: 0.5,
   editorSplitMode: 'none' as EditorSplitMode,
   editorSplitRatio: 0.5,
@@ -148,7 +122,7 @@ const DEFAULT_LAYOUT = {
 export const useWorkspaceStore = create<WorkspaceStoreState>()(
   subscribeWithSelector(
     persist(
-      (set, get) => ({
+      (set) => ({
         // ── Tabs Initial State ────────────────────────────────────────────────
         tabsByProject: {},
         activeByProject: {},
@@ -156,24 +130,6 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
 
         // ── Layout Initial State ──────────────────────────────────────────────
         ...DEFAULT_LAYOUT,
-
-        // ── Computed Bridge Properties ────────────────────────────────────────
-        get splitMode(): SplitMode {
-          const mode = get().editorSplitMode;
-          if (mode === 'vertical') return 'vertical';
-          if (mode === 'horizontal') return 'horizontal';
-          return 'single';
-        },
-        get activeSidePanel(): ActiveSidePanel {
-          const s = get();
-          if (!s.sidebarLeftOpen) return null;
-          const tab = s.activeSidebarTab;
-          if (tab === 'files') return 'explorer';
-          return tab;
-        },
-        get isPdfVisible(): boolean {
-          return !get().isPdfDetached;
-        },
 
         // ── Tabs Actions ──────────────────────────────────────────────────────
         openTab: (projectId, tab) => {
@@ -358,28 +314,16 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
         setSidebarLeftWidth: (width) =>
           set({ sidebarLeftWidth: Math.max(180, Math.min(width, 480)) }),
 
-        setActiveSidebarTab: (tab) => {
-          if ((tab as string) === 'outline') {
-            set({ activeSidebarTab: 'files', fileOutlineOpen: true });
-          } else {
-            set({ activeSidebarTab: tab as ActivityBarTab });
-          }
-        },
+        setActiveSidebarTab: (tab) => set({ activeSidebarTab: tab }),
 
         selectActivityTab: (tab) =>
           set((state) => {
-            const targetTab = (tab as string) === 'outline' ? 'files' : (tab as ActivityBarTab);
-            const shouldEnsureOutlineOpen = (tab as string) === 'outline';
-            if (state.activeSidebarTab === targetTab && state.sidebarLeftOpen) {
-              if (shouldEnsureOutlineOpen && !state.fileOutlineOpen) {
-                return { fileOutlineOpen: true };
-              }
+            if (state.activeSidebarTab === tab && state.sidebarLeftOpen) {
               return { sidebarLeftOpen: false };
             }
             return {
-              activeSidebarTab: targetTab,
+              activeSidebarTab: tab,
               sidebarLeftOpen: true,
-              ...(shouldEnsureOutlineOpen ? { fileOutlineOpen: true } : {}),
             };
           }),
 
@@ -387,14 +331,6 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
           set((state) => ({ fileOutlineOpen: !state.fileOutlineOpen })),
 
         setFileOutlineOpen: (open) => set({ fileOutlineOpen: open }),
-
-        toggleReviewPanel: () =>
-          set((state) => ({ reviewPanelOpen: !state.reviewPanelOpen })),
-
-        setReviewPanelOpen: (open) => set({ reviewPanelOpen: open }),
-
-        setReviewPanelWidth: (width) =>
-          set({ reviewPanelWidth: Math.max(260, Math.min(width, 520)) }),
 
         setSplitRatio: (ratio) =>
           set({ splitRatio: Math.max(0.15, Math.min(ratio, 0.85)) }),
@@ -419,53 +355,6 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
           set((state) => ({ isPdfDetached: !state.isPdfDetached })),
 
         resetLayout: () => set(DEFAULT_LAYOUT),
-
-        // ── Bridge Layout Actions ─────────────────────────────────────────────
-        setSplitMode: (splitMode) => {
-          if (splitMode === 'single') {
-            set({ editorSplitMode: 'none' });
-          } else {
-            set({ editorSplitMode: splitMode });
-          }
-        },
-
-        setActiveSidePanel: (panel) => {
-          if (!panel) {
-            set({ sidebarLeftOpen: false });
-          } else if (panel === 'explorer') {
-            set({ sidebarLeftOpen: true, activeSidebarTab: 'files' });
-          } else if (panel === 'outline') {
-            set({ sidebarLeftOpen: true, activeSidebarTab: 'files', fileOutlineOpen: true });
-          } else {
-            set({ sidebarLeftOpen: true, activeSidebarTab: panel });
-          }
-        },
-
-        toggleSidePanel: (panel) => {
-          const s = get();
-          if (panel === 'outline') {
-            if (s.sidebarLeftOpen && s.activeSidebarTab === 'files' && s.fileOutlineOpen) {
-              set({ sidebarLeftOpen: false });
-            } else {
-              set({ sidebarLeftOpen: true, activeSidebarTab: 'files', fileOutlineOpen: true });
-            }
-            return;
-          }
-          const targetTab: ActivityBarTab = panel === 'explorer' ? 'files' : panel;
-          if (s.sidebarLeftOpen && s.activeSidebarTab === targetTab) {
-            set({ sidebarLeftOpen: false });
-          } else {
-            set({ sidebarLeftOpen: true, activeSidebarTab: targetTab });
-          }
-        },
-
-        togglePdfVisible: () => {
-          set((state) => ({ isPdfDetached: !state.isPdfDetached }));
-        },
-
-        setPdfVisible: (visible) => {
-          set({ isPdfDetached: !visible });
-        },
       }),
       {
         name: 'flux_editor_workbench_layout',
@@ -474,8 +363,6 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
           sidebarLeftWidth: state.sidebarLeftWidth,
           activeSidebarTab: state.activeSidebarTab,
           fileOutlineOpen: state.fileOutlineOpen,
-          reviewPanelOpen: state.reviewPanelOpen,
-          reviewPanelWidth: state.reviewPanelWidth,
           splitRatio: state.splitRatio,
           editorSplitMode: state.editorSplitMode,
           editorSplitRatio: state.editorSplitRatio,
@@ -487,27 +374,3 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
     )
   )
 );
-
-// ── Matt Pocock Atomic Selectors (0ms Re-render Optimization) ────────────────
-
-const EMPTY_TABS: readonly WorkspaceTab[] = [];
-
-export const useProjectTabs = (projectId: string): readonly WorkspaceTab[] =>
-  useWorkspaceStore((s) => s.tabsByProject[projectId] ?? EMPTY_TABS);
-
-export const useActiveProjectTabId = (projectId: string): string | null =>
-  useWorkspaceStore((s) => s.activeByProject[projectId] ?? null);
-
-export const useSecondaryActiveProjectTabId = (projectId: string): string | null =>
-  useWorkspaceStore((s) => s.secondaryActiveByProject[projectId] ?? null);
-
-export const useActiveProjectTab = (projectId: string): WorkspaceTab | undefined => {
-  const activeId = useActiveProjectTabId(projectId);
-  return useWorkspaceStore((s) => (s.tabsByProject[projectId] ?? []).find((t) => t.id === activeId));
-};
-
-export const useWorkspaceSplitMode = () => useWorkspaceStore((s) => s.splitMode);
-export const useWorkspaceSplitRatio = () => useWorkspaceStore((s) => s.splitRatio);
-export const useActiveEditorPane = () => useWorkspaceStore((s) => s.activeEditorPane);
-export const useActiveSidePanel = () => useWorkspaceStore((s) => s.activeSidePanel);
-export const useIsPdfVisible = () => useWorkspaceStore((s) => s.isPdfVisible);

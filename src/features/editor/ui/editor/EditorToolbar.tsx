@@ -34,7 +34,6 @@ import {
   Quote,
   Code,
   MessageSquarePlus,
-  Columns2,
   Search,
   Bookmark,
 } from 'lucide-react';
@@ -48,7 +47,6 @@ import {
 } from '@/shared/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { editorCommandBus, useSettingsStore } from '@/features/editor/core';
-import { EditorEventBus } from '@/features/editor/core/bus/event-bus';
 import { cn } from '@/shared/lib/utils';
 
 export interface EditorToolbarProps {
@@ -108,10 +106,6 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
     setCurrentStyle(option.label);
 
     if (editorMode === 'visual') {
-      EditorEventBus.emit('flux:visual-command', {
-        command: option.visualCommand,
-        level: option.visualLevel,
-      });
       editorCommandBus.dispatch({
         type: 'editor:visual-command',
         command: option.visualCommand,
@@ -134,7 +128,6 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
     if (readOnly) return;
 
     if (editorMode === 'visual') {
-      EditorEventBus.emit('flux:visual-command', { command: format });
       editorCommandBus.dispatch({ type: 'editor:visual-command', command: format });
       return;
     }
@@ -156,7 +149,6 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
   const handleInsertMath = () => {
     if (readOnly) return;
     if (editorMode === 'visual') {
-      EditorEventBus.emit('flux:visual-command', { command: 'insertMath' });
       editorCommandBus.dispatch({ type: 'editor:visual-command', command: 'insertMath' });
       return;
     }
@@ -187,7 +179,6 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
     if (editorMode === 'visual') {
       const url = window.prompt('Enter link URL:');
       if (url) {
-        EditorEventBus.emit('flux:visual-command', { command: 'createLink', contentHtml: url });
         editorCommandBus.dispatch({ type: 'editor:visual-command', command: 'createLink', contentHtml: url });
       }
       return;
@@ -226,7 +217,6 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
       };
       const cmd = visualMap[env];
       if (cmd) {
-        EditorEventBus.emit('flux:visual-command', { command: cmd });
         editorCommandBus.dispatch({ type: 'editor:visual-command', command: cmd });
         return;
       }
@@ -649,29 +639,6 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
 
         {/* Code / Visual Mode Switcher */}
         <SourceVisualSwitcher />
-
-        {onSplitRight && (
-          <>
-            <ToolbarSeparator />
-            <Tooltip delayDuration={300}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onSplitRight}
-                  className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
-                  aria-label="Split editor right"
-                  title="Split editor right"
-                >
-                  <Columns2 className="size-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
-                <span>Split editor right</span>
-              </TooltipContent>
-            </Tooltip>
-          </>
-        )}
       </div>
     </div>
   );

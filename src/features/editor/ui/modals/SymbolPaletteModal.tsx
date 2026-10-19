@@ -51,6 +51,28 @@ import { getModalSymbols, type MathSymbol } from '@/features/editor/domain/latex
 
 const SYMBOLS = getModalSymbols();
 
+interface IndexedMathSymbol {
+  readonly symbol: MathSymbol;
+  readonly cmdLower: string;
+  readonly nameLower: string;
+}
+
+const SYMBOLS_SEARCH_INDEX: readonly IndexedMathSymbol[] = SYMBOLS.map((s) => ({
+  symbol: s,
+  cmdLower: s.command.toLowerCase(),
+  nameLower: s.name.toLowerCase(),
+}));
+
+const SYMBOLS_BY_CATEGORY: Record<string, readonly IndexedMathSymbol[]> = (() => {
+  const map: Record<string, IndexedMathSymbol[]> = { all: [...SYMBOLS_SEARCH_INDEX] };
+  for (const item of SYMBOLS_SEARCH_INDEX) {
+    const cat = item.symbol.category;
+    if (!map[cat]) map[cat] = [];
+    map[cat].push(item);
+  }
+  return map;
+})();
+
 export function SymbolPaletteModal({
   open,
   onOpenChange,
@@ -75,20 +97,23 @@ export function SymbolPaletteModal({
   );
 
   const filteredSymbols = useMemo(() => {
-    let list = SYMBOLS;
-    if (activeTab !== 'all') {
-      list = list.filter((s) => s.category === activeTab);
+    const baseList = SYMBOLS_BY_CATEGORY[activeTab] ?? SYMBOLS_SEARCH_INDEX;
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) {
+      return baseList.map((item) => item.symbol);
     }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter(
-        (s) =>
-          s.command.toLowerCase().includes(q) ||
-          s.name.toLowerCase().includes(q) ||
-          s.display.includes(q)
-      );
+    const result: MathSymbol[] = [];
+    for (let i = 0; i < baseList.length; i++) {
+      const item = baseList[i];
+      if (
+        item.cmdLower.includes(q) ||
+        item.nameLower.includes(q) ||
+        item.symbol.display.includes(q)
+      ) {
+        result.push(item.symbol);
+      }
     }
-    return list;
+    return result;
   }, [activeTab, searchQuery]);
 
   return (

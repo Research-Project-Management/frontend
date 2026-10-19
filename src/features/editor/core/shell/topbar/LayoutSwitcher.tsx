@@ -12,15 +12,17 @@ import { useParams } from 'next/navigation';
 import {
   Columns2,
   ExternalLink,
+  Minimize2,
   Scan,
   Check,
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
 import { cn } from "@/shared/lib/utils";
-import { useSettingsStore, editorCommandBus, usePageStore } from '@/features/editor/core';
+import { useSettingsStore, editorCommandBus, usePageStore, useWorkspaceStore } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
+import { extractProjectId } from '@/features/editor/domain/types/core.types';
 
-function PenIcon({ className }: { className?: string }) {
+export function PenIcon({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 512 512"
@@ -33,7 +35,7 @@ function PenIcon({ className }: { className?: string }) {
   );
 }
 
-function PdfDocIcon({ className }: { className?: string }) {
+export function PdfDocIcon({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 20 20"
@@ -74,32 +76,48 @@ function PdfDocIcon({ className }: { className?: string }) {
   );
 }
 
+export function toggleFocusMode() {
+  if (typeof document === 'undefined') return;
+  if (document.fullscreenElement) {
+    document.exitFullscreen().catch(() => {});
+  } else {
+    document.documentElement.requestFullscreen().catch(() => {});
+  }
+}
+
+export function detachPdfPreview(projectId?: string | null, pdfUrl?: string | null) {
+  const pageStore = usePageStore.getState();
+  const effectiveProjectId =
+    projectId ||
+    pageStore.projectId ||
+    extractProjectId(pageStore.currentPage) ||
+    (typeof window !== 'undefined' ? window.location.pathname.match(/\/projects\/([^/]+)/)?.[1] : null);
+  const setIsViewerPoppedOut = useCompileStore.getState().setIsViewerPoppedOut;
+  const setPdfDetached = useWorkspaceStore.getState().setPdfDetached;
+  const effectivePdfUrl = pdfUrl ?? useCompileStore.getState().pdfUrl;
+  if (effectiveProjectId) {
+    setPdfDetached(true);
+    setIsViewerPoppedOut(true);
+    editorCommandBus.dispatch({ type: 'preview:detach', projectId: effectiveProjectId });
+  } else if (effectivePdfUrl) {
+    window.open(effectivePdfUrl, '_blank');
+    setPdfDetached(true);
+    setIsViewerPoppedOut(true);
+  }
+}
+
 export function LayoutSwitcher() {
   const layout = useSettingsStore((s) => s.layout);
   const setLayout = useSettingsStore((s) => s.setLayout);
   const pdfUrl = useCompileStore((s) => s.pdfUrl);
-  const setIsViewerPoppedOut = useCompileStore((s) => s.setIsViewerPoppedOut);
+  const isPdfDetached = useWorkspaceStore((s) => s.isPdfDetached);
   const params = useParams<{ projectId?: string; pageId?: string }>();
 
   const handleOpenPdfSeparateTab = () => {
-    const projectId = params?.projectId || usePageStore.getState().projectId;
-    if (projectId) {
-      editorCommandBus.dispatch({ type: 'preview:detach' });
-      setIsViewerPoppedOut(true);
-    } else if (pdfUrl) {
-      window.open(pdfUrl, '_blank');
-      setIsViewerPoppedOut(true);
-    }
+    detachPdfPreview(params?.projectId, pdfUrl);
   };
 
-  const handleToggleFocusMode = () => {
-    if (typeof document === 'undefined') return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
-    } else {
-      document.documentElement.requestFullscreen().catch(() => {});
-    }
-  };
+  const handleToggleFocusMode = toggleFocusMode;
 
   // Keyboard shortcut: Ctrl + Shift + M for Focus Mode
   useEffect(() => {
@@ -123,6 +141,9 @@ export function LayoutSwitcher() {
         >
           <Columns2 className="size-3.5 shrink-0" strokeWidth={1.8} />
           <span className="hidden sm:inline">Layout</span>
+          {isPdfDetached && (
+            <span className="size-1.5 rounded-full bg-primary shrink-0 animate-pulse" title="PDF preview is detached" />
+          )}
         </button>
       </DropdownMenuTrigger>
 
@@ -148,7 +169,7 @@ export function LayoutSwitcher() {
         >
           <div className="size-4 flex items-center justify-center shrink-0">
             {layout === 'split' ? (
-              <Check className="size-4 text-primary stroke-[2.5]" />
+              <Check className="size-4 text-foreground stroke-[2]" />
             ) : (
               <Columns2 className="size-4 opacity-70" strokeWidth={1.8} />
             )}
@@ -168,7 +189,7 @@ export function LayoutSwitcher() {
         >
           <div className="size-4 flex items-center justify-center shrink-0">
             {layout === 'editor-only' ? (
-              <Check className="size-4 text-primary stroke-[2.5]" />
+              <Check className="size-4 text-foreground stroke-[2]" />
             ) : (
               <PenIcon className="size-3.5 opacity-70" />
             )}
@@ -188,7 +209,7 @@ export function LayoutSwitcher() {
         >
           <div className="size-4 flex items-center justify-center shrink-0">
             {layout === 'viewer-only' ? (
-              <Check className="size-4 text-primary stroke-[2.5]" />
+              <Check className="size-4 text-foreground stroke-[2]" />
             ) : (
               <PdfDocIcon className="size-4 opacity-70" />
             )}
@@ -196,16 +217,28 @@ export function LayoutSwitcher() {
           <span className="flex-1 text-xs">PDF only</span>
         </DropdownMenuItem>
 
-        {/* 4. Open PDF in separate tab */}
-        <DropdownMenuItem
-          onClick={handleOpenPdfSeparateTab}
-          className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors text-xs font-medium select-none"
-        >
-          <div className="size-4 flex items-center justify-center shrink-0">
-            <ExternalLink className="size-4 opacity-70" strokeWidth={1.8} />
-          </div>
-          <span className="flex-1 text-xs">Open PDF in separate tab</span>
-        </DropdownMenuItem>
+        {/* 4. Open PDF in separate tab / Re-attach PDF */}
+        {isPdfDetached ? (
+          <DropdownMenuItem
+            onClick={() => editorCommandBus.dispatch({ type: 'preview:attach' })}
+            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm text-primary hover:bg-primary/10 focus:bg-primary/10 focus:text-primary cursor-pointer transition-colors text-xs font-medium select-none"
+          >
+            <div className="size-4 flex items-center justify-center shrink-0">
+              <Minimize2 className="size-4 stroke-[2]" />
+            </div>
+            <span className="flex-1 text-xs font-semibold">Re-attach PDF to editor</span>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem
+            onClick={handleOpenPdfSeparateTab}
+            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors text-xs font-medium select-none"
+          >
+            <div className="size-4 flex items-center justify-center shrink-0">
+              <ExternalLink className="size-4 opacity-70" strokeWidth={1.8} />
+            </div>
+            <span className="flex-1 text-xs">Open PDF in separate tab</span>
+          </DropdownMenuItem>
+        )}
 
         {/* Divider */}
         <DropdownMenuSeparator />

@@ -19,9 +19,3 @@ export {
   type PendingLineJump,
   type NavigationNotificationPort,
 } from './coordinator/navigation.coordinator';
-
-export {
-  ViewerBroadcastBridge,
-  type PopoutMessage,
-  type PopoutViewerState,
-} from './coordinator/popout-channel';

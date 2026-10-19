@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import { useParams, useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search as SearchIcon,
@@ -25,7 +25,6 @@ import { cn } from "@/shared/lib/utils";
 import { useShallow } from 'zustand/react/shallow';
 import {
   usePageStore,
-  useTabsStore,
   useSearchStore,
   editorCommandBus,
 } from "@/features/editor/core";
@@ -38,7 +37,7 @@ import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { SidebarPanelHeader } from '@/features/editor/core/shell/SidebarPanelHeader';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
-import { useProjectSearchActions } from './useProjectSearchActions';
+import { buildSearchRegex, useProjectSearchActions } from './useProjectSearchActions';
 
 interface MatchEntry {
   line: number;
@@ -54,9 +53,7 @@ interface FileSearchResult {
   matches: MatchEntry[];
 }
 
-export default function SearchTab({ onClose }: { onClose?: () => void }) {
-  const router = useRouter();
-  const pathname = usePathname();
+export default function SearchTab() {
   const searchParams = useSearchParams();
   const params = useParams<{ projectId?: string; pageId?: string }>();
 
@@ -64,7 +61,6 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   const activeFilePage = usePageStore((s) => s.activeFilePage);
   const storeProjectId = usePageStore((s) => s.projectId);
   const { engine, getContent } = useEditorInstance();
-  const openTab = useTabsStore((s) => s.openTab);
 
   const rootPageId = params?.pageId || params?.projectId || currentPage?.id || "";
   const rootProjectId = params?.projectId || storeProjectId || extractProjectId(currentPage) || params?.pageId || currentPage?.id || "";
@@ -79,7 +75,6 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
     setReplaceText,
     showReplace,
     setShowReplace,
-    toggleShowReplace,
     caseSensitive,
     setCaseSensitive,
     wholeWord,
@@ -98,7 +93,6 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
       setReplaceText: s.setReplaceText,
       showReplace: s.showReplace,
       setShowReplace: s.setShowReplace,
-      toggleShowReplace: s.toggleShowReplace,
       caseSensitive: s.caseSensitive,
       setCaseSensitive: s.setCaseSensitive,
       wholeWord: s.wholeWord,
@@ -197,7 +191,6 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   // ─── BACKEND SEARCH QUERY ──────────────────────────────────────────────────
   const {
     data: backendSearchData,
-    isLoading: isSearching,
     isFetching,
     error: searchError,
     isError: isSearchError,
@@ -242,17 +235,12 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
       }));
     }
 
-    let pattern = effectiveQuery;
-    if (!useRegex) pattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    if (wholeWord) pattern = `\\b${pattern}\\b`;
-    const flags = caseSensitive ? "g" : "gi";
-
-    let re: RegExp;
-    try {
-      re = new RegExp(pattern, flags);
-    } catch {
-      return [];
-    }
+    const re = buildSearchRegex(effectiveQuery, {
+      useRegex,
+      wholeWord,
+      caseSensitive,
+    });
+    if (!re) return [];
 
     const results: FileSearchResult[] = [];
 

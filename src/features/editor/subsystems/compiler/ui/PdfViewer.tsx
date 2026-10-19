@@ -42,7 +42,7 @@ import { editorCommandBus, setActivePdfViewer } from '@/features/editor/core';
 import { PdfToolbar } from './PdfToolbar';
 import { PdfFindBar } from './PdfFindBar';
 import { CompilationErrorBanner } from './CompilationErrorBanner';
-import PdfSurface, { type SurfaceHandle } from './PdfSurface';
+import PdfSurface, { type PdfSurfaceHandle } from './PdfSurface';
 import { CompilerLogs, parseLatexLog } from './CompilerLogs';
 import { filterDiagnostics } from '@/features/editor/domain/latex/warning-filter';
 
@@ -52,7 +52,13 @@ import { useViewerSyncTeX } from './hooks/useViewerSyncTeX';
 import { useSynchronizedScroll } from './hooks/useSynchronizedScroll';
 import { usePdfSearch, type PdfDocumentProxyLike } from './hooks/usePdfSearch';
 
-export function PdfViewer() {
+const TRANSIENT_WARNING_REGEX = /(?:^|Warning:\s*)(?:Reference|Citation)\s+.+undefined\s+on\s+input\s+line/i;
+
+export interface PdfViewerProps {
+  isDetached?: boolean;
+}
+
+export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
   const {
     id: urlId,
     projectId: rawProjectId,
@@ -80,7 +86,13 @@ export function PdfViewer() {
   const pdfViewer = useSettingsStore((s) => s.pdfViewer);
   const syncScroll = useSettingsStore((s) => s.syncScroll);
   const toggleSyncScroll = useSettingsStore((s) => s.toggleSyncScroll);
-  const activeFilePage = usePageStore((s) => s.activeFilePage);
+  const activeFilePath = usePageStore((s) => {
+    const af = s.activeFilePage;
+    if (af && 'path' in af && typeof af.path === 'string' && af.path) {
+      return af.path;
+    }
+    return af?.title || undefined;
+  });
 
   const { updateThumbnail: saveThumbnailMutation } = usePageActions();
 
@@ -90,7 +102,7 @@ export function PdfViewer() {
   });
 
   const pdfContainerRef = useRef<HTMLDivElement>(null);
-  const pdfSurfaceRef = useRef<SurfaceHandle | null>(null);
+  const pdfSurfaceRef = useRef<PdfSurfaceHandle | null>(null);
   const downloadRef = useRef<HTMLAnchorElement | null>(null);
 
   const setPageNumber = useViewerStore((s: DocumentViewerState) => s.setPageNumber);
@@ -101,7 +113,7 @@ export function PdfViewer() {
   const handlePrevPage = useViewerStore((s: DocumentViewerState) => s.prevPage);
   const handleNextPage = useViewerStore((s: DocumentViewerState) => s.nextPage);
 
-  const [pdfOutline, setPdfOutline] = useState<PdfOutlineItem[]>([]);
+  const [, setPdfOutline] = useState<PdfOutlineItem[]>([]);
   const [pageDimensions, setPageDimensions] = useState<PdfPageDimensions>({
     widthPt: DEFAULT_PDF_PAGE_WIDTH_PT,
     heightPt: DEFAULT_PDF_PAGE_HEIGHT_PT,
@@ -111,21 +123,12 @@ export function PdfViewer() {
 
   // 1. Compilation Controller
   const {
-    engine,
-    setEngine,
-    compileMode,
-    setCompileMode,
-    autoCompile,
-    setAutoCompile,
     compileStatus,
     compileLog,
     pdfUrl,
-    lastCompiledAt,
     synctexMapRef,
-    rawSynctexRef,
     handleCompile,
     handleClearCacheAndCompile,
-    handleForceSync,
     handleStopCompilation,
   } = usePdfCompiler({
     projectId,
@@ -148,8 +151,7 @@ export function PdfViewer() {
     if (!parsedLog) return 0;
     let warnings = parsedLog.warnings;
     if (stopOnFirstError && parsedLog.errors.length > 0) {
-      const transientRegex = /(?:^|Warning:\s*)(?:Reference|Citation)\s+.+undefined\s+on\s+input\s+line/i;
-      warnings = warnings.filter((w) => !transientRegex.test(w.message || ''));
+      warnings = warnings.filter((w) => !TRANSIENT_WARNING_REGEX.test(w.message || ''));
     }
     return filterDiagnostics(warnings, {
       suppressBadBoxes,
@@ -176,11 +178,8 @@ export function PdfViewer() {
     autoFit,
     fitMode,
     containerWidth,
-    showZoomGroup,
-    showUtilityGroup,
     handleZoomIn,
     handleZoomOut,
-    handleResetZoom,
     handleToggleAutoFit,
     handleSetFitMode,
     handleSetScale,
@@ -207,13 +206,6 @@ export function PdfViewer() {
   });
 
   // 3b. Dual-Window Synchronized Dual Scrolling Controller
-  const activeFilePath = useMemo(() => {
-    if (activeFilePage && 'path' in activeFilePage && typeof activeFilePage.path === 'string') {
-      return activeFilePage.path;
-    }
-    return activeFilePage?.title || undefined;
-  }, [activeFilePage]);
-
   const { handleViewerScroll } = useSynchronizedScroll({
     enabled: Boolean(syncScroll && pdfViewer !== 'browser'),
     pdfSurfaceRef,
@@ -233,6 +225,7 @@ export function PdfViewer() {
     });
     return () => {
       setActivePdfViewer(null);
+      pdfDocRef.current = null;
     };
   }, [handleJumpToPage]);
 
@@ -303,33 +296,6 @@ export function PdfViewer() {
   const onDocumentLoadSuccess = useCallback(async (pdf: { numPages: number } & Partial<PdfDocumentProxyLike>) => {
     pdfDocRef.current = pdf as PdfDocumentProxyLike;
 
-    if (typeof pdf.getPage === 'function' && (pdf.numPages ?? 0) >= 1) {
-      try {
-        const page = await pdf.getPage(1);
-        const pageWithViewport = page as {
-          getViewport?: (params: { scale: number }) => { width?: number; height?: number };
-          view?: number[];
-        };
-        let widthPt = 0;
-        let heightPt = 0;
-        if (typeof pageWithViewport?.getViewport === 'function') {
-          const vp = pageWithViewport.getViewport({ scale: 1 });
-          widthPt = vp?.width || 0;
-          heightPt = vp?.height || 0;
-        }
-        if ((!widthPt || !heightPt) && Array.isArray(pageWithViewport?.view) && pageWithViewport.view.length >= 4) {
-          widthPt = widthPt || (pageWithViewport.view[2] - pageWithViewport.view[0]);
-          heightPt = heightPt || (pageWithViewport.view[3] - pageWithViewport.view[1]);
-        }
-        setPageDimensions({
-          widthPt: widthPt > 0 ? widthPt : DEFAULT_PDF_PAGE_WIDTH_PT,
-          heightPt: heightPt > 0 ? heightPt : DEFAULT_PDF_PAGE_HEIGHT_PT,
-        });
-      } catch {
-        // fallback to default A4 or PdfSurface onPageDimensionsChange
-      }
-    }
-
     try {
       const bookmarks = await extractPdfBookmarks(pdf as unknown as Parameters<typeof extractPdfBookmarks>[0]);
       if (bookmarks && bookmarks.length > 0) {
@@ -355,10 +321,6 @@ export function PdfViewer() {
     a.click();
   }, [pdfUrl, documentTitle]);
 
-  const handleToggleAutoCompile = useCallback(() => setAutoCompile(!autoCompile), [autoCompile, setAutoCompile]);
-  const handleToggleInvertColors = toggleInvertColors;
-  const handleSetCompileMode = useCallback((m: 'full' | 'draft') => setCompileMode(m), [setCompileMode]);
-
   return (
     <div className="h-full w-full flex flex-col bg-canvas select-none relative min-h-0">
       {showLogsOverlay ? (
@@ -378,40 +340,27 @@ export function PdfViewer() {
       ) : (
         <>
           <PdfToolbar
-            compileStatus={compileStatus}
-            engine={engine}
-            setEngine={setEngine}
-            compileMode={compileMode as 'full' | 'draft'}
-            setCompileMode={handleSetCompileMode}
-            autoCompile={autoCompile}
-            onToggleAutoCompile={handleToggleAutoCompile}
             onClearCacheAndCompile={handleClearCacheAndCompile}
             onStopCompilation={handleStopCompilation}
             onCompile={handleCompile}
-            onForceSync={handleForceSync}
             scale={scale}
             autoFit={autoFit}
             fitMode={fitMode}
-            showZoomGroup={showZoomGroup}
             onToggleAutoFit={handleToggleAutoFit}
             onSetFitMode={handleSetFitMode}
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
-            onResetZoom={handleResetZoom}
             onSetScale={handleSetScale}
             numPages={numPages}
             onPrevPage={handlePrevPage}
             onNextPage={handleNextPage}
             pdfUrl={pdfUrl}
-            compileLog={compileLog || ''}
             showLog={showLogsOverlay}
-            showUtilityGroup={showUtilityGroup}
             onToggleLog={handleToggleLog}
             onDownload={handleDownload}
-            outline={pdfOutline}
             onJumpToPage={handleJumpToPage}
             invertColors={invertColors}
-            onToggleInvertColors={handleToggleInvertColors}
+            onToggleInvertColors={toggleInvertColors}
             isSpreadView={pdfSpreadView}
             onToggleSpreadView={togglePdfSpreadView}
             isSearchOpen={isSearchOpen}
@@ -420,6 +369,7 @@ export function PdfViewer() {
             onToggleSyncScroll={toggleSyncScroll}
             errorCount={parsedLog?.errors.length ?? 0}
             warningCount={filteredWarningCount}
+            isDetached={isDetached}
           />
 
           <a ref={downloadRef} className="hidden" aria-hidden="true" />

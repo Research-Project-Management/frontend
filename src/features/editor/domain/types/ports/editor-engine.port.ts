@@ -36,9 +36,6 @@ export interface EditorSelectionRange {
   startColumn: number;
   endLine: number;
   endColumn: number;
-  /** Backward compatibility aliases */
-  fromLine?: number;
-  toLine?: number;
 }
 
 export interface DiffProposal {
@@ -179,4 +176,5 @@ export interface IEditorEngine {
 }
 
 export type EditorEngine = IEditorEngine;
+
 

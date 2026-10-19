@@ -10,7 +10,6 @@
  */
 
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
-import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { displayName } from '@/features/editor/domain/document/document-naming';
 
 export type FileTreeFolderNode = {
@@ -43,6 +42,8 @@ export interface BuildFileTreeParams {
   parentPageId?: string | null;
   mainFileId?: string | null;
   configuredMainFile?: string | null;
+  mainFile?: string | null;
+  mainBibFile?: string | null;
 }
 
 /**
@@ -52,16 +53,16 @@ export function inferResearchFolder(
   filename: string,
   configuredMainFile?: string | null,
   parentPageTitle?: string | null,
+  mainFile = 'main.tex',
+  mainBibFile = 'references.bib',
 ): string | null {
   const lower = filename.toLowerCase();
-  const storeMainFile = useSettingsStore.getState().mainFile;
-  const storeMainBib = useSettingsStore.getState().mainBibFile;
 
   // Root files should never be auto-categorized into subfolders
   if (
     (configuredMainFile && lower === configuredMainFile.toLowerCase()) ||
-    (storeMainFile && lower === storeMainFile.toLowerCase()) ||
-    (storeMainBib && storeMainBib !== 'auto' && lower === storeMainBib.toLowerCase()) ||
+    (mainFile && lower === mainFile.toLowerCase()) ||
+    (mainBibFile && mainBibFile !== 'auto' && lower === mainBibFile.toLowerCase()) ||
     (parentPageTitle && lower === parentPageTitle.toLowerCase()) ||
     lower === 'main.tex' ||
     lower === 'preamble.tex' ||
@@ -125,6 +126,8 @@ export function getRootFilePriority(
   mainFileId?: string | null,
   configuredMainFile?: string | null,
   parentPageId?: string | null,
+  mainFile = 'main.tex',
+  mainBibFile = 'references.bib',
 ): number {
   const lower = item.displayLabel.toLowerCase();
 
@@ -135,16 +138,14 @@ export function getRootFilePriority(
     if (lower === configuredMainFile.toLowerCase()) return 1;
   } else {
     // No explicit mainFileId or configuredMainFile
-    const storeMainFile = useSettingsStore.getState().mainFile;
-    if (storeMainFile && lower === storeMainFile.toLowerCase()) return 1;
+    if (mainFile && lower === mainFile.toLowerCase()) return 1;
     if (item.isRootDoc || (parentPageId && item.id === parentPageId) || lower === 'main.tex') return 1;
   }
 
   if (lower === 'preamble.tex') return 2;
-  const storeMainBib = useSettingsStore.getState().mainBibFile;
   if (
     lower === 'references.bib' ||
-    (storeMainBib && storeMainBib !== 'auto' && lower === storeMainBib.toLowerCase())
+    (mainBibFile && mainBibFile !== 'auto' && lower === mainBibFile.toLowerCase())
   ) {
     return 3;
   }
@@ -167,6 +168,11 @@ export function getFolderPriority(folderName: string): number {
   return 90;
 }
 
+const NATURAL_COLLATOR = new Intl.Collator(undefined, {
+  numeric: true,
+  sensitivity: 'base',
+});
+
 /**
  * Builds the complete unified hierarchical tree from backend database documents and storage items
  */
@@ -179,6 +185,8 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
     parentPageId,
     mainFileId,
     configuredMainFile,
+    mainFile = 'main.tex',
+    mainBibFile = 'references.bib',
   } = params;
 
   const rootFiles: FileTreeFileNode[] = [];
@@ -220,6 +228,8 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
             rawFileName,
             configuredMainFile,
             parentPage?.title,
+            mainFile || 'main.tex',
+            mainBibFile || 'references.bib',
           );
 
       if (inferredFolder) {
@@ -277,22 +287,25 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
   });
 
   // 3. Root TeX document
-  const storeMainFile = useSettingsStore.getState().mainFile;
-  const resolvedRootTitle = configuredMainFile || storeMainFile || 'main.tex';
+  const resolvedRootTitle = configuredMainFile || mainFile || 'main.tex';
+  const resolvedRootTitleLower = resolvedRootTitle.toLowerCase();
+  const storeMainFileLower = mainFile ? mainFile.toLowerCase() : null;
 
   const hasRootDocument =
-    rootFiles.some(
-      (rf) =>
-        rf.type === 'file' &&
-        (rf.id === parentPage?.id ||
-          rf.id === mainFileId ||
-          Boolean(rf.isRootDoc) ||
-          rf.displayLabel.toLowerCase() === resolvedRootTitle.toLowerCase() ||
-          (storeMainFile && rf.displayLabel.toLowerCase() === storeMainFile.toLowerCase()) ||
-          rf.displayLabel.toLowerCase() === 'main.tex'),
-    ) ||
-    existingTexTitles.has(resolvedRootTitle.toLowerCase()) ||
-    Boolean(storeMainFile && existingTexTitles.has(storeMainFile.toLowerCase())) ||
+    rootFiles.some((rf) => {
+      if (rf.type !== 'file') return false;
+      const rfLower = rf.displayLabel.toLowerCase();
+      return (
+        rf.id === parentPage?.id ||
+        rf.id === mainFileId ||
+        Boolean(rf.isRootDoc) ||
+        rfLower === resolvedRootTitleLower ||
+        (storeMainFileLower !== null && rfLower === storeMainFileLower) ||
+        rfLower === 'main.tex'
+      );
+    }) ||
+    existingTexTitles.has(resolvedRootTitleLower) ||
+    Boolean(storeMainFileLower && existingTexTitles.has(storeMainFileLower)) ||
     existingTexTitles.has('main.tex');
 
   if (parentPage && !hasRootDocument) {
@@ -333,6 +346,8 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
         parts[0],
         configuredMainFile,
         parentPage?.title,
+        mainFile || 'main.tex',
+        mainBibFile || 'references.bib',
       );
       if (inferredFolder) {
         if (!folderMap.has(inferredFolder)) {
@@ -386,13 +401,10 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
 
   // Sort root files
   rootFiles.sort((a, b) => {
-    const prioA = getRootFilePriority(a, mainFileId, configuredMainFile, parentPageId);
-    const prioB = getRootFilePriority(b, mainFileId, configuredMainFile, parentPageId);
+    const prioA = getRootFilePriority(a, mainFileId, configuredMainFile, parentPageId, mainFile || 'main.tex', mainBibFile || 'references.bib');
+    const prioB = getRootFilePriority(b, mainFileId, configuredMainFile, parentPageId, mainFile || 'main.tex', mainBibFile || 'references.bib');
     if (prioA !== prioB) return prioA - prioB;
-    return a.displayLabel.localeCompare(b.displayLabel, undefined, {
-      numeric: true,
-      sensitivity: 'base',
-    });
+    return NATURAL_COLLATOR.compare(a.displayLabel, b.displayLabel);
   });
 
   // Sort folders
@@ -400,20 +412,14 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
     const prioA = getFolderPriority(a.name);
     const prioB = getFolderPriority(b.name);
     if (prioA !== prioB) return prioA - prioB;
-    return a.name.localeCompare(b.name, undefined, {
-      numeric: true,
-      sensitivity: 'base',
-    });
+    return NATURAL_COLLATOR.compare(a.name, b.name);
   });
 
   // Sort children inside each folder naturally
   sortedFolders.forEach((folder) => {
     folder.children.sort((a, b) => {
       if (a.type === 'file' && b.type === 'file') {
-        return a.displayLabel.localeCompare(b.displayLabel, undefined, {
-          numeric: true,
-          sensitivity: 'base',
-        });
+        return NATURAL_COLLATOR.compare(a.displayLabel, b.displayLabel);
       }
       return 0;
     });

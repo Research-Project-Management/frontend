@@ -78,7 +78,7 @@ export class LatexSymbolsIndex {
 
     try {
       this.worker = new Worker(
-        new URL('../../engines/workers/latex-symbols.worker.ts', import.meta.url)
+        new URL('../../core/engine/workers/latex-symbols.worker.ts', import.meta.url)
       );
 
       this.worker.onmessage = (event: MessageEvent<SymbolsWorkerMessageOut>) => {

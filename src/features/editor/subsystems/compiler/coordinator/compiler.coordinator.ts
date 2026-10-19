@@ -9,9 +9,8 @@
  * - Single source of truth for the active compilation lifecycle (IDLE -> COMPILING -> SYNCING -> SUCCESS / ERROR / ABORTED).
  */
 
-import { LatexCompilerEngine } from './compilation-pipeline';
+import { LatexCompilerEngine, type CompilerExecutionEngine, type CompilerExecutionPort } from './compilation-pipeline';
 import { CompilationFlushBarrier } from './compilation-flush-barrier';
-import type { CompilerExecutionPort } from './compiler-execution-port';
 import {
   resolveForwardDetail,
   resolveForward,
@@ -42,8 +41,6 @@ import type { CompileError, CompileStatus } from '@/features/editor/domain/types
 import { extractProjectId, extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import type { NodeTreeItem } from '@/features/editor/domain/types/node.types';
 import { parseCompileErrors } from '@/features/editor/domain/latex/latex-structure';
-
-export type { CompilerExecutionPort };
 
 export interface CreateSnapshotOptions {
   rootFileId?: string;
@@ -82,7 +79,7 @@ export class CompilationSnapshotProvider {
     const compileStore = useCompileStore.getState();
 
     const activeDoc = pageStore.getActiveDocument();
-    const activeContent = options.activeContentOverride || getActiveEditorContent() || (activeDoc?.content as string) || '';
+    const activeContent = options.activeContentOverride || getActiveEditorContent() || extractDocumentContentString(activeDoc?.content);
 
     const baseFiles = options.projectFiles || workspaceCoordinator.getProjectFiles() || [];
     const lruModels = lruDocumentCache.getAllModels();
@@ -127,7 +124,7 @@ export interface SyncTeXReverseDetail {
 }
 
 export interface CompilerCoordinatorOptions {
-  compilerEngine?: CompilerExecutionPort;
+  compilerEngine?: CompilerExecutionEngine;
   getProjectId?: () => string | undefined;
   getMainFile?: () => string | undefined;
   getEngine?: () => string | undefined;
@@ -138,13 +135,12 @@ export class CompilerCoordinatorRegistry {
   private isCompiling = false;
   private compileAbortController: AbortController | null = null;
   private pendingCompileOptions: CompileOptions | undefined = undefined;
-  private prevPdfUrl: string | null = null;
   private synctexMap: SyncTeXMap | null = null;
   private rawSynctex: string | null = null;
   private initialized = false;
 
-  /** Real Seam: Injected Compiler Engine (LatexCompilerEngine by default) */
-  private compilerEngine: CompilerExecutionPort;
+  /** Injected Compiler Engine (LatexCompilerEngine by default) */
+  private compilerEngine: CompilerExecutionEngine;
   private readonly options: CompilerCoordinatorOptions;
 
   constructor(options: CompilerCoordinatorOptions = {}) {
@@ -435,21 +431,18 @@ export class CompilerCoordinatorRegistry {
       });
 
       if (res.success) {
-        if (
-          this.prevPdfUrl &&
-          this.prevPdfUrl.startsWith('blob:') &&
-          this.prevPdfUrl !== res.pdfUrl
-        ) {
-          URL.revokeObjectURL(this.prevPdfUrl);
-        }
-        this.prevPdfUrl = res.pdfUrl;
-
-        compileStore.setPdfUrl(res.pdfUrl);
+        compileStore.setPdfUrl(res.pdfUrl ?? null);
         this.synctexMap = res.synctexMap ?? null;
-        this.rawSynctex = res.rawSynctex ?? null;
-        compileStore.setCompileLog(res.logs);
+        this.rawSynctex = res.rawSynctex ?? res.synctexData ?? null;
+        compileStore.setCompileLog(res.logs ?? res.rawLog ?? null);
         compileStore.setCompileStatus('done');
-        compileStore.setLastCompiledAt(res.compiledAt);
+        compileStore.setLastCompiledAt(
+          res.compiledAt instanceof Date
+            ? res.compiledAt
+            : typeof res.compiledAt === 'number'
+              ? new Date(res.compiledAt)
+              : new Date(),
+        );
 
         // Asynchronously update synctexMap when non-blocking parser resolves
         if (res.synctexPromise) {
@@ -462,11 +455,12 @@ export class CompilerCoordinatorRegistry {
         }
 
         const sanitizeDash = (s?: string) => (s ? s.replace(/[\u2014\u2013]/g, '-') : '');
+        const rawLog = res.logs ?? res.rawLog ?? '';
         const rawSuccessDiagnostics =
           res.diagnostics && res.diagnostics.length > 0
             ? res.diagnostics
-            : res.logs
-              ? parseCompileErrors(res.logs)
+            : rawLog
+              ? parseCompileErrors(rawLog)
               : [];
         const successDiagnostics: CompileError[] = rawSuccessDiagnostics.map((d) => ({
           line: d.line,
@@ -491,12 +485,15 @@ export class CompilerCoordinatorRegistry {
 
         return true;
       } else {
+        const rawLog = res.logs ?? res.rawLog ?? '';
         const isAborted =
+          res.aborted ||
+          res.status === 'aborted' ||
           currentController.signal.aborted ||
           res.error === 'Compilation superseded' ||
           res.error === 'Compilation stopped' ||
           res.error?.toLowerCase().includes('aborted') ||
-          res.logs?.toLowerCase().includes('signal is aborted');
+          rawLog.toLowerCase().includes('signal is aborted');
 
         if (isAborted) {
           compileStore.setCompileStatus('idle');
@@ -506,7 +503,7 @@ export class CompilerCoordinatorRegistry {
         }
 
         compileStore.setCompileStatus('error');
-        compileStore.setCompileLog(res.logs);
+        compileStore.setCompileLog(rawLog || null);
 
         const sanitizeDash = (s?: string) => (s ? s.replace(/[\u2014\u2013]/g, '-') : '');
 
@@ -535,7 +532,7 @@ export class CompilerCoordinatorRegistry {
         diagnosticsCoordinator.ingestCompilerErrors(formattedErrors, resolvedMainFile);
 
         if (res.flushedFileIds && res.flushedFileIds.length > 0) {
-          res.flushedFileIds.forEach((fid) => compileStore.clearDirty(fid));
+          res.flushedFileIds.forEach((fid: string) => compileStore.clearDirty(fid));
         }
 
         editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: false });
@@ -667,6 +664,16 @@ export class CompilerCoordinatorRegistry {
       return this.compilerEngine.resolveForwardRemote(projectId, file, line, column);
     }
     return LatexCompilerEngine.resolveForwardRemote(projectId, file, line, column);
+  }
+
+  /**
+   * Releases compiler resources and clears SyncTeX caches for GC.
+   */
+  public dispose(): void {
+    this.stop();
+    this.synctexMap = null;
+    this.rawSynctex = null;
+    this.pendingCompileOptions = undefined;
   }
 }
 

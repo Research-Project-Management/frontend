@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useContext } from 'react';
-import { QueryClientContext, QueryClient } from '@tanstack/react-query';
+import { QueryClientContext } from '@tanstack/react-query';
 import type { EditorView } from '@codemirror/view';
 import {
   usePageSuggestions,
@@ -18,24 +18,16 @@ import {
   usePageComments,
   commentKeys,
   reviewCoordinator,
+  useSafeQueryClient,
 } from '@/features/editor/subsystems/review';
 import { useSettingsStore, editorCommandBus } from '@/features/editor/core';
-
-const fallbackClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-      gcTime: 0,
-    },
-  },
-});
 
 export function useEditorReviewSync(
   fileId: string | null | undefined,
   view: EditorView | null
 ): void {
   const contextClient = useContext(QueryClientContext);
-  const effectiveClient = contextClient || fallbackClient;
+  const effectiveClient = useSafeQueryClient();
 
   const trackChangesViewMode = useSettingsStore((s) => s.trackChangesViewMode);
   const reviewMode = useSettingsStore((s) => s.reviewMode);
@@ -55,11 +47,12 @@ export function useEditorReviewSync(
     );
   }, [fileId, view, suggestions, comments, trackChangesViewMode, reviewMode]);
 
-  // Listen to cross-system review events (accept, reject, create) to invalidate query cache
+  // Listen to cross-system review events (accept, reject, create, persist) to invalidate query cache
   useEffect(() => {
     if (!fileId || !contextClient) return;
 
     const unsub = editorCommandBus.subscribe('editor:review-event', (event) => {
+      if (event.event === 'suggestion:local-recorded') return;
       if (event.pageId === fileId || !event.pageId) {
         contextClient.invalidateQueries({ queryKey: suggestionKeys.byPage(fileId) });
         contextClient.invalidateQueries({ queryKey: commentKeys.byPage(fileId) });

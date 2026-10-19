@@ -27,13 +27,11 @@ import {
   FileSpreadsheet,
   Variable,
   Layers,
-  HelpCircle,
   Bot,
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { API_BASE_URL } from '@/config/env';
-import { getAuthToken } from '@/shared/lib/api';
+import { apiPost } from '@/shared/lib/api';
 import {
   Dialog,
   DialogContent,
@@ -49,17 +47,10 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  TabsContent,
 } from '@/shared/components/ui/tabs';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { useTableMatrixWizard } from './useTableMatrixWizard';
-import {
-  type MatrixType,
-  type TableAlignment,
-  type TableStyle,
-  type MatrixWrapper,
-} from '@/features/editor/domain/latex/table-matrix';
+import { type MatrixType } from '@/features/editor/domain/latex/table-matrix';
 import katex from 'katex';
 
 export interface TableWizardModalProps {
@@ -93,30 +84,22 @@ export function TableWizardModal({
     setCaption,
     label,
     setLabel,
-    placement,
-    setPlacement,
     centering,
     setCentering,
     hasHeaderRow,
     setHasHeaderRow,
-    hoverRows,
-    setHoverRows,
-    hoverCols,
-    setHoverCols,
     pastedText,
     setPastedText,
     setTableDimension,
     updateTableCell,
     updateTableHeader,
     toggleColumnAlignment,
-    setAllAlignments,
     addTableRow,
     removeTableRow,
     addTableColumn,
     removeTableColumn,
     importPastedData,
     importRawText,
-    generatedTableLatex,
 
     // Matrix state & actions
     matrixType,
@@ -126,16 +109,9 @@ export function TableWizardModal({
     matrixCells,
     matrixWrapper,
     setMatrixWrapper,
-    matrixEquationLabel,
-    setMatrixEquationLabel,
     setMatrixDimension,
     updateMatrixCell,
     applyMatrixPreset,
-    addMatrixRow,
-    removeMatrixRow,
-    addMatrixColumn,
-    removeMatrixColumn,
-    generatedMatrixLatex,
 
     // Output & Actions
     activeLatex,
@@ -156,40 +132,27 @@ export function TableWizardModal({
     if (!aiPrompt.trim() || isAiGenerating) return;
     setIsAiGenerating(true);
     try {
-      const token = getAuthToken();
       const systemPrompt = `You are an expert academic LaTeX assistant. Generate a clean LaTeX tabular or TSV table according to the user request.
 Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and ending with \\end{tabular} or TSV data with tabs and newlines. Do not wrap in markdown quotes or add conversational preamble.`;
 
-      const response = await fetch(`${API_BASE_URL}/api/ai/chat/sync`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          query: `Create an academic table based on: ${aiPrompt}`,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: aiPrompt },
-          ],
-          model: 'fast',
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('AI table generation request failed');
-      }
-
-      const json = (await response.json()) as {
+      const json = await apiPost<{
         data?: { content?: string; message?: string };
         content?: string;
         message?: string;
-      } | null;
+      } | null>('/ai/chat/sync', {
+        query: `Create an academic table based on: ${aiPrompt}`,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: aiPrompt },
+        ],
+        model: 'fast',
+      });
+
       const rawText = json?.data?.content || json?.data?.message || json?.content || json?.message || '';
       const clean = rawText.replace(/```latex\n?|```tsv\n?|```\n?/g, '').trim();
 
-      const success = importRawText(clean);
-      if (success) {
+      const imported = importRawText(clean);
+      if (imported) {
         toast.success('Table generated with AI and loaded into visual editor!', { id: 'ai-table-gen' });
         setAiPrompt('');
       } else {

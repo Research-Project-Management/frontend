@@ -50,9 +50,6 @@ export function UrlTabPane({
         queryClient.invalidateQueries({ queryKey: ['project-linked-files', effectiveProjectId] });
         queryClient.invalidateQueries({ queryKey: ['projects'] });
         editorCommandBus.dispatch({ type: 'filetree:updated' });
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
-        }
       };
 
       try {

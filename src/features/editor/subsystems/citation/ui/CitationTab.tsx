@@ -14,7 +14,6 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { useCitationTabState } from './hooks/useCitationTabState';
-import { CitationItem } from './subcomponents/CitationItem';
 import { VirtualizedCitationList } from './subcomponents/VirtualizedCitationList';
 import { CitationValidationBanner } from './subcomponents/CitationValidationBanner';
 import { UnresolvedKeysList } from './subcomponents/UnresolvedKeysList';

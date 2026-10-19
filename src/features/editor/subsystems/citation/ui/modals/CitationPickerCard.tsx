@@ -3,6 +3,7 @@
 import React, { memo } from 'react';
 import { cn } from '@/shared/lib/utils';
 import type { BibEntry } from '@/features/editor/subsystems/citation/model/bib-parser';
+import { formatBibEntryAuthorSummary } from '@/features/editor/subsystems/citation/model/citation-formatter';
 
 interface CitationPickerCardProps {
   entry: BibEntry;
@@ -21,14 +22,7 @@ export const CitationPickerCard = memo(function CitationPickerCard({
   onSelect,
   onDoubleClick,
 }: CitationPickerCardProps) {
-  const authorSummary =
-    entry.authors && entry.authors.length > 0
-      ? entry.authors.length <= 2
-        ? entry.authors.join(' & ')
-        : `${entry.authors[0]} et al.`
-      : entry.author
-        ? entry.author
-        : 'Unknown author';
+  const authorSummary = formatBibEntryAuthorSummary(entry);
 
   return (
     <div

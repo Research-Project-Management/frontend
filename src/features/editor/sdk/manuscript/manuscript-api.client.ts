@@ -30,8 +30,6 @@ import type {
   DiagnosticReportDto,
   AutoFixResultDto,
   ErrorExplanationDto,
-  CollaborationPresence,
-  CollaborationEvent,
   ExportFileResult,
   BibEntryDto,
   CitationValidationDto,
@@ -47,11 +45,6 @@ import type {
   ForwardSyncResult,
   ReverseSyncPayload,
   ReverseSyncResult,
-  DocReviewsResponseDto,
-  TextRangeDto,
-  TrackChangeDto,
-  CommentThreadDto,
-  CommentReplyDto,
   SearchOptions,
   SearchResultResponse,
   BatchReplaceOptions,
@@ -60,11 +53,9 @@ import type {
   ProjectVersionListItem,
   ProjectSnapshotDetail,
   ProjectDiffResponse,
-  ProjectFileDiff,
   VersionLabelItem,
   ImportProjectZipResult,
   ProjectTemplateItem,
-  OpLogTimeline,
   ReconstructedContent,
 } from './types';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
@@ -73,7 +64,7 @@ import type { PageSuggestion, SuggestionStatus } from '@/features/editor/domain/
 import type { PageVersion, ProjectEvent } from '@/features/editor/domain/types/history.types';
 import type { DocumentExportFormat } from '@/features/editor/domain/types/export.types';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
-import { presignUpload, completePresigned } from '@/features/storage/services/upload.service';
+import { uploadBlobWithPresigned } from '@/features/storage';
 import { API_BASE_URL } from '@/config/env';
 import type {
   AcademicAiActionParams,
@@ -787,585 +778,32 @@ export const diagnostics = {
 };
 
 
-// ── Sub-domain: comments.api.ts ──────────────────────────────────────
-/**
- * comments.api.ts
- *
- * Comments & discussions sub-API: Threads, replies, resolution, deletion.
- */
+import {
+  comments,
+  suggestions,
+  notifications,
+  notificationBundlerService,
+  search,
+  exportDocs,
+  history,
+} from './collaboration-api.client';
+import {
+  ai,
+  AcademicAiService,
+  suggestLatexFix,
+} from './ai-api.client';
 
-
-export const comments = {
-  getComments: async (docId: string, status?: string): Promise<PageComment[]> => {
-    if (!docId) return [];
-    try {
-      const query = status ? `?status=${encodeURIComponent(status)}` : '';
-      const data = await apiGet<{ comments: PageComment[] }>(
-        `${MANUSCRIPTS_API_BASE}/docs/${docId}/comments${query}`,
-        { silent: true },
-      );
-      return data.comments || [];
-    } catch {
-      return [];
-    }
-  },
-
-  createComment: async (
-    docId: string,
-    payload: {
-      content: string;
-      line?: number;
-      lineEnd?: number;
-      projectId?: string;
-    },
-  ): Promise<PageComment> => {
-    const data = await apiPost<{ comment: PageComment }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/comments`,
-      payload,
-    );
-    return data.comment;
-  },
-
-  updateComment: async (
-    docId: string,
-    commentId: string,
-    payload: { content?: string; status?: 'open' | 'resolved' } | string,
-  ): Promise<PageComment> => {
-    const body = typeof payload === 'string' ? { content: payload } : payload;
-    const data = await apiPatch<{ comment: PageComment }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/comments/${commentId}`,
-      body,
-    );
-    return data.comment;
-  },
-
-  deleteComment: async (docId: string, commentId: string): Promise<void> => {
-    await apiDelete(`${MANUSCRIPTS_API_BASE}/docs/${docId}/comments/${commentId}`);
-  },
-
-  deleteReply: async (
-    docId: string,
-    commentId: string,
-    replyId: string,
-  ): Promise<PageComment> => {
-    const data = await apiDelete<{ comment: PageComment }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/comments/${commentId}/replies/${replyId}`,
-    );
-    return data.comment;
-  },
-
-  addReply: async (
-    docId: string,
-    commentId: string,
-    content: string,
-  ): Promise<PageComment> => {
-    const data = await apiPost<{ comment: PageComment }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/comments/${commentId}/reply`,
-      { content },
-    );
-    return data.comment;
-  },
-
-  resolveComment: async (
-    docId: string,
-    commentId: string,
-    resolved: boolean,
-  ): Promise<PageComment> => {
-    const data = await apiPatch<{ comment: PageComment }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/comments/${commentId}/resolve`,
-      { resolved },
-    );
-    return data.comment;
-  },
-};
-
-
-// ── Sub-domain: suggestions.api.ts ──────────────────────────────────────
-/**
- * suggestions.api.ts
- *
- * Review suggestions sub-API: Accept, reject, create suggestions.
- */
-
-
-export const suggestions = {
-  getSuggestions: async (
-    docId: string,
-    status?: SuggestionStatus,
-  ): Promise<PageSuggestion[]> => {
-    if (!docId) return [];
-    try {
-      const queryStr = status ? `?status=${status}` : '';
-      const data = await apiGet<{ suggestions: PageSuggestion[] }>(
-        `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions${queryStr}`,
-        { silent: true },
-      );
-      return data.suggestions || [];
-    } catch {
-      return [];
-    }
-  },
-
-  createSuggestion: async (payload: CreateSuggestionPayload): Promise<PageSuggestion> => {
-    const { pageId, ...body } = payload;
-    const data = await apiPost<{ suggestion: PageSuggestion }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${pageId}/suggestions`,
-      body,
-    );
-    return data.suggestion;
-  },
-
-  acceptSuggestion: async (
-    docId: string,
-    suggestionId: string,
-  ): Promise<{ ok: boolean; suggestion: PageSuggestion; page: Page }> => {
-    return await apiPost<{ ok: boolean; suggestion: PageSuggestion; page: Page }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/${suggestionId}/accept`,
-      {},
-    );
-  },
-
-  rejectSuggestion: async (
-    docId: string,
-    suggestionId: string,
-  ): Promise<{ ok: boolean; suggestion: PageSuggestion }> => {
-    return await apiPost<{ ok: boolean; suggestion: PageSuggestion }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/${suggestionId}/reject`,
-      {},
-    );
-  },
-
-  acceptAllSuggestions: async (
-    docId: string,
-  ): Promise<{ ok: boolean; acceptedCount: number; page?: Page }> => {
-    return await apiPost<{ ok: boolean; acceptedCount: number; page?: Page }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/accept-all`,
-      {},
-    );
-  },
-
-  rejectAllSuggestions: async (
-    docId: string,
-  ): Promise<{ ok: boolean; rejectedCount: number }> => {
-    return await apiPost<{ ok: boolean; rejectedCount: number }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/reject-all`,
-      {},
-    );
-  },
-
-  acceptSelectedSuggestions: async (
-    docId: string,
-    suggestionIds: string[],
-  ): Promise<{ ok: boolean; acceptedCount: number; page?: Page }> => {
-    return await apiPost<{ ok: boolean; acceptedCount: number; page?: Page }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/accept-all`,
-      { suggestionIds },
-    );
-  },
-
-  rejectSelectedSuggestions: async (
-    docId: string,
-    suggestionIds: string[],
-  ): Promise<{ ok: boolean; rejectedCount: number }> => {
-    return await apiPost<{ ok: boolean; rejectedCount: number }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/reject-all`,
-      { suggestionIds },
-    );
-  },
-};
-
-
-// ── Sub-domain: review.api.ts ──────────────────────────────────────
-/**
- * review.api.ts
- *
- * Review & Track Changes sub-API: Tracked changes, comment threads, batch resolution.
- */
-
-/** Converts a 0-based absolute character offset into a 0-based line/column pair. */
-export function offsetToLineCol(content: string, offset: number): { line: number; col: number } {
-  const clamped = Math.max(0, Math.min(offset, content.length));
-  let line = 0;
-  let lineStart = 0;
-  for (let i = 0; i < clamped; i++) {
-    if (content.charCodeAt(i) === 10) {
-      line++;
-      lineStart = i + 1;
-    }
-  }
-  return { line, col: clamped - lineStart };
-}
-
-/** Converts absolute offsets [from, to) into the backend TextRange contract. */
-export function offsetsToRange(content: string, fromIndex: number, toIndex: number): TextRangeDto {
-  const a = Math.min(fromIndex, toIndex);
-  const b = Math.max(fromIndex, toIndex);
-  const s = offsetToLineCol(content, a);
-  const e = offsetToLineCol(content, b);
-  return { startLine: s.line, startCol: s.col, endLine: e.line, endCol: e.col };
-}
-
-interface RangeSource {
-  range?: TextRangeDto;
-  /** Full document text; required to convert fromIndex/toIndex on multi-line docs. */
-  content?: string;
-  fromIndex?: number;
-  toIndex?: number;
-  startLine?: number;
-  startCol?: number;
-  endLine?: number;
-  endCol?: number;
-}
-
-export function resolveRange(src: RangeSource): TextRangeDto {
-  if (src.range) return src.range;
-  if (src.startLine !== undefined) {
-    return {
-      startLine: src.startLine,
-      startCol: src.startCol ?? 0,
-      endLine: src.endLine ?? src.startLine,
-      endCol: src.endCol ?? src.startCol ?? 0,
-    };
-  }
-  if (src.fromIndex !== undefined) {
-    const to = src.toIndex ?? src.fromIndex;
-    if (typeof src.content === 'string') {
-      return offsetsToRange(src.content, src.fromIndex, to);
-    }
-    throw new Error('review: fromIndex/toIndex require `content` to compute a line/column range');
-  }
-  throw new Error('review: a range (range, startLine/startCol, or fromIndex+content) is required');
-}
-
-export interface RecordChangeInput {
-  type: 'insert' | 'delete';
-  text: string;
-  range?: TextRangeDto;
-  content?: string;
-  fromIndex?: number;
-  toIndex?: number;
-  startLine?: number;
-  startCol?: number;
-  endLine?: number;
-  endCol?: number;
-}
-
-export interface CreateCommentThreadInput {
-  content: string;
-  quote?: string;
-  selectedText?: string;
-  range?: TextRangeDto;
-  /** Full document text used to convert fromIndex/toIndex into line/column. */
-  docContent?: string;
-  fromIndex?: number;
-  toIndex?: number;
-  startLine?: number;
-  startCol?: number;
-  endLine?: number;
-  endCol?: number;
-}
-
-export const review = {
-  getDocReviews: async (projectId: string, docId: string): Promise<DocReviewsResponseDto> => {
-    if (!projectId || !docId) {
-      return { changes: [], threads: [] };
-    }
-    try {
-      return await apiGet<DocReviewsResponseDto>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review`,
-        { silent: true },
-      );
-    } catch {
-      return { changes: [], threads: [] };
-    }
-  },
-
-  recordChange: async (
-    projectId: string,
-    docId: string,
-    dto: RecordChangeInput,
-  ): Promise<TrackChangeDto> => {
-    const range: TextRangeDto = resolveRange(dto);
-    return await apiPost<TrackChangeDto>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes`,
-      {
-        type: dto.type,
-        text: dto.text,
-        range,
-      },
-    );
-  },
-
-  acceptChange: async (projectId: string, docId: string, changeId: string): Promise<TrackChangeDto> => {
-    return await apiPost<TrackChangeDto>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes/${changeId}/accept`,
-      {},
-    );
-  },
-
-  rejectChange: async (projectId: string, docId: string, changeId: string): Promise<TrackChangeDto> => {
-    return await apiPost<TrackChangeDto>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes/${changeId}/reject`,
-      {},
-    );
-  },
-
-  batchResolveChanges: async (
-    projectId: string,
-    docId: string,
-    action: 'accept_all' | 'reject_all' | 'accept_selected' | 'reject_selected',
-    changeIds?: string[],
-  ): Promise<{ resolvedCount: number; action: string }> => {
-    return await apiPost<{ resolvedCount: number; action: string }>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes/batch`,
-      { action, changeIds },
-    );
-  },
-
-  createCommentThread: async (
-    projectId: string,
-    docId: string,
-    dto: CreateCommentThreadInput,
-  ): Promise<CommentThreadDto> => {
-    const range: TextRangeDto = resolveRange({ ...dto, content: dto.docContent });
-    return await apiPost<CommentThreadDto>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/threads`,
-      {
-        content: dto.content,
-        quote: dto.quote || dto.selectedText,
-        range,
-      },
-    );
-  },
-
-  addCommentReply: async (
-    projectId: string,
-    docId: string,
-    threadId: string,
-    content: string,
-  ): Promise<CommentReplyDto> => {
-    return await apiPost<CommentReplyDto>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/threads/${threadId}/replies`,
-      { content },
-    );
-  },
-
-  resolveCommentThread: async (
-    projectId: string,
-    docId: string,
-    threadId: string,
-    resolve: boolean,
-  ): Promise<CommentThreadDto> => {
-    return await apiPatch<CommentThreadDto>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/threads/${threadId}/resolve`,
-      { resolve },
-    );
-  },
-};
-
-
-// ── Sub-domain: collaboration.api.ts ──────────────────────────────────────
-/**
- * collaboration.api.ts
- *
- * Real-time presence, heartbeat, and Server-Sent Events (SSE) synchronization sub-API.
- */
-
-
-export const collaboration = {
-  getPresence: async (docId: string): Promise<CollaborationPresence[]> => {
-    if (!docId) return [];
-    try {
-      const res = await apiGet<{ activeUsers?: CollaborationPresence[]; presence?: CollaborationPresence[] }>(
-        `${MANUSCRIPTS_API_BASE}/docs/${docId}/collaboration/presence`,
-        { silent: true },
-      );
-      return res.activeUsers || res.presence || [];
-    } catch {
-      return [];
-    }
-  },
-
-  sendHeartbeat: async (
-    docId: string,
-    cursor?: {
-      line: number;
-      column: number;
-      selection?: {
-        startLineNumber: number;
-        startColumn: number;
-        endLineNumber: number;
-        endColumn: number;
-      };
-    },
-  ): Promise<void> => {
-    if (!docId) return;
-    try {
-      await apiPost(`${MANUSCRIPTS_API_BASE}/docs/${docId}/collaboration/heartbeat`, { cursor }, { silent: true });
-    } catch {
-      // ignore
-    }
-  },
-
-  leaveRoom: async (docId: string): Promise<void> => {
-    if (!docId) return;
-    try {
-      await apiPost(`${MANUSCRIPTS_API_BASE}/docs/${docId}/collaboration/leave`, {}, { silent: true });
-    } catch {
-      // ignore
-    }
-  },
-
-  createCollaborationStream: (
-    projectId: string | null | undefined,
-    docId: string,
-    onEvent: (event: CollaborationEvent) => void,
-    onError?: (err: unknown) => void,
-  ): (() => void) => {
-    if (typeof window === 'undefined') return () => {};
-
-    const token = getAuthToken();
-    const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : '';
-    const path = projectId
-      ? `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/collaboration/stream`
-      : `${MANUSCRIPTS_API_BASE}/docs/${docId}/collaboration/stream`;
-    const baseUrl = getEffectiveBaseUrl().replace(/\/+$/, '');
-    const url = `${baseUrl}${path}${tokenQuery}`;
-    const eventSource = new EventSource(url, { withCredentials: true });
-
-    eventSource.onmessage = (e) => {
-      try {
-        const parsed = JSON.parse(e.data);
-        onEvent(parsed as CollaborationEvent);
-      } catch {
-        // non-json message, ignore
-      }
-    };
-
-    if (onError) {
-      eventSource.onerror = (err) => onError(err);
-    }
-
-    return () => {
-      eventSource.close();
-    };
-  },
-};
-
-
-// ── Sub-domain: notifications.api.ts ──────────────────────────────────────
-/**
- * notifications.api.ts
- *
- * Review Notification Bundling Sub-API (Part of manuscriptService SDK).
- * Implements Overleaf-parity 10-minute review notification bundling endpoints.
- */
-
-export const notifications = {
-  getPendingBundles: async (): Promise<PendingBundleInfo[]> => {
-    try {
-      const data = await api.apiGet<{ bundles: PendingBundleInfo[] }>(
-        '/api/documents/notifications/bundles',
-      );
-      return data.bundles || [];
-    } catch {
-      return [];
-    }
-  },
-
-  flushBundle: async (
-    scopeId?: string,
-    projectId?: string,
-  ): Promise<NotificationDigest | null> => {
-    try {
-      const data = await api.apiPost<{ digest: NotificationDigest }>(
-        '/api/documents/notifications/bundles/flush',
-        { scopeId, projectId },
-      );
-      return data.digest || null;
-    } catch {
-      return null;
-    }
-  },
-
-  getDigestHistory: async (limit = 20): Promise<NotificationDigest[]> => {
-    try {
-      const data = await api.apiGet<{ digests: NotificationDigest[] }>(
-        '/api/documents/notifications/digests',
-        { params: { limit } },
-      );
-      return data.digests || [];
-    } catch {
-      return [];
-    }
-  },
-
-  getSettings: async (): Promise<NotificationBundlingSettings> => {
-    try {
-      const data = await api.apiGet<{ settings: NotificationBundlingSettings }>(
-        '/api/documents/notifications/settings',
-      );
-      return data.settings || { enabled: false, windowMinutes: 10 };
-    } catch {
-      return { enabled: false, windowMinutes: 10 };
-    }
-  },
-
-  updateSettings: async (
-    settings: Partial<NotificationBundlingSettings>,
-  ): Promise<NotificationBundlingSettings> => {
-    try {
-      const data = await api.apiPut<{ settings: NotificationBundlingSettings }>(
-        '/api/documents/notifications/settings',
-        settings,
-      );
-      return data.settings || { enabled: false, windowMinutes: 10 };
-    } catch {
-      return { enabled: false, windowMinutes: 10 };
-    }
-  },
-};
-
-export const notificationBundlerService = notifications;
-
-
-// ── Sub-domain: search.api.ts ──────────────────────────────────────
-/**
- * search.api.ts
- *
- * Full-text search and atomic batch replacement sub-API across project files.
- */
-
-export const search = {
-  search: async (
-    projectId: string,
-    query: string,
-    options: SearchOptions = {},
-  ): Promise<SearchResultResponse> => {
-    return apiPost<SearchResultResponse>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/search`,
-      {
-        query,
-        ...options,
-      },
-    );
-  },
-
-  batchReplace: async (
-    projectId: string,
-    query: string,
-    replaceWith: string,
-    options: BatchReplaceOptions = {},
-  ): Promise<BatchReplaceResultResponse> => {
-    return apiPost<BatchReplaceResultResponse>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/replace`,
-      {
-        query,
-        replaceWith,
-        ...options,
-      },
-    );
-  },
+export {
+  comments,
+  suggestions,
+  notifications,
+  notificationBundlerService,
+  search,
+  exportDocs,
+  history,
+  ai,
+  AcademicAiService,
+  suggestLatexFix,
 };
 
 
@@ -1410,27 +848,7 @@ export const storage = {
   },
 
   getPageFiles: async (pageId: string, parentId?: string | null): Promise<EditorStorageItem[]> => {
-    if (!pageId) return [];
-    try {
-      const endpoint = parentId
-        ? `${MANUSCRIPTS_API_BASE}/projects/${pageId}/structure/nodes?parentId=${parentId}`
-        : `${MANUSCRIPTS_API_BASE}/projects/${pageId}/structure/nodes`;
-      const nodes = await apiGet<StructureNodeDto[]>(endpoint, { silent: true });
-      if (Array.isArray(nodes)) {
-        return nodes.map((n) => ({
-          id: n.id,
-          filename: n.name,
-          isFolder: n.type?.toUpperCase() === 'FOLDER',
-          parentId: n.parentId,
-          size: n.sizeBytes,
-          createdAt: n.createdAt,
-          updatedAt: n.updatedAt,
-        }));
-      }
-    } catch {
-      return [];
-    }
-    return [];
+    return storage.getProjectFiles(pageId, parentId);
   },
 
   uploadPageFile: async (
@@ -1441,57 +859,21 @@ export const storage = {
     projectId?: string,
   ): Promise<EditorStorageItem> => {
     const targetProjectId = projectId || pageId;
-    const presignRes = await presignUpload({
-      filename: file.name,
-      mimeType: file.type || 'application/octet-stream',
-      size: file.size,
-      projectId: targetProjectId,
-    });
-
-    const uploadUrl = presignRes?.uploadUrl;
-    if (!uploadUrl || !presignRes?.storageKey) {
-      throw new Error('Failed to obtain presigned upload URL');
-    }
-
-    await new Promise<void>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      if (onProgress) {
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            onProgress(Math.round((event.loaded / event.total) * 100));
-          }
-        };
-      }
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve();
-        } else {
-          reject(new Error(`Direct R2 upload failed with status ${xhr.status}`));
-        }
-      };
-      xhr.onerror = () => reject(new Error('Direct R2 upload network error'));
-      xhr.open('PUT', uploadUrl, true);
-      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-      xhr.send(file);
-    });
-
-    const completed = await completePresigned({
-      storageKey: presignRes.storageKey,
-      filename: file.name,
-      size: file.size,
-      mimeType: file.type || 'application/octet-stream',
+    const completed = await uploadBlobWithPresigned(file, file.name, {
       projectId: targetProjectId,
       parentId: parentId || null,
+      onProgress,
     });
 
+    const id = completed.fileId || '';
     return {
-      id: completed.fileId || completed.id,
-      filename: completed.filename || file.name,
-      size: typeof completed.size === 'number' ? completed.size : file.size,
-      mimeType: completed.mimeType || file.type,
+      id,
+      filename: file.name,
+      size: file.size,
+      mimeType: file.type,
       isFolder: false,
       parentId: parentId || null,
-      url: completed.url || `/api/v1/storage/files/${completed.fileId || completed.id}/content`,
+      url: completed.url || `/api/v1/storage/files/${id}/content`,
     };
   },
 
@@ -1541,19 +923,11 @@ export const storage = {
   },
 
   createPageFolder: async (pageId: string, name: string, parentId?: string | null) => {
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${pageId}/structure/nodes`, {
-      name,
-      type: 'FOLDER',
-      parentId: parentId ?? null,
-    });
+    return storage.createFolder(pageId, name, parentId);
   },
 
   createProjectFolder: async (projectId: string, name: string, parentId?: string | null) => {
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, {
-      name,
-      type: 'FOLDER',
-      parentId: parentId ?? null,
-    });
+    return storage.createFolder(projectId, name, parentId);
   },
 
   renameItem: async (itemId: string, name: string, projectId?: string) => {
@@ -1565,7 +939,7 @@ export const storage = {
   },
 
   permanentlyDeleteItem: async (itemId: string, projectId?: string) => {
-    return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}`);
+    return storage.deleteItem(itemId, projectId);
   },
 
   moveItem: async (itemId: string, targetFolderId: string | null, projectId?: string) => {
@@ -1595,325 +969,9 @@ export const storage = {
   },
 };
 
-export const files = storage;
-export const StorageService = storage;
-export const EditorStorageService = storage;
 
 
-// ── Sub-domain: export.api.ts ──────────────────────────────────────
-/**
- * export.api.ts
- *
- * Multi-format export/import sub-API: PDF, ZIP packages, format conversion, template scaffolding.
- */
 
-
-export const exportDocs = {
-  exportDocument: async (
-    docId: string,
-    format: DocumentExportFormat,
-    includeChildren = true,
-  ): Promise<ExportFileResult> => {
-    return apiPost<ExportFileResult>(`${MANUSCRIPTS_API_BASE}/docs/${docId}/export`, {
-      format,
-      includeChildren,
-    });
-  },
-
-  exportProjectZipUrl: (projectId: string, includeAux = false): string => {
-    const token = getAuthToken();
-    const tokenQuery = token ? `?token=${encodeURIComponent(token)}&includeAux=${includeAux}` : `?includeAux=${includeAux}`;
-    return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/export/zip${tokenQuery}`;
-  },
-
-  exportProjectZip: async (
-    projectId: string,
-    options: { includeAux?: boolean; includePdf?: boolean; cleanArxiv?: boolean; projectName?: string } = {},
-  ): Promise<Blob> => {
-    const token = getAuthToken();
-    const params = new URLSearchParams();
-    if (options.includeAux) params.append('includeAux', 'true');
-    if (options.includePdf) params.append('includePdf', 'true');
-    if (options.cleanArxiv) params.append('cleanArxiv', 'true');
-    if (options.projectName) params.append('projectName', options.projectName);
-    const queryString = params.toString() ? `?${params.toString()}` : '';
-    const res = await fetch(`${getManuscriptsBaseUrl()}/projects/${projectId}/export/zip${queryString}`, {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-      },
-    });
-    if (!res.ok) throw new Error(`Export ZIP failed: ${res.statusText}`);
-    return await res.blob();
-  },
-
-  importProjectZip: async (projectId: string, file: File | Blob, preferredRootDoc?: string): Promise<ImportProjectZipResult> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const query = preferredRootDoc ? `?preferredRootDoc=${encodeURIComponent(preferredRootDoc)}` : '';
-    const token = getAuthToken();
-    const res = await fetch(`${getManuscriptsBaseUrl()}/projects/${projectId}/import/zip${query}`, {
-      method: 'POST',
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-      },
-      body: formData,
-    });
-    if (!res.ok) throw new Error(`Import ZIP failed: ${res.statusText}`);
-    return (await res.json()) as ImportProjectZipResult;
-  },
-
-  scaffoldTemplate: async (projectId: string, templateId: string): Promise<Record<string, unknown>> => {
-    return await apiPost<Record<string, unknown>>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/templates/${templateId}/scaffold`, {});
-  },
-
-  convertDocument: async (
-    projectId: string,
-    file: File | Blob,
-    format?: 'docx' | 'md',
-  ): Promise<Record<string, unknown>> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const query = format ? `?format=${encodeURIComponent(format)}` : '';
-    const token = getAuthToken();
-    const res = await fetch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/import/convert${query}`, {
-      method: 'POST',
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-      },
-      body: formData,
-    });
-    if (!res.ok) {
-      const errJson = (await res.json().catch(() => null)) as { message?: string } | null;
-      throw new Error(errJson?.message || `Document conversion failed: ${res.statusText}`);
-    }
-    return (await res.json()) as Record<string, unknown>;
-  },
-};
-
-
-// ── Sub-domain: history.api.ts ──────────────────────────────────────
-/**
- * history.api.ts
- *
- * History, snapshot revisions, diffing, and audit log sub-API.
- */
-
-export const history = {
-  getByDocId: async (docId: string): Promise<PageVersion[]> => {
-    if (!docId) return [];
-    try {
-      const res = await apiGet<{ versions: PageVersion[] }>(
-        `${MANUSCRIPTS_API_BASE}/docs/${docId}/versions`,
-        { silent: true },
-      );
-      return res.versions || [];
-    } catch {
-      return [];
-    }
-  },
-
-  getById: async (docId: string, versionId: string): Promise<PageVersion | null> => {
-    try {
-      const res = await apiGet<{ version: PageVersion }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}/versions/${versionId}`);
-      return res.version || null;
-    } catch {
-      return null;
-    }
-  },
-
-  save: async (payload: {
-    pageId: string;
-    label?: string;
-    content?: string;
-    eventType?: string;
-    fileName?: string;
-    rootPageId?: string;
-  }): Promise<PageVersion> => {
-    const res = await apiPost<{ version: PageVersion }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${payload.pageId}/versions`,
-      payload,
-    );
-    return res.version;
-  },
-
-  restore: async (payload: { pageId: string; versionId: string }): Promise<void> => {
-    await apiPost(`${MANUSCRIPTS_API_BASE}/docs/${payload.pageId}/versions/${payload.versionId}/restore`, {});
-  },
-
-  updateLabel: async (
-    docId: string,
-    versionId: string,
-    label: string,
-    title?: string,
-  ): Promise<PageVersion> => {
-    const res = await apiPost<{ version: PageVersion }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/versions/${versionId}/label`,
-      { label, title },
-    );
-    return res.version;
-  },
-
-  getDiff: async (
-    docId: string,
-    fromVersionId: string,
-    toVersionId: string,
-  ): Promise<VersionDiffResponse> => {
-    try {
-      return await apiGet<VersionDiffResponse>(
-        `${MANUSCRIPTS_API_BASE}/docs/${docId}/versions/diff?from=${fromVersionId}&to=${toVersionId}`,
-      );
-    } catch {
-      return {
-        fromVersionId,
-        toVersionId,
-        fromContent: '',
-        toContent: '',
-        diff: '',
-        chunks: [],
-        stats: { additions: 0, deletions: 0, addedLines: 0, deletedLines: 0, unchangedLines: 0 },
-      };
-    }
-  },
-
-  compareVersions: async (
-    docId: string,
-    fromVersionId: string,
-    toVersionId: string,
-  ): Promise<VersionDiffResponse> => {
-    return history.getDiff(docId, fromVersionId, toVersionId);
-  },
-
-  getByProjectId: async (projectId: string): Promise<ProjectEvent[]> => {
-    try {
-      const res = await apiGet<ProjectVersionListItem[]>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/versions`,
-      );
-      if (Array.isArray(res) && res.length > 0) {
-        return res.map((s) => ({
-          id: s.id,
-          versionNumber: s.version,
-          title: s.summary || `Version ${s.version}`,
-          label: s.labels?.[0]?.label || s.label || s.summary || '',
-          fileName: s.fileName || s.label || 'Project Snapshot',
-          createdAt: s.createdAt,
-          savedBy: {
-            id: s.author?.id || s.createdBy?.id || s.createdById || 'user-1',
-            name: s.author?.name || s.createdBy?.name || (s.createdById ? 'Collaborator' : 'You'),
-          },
-          sizeBytes: s.sizeBytes ?? 0,
-          eventType: s.isAutomatic ? 'auto_save' : 'manual_save',
-          page: projectId,
-        }));
-      }
-      return [];
-    } catch {
-      return [];
-    }
-  },
-
-  getProjectVersions: async (projectId: string): Promise<ProjectVersionListItem[]> => {
-    try {
-      const res = await apiGet<ProjectVersionListItem[]>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/versions`,
-      );
-      return Array.isArray(res) ? res : [];
-    } catch {
-      return [];
-    }
-  },
-
-  getProjectSnapshot: async (
-    projectId: string,
-    version: number,
-  ): Promise<ProjectSnapshotDetail | null> => {
-    try {
-      return await apiGet<ProjectSnapshotDetail>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/versions/${version}`,
-      );
-    } catch {
-      return null;
-    }
-  },
-
-  compareProjectVersions: async (
-    projectId: string,
-    baseVersion: number,
-    targetVersion: number,
-  ): Promise<ProjectDiffResponse | null> => {
-    try {
-      return await apiGet<ProjectDiffResponse>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/diff?baseVersion=${baseVersion}&targetVersion=${targetVersion}`,
-      );
-    } catch {
-      return null;
-    }
-  },
-
-  labelProjectVersion: async (
-    projectId: string,
-    version: number,
-    label: string,
-  ): Promise<VersionLabelItem | null> => {
-    return apiPost<VersionLabelItem>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/versions/${version}/labels`,
-      { label },
-    );
-  },
-
-  deleteProjectLabel: async (projectId: string, labelId: string): Promise<void> => {
-    await apiDelete(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/labels/${labelId}`,
-    );
-  },
-
-  restoreProjectVersion: async (
-    projectId: string,
-    targetVersion: number,
-  ): Promise<{
-    restoredSnapshot: ProjectSnapshotDetail;
-    newSnapshot: ProjectSnapshotDetail;
-    restoreResult: { restoredFilesCount: number; restoredDocIds: string[] };
-  }> => {
-    return apiPost(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/restore`,
-      { targetVersion },
-    );
-  },
-
-  createProjectSnapshot: async (
-    projectId: string,
-    dto: { summary?: string; label?: string; isAutomatic?: boolean },
-  ): Promise<ProjectSnapshotDetail> => {
-    return apiPost<ProjectSnapshotDetail>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/snapshots`,
-      dto,
-    );
-  },
-
-  getTimeline: async (
-    docId: string,
-    _from?: string | number,
-    _to?: string | number,
-  ): Promise<OpLogTimeline> => {
-    try {
-      return await apiGet<OpLogTimeline>(`${MANUSCRIPTS_API_BASE}/docs/${docId}/timeline`);
-    } catch {
-      return { entries: [], oldestMs: Date.now() - 3600000, newestMs: Date.now() };
-    }
-  },
-
-  getContentAt: async (
-    docId: string,
-    t: string | number,
-  ): Promise<ReconstructedContent> => {
-    try {
-      const query = t !== undefined && t !== null ? `?timestamp=${encodeURIComponent(String(t))}` : '';
-      return await apiGet<ReconstructedContent>(`${MANUSCRIPTS_API_BASE}/docs/${docId}/at${query}`);
-    } catch {
-      return { content: '', timestamp: Date.now() };
-    }
-  },
-};
 
 
 // ── Sub-domain: citations.api.ts ──────────────────────────────────────
@@ -1991,7 +1049,7 @@ export const templates = {
     } else if (query?.offset !== undefined) {
       params.offset = String(query.offset);
     }
-    const res = await apiGet<ProjectTemplateItem[] | { templates?: ProjectTemplateItem[] }>(`${MANUSCRIPTS_API_BASE}/templates`, { params });
+    const res = await apiGet<ProjectTemplateItem[] | { templates?: ProjectTemplateItem[] }>(`${MANUSCRIPTS_API_BASE}/projects/templates`, { params });
     return Array.isArray(res) ? res : res?.templates || [];
   },
 
@@ -2174,188 +1232,7 @@ export const spelling = {
 export const spellingService = spelling;
 
 
-// ── Sub-domain: ai.api.ts ──────────────────────────────────────
-/**
- * ai.api.ts
- *
- * AI Academic Assistant & LaTeX Error Repair Sub-API (Part of manuscriptService SDK).
- * Connects frontend editor and logs to /api/ai/chat/sync endpoint, backed by
- * domain-level macro masking and robust offline heuristics.
- */
-export class AcademicAiService {
-  /**
-   * Execute an academic AI action on selected text.
-   */
-  public static async executeAction(params: AcademicAiActionParams): Promise<AcademicAiActionResult> {
-    const { action, selectedText, customPrompt } = params;
-    const trimmed = selectedText.trim();
 
-    if (!trimmed) {
-      return {
-        success: false,
-        originalText: selectedText,
-        suggestedText: selectedText,
-        explanation: 'No text selected.',
-        action,
-        diffSummary: {
-          charsOriginal: 0,
-          charsSuggested: 0,
-          wordsOriginal: 0,
-          wordsSuggested: 0,
-        },
-      };
-    }
-
-    // 1. Mask LaTeX entities (equations, citations, labels)
-    const { maskedText, unmask } = maskLatexEntities(trimmed);
-
-    let suggestedResult = '';
-    let explanation = '';
-
-    try {
-      const systemPrompt = getAcademicSystemPrompt(action, customPrompt);
-      const promptText = `Text to edit:\n"""\n${maskedText}\n"""`;
-
-      const json = await apiPost<Record<string, unknown>>('/api/ai/chat/sync', {
-        query: promptText,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: promptText },
-        ],
-        model: 'fast',
-      }, { silent: true });
-
-      const data = (json?.data && typeof json.data === 'object' ? json.data : json) as Record<string, unknown>;
-      const rawAiText =
-        typeof data?.content === 'string'
-          ? data.content
-          : typeof data?.message === 'string'
-            ? data.message
-            : typeof data?.response === 'string'
-              ? data.response
-              : '';
-      if (rawAiText && rawAiText.trim().length > 0) {
-        suggestedResult = unmask(rawAiText.trim().replace(/^"""\s*|\s*"""$/g, ''));
-        explanation = `Applied ${action.replace('-', ' ')} via AI Copilot.`;
-      }
-    } catch {
-      // Fallback silently to heuristic engine
-    }
-
-    // Heuristic fallback if AI response was empty or failed
-    if (!suggestedResult) {
-      const fallbackMasked = applyHeuristicTransformation(maskedText, action);
-      suggestedResult = unmask(fallbackMasked);
-      explanation = `Enhanced ${action.replace('-', ' ')} using Academic Heuristic Rules.`;
-    }
-
-    const wordsOriginal = trimmed.split(/\s+/).filter(Boolean).length;
-    const wordsSuggested = suggestedResult.split(/\s+/).filter(Boolean).length;
-
-    return {
-      success: true,
-      originalText: selectedText,
-      suggestedText: suggestedResult,
-      explanation,
-      action,
-      diffSummary: {
-        charsOriginal: trimmed.length,
-        charsSuggested: suggestedResult.length,
-        wordsOriginal,
-        wordsSuggested,
-      },
-    };
-  }
-}
-
-/**
- * Request AI fix suggestion for a given compilation error.
- */
-export async function suggestLatexFix(params: AiErrorFixParams): Promise<AiErrorFixResult> {
-  const prompt = [
-    'You are an expert LaTeX debugging assistant (Overleaf Error Assist).',
-    'Analyze the following LaTeX compiler error and suggest an immediate, surgical fix.',
-    `File: ${params.errorFile || 'main.tex'}`,
-    `Line: ${params.errorLine || 'unknown'}`,
-    `Error Message: ${params.errorMessage}`,
-    params.detail ? `Detail: ${params.detail}` : '',
-    params.surroundingCode ? `\nSurrounding Code:\n\`\`\`latex\n${params.surroundingCode}\n\`\`\`` : '',
-    '',
-    'Reply ONLY with a valid JSON object in this exact schema (no markdown fences, pure JSON):',
-    '{',
-    '  "explanation": "Brief 1-2 sentence description of what caused the error and how to fix it",',
-    '  "originalSnippet": "Exact code line(s) that should be replaced",',
-    '  "fixedSnippet": "The corrected code line(s)",',
-    `  "startLine": ${params.errorLine || 1},`,
-    `  "endLine": ${params.errorLine || 1},`,
-    '  "confidence": "high"',
-    '}',
-  ].filter(Boolean).join('\n');
-
-  try {
-    type AiCompletionPayload = {
-      content?: string;
-      reply?: string;
-      message?: string;
-    };
-    type AiCompletionResponse = {
-      data?: AiCompletionPayload | string;
-    } & AiCompletionPayload;
-
-    const json = await apiPost<AiCompletionResponse | string>('/api/ai/chat/sync', {
-      messages: [{ role: 'user', content: prompt }],
-      query: prompt,
-      pageId: params.pageId,
-      projectId: params.projectId,
-    }, { silent: true });
-
-    const data = (typeof json === 'object' && json !== null && 'data' in json ? json.data : json) || json;
-    const rawContent: string =
-      typeof data === 'string'
-        ? data
-        : typeof data === 'object' && data !== null
-          ? (data.content || data.reply || data.message || '')
-          : '';
-
-    // Clean JSON text (strip markdown code blocks if returned)
-    const jsonText = rawContent
-      .replace(/^```json\s*/i, '')
-      .replace(/^```\s*/, '')
-      .replace(/\s*```$/, '')
-      .trim();
-
-    const parsed = JSON.parse(jsonText) as Record<string, unknown>;
-    if (parsed && typeof parsed === 'object' && parsed.explanation && parsed.fixedSnippet !== undefined) {
-      let explanation = String(parsed.explanation).trim();
-      explanation = explanation
-        .replace(/^Error on line \d+:\s*/i, '')
-        .replace(/^LaTeX Error:\s*/i, '')
-        .trim();
-
-      return {
-        explanation: explanation || String(parsed.explanation),
-        originalSnippet: String(parsed.originalSnippet || ''),
-        fixedSnippet: String(parsed.fixedSnippet || ''),
-        startLine: Number(parsed.startLine) || params.errorLine || 1,
-        endLine: Number(parsed.endLine) || params.errorLine || 1,
-        confidence:
-          parsed.confidence === 'high' || parsed.confidence === 'medium' || parsed.confidence === 'low'
-            ? parsed.confidence
-            : 'high',
-      };
-    }
-  } catch {
-    // If AI network or parsing fails, seamlessly return heuristic fix
-  }
-
-  return heuristicLatexErrorFix(params);
-}
-
-export const ai = {
-  executeAcademicAction: AcademicAiService.executeAction,
-  suggestLatexFix,
-  AcademicAiService,
-};
 
 // ── Sub-domain: git.api.ts ──────────────────────────────────────
 /**
@@ -2444,13 +1321,9 @@ export const manuscriptService = {
   synctex,
   comments,
   suggestions,
-  review,
-  trackChanges: review,
   history,
   search,
   export: exportDocs,
-  exportImport: exportDocs,
-  collaboration,
   structure,
   diagnostics,
   linkedFiles,
@@ -2460,9 +1333,6 @@ export const manuscriptService = {
   updater,
   spelling: spellingService,
   storage,
-  files,
-  StorageService,
-  EditorStorageService,
   notifications,
   notificationBundlerService,
   ai,
@@ -2471,5 +1341,5 @@ export const manuscriptService = {
   git: gitApi,
 };
 
-export const manuscriptApi = manuscriptService;
 export default manuscriptService;
+

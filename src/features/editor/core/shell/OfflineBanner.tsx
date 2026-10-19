@@ -13,7 +13,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { WifiOff, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { WifiOff, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { useConnectivityStore, sessionCoordinator } from '@/features/editor/core';
 import { toast } from 'sonner';
@@ -28,15 +28,14 @@ export function OfflineBanner() {
   const [isChecking, setIsChecking] = useState(false);
   const [justReconnected, setJustReconnected] = useState(false);
 
-  // Sync with browser online/offline events
+  // Sync UI state with browser online/offline events (sessionCoordinator handles flushing)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const handleOnline = async () => {
+    const handleOnline = () => {
       recordOnline();
       setJustReconnected(true);
       toast.success('Connection restored. Syncing pending drafts...', { id: 'network-status' });
-      await sessionCoordinator.flushAllPending();
       setTimeout(() => setJustReconnected(false), 3000);
     };
 

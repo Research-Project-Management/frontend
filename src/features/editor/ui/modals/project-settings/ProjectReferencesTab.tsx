@@ -8,8 +8,7 @@
  */
 
 import React, { useState } from 'react';
-import Link from 'next/link';
-import { RefreshCw, ExternalLink, Check, AlertCircle, BookOpen, Blocks } from 'lucide-react';
+import { RefreshCw, Blocks } from 'lucide-react';
 import { useIntegrations, useRemoteCollections, useSyncCollection } from '@/features/settings/hooks/use-integrations';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -51,31 +50,57 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
 
   const syncMutation = useSyncCollection();
 
-  const handleSyncZotero = async () => {
-    if (!projectId || !selectedZoteroCollection) return;
-    const col = zoteroCollections.find((c) => c.id === selectedZoteroCollection);
+  const providers = [
+    {
+      id: 'zotero' as const,
+      title: 'Zotero Integration',
+      description: 'Sync your personal or group Zotero collections',
+      icon: ZoteroIcon,
+      isConnected: Boolean(isZoteroConnected),
+      needsReconnect: Boolean(zoteroIntegration?.needsReconnect),
+      collections: zoteroCollections,
+      isLoadingCollections,
+      selectedCollection: selectedZoteroCollection,
+      setSelectedCollection: setSelectedZoteroCollection,
+      selectLabel: 'Select Zotero Collection',
+      loadingPlaceholder: 'Loading collections...',
+      emptyPlaceholder: 'Choose a collection to sync',
+      disconnectHint: 'Link your Zotero account to enable collection sync.',
+      connectButtonLabel: 'Connect Zotero',
+    },
+    {
+      id: 'mendeley' as const,
+      title: 'Mendeley Integration',
+      description: 'Link your Elsevier Mendeley reference library',
+      icon: MendeleyIcon,
+      isConnected: Boolean(isMendeleyConnected),
+      needsReconnect: Boolean(mendeleyIntegration?.needsReconnect),
+      collections: mendeleyCollections,
+      isLoadingCollections: isLoadingMendeleyCollections,
+      selectedCollection: selectedMendeleyCollection,
+      setSelectedCollection: setSelectedMendeleyCollection,
+      selectLabel: 'Select Mendeley Folder',
+      loadingPlaceholder: 'Loading folders...',
+      emptyPlaceholder: 'Choose a folder to sync',
+      disconnectHint: 'Link your Mendeley account to enable folder sync.',
+      connectButtonLabel: 'Connect Mendeley',
+    },
+  ];
+
+  const handleSyncProvider = async (
+    providerId: 'zotero' | 'mendeley',
+    selectedCollectionId: string,
+    collections: Array<{ id: string; name: string }>,
+  ) => {
+    if (!projectId || !selectedCollectionId) return;
+    const col = collections.find((c) => c.id === selectedCollectionId);
 
     await syncMutation.mutateAsync({
-      provider: 'zotero',
+      provider: providerId,
       payload: {
         projectId,
-        collectionId: selectedZoteroCollection,
-        collectionName: col?.name || selectedZoteroCollection,
-        targetBibFile,
-      },
-    });
-  };
-
-  const handleSyncMendeley = async () => {
-    if (!projectId || !selectedMendeleyCollection) return;
-    const col = mendeleyCollections.find((c) => c.id === selectedMendeleyCollection);
-
-    await syncMutation.mutateAsync({
-      provider: 'mendeley',
-      payload: {
-        projectId,
-        collectionId: selectedMendeleyCollection,
-        collectionName: col?.name || selectedMendeleyCollection,
+        collectionId: selectedCollectionId,
+        collectionName: col?.name || selectedCollectionId,
         targetBibFile,
       },
     });
@@ -111,177 +136,98 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
         </Select>
       </div>
 
-      {/* Zotero Section */}
-      <div className="p-4 rounded-md border border-border bg-card space-y-3 shadow-none">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="flex size-7 items-center justify-center rounded-md bg-muted/60 p-1.5 shrink-0">
-              <ZoteroIcon className="size-4 shrink-0" />
-            </div>
-            <div>
-              <h4 className="text-xs font-semibold text-foreground">Zotero Integration</h4>
-              <p className="text-11 text-muted-foreground">Sync your personal or group Zotero collections</p>
-            </div>
-          </div>
+      {/* Reference Provider Cards */}
+      {providers.map((p) => {
+        const ProviderIcon = p.icon;
+        return (
+          <div key={p.id} className="p-4 rounded-md border border-border bg-card space-y-3 shadow-none">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-7 items-center justify-center rounded-md bg-muted/60 p-1.5 shrink-0">
+                  <ProviderIcon className="size-4 shrink-0" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-semibold text-foreground">{p.title}</h4>
+                  <p className="text-11 text-muted-foreground">{p.description}</p>
+                </div>
+              </div>
 
-          {isZoteroConnected ? (
-            <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-xs gap-1">
-              <span className="size-1.5 rounded-full bg-success" />
-              Connected
-            </Badge>
-          ) : zoteroIntegration?.needsReconnect ? (
-            <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-xs">
-              Reconnect Required
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="text-muted-foreground text-xs">
-              Not Connected
-            </Badge>
-          )}
-        </div>
-
-        {isZoteroConnected ? (
-          <div className="pt-2 border-t border-border/50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <div className="flex-1">
-              <label className="text-11 text-muted-foreground block mb-1">
-                Select Zotero Collection:
-              </label>
-              <Select
-                value={selectedZoteroCollection}
-                onValueChange={setSelectedZoteroCollection}
-                disabled={isLoadingCollections}
-              >
-                <SelectTrigger aria-label="Select Zotero Collection" className="w-full sm:w-64 h-8 text-xs font-medium cursor-pointer border-border bg-background">
-                  <SelectValue
-                    placeholder={
-                      isLoadingCollections ? 'Loading collections...' : 'Choose a collection to sync'
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {zoteroCollections.map((col) => (
-                    <SelectItem key={col.id} value={col.id} className="cursor-pointer text-xs">
-                      {col.name} ({col.itemCount} items)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {p.isConnected ? (
+                <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-xs gap-1">
+                  <span className="size-1.5 rounded-full bg-success" />
+                  Connected
+                </Badge>
+              ) : p.needsReconnect ? (
+                <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-xs">
+                  Reconnect Required
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-muted-foreground text-xs">
+                  Not Connected
+                </Badge>
+              )}
             </div>
 
-            <Button
-              size="sm"
-              className="h-8 text-xs self-end sm:self-auto gap-1.5 motion-reduce:transition-none"
-              disabled={!selectedZoteroCollection || syncMutation.isPending}
-              onClick={handleSyncZotero}
-            >
-              <RefreshCw className={`size-3.5 ${syncMutation.isPending ? 'animate-spin motion-reduce:animate-none' : ''}`} />
-              {syncMutation.isPending ? 'Syncing...' : 'Sync to BibTeX'}
-            </Button>
-          </div>
-        ) : (
-          <div className="pt-2 border-t border-border/50 flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">
-              Link your Zotero account to enable collection sync.
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs motion-reduce:transition-none"
-              disabled={isConnecting}
-              onClick={() => connect('zotero')}
-            >
-              Connect Zotero
-            </Button>
-          </div>
-        )}
-      </div>
+            {p.isConnected ? (
+              <div className="pt-2 border-t border-border/50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="flex-1">
+                  <label className="text-11 text-muted-foreground block mb-1">
+                    {p.selectLabel}:
+                  </label>
+                  <Select
+                    value={p.selectedCollection}
+                    onValueChange={p.setSelectedCollection}
+                    disabled={p.isLoadingCollections}
+                  >
+                    <SelectTrigger aria-label={p.selectLabel} className="w-full sm:w-64 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                      <SelectValue
+                        placeholder={
+                          p.isLoadingCollections ? p.loadingPlaceholder : p.emptyPlaceholder
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {p.collections.map((col) => (
+                        <SelectItem key={col.id} value={col.id} className="cursor-pointer text-xs">
+                          {col.name} ({col.itemCount} items)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-      {/* Mendeley Section */}
-      <div className="p-4 rounded-md border border-border bg-card space-y-3 shadow-none">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="flex size-7 items-center justify-center rounded-md bg-muted/60 p-1.5 shrink-0">
-              <MendeleyIcon className="size-4 shrink-0" />
-            </div>
-            <div>
-              <h4 className="text-xs font-semibold text-foreground">Mendeley Integration</h4>
-              <p className="text-11 text-muted-foreground">Link your Elsevier Mendeley reference library</p>
-            </div>
+                <Button
+                  size="sm"
+                  className="h-8 text-xs self-end sm:self-auto gap-1.5 motion-reduce:transition-none"
+                  disabled={!p.selectedCollection || syncMutation.isPending}
+                  onClick={() => handleSyncProvider(p.id, p.selectedCollection, p.collections)}
+                >
+                  <RefreshCw className={`size-3.5 ${syncMutation.isPending ? 'animate-spin motion-reduce:animate-none' : ''}`} />
+                  {syncMutation.isPending ? 'Syncing...' : 'Sync to BibTeX'}
+                </Button>
+              </div>
+            ) : (
+              <div className="pt-2 border-t border-border/50 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  {p.disconnectHint}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs motion-reduce:transition-none"
+                  disabled={isConnecting}
+                  onClick={() => connect(p.id)}
+                >
+                  {p.connectButtonLabel}
+                </Button>
+              </div>
+            )}
           </div>
-
-          {isMendeleyConnected ? (
-            <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-xs gap-1">
-              <span className="size-1.5 rounded-full bg-success" />
-              Connected
-            </Badge>
-          ) : mendeleyIntegration?.needsReconnect ? (
-            <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-xs">
-              Reconnect Required
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="text-muted-foreground text-xs">
-              Not Connected
-            </Badge>
-          )}
-        </div>
-
-        {isMendeleyConnected ? (
-          <div className="pt-2 border-t border-border/50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <div className="flex-1">
-              <label className="text-11 text-muted-foreground block mb-1">
-                Select Mendeley Folder:
-              </label>
-              <Select
-                value={selectedMendeleyCollection}
-                onValueChange={setSelectedMendeleyCollection}
-                disabled={isLoadingMendeleyCollections}
-              >
-                <SelectTrigger aria-label="Select Mendeley Folder" className="w-full sm:w-64 h-8 text-xs font-medium cursor-pointer border-border bg-background">
-                  <SelectValue
-                    placeholder={
-                      isLoadingMendeleyCollections ? 'Loading folders...' : 'Choose a folder to sync'
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {mendeleyCollections.map((col) => (
-                    <SelectItem key={col.id} value={col.id} className="cursor-pointer text-xs">
-                      {col.name} ({col.itemCount} items)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button
-              size="sm"
-              className="h-8 text-xs self-end sm:self-auto gap-1.5 motion-reduce:transition-none"
-              disabled={!selectedMendeleyCollection || syncMutation.isPending}
-              onClick={handleSyncMendeley}
-            >
-              <RefreshCw className={`size-3.5 ${syncMutation.isPending ? 'animate-spin motion-reduce:animate-none' : ''}`} />
-              {syncMutation.isPending ? 'Syncing...' : 'Sync to BibTeX'}
-            </Button>
-          </div>
-        ) : (
-          <div className="pt-2 border-t border-border/50 flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">
-              Link your Mendeley account to enable folder sync.
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs motion-reduce:transition-none"
-              disabled={isConnecting}
-              onClick={() => connect('mendeley')}
-            >
-              Connect Mendeley
-            </Button>
-          </div>
-        )}
-      </div>
+        );
+      })}
     </div>
   );
 }
 
 export default ProjectReferencesTab;
+

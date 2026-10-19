@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseDocumentOutline, type OutlineEntry } from '@/features/editor/subsystems/compiler/synctex/pdf-outline';
-import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
+import { EditorEventBus } from '@/features/editor/core/bus/event-bus';
 
 describe('Phase 1 Parity: Document Outline Parsing (OutlineTab)', () => {
   const sampleLatex = `\\documentclass{article}

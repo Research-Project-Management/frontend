@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
+import { EditorEventBus } from '@/features/editor/core/bus/event-bus';
 import { usePageStore } from '@/features/editor/core';
 import { CodeMirrorEngineAdapter } from '@/features/editor/core/engine/adapters/codemirror.adapter';
 import { getPageChat, clearPageChat, streamEditorChat } from '@/features/ai/services/chat.service';

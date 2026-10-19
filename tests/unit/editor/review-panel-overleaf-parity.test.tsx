@@ -92,30 +92,32 @@ describe('Track Changes & Review Panel (Overleaf Parity)', () => {
     setActiveEditorEngine(null);
   });
 
-  describe('1. Layout Store Review Panel State & Dimensions', () => {
-    it('initializes reviewPanelOpen as false and reviewPanelWidth as 340', () => {
+  describe('1. Layout Store Review Sidebar Tab State & Dimensions', () => {
+    it('initializes activeSidebarTab as files, sidebarLeftOpen as true, and sidebarLeftWidth as 260', () => {
       const state = useWorkspaceStore.getState();
-      expect(state.reviewPanelOpen).toBe(false);
-      expect(state.reviewPanelWidth).toBe(340);
+      expect(state.activeSidebarTab).toBe('files');
+      expect(state.sidebarLeftOpen).toBe(true);
+      expect(state.sidebarLeftWidth).toBe(260);
     });
 
-    it('toggles reviewPanelOpen via toggleReviewPanel()', () => {
-      useWorkspaceStore.getState().toggleReviewPanel();
-      expect(useWorkspaceStore.getState().reviewPanelOpen).toBe(true);
+    it('switches to review sidebar tab and toggles via selectActivityTab("review")', () => {
+      useWorkspaceStore.getState().selectActivityTab('review');
+      expect(useWorkspaceStore.getState().activeSidebarTab).toBe('review');
+      expect(useWorkspaceStore.getState().sidebarLeftOpen).toBe(true);
 
-      useWorkspaceStore.getState().toggleReviewPanel();
-      expect(useWorkspaceStore.getState().reviewPanelOpen).toBe(false);
+      useWorkspaceStore.getState().selectActivityTab('review');
+      expect(useWorkspaceStore.getState().sidebarLeftOpen).toBe(false);
     });
 
-    it('sets reviewPanelWidth with boundaries clamped between 260 and 520', () => {
-      useWorkspaceStore.getState().setReviewPanelWidth(100);
-      expect(useWorkspaceStore.getState().reviewPanelWidth).toBe(260);
+    it('sets sidebarLeftWidth with boundaries clamped between 180 and 480', () => {
+      useWorkspaceStore.getState().setSidebarLeftWidth(100);
+      expect(useWorkspaceStore.getState().sidebarLeftWidth).toBe(180);
 
-      useWorkspaceStore.getState().setReviewPanelWidth(600);
-      expect(useWorkspaceStore.getState().reviewPanelWidth).toBe(520);
+      useWorkspaceStore.getState().setSidebarLeftWidth(600);
+      expect(useWorkspaceStore.getState().sidebarLeftWidth).toBe(480);
 
-      useWorkspaceStore.getState().setReviewPanelWidth(400);
-      expect(useWorkspaceStore.getState().reviewPanelWidth).toBe(400);
+      useWorkspaceStore.getState().setSidebarLeftWidth(340);
+      expect(useWorkspaceStore.getState().sidebarLeftWidth).toBe(340);
     });
   });
 

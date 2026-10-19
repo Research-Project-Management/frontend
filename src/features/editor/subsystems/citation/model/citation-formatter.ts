@@ -10,26 +10,40 @@ import type { BibEntry } from './bib-parser';
  * Regex matching LaTeX citation commands with optional square-bracket arguments:
  * \cite{...}, \citep{...}, \citet{...}, \autocite{...}, \nocite{...}, \parencite{...}, \citeauthor{...}, \citeyear{...}, etc.
  */
-const LATEX_CITE_REGEX =
-  /\\(?:auto|paren|text|foot|no|new|short)?cite(?:p|t|alt|alp|author|year|date|num)?\*?(?:\[[^\]]*\])?(?:\[[^\]]*\])?\{([^}]+)\}/gi;
+export const LATEX_CITE_REGEX =
+  /\\(?:auto|paren|text|foot|no|new|short)?cite(?:p|t|alt|alp|author|year|date|num|a)?\*?(?:\[[^\]]*\])*(?:\[[^\]]*\])*\{([^}]+)\}/gi;
 
 /**
  * Regex matching Pandoc-style bracketed Markdown citations:
  * [@smith2020; @jones2021] or [see @smith2020, p. 12]
  */
-const PANDOC_BRACKET_REGEX = /\[([^\]]*@[a-zA-Z0-9_:-]+[^\]]*)\]/g;
+export const PANDOC_BRACKET_REGEX = /\[([^\]]*@[a-zA-Z0-9_:-]+[^\]]*)\]/g;
 
 /**
  * Regex matching individual @citekey inside Markdown text or bracketed blocks.
  */
-const INLINE_CITEKEY_REGEX = /(?:^|[^\w\\])@([a-zA-Z0-9_:-]+)/g;
+export const INLINE_CITEKEY_REGEX = /(?:^|[^\w\\])@([a-zA-Z0-9_:-]+)/g;
+
+const COMMENT_STRIP_REGEX = /(^|[^\\])%.*$/gm;
+const CODE_BLOCK_STRIP_REGEX = /```[\s\S]*?```/g;
+const VALID_CITEKEY_REGEX = /^[a-zA-Z0-9_:-]+$/;
+const LATEX_TRIGGER_REGEX =
+  /\\(?:auto|paren|text|foot|no|new|short)?cite(?:p|t|alt|alp|author|year|date|num)?\*?(?:\[[^\]]*\])?(?:\[[^\]]*\])?\{([^}]*)$/i;
+const MD_BRACKET_TRIGGER_REGEX = /\[@([a-zA-Z0-9_:-]*)$/;
+const MD_MULTI_TRIGGER_REGEX = /;\s*@([a-zA-Z0-9_:-]*)$/;
+const NO_TRIGGER_RESULT: CitationTriggerContext = {
+  isTrigger: false,
+  format: 'latex',
+  searchPrefix: '',
+};
 
 /**
  * Strips LaTeX comments (% ...) while preserving escaped percent signs (\%).
  */
 export function stripLatexComments(raw: string): string {
   if (!raw) return '';
-  return raw.replace(/(^|[^\\])%.*$/gm, '$1');
+  if (raw.indexOf('%') === -1) return raw;
+  return raw.replace(COMMENT_STRIP_REGEX, '$1');
 }
 
 /**
@@ -37,7 +51,8 @@ export function stripLatexComments(raw: string): string {
  */
 export function stripCodeBlocks(raw: string): string {
   if (!raw) return '';
-  return raw.replace(/```[\s\S]*?```/g, '');
+  if (raw.indexOf('```') === -1) return raw;
+  return raw.replace(CODE_BLOCK_STRIP_REGEX, '');
 }
 
 /**
@@ -55,6 +70,7 @@ export function stripCodeBlocks(raw: string): string {
  */
 export function extractCitationKeys(text: string): string[] {
   if (!text || typeof text !== 'string') return [];
+  if (text.indexOf('\\') === -1 && text.indexOf('@') === -1) return [];
 
   // Sanitize document text to eliminate false positives from comments & code blocks
   const sanitizedText = stripLatexComments(stripCodeBlocks(text));
@@ -63,42 +79,46 @@ export function extractCitationKeys(text: string): string[] {
 
   // 1. Scan LaTeX citation commands
   let match: RegExpExecArray | null;
-  LATEX_CITE_REGEX.lastIndex = 0;
-  while ((match = LATEX_CITE_REGEX.exec(sanitizedText)) !== null) {
-    const rawKeys = match[1];
-    if (rawKeys) {
-      const splitKeys = rawKeys.split(',');
-      for (const rawKey of splitKeys) {
-        const clean = rawKey.trim();
-        if (clean && isValidCitekey(clean)) {
-          foundKeys.add(clean);
+  if (sanitizedText.indexOf('cite') !== -1) {
+    LATEX_CITE_REGEX.lastIndex = 0;
+    while ((match = LATEX_CITE_REGEX.exec(sanitizedText)) !== null) {
+      const rawKeys = match[1];
+      if (rawKeys) {
+        const splitKeys = rawKeys.split(',');
+        for (const rawKey of splitKeys) {
+          const clean = rawKey.trim();
+          if (clean && isValidCitekey(clean)) {
+            foundKeys.add(clean);
+          }
         }
       }
     }
   }
 
-  // 2. Scan Pandoc / Markdown bracketed citations
-  PANDOC_BRACKET_REGEX.lastIndex = 0;
-  while ((match = PANDOC_BRACKET_REGEX.exec(sanitizedText)) !== null) {
-    const bracketContent = match[1];
-    if (bracketContent) {
-      INLINE_CITEKEY_REGEX.lastIndex = 0;
-      let inlineMatch: RegExpExecArray | null;
-      while ((inlineMatch = INLINE_CITEKEY_REGEX.exec(bracketContent)) !== null) {
-        const key = inlineMatch[1]?.trim();
-        if (key && isValidCitekey(key)) {
-          foundKeys.add(key);
+  // 2. Scan Pandoc / Markdown bracketed citations & standalone @citekey
+  if (sanitizedText.indexOf('@') !== -1) {
+    PANDOC_BRACKET_REGEX.lastIndex = 0;
+    while ((match = PANDOC_BRACKET_REGEX.exec(sanitizedText)) !== null) {
+      const bracketContent = match[1];
+      if (bracketContent) {
+        INLINE_CITEKEY_REGEX.lastIndex = 0;
+        let inlineMatch: RegExpExecArray | null;
+        while ((inlineMatch = INLINE_CITEKEY_REGEX.exec(bracketContent)) !== null) {
+          const key = inlineMatch[1]?.trim();
+          if (key && isValidCitekey(key)) {
+            foundKeys.add(key);
+          }
         }
       }
     }
-  }
 
-  // 3. Scan standalone @citekey in markdown prose
-  INLINE_CITEKEY_REGEX.lastIndex = 0;
-  while ((match = INLINE_CITEKEY_REGEX.exec(sanitizedText)) !== null) {
-    const key = match[1]?.trim();
-    if (key && isValidCitekey(key)) {
-      foundKeys.add(key);
+    // 3. Scan standalone @citekey in markdown prose
+    INLINE_CITEKEY_REGEX.lastIndex = 0;
+    while ((match = INLINE_CITEKEY_REGEX.exec(sanitizedText)) !== null) {
+      const key = match[1]?.trim();
+      if (key && isValidCitekey(key)) {
+        foundKeys.add(key);
+      }
     }
   }
 
@@ -112,7 +132,7 @@ export function extractCitationKeys(text: string): string[] {
 function isValidCitekey(key: string): boolean {
   if (!key || key.length < 2) return false;
   // Valid citekeys typically contain letters, digits, underscores, colons, and hyphens
-  return /^[a-zA-Z0-9_:-]+$/.test(key);
+  return VALID_CITEKEY_REGEX.test(key);
 }
 
 export type CitationTriggerFormat = 'latex' | 'markdown';
@@ -134,13 +154,14 @@ export interface CitationTriggerContext {
  */
 export function detectCitationTrigger(lineBeforeCursor: string): CitationTriggerContext {
   if (!lineBeforeCursor) {
-    return { isTrigger: false, format: 'latex', searchPrefix: '' };
+    return NO_TRIGGER_RESULT;
+  }
+  if (lineBeforeCursor.indexOf('\\') === -1 && lineBeforeCursor.indexOf('@') === -1) {
+    return NO_TRIGGER_RESULT;
   }
 
   // LaTeX trigger check: matches \cite...{ prefix
-  const latexMatch = lineBeforeCursor.match(
-    /\\(?:auto|paren|text|foot|no|new|short)?cite(?:p|t|alt|alp|author|year|date|num)?\*?(?:\[[^\]]*\])?(?:\[[^\]]*\])?\{([^}]*)$/i,
-  );
+  const latexMatch = lineBeforeCursor.match(LATEX_TRIGGER_REGEX);
   if (latexMatch) {
     const currentParam = latexMatch[1] ?? '';
     // If comma-separated, get the part after the last comma
@@ -154,7 +175,7 @@ export function detectCitationTrigger(lineBeforeCursor: string): CitationTrigger
   }
 
   // Markdown Pandoc trigger check: matches [@... or ; @...
-  const mdBracketMatch = lineBeforeCursor.match(/\[@([a-zA-Z0-9_:-]*)$/);
+  const mdBracketMatch = lineBeforeCursor.match(MD_BRACKET_TRIGGER_REGEX);
   if (mdBracketMatch) {
     return {
       isTrigger: true,
@@ -163,7 +184,7 @@ export function detectCitationTrigger(lineBeforeCursor: string): CitationTrigger
     };
   }
 
-  const mdMultiMatch = lineBeforeCursor.match(/;\s*@([a-zA-Z0-9_:-]*)$/);
+  const mdMultiMatch = lineBeforeCursor.match(MD_MULTI_TRIGGER_REGEX);
   if (mdMultiMatch) {
     return {
       isTrigger: true,
@@ -172,7 +193,7 @@ export function detectCitationTrigger(lineBeforeCursor: string): CitationTrigger
     };
   }
 
-  return { isTrigger: false, format: 'latex', searchPrefix: '' };
+  return NO_TRIGGER_RESULT;
 }
 
 /**
@@ -325,8 +346,9 @@ export function formatShortAuthor(rawAuthorStr?: string): string {
 /**
  * Formats an in-text citation preview e.g. "(Nguyen et al., 2024)"
  */
-export function formatInTextCitationPreview(entry: { author?: string; year?: string }): string {
-  const authorShort = formatShortAuthor(entry.author);
+export function formatInTextCitationPreview(entry: { author?: string; authors?: string[]; year?: string }): string {
+  const rawAuthor = entry.author || (entry.authors && entry.authors.length > 0 ? entry.authors.join(' and ') : undefined);
+  const authorShort = formatShortAuthor(rawAuthor);
   const yearStr = entry.year || 'n.d.';
   if (!authorShort) return `(${yearStr})`;
   return `(${authorShort}, ${yearStr})`;
@@ -337,19 +359,33 @@ export function formatInTextCitationPreview(entry: { author?: string; year?: str
  */
 export function formatBibliographyPreview(entry: {
   author?: string;
+  authors?: string[];
   title?: string;
   journal?: string;
   booktitle?: string;
   year?: string;
   doi?: string;
 }): string {
-  const authorShort = formatShortAuthor(entry.author) || 'Anonymous';
+  const rawAuthor = entry.author || (entry.authors && entry.authors.length > 0 ? entry.authors.join(' and ') : undefined);
+  const authorShort = formatShortAuthor(rawAuthor) || 'Anonymous';
   const yearStr = entry.year ? `(${entry.year})` : '(n.d.)';
   const titleStr = entry.title ? `"${entry.title}"` : 'Untitled document';
   const pub = entry.journal || entry.booktitle || '';
   const pubPart = pub ? `. ${pub}` : '';
   const doiPart = entry.doi ? `. DOI: ${entry.doi}` : '';
   return `${authorShort} ${yearStr}. ${titleStr}${pubPart}${doiPart}`;
+}
+
+/**
+ * Returns a human-readable author summary string for a BibEntry.
+ */
+export function formatBibEntryAuthorSummary(entry: Pick<BibEntry, 'authors'>): string {
+  if (entry.authors && entry.authors.length > 0) {
+    return entry.authors.length <= 2
+      ? entry.authors.join(' & ')
+      : `${entry.authors[0]} et al.`;
+  }
+  return 'Unknown author';
 }
 
 /**
@@ -399,8 +435,8 @@ export function formatItemToBibtex(item: Item): string {
       .filter(Boolean);
     if (names.length > 0) fields.push(`  author = {${names.join(' and ')}}`);
   }
-  if (item.journal || item.publicationTitle) {
-    fields.push(`  journal = {${item.journal || item.publicationTitle}}`);
+  if (item.publicationTitle) {
+    fields.push(`  journal = {${item.publicationTitle}}`);
   }
   if (item.year) fields.push(`  year = {${item.year}}`);
   if (item.doi) fields.push(`  doi = {${item.doi}}`);

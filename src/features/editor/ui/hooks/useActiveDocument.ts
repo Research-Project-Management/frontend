@@ -14,10 +14,12 @@ import { useEffect, useMemo, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import { workspaceCoordinator, usePageStore, useTabsStore, useSettingsStore } from '@/features/editor/core';
+import { workspaceCoordinator, usePageStore, useWorkspaceStore, useSettingsStore } from '@/features/editor/core';
 import { pageQuery, filesQuery } from './document.queries';
 import { extractProjectId, type Page } from '@/features/editor/domain/types/core.types';
 import type { NodeTreeItem } from '@/features/editor/domain/types/node.types';
+
+import type { WorkspaceTab } from '@/features/editor/domain/types/workspace.types';
 
 /**
  * Canonical helper to synchronize a tab across both pageId and projectId scopes
@@ -25,11 +27,15 @@ import type { NodeTreeItem } from '@/features/editor/domain/types/node.types';
  */
 function syncWorkspaceTabs(
   scopes: Array<string | null | undefined>,
-  tab: { id: string; title: string; path?: string },
-  options: { onlyIfUninitialized?: boolean; openTab: (pid: string, t: { id: string; title: string; path?: string }) => void; setActive: (pid: string, id: string) => void },
+  tab: { id: string; title: string; path?: string; isDirty?: boolean; isPinned?: boolean },
+  options: {
+    onlyIfUninitialized?: boolean;
+    openTab: (pid: string, t: Omit<WorkspaceTab, 'lastAccessedAt'>) => void;
+    setActive: (pid: string, id: string) => void;
+  },
 ): void {
   const seen = new Set<string>();
-  const tabsByProject = useTabsStore.getState().tabsByProject;
+  const tabsByProject = useWorkspaceStore.getState().tabsByProject;
 
   for (const rawScope of scopes) {
     if (!rawScope || seen.has(rawScope)) continue;
@@ -39,7 +45,13 @@ function syncWorkspaceTabs(
       continue;
     }
 
-    options.openTab(rawScope, tab);
+    options.openTab(rawScope, {
+      id: tab.id,
+      title: tab.title,
+      path: tab.path ?? tab.title,
+      isDirty: tab.isDirty ?? false,
+      isPinned: tab.isPinned ?? true,
+    });
     options.setActive(rawScope, tab.id);
   }
 }
@@ -96,8 +108,8 @@ export function useActiveDocument() {
       : (parentPage?.mainFile as Page | undefined)?.id ||
         (parentPage as { mainFileId?: string })?.mainFileId;
 
-  const storeActiveFilePage = usePageStore((s) => s.activeFilePage);
-  const activeTabId = useTabsStore((s) => {
+  const storeActiveFileId = usePageStore((s) => s.activeFilePage?.id ?? null);
+  const activeTabId = useWorkspaceStore((s) => {
     for (const key of [effectiveProjectId, pageId, projectId]) {
       if (key && s.activeByProject[key]) {
         return s.activeByProject[key];
@@ -109,7 +121,7 @@ export function useActiveDocument() {
   // Synchronously resolve active file ID: in-memory active tab or pageStore.activeFilePage takes precedence
   const resolvedFileId =
     activeTabId ||
-    (storeActiveFilePage?.id && storeActiveFilePage.id !== pageId ? storeActiveFilePage.id : null) ||
+    (storeActiveFileId && storeActiveFileId !== pageId ? storeActiveFileId : null) ||
     fileId;
 
   const isMainFile =
@@ -131,38 +143,27 @@ export function useActiveDocument() {
     if (activeFileDoc) return activeFileDoc;
     const meta = childFiles.find((f) => f.id === resolvedFileId || f.title === resolvedFileId);
     if (meta && typeof meta.content === 'string' && meta.content.length > 0) return meta;
-    if (storeActiveFilePage && storeActiveFilePage.id === resolvedFileId) {
-      return storeActiveFilePage;
+    const currentStoreFile = usePageStore.getState().activeFilePage;
+    if (currentStoreFile && currentStoreFile.id === resolvedFileId) {
+      return currentStoreFile;
     }
     return undefined;
-  }, [resolvedFileId, isMainFile, activeFileDoc, childFiles, storeActiveFilePage]);
+  }, [resolvedFileId, isMainFile, activeFileDoc, childFiles, storeActiveFileId]);
 
   const setCurrentPage = usePageStore((s) => s.setCurrentPage);
   const setActiveFilePage = usePageStore((s) => s.setActiveFilePage);
-  const setFileHierarchy = usePageStore((s) => s.setFileHierarchy);
   const setActivePageId = usePageStore((s) => s.setActivePageId);
   const setParentPageId = usePageStore((s) => s.setParentPageId);
   const setProjectId = usePageStore((s) => s.setProjectId);
   const activePageId = usePageStore((s) => s.activePageId);
 
-  const openTab = useTabsStore((s) => s.openTab);
-  const setActive = useTabsStore((s) => s.setActive);
+  const openTab = useWorkspaceStore((s) => s.openTab);
+  const setActive = useWorkspaceStore((s) => s.setActiveTab);
 
   useEffect(() => {
     if (effectiveProjectId && typeof setProjectId === 'function') setProjectId(effectiveProjectId);
     if (pageId && typeof setParentPageId === 'function') setParentPageId(pageId);
   }, [effectiveProjectId, pageId, setProjectId, setParentPageId]);
-
-  useEffect(() => {
-    if (parentPage && typeof setFileHierarchy === 'function') {
-      const hierarchy = Array.isArray(parentPage)
-        ? (parentPage as NodeTreeItem[])
-        : Array.isArray((parentPage as unknown as { children?: NodeTreeItem[] }).children)
-          ? (parentPage as unknown as { children: NodeTreeItem[] }).children
-          : null;
-      setFileHierarchy(hierarchy);
-    }
-  }, [parentPage, setFileHierarchy]);
 
   // Proactively index all project files for 0ms cross-file \cite, \ref, and DAG symbols
   useEffect(() => {

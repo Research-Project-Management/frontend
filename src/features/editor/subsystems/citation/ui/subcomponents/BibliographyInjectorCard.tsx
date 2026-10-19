@@ -12,13 +12,19 @@ import {
   buildBibliographySection,
   injectBibliographyIntoDocument,
 } from '@/features/editor/subsystems/citation/model/bibliography-generator';
-import type { EditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
+import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
+import {
+  editorCommandBus,
+  sessionCoordinator,
+  usePageStore,
+} from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
 export interface BibliographyInjectorCardProps {
   citedCount: number;
   citedItems: Item[];
   projectId?: string;
-  engine?: EditorEngine | null;
+  engine?: IEditorEngine | null;
   getContent?: () => string;
   refreshContent?: () => void;
   activeFilePath?: string;
@@ -85,10 +91,18 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
         format,
       });
 
+      const activeDocId = usePageStore.getState().getActiveDocumentId();
+      if (activeDocId) {
+        lruDocumentCache.updateContent(activeDocId, nextContent, true);
+        sessionCoordinator.notifyContentChange(activeDocId, nextContent);
+      }
+
       if (engine && typeof engine.setContent === 'function') {
         engine.setContent(nextContent);
-        if (refreshContent) refreshContent();
+      } else {
+        editorCommandBus.dispatch({ type: 'editor:set-content', content: nextContent });
       }
+      if (refreshContent) refreshContent();
 
       const actionText = action === 'replaced' ? 'Updated' : 'Inserted';
       toast.success(

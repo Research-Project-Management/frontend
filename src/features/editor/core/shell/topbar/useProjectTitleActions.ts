@@ -45,8 +45,17 @@ export function useProjectTitleActions({
   const router = useRouter();
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
 
-  const { downloadPdf, exportZip, exportWord, exportMarkdown, exportHtml } = useProjectExport();
-  const { updateTitle: updateTitleMutation, duplicatePage: duplicatePageMutation } = usePageActions();
+  const {
+    isExporting,
+    downloadPdf,
+    downloadCopy,
+    exportZip,
+    exportArxiv,
+    exportWord,
+    exportMarkdown,
+    exportHtml,
+  } = useProjectExport();
+  const { updateTitle: updateTitleMutation } = usePageActions();
   const updateProjectMutation = useUpdateProject();
   const duplicateProjectMutation = useDuplicateProject();
 
@@ -55,7 +64,7 @@ export function useProjectTitleActions({
   }, [downloadPdf, pdfUrl, displayTitle]);
 
   const handleDownloadZip = useCallback(() => {
-    const rootId = effectiveProjectId || fallbackRootId || currentPage?.id;
+    const rootId = fallbackRootId || effectiveProjectId || currentPage?.id;
     if (!rootId) {
       toast.error('Unable to find project or document ID');
       return;
@@ -67,10 +76,25 @@ export function useProjectTitleActions({
       activeFileId: activeFilePage?.id,
       activeFileTitle: activeFilePage?.title,
     });
-  }, [effectiveProjectId, fallbackRootId, currentPage?.id, displayTitle, getContent, activeFilePage, exportZip]);
+  }, [effectiveProjectId, fallbackRootId, currentPage?.id, displayTitle, getContent, activeFilePage?.id, activeFilePage?.title, exportZip]);
+
+  const handleDownloadArxiv = useCallback(() => {
+    const rootId = fallbackRootId || effectiveProjectId || currentPage?.id;
+    if (!rootId) {
+      toast.error('Unable to find project or document ID');
+      return;
+    }
+    exportArxiv({
+      parentPageId: rootId,
+      projectTitle: displayTitle,
+      currentContent: getContent(),
+      activeFileId: activeFilePage?.id,
+      activeFileTitle: activeFilePage?.title,
+    });
+  }, [effectiveProjectId, fallbackRootId, currentPage?.id, displayTitle, getContent, activeFilePage?.id, activeFilePage?.title, exportArxiv]);
 
   const handleExportWord = useCallback(() => {
-    const docId = currentPage?.id || effectiveProjectId;
+    const docId = fallbackRootId || effectiveProjectId || currentPage?.id;
     if (!docId) {
       toast.error('Unable to find document content');
       return;
@@ -79,16 +103,16 @@ export function useProjectTitleActions({
       pageId: docId,
       projectTitle: displayTitle,
     });
-  }, [currentPage?.id, effectiveProjectId, displayTitle, exportWord]);
+  }, [fallbackRootId, currentPage?.id, effectiveProjectId, displayTitle, exportWord]);
 
   const handleExportMarkdown = useCallback(() => {
-    const docId = currentPage?.id || effectiveProjectId;
+    const docId = fallbackRootId || effectiveProjectId || currentPage?.id;
     exportMarkdown({
       pageId: docId || '',
       projectTitle: displayTitle,
       fallbackContent: getContent(),
     });
-  }, [currentPage?.id, effectiveProjectId, displayTitle, getContent, exportMarkdown]);
+  }, [fallbackRootId, currentPage?.id, effectiveProjectId, displayTitle, getContent, exportMarkdown]);
 
   const handleExportHtml = useCallback(() => {
     exportHtml({
@@ -131,48 +155,42 @@ export function useProjectTitleActions({
     [effectiveProjectId, currentPage?.id, displayTitle, updateProjectMutation, updateTitleMutation],
   );
 
-  const handleApplyCopy = useCallback(
-    async (copyName: string): Promise<boolean> => {
-      const trimmed = copyName.trim();
-      if (!trimmed) return false;
-
+  const handleMakeCopy = useCallback(async () => {
+    if (effectiveProjectId) {
+      const toastId = toast.loading('Duplicating project...');
       setIsSubmittingAction(true);
       try {
-        if (effectiveProjectId) {
-          const res = (await duplicateProjectMutation.mutateAsync({
-            projectId: effectiveProjectId,
-          })) as { project?: { id?: string }; data?: { project?: { id?: string } }; id?: string } | null;
-
-          const newProjId = res?.project?.id || res?.data?.project?.id || res?.id;
-          if (newProjId) {
-            toast.success(`Created copy: "${trimmed}"`, { id: 'copy-project' });
-            router.push(`/projects/${newProjId}/pages`);
-            return true;
-          }
-        } else if (currentPage?.id) {
-          await duplicatePageMutation.mutateAsync(currentPage.id);
-          toast.success(`Created copy: "${trimmed}"`, { id: 'copy-project' });
-          return true;
+        const res = (await duplicateProjectMutation.mutateAsync({
+          projectId: effectiveProjectId,
+        })) as { project?: { id?: string }; data?: { project?: { id?: string } }; id?: string } | null;
+        const newProjId = res?.project?.id || res?.data?.project?.id || res?.id;
+        toast.success('Project duplicated successfully!', { id: toastId });
+        if (newProjId) {
+          router.push(`/projects/${newProjId}/editor`);
         }
-        return false;
       } catch (err: unknown) {
-        toast.error((err as Error)?.message || 'Failed to create copy', { id: 'copy-project' });
-        return false;
+        const message = err instanceof Error ? err.message : 'Failed to duplicate project, downloading backup file instead.';
+        toast.error(message, { id: toastId });
+        downloadCopy(getContent(), activeFilePage?.title || displayTitle);
       } finally {
         setIsSubmittingAction(false);
       }
-    },
-    [effectiveProjectId, currentPage?.id, duplicateProjectMutation, duplicatePageMutation, router],
-  );
+    } else {
+      downloadCopy(getContent(), activeFilePage?.title || displayTitle);
+    }
+  }, [effectiveProjectId, duplicateProjectMutation, router, downloadCopy, getContent, activeFilePage?.title, displayTitle]);
 
   return {
     isSubmittingAction,
+    isCopying: isSubmittingAction,
+    isExporting,
     handleDownloadPdf,
     handleDownloadZip,
+    handleDownloadArxiv,
     handleExportWord,
     handleExportMarkdown,
     handleExportHtml,
     handleApplyRename,
-    handleApplyCopy,
+    handleMakeCopy,
   };
 }

@@ -363,6 +363,10 @@ export class LRUDocumentCache {
     this.notify(fileId, model);
   }
 
+  public markSaved(fileId: string): void {
+    this.markClean(fileId);
+  }
+
   /**
    * Returns all currently dirty models.
    */
@@ -397,6 +401,21 @@ export class LRUDocumentCache {
   public clearAll(): void {
     for (const node of Array.from(this.lruNodes.values())) {
       this.evictLRUNode(node);
+    }
+    this.models.clear();
+    this.lruNodes.clear();
+    this.head = null;
+    this.tail = null;
+    this.activeFileId = null;
+  }
+
+  /**
+   * Discards all models from RAM immediately without persisting dirty models to persistenceSink.
+   * Used when remote state (e.g. GitHub Pull) authoritatively replaces local workspace files.
+   */
+  public discardAll(): void {
+    for (const model of this.models.values()) {
+      model.yText = null;
     }
     this.models.clear();
     this.lruNodes.clear();
@@ -515,6 +534,7 @@ export class LRUDocumentCache {
           listener(fileId, model);
         } catch {}
       }
+      model.yText = null;
     }
   }
 

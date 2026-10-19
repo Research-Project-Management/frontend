@@ -191,7 +191,7 @@ describe('Editor Real-Time Collaboration & Auto-Save Subsystem', () => {
 
       // Should emit exactly 1 merged frame instead of 5 separate socket calls
       expect(emittedMessages).toHaveLength(1);
-      expect(emittedMessages[0].event).toBe('doc:sync-update');
+      expect(emittedMessages[0].event).toBe('doc:sync:update');
       expect(emittedMessages[0].payload.data).toBeInstanceOf(Uint8Array);
       expect((provider as any).pendingUpdates.length).toBe(0);
 

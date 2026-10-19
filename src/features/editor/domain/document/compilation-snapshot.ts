@@ -13,6 +13,7 @@
  */
 
 import { normalizeLatexPath } from '@/features/editor/domain/latex/latex-dag-engine';
+import { extractDocumentContentString } from '../types/core.types';
 
 export interface ProjectCompilationSnapshot {
   revisionId: string;
@@ -57,15 +58,6 @@ export interface SnapshotActiveDoc {
   name?: string | null;
   path?: string | null;
   content?: SnapshotContentValue;
-}
-
-function extractSnapshotText(raw: SnapshotContentValue): string {
-  if (typeof raw === 'string') return raw;
-  if (raw && typeof raw === 'object') {
-    const obj = raw as { source?: string; text?: string; content?: string };
-    return obj.source || obj.text || obj.content || '';
-  }
-  return '';
 }
 
 export interface AssembleSnapshotParams {
@@ -139,11 +131,7 @@ export function assembleCompilationSnapshot(params: AssembleSnapshotParams): Pro
   if (params.baseFiles && params.baseFiles.length > 0) {
     for (const file of params.baseFiles) {
       const path = resolveSnapshotFilePath(file.id, file.path || file.title || file.name, pathIndex);
-      const text = extractSnapshotText(file.content);
-      filesMap[path] = text;
-      if (file.id && file.id !== path) {
-        filesMap[file.id] = text;
-      }
+      filesMap[path] = extractDocumentContentString(file.content);
     }
   }
 
@@ -154,11 +142,7 @@ export function assembleCompilationSnapshot(params: AssembleSnapshotParams): Pro
       params.currentPage.path || params.currentPage.title || params.currentPage.name,
       pathIndex,
     );
-    const text = extractSnapshotText(params.currentPage.content);
-    filesMap[fallbackPath] = text;
-    if (params.currentPage.id && params.currentPage.id !== fallbackPath) {
-      filesMap[params.currentPage.id] = text;
-    }
+    filesMap[fallbackPath] = extractDocumentContentString(params.currentPage.content);
   }
 
   // 3. Overlay LRU cache models (in-memory buffers for recently edited tabs)
@@ -167,9 +151,6 @@ export function assembleCompilationSnapshot(params: AssembleSnapshotParams): Pro
       if (typeof model.content === 'string') {
         const path = resolveSnapshotFilePath(model.fileId, model.filePath, pathIndex);
         filesMap[path] = model.content;
-        if (model.fileId && model.fileId !== path) {
-          filesMap[model.fileId] = model.content;
-        }
         if (model.isDirty) {
           dirtyFileIdsSet.add(model.fileId);
         }
@@ -185,9 +166,6 @@ export function assembleCompilationSnapshot(params: AssembleSnapshotParams): Pro
       if (mappedPath) {
         const normPath = normalizeLatexPath(mappedPath);
         filesMap[normPath] = dirty.content;
-        if (dirty.fileId && dirty.fileId !== normPath) {
-          filesMap[dirty.fileId] = dirty.content;
-        }
       } else if (
         params.activeDoc &&
         dirty.fileId === params.activeDoc.id &&
@@ -199,9 +177,6 @@ export function assembleCompilationSnapshot(params: AssembleSnapshotParams): Pro
           pathIndex,
         );
         filesMap[normPath] = dirty.content;
-        if (dirty.fileId && dirty.fileId !== normPath) {
-          filesMap[dirty.fileId] = dirty.content;
-        }
       }
     }
   }
@@ -217,11 +192,8 @@ export function assembleCompilationSnapshot(params: AssembleSnapshotParams): Pro
     const liveText =
       typeof params.activeContent === 'string'
         ? params.activeContent
-        : extractSnapshotText(params.activeDoc.content);
+        : extractDocumentContentString(params.activeDoc.content);
     filesMap[activeFilePath] = liveText;
-    if (params.activeDoc.id && params.activeDoc.id !== activeFilePath) {
-      filesMap[params.activeDoc.id] = liveText;
-    }
   } else if (typeof params.activeContent === 'string') {
     filesMap[activeFilePath] = params.activeContent;
   }

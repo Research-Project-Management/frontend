@@ -21,7 +21,7 @@ class FakeSocket {
   emit(event: string, payload?: any, ack?: Handler) {
     this.emitted.push({ event, payload });
     if (event === 'doc:join') ack?.({ success: true, docPresence: [] });
-    if (event === 'doc:sync-step-1') ack?.({ success: false });
+    if (event === 'doc:sync:step1') ack?.({ success: false });
     return this;
   }
   connect() {
@@ -49,7 +49,7 @@ vi.mock('socket.io-client', () => ({
 import { YjsSocketIOProvider, clearYjsProviderPool } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 
 function decodeUpdatesInto(target: Y.Doc, emitted: Array<{ event: string; payload: any }>) {
-  for (const e of emitted.filter((x) => x.event === 'doc:sync-update')) {
+  for (const e of emitted.filter((x) => x.event === 'doc:sync:update')) {
     const decoder = decoding.createDecoder(e.payload.data);
     syncProtocol.readSyncMessage(decoder, { } as any, target, 'test');
   }
@@ -75,7 +75,7 @@ describe('YjsSocketIOProvider offline update queue', () => {
     // Socket never connected: edits must be retained, not dropped.
     provider.yText.insert(0, 'offline edit');
     expect(provider.pendingUpdateCount).toBeGreaterThan(0);
-    expect(fake.emitted.filter((e) => e.event === 'doc:sync-update')).toHaveLength(0);
+    expect(fake.emitted.filter((e) => e.event === 'doc:sync:update')).toHaveLength(0);
 
     // Reconnect
     fake.connected = true;
@@ -102,7 +102,7 @@ describe('YjsSocketIOProvider offline update queue', () => {
     provider.yText.insert(3, 'def');
     fake.connected = true;
     fake.fire('connect');
-    const updates = fake.emitted.filter((e) => e.event === 'doc:sync-update');
+    const updates = fake.emitted.filter((e) => e.event === 'doc:sync:update');
     expect(updates.length).toBe(1);
     const server = new Y.Doc();
     decodeUpdatesInto(server, fake.emitted);

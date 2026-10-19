@@ -17,8 +17,6 @@ export const pageKeys = {
   deletedFiles: (pageId: string) => ['pages', 'detail', pageId, 'deleted-files'] as const,
 };
 
-export const editorPageKeys = pageKeys;
-
 // ── 2. Query Options ─────────────────────────────────────────────────────────
 
 export const pageQuery = (pageId: string) =>
@@ -48,6 +46,3 @@ export const deletedFilesQuery = (pageId: string) =>
     },
   });
 
-export const pageDetailQueryOptions = pageQuery;
-export const pageFilesQueryOptions = filesQuery;
-export const pageDeletedFilesQueryOptions = deletedFilesQuery;

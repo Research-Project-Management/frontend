@@ -13,6 +13,8 @@
  * - Pure TypeScript with zero UI or DOM dependencies; 100% testable.
  */
 
+import { PANDOC_BRACKET_REGEX } from './citation-formatter';
+
 export interface ValidateKeyResult {
   isValid: boolean;
   error?: string;
@@ -146,10 +148,10 @@ export function refactorCitationKeyInLatex(
   const targetLower = oldKey.toLowerCase();
 
   // 1. LaTeX citation commands regex matching \cite, \citep, \citet, \newcite, \shortcite, \autocite, \nocite, etc.
-  const LATEX_CITE_REGEX =
+  const LATEX_CITE_REPLACE_REGEX =
     /(\\(?:auto|paren|text|foot|no|new|short)?cite(?:p|t|alt|alp|author|year|date|num|a)?\*?(?:\[[^\]]*\])*(?:\[[^\]]*\])*\{)([^}]+)(\})/gi;
 
-  let updated = text.replace(LATEX_CITE_REGEX, (_fullMatch, prefix, innerKeys, suffix) => {
+  let updated = text.replace(LATEX_CITE_REPLACE_REGEX, (_fullMatch, prefix, innerKeys, suffix) => {
     const parts = innerKeys.split(',');
     let modified = false;
 
@@ -173,7 +175,6 @@ export function refactorCitationKeyInLatex(
   });
 
   // 2. Pandoc bracketed citations: [@key1; @key2, p. 20]
-  const PANDOC_BRACKET_REGEX = /\[([^\]]*@[a-zA-Z0-9_:-]+[^\]]*)\]/g;
   updated = updated.replace(PANDOC_BRACKET_REGEX, (fullBracket, inner) => {
     const atRegex = new RegExp(`(@)(${escapeRegex(oldKey)})(?=[\\s,;\\]]|\$)`, 'gi');
     let bracketModified = false;
@@ -234,3 +235,203 @@ export function refactorCitationKeyAcrossFiles(
 
   return { modifiedFiles, totalCount };
 }
+
+/**
+ * Orchestrates project-wide citation key refactoring across backend files, LRU cache,
+ * symbol index, DAG engine, and the active CodeMirror buffer.
+ */
+export async function executeProjectCitekeyRefactor(
+  oldKey: string,
+  newKey: string,
+  optProjectId?: string
+): Promise<{ success: boolean; modifiedCount: number; replacedCount: number }> {
+  const { toast } = await import('sonner');
+  const validation = validateCitationKey(newKey, oldKey);
+  if (!validation.isValid) {
+    toast.error(validation.error || 'Invalid citation key', { id: 'refactor-citekey' });
+    return { success: false, modifiedCount: 0, replacedCount: 0 };
+  }
+
+  const {
+    usePageStore,
+    editorCommandBus,
+    getActiveEditorEngine,
+    workspaceCoordinator,
+    sessionCoordinator,
+  } = await import('@/features/editor/core');
+  const { manuscriptService, fileService } = await import('@/features/editor/sdk/manuscript.service');
+  const { lruDocumentCache } = await import('@/features/editor/domain/document/lru-document-cache');
+  const { extractDocumentContentString } = await import('@/features/editor/domain/types/core.types');
+  const { latexSymbolsIndex } = await import('@/features/editor/domain/latex/latex-symbols-index');
+  const { latexDagEngine } = await import('@/features/editor/domain/latex/latex-dag-engine');
+  const { applyTextDiff } = await import('@/features/editor/sdk/realtime/yjs-socket-provider');
+
+  const pageState = usePageStore.getState();
+  const activeDoc = pageState.getActiveDocument();
+  const activeDocId = activeDoc?.id ?? null;
+  const effectiveProjectId =
+    optProjectId ||
+    pageState.projectId ||
+    pageState.parentPageId ||
+    activeDoc?.id ||
+    '';
+
+  if (!effectiveProjectId) {
+    toast.error('No active project found', { id: 'refactor-citekey' });
+    return { success: false, modifiedCount: 0, replacedCount: 0 };
+  }
+
+  const fileMap = new Map<string, { id: string; path: string; content: string }>();
+
+  // 1. Include files registered in workspaceCoordinator
+  const wsFiles = workspaceCoordinator.getProjectFiles() || [];
+  for (const wf of wsFiles) {
+    if (wf.id) {
+      const cached = lruDocumentCache.get(wf.id);
+      fileMap.set(wf.id, {
+        id: wf.id,
+        path: cached?.filePath || wf.path || wf.title || '',
+        content: cached?.content ?? extractDocumentContentString(wf.content),
+      });
+    }
+  }
+
+  // 2. Fetch backend files and merge (preferring unsaved local edits in lruDocumentCache)
+  try {
+    const files = await fileService.getByPageId(effectiveProjectId);
+    for (const f of files) {
+      if (f.id) {
+        const cached = lruDocumentCache.get(f.id);
+        fileMap.set(f.id, {
+          id: f.id,
+          path: cached?.filePath || f.title || '',
+          content: cached?.content ?? f.content ?? '',
+        });
+      }
+    }
+  } catch {
+    // Non-blocking fallback to cache and active doc
+  }
+
+  if (fileMap.size === 0 && activeDoc?.id && activeDoc.id !== effectiveProjectId) {
+    try {
+      const pageFiles = await fileService.getByPageId(activeDoc.id);
+      for (const f of pageFiles) {
+        if (f.id) {
+          const cached = lruDocumentCache.get(f.id);
+          fileMap.set(f.id, {
+            id: f.id,
+            path: cached?.filePath || f.title || '',
+            content: cached?.content ?? f.content ?? '',
+          });
+        }
+      }
+    } catch {
+      // Ignore fallback error
+    }
+  }
+
+  // 3. Ensure all models in lruDocumentCache take precedence over server snapshots
+  const cachedModels = lruDocumentCache.getAllModels();
+  for (const m of cachedModels) {
+    if (m.fileId) {
+      fileMap.set(m.fileId, {
+        id: m.fileId,
+        path: m.filePath,
+        content: m.content,
+      });
+    }
+  }
+
+  const liveEngine = getActiveEditorEngine();
+  if (activeDocId) {
+    const activeDocMatches = activeDoc?.id === activeDocId;
+    const cachedActive = lruDocumentCache.get(activeDocId);
+    const liveContent =
+      liveEngine?.getContent?.() ||
+      cachedActive?.content ||
+      (activeDocMatches ? extractDocumentContentString(activeDoc) : '') ||
+      fileMap.get(activeDocId)?.content ||
+      '';
+    const activePath =
+      cachedActive?.filePath ||
+      (activeDocMatches
+        ? (activeDoc as { title?: string; name?: string })?.title ||
+          (activeDoc as { title?: string; name?: string })?.name
+        : null) ||
+      fileMap.get(activeDocId)?.path ||
+      'main.tex';
+    if (liveContent) {
+      fileMap.set(activeDocId, {
+        id: activeDocId,
+        path: activePath,
+        content: liveContent,
+      });
+    }
+  }
+
+  const projectFiles = Array.from(fileMap.values());
+  const { modifiedFiles, totalCount } = refactorCitationKeyAcrossFiles(projectFiles, oldKey, newKey);
+
+  if (modifiedFiles.length === 0) {
+    toast.info(`No citations found referencing @${oldKey}`, { id: 'refactor-citekey' });
+    return { success: true, modifiedCount: 0, replacedCount: 0 };
+  }
+
+  const Y = await import('yjs');
+
+  for (const mod of modifiedFiles) {
+    const model = lruDocumentCache.getModel(mod.id);
+    const yText = model?.yText instanceof Y.Text ? model.yText : null;
+    if (yText) {
+      try {
+        if (yText.doc) {
+          yText.doc.transact(() => {
+            applyTextDiff(yText, mod.newContent);
+          }, 'citekey-refactor');
+        } else {
+          applyTextDiff(yText, mod.newContent);
+        }
+      } catch {
+        // Fallback if Y.Doc transaction fails
+      }
+    }
+
+    lruDocumentCache.updateContent(mod.id, mod.newContent, true);
+    sessionCoordinator.notifyContentChange(mod.id, mod.newContent);
+    latexSymbolsIndex.indexFile(mod.id, mod.path, mod.newContent, true);
+    latexDagEngine.parseAndRegister(mod.path, mod.newContent, mod.id);
+
+    try {
+      await manuscriptService.docs.updateContent(mod.id, mod.newContent);
+    } catch (err) {
+      console.warn(`[CitationRefactor] Failed to save updated file ${mod.path} to backend:`, err);
+    }
+
+    if (activeDocId && activeDocId === mod.id) {
+      const store = usePageStore.getState();
+      if (store.activeFilePage?.id === mod.id) {
+        store.setActiveFilePage({
+          ...store.activeFilePage,
+          content: mod.newContent,
+        });
+      }
+      store.setCurrentPage((prev) =>
+        prev && prev.id === mod.id ? { ...prev, content: mod.newContent, docContent: mod.newContent } : prev
+      );
+      editorCommandBus.dispatch({ type: 'editor:set-content', content: mod.newContent });
+    }
+  }
+
+  editorCommandBus.dispatch({
+    type: 'filetree:updated',
+    payload: { action: 'refactor-citekey', oldKey, newKey, totalCount },
+  });
+
+  toast.success(
+    `Renamed @${oldKey} to @${newKey} (${totalCount} occurrences in ${modifiedFiles.length} files)!`,
+    { id: 'refactor-citekey' }
+  );
+  return { success: true, modifiedCount: modifiedFiles.length, replacedCount: totalCount };
+}
+

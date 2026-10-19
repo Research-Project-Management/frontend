@@ -15,7 +15,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { StorageService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
 import { usePageStore, workspaceCoordinator, editorCommandBus } from '@/features/editor/core';
 import { pageKeys } from './document.queries';
@@ -24,19 +24,17 @@ export function useResolvedProjectId(
   pageIdOrProjectId?: string | null,
   explicitProjectId?: string | null,
 ): string {
-  const currentPage = usePageStore((s) => s.currentPage);
+  const pageProjectId = usePageStore((s) => {
+    const rawProjectId = s.currentPage?.projectId;
+    if (typeof rawProjectId === 'string') return rawProjectId;
+    if (typeof rawProjectId === 'object' && rawProjectId !== null && 'id' in rawProjectId) {
+      return String((rawProjectId as { id?: unknown }).id ?? '');
+    }
+    return '';
+  });
   const storeProjectId = usePageStore((s) => s.projectId);
 
-  const rawProjectId = currentPage?.projectId;
-  const resolvedProjectId =
-    explicitProjectId ||
-    (typeof rawProjectId === 'string'
-      ? rawProjectId
-      : typeof rawProjectId === 'object' && rawProjectId !== null && 'id' in rawProjectId
-        ? String((rawProjectId as { id?: unknown }).id ?? '')
-        : '') ||
-    storeProjectId ||
-    '';
+  const resolvedProjectId = explicitProjectId || pageProjectId || storeProjectId || '';
 
   return (
     resolvedProjectId ||
@@ -68,12 +66,12 @@ export function useEditorStorageFiles(
     queryKey: ['editor-storage-files', effectiveProjectId, pageIdOrProjectId, parentId],
     queryFn: async (): Promise<EditorStorageItem[]> => {
       if (effectiveProjectId) {
-        return await StorageService.getProjectFiles(effectiveProjectId, parentId);
+        return await manuscriptService.storage.getProjectFiles(effectiveProjectId, parentId);
       }
       const targetId = pageIdOrProjectId || '';
       if (!targetId) return [];
       try {
-        const files = await StorageService.getPageFiles(targetId, parentId);
+        const files = await manuscriptService.storage.getPageFiles(targetId, parentId);
         return files || [];
       } catch (err) {
         console.warn('[useEditorStorage] Could not fetch remote files:', err);
@@ -85,8 +83,6 @@ export function useEditorStorageFiles(
 
   return {
     items,
-    files: items,
-    children: items,
     isLoading,
     refetch,
   };
@@ -110,9 +106,6 @@ export function useEditorStorageMutations(
       queryClient.invalidateQueries({ queryKey: pageKeys.deletedFiles(parentPageId) });
     }
     editorCommandBus.dispatch({ type: 'filetree:updated' });
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
-    }
   };
 
   const uploadFileMutation = useMutation({
@@ -129,7 +122,7 @@ export function useEditorStorageMutations(
     }): Promise<EditorStorageItem> => {
       const pid = projectId || effectiveProjectId;
       const targetId = targetPageId || pageIdOrProjectId || pid || '';
-      return await StorageService.uploadPageFile(
+      return await manuscriptService.storage.uploadPageFile(
         targetId,
         file,
         targetParentId ?? defaultParentId,
@@ -161,10 +154,10 @@ export function useEditorStorageMutations(
     }): Promise<unknown> => {
       const pid = targetProjectId || effectiveProjectId;
       if (pid) {
-        return await StorageService.createProjectFolder(pid, name, targetParentId ?? defaultParentId);
+        return await manuscriptService.storage.createProjectFolder(pid, name, targetParentId ?? defaultParentId);
       }
       const targetId = targetPageId || pageIdOrProjectId || '';
-      return await StorageService.createPageFolder(targetId, name, targetParentId ?? defaultParentId);
+      return await manuscriptService.storage.createPageFolder(targetId, name, targetParentId ?? defaultParentId);
     },
     onSuccess: () => {
       invalidateStorageState();
@@ -196,7 +189,7 @@ export function useEditorStorageMutations(
         });
         if (ok) return { success: true };
       } catch {}
-      return await StorageService.renameItem(id, name, effectiveProjectId);
+      return await manuscriptService.storage.renameItem(id, name, effectiveProjectId);
     },
     onSuccess: () => {
       invalidateStorageState();
@@ -213,7 +206,7 @@ export function useEditorStorageMutations(
         const ok = await workspaceCoordinator.deleteFile(itemId, effectiveProjectId);
         if (ok) return { success: true };
       } catch {}
-      return await StorageService.permanentlyDeleteItem(itemId, effectiveProjectId);
+      return await manuscriptService.storage.permanentlyDeleteItem(itemId, effectiveProjectId);
     },
     onSuccess: () => {
       invalidateStorageState();
@@ -236,7 +229,7 @@ export function useEditorStorageMutations(
         });
         if (ok) return { success: true };
       } catch {}
-      return await StorageService.moveItem(itemId, targetFolderId, effectiveProjectId);
+      return await manuscriptService.storage.moveItem(itemId, targetFolderId, effectiveProjectId);
     },
     onSuccess: () => {
       invalidateStorageState();
@@ -250,7 +243,7 @@ export function useEditorStorageMutations(
   const reorderMutation = useMutation({
     mutationFn: async (args: { itemId: string; sortOrder: number; projectId?: string }) => {
       const pid = args.projectId || effectiveProjectId;
-      return await StorageService.reorderItem(args.itemId, args.sortOrder, pid);
+      return await manuscriptService.storage.reorderItem(args.itemId, args.sortOrder, pid);
     },
     onSuccess: () => {
       invalidateStorageState();
@@ -264,7 +257,7 @@ export function useEditorStorageMutations(
   const setRootDocMutation = useMutation({
     mutationFn: async (args: { nodeId: string; projectId?: string }) => {
       const pid = args.projectId || effectiveProjectId;
-      return await StorageService.setRootDoc(args.nodeId, pid);
+      return await manuscriptService.storage.setRootDoc(args.nodeId, pid);
     },
     onSuccess: () => {
       invalidateStorageState();
@@ -282,18 +275,9 @@ export function useEditorStorageMutations(
     createFolder: createFolderMutation,
     renameFile: renameMutation,
     deleteFile: deleteMutation,
-    moveFile: moveMutation,
     moveItem: moveMutation,
-    reorderFile: reorderMutation,
     reorderItem: reorderMutation,
     setRootDoc: setRootDocMutation,
-    uploadFileMutation,
-    createFolderMutation,
-    renameMutation,
-    deleteMutation,
-    moveMutation,
-    reorderMutation,
-    setRootDocMutation,
   };
 }
 
@@ -307,7 +291,7 @@ export function useEditorStorageRootDoc(
     queryKey: ['editor-root-doc', effectiveProjectId],
     queryFn: async () => {
       if (!effectiveProjectId) return null;
-      return await StorageService.getRootDoc(effectiveProjectId);
+      return await manuscriptService.storage.getRootDoc(effectiveProjectId);
     },
     enabled: !!effectiveProjectId,
   });
@@ -327,15 +311,11 @@ export function useEditorStorage(
 ) {
   const filesState = useEditorStorageFiles(pageIdOrProjectId, parentId, explicitProjectId, options);
   const mutations = useEditorStorageMutations(pageIdOrProjectId, explicitProjectId, parentId);
-  const rootDocState = useEditorStorageRootDoc(pageIdOrProjectId, explicitProjectId);
 
   return {
-    children: filesState.items,
-    files: filesState.items,
+    items: filesState.items,
     isLoading: filesState.isLoading,
     refetch: filesState.refetch,
-    rootDoc: rootDocState.rootDoc,
-    rootDocLoading: rootDocState.rootDocLoading,
     ...mutations,
   };
 }

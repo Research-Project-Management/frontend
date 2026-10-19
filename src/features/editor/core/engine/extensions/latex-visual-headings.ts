@@ -83,6 +83,18 @@ const LEVEL_CLASS_MAP = {
   paragraph: 'cm-visual-paragraph',
 } as const;
 
+const DECO_LINE_BY_LEVEL: Record<HeadingMatch['level'], Decoration> = {
+  chapter: Decoration.line({ class: LEVEL_CLASS_MAP.chapter }),
+  h1: Decoration.line({ class: LEVEL_CLASS_MAP.h1 }),
+  h2: Decoration.line({ class: LEVEL_CLASS_MAP.h2 }),
+  h3: Decoration.line({ class: LEVEL_CLASS_MAP.h3 }),
+  paragraph: Decoration.line({ class: LEVEL_CLASS_MAP.paragraph }),
+};
+
+const DECO_SYNTAX_DIM = Decoration.mark({ class: 'cm-visual-syntax-dim' });
+const DECO_BOLD_TEXT = Decoration.mark({ class: 'cm-visual-bold-text' });
+const DECO_ITALIC_TEXT = Decoration.mark({ class: 'cm-visual-italic-text' });
+
 // ── Visual Decorations Theme ──────────────────────────────────────────────────
 
 const visualHeadingsTheme = EditorView.baseTheme({
@@ -174,6 +186,9 @@ class VisualHeadingsPlugin {
       for (let l = startLine.number; l <= endLine.number; l++) {
         const line = doc.line(l);
         const lineText = line.text;
+        // Fast-path guard: skip regex engines on lines with no LaTeX commands
+        if (lineText.indexOf('\\') === -1) continue;
+
         const isCursorOnLine = selection.from <= line.to && selection.to >= line.from;
 
         // 1. Scan for Headings with balanced braces
@@ -203,7 +218,7 @@ class VisualHeadingsPlugin {
           pending.push({
             from: line.from,
             to: line.from,
-            deco: Decoration.line({ class: LEVEL_CLASS_MAP[level] }),
+            deco: DECO_LINE_BY_LEVEL[level],
           });
 
           // If cursor is not on this line, dim the macro syntax `\section{` and `}`
@@ -216,12 +231,12 @@ class VisualHeadingsPlugin {
             pending.push({
               from: openCmdStart,
               to: openCmdEnd,
-              deco: Decoration.mark({ class: 'cm-visual-syntax-dim' }),
+              deco: DECO_SYNTAX_DIM,
             });
             pending.push({
               from: closeBraceStart,
               to: closeBraceEnd,
-              deco: Decoration.mark({ class: 'cm-visual-syntax-dim' }),
+              deco: DECO_SYNTAX_DIM,
             });
           }
         }
@@ -245,7 +260,7 @@ class VisualHeadingsPlugin {
             pending.push({
               from: textStart,
               to: textEnd,
-              deco: Decoration.mark({ class: 'cm-visual-bold-text' }),
+              deco: DECO_BOLD_TEXT,
             });
           }
 
@@ -253,12 +268,12 @@ class VisualHeadingsPlugin {
             pending.push({
               from: matchStart,
               to: textStart,
-              deco: Decoration.mark({ class: 'cm-visual-syntax-dim' }),
+              deco: DECO_SYNTAX_DIM,
             });
             pending.push({
               from: textEnd,
               to: matchEnd,
-              deco: Decoration.mark({ class: 'cm-visual-syntax-dim' }),
+              deco: DECO_SYNTAX_DIM,
             });
           }
         }
@@ -282,7 +297,7 @@ class VisualHeadingsPlugin {
             pending.push({
               from: textStart,
               to: textEnd,
-              deco: Decoration.mark({ class: 'cm-visual-italic-text' }),
+              deco: DECO_ITALIC_TEXT,
             });
           }
 
@@ -290,12 +305,12 @@ class VisualHeadingsPlugin {
             pending.push({
               from: matchStart,
               to: textStart,
-              deco: Decoration.mark({ class: 'cm-visual-syntax-dim' }),
+              deco: DECO_SYNTAX_DIM,
             });
             pending.push({
               from: textEnd,
               to: matchEnd,
-              deco: Decoration.mark({ class: 'cm-visual-syntax-dim' }),
+              deco: DECO_SYNTAX_DIM,
             });
           }
         }

@@ -12,18 +12,17 @@
  */
 
 import {
-  useTabsStore,
   type EditorTab,
   usePageStore,
   useWorkspaceStore,
   editorCommandBus,
   sessionCoordinator,
   workspaceCoordinator,
-  getActiveEditorInstance,
+  getActiveEditorEngine,
 } from '@/features/editor/core';
-import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
+import { extractDocumentContentString, extractProjectId } from '@/features/editor/domain/types/core.types';
 import type { NodeTreeItem } from '@/features/editor/domain/types/node.types';
-import { useCompileStore } from '@/features/editor/subsystems/compiler';
+import { compilerCoordinator, useCompileStore } from '@/features/editor/subsystems/compiler';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
 import { toast } from 'sonner';
@@ -115,7 +114,7 @@ export class NavigationCoordinatorRegistry {
 
   private executeLineJump(target: PendingLineJump): void {
     const { line, column, highlight = 'synctex' } = target;
-    const engine = getActiveEditorInstance();
+    const engine = getActiveEditorEngine();
     if (engine && typeof engine.jumpToLine === 'function') {
       engine.jumpToLine(line, highlight, column);
     }
@@ -187,7 +186,8 @@ export class NavigationCoordinatorRegistry {
         }
       } else if (type === 'preview:ready') {
         const compileState = useCompileStore.getState();
-        if (compileState.pdfUrl) {
+        const synctexMap = compilerCoordinator.getSynctexMap();
+        if (compileState.pdfUrl || synctexMap) {
           this.broadcastChannel?.postMessage({
             type: 'compiler:sync-state',
             payload: {
@@ -195,6 +195,7 @@ export class NavigationCoordinatorRegistry {
               compileStatus: compileState.compileStatus,
               lastCompiledAt: compileState.lastCompiledAt?.toISOString() || null,
               logs: compileState.compileLog,
+              synctexMap,
             },
           });
         }
@@ -204,8 +205,9 @@ export class NavigationCoordinatorRegistry {
           line: payload.line,
           smooth: payload.smooth ?? true,
         });
-      } else if (type === 'preview:window-closed') {
+      } else if (type === 'preview:window-closed' || type === 'preview:closed' || type === 'preview:attached') {
         useWorkspaceStore.getState().setPdfDetached(false);
+        useCompileStore.getState().setIsViewerPoppedOut(false);
       }
     };
   }
@@ -214,7 +216,7 @@ export class NavigationCoordinatorRegistry {
     if (typeof window === 'undefined') return false;
     return (
       window.location.pathname.includes('/preview') ||
-      (useWorkspaceStore.getState().isPdfDetached && !getActiveEditorInstance())
+      (useWorkspaceStore.getState().isPdfDetached && !getActiveEditorEngine())
     );
   }
 
@@ -347,25 +349,43 @@ export class NavigationCoordinatorRegistry {
             compileStatus: compileState.compileStatus === 'idle' ? 'done' : compileState.compileStatus,
             lastCompiledAt: compileState.lastCompiledAt?.toISOString() || null,
             logs: compileState.compileLog,
+            synctexMap: compilerCoordinator.getSynctexMap(),
           },
         });
       }
     });
 
-    editorCommandBus.subscribe('preview:detach', () => {
+    editorCommandBus.subscribe('synctex:map-updated', (cmd) => {
+      if (!this.isDetachedPreviewWindow() && cmd.map) {
+        const compileState = useCompileStore.getState();
+        this.broadcastChannel?.postMessage({
+          type: 'compiler:sync-state',
+          payload: {
+            pdfUrl: compileState.pdfUrl,
+            compileStatus: compileState.compileStatus === 'idle' ? 'done' : compileState.compileStatus,
+            lastCompiledAt: compileState.lastCompiledAt?.toISOString() || null,
+            logs: compileState.compileLog,
+            synctexMap: cmd.map,
+          },
+        });
+      }
+    });
+
+    editorCommandBus.subscribe('preview:detach', (cmd) => {
       useWorkspaceStore.getState().setPdfDetached(true);
-      const projectId = usePageStore.getState().projectId;
+      useCompileStore.getState().setIsViewerPoppedOut(true);
+      const pageStore = usePageStore.getState();
+      const projectId = cmd.projectId || pageStore.projectId || extractProjectId(pageStore.currentPage) ||
+        (typeof window !== 'undefined' ? window.location.pathname.match(/\/projects\/([^/]+)/)?.[1] : null);
       if (projectId && typeof window !== 'undefined') {
-        const previewUrl = `/projects/${projectId}/preview`;
-        window.open(previewUrl, `flux_pdf_preview_${projectId}`, 'width=900,height=1000,menubar=no,toolbar=no');
-        this.notifier.info('PDF preview opened in a separate window', { id: 'pdf-preview-detach' });
+        window.open(`/projects/${projectId}/preview`, '_blank');
       }
     });
 
     editorCommandBus.subscribe('preview:attach', () => {
       useWorkspaceStore.getState().setPdfDetached(false);
+      useCompileStore.getState().setIsViewerPoppedOut(false);
       this.broadcastChannel?.postMessage({ type: 'preview:attached' });
-      this.notifier.info('PDF preview reattached to main window', { id: 'pdf-preview-detach' });
     });
   }
 
@@ -389,7 +409,7 @@ export class NavigationCoordinatorRegistry {
       return;
     }
 
-    const tabsStore = useTabsStore.getState();
+    const tabsStore = useWorkspaceStore.getState();
     const pageStore = usePageStore.getState();
 
     const currentActiveId = pageStore.getActiveDocumentId() || lruDocumentCache.getActiveFileId();
@@ -405,13 +425,15 @@ export class NavigationCoordinatorRegistry {
       id: fileId,
       title,
       path: optPath || title,
+      isPinned: false,
+      isDirty: false,
     };
     tabsStore.openTab(effectiveProjectId, tabItem);
-    tabsStore.setActive(effectiveProjectId, fileId);
+    tabsStore.setActiveTab(effectiveProjectId, fileId);
     const parentId = pageStore.parentPageId || pageStore.currentPage?.id;
     if (parentId && parentId !== effectiveProjectId) {
       tabsStore.openTab(parentId, tabItem);
-      tabsStore.setActive(parentId, fileId);
+      tabsStore.setActiveTab(parentId, fileId);
     }
 
     // 3. Ensure in-memory model exists in LRU cache (resolving initial content from project files/hierarchy)
@@ -429,14 +451,6 @@ export class NavigationCoordinatorRegistry {
       });
       if (wsMatch?.content !== undefined) {
         return extractDocumentContentString(wsMatch.content);
-      }
-      const stack: NodeTreeItem[] = [...(pageStore.fileHierarchy ?? [])];
-      while (stack.length > 0) {
-        const node = stack.pop()!;
-        if (node.id === fileId && 'content' in node && node.content !== undefined) {
-          return extractDocumentContentString(node.content);
-        }
-        if (node.children?.length) stack.push(...node.children);
       }
       if (pageStore.currentPage?.id === fileId && pageStore.currentPage?.content !== undefined) {
         return extractDocumentContentString(pageStore.currentPage.content);
@@ -472,21 +486,9 @@ export class NavigationCoordinatorRegistry {
     });
 
     // 3b. Synchronize shallow URL history (0ms latency, zero page refresh)
-    if (typeof window !== 'undefined') {
-      try {
-        const rootPageId = pageStore.currentPage?.id || pageStore.projectId;
-        const isRoot = fileId === rootPageId || fileId === `${rootPageId}-main`;
-        const url = new URL(window.location.href);
-        if (isRoot) {
-          url.searchParams.delete('file');
-        } else {
-          url.searchParams.set('file', fileId);
-        }
-        window.history.replaceState(window.history.state, '', url.pathname + url.search);
-      } catch (err) {
-        console.debug('[NavigationCoordinator] Shallow URL replaceState skipped:', err);
-      }
-    }
+    const rootId = pageStore.currentPage?.id || pageStore.projectId;
+    const isRoot = fileId === rootId || fileId === `${rootId}-main`;
+    this.syncFileUrlParam(isRoot ? undefined : fileId);
 
     // 4. If target coordinates are specified, queue deterministic jump and trigger microtask/rAF fallback
     if (line !== undefined) {
@@ -500,7 +502,7 @@ export class NavigationCoordinatorRegistry {
       this.scheduleDeterministicAction(() => {
         if (this.pendingLineJump && this.pendingLineJump.fileId === fileId) {
           const pending = this.pendingLineJump;
-          if (getActiveEditorInstance()) {
+          if (getActiveEditorEngine()) {
             this.pendingLineJump = null;
           }
           this.executeLineJump(pending);
@@ -515,10 +517,28 @@ export class NavigationCoordinatorRegistry {
   }
 
   /**
+   * Synchronizes or clears the shallow `?file=` query parameter without a page reload.
+   */
+  private syncFileUrlParam(fileId?: string): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const url = new URL(window.location.href);
+      if (fileId) {
+        url.searchParams.set('file', fileId);
+      } else {
+        url.searchParams.delete('file');
+      }
+      window.history.replaceState(window.history.state, '', url.pathname + url.search);
+    } catch (err) {
+      console.debug('[NavigationCoordinator] Shallow URL replaceState skipped:', err);
+    }
+  }
+
+  /**
    * Closes a document tab and gracefully activates the adjacent tab
    */
   public closeDocument(fileId: string): void {
-    const tabsStore = useTabsStore.getState();
+    const tabsStore = useWorkspaceStore.getState();
     const pageStore = usePageStore.getState();
     const projectId = pageStore.projectId || pageStore.parentPageId || pageStore.currentPage?.id || 'default';
     const parentId = pageStore.parentPageId || pageStore.currentPage?.id;
@@ -537,9 +557,9 @@ export class NavigationCoordinatorRegistry {
       const isNextRoot = !nextId || nextId === rootPageId || nextId === `${rootPageId}-main`;
 
       if (!isNextRoot && nextId) {
-        tabsStore.setActive(projectId, nextId);
+        tabsStore.setActiveTab(projectId, nextId);
         if (parentId && parentId !== projectId) {
-          tabsStore.setActive(parentId, nextId);
+          tabsStore.setActiveTab(parentId, nextId);
         }
         const tabs = tabsStore.tabsByProject[projectId] || (parentId ? tabsStore.tabsByProject[parentId] : []) || [];
         const nextActiveTab = tabs.find((t) => t.id === nextId);
@@ -552,22 +572,14 @@ export class NavigationCoordinatorRegistry {
         }
       } else {
         // Revert to root document
-        tabsStore.setActive(projectId, rootPageId);
+        tabsStore.setActiveTab(projectId, rootPageId);
         if (parentId && parentId !== projectId) {
-          tabsStore.setActive(parentId, rootPageId);
+          tabsStore.setActiveTab(parentId, rootPageId);
         }
         const rootPage = pageStore.currentPage;
         if (rootPage) {
           pageStore.setActiveFilePage(rootPage);
-          if (typeof window !== 'undefined') {
-            try {
-              const url = new URL(window.location.href);
-              url.searchParams.delete('file');
-              window.history.replaceState(window.history.state, '', url.pathname + url.search);
-            } catch (err) {
-              console.debug('[NavigationCoordinator] Shallow URL cleanup skipped:', err);
-            }
-          }
+          this.syncFileUrlParam(undefined);
         }
       }
     });
@@ -612,7 +624,7 @@ export class NavigationCoordinatorRegistry {
         resolvedFileId = model.fileId;
         resolvedTitle = model.filePath;
       } else {
-        const tabsByProject = useTabsStore.getState().tabsByProject;
+        const tabsByProject = useWorkspaceStore.getState().tabsByProject;
         const allTabs = Object.values(tabsByProject).flat();
         const matchingTab = allTabs.find(
           (t: EditorTab) => t.path === filePath || t.title === filePath || t.id === filePath
@@ -675,16 +687,15 @@ export class NavigationCoordinatorRegistry {
   }
 
   /**
-   * Jumps to the next diagnostic error across the project (Overleaf Parity: F8).
-   * Citation: overleaf.com/learn/how-to/Debugging_LaTeX_errors_with_Overleaf#Navigating_errors
+   * Steps forward (+1) or backward (-1) across project diagnostics with wrap-around.
    */
-  public jumpToNextDiagnostic(severity: 'error' | 'warning' = 'error'): void {
+  private stepDiagnostic(direction: 1 | -1, severity: 'error' | 'warning' = 'error'): void {
     const list = this.getProjectDiagnostics(severity);
     if (list.length === 0) {
       if (severity === 'error') {
         const warnings = this.getProjectDiagnostics('warning');
         if (warnings.length > 0) {
-          this.jumpToNextDiagnostic('warning');
+          this.stepDiagnostic(direction, 'warning');
           return;
         }
       }
@@ -694,31 +705,38 @@ export class NavigationCoordinatorRegistry {
 
     const activePage = usePageStore.getState().getActiveDocument();
     const currentFile = activePage?.title || activePage?.path || activePage?.id || '';
-    const engine = getActiveEditorInstance();
+    const engine = getActiveEditorEngine();
     const currentCursor = engine?.getCursorPosition();
+    const isSameFile = (file: string) =>
+      file === currentFile || currentFile.endsWith(`/${file}`) || file.endsWith(`/${currentFile}`);
     const isCurrentFileSameAsLast =
-      this.lastDiagnosticFile === currentFile ||
-      currentFile.endsWith(`/${this.lastDiagnosticFile}`) ||
-      (this.lastDiagnosticFile ? this.lastDiagnosticFile.endsWith(`/${currentFile}`) : false);
+      Boolean(this.lastDiagnosticFile) && isSameFile(this.lastDiagnosticFile!);
+    const fallbackLine = direction === 1 ? 0 : 999999;
     const currentLine =
       currentCursor?.line ??
-      (isCurrentFileSameAsLast && this.lastDiagnosticLine !== null ? this.lastDiagnosticLine : 0);
+      (isCurrentFileSameAsLast && this.lastDiagnosticLine !== null ? this.lastDiagnosticLine : fallbackLine);
 
-    // 1. First, search forward in current file below current line
-    let targetIndex = list.findIndex(
-      (d) => (d.file === currentFile || currentFile.endsWith(`/${d.file}`) || d.file.endsWith(`/${currentFile}`)) && d.line > currentLine
-    );
-
-    // 2. If not found in current file after cursor, find the next item in project array
-    if (targetIndex === -1) {
-      const lastSameFileIndex = list.map(
-        (d) => d.file === currentFile || currentFile.endsWith(`/${d.file}`) || d.file.endsWith(`/${currentFile}`)
-      ).lastIndexOf(true);
-
-      if (lastSameFileIndex !== -1) {
-        targetIndex = (lastSameFileIndex + 1) % list.length;
-      } else {
-        targetIndex = 0; // wrap around to first
+    let targetIndex = -1;
+    if (direction === 1) {
+      // 1. Search forward in current file below current line
+      targetIndex = list.findIndex((d) => isSameFile(d.file) && d.line > currentLine);
+      // 2. Wrap to next item in project array
+      if (targetIndex === -1) {
+        const lastSameFileIndex = list.map((d) => isSameFile(d.file)).lastIndexOf(true);
+        targetIndex = lastSameFileIndex !== -1 ? (lastSameFileIndex + 1) % list.length : 0;
+      }
+    } else {
+      // 1. Search backward in current file above current line
+      for (let i = list.length - 1; i >= 0; i--) {
+        if (isSameFile(list[i].file) && list[i].line < currentLine) {
+          targetIndex = i;
+          break;
+        }
+      }
+      // 2. Wrap to previous item in project array
+      if (targetIndex === -1) {
+        const firstSameFileIndex = list.findIndex((d) => isSameFile(d.file));
+        targetIndex = firstSameFileIndex !== -1 ? (firstSameFileIndex - 1 + list.length) % list.length : list.length - 1;
       }
     }
 
@@ -752,85 +770,19 @@ export class NavigationCoordinatorRegistry {
   }
 
   /**
+   * Jumps to the next diagnostic error across the project (Overleaf Parity: F8).
+   * Citation: overleaf.com/learn/how-to/Debugging_LaTeX_errors_with_Overleaf#Navigating_errors
+   */
+  public jumpToNextDiagnostic(severity: 'error' | 'warning' = 'error'): void {
+    this.stepDiagnostic(1, severity);
+  }
+
+  /**
    * Jumps to the previous diagnostic error across the project (Overleaf Parity: Shift+F8).
    * Citation: overleaf.com/learn/how-to/Debugging_LaTeX_errors_with_Overleaf#Navigating_errors
    */
   public jumpToPrevDiagnostic(severity: 'error' | 'warning' = 'error'): void {
-    const list = this.getProjectDiagnostics(severity);
-    if (list.length === 0) {
-      if (severity === 'error') {
-        const warnings = this.getProjectDiagnostics('warning');
-        if (warnings.length > 0) {
-          this.jumpToPrevDiagnostic('warning');
-          return;
-        }
-      }
-      this.notifier.info('No compilation errors in project', { id: 'compiler-diagnostic-step' });
-      return;
-    }
-
-    const activePage = usePageStore.getState().getActiveDocument();
-    const currentFile = activePage?.title || activePage?.path || activePage?.id || '';
-    const engine = getActiveEditorInstance();
-    const currentCursor = engine?.getCursorPosition();
-    const isCurrentFileSameAsLast =
-      this.lastDiagnosticFile === currentFile ||
-      currentFile.endsWith(`/${this.lastDiagnosticFile}`) ||
-      (this.lastDiagnosticFile ? this.lastDiagnosticFile.endsWith(`/${currentFile}`) : false);
-    const currentLine =
-      currentCursor?.line ??
-      (isCurrentFileSameAsLast && this.lastDiagnosticLine !== null ? this.lastDiagnosticLine : 999999);
-
-    // 1. Search backward in current file above current line
-    let targetIndex = -1;
-    for (let i = list.length - 1; i >= 0; i--) {
-      const d = list[i];
-      const isSameFile = d.file === currentFile || currentFile.endsWith(`/${d.file}`) || d.file.endsWith(`/${currentFile}`);
-      if (isSameFile && d.line < currentLine) {
-        targetIndex = i;
-        break;
-      }
-    }
-
-    // 2. If not found in current file before cursor, step to previous item before this file in the project
-    if (targetIndex === -1) {
-      const firstSameFileIndex = list.findIndex(
-        (d) => d.file === currentFile || currentFile.endsWith(`/${d.file}`) || d.file.endsWith(`/${currentFile}`)
-      );
-      if (firstSameFileIndex !== -1) {
-        targetIndex = (firstSameFileIndex - 1 + list.length) % list.length;
-      } else {
-        targetIndex = list.length - 1; // wrap around to last
-      }
-    }
-
-    const target = list[targetIndex];
-    if (target) {
-      this.lastDiagnosticIndex = targetIndex;
-      this.lastDiagnosticLine = target.line;
-      this.lastDiagnosticFile = target.file;
-
-      this.jumpToLine({
-        filePath: target.file,
-        line: target.line,
-        highlight: 'error',
-      });
-
-      this.notifier.info(
-        `Error ${targetIndex + 1}/${list.length}: ${target.message}${
-          target.file ? ` (${target.file}:${target.line})` : ` (line ${target.line})`
-        }`,
-        { id: 'compiler-diagnostic-step' }
-      );
-
-      editorCommandBus.dispatch({
-        type: 'editor:error-stepped',
-        errorIndex: targetIndex,
-        file: target.file,
-        line: target.line,
-        message: target.message,
-      });
-    }
+    this.stepDiagnostic(-1, severity);
   }
 }
 

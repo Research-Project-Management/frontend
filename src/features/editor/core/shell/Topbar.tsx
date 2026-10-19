@@ -23,6 +23,7 @@ import {
   PanelLeft,
   Home,
   Cloud,
+  ExternalLink,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useShallow } from 'zustand/react/shallow';
@@ -48,7 +49,7 @@ import ProjectTitleDropdown from './topbar/ProjectTitleDropdown';
 import CollaboratorAvatarStack from './topbar/CollaboratorAvatarStack';
 import EditingModeDropdown from './topbar/EditingModeDropdown';
 
-import { editorCommandBus, sessionCoordinator, useSettingsStore, usePageStore } from '@/features/editor/core';
+import { editorCommandBus, sessionCoordinator, useSettingsStore, usePageStore, useWorkspaceStore } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
 import { useGithubSync } from '@/features/editor/ui/hooks/useGithubSync';
@@ -82,14 +83,21 @@ export function Topbar() {
     toggleHistory,
     isHistoryOpen,
     isTemplateModalOpen,
+    isShortcutsOpen,
+    setIsShortcutsOpen,
+    toggleShortcuts,
   } = useSettingsStore(
     useShallow((s) => ({
       toggleHistory: s.toggleHistory,
       isHistoryOpen: s.isHistoryOpen,
       isTemplateModalOpen: s.isTemplateModalOpen,
+      isShortcutsOpen: s.isShortcutsOpen,
+      setIsShortcutsOpen: s.setIsShortcutsOpen,
+      toggleShortcuts: s.toggleShortcuts,
     }))
   );
 
+  const isPdfDetached = useWorkspaceStore((s) => s.isPdfDetached);
   const hasDirtyFiles = useCompileStore((s) => s.dirtyContentMap.size > 0);
   const { updateTitle: updateTitleMutation } = usePageActions();
   const isSaving = hasDirtyFiles || updateTitleMutation.isPending;
@@ -98,7 +106,6 @@ export function Topbar() {
     projectId: effectiveProjectId,
   });
 
-  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isQuickOpenOpen, setIsQuickOpenOpen] = useState(false);
 
   const handleToggleHistory = useCallback(async () => {
@@ -113,7 +120,11 @@ export function Topbar() {
       if (cmd.dialog === 'quick-open') {
         setIsQuickOpenOpen((prev) => (cmd.payload?.forceOpen ? true : !prev));
       } else if (cmd.dialog === 'shortcuts') {
-        setIsShortcutsOpen((prev) => (cmd.payload?.forceOpen ? true : !prev));
+        if (cmd.payload?.forceOpen) {
+          setIsShortcutsOpen(true);
+        } else {
+          toggleShortcuts();
+        }
       }
     });
 
@@ -130,7 +141,7 @@ export function Topbar() {
       unsubOpen();
       unsubClose();
     };
-  }, []);
+  }, [setIsShortcutsOpen, toggleShortcuts]);
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -282,6 +293,26 @@ export function Topbar() {
               History (revisions)
             </TooltipContent>
           </Tooltip>
+
+          {/* Re-attach PDF Button (Visible when preview is detached to separate tab) */}
+          {isPdfDetached && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => editorCommandBus.dispatch({ type: 'preview:attach' })}
+                  aria-label="Re-attach PDF to editor"
+                  className="flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 border border-primary/25 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none animate-in fade-in duration-200"
+                >
+                  <ExternalLink className="size-3.5 shrink-0" />
+                  <span className="hidden md:inline">Re-attach PDF</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={6}>
+                PDF preview is in a separate window. Click to re-attach here.
+              </TooltipContent>
+            </Tooltip>
+          )}
 
           {/* Layout Switcher (Overleaf Parity: Top Right) */}
           <LayoutSwitcher />

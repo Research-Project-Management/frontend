@@ -27,8 +27,8 @@ import {
   type DecorationSet,
   WidgetType,
 } from '@codemirror/view';
-import type { EditorDiagnosticItem } from '@/features/editor/core/bus/command-bus.port';
-import { getDefaultCommandDispatcher } from '@/features/editor/core/engine/adapters/editor-command-port';
+import type { EditorDiagnosticItem } from '@/features/editor/domain/diagnostics/diagnostic-types';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 
 export type IndexedDiagnosticItem = EditorDiagnosticItem;
 
@@ -139,7 +139,7 @@ export class ErrorLensWidget extends WidgetType {
     const triggerFix = (e: Event) => {
       e.preventDefault();
       e.stopPropagation();
-      getDefaultCommandDispatcher()({
+      editorCommandBus.dispatch({
         type: 'ai:autofix-diagnostic',
         diagnostic: this.diagnostic,
       });
@@ -162,7 +162,7 @@ export class ErrorLensWidget extends WidgetType {
     const triggerAsk = (e: Event) => {
       e.preventDefault();
       e.stopPropagation();
-      getDefaultCommandDispatcher()({
+      editorCommandBus.dispatch({
         type: 'editor:suggest-fix',
         error: {
           message: this.diagnostic.message,
@@ -181,6 +181,12 @@ export class ErrorLensWidget extends WidgetType {
 }
 
 // ── StateField for Error Lens Decorations ─────────────────────────────────────
+
+const DECO_LINE_BY_SEVERITY: Record<string, Decoration> = {
+  error: Decoration.line({ class: 'cm-error-lens-line cm-error-lens-line-error' }),
+  warning: Decoration.line({ class: 'cm-error-lens-line cm-error-lens-line-warning' }),
+  info: Decoration.line({ class: 'cm-error-lens-line cm-error-lens-line-info' }),
+};
 
 function buildDecorations(
   diagnostics: IndexedDiagnosticItem[],
@@ -216,9 +222,10 @@ function buildDecorations(
     builder.add(
       line.from,
       line.from,
-      Decoration.line({
-        class: `cm-error-lens-line cm-error-lens-line-${sev}`,
-      }),
+      DECO_LINE_BY_SEVERITY[sev] ??
+        Decoration.line({
+          class: `cm-error-lens-line cm-error-lens-line-${sev}`,
+        }),
     );
 
     // 2. End-of-line Inline Error Lens Widget

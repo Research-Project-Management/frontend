@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef, useDeferredValue } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { usePageStore, editorCommandBus } from '@/features/editor/core';
+import { usePageStore, editorCommandBus, workspaceCoordinator } from '@/features/editor/core';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { useEditorCitations } from '@/features/editor/ui/hooks/useCitation';
 import { toast } from 'sonner';
@@ -12,8 +12,13 @@ import { type CitationValidationResult } from '@/features/editor/sdk/manuscript/
 import { generateCitationKey } from '@/features/library/domain/citations';
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import { parseBibContent, type BibEntry } from '@/features/editor/subsystems/citation/model/bib-parser';
-import { extractCitationKeys, stripLatexComments } from '@/features/editor/subsystems/citation/model/citation-formatter';
-import { extractProjectId } from '@/features/editor/domain/types/core.types';
+import {
+  extractCitationKeys,
+  stripLatexComments,
+  formatBibEntryAuthorSummary,
+} from '@/features/editor/subsystems/citation/model/citation-formatter';
+import { extractProjectId, extractDocumentContentString } from '@/features/editor/domain/types/core.types';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
 export interface UnifiedCitation {
   id: string;
@@ -38,26 +43,22 @@ interface CachedBibFile {
   entries: BibEntry[];
 }
 const bibParseCache = new Map<string, CachedBibFile>();
+const BIBITEM_REGEX = /\\bibitem(?:\[[^\]]*\])?\{([^}]+)\}/g;
 
 export function useCitationTabState() {
   const params = useParams<{ projectId?: string; pageId?: string }>();
-  const currentPage = usePageStore((s) => s.currentPage);
+  const currentPageId = usePageStore((s) => s.currentPage?.id);
+  const currentPageProjectId = usePageStore((s) => extractProjectId(s.currentPage));
+  const activeFilePath = usePageStore((s) => {
+    const p = s.currentPage as { path?: string; filePath?: string; title?: string; name?: string } | null;
+    return p?.path || p?.filePath || p?.title || '';
+  });
   const storeParentPageId = usePageStore((s) => s.parentPageId);
   const storeProjectId = usePageStore((s) => s.projectId);
   const { engine, getContent } = useEditorInstance();
 
-  const rootPageId = params?.pageId || storeParentPageId || currentPage?.id || params?.projectId || '';
-  const projectId =
-    params?.projectId ||
-    storeProjectId ||
-    extractProjectId(currentPage) ||
-    '';
-
-  const activeFilePath =
-    (currentPage as { path?: string; filePath?: string; title?: string; name?: string })?.path ||
-    (currentPage as { path?: string; filePath?: string; title?: string; name?: string })?.filePath ||
-    currentPage?.title ||
-    '';
+  const rootPageId = params?.pageId || storeParentPageId || currentPageId || params?.projectId || '';
+  const projectId = params?.projectId || storeProjectId || currentPageProjectId || '';
 
   const [content, setContent] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -101,12 +102,7 @@ export function useCitationTabState() {
       bibParseCache.clear();
       refreshContent();
     };
-    window.addEventListener('flux:filetree-updated', handleClearBibCache);
-    const unsubCmd = editorCommandBus.subscribe('filetree:updated', handleClearBibCache);
-    return () => {
-      window.removeEventListener('flux:filetree-updated', handleClearBibCache);
-      unsubCmd();
-    };
+    return editorCommandBus.subscribe('filetree:updated', handleClearBibCache);
   }, [refreshContent]);
 
   // Load project files to extract citations from any project .bib files
@@ -133,18 +129,43 @@ export function useCitationTabState() {
 
   // Parse BibTeX entries from all .bib files with cache lookup
   const bibEntries = useMemo<BibEntry[]>(() => {
-    type BibCandidate = { id: string; name?: string; title?: string; filename?: string; content?: string };
-    const bibFiles = ((projectFiles || []) as BibCandidate[]).filter((f) => {
-      const fileName = (f.name || f.title || f.filename || '').toLowerCase();
-      return fileName.endsWith('.bib') && Boolean(f?.content);
-    });
+    type BibCandidate = { id: string; name?: string; title?: string; filename?: string; path?: string; content?: unknown };
+    const candidateMap = new Map<string, { id: string; fileName: string; content: string }>();
+
+    const registerCandidate = (id: string, fileName: string, rawContent: unknown) => {
+      const normalizedName = fileName.trim();
+      if (!normalizedName.toLowerCase().endsWith('.bib')) return;
+      const cached = id ? lruDocumentCache.get(id) : undefined;
+      const resolvedContent = cached?.content ?? extractDocumentContentString(rawContent);
+      if (!resolvedContent) return;
+      const dedupeKey = id || normalizedName.toLowerCase();
+      candidateMap.set(dedupeKey, {
+        id: id || normalizedName,
+        fileName: normalizedName,
+        content: resolvedContent,
+      });
+    };
+
+    for (const wf of workspaceCoordinator.getProjectFiles() || []) {
+      const fname = wf.path || wf.title || '';
+      registerCandidate(wf.id, fname, wf.content);
+    }
+
+    for (const f of (projectFiles || []) as BibCandidate[]) {
+      const fname = f.name || f.title || f.filename || f.path || '';
+      registerCandidate(f.id, fname, f.content);
+    }
+
+    for (const m of lruDocumentCache.getAllModels()) {
+      registerCandidate(m.fileId, m.filePath || '', m.content);
+    }
 
     const list: BibEntry[] = [];
     const seenKeys = new Set<string>();
 
-    for (const f of bibFiles) {
+    for (const f of candidateMap.values()) {
       if (!f.content || typeof f.content !== 'string') continue;
-      const fileId = f.id || f.title || f.name || 'bib-file';
+      const fileId = f.id || f.fileName || 'bib-file';
       const sample = f.content.length > 200 ? f.content.slice(0, 100) + f.content.slice(-100) : f.content;
       const cached = bibParseCache.get(fileId);
 
@@ -173,7 +194,7 @@ export function useCitationTabState() {
       }
     }
     return list;
-  }, [projectFiles]);
+  }, [projectFiles, content]);
 
   // Load workspace library items
   const {
@@ -202,9 +223,9 @@ export function useCitationTabState() {
         title: item.title || 'Untitled item',
         authorsSummary: getAuthorSummary(item),
         year: item.year ? String(item.year) : undefined,
-        journal: item.journal || (item as { publicationTitle?: string }).publicationTitle,
+        journal: item.publicationTitle,
         source: 'library',
-        collectionId: (item as { collectionId?: string }).collectionId,
+        collectionId: item.collectionIds?.[0],
       });
     }
 
@@ -217,12 +238,7 @@ export function useCitationTabState() {
           id: `bib-${entry.key}`,
           key: entry.key,
           title: entry.title || 'Untitled entry',
-          authorsSummary:
-            entry.authors && entry.authors.length > 0
-              ? entry.authors.length <= 2
-                ? entry.authors.join(' & ')
-                : `${entry.authors[0]} et al.`
-              : 'Unknown author',
+          authorsSummary: formatBibEntryAuthorSummary(entry),
           year: entry.year,
           journal: entry.journal || entry.booktitle,
           source: 'bib',
@@ -231,11 +247,11 @@ export function useCitationTabState() {
     }
 
     // 3. Add inline \bibitem entries from document content
-    if (content) {
+    if (content && content.indexOf('\\bibitem') !== -1) {
       const sanitized = stripLatexComments(content);
-      const bibitemRegex = /\\bibitem(?:\[[^\]]*\])?\{([^}]+)\}/g;
+      BIBITEM_REGEX.lastIndex = 0;
       let bMatch: RegExpExecArray | null;
-      while ((bMatch = bibitemRegex.exec(sanitized)) !== null) {
+      while ((bMatch = BIBITEM_REGEX.exec(sanitized)) !== null) {
         const key = bMatch[1]?.trim();
         const lowerKey = key?.toLowerCase();
         if (lowerKey && !map.has(lowerKey)) {

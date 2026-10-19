@@ -12,25 +12,24 @@
 
 import { Facet } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
+import { toast } from 'sonner';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import type {
   SpellingServicePort,
   SpellingNotificationPort,
 } from '@/features/editor/domain/types/ports/spelling.port';
 
-const noopSpellingService: SpellingServicePort = {
-  getProjectDictionary: async () => [],
-  getUserDictionary: async () => [],
-  learnProjectWord: async () => {},
-  checkSpelling: async () => null,
+let defaultSpellingService: SpellingServicePort = {
+  getProjectDictionary: (projectId) => manuscriptService.spelling.getProjectDictionary(projectId),
+  getUserDictionary: () => manuscriptService.spelling.getUserDictionary(),
+  learnProjectWord: (projectId, word) => manuscriptService.spelling.learnProjectWord(projectId, word),
+  checkSpelling: (text, lang) => manuscriptService.spelling.checkSpelling(text, lang),
 };
 
-const noopNotifier: SpellingNotificationPort = {
-  success: () => {},
-  error: () => {},
+let defaultNotifier: SpellingNotificationPort = {
+  success: (msg) => toast.success(msg),
+  error: (msg) => toast.error(msg),
 };
-
-let defaultSpellingService: SpellingServicePort = noopSpellingService;
-let defaultNotifier: SpellingNotificationPort = noopNotifier;
 
 export function setDefaultSpellingService(service: SpellingServicePort): void {
   defaultSpellingService = service;

@@ -99,5 +99,3 @@ export function getFileMeta(name: string, size?: number) {
   };
 }
 
-export { QUICK_ACTIONS, type QuickAction } from '@/features/editor/domain/ai/ai-prompts';
-

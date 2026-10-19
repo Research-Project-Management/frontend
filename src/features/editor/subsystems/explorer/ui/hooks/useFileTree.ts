@@ -17,6 +17,7 @@ import {
   type FileTreeNode,
   type BuildFileTreeParams,
 } from '@/features/editor/subsystems/explorer/model/document-tree';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 
 export interface UseFileTreeParams extends BuildFileTreeParams {
   fileFilter?: string;
@@ -34,6 +35,9 @@ export function useFileTree({
   configuredMainFile,
   fileFilter = '',
 }: UseFileTreeParams) {
+  const mainFile = useSettingsStore((s) => s.mainFile);
+  const mainBibFile = useSettingsStore((s) => s.mainBibFile);
+
   const storageKey = useMemo(() => {
     const scopeId = projectId || parentPageId || 'default';
     return `${STORAGE_KEY_PREFIX}${scopeId}`;
@@ -56,7 +60,7 @@ export function useFileTree({
 
   // Keep localStorage synced whenever expandedFolders or storageKey changes
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window !== 'undefined') return;
     try {
       localStorage.setItem(storageKey, JSON.stringify(Array.from(expandedFolders)));
     } catch {}
@@ -71,6 +75,8 @@ export function useFileTree({
       parentPageId,
       mainFileId,
       configuredMainFile,
+      mainFile,
+      mainBibFile,
     });
   }, [
     projectFiles,
@@ -80,11 +86,36 @@ export function useFileTree({
     parentPageId,
     mainFileId,
     configuredMainFile,
+    mainFile,
+    mainBibFile,
   ]);
 
   const displayTree = useMemo<FileTreeNode[]>(() => {
     return filterFileTree(treeItems, fileFilter);
   }, [treeItems, fileFilter]);
+
+  const docMap = useMemo(() => {
+    const map = new Map<string, { id: string; title: string; updatedAt?: string; isRootDoc?: boolean }>();
+    if (parentPage?.id) {
+      map.set(parentPage.id, {
+        id: parentPage.id,
+        title: parentPage.title || configuredMainFile || mainFile || 'main.tex',
+        updatedAt: parentPage.updatedAt,
+        isRootDoc: true,
+      });
+    }
+    files?.forEach((f) => {
+      if (f.id) {
+        map.set(f.id, {
+          id: f.id,
+          title: f.title || '',
+          updatedAt: f.updatedAt,
+          isRootDoc: f.isRootDoc,
+        });
+      }
+    });
+    return map;
+  }, [parentPage, files, configuredMainFile, mainFile]);
 
   const toggleFolder = useCallback((folderKey: string) => {
     setExpandedFolders((prev) => {
@@ -132,6 +163,7 @@ export function useFileTree({
   return {
     treeItems,
     displayTree,
+    docMap,
     expandedFolders,
     toggleFolder,
     expandAll,

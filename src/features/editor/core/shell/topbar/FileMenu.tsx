@@ -7,30 +7,54 @@
  * Location: `features/editor/ui/shell/topbar/FileMenu.tsx`
  */
 
-import React, { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+import React from 'react';
+import { useParams } from 'next/navigation';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSub, MenubarSubTrigger, MenubarSubContent, MenubarSeparator } from '@/shared/components/ui/menubar';
 import { usePageStore } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { useSettingsStore } from '@/features/editor/core';
 import { useWorkspaceStore } from '@/features/editor/core';
-import { useProjectExport } from '@/features/editor/ui/hooks/useExport';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { editorCommandBus } from '@/features/editor/core';
 import { Download, FileArchive, FileText, FileCode, Archive, Calculator, Settings, History } from 'lucide-react';
 import { GitHubIcon } from '@/shared/components/icons';
-import { duplicateProjectApi } from '@/features/projects/shell/services/project.service';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
+import { useProjectTitleActions } from './useProjectTitleActions';
 
 export function FileMenu({ value = 'file' }: { value?: string } = {}) {
   const params = useParams<{ pageId?: string; projectId?: string }>();
-  const currentPage = usePageStore((s) => s.currentPage);
-  const activeFilePage = usePageStore((s) => s.activeFilePage);
   const { getContent } = useEditorInstance();
   const pdfUrl = useCompileStore((s) => s.pdfUrl);
   const setIsTemplateModalOpen = useSettingsStore((s) => s.setIsTemplateModalOpen);
-  const [isZipping, setIsZipping] = useState(false);
+  const currentPage = usePageStore((s) => s.currentPage);
+  const activeFilePage = usePageStore((s) => s.activeFilePage);
+  const storeProjectId = usePageStore((s) => s.projectId);
+
+  const effectiveProjectId =
+    params?.projectId ||
+    extractProjectId(currentPage) ||
+    storeProjectId ||
+    '';
+
+  const {
+    isCopying,
+    isExporting: isZipping,
+    handleMakeCopy,
+    handleDownloadPdf,
+    handleDownloadZip,
+    handleDownloadArxiv,
+    handleExportWord,
+    handleExportMarkdown,
+    handleExportHtml,
+  } = useProjectTitleActions({
+    effectiveProjectId,
+    displayTitle: currentPage?.title || 'Untitled Project',
+    currentPage,
+    activeFilePage,
+    getContent,
+    pdfUrl,
+    fallbackRootId: params?.pageId,
+  });
 
   const handleGithubSync = () => {
     useSettingsStore.getState().setSettingsActiveTab('github');
@@ -72,99 +96,6 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
   const handleProjectSettings = () => {
     useSettingsStore.getState().setSettingsPanelOpen(true);
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'project-settings' });
-  };
-
-  const {
-    downloadPdf,
-    downloadCopy,
-    exportZip,
-    exportArxiv,
-    exportWord,
-    exportMarkdown,
-    exportHtml,
-  } = useProjectExport();
-  const router = useRouter();
-  const [isCopying, setIsCopying] = useState(false);
-
-  const handleMakeCopy = async () => {
-    const effectiveProjId = params?.projectId || extractProjectId(currentPage);
-    if (effectiveProjId) {
-      const toastId = toast.loading('Duplicating project...');
-      setIsCopying(true);
-      try {
-        const res = (await duplicateProjectApi(effectiveProjId)) as {
-          project?: { id?: string };
-          id?: string;
-        } | null;
-        const newProjId = res?.project?.id || res?.id;
-        toast.success('Project duplicated successfully!', { id: toastId });
-        if (newProjId) {
-          router.push(`/projects/${newProjId}/pages`);
-        }
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Failed to duplicate project, downloading backup file instead.';
-        toast.error(message, { id: toastId });
-        downloadCopy(getContent(), activeFilePage?.title || currentPage?.title);
-      } finally {
-        setIsCopying(false);
-      }
-    } else {
-      downloadCopy(getContent(), activeFilePage?.title || currentPage?.title);
-    }
-  };
-
-
-  const handleDownloadPdf = () => {
-    downloadPdf(pdfUrl, currentPage?.title);
-  };
-
-  const handleDownloadZip = () => {
-    const rootId = params?.pageId || params?.projectId || currentPage?.id;
-    if (!rootId) return;
-    exportZip({
-      parentPageId: rootId,
-      projectTitle: currentPage?.title,
-      currentContent: getContent(),
-      activeFileId: activeFilePage?.id,
-      activeFileTitle: activeFilePage?.title,
-    });
-  };
-
-  const handleDownloadArxiv = () => {
-    const rootId = params?.pageId || params?.projectId || currentPage?.id;
-    if (!rootId) return;
-    exportArxiv({
-      parentPageId: rootId,
-      projectTitle: currentPage?.title,
-      currentContent: getContent(),
-      activeFileId: activeFilePage?.id,
-      activeFileTitle: activeFilePage?.title,
-    });
-  };
-
-  const handleExportWord = () => {
-    const docId = params?.pageId || params?.projectId || currentPage?.id;
-    exportWord({
-      pageId: docId || '',
-      projectTitle: currentPage?.title,
-    });
-  };
-
-  const handleExportMarkdown = () => {
-    const docId = params?.pageId || params?.projectId || currentPage?.id;
-    exportMarkdown({
-      pageId: docId || '',
-      projectTitle: currentPage?.title,
-      fallbackContent: getContent(),
-    });
-  };
-
-  const handleExportHtml = () => {
-    const content = getContent();
-    exportHtml({
-      content,
-      projectTitle: currentPage?.title,
-    });
   };
 
   return (

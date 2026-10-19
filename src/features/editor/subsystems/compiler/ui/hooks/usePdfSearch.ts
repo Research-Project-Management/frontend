@@ -49,6 +49,8 @@ export interface UsePdfSearchOptions {
   synctexMapRef?: React.MutableRefObject<SyncTeXMap | null>;
 }
 
+const pdfPageTextCache = new WeakMap<PdfDocumentProxyLike, Map<number, string>>();
+
 export function escapePdfSearchRegExp(string: string): string {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -248,6 +250,9 @@ export function usePdfSearch({
     [onScrollToPage, updateActiveHighlight],
   );
 
+  // Track active search generation to cancel stale in-flight page extractions
+  const searchGenerationRef = useRef<number>(0);
+
   // Execute text extraction and matching across all document pages
   const executeSearch = useCallback(
     async (
@@ -258,6 +263,7 @@ export function usePdfSearch({
         reg?: boolean;
       },
     ) => {
+      const currentGen = ++searchGenerationRef.current;
       clearDomHighlights();
 
       const cs = opts?.caseSens ?? caseSensitive;
@@ -290,39 +296,78 @@ export function usePdfSearch({
       const totalPages = pdf.numPages || 0;
       const foundMatches: PdfSearchMatch[] = [];
 
+      let docPageCache = pdfPageTextCache.get(pdf);
+      if (!docPageCache) {
+        docPageCache = new Map<number, string>();
+        pdfPageTextCache.set(pdf, docPageCache);
+      }
+
+      const extractSinglePageText = async (p: number): Promise<string> => {
+        const cached = docPageCache!.get(p);
+        if (cached !== undefined) return cached;
+
+        const page = await pdf.getPage(p);
+        if (!page || typeof page.getTextContent !== 'function') return '';
+        const textContent = await page.getTextContent();
+        if (!textContent || !Array.isArray(textContent.items)) return '';
+
+        let pageStr = '';
+        try {
+          const textItems = extractTextItemsFromTextContent(textContent, page.view);
+          const pageWidth =
+            page.view && page.view.length >= 4
+              ? page.view[2] - page.view[0]
+              : 595;
+          const pageHeight =
+            page.view && page.view.length >= 4
+              ? page.view[3] - page.view[1]
+              : 842;
+          const layout = performRecursiveXyCut(textItems, {
+            pageWidth: pageWidth > 0 ? pageWidth : 595,
+            pageHeight: pageHeight > 0 ? pageHeight : 842,
+          });
+          pageStr = layout.fullText;
+        } catch {
+          pageStr = '';
+        }
+
+        if (!pageStr) {
+          pageStr = textContent.items
+            .map((item) => item.str || '')
+            .join(' ');
+        }
+        docPageCache!.set(p, pageStr);
+        try {
+          (page as { cleanup?: () => void })?.cleanup?.();
+        } catch {
+          // Ignore cleanup error
+        }
+        return pageStr;
+      };
+
       try {
+        // Hydrate uncached pages in bounded concurrent batches (8 pages per batch)
+        const PAGE_BATCH_SIZE = 8;
+        for (let batchStart = 1; batchStart <= totalPages; batchStart += PAGE_BATCH_SIZE) {
+          if (searchGenerationRef.current !== currentGen) return;
+          const batchEnd = Math.min(totalPages, batchStart + PAGE_BATCH_SIZE - 1);
+          const uncachedPages: number[] = [];
+          for (let p = batchStart; p <= batchEnd; p++) {
+            if (!docPageCache.has(p)) {
+              uncachedPages.push(p);
+            }
+          }
+          if (uncachedPages.length > 0) {
+            await Promise.all(uncachedPages.map(extractSinglePageText));
+          }
+        }
+
+        if (searchGenerationRef.current !== currentGen) return;
+
         let globalIdx = 0;
         for (let p = 1; p <= totalPages; p++) {
-          const page = await pdf.getPage(p);
-          if (!page || typeof page.getTextContent !== 'function') continue;
-          const textContent = await page.getTextContent();
-          if (!textContent || !Array.isArray(textContent.items)) continue;
-
-          let pageStr = '';
-          try {
-            const textItems = extractTextItemsFromTextContent(textContent, page.view);
-            const pageWidth =
-              page.view && page.view.length >= 4
-                ? page.view[2] - page.view[0]
-                : 595;
-            const pageHeight =
-              page.view && page.view.length >= 4
-                ? page.view[3] - page.view[1]
-                : 842;
-            const layout = performRecursiveXyCut(textItems, {
-              pageWidth: pageWidth > 0 ? pageWidth : 595,
-              pageHeight: pageHeight > 0 ? pageHeight : 842,
-            });
-            pageStr = layout.fullText;
-          } catch {
-            pageStr = '';
-          }
-
-          if (!pageStr) {
-            pageStr = textContent.items
-              .map((item) => item.str || '')
-              .join(' ');
-          }
+          const pageStr = docPageCache.get(p);
+          if (!pageStr) continue;
 
           rx.lastIndex = 0;
           let match: RegExpExecArray | null;
@@ -352,10 +397,14 @@ export function usePdfSearch({
           applyDomHighlights(0, trimmed, cs, ww, re);
         }
       } catch (err) {
-        console.warn('[usePdfSearch] Error during search:', err);
-        setMatches([]);
+        if (searchGenerationRef.current === currentGen) {
+          console.warn('[usePdfSearch] Error during search:', err);
+          setMatches([]);
+        }
       } finally {
-        setIsSearching(false);
+        if (searchGenerationRef.current === currentGen) {
+          setIsSearching(false);
+        }
       }
     },
     [

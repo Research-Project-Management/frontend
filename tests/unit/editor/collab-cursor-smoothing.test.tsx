@@ -1,16 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import React, { createRef } from 'react';
-import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
+import { cleanup } from '@testing-library/react';
 import {
   getCollaboratorColor,
   COLLABORATOR_PALETTE,
   buildCollaboratorCursorCss,
-  CollaboratorCursors,
 } from '@/features/editor/ui/editor/CollaboratorCursors';
 import {
   useDocumentCollaborationStore,
 } from '@/features/editor/core';
-import { editorCommandBus } from '@/features/editor/core';
 
 describe('Phase 12: Realtime Collab Cursor & Awareness Smoothing (Overleaf Parity)', () => {
   beforeEach(() => {
@@ -63,24 +60,7 @@ describe('Phase 12: Realtime Collab Cursor & Awareness Smoothing (Overleaf Parit
       // Selection opacity blending
       expect(css).toContain('.cm-ySelection');
       expect(css).toContain('opacity: 0.25');
-    });
-
-    it('renders CollaboratorCursors component with dynamic style tag and avatars', () => {
-      const { container } = render(
-        <CollaboratorCursors
-          collaborators={[
-            { id: 'c1', name: 'Alice', color: '#2563EB', isOnline: true },
-            { id: 'c2', name: 'Bob', color: '#DC2626', isOnline: false },
-          ]}
-        />,
-      );
-
-      const style = container.querySelector('style');
-      expect(style).not.toBeNull();
-      expect(style?.innerHTML).toContain('cm-ySelectionCaret');
-
-      expect(screen.getByTitle('Alice (Online)')).toBeInTheDocument();
-      expect(screen.getByTitle('Bob (Idle)')).toBeInTheDocument();
+      expect(css).toContain('.cm-ySelectionCaretDot');
     });
   });
 

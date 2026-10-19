@@ -25,11 +25,11 @@ import {
   type PdfPageDimensions,
   type SyncTeXMap,
 } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
-import type { SurfaceHandle } from '@/features/editor/subsystems/compiler/ui/PdfSurface';
+import type { PdfSurfaceHandle } from '@/features/editor/subsystems/compiler/ui/PdfSurface';
 
 export interface UseSynchronizedScrollProps {
   enabled: boolean;
-  pdfSurfaceRef: React.RefObject<SurfaceHandle | null>;
+  pdfSurfaceRef: React.RefObject<PdfSurfaceHandle | null>;
   synctexMapRef: React.MutableRefObject<SyncTeXMap | null>;
   numPages: number;
   scale: number;

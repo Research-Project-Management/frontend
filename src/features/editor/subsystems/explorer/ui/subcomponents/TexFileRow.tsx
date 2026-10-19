@@ -37,23 +37,30 @@ import { useFileExplorerActions } from '@/features/editor/subsystems/explorer/ui
 import { IndentGuides, RenameInput, RowActions } from './FileTreePrimitives';
 import { useFileDiagnosticsSummary } from '@/features/editor/ui/hooks/useDiagnosticsSummary';
 
+const ICON_TEX = { icon: FileCode2, color: 'text-foreground' };
+const ICON_BIB = { icon: BookText, color: 'text-foreground' };
+const ICON_CLS = { icon: Braces, color: 'text-foreground' };
+const ICON_TXT = { icon: FileType, color: 'text-foreground' };
+const ICON_IMG = { icon: Image, color: 'text-foreground' };
+const ICON_DEFAULT = { icon: FileCode2, color: 'text-foreground' };
+
 export function getFileIcon(filename: string) {
   const ext = filename.split('.').pop()?.toLowerCase() ?? '';
   switch (ext) {
     case 'tex':
     case 'ltx':
     case 'dtx':
-      return { icon: FileCode2, color: 'text-foreground' };
+      return ICON_TEX;
     case 'bib':
     case 'bst':
-      return { icon: BookText, color: 'text-foreground' };
+      return ICON_BIB;
     case 'cls':
     case 'sty':
     case 'ins':
-      return { icon: Braces, color: 'text-foreground' };
+      return ICON_CLS;
     case 'md':
     case 'txt':
-      return { icon: FileType, color: 'text-foreground' };
+      return ICON_TXT;
     case 'png':
     case 'jpg':
     case 'jpeg':
@@ -62,9 +69,9 @@ export function getFileIcon(filename: string) {
     case 'webp':
     case 'eps':
     case 'pdf':
-      return { icon: Image, color: 'text-foreground' };
+      return ICON_IMG;
     default:
-      return { icon: FileCode2, color: 'text-foreground' };
+      return ICON_DEFAULT;
   }
 }
 

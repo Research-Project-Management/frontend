@@ -11,6 +11,7 @@ import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/
 import { TEX_EXTS, type PendingUploadItem as PendingItem } from '@/features/editor/subsystems/explorer/ui/modals/UploadConflictDialog';
 import { parseZipArchive, extractAndImportZipToProject } from '@/features/editor/sdk/archive/archive-import';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
+import { readEntriesRecursively } from '../modals/directory-reader';
 
 export interface UseFileUploadOptions {
   parentPageId: string | null;
@@ -138,41 +139,6 @@ export function useFileUpload({
     setUploadDialogOpen(true);
   };
 
-  const readEntriesRecursively = useCallback(
-    async (
-      dirEntry: FileSystemDirectoryEntry,
-      basePath: string,
-    ): Promise<{ file: File; relativePath: string }[]> => {
-      const results: { file: File; relativePath: string }[] = [];
-      const reader = dirEntry.createReader();
-
-      const readBatch = (): Promise<FileSystemEntry[]> =>
-        new Promise((resolve, reject) => reader.readEntries(resolve, reject));
-
-      let batch: FileSystemEntry[];
-      do {
-        batch = await readBatch();
-        for (const entry of batch) {
-          if (entry.isFile) {
-            const file = await new Promise<File>((resolve, reject) =>
-              (entry as FileSystemFileEntry).file(resolve, reject),
-            );
-            results.push({ file, relativePath: `${basePath}/${file.name}` });
-          } else if (entry.isDirectory) {
-            const subResults = await readEntriesRecursively(
-              entry as FileSystemDirectoryEntry,
-              `${basePath}/${entry.name}`,
-            );
-            results.push(...subResults);
-          }
-        }
-      } while (batch.length > 0);
-
-      return results;
-    },
-    [],
-  );
-
   const handleDrop = useCallback(
     async (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
@@ -213,7 +179,7 @@ export function useFileUpload({
         setUploadDialogOpen(true);
       }
     },
-    [parentPageId, readEntriesRecursively, markDuplicates],
+    [parentPageId, markDuplicates],
   );
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
@@ -316,9 +282,6 @@ export function useFileUpload({
           queryKey: filesQuery(parentPageId).queryKey,
         });
         editorCommandBus.dispatch({ type: 'filetree:updated' });
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
-        }
       })();
     }
 
@@ -349,9 +312,6 @@ export function useFileUpload({
             queryKey: filesQuery(parentPageId).queryKey,
           });
           editorCommandBus.dispatch({ type: 'filetree:updated' });
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
-          }
         }
       }
     };

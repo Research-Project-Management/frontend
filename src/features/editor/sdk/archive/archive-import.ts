@@ -10,7 +10,7 @@
  */
 
 import JSZip from 'jszip';
-import { fileService, pageService, StorageService, manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { fileService, pageService, manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
 
 export const TEXT_EXTENSIONS = new Set([
@@ -319,44 +319,21 @@ export async function parseZipArchive(
   const textFiles = items.filter((i) => i.isText);
   const assetFiles = items.filter((i) => !i.isText);
 
-  let mainFilePath: string | undefined;
-
-  // 1. Exact "main.tex" at root
-  const rootMain = textFiles.find((f) => f.path.toLowerCase() === 'main.tex');
-  if (rootMain) {
-    mainFilePath = rootMain.path;
-  } else {
-    // 2. Any root-level .tex containing \documentclass (excluding subfiles child documents)
-    const isRealDocClass = (text?: string) =>
-      Boolean(text && /\\documentclass\b/.test(text) && !/\\documentclass\s*(?:\[[^\]]*\])?\s*\{\s*subfiles\s*\}/.test(text));
-
-    const rootDocClass = textFiles.find(
-      (f) =>
-        !f.folderPath &&
-        f.name.toLowerCase().endsWith('.tex') &&
-        isRealDocClass(f.textContent),
+  const isRealDocClass = (text?: string) =>
+    Boolean(
+      text &&
+        /\\documentclass\b/.test(text) &&
+        !/\\documentclass\s*(?:\[[^\]]*\])?\s*\{\s*subfiles\s*\}/.test(text),
     );
-    if (rootDocClass) {
-      mainFilePath = rootDocClass.path;
-    } else {
-      // 3. Any .tex containing \documentclass anywhere in the tree
-      const anyDocClass = textFiles.find(
-        (f) =>
-          f.name.toLowerCase().endsWith('.tex') &&
-          isRealDocClass(f.textContent),
-      );
-      if (anyDocClass) {
-        mainFilePath = anyDocClass.path;
-      } else {
-        // 4. Fallback to first .tex at root, or first .tex overall
-        const firstRootTex = textFiles.find(
-          (f) => !f.folderPath && f.name.toLowerCase().endsWith('.tex'),
-        );
-        const firstAnyTex = textFiles.find((f) => f.name.toLowerCase().endsWith('.tex'));
-        mainFilePath = firstRootTex?.path || firstAnyTex?.path;
-      }
-    }
-  }
+  const texFiles = textFiles.filter((f) => f.name.toLowerCase().endsWith('.tex'));
+
+  const mainFilePath = (
+    texFiles.find((f) => f.path.toLowerCase() === 'main.tex') ||
+    texFiles.find((f) => !f.folderPath && isRealDocClass(f.textContent)) ||
+    texFiles.find((f) => isRealDocClass(f.textContent)) ||
+    texFiles.find((f) => !f.folderPath) ||
+    texFiles[0]
+  )?.path;
 
   // Project name deduction
   let projectName = preferredName;
@@ -492,7 +469,7 @@ export async function extractAndImportZipToProject({
       const parentFolderId = parentPath ? folderIdMap[parentPath] : null;
 
       try {
-        const created = await StorageService.createPageFolder(
+        const created = await manuscriptService.storage.createPageFolder(
           effectiveRootPageId,
           folderName,
           parentFolderId,
@@ -516,7 +493,7 @@ export async function extractAndImportZipToProject({
       });
 
       try {
-        await StorageService.uploadPageFile(
+        await manuscriptService.storage.uploadPageFile(
           effectiveRootPageId,
           file,
           parentFolderId,

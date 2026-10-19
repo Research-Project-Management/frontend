@@ -32,10 +32,11 @@ import dynamic from 'next/dynamic';
 import { useEditorStorage } from '@/features/editor/ui/hooks/useStorage';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { createFileSchema, createFolderSchema, renameItemSchema, extractProjectId, extractDocumentContentString } from '@/features/editor/domain/types/core.types';
-import { usePageStore } from '@/features/editor/core';
-import { useTabsStore } from '@/features/editor/core/store/tabs.store';
-import { useSettingsStore } from '@/features/editor/core';
-import { useWorkspaceStore } from '@/features/editor/core';
+import {
+  usePageStore,
+  useSettingsStore,
+  useWorkspaceStore,
+} from '@/features/editor/core';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
 import {
@@ -44,7 +45,6 @@ import {
   deletedFilesQuery,
 } from '@/features/editor/ui/hooks/document.queries';
 import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
-import { useFileActions } from '@/features/editor/ui/hooks/useFileActions';
 import { editorCommandBus, workspaceCoordinator } from '@/features/editor/core';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
@@ -93,16 +93,18 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     [],
   );
 
-  const currentPage = usePageStore((s) => s.currentPage);
+  const currentPageId = usePageStore((s) => s.currentPage?.id);
+  const currentPageTitle = usePageStore((s) => s.currentPage?.title);
+  const currentPageProjectId = usePageStore((s) => extractProjectId(s.currentPage));
   const storeParentPageId = usePageStore((s) => s.parentPageId);
-  const activeFilePage = usePageStore((s) => s.activeFilePage);
-  const setTexFiles = usePageStore((s) => s.setTexFiles);
+  const activeFileId = usePageStore((s) => s.activeFilePage?.id);
+  const activeFileTitle = usePageStore((s) => s.activeFilePage?.title);
   const setSelectedAsset = usePageStore((s) => s.setSelectedAsset);
   const setMainFile = useSettingsStore((s) => s.setMainFile);
   const configuredMainFile = useSettingsStore((s) => s.mainFile);
-  const openTab = useTabsStore((s) => s.openTab);
+  const openTab = useWorkspaceStore((s) => s.openTab);
 
-  const parentPageId: string | null = pageId || storeParentPageId || currentPage?.id || null;
+  const parentPageId: string | null = pageId || storeParentPageId || currentPageId || null;
 
   const { data: parentPage } = useQuery({
     ...pageQuery(parentPageId ?? ''),
@@ -117,10 +119,10 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   const projectId =
     routeProjectId ||
     extractProjectId(parentPage) ||
-    extractProjectId(currentPage) ||
+    currentPageProjectId ||
     '';
 
-  const activeTabId = useTabsStore((s) =>
+  const activeTabId = useWorkspaceStore((s) =>
     (parentPageId ? s.activeByProject[parentPageId] : null) ||
     (projectId ? s.activeByProject[projectId] : null) ||
     null
@@ -180,20 +182,19 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         });
       }
     }
-    const names = allFiles.map((f) => f.title || f.name || 'untitled.tex');
-    setTexFiles(names);
     workspaceCoordinator.initProjectSymbols(allFiles);
-  }, [files, parentPage, setTexFiles]);
+  }, [files, parentPage]);
 
-  const { createFile: createFileMutation, setMainFile: setMainFileMutation } = useFileActions();
   const {
+    createFile: createFileMutation,
+    setMainFile: setMainFileMutation,
     deletePage: deletePageMutation,
     updateTitle: updateTitleMutation,
     updateContent: updateContentMutation,
   } = usePageActions();
 
   const {
-    files: projectFiles,
+    items: projectFiles,
     isLoading: projectFilesLoading,
     uploadFile,
     createFolder,
@@ -212,9 +213,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
               queryClient.invalidateQueries({ queryKey: filesQuery(parentPageId).queryKey });
             }
             queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
-            }
+            editorCommandBus.dispatch({ type: 'filetree:updated' });
           },
         },
       );
@@ -231,12 +230,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       }
     };
 
-    window.addEventListener('flux:filetree-updated', handleFileTreeUpdated);
-    const unsubCmd = editorCommandBus.subscribe('filetree:updated', handleFileTreeUpdated);
-    return () => {
-      window.removeEventListener('flux:filetree-updated', handleFileTreeUpdated);
-      unsubCmd();
-    };
+    return editorCommandBus.subscribe('filetree:updated', handleFileTreeUpdated);
   }, [queryClient, parentPageId]);
 
   // Query external linked files (Zotero, Mendeley, remote URL)
@@ -269,10 +263,10 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     deleteLinkedFile,
     refreshAllLinkedFiles,
     insertAsset,
+    handleRenameSubmit,
   } = useFileExplorerActions({
     projectId,
     parentPageId,
-    currentPage,
     engine,
   });
 
@@ -339,7 +333,13 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       };
       setSelectedAsset(asset);
       if (parentPageId)
-        openTab(parentPageId, { id: item.id, title: item.filename, fileUrl: item.url });
+        openTab(parentPageId, {
+          id: item.id,
+          title: item.filename,
+          path: item.filename,
+          isDirty: false,
+          isPinned: false,
+        });
       setSearchParams({ file: item.id });
     },
     [parentPageId, openTab, setSearchParams, setSelectedAsset],
@@ -474,12 +474,13 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         return;
       }
       const oldTitle = files?.find((f) => f.id === fileId)?.title ?? '';
+      void handleRenameSubmit(fileId, parsed.data.name, oldTitle);
       updateTitleMutation.mutate(
         { pageId: fileId, title: parsed.data.name, oldTitle },
         { onSuccess: () => setRenamingId(null) },
       );
     },
-    [renameValue, files, updateTitleMutation],
+    [renameValue, files, handleRenameSubmit, updateTitleMutation],
   );
 
   const handleDelete = useCallback(
@@ -568,7 +569,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       }
 
       // TeX file node
-      const activeId = activeTabId || activeFilePage?.id || searchParams.get('file') || pageId;
+      const activeId = activeTabId || activeFileId || searchParams.get('file') || pageId;
       const isMain = Boolean(
         mainFileId
           ? node.id === mainFileId
@@ -623,7 +624,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       insertAsset,
       handleOpenPreview,
       projectId,
-      activeFilePage,
+      activeFileId,
       activeTabId,
       searchParams,
       pageId,
@@ -729,13 +730,12 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         <FileOutlineSection
           isFileTreeOpen={isFileTreeOpen}
           activeFileName={
-            activeFilePage?.title
-              ? displayName(activeFilePage.title)
-              : currentPage?.title
-                ? displayName(currentPage.title)
+            activeFileTitle
+              ? displayName(activeFileTitle)
+              : currentPageTitle
+                ? displayName(currentPageTitle)
                 : 'main.tex'
           }
-          docContent={extractDocumentContentString(activeFilePage?.content || currentPage?.content)}
         />
       </div>
 

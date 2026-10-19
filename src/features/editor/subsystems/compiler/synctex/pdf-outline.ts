@@ -42,43 +42,74 @@ export async function extractPdfBookmarks(
       return [];
     }
 
-    const results: PdfOutlineItem[] = [];
+    const destCache = new Map<string, unknown[] | null>();
+    const pageIndexCache = new Map<unknown, number>();
 
-    async function traverse(items: PdfJsOutlineItem[], level = 0) {
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (!item || !item.title) continue;
-
-        let pageNumber = 1;
-        try {
-          let dest: string | unknown[] | null | undefined = item.dest;
-          if (typeof dest === 'string') {
-            dest = await doc.getDestination(dest);
+    async function resolvePageNumber(item: PdfJsOutlineItem): Promise<number> {
+      try {
+        let dest: string | unknown[] | null | undefined = item.dest;
+        if (typeof dest === 'string') {
+          if (destCache.has(dest)) {
+            dest = destCache.get(dest);
+          } else {
+            const resolved = await doc.getDestination(dest);
+            destCache.set(dest, resolved);
+            dest = resolved;
           }
-
-          if (Array.isArray(dest) && dest.length > 0) {
-            const pageIndex = await doc.getPageIndex(dest[0]);
-            pageNumber = typeof pageIndex === 'number' ? pageIndex + 1 : 1;
-          }
-        } catch {
-          pageNumber = 1;
         }
 
-        results.push({
-          id: `bm_${results.length}_${level}_${pageNumber}`,
-          title: item.title.trim(),
-          pageNumber: Math.max(1, pageNumber),
-          level,
-        });
-
-        if (Array.isArray(item.items) && item.items.length > 0) {
-          await traverse(item.items, level + 1);
+        if (Array.isArray(dest) && dest.length > 0) {
+          const ref = dest[0];
+          if (pageIndexCache.has(ref)) {
+            return pageIndexCache.get(ref)! + 1;
+          }
+          const pageIndex = await doc.getPageIndex(ref);
+          if (typeof pageIndex === 'number') {
+            pageIndexCache.set(ref, pageIndex);
+            return pageIndex + 1;
+          }
         }
+      } catch {
+        // fallback to page 1
       }
+      return 1;
     }
 
-    await traverse(rawOutline, 0);
-    return results;
+    // Traverse outline tree concurrently at each level while maintaining stable document order
+    async function traverse(items: PdfJsOutlineItem[], level = 0): Promise<Array<Omit<PdfOutlineItem, 'id'>>> {
+      const resolvedList = await Promise.all(
+        items.map(async (item) => {
+          if (!item || !item.title) return null;
+          const pageNumber = Math.max(1, await resolvePageNumber(item));
+          const current: Omit<PdfOutlineItem, 'id'> = {
+            title: item.title.trim(),
+            pageNumber,
+            level,
+          };
+          const children =
+            Array.isArray(item.items) && item.items.length > 0
+              ? await traverse(item.items, level + 1)
+              : [];
+          return { current, children };
+        })
+      );
+
+      const flat: Array<Omit<PdfOutlineItem, 'id'>> = [];
+      for (const res of resolvedList) {
+        if (!res) continue;
+        flat.push(res.current);
+        if (res.children.length > 0) {
+          flat.push(...res.children);
+        }
+      }
+      return flat;
+    }
+
+    const flatItems = await traverse(rawOutline, 0);
+    return flatItems.map((item, idx) => ({
+      id: `bm_${idx}_${item.level}_${item.pageNumber}`,
+      ...item,
+    }));
   } catch (err) {
     console.warn('[pdf-outline] Failed to extract PDF bookmarks:', err);
     return [];
@@ -450,18 +481,39 @@ export function extractOutlineFromContent(
 
 /**
  * Parses LaTeX content into outline entries for the File Outline accordion.
- * Uses reference and equality memoization to avoid redundant document parsing on non-content updates.
+ * Uses lightweight fingerprint memoization to avoid retaining large document strings in module memory.
  */
-let lastParsedContent: unknown = null;
+let lastContentFingerprint = '';
 let lastSourceFile: string | undefined = undefined;
 let lastOutlineResult: OutlineEntry[] = [];
 
+function getContentFingerprint(content: unknown): string {
+  if (typeof content === 'string') {
+    const len = content.length;
+    if (len === 0) return '0:empty';
+    // Sample head, middle, tail and length (Flyweight fingerprint: 0 raw document bytes retained)
+    const head = content.slice(0, 32);
+    const mid = content.slice(Math.floor(len / 2), Math.floor(len / 2) + 32);
+    const tail = content.slice(-32);
+    return `${len}:${head}:${mid}:${tail}`;
+  }
+  if (!content) return 'null';
+  return typeof content;
+}
+
+export function clearOutlineMemoCache(): void {
+  lastContentFingerprint = '';
+  lastSourceFile = undefined;
+  lastOutlineResult = [];
+}
+
 export function parseDocumentOutline(content: unknown, sourceFile?: string): OutlineEntry[] {
-  if (content === lastParsedContent && sourceFile === lastSourceFile && lastParsedContent !== null) {
+  const fingerprint = getContentFingerprint(content);
+  if (fingerprint === lastContentFingerprint && sourceFile === lastSourceFile && lastContentFingerprint !== '') {
     return lastOutlineResult;
   }
   const result = parseLatexHeadings(content, sourceFile);
-  lastParsedContent = content;
+  lastContentFingerprint = fingerprint;
   lastSourceFile = sourceFile;
   lastOutlineResult = result;
   return result;

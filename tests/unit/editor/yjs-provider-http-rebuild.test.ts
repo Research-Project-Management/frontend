@@ -33,13 +33,13 @@ class ServerBackedSocket {
   emit(event: string, payload?: any, ack?: Handler) {
     if (!this.connected) return this;
     if (event === 'doc:join') ack?.({ success: true, docPresence: [] });
-    if (event === 'doc:sync-step-1' || event === 'doc:sync-step-2' || event === 'doc:sync-update') {
+    if (event === 'doc:sync:step1' || event === 'doc:sync:step2' || event === 'doc:sync:update') {
       const decoder = decoding.createDecoder(new Uint8Array(payload.data));
       const reply = encoding.createEncoder();
       while (decoding.hasContent(decoder)) {
         syncProtocol.readSyncMessage(decoder, reply, this.server, 'client');
       }
-      if (event === 'doc:sync-step-1') ack?.({ success: true, data: encoding.toUint8Array(reply) });
+      if (event === 'doc:sync:step1') ack?.({ success: true, data: encoding.toUint8Array(reply) });
     }
     return this;
   }

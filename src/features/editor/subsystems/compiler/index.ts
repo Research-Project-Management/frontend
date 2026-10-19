@@ -22,6 +22,13 @@ export {
 export {
   LatexCompilerEngine,
   generateThumbnail,
+  type CompilerExecutionEngine,
+  type CompilerExecutionPort,
+  type CompileExecutionOptions,
+  type CompileExecutionResult,
+  type DirtyFileItem,
+  type FlushBarrierDeps,
+  type CompilerDiagnostic,
 } from './coordinator/compilation-pipeline';
 export {
   useCompileStore,
@@ -31,15 +38,7 @@ export {
   useViewerStore,
   type DocumentViewerState,
   type PdfFitMode,
-  type PdfRotation,
 } from './coordinator/viewer.store';
-export {
-  type CompilerExecutionPort,
-  type CompileExecutionOptions,
-  type CompileExecutionResult,
-  type DirtyFileItem,
-  type CompilerDiagnostic,
-} from './coordinator/compiler-execution-port';
 
 // 2. SyncTeX & PDF Intelligence
 export {
@@ -94,14 +93,22 @@ export {
 } from '@/features/editor/domain/latex/warning-filter';
 
 // 4. Presentation Layer (Thin Views & Controls)
-export { default as PdfViewer, PdfViewer as NamedPdfViewer } from './ui/PdfViewer';
-export { default as PdfSurface, Surface, PdfSurface as NamedPdfSurface, PdfSyncTeXHighlightBox, type SurfaceHandle, type PdfSurfaceHandle, type SynctexHighlightState, type ClickIndicator } from './ui/PdfSurface';
-export { default as CompilerLogs, Logs, LogPanel } from './ui/CompilerLogs';
+export { default as PdfViewer } from './ui/PdfViewer';
+export { default as DetachedPdfPlaceholder } from './ui/DetachedPdfPlaceholder';
+export {
+  default as PdfSurface,
+  PdfSyncTeXHighlightBox,
+  type PdfSurfaceHandle,
+  type PdfSurfaceProps,
+  type SynctexHighlightState,
+  type ClickIndicator,
+} from './ui/PdfSurface';
+export { default as CompilerLogs } from './ui/CompilerLogs';
 export { CompileButton } from './ui/CompileButton';
-export { default as CompilationErrorBanner, CompilationErrorBanner as NamedCompilationErrorBanner } from './ui/CompilationErrorBanner';
-export { default as PdfToolbar, PdfToolbar as NamedPdfToolbar } from './ui/PdfToolbar';
-export { default as PdfFindBar, PdfFindBar as NamedPdfFindBar } from './ui/PdfFindBar';
-export { default as PdfZoomControls, PdfZoomControls as NamedPdfZoomControls } from './ui/PdfZoomControls';
+export { default as CompilationErrorBanner } from './ui/CompilationErrorBanner';
+export { default as PdfToolbar } from './ui/PdfToolbar';
+export { default as PdfFindBar } from './ui/PdfFindBar';
+export { default as PdfZoomControls } from './ui/PdfZoomControls';
 export { usePdfZoom, type UsePdfZoomOptions } from './ui/hooks/usePdfZoom';
 export { usePdfSearch, buildPdfSearchRegex, escapePdfSearchRegExp } from './ui/hooks/usePdfSearch';
 export { useSynchronizedScroll } from './ui/hooks/useSynchronizedScroll';

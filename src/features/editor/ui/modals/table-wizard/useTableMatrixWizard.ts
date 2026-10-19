@@ -67,10 +67,6 @@ export function useTableMatrixWizard({
   const [centering, setCentering] = useState<boolean>(true);
   const [hasHeaderRow, setHasHeaderRow] = useState<boolean>(true);
 
-  // Table hover state for 8x8 quick dimension picker
-  const [hoverRows, setHoverRows] = useState<number>(0);
-  const [hoverCols, setHoverCols] = useState<number>(0);
-
   // Table paste / import state
   const [pastedText, setPastedText] = useState<string>('');
 
@@ -250,76 +246,56 @@ export function useTableMatrixWizard({
     setTableData((prev) => prev.map((row) => row.filter((_, i) => i !== index)));
   }, [tableCols]);
 
+  const importRawText = useCallback(
+    (text: string, useHeaderSetting = true): { kind: 'latex' | 'delimited'; rows: number; cols: number } | null => {
+      if (!text || !text.trim()) return null;
+      const parsedLatex = parseLatexTabular(text);
+      if (parsedLatex) {
+        setTableRows(parsedLatex.rows);
+        setTableCols(parsedLatex.cols);
+        setTableHeaders(parsedLatex.headers);
+        setTableData(parsedLatex.data);
+        setTableAlignments(parsedLatex.alignments);
+        setTableStyle(parsedLatex.style);
+        if (parsedLatex.caption) setCaption(parsedLatex.caption);
+        if (parsedLatex.label) setLabel(parsedLatex.label);
+        if (parsedLatex.placement) setPlacement(parsedLatex.placement);
+        setCentering(Boolean(parsedLatex.centering));
+        setHasHeaderRow(Boolean(parsedLatex.hasHeaderRow));
+        return { kind: 'latex', rows: parsedLatex.rows, cols: parsedLatex.cols };
+      }
+
+      const { headers, data, cols, rows } = parseDelimitedTextToGrid(
+        text,
+        useHeaderSetting ? hasHeaderRow : true,
+      );
+      if (cols > 0 && (rows > 0 || headers.length > 0)) {
+        setTableCols(cols);
+        setTableRows(Math.max(rows, 1));
+        setTableHeaders(headers);
+        setTableData(data.length > 0 ? data : [Array(cols).fill('')]);
+        setTableAlignments(Array(cols).fill('c'));
+        return { kind: 'delimited', rows, cols };
+      }
+      return null;
+    },
+    [hasHeaderRow],
+  );
+
   const importPastedData = useCallback(() => {
     if (!pastedText.trim()) return;
-
-    // Check if pasted text is raw LaTeX
-    const parsedLatex = parseLatexTabular(pastedText);
-    if (parsedLatex) {
-      setTableRows(parsedLatex.rows);
-      setTableCols(parsedLatex.cols);
-      setTableHeaders(parsedLatex.headers);
-      setTableData(parsedLatex.data);
-      setTableAlignments(parsedLatex.alignments);
-      setTableStyle(parsedLatex.style);
-      if (parsedLatex.caption) setCaption(parsedLatex.caption);
-      if (parsedLatex.label) setLabel(parsedLatex.label);
-      if (parsedLatex.placement) setPlacement(parsedLatex.placement);
-      setCentering(Boolean(parsedLatex.centering));
-      setHasHeaderRow(Boolean(parsedLatex.hasHeaderRow));
-      toast.success('Imported LaTeX table into visual editor', { id: 'import-table' });
-      setPastedText('');
+    const imported = importRawText(pastedText, true);
+    if (!imported) {
+      toast.error('Could not parse table data', { id: 'import-table' });
       return;
     }
-
-    // Parse delimited text (Excel/CSV)
-    const { headers, data, cols, rows } = parseDelimitedTextToGrid(
-      pastedText,
-      hasHeaderRow
-    );
-
-    if (cols > 0 && (rows > 0 || headers.length > 0)) {
-      setTableCols(cols);
-      setTableRows(Math.max(rows, 1));
-      setTableHeaders(headers);
-      setTableData(data.length > 0 ? data : [Array(cols).fill('')]);
-      setTableAlignments(Array(cols).fill('c'));
-      toast.success(`Imported ${rows} rows and ${cols} columns`, { id: 'import-table' });
-      setPastedText('');
+    if (imported.kind === 'latex') {
+      toast.success('Imported LaTeX table into visual editor', { id: 'import-table' });
     } else {
-      toast.error('Could not parse table data', { id: 'import-table' });
+      toast.success(`Imported ${imported.rows} rows and ${imported.cols} columns`, { id: 'import-table' });
     }
-  }, [pastedText, hasHeaderRow]);
-
-  const importRawText = useCallback((text: string) => {
-    if (!text || !text.trim()) return false;
-    const parsedLatex = parseLatexTabular(text);
-    if (parsedLatex) {
-      setTableRows(parsedLatex.rows);
-      setTableCols(parsedLatex.cols);
-      setTableHeaders(parsedLatex.headers);
-      setTableData(parsedLatex.data);
-      setTableAlignments(parsedLatex.alignments);
-      setTableStyle(parsedLatex.style);
-      if (parsedLatex.caption) setCaption(parsedLatex.caption);
-      if (parsedLatex.label) setLabel(parsedLatex.label);
-      if (parsedLatex.placement) setPlacement(parsedLatex.placement);
-      setCentering(Boolean(parsedLatex.centering));
-      setHasHeaderRow(Boolean(parsedLatex.hasHeaderRow));
-      return true;
-    }
-
-    const { headers, data, cols, rows } = parseDelimitedTextToGrid(text, true);
-    if (cols > 0 && (rows > 0 || headers.length > 0)) {
-      setTableCols(cols);
-      setTableRows(Math.max(rows, 1));
-      setTableHeaders(headers);
-      setTableData(data.length > 0 ? data : [Array(cols).fill('')]);
-      setTableAlignments(Array(cols).fill('c'));
-      return true;
-    }
-    return false;
-  }, []);
+    setPastedText('');
+  }, [pastedText, importRawText]);
 
   // ─── 5. Matrix Grid Actions ─────────────────────────────────────────────────
 
@@ -467,10 +443,6 @@ export function useTableMatrixWizard({
     setCentering,
     hasHeaderRow,
     setHasHeaderRow,
-    hoverRows,
-    setHoverRows,
-    hoverCols,
-    setHoverCols,
     pastedText,
     setPastedText,
     setTableDimension,

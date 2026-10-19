@@ -5,27 +5,18 @@ import { useStorageItemActions } from '@/features/editor/subsystems/explorer/ui/
 import {
   BookText,
   Braces,
-  ChevronRight,
   Copy,
   Download,
   FileCode2,
   FileText,
-  Folder,
-  FolderOpen,
   Image,
-  Loader2,
-  MoreVertical,
   Paperclip,
   Pencil,
   Trash2,
-  Upload,
 } from 'lucide-react';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import {
   ContextMenu,
@@ -40,38 +31,41 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { useEditorStorageFiles, useEditorStorageMutations } from '@/features/editor/ui/hooks/useStorage';
+import { useEditorStorageMutations } from '@/features/editor/ui/hooks/useStorage';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
 import { useFileDiagnosticsSummary } from '@/features/editor/ui/hooks/useDiagnosticsSummary';
+import { workspaceCoordinator } from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+
+const ICON_IMAGE = { icon: Image, color: 'text-foreground' };
+const ICON_PDF = { icon: FileText, color: 'text-foreground' };
+const ICON_BIB = { icon: BookText, color: 'text-foreground' };
+const ICON_CLS = { icon: Braces, color: 'text-foreground' };
+const ICON_CODE = { icon: FileCode2, color: 'text-foreground' };
+const ICON_ATTACHMENT = { icon: Paperclip, color: 'text-foreground' };
+
+const IMAGE_EXT_SET = new Set(['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'eps']);
+const CODE_EXT_SET = new Set(['tex', 'ltx', 'dtx', 'py', 'r', 'm', 'c', 'cpp', 'java', 'js', 'ts', 'json', 'csv']);
 
 export function getStorageIcon(item: StorageItem) {
   const mime = item.mimeType ?? '';
   const ext = item.filename.split('.').pop()?.toLowerCase() ?? '';
-  if (
-    mime.startsWith('image/') ||
-    ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'eps'].includes(ext)
-  ) {
-    return { icon: Image, color: 'text-foreground' };
+  if (mime.startsWith('image/') || IMAGE_EXT_SET.has(ext)) {
+    return ICON_IMAGE;
   }
   if (ext === 'pdf' || mime === 'application/pdf') {
-    return { icon: FileText, color: 'text-foreground' };
+    return ICON_PDF;
   }
-  if (['bib', 'bst'].includes(ext)) {
-    return { icon: BookText, color: 'text-foreground' };
+  if (ext === 'bib' || ext === 'bst') {
+    return ICON_BIB;
   }
-  if (['cls', 'sty', 'ins'].includes(ext)) {
-    return { icon: Braces, color: 'text-foreground' };
+  if (ext === 'cls' || ext === 'sty' || ext === 'ins') {
+    return ICON_CLS;
   }
-  if (['tex', 'ltx', 'dtx'].includes(ext)) {
-    return { icon: FileCode2, color: 'text-foreground' };
+  if (CODE_EXT_SET.has(ext)) {
+    return ICON_CODE;
   }
-  if (['py', 'r', 'm', 'c', 'cpp', 'java', 'js', 'ts', 'json', 'csv'].includes(ext)) {
-    return { icon: FileCode2, color: 'text-foreground' };
-  }
-  if (['zip', 'tar', 'gz', 'rar', '7z'].includes(ext)) {
-    return { icon: Paperclip, color: 'text-foreground' };
-  }
-  return { icon: Paperclip, color: 'text-foreground' };
+  return ICON_ATTACHMENT;
 }
 
 export {
@@ -85,264 +79,6 @@ import {
   RenameInput,
   RowActions,
 } from './FileTreePrimitives';
-
-export const StorageFolderNode = React.memo(function StorageFolderNode({
-  folder,
-  projectId,
-  depth,
-  onInsertAsset,
-  onPreview,
-  onUploadToFolder,
-}: {
-  folder: StorageItem;
-  projectId: string;
-  depth: number;
-  onInsertAsset: (name: string) => void;
-  onPreview: (item: StorageItem) => void;
-  onUploadToFolder?: (files: File[], folderId: string) => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-
-  const { files: children, isLoading } = useEditorStorageFiles(
-    projectId,
-    folder.id,
-    undefined,
-    { enabled: expanded },
-  );
-
-  const { deleteFile, renameFile } = useEditorStorageMutations(projectId);
-
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
-  const [dragOver, setDragOver] = useState(false);
-
-  const handleClick = () => {
-    setExpanded(!expanded);
-  };
-
-  const handleUploadClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.multiple = true;
-      input.onchange = (ev: Event) => {
-        const target = ev.target as HTMLInputElement;
-        if (target.files && target.files.length > 0 && onUploadToFolder) {
-          onUploadToFolder(Array.from(target.files), folder.id);
-        }
-      };
-      input.click();
-    },
-    [folder.id, onUploadToFolder],
-  );
-
-  const paddingLeft = depth * 14;
-
-  const folderRow = (
-    <div
-      role="button"
-      tabIndex={renamingId === folder.id ? -1 : 0}
-      aria-expanded={expanded}
-      aria-label={`Folder ${folder.filename}`}
-      onClick={handleClick}
-      onKeyDown={(e) => {
-        if (renamingId !== folder.id && (e.key === 'Enter' || e.key === ' ')) {
-          e.preventDefault();
-          handleClick();
-        }
-      }}
-      onDragOver={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setDragOver(true);
-      }}
-      onDragLeave={(e) => {
-        e.stopPropagation();
-        setDragOver(false);
-      }}
-      onDrop={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setDragOver(false);
-        const dropped = Array.from(e.dataTransfer.files);
-        if (dropped.length > 0 && onUploadToFolder) {
-          onUploadToFolder(dropped, folder.id);
-        }
-      }}
-      className={cn(
-        'group/row relative flex h-7.5 w-full items-center gap-1.5 rounded-md pl-2 pr-1 transition-colors cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground',
-        dragOver
-          ? 'bg-muted ring-1 ring-foreground/20 ring-inset'
-          : 'text-foreground hover:bg-muted/60 font-normal',
-      )}
-    >
-      <IndentGuides depth={depth} />
-      <ChevronRight
-        className={cn(
-          'size-3.5 shrink-0 text-foreground transition-transform duration-150',
-          expanded && 'rotate-90',
-        )}
-        strokeWidth={1.75}
-      />
-      {expanded ? (
-        <FolderOpen className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-      ) : (
-        <Folder className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-      )}
-
-      {renamingId === folder.id ? (
-        <RenameInput
-          value={renameValue}
-          onChange={setRenameValue}
-          onCommit={() => {
-            const n = renameValue.trim();
-            if (!n) {
-              setRenamingId(null);
-              return;
-            }
-            renameFile.mutate(
-              { fileId: folder.id, name: n },
-              { onSuccess: () => setRenamingId(null) },
-            );
-          }}
-          onCancel={() => setRenamingId(null)}
-          isPending={renameFile.isPending}
-        />
-      ) : (
-        <>
-          <span className="flex-1 min-w-0 truncate tracking-tight text-foreground font-mono text-12 font-medium">
-            {folder.filename}
-          </span>
-          <RowActions>
-            {onUploadToFolder && (
-              <DropdownMenuItem
-                onClick={handleUploadClick}
-                className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-              >
-                <Upload className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                <span>Upload to folder</span>
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                setRenamingId(folder.id);
-                setRenameValue(folder.filename);
-              }}
-              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-            >
-              <Pencil className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-              <span>Rename</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={(e) => {
-                e.stopPropagation();
-                deleteFile.mutate(folder.id);
-              }}
-              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors"
-            >
-              <Trash2 className="size-4 shrink-0" strokeWidth={1.5} />
-              <span>Delete</span>
-            </DropdownMenuItem>
-          </RowActions>
-        </>
-      )}
-    </div>
-  );
-
-  return (
-    <>
-      {renamingId === folder.id ? (
-        folderRow
-      ) : (
-        <ContextMenu>
-          <ContextMenuTrigger asChild>{folderRow}</ContextMenuTrigger>
-          <ContextMenuContent className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none text-13">
-            {onUploadToFolder && (
-              <ContextMenuItem
-                onClick={handleUploadClick}
-                className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-              >
-                <Upload className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                <span>Upload to folder</span>
-              </ContextMenuItem>
-            )}
-            <ContextMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                setRenamingId(folder.id);
-                setRenameValue(folder.filename);
-              }}
-              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-            >
-              <Pencil className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-              <span>Rename</span>
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-            <ContextMenuItem
-              variant="destructive"
-              onClick={(e) => {
-                e.stopPropagation();
-                deleteFile.mutate(folder.id);
-              }}
-              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors"
-            >
-              <Trash2 className="size-4 shrink-0" strokeWidth={1.5} />
-              <span>Delete</span>
-            </ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu>
-      )}
-
-      {/* Children */}
-      {expanded && (
-        <div className="flex flex-col gap-0.5 w-full">
-          {isLoading && (
-            <div
-              className="flex h-8 items-center"
-              style={{ paddingLeft: `${paddingLeft + 32}px` }}
-            >
-              <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none text-foreground shrink-0" />
-            </div>
-          )}
-          {children?.map((child: StorageItem) =>
-            child.isFolder ? (
-              <StorageFolderNode
-                key={child.id}
-                folder={child}
-                projectId={projectId}
-                depth={depth + 1}
-                onInsertAsset={onInsertAsset}
-                onPreview={onPreview}
-                onUploadToFolder={onUploadToFolder}
-              />
-            ) : (
-              <StorageFileRow
-                key={child.id}
-                item={child}
-                depth={depth + 1}
-                onInsertAsset={onInsertAsset}
-                onPreview={onPreview}
-                projectId={projectId}
-              />
-            ),
-          )}
-          {!isLoading && !children?.length && (
-            <div
-              className="flex h-7 items-center text-11 italic text-muted-foreground/60 select-none"
-              style={{ paddingLeft: `${paddingLeft + 32}px` }}
-            >
-              Empty folder
-            </div>
-          )}
-        </div>
-      )}
-    </>
-  );
-});
 
 export const StorageFileRow = React.memo(function StorageFileRow({
   item,
@@ -398,6 +134,16 @@ export const StorageFileRow = React.memo(function StorageFileRow({
               setRenamingId(null);
               return;
             }
+            const existingModel = lruDocumentCache.getModel(item.id);
+            if (existingModel) {
+              existingModel.filePath = n;
+            }
+            void workspaceCoordinator.renameItem({
+              itemId: item.id,
+              oldName: item.filename || n,
+              newName: n,
+              projectId: projectId || undefined,
+            });
             renameFile.mutate(
               { fileId: item.id, name: n },
               { onSuccess: () => setRenamingId(null) },

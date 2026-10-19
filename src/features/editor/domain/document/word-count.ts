@@ -258,13 +258,21 @@ export function countProjectLatexWords(
   options?: { rootFile?: string; includeBib?: boolean },
 ): ProjectTeXcountStats {
   const fileMap = new Map<string, string>();
+  const lowerKeyMap = new Map<string, string>();
+
+  const registerFile = (rawKey: string, val: string) => {
+    const cleanKey = rawKey.replace(/\\/g, '/').replace(/^\.\//, '');
+    fileMap.set(cleanKey, val);
+    lowerKeyMap.set(cleanKey.toLowerCase(), cleanKey);
+  };
+
   if (files instanceof Map) {
     for (const [k, v] of files.entries()) {
-      fileMap.set(k.replace(/\\/g, '/').replace(/^\.\//, ''), v);
+      registerFile(k, v);
     }
   } else {
     for (const [k, v] of Object.entries(files)) {
-      fileMap.set(k.replace(/\\/g, '/').replace(/^\.\//, ''), v);
+      registerFile(k, v);
     }
   }
 
@@ -273,7 +281,7 @@ export function countProjectLatexWords(
   if (!rootFile || !fileMap.has(rootFile)) {
     const texKeys = Array.from(fileMap.keys()).filter((k) => k.toLowerCase().endsWith('.tex'));
     rootFile =
-      texKeys.find((k) => k.toLowerCase() === 'main.tex') ||
+      lowerKeyMap.get('main.tex') ||
       texKeys.find((k) => {
         const c = fileMap.get(k) || '';
         return /\\documentclass\b/.test(c) && !/\\documentclass\s*(?:\[[^\]]*\])?\s*\{\s*subfiles\s*\}/.test(c);
@@ -289,18 +297,14 @@ export function countProjectLatexWords(
   const resolveIncludeKey = (rawInc: string): string | null => {
     const normalized = rawInc.trim().replace(/\\/g, '/').replace(/^\.\//, '');
     if (fileMap.has(normalized)) return normalized;
-    if (!normalized.toLowerCase().endsWith('.tex') && fileMap.has(`${normalized}.tex`)) {
-      return `${normalized}.tex`;
-    }
-    const lowerTarget = normalized.toLowerCase().endsWith('.tex')
-      ? normalized.toLowerCase()
-      : `${normalized.toLowerCase()}.tex`;
-    for (const k of fileMap.keys()) {
-      if (k.toLowerCase() === lowerTarget || k.toLowerCase() === normalized.toLowerCase()) {
-        return k;
-      }
-    }
-    return null;
+    const withTex = normalized.toLowerCase().endsWith('.tex') ? normalized : `${normalized}.tex`;
+    if (fileMap.has(withTex)) return withTex;
+    const lowerNorm = normalized.toLowerCase();
+    return (
+      lowerKeyMap.get(lowerNorm) ??
+      lowerKeyMap.get(lowerNorm.endsWith('.tex') ? lowerNorm : `${lowerNorm}.tex`) ??
+      null
+    );
   };
 
   const traverse = (fileKey: string) => {

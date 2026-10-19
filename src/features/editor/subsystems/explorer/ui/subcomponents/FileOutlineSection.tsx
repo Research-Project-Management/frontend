@@ -3,14 +3,15 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { editorCommandBus } from '@/features/editor/core';
+import { editorCommandBus, usePageStore } from '@/features/editor/core';
+import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import { parseDocumentOutline, OUTLINE_INDENT } from '@/features/editor/subsystems/compiler';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { useWorkspaceStore } from '@/features/editor/core';
 
 export interface FileOutlineSectionProps {
   isFileTreeOpen: boolean;
-  docContent: string;
+  docContent?: string;
   activeFileName?: string;
 }
 
@@ -24,13 +25,28 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
   const toggleFileOutline = useWorkspaceStore((s) => s.toggleFileOutline);
   const [outlineHeight, setOutlineHeight] = useState(200);
   const [activeLine, setActiveLine] = useState<number>(1);
-  const [content, setContent] = useState<string>(docContent);
+  const [content, setContent] = useState<string>(() => docContent ?? '');
   const activeItemRef = useRef<HTMLButtonElement | null>(null);
 
   // Sync with prop changes when active file changes
   useEffect(() => {
-    setContent(docContent);
-  }, [docContent]);
+    if (docContent !== undefined) {
+      setContent(docContent);
+      return;
+    }
+    if (!isOutlineOpen) return;
+    const currentText = engine?.getContent();
+    if (currentText) {
+      setContent(currentText);
+      return;
+    }
+    const pageState = usePageStore.getState();
+    setContent(
+      extractDocumentContentString(
+        pageState.activeFilePage?.content || pageState.currentPage?.content,
+      ),
+    );
+  }, [docContent, activeFileName, isOutlineOpen, engine]);
 
   // Subscribe to real-time keystrokes and cursor updates from the active editor engine only when open
   useEffect(() => {
@@ -44,6 +60,13 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
     const currentText = engine.getContent();
     if (currentText) {
       setContent(currentText);
+    } else if (docContent === undefined) {
+      const pageState = usePageStore.getState();
+      setContent(
+        extractDocumentContentString(
+          pageState.activeFilePage?.content || pageState.currentPage?.content,
+        ),
+      );
     }
 
     const unsubCursor = engine.onCursorChange((line: number) => {

@@ -60,7 +60,7 @@ export function PrimarySidebar() {
       case 'files':
         return <FilesTab onClose={handleClose} />;
       case 'search':
-        return <SearchTab onClose={handleClose} />;
+        return <SearchTab />;
       case 'citations':
         return <CitationTab onClose={handleClose} />;
       case 'review':

@@ -7,7 +7,7 @@
 
 import { linter, type Diagnostic } from '@codemirror/lint';
 import { type Extension } from '@codemirror/state';
-import type { EditorDiagnosticItem } from '@/features/editor/core/bus/command-bus.port';
+import type { EditorDiagnosticItem } from '@/features/editor/domain/diagnostics/diagnostic-types';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
 
 export interface DiagnosticsGutterOptions {

@@ -35,6 +35,22 @@ export function computeDraftDiffSummary(
   server: string,
   maxPreviewLines = 12
 ): DraftDiffSummary {
+  if (draft === server) {
+    let lineCount = 1;
+    for (let i = 0; i < draft.length; i++) {
+      if (draft.charCodeAt(i) === 10) lineCount++;
+    }
+    return {
+      identical: true,
+      addedLines: 0,
+      removedLines: 0,
+      preview: [],
+      draftLineCount: lineCount,
+      serverLineCount: lineCount,
+      charDelta: 0,
+    };
+  }
+
   const a = server.split('\n');
   const b = draft.split('\n');
   const base = {
@@ -42,9 +58,6 @@ export function computeDraftDiffSummary(
     serverLineCount: a.length,
     charDelta: draft.length - server.length,
   };
-  if (draft === server) {
-    return { identical: true, addedLines: 0, removedLines: 0, preview: [], ...base };
-  }
 
   let start = 0;
   while (start < a.length && start < b.length && a[start] === b[start]) start++;
@@ -58,13 +71,26 @@ export function computeDraftDiffSummary(
   const midB = b.slice(start, endB + 1);
 
   const ops: DraftDiffLine[] = [];
+  let addedLines = 0;
+  let removedLines = 0;
+
   if (midA.length * midB.length <= LCS_CELL_LIMIT) {
     const n = midA.length;
     const m = midB.length;
-    const dp: Uint32Array[] = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1));
+    const stride = m + 1;
+    const dp = new Uint32Array((n + 1) * stride);
     for (let i = n - 1; i >= 0; i--) {
+      const rowOffset = i * stride;
+      const nextRowOffset = (i + 1) * stride;
+      const lineA = midA[i];
       for (let j = m - 1; j >= 0; j--) {
-        dp[i][j] = midA[i] === midB[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+        if (lineA === midB[j]) {
+          dp[rowOffset + j] = dp[nextRowOffset + j + 1] + 1;
+        } else {
+          const down = dp[nextRowOffset + j];
+          const right = dp[rowOffset + j + 1];
+          dp[rowOffset + j] = down > right ? down : right;
+        }
       }
     }
     let i = 0;
@@ -73,37 +99,56 @@ export function computeDraftDiffSummary(
       if (i < n && j < m && midA[i] === midB[j]) {
         i++;
         j++;
-      } else if (j < m && (i >= n || dp[i][j + 1] >= dp[i + 1][j])) {
-        ops.push({ type: 'added', lineNumber: start + j + 1, text: midB[j] });
+      } else if (j < m && (i >= n || dp[i * stride + j + 1] >= dp[(i + 1) * stride + j])) {
+        addedLines++;
+        if (ops.length < maxPreviewLines) {
+          ops.push({ type: 'added', lineNumber: start + j + 1, text: midB[j] });
+        }
         j++;
       } else {
-        ops.push({ type: 'removed', lineNumber: start + i + 1, text: midA[i] });
+        removedLines++;
+        if (ops.length < maxPreviewLines) {
+          ops.push({ type: 'removed', lineNumber: start + i + 1, text: midA[i] });
+        }
         i++;
       }
     }
   } else {
     const counts = new Map<string, number>();
     for (const line of midA) counts.set(line, (counts.get(line) ?? 0) + 1);
-    midB.forEach((line, idx) => {
-      const c = counts.get(line) ?? 0;
-      if (c > 0) counts.set(line, c - 1);
-      else ops.push({ type: 'added', lineNumber: start + idx + 1, text: line });
-    });
     const remaining = new Map(counts);
-    midA.forEach((line, idx) => {
-      const c = remaining.get(line) ?? 0;
+    for (let idx = 0; idx < midB.length; idx++) {
+      const line = midB[idx];
+      const c = counts.get(line) ?? 0;
       if (c > 0) {
-        remaining.set(line, c - 1);
-        ops.push({ type: 'removed', lineNumber: start + idx + 1, text: line });
+        counts.set(line, c - 1);
+      } else {
+        addedLines++;
+        if (ops.length < maxPreviewLines) {
+          ops.push({ type: 'added', lineNumber: start + idx + 1, text: line });
+        }
       }
-    });
+    }
+    // Re-sync remaining counts after matching midB
+    for (let idx = 0; idx < midA.length; idx++) {
+      const line = midA[idx];
+      const c = counts.get(line) ?? 0;
+      if (c > 0) {
+        counts.set(line, c - 1);
+        removedLines++;
+        if (ops.length < maxPreviewLines) {
+          ops.push({ type: 'removed', lineNumber: start + idx + 1, text: line });
+        }
+      }
+    }
+    void remaining;
   }
 
   return {
     identical: false,
-    addedLines: ops.filter((o) => o.type === 'added').length,
-    removedLines: ops.filter((o) => o.type === 'removed').length,
-    preview: ops.slice(0, maxPreviewLines),
+    addedLines,
+    removedLines,
+    preview: ops,
     ...base,
   };
 }

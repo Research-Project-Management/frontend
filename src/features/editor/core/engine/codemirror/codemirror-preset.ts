@@ -73,25 +73,43 @@ export const editorBaseTheme = EditorView.theme({
     overflow: 'auto',
   },
   '.cm-content': {
-    padding: '6px 0 32px 0',
+    padding: '8px 0 32px 0',
   },
   '.cm-line': {
-    padding: '0 8px',
+    padding: '0 12px',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
-    padding: '0 8px',
+    padding: '0 12px',
   },
   '.cm-gutters': {
     borderRight: '1px solid var(--border)',
     backgroundColor: 'transparent',
     color: 'var(--muted-foreground, #57606a)',
     fontFamily: 'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-    padding: '6px 0 0 0',
+    padding: '8px 0 0 0',
   },
   '.cm-gutterElement': {
-    padding: '0 8px 0 12px',
+    padding: '0 6px 0 10px',
     color: 'var(--muted-foreground, #57606a)',
     fontFamily: 'inherit',
+  },
+  '.cm-gutterElement.cm-foldGutter': {
+    padding: '0 6px 0 2px',
+    cursor: 'pointer',
+  },
+  '.cm-foldGutter span': {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '12px',
+    height: '100%',
+    lineHeight: '1',
+    userSelect: 'none',
+    opacity: '0.6',
+    transition: 'opacity 0.15s ease',
+  },
+  '.cm-foldGutter span:hover': {
+    opacity: '1',
   },
   '.cm-activeLineGutter': {
     color: 'var(--primary, #0969DA)',
@@ -244,7 +262,6 @@ export const editorCompartments = {
   lineNumbers: new Compartment(),
   lineWrapping: new Compartment(),
   keybinding: new Compartment(),
-  vimMode: new Compartment(),
   bracketMatching: new Compartment(),
   highlightActiveLine: new Compartment(),
   autocomplete: new Compartment(),
@@ -263,32 +280,20 @@ export const editorCompartments = {
 
 import {
   wrapFormatting,
+  changeCase,
   handleAutoCloseEnvironment,
   handleAutoCloseMath,
   handleBackspaceBetweenMath,
+  latexFormattingKeymap,
 } from './latex-formatting.commands';
 export {
   wrapFormatting,
+  changeCase,
   handleAutoCloseEnvironment,
   handleAutoCloseMath,
   handleBackspaceBetweenMath,
+  latexFormattingKeymap,
 };
-
-function changeCase(view: EditorView, toUpper: boolean): boolean {
-  const { state } = view;
-  const tr = state.changeByRange((range) => {
-    if (range.empty) return { range };
-    const text = state.sliceDoc(range.from, range.to);
-    const newText = toUpper ? text.toUpperCase() : text.toLowerCase();
-    return {
-      changes: { from: range.from, to: range.to, insert: newText },
-      range: EditorSelection.range(range.from, range.from + newText.length),
-    };
-  });
-  if (tr.changes.empty) return false;
-  view.dispatch(tr);
-  return true;
-}
 
 /**
  * Generates an immutable Extension[] array for CodeMirror 6 EditorState creation.
@@ -341,243 +346,7 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
 
     // 3. Keybindings (Overleaf 1:1 Parity)
     keymap.of([
-      // Priority 1: Overleaf Core LaTeX Shortcuts
-      {
-        key: 'Mod-Enter',
-        run: () => {
-          editorCommandBus.dispatch({ type: 'compiler:trigger', reason: 'shortcut' });
-          return true;
-        },
-      },
-      {
-        key: 'Mod-b',
-        run: (view) => wrapFormatting(view, '\\textbf{', '}'),
-      },
-      {
-        key: 'Mod-i',
-        run: (view) => wrapFormatting(view, '\\textit{', '}'),
-      },
-      // Overleaf Parity: Mod-u converts selection to uppercase, or underlines if empty
-      {
-        key: 'Mod-u',
-        run: (view) => {
-          const hasSelection = view.state.selection.ranges.some((r) => !r.empty);
-          if (hasSelection) {
-            return changeCase(view, true);
-          }
-          return wrapFormatting(view, '\\underline{', '}');
-        },
-      },
-      // Overleaf Parity: Mod-Shift-u converts selection to lowercase
-      {
-        key: 'Mod-Shift-u',
-        run: (view) => changeCase(view, false),
-      },
-      {
-        key: 'Enter',
-        run: (view) => handleAutoCloseEnvironment(view),
-      },
-      {
-        key: '$',
-        run: (view) => handleAutoCloseMath(view),
-      },
-      {
-        key: 'Backspace',
-        run: (view) => handleBackspaceBetweenMath(view),
-      },
-      // Overleaf Table / Matrix Wizard Parity (Ctrl+Shift+T)
-      {
-        key: 'Mod-Shift-t',
-        run: () => {
-          editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'table-wizard' });
-          return true;
-        },
-      },
-      // Overleaf Source/Visual Mode Switcher Parity (Ctrl+Shift+V)
-      {
-        key: 'Mod-Shift-v',
-        run: () => {
-          useSettingsStore.getState().toggleEditorMode();
-          return true;
-        },
-      },
-      // Overleaf Word Count Parity (Ctrl+Shift+W)
-      {
-        key: 'Mod-Shift-w',
-        run: () => {
-          editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'word-count' });
-          return true;
-        },
-      },
-      // Overleaf Keyboard Shortcuts Modal (F1)
-      {
-        key: 'F1',
-        run: () => {
-          editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'shortcuts' });
-          return true;
-        },
-        preventDefault: true,
-      },
-      {
-        key: 'F8',
-        run: () => {
-          editorCommandBus.dispatch({ type: 'navigation:next-error' });
-          return true;
-        },
-      },
-      {
-        key: 'Shift-F8',
-        run: () => {
-          editorCommandBus.dispatch({ type: 'navigation:prev-error' });
-          return true;
-        },
-      },
-      {
-        key: 'Mod-Shift-f',
-        run: (view) => {
-          const { from, to } = view.state.selection.main;
-          const selectedText = from < to ? view.state.sliceDoc(from, to) : undefined;
-          useWorkspaceStore.getState().setSidebarLeftOpen(true);
-          useWorkspaceStore.getState().setActiveSidebarTab('search');
-          editorCommandBus.dispatch({
-            type: 'sidebar:open-panel',
-            panel: 'Search',
-            query: selectedText,
-          });
-          return true;
-        },
-      },
-      // Overleaf Parity: Mod-Shift-h (Ctrl+Shift+H / Cmd+Shift+H) to open Project Replace
-      {
-        key: 'Mod-Shift-h',
-        run: (view) => {
-          const { from, to } = view.state.selection.main;
-          const selectedText = from < to ? view.state.sliceDoc(from, to) : undefined;
-          useWorkspaceStore.getState().setSidebarLeftOpen(true);
-          useWorkspaceStore.getState().setActiveSidebarTab('search');
-          editorCommandBus.dispatch({
-            type: 'sidebar:open-panel',
-            panel: 'Search',
-            query: selectedText,
-            showReplace: true,
-          });
-          return true;
-        },
-      },
-      // Overleaf Parity: Mod-Alt-m (Ctrl+Alt+M / Cmd+Opt+M) to Add Comment on selection or line
-      {
-        key: 'Mod-Alt-m',
-        run: (view) => {
-          const { from, to } = view.state.selection.main;
-          const selectedText = view.state.sliceDoc(from, to);
-          const startLine = view.state.doc.lineAt(from).number;
-          const endLine = view.state.doc.lineAt(to).number;
-
-          useDocumentCollaborationStore.getState().setPendingComment({
-            startLine,
-            endLine,
-            selectedText: selectedText || '',
-          });
-
-          useWorkspaceStore.getState().setSidebarLeftOpen(true);
-          useWorkspaceStore.getState().setActiveSidebarTab('review');
-          editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
-          return true;
-        },
-      },
-      // Backward-compatible alias: Mod-Alt-c
-      {
-        key: 'Mod-Alt-c',
-        run: (view) => {
-          const { from, to } = view.state.selection.main;
-          const selectedText = view.state.sliceDoc(from, to);
-          const startLine = view.state.doc.lineAt(from).number;
-          const endLine = view.state.doc.lineAt(to).number;
-
-          useDocumentCollaborationStore.getState().setPendingComment({
-            startLine,
-            endLine,
-            selectedText: selectedText || '',
-          });
-
-          useWorkspaceStore.getState().setSidebarLeftOpen(true);
-          useWorkspaceStore.getState().setActiveSidebarTab('review');
-          editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
-          return true;
-        },
-      },
-      { key: 'Mod-/', run: toggleComment },
-      { key: 'Mod-Shift-l', run: gotoLine },
-      { key: 'Mod-g', run: gotoLine },
-      // Overleaf Code Folding Parity
-      { key: 'Mod-Alt-[', run: foldCode },
-      { key: 'Mod-Alt-]', run: unfoldCode },
-      { key: 'Mod-Alt-Shift-[', run: foldAll },
-      { key: 'Mod-Alt-Shift-]', run: unfoldAll },
-      {
-        key: 'Mod-Shift-k',
-        run: () => {
-          editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'citation-picker' });
-          return true;
-        },
-      },
-      {
-        key: 'Mod-Alt-j',
-        run: (view) => {
-          const pos = view.state.selection.main.from;
-          const lineObj = view.state.doc.lineAt(pos);
-          editorCommandBus.dispatch({
-            type: 'synctex:forward',
-            line: lineObj.number,
-            column: pos - lineObj.from,
-          });
-          return true;
-        },
-      },
-      {
-        key: 'Ctrl-Alt-j',
-        run: (view) => {
-          const pos = view.state.selection.main.from;
-          const lineObj = view.state.doc.lineAt(pos);
-          editorCommandBus.dispatch({
-            type: 'synctex:forward',
-            line: lineObj.number,
-            column: pos - lineObj.from,
-          });
-          return true;
-        },
-      },
-
-      // Overleaf Parity: Mod-d is Delete Line
-      {
-        key: 'Mod-d',
-        run: deleteLine,
-        preventDefault: true,
-      },
-      // Alternative multi-cursor next occurrence: Alt-d
-      {
-        key: 'Alt-d',
-        run: selectNextOccurrence,
-        preventDefault: true,
-      },
-      {
-        key: 'Alt-Shift-ArrowUp',
-        run: addCursorAbove,
-      },
-      {
-        key: 'Alt-Shift-ArrowDown',
-        run: addCursorBelow,
-      },
-      {
-        key: 'Ctrl-Alt-ArrowUp',
-        run: addCursorAbove,
-      },
-      {
-        key: 'Ctrl-Alt-ArrowDown',
-        run: addCursorBelow,
-      },
-
-      // Priority 2: Standard Editor & Language Keymaps
+      ...latexFormattingKeymap,
       indentWithTab,
       ...defaultKeymap,
       ...historyKeymap,
@@ -595,7 +364,6 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
         ? Prec.highest(keymap.of(emacsStyleKeymap))
         : []
     ),
-    editorCompartments.vimMode.of([]),
     editorCompartments.lineNumbers.of(
       showLineNumbers ? [lineNumbers(), highlightActiveLineGutter(), foldGutter()] : []
     ),
@@ -687,76 +455,6 @@ export function reconfigureTypography(
   view.dispatch({
     effects: editorCompartments.typography.reconfigure(
       createTypographyExtension(fontSize, fontFamily, lineHeight)
-    ),
-  });
-}
-
-export function reconfigureSpellCheck(
-  view: EditorView,
-  enabled: boolean,
-  projectId?: string,
-  language?: string,
-): void {
-  view.dispatch({
-    effects: editorCompartments.spellCheck.reconfigure(
-      enabled ? createLatexSpellingExtension({ projectId, language, enabled: true }) : []
-    ),
-  });
-}
-
-export function reconfigureCitationHover(view: EditorView, enabled: boolean): void {
-  view.dispatch({
-    effects: editorCompartments.citationHover.reconfigure(
-      enabled ? latexCitationHoverTooltip : []
-    ),
-  });
-}
-
-export function reconfigureLineNumbers(view: EditorView, show: boolean): void {
-  view.dispatch({
-    effects: editorCompartments.lineNumbers.reconfigure(
-      show ? [lineNumbers(), highlightActiveLineGutter(), foldGutter()] : []
-    ),
-  });
-}
-
-export function reconfigureLineWrapping(view: EditorView, wrap: boolean): void {
-  view.dispatch({
-    effects: editorCompartments.lineWrapping.reconfigure(
-      wrap ? EditorView.lineWrapping : []
-    ),
-  });
-}
-
-export function reconfigureKeybinding(
-  view: EditorView,
-  mode: 'standard' | 'vim' | 'emacs',
-): void {
-  const ext =
-    mode === 'vim'
-      ? vim()
-      : mode === 'emacs'
-      ? Prec.highest(keymap.of(emacsStyleKeymap))
-      : [];
-  view.dispatch({
-    effects: editorCompartments.keybinding.reconfigure(ext),
-  });
-}
-
-export function reconfigureVimMode(view: EditorView, enabled: boolean): void {
-  reconfigureKeybinding(view, enabled ? 'vim' : 'standard');
-}
-
-export function reconfigureReadOnly(view: EditorView, readOnly: boolean): void {
-  view.dispatch({
-    effects: editorCompartments.readOnly.reconfigure(EditorState.readOnly.of(readOnly)),
-  });
-}
-
-export function reconfigureSmartPaste(view: EditorView, enabled: boolean, projectId?: string): void {
-  view.dispatch({
-    effects: editorCompartments.smartPaste.reconfigure(
-      enabled ? createLatexSmartPasteExtension({ projectId, enableSmartPaste: true }) : []
     ),
   });
 }

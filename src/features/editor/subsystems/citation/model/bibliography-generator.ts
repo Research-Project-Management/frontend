@@ -88,7 +88,11 @@ export function buildBibliographySection({
   ].some((s) => styleId.toLowerCase().includes(s));
 
   const cleanBibText = (bibliographyText || '').trim();
-  const title = headingTitle || 'References';
+  const isVn =
+    (styleId && styleId.toLowerCase().includes('tcvn')) ||
+    /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ]/.test(cleanBibText) ||
+    citations.some((c) => /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ]/.test(c.bibliography || ''));
+  const title = headingTitle || (isVn ? 'Tài liệu tham khảo' : 'References');
 
   if (format === 'latex') {
     // If individual citations with keys are provided, generate \bibitem entries

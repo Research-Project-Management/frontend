@@ -18,81 +18,99 @@ export interface MathMatchResult {
   to: number;
 }
 
+const DISPLAY_DOLLAR_PREVIEW_REGEX = /\$\$([\s\S]*?)\$\$/g;
+const BRACKET_PREVIEW_REGEX = /\\\[([\s\S]*?)\\\]/g;
+const SINGLE_DOLLAR_PREVIEW_REGEX = /\$([^\$]+)\$/g;
+const CLOSED_ENV_PREVIEW_REGEX = /\\begin\{(equation\*?|align\*?|gather\*?|matrix|pmatrix|bmatrix)\}([\s\S]*?)\\end\{\1\}/g;
+const OPEN_ENV_PREVIEW_REGEX = /\\begin\{(equation\*?|align\*?|gather\*?|matrix|pmatrix|bmatrix)\}/g;
+
 export function detectMathAtPosition(lineText: string, col: number): MathMatchResult | null {
-  // 1. Double dollar $$ ... $$
-  const displayDollarRegex = /\$\$([\s\S]*?)\$\$/g;
+  const hasDollar = lineText.indexOf('$') !== -1;
+  const hasBackslash = lineText.indexOf('\\') !== -1;
+  if (!hasDollar && !hasBackslash) return null;
+
   let match: RegExpExecArray | null;
 
-  while ((match = displayDollarRegex.exec(lineText)) !== null) {
-    const start = match.index;
-    const end = start + match[0].length;
-    if (col >= start && col <= end) {
-      return {
-        type: 'display',
-        formula: match[1].trim(),
-        from: start,
-        to: end,
-      };
+  // 1. Double dollar $$ ... $$
+  if (hasDollar) {
+    DISPLAY_DOLLAR_PREVIEW_REGEX.lastIndex = 0;
+    while ((match = DISPLAY_DOLLAR_PREVIEW_REGEX.exec(lineText)) !== null) {
+      const start = match.index;
+      const end = start + match[0].length;
+      if (col >= start && col <= end) {
+        return {
+          type: 'display',
+          formula: match[1].trim(),
+          from: start,
+          to: end,
+        };
+      }
     }
   }
 
   // 2. Bracket math \[ ... \]
-  const bracketRegex = /\\\[([\s\S]*?)\\\]/g;
-  while ((match = bracketRegex.exec(lineText)) !== null) {
-    const start = match.index;
-    const end = start + match[0].length;
-    if (col >= start && col <= end) {
-      return {
-        type: 'bracket',
-        formula: match[1].trim(),
-        from: start,
-        to: end,
-      };
+  if (hasBackslash) {
+    BRACKET_PREVIEW_REGEX.lastIndex = 0;
+    while ((match = BRACKET_PREVIEW_REGEX.exec(lineText)) !== null) {
+      const start = match.index;
+      const end = start + match[0].length;
+      if (col >= start && col <= end) {
+        return {
+          type: 'bracket',
+          formula: match[1].trim(),
+          from: start,
+          to: end,
+        };
+      }
     }
   }
 
   // 3. Single dollar $ ... $
-  const singleDollarRegex = /\$([^\$]+)\$/g;
-  while ((match = singleDollarRegex.exec(lineText)) !== null) {
-    const start = match.index;
-    const end = start + match[0].length;
-    if (col >= start && col <= end) {
-      return {
-        type: 'inline',
-        formula: match[1].trim(),
-        from: start,
-        to: end,
-      };
+  if (hasDollar) {
+    SINGLE_DOLLAR_PREVIEW_REGEX.lastIndex = 0;
+    while ((match = SINGLE_DOLLAR_PREVIEW_REGEX.exec(lineText)) !== null) {
+      const start = match.index;
+      const end = start + match[0].length;
+      if (col >= start && col <= end) {
+        return {
+          type: 'inline',
+          formula: match[1].trim(),
+          from: start,
+          to: end,
+        };
+      }
     }
   }
 
-  // 4. Closed LaTeX Environment \begin{...}...\end{...}
-  const envRegex = /\\begin\{(equation\*?|align\*?|gather\*?|matrix|pmatrix|bmatrix)\}([\s\S]*?)\\end\{\1\}/g;
-  while ((match = envRegex.exec(lineText)) !== null) {
-    const start = match.index;
-    const end = start + match[0].length;
-    if (col >= start && col <= end) {
-      return {
-        type: 'environment',
-        formula: match[0],
-        from: start,
-        to: end,
-      };
+  if (hasBackslash && lineText.indexOf('\\begin{') !== -1) {
+    // 4. Closed LaTeX Environment \begin{...}...\end{...}
+    CLOSED_ENV_PREVIEW_REGEX.lastIndex = 0;
+    while ((match = CLOSED_ENV_PREVIEW_REGEX.exec(lineText)) !== null) {
+      const start = match.index;
+      const end = start + match[0].length;
+      if (col >= start && col <= end) {
+        return {
+          type: 'environment',
+          formula: match[0],
+          from: start,
+          to: end,
+        };
+      }
     }
-  }
 
-  // 5. Unclosed \begin{equation...} on line
-  const beginEnvRegex = /\\begin\{(equation\*?|align\*?|gather\*?|matrix|pmatrix|bmatrix)\}/g;
-  while ((match = beginEnvRegex.exec(lineText)) !== null) {
-    const start = match.index;
-    const end = start + match[0].length;
-    if (col >= start && col <= end) {
-      return {
-        type: 'environment',
-        formula: match[0],
-        from: start,
-        to: end,
-      };
+    // 5. Unclosed \begin{equation...} on line
+    OPEN_ENV_PREVIEW_REGEX.lastIndex = 0;
+    while ((match = OPEN_ENV_PREVIEW_REGEX.exec(lineText)) !== null) {
+      const start = match.index;
+      const end = start + match[0].length;
+      if (col >= start && col <= end) {
+        return {
+          type: 'environment',
+          formula: match[0],
+          from: start,
+          to: end,
+        };
+      }
     }
   }
 

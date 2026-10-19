@@ -18,10 +18,8 @@ export {
   getActiveEditorContent,
   getActivePdfViewer,
   setActivePdfViewer,
-  getActiveEditorInstance,
   registerDefaultBridges,
 } from './bus/command-bus';
-export { EditorEventBus } from './bus/event-bus';
 
 export type {
   IEditorCommandBus,
@@ -32,7 +30,7 @@ export type {
   DialogName,
   EditorDiagnosticItem,
 } from './bus/command-bus.port';
-export type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
+export type { IEditorEngine, EditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 
 // 2. Workbench Stores
 export {
@@ -43,6 +41,7 @@ export type {
   EditorSplitMode,
   ActiveEditorPane,
   LayoutState,
+  EditorTab,
 } from './store/workspace.store';
 
 export {
@@ -76,11 +75,6 @@ export type {
 } from './store/collaboration.store';
 
 export {
-  useTabsStore,
-} from './store/tabs.store';
-export type { EditorTab } from './store/tabs.store';
-
-export {
   useSearchStore,
 } from './store/search.store';
 
@@ -96,8 +90,8 @@ export { default as ActivityBar } from './shell/ActivityBar';
 export { default as Topbar } from './shell/Topbar';
 export { default as WorkbenchShell } from './shell/WorkbenchShell';
 export { default as OfflineBanner } from './shell/OfflineBanner';
-export { default as SidebarPanelHeader, SidebarPanelHeader as NamedSidebarPanelHeader } from './shell/SidebarPanelHeader';
-export { default as PrimarySidebar, PrimarySidebar as NamedPrimarySidebar } from './shell/PrimarySidebar';
+export { default as SidebarPanelHeader } from './shell/SidebarPanelHeader';
+export { default as PrimarySidebar } from './shell/PrimarySidebar';
 
 // 4. Core Engine Coordinators
 export {
@@ -108,7 +102,6 @@ export {
   type DocumentConflict,
   type ConflictListener,
 } from './coordinator/session.coordinator';
-export type { DocumentPersistencePort } from '@/features/editor/domain/document/persistence-port';
 
 export {
   workspaceCoordinator,

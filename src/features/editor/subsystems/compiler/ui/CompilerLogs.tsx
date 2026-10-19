@@ -28,8 +28,8 @@ import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { editorCommandBus, usePageStore, useSettingsStore } from '@/features/editor/core';
-import { manuscriptService, listAuxFiles, suggestLatexFix } from '@/features/editor/sdk/manuscript.service';
-import { type AuxFileItem, type DiagnosticReportDto } from '@/features/editor/sdk/manuscript/types';
+import { listAuxFiles, suggestLatexFix } from '@/features/editor/sdk/manuscript.service';
+import { type AuxFileItem } from '@/features/editor/sdk/manuscript/types';
 import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assist';
 
 import type { LogEntry, ParsedLog, CompilerLogsProps, LogsProps, ErrorExplanationDto } from '@/features/editor/domain/types/compiler.types';
@@ -115,58 +115,7 @@ export function CompilerLogs({
     return hiddenWarnings + hiddenBadBoxes;
   }, [nonTransientWarnings, parsed.badBoxes, filterOptions]);
 
-  // Enriched Backend Diagnostics Report
-  const [enrichedReport, setEnrichedReport] = useState<DiagnosticReportDto | null>(null);
-
-  useEffect(() => {
-    if (!log || !log.trim() || log.toLowerCase().includes('aborted')) {
-      setEnrichedReport(null);
-      return;
-    }
-    let isSubscribed = true;
-    manuscriptService.diagnostics.parseLog(log)
-      .then((report) => {
-        if (isSubscribed && report) {
-          setEnrichedReport(report);
-        }
-      })
-      .catch((err) => {
-        if (isSubscribed) {
-          console.warn('[CompilerLogs] Enriched log parsing unavailable, using local parser:', err);
-        }
-      });
-    return () => {
-      isSubscribed = false;
-    };
-  }, [log]);
-
-  const enrichEntry = useCallback(
-    (e: LogEntry): LogEntry => {
-      if (!enrichedReport?.items || enrichedReport.items.length === 0) return e;
-      const match = enrichedReport.items.find((item) => {
-        if (e.file && item.file && item.file !== 'main.tex' && item.file !== e.file) {
-          return false;
-        }
-        const normItem = (item.message || '').replace(/[.\s]+$/, '').toLowerCase();
-        const normEntry = (e.message || '').replace(/[.\s]+$/, '').toLowerCase();
-        const msgMatches =
-          Boolean(normItem && normEntry) &&
-          (normItem.includes(normEntry) || normEntry.includes(normItem));
-        if (item.line && e.line && item.line === e.line && msgMatches) return true;
-        if (!e.line && msgMatches) return true;
-        return false;
-      });
-      if (!match) return e;
-      return {
-        ...e,
-        file: e.file || (match.file && match.file !== 'main.tex' ? match.file : match.file || e.file),
-        code: match.code || e.code,
-        explanation: match.explanation || e.explanation,
-        quickFix: match.quickFix || e.quickFix,
-      };
-    },
-    [enrichedReport],
-  );
+  const enrichEntry = useCallback((e: LogEntry): LogEntry => e, []);
 
   const handleClearCacheAndCompile = useCallback(() => {
     if (onClearCacheAndCompile) {
@@ -605,6 +554,4 @@ export function CompilerLogs({
   );
 }
 
-export const Logs = CompilerLogs;
-export const LogPanel = CompilerLogs;
 export default CompilerLogs;

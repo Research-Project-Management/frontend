@@ -11,13 +11,6 @@ import React from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
-  FileText,
-  FileCode2,
-  BookText,
-  Braces,
-  Image as ImageIcon,
-} from 'lucide-react';
-import {
   CommandDialog,
   CommandInput,
   CommandList,
@@ -26,61 +19,27 @@ import {
   CommandItem,
 } from '@/shared/components/ui/command';
 import { cn } from '@/shared/lib/utils';
-import { usePageStore, useTabsStore } from '@/features/editor/core';
+import { usePageStore } from '@/features/editor/core';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import type { PageFile } from '@/features/editor/domain/types/core.types';
+import { getFileIcon } from './DeletedFilesModal';
 
 interface QuickOpenModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-function getFileIcon(filename: string) {
-  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
-  switch (ext) {
-    case 'tex':
-    case 'ltx':
-      return { icon: FileCode2, color: 'text-foreground' };
-    case 'bib':
-      return { icon: BookText, color: 'text-foreground/85' };
-    case 'cls':
-    case 'sty':
-      return { icon: Braces, color: 'text-foreground/70' };
-    case 'png':
-    case 'jpg':
-    case 'jpeg':
-    case 'svg':
-    case 'pdf':
-      return { icon: ImageIcon, color: 'text-muted-foreground' };
-    default:
-      return { icon: FileText, color: 'text-muted-foreground' };
-  }
-}
-
 export default function QuickOpenModal({ open, onOpenChange }: QuickOpenModalProps) {
   const params = useParams<{ pageId?: string; projectId?: string }>();
-  const currentPage = usePageStore((s) => s.currentPage);
-  const activeFilePage = usePageStore((s) => s.activeFilePage);
-  const setActiveFilePage = usePageStore((s) => s.setActiveFilePage);
-  const openTab = useTabsStore((s) => s.openTab);
-  const rootId = currentPage?.id || params?.pageId;
+  const currentPageId = usePageStore((s) => s.currentPage?.id);
+  const activeFileId = usePageStore((s) => s.activeFilePage?.id);
+  const rootId = currentPageId || params?.pageId;
 
   const { data: pageFiles = [] } = useQuery({
     ...filesQuery(rootId || ''),
     enabled: Boolean(rootId) && open,
   });
-
-  const effectiveProjectId =
-    (typeof currentPage?.projectId === 'object' &&
-    currentPage?.projectId !== null &&
-    'id' in currentPage.projectId
-      ? (currentPage.projectId as { id: string }).id
-      : null) ||
-    (typeof currentPage?.projectId === 'string' ? currentPage.projectId : null) ||
-    params?.projectId ||
-    rootId ||
-    '';
 
   const handleSelectFile = (file: PageFile) => {
     if (!file) return;
@@ -109,7 +68,7 @@ export default function QuickOpenModal({ open, onOpenChange }: QuickOpenModalPro
         <CommandGroup heading="Project Files">
           {pageFiles.map((file: PageFile) => {
             const { icon: IconComp, color } = getFileIcon(file.title || '');
-            const isActive = file.id === activeFilePage?.id;
+            const isActive = file.id === activeFileId;
 
             return (
               <CommandItem

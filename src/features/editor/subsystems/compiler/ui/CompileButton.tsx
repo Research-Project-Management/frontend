@@ -121,43 +121,43 @@ export const CompileButton = React.memo(function CompileButton({
           className="w-56 p-1 text-xs bg-popover text-popover-foreground border border-border shadow-md rounded-md z-50 select-none"
         >
           {/* Group 1: Auto Compile */}
-          <div className="px-2 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Auto Compile
+          <div className="px-2.5 py-1.5 text-12 font-medium text-muted-foreground select-none">
+            Auto compile
           </div>
           <DropdownMenuItem
             onClick={() => setAutoCompile(true)}
-            className="flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
+            className="flex items-center justify-between px-2.5 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
           >
             <span>On</span>
-            {autoCompile && <Check className="size-3.5 text-primary" />}
+            {autoCompile && <Check className="size-3.5 text-foreground" />}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => setAutoCompile(false)}
-            className="flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
+            className="flex items-center justify-between px-2.5 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
           >
             <span>Off</span>
-            {!autoCompile && <Check className="size-3.5 text-primary" />}
+            {!autoCompile && <Check className="size-3.5 text-foreground" />}
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
 
           {/* Group 2: Compile Mode */}
-          <div className="px-2 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Compile Mode
+          <div className="px-2.5 py-1.5 text-12 font-medium text-muted-foreground select-none">
+            Compile mode
           </div>
           <DropdownMenuItem
             onClick={() => setCompileMode('full')}
-            className="flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
+            className="flex items-center justify-between px-2.5 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
           >
             <span>Normal</span>
-            {compileMode === 'full' && <Check className="size-3.5 text-primary" />}
+            {compileMode === 'full' && <Check className="size-3.5 text-foreground" />}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => setCompileMode('draft')}
-            className="flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
+            className="flex items-center justify-between px-2.5 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
           >
             <span>Fast (draft)</span>
-            {compileMode === 'draft' && <Check className="size-3.5 text-primary" />}
+            {compileMode === 'draft' && <Check className="size-3.5 text-foreground" />}
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
@@ -165,10 +165,10 @@ export const CompileButton = React.memo(function CompileButton({
           {/* Group 3: Stop on first error */}
           <DropdownMenuItem
             onClick={() => setStopOnFirstError(!stopOnFirstError)}
-            className="flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
+            className="flex items-center justify-between px-2.5 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
           >
             <span>Stop on first error</span>
-            {stopOnFirstError && <Check className="size-3.5 text-primary" />}
+            {stopOnFirstError && <Check className="size-3.5 text-foreground" />}
           </DropdownMenuItem>
 
           {/* Group 4: Advanced Clear Cache Actions */}

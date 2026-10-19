@@ -51,7 +51,7 @@ import {
 } from '@/features/editor/core';
 import { reviewCoordinator } from '@/features/editor/subsystems/review';
 import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
-import { extractProjectId } from '@/features/editor/domain/types/core.types';
+import { extractProjectId, extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 
 interface EmptyEditorStateProps {
   onOpenDefaultFile?: () => void;
@@ -191,12 +191,7 @@ export function EditorArea() {
   }, []);
 
   // Server version of the document (never the local cache) used for draft comparison.
-  const serverContent =
-    typeof displayPage?.content === 'string'
-      ? displayPage.content
-      : typeof displayPage?.content === 'object' && displayPage.content !== null && 'source' in displayPage.content
-        ? String((displayPage.content as { source?: unknown }).source ?? '')
-        : '';
+  const serverContent = extractDocumentContentString(displayPage?.content);
   const serverContentRef = React.useRef(serverContent);
   serverContentRef.current = serverContent;
 
@@ -284,18 +279,6 @@ export function EditorArea() {
         } else {
           editorCommandBus.dispatch({ type: 'editor:close-split' });
         }
-        return;
-      }
-
-      if (modKey && e.shiftKey && (e.key === 'V' || e.key === 'v')) {
-        e.preventDefault();
-        useSettingsStore.getState().toggleEditorMode();
-        return;
-      }
-
-      if (modKey && e.altKey && e.key.toLowerCase() === 'm') {
-        e.preventDefault();
-        reviewCoordinator.initiateComment();
         return;
       }
     };

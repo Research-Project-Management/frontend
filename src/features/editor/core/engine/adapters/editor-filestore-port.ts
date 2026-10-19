@@ -10,9 +10,11 @@
  * - Bridges to manuscriptService.filestore at application runtime.
  */
 
+import { filestore } from '@/features/editor/sdk/manuscript.service';
+
 export type FileUploader = (projectId: string, file: File, name: string) => Promise<unknown>;
 
-let defaultUploader: FileUploader = async () => {};
+let defaultUploader: FileUploader = (projectId, file, name) => filestore.upload(projectId, file, name);
 
 export function setDefaultFileUploader(uploader: FileUploader): void {
   defaultUploader = uploader;

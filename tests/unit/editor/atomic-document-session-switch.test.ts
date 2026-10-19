@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   sessionCoordinator,
   usePageStore,
-  useTabsStore,
+  useWorkspaceStore,
   setActiveEditorEngine,
   type IEditorEngine,
 } from '@/features/editor/core';
@@ -17,7 +17,7 @@ describe('Atomic Document Session & Tab Lifecycle Deep Module', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     lruDocumentCache.clear();
-    useTabsStore.getState().clearAll();
+    useWorkspaceStore.getState().closeAllTabsForProject(projectId);
     useCompileStore.getState().clearAllDirty();
 
     usePageStore.setState({
@@ -79,9 +79,9 @@ describe('Atomic Document Session & Tab Lifecycle Deep Module', () => {
     expect(sessionCoordinator.getFsmState('file-b')).toBe('active');
     expect(lruDocumentCache.getActiveFileId()).toBe('file-b');
 
-    // PageStore and TabsStore are in sync
+    // PageStore and WorkspaceStore are in sync
     expect(usePageStore.getState().getActiveDocumentId()).toBe('file-b');
-    expect(useTabsStore.getState().getActive(projectId)).toBe('file-b');
+    expect(useWorkspaceStore.getState().activeByProject[projectId]).toBe('file-b');
   });
 
   it('registers in-memory model in LRU cache if opening a new file without pre-existing model', () => {
@@ -97,7 +97,7 @@ describe('Atomic Document Session & Tab Lifecycle Deep Module', () => {
     expect(registered).toBeDefined();
     expect(registered?.filePath).toBe('notes.tex');
     expect(sessionCoordinator.getFsmState('file-new')).toBe('active');
-    expect(useTabsStore.getState().getActive(projectId)).toBe('file-new');
+    expect(useWorkspaceStore.getState().activeByProject[projectId]).toBe('file-new');
   });
 
   it('closeDocument flushes, evicts model, and routes to adjacent tab', () => {
@@ -107,7 +107,7 @@ describe('Atomic Document Session & Tab Lifecycle Deep Module', () => {
     navigationCoordinator.openDocument({ fileId: 'file-1', title: 'doc1.tex' });
     navigationCoordinator.openDocument({ fileId: 'file-2', title: 'doc2.tex' });
 
-    expect(useTabsStore.getState().getActive(projectId)).toBe('file-2');
+    expect(useWorkspaceStore.getState().activeByProject[projectId]).toBe('file-2');
 
     // Close file-2
     navigationCoordinator.closeDocument('file-2');
@@ -116,7 +116,7 @@ describe('Atomic Document Session & Tab Lifecycle Deep Module', () => {
     expect(lruDocumentCache.getModel('file-2')).toBeUndefined();
 
     // Tabs router reverts to remaining tab
-    const activeTab = useTabsStore.getState().getActive(projectId);
+    const activeTab = useWorkspaceStore.getState().activeByProject[projectId];
     expect(activeTab).toBe('file-1');
   });
 });

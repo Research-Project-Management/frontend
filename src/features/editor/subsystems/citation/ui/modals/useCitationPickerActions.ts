@@ -66,6 +66,7 @@ export function useCitationPickerActions() {
             doi: res.entry.doi,
             raw: res.entry.rawBibtex,
             source: 'server',
+            sourceFile: 'server',
           };
           return newEntry;
         } else {

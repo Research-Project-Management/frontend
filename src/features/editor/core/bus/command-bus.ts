@@ -16,7 +16,6 @@ import type {
   CommandExecuteMiddleware,
 } from '@/features/editor/core/bus/command-bus.port';
 import type { IEditorEngine, LatexFormatType } from '@/features/editor/domain/types/ports/editor-engine.port';
-import { setDefaultCommandDispatcher } from '@/features/editor/core/engine/adapters/editor-command-port';
 
 class EditorCommandBusImpl implements IEditorCommandBus {
   private handlers = new Map<string, Set<CommandHandler<EditorCommand, unknown>>>();
@@ -237,10 +236,7 @@ if (!globalWithBus[GLOBAL_BUS_KEY]) {
 }
 
 export const editorCommandBus: EditorCommandBusImpl = globalWithBus[GLOBAL_BUS_KEY]!;
-export const commandBus = editorCommandBus;
 
-// Bridge default command dispatcher for CodeMirror 6 engine layer
-setDefaultCommandDispatcher((cmd) => editorCommandBus.dispatch(cmd));
 export type {
   EditorCommand,
   CommandHandler,
@@ -278,9 +274,6 @@ export function setActivePdfViewer(viewer: unknown): void {
 export function getActivePdfViewer(): unknown {
   return activeViewerInstance;
 }
-
-export const getActiveEditorInstance = getActiveEditorEngine;
-export const getActiveViewerInstance = getActivePdfViewer;
 
 let defaultBridgesUnsub: Array<() => void> = [];
 

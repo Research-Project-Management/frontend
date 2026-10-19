@@ -74,21 +74,14 @@ export function EditingModeDropdown() {
           type="button"
           title={getTooltip()}
           aria-label={`Editing mode: ${getLabel()}`}
-          className={cn(
-            'flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none',
-            currentMode === 'viewing'
-              ? 'bg-warning/15 text-warning hover:bg-warning/20 font-semibold'
-              : currentMode === 'reviewing'
-                ? 'bg-primary/15 text-primary hover:bg-primary/20 font-semibold'
-                : 'text-foreground/80 hover:text-foreground hover:bg-sidebar-hover',
-          )}
+          className="flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent data-[state=open]:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none"
         >
           {currentMode === 'viewing' ? (
-            <Eye className="size-3.5 shrink-0 text-warning" />
+            <Eye className="size-3.5 shrink-0 text-foreground" />
           ) : currentMode === 'reviewing' ? (
-            <MessageSquare className="size-3.5 shrink-0 text-primary" />
+            <MessageSquare className="size-3.5 shrink-0 text-foreground" />
           ) : (
-            <Pen className="size-3.5 shrink-0" />
+            <Pen className="size-3.5 shrink-0 text-foreground" />
           )}
           <span className="hidden sm:inline">
             {getLabel()}
@@ -100,61 +93,67 @@ export function EditingModeDropdown() {
       <DropdownMenuContent
         align="end"
         sideOffset={6}
-        className="w-56 p-1.5 text-xs bg-popover text-popover-foreground border border-border shadow-md rounded-md z-50 select-none"
+        className="w-64 p-1 text-xs bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md z-50 select-none"
       >
-        <div className="px-2 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-          Editing Mode
+        <div className="px-2.5 py-1.5 text-12 font-medium text-muted-foreground select-none">
+          Editing mode
         </div>
 
         <DropdownMenuItem
           onClick={() => handleSelectMode('editing')}
           className={cn(
-            'flex items-center justify-between px-2 py-1.5 rounded-sm cursor-pointer transition-colors',
+            'flex items-center justify-between gap-3 px-2.5 py-2 rounded-sm cursor-pointer transition-colors whitespace-normal',
             currentMode === 'editing' ? 'bg-muted font-medium' : 'hover:bg-muted',
           )}
         >
-          <div className="flex items-center gap-2">
-            <Pen className="size-3.5 shrink-0 text-foreground" />
-            <div className="flex flex-col">
-              <span className="font-medium text-foreground">Editing</span>
-              <span className="text-11 text-muted-foreground">Edit files directly</span>
+          <div className="flex items-start gap-2.5 min-w-0">
+            <Pen className="size-3.5 shrink-0 text-foreground mt-0.5" />
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-medium text-foreground leading-tight">Editing</span>
+              <span className="text-11 text-muted-foreground font-normal leading-snug mt-0.5">
+                Directly edit the document
+              </span>
             </div>
           </div>
-          {currentMode === 'editing' && <Check className="size-3.5 text-primary" />}
+          {currentMode === 'editing' && <Check className="size-3.5 shrink-0 text-foreground" />}
         </DropdownMenuItem>
 
         <DropdownMenuItem
           onClick={() => handleSelectMode('reviewing')}
           className={cn(
-            'flex items-center justify-between px-2 py-1.5 rounded-sm cursor-pointer transition-colors',
-            currentMode === 'reviewing' ? 'bg-primary/10 font-medium' : 'hover:bg-muted',
+            'flex items-center justify-between gap-3 px-2.5 py-2 rounded-sm cursor-pointer transition-colors whitespace-normal',
+            currentMode === 'reviewing' ? 'bg-muted font-medium' : 'hover:bg-muted',
           )}
         >
-          <div className="flex items-center gap-2">
-            <MessageSquare className="size-3.5 shrink-0 text-primary" />
-            <div className="flex flex-col">
-              <span className="font-medium text-foreground">Reviewing</span>
-              <span className="text-11 text-muted-foreground">Track changes & comments</span>
+          <div className="flex items-start gap-2.5 min-w-0">
+            <MessageSquare className="size-3.5 shrink-0 text-foreground mt-0.5" />
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-medium text-foreground leading-tight">Reviewing</span>
+              <span className="text-11 text-muted-foreground font-normal leading-snug mt-0.5">
+                Track changes and add comments
+              </span>
             </div>
           </div>
-          {currentMode === 'reviewing' && <Check className="size-3.5 text-primary" />}
+          {currentMode === 'reviewing' && <Check className="size-3.5 shrink-0 text-foreground" />}
         </DropdownMenuItem>
 
         <DropdownMenuItem
           onClick={() => handleSelectMode('viewing')}
           className={cn(
-            'flex items-center justify-between px-2 py-1.5 rounded-sm cursor-pointer transition-colors',
-            currentMode === 'viewing' ? 'bg-warning/10 font-medium' : 'hover:bg-muted',
+            'flex items-center justify-between gap-3 px-2.5 py-2 rounded-sm cursor-pointer transition-colors whitespace-normal',
+            currentMode === 'viewing' ? 'bg-muted font-medium' : 'hover:bg-muted',
           )}
         >
-          <div className="flex items-center gap-2">
-            <Eye className="size-3.5 shrink-0 text-warning" />
-            <div className="flex flex-col">
-              <span className="font-medium text-foreground">Viewing</span>
-              <span className="text-11 text-muted-foreground">Read-only, prevent accidental edits</span>
+          <div className="flex items-start gap-2.5 min-w-0">
+            <Eye className="size-3.5 shrink-0 text-foreground mt-0.5" />
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-medium text-foreground leading-tight">Viewing</span>
+              <span className="text-11 text-muted-foreground font-normal leading-snug mt-0.5">
+                View only, prevent accidental edits
+              </span>
             </div>
           </div>
-          {currentMode === 'viewing' && <Check className="size-3.5 text-warning" />}
+          {currentMode === 'viewing' && <Check className="size-3.5 shrink-0 text-foreground" />}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

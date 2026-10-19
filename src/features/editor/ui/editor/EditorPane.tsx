@@ -36,10 +36,10 @@ const ImagePanel = dynamic(
 
 import { EditorToolbar } from './EditorToolbar';
 import { EditorContextMenu } from './EditorContextMenu';
-import { useSettingsStore, editorCommandBus, sessionCoordinator } from '@/features/editor/core';
+import { useSettingsStore, sessionCoordinator } from '@/features/editor/core';
 import { useEditorCollaboration } from '@/features/editor/ui/hooks/useCollaboration';
 import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
-import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
+import { extractDocumentContentString, type Page, type PageFile } from '@/features/editor/domain/types/core.types';
 import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
 
 export interface EditorPaneFileItem {
@@ -100,12 +100,7 @@ export function EditorPane({
   // Content resolution with LRU cache
   const cachedModel = fileId ? lruDocumentCache.getModel(fileId) : null;
   const fileContent = file && 'content' in file ? (file as { content?: unknown }).content : undefined;
-  const fallbackContent =
-    typeof fileContent === 'string'
-      ? fileContent
-      : typeof fileContent === 'object' && fileContent !== null && 'source' in fileContent
-        ? String((fileContent as { source?: unknown }).source ?? '')
-        : '';
+  const fallbackContent = extractDocumentContentString(fileContent);
   const rawContent =
     cachedModel?.content !== undefined && (cachedModel.content.length > 0 || !fallbackContent)
       ? cachedModel.content

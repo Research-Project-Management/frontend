@@ -19,15 +19,19 @@ import { useQueryClient } from '@tanstack/react-query';
 import { manuscriptService, pageService } from '@/features/editor/sdk/manuscript.service';
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
-import type { EditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
+import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 import { displayName } from '@/features/editor/domain/document/document-naming';
 import { prepareAssetInsertion } from '@/features/editor/domain/latex/smart-paste';
+import { downloadFileUrl } from '@/shared/lib/file-client';
+
+import { usePageStore, editorCommandBus, workspaceCoordinator } from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
 export interface UseFileExplorerActionsOptions {
   projectId?: string;
   parentPageId?: string | null;
   currentPage?: Page | PageFile | null;
-  engine?: EditorEngine | null;
+  engine?: IEditorEngine | null;
 }
 
 export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) {
@@ -38,8 +42,9 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
     async (file: { id: string; title: string }) => {
       try {
         let rawContent: unknown = '';
-        if (currentPage && currentPage.id === file.id && currentPage.content) {
-          rawContent = currentPage.content;
+        const latestPage = currentPage || usePageStore.getState().currentPage;
+        if (latestPage && latestPage.id === file.id && latestPage.content) {
+          rawContent = latestPage.content;
         } else {
           const doc = await pageService.getById(file.id);
           rawContent = doc?.content ?? '';
@@ -94,9 +99,7 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
           queryClient.invalidateQueries({ queryKey: filesQuery(parentPageId).queryKey });
         }
         queryClient.invalidateQueries({ queryKey: ['project-linked-files', projectId] });
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
-        }
+        editorCommandBus.dispatch({ type: 'filetree:updated' });
         toast.success(`Successfully refreshed ${fileName}`, { id: toastId });
       } catch (err: unknown) {
         toast.error(`Failed to refresh ${fileName}: ${(err as Error)?.message || 'Network error'}`, { id: toastId });
@@ -115,9 +118,7 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
           queryClient.invalidateQueries({ queryKey: filesQuery(parentPageId).queryKey });
         }
         queryClient.invalidateQueries({ queryKey: ['project-linked-files', projectId] });
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
-        }
+        editorCommandBus.dispatch({ type: 'filetree:updated' });
         toast.success(`Unlinked ${fileName}`, { id: toastId });
       } catch (err: unknown) {
         toast.error(`Failed to unlink ${fileName}: ${(err as Error)?.message || 'Network error'}`, { id: toastId });
@@ -136,9 +137,7 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
           queryClient.invalidateQueries({ queryKey: filesQuery(parentPageId).queryKey });
         }
         queryClient.invalidateQueries({ queryKey: ['project-linked-files', projectId] });
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
-        }
+        editorCommandBus.dispatch({ type: 'filetree:updated' });
         toast.success(`Refreshed ${res?.refreshedCount ?? 0} linked file(s)`, { id: toastId });
       } catch (err: unknown) {
         toast.error(`Failed to refresh linked files: ${(err as Error)?.message || 'Network error'}`, { id: toastId });
@@ -160,6 +159,24 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
     [engine],
   );
 
+  const handleRenameSubmit = useCallback(
+    async (fileId: string, newName: string, oldName = '') => {
+      const trimmed = newName.trim();
+      if (!trimmed || trimmed === oldName) return false;
+      const existingModel = lruDocumentCache.getModel(fileId);
+      if (existingModel) {
+        existingModel.filePath = trimmed;
+      }
+      return workspaceCoordinator.renameItem({
+        itemId: fileId,
+        oldName: oldName || trimmed,
+        newName: trimmed,
+        projectId: projectId || parentPageId || undefined,
+      });
+    },
+    [projectId, parentPageId],
+  );
+
   return {
     downloadTex,
     copyTexCommand,
@@ -167,6 +184,7 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
     deleteLinkedFile,
     refreshAllLinkedFiles,
     insertAsset,
+    handleRenameSubmit,
   };
 }
 
@@ -185,14 +203,7 @@ export function useStorageItemActions() {
 
   const downloadStorageItem = useCallback((url?: string, filename?: string) => {
     if (url && filename) {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      downloadFileUrl(url, filename);
     } else {
       toast.info('Downloading file...', { id: 'download-file' });
     }

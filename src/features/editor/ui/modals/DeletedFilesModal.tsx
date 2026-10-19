@@ -18,6 +18,7 @@ import {
   BookText,
   Braces,
   FileType,
+  Image as ImageIcon,
   Clock,
 } from 'lucide-react';
 import {
@@ -28,7 +29,6 @@ import {
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
-import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { deletedFilesQuery } from '@/features/editor/ui/hooks/document.queries';
@@ -41,25 +41,45 @@ export interface DeletedFilesModalProps {
   pageId: string;
 }
 
-function getFileIcon(filename: string) {
+const ICON_TEX = { icon: FileCode2, color: 'text-primary' };
+const ICON_BIB = { icon: BookText, color: 'text-foreground/85' };
+const ICON_CLS = { icon: Braces, color: 'text-foreground/70' };
+const ICON_TXT = { icon: FileType, color: 'text-muted-foreground' };
+const ICON_IMG = { icon: ImageIcon, color: 'text-muted-foreground' };
+const ICON_DEFAULT = { icon: FileCode2, color: 'text-muted-foreground' };
+
+const DELETED_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+export function getFileIcon(filename: string) {
   const ext = filename?.split('.').pop()?.toLowerCase() ?? '';
   switch (ext) {
     case 'tex':
     case 'ltx':
     case 'dtx':
-      return { icon: FileCode2, color: 'text-primary' };
+      return ICON_TEX;
     case 'bib':
     case 'bst':
-      return { icon: BookText, color: 'text-foreground/85' };
+      return ICON_BIB;
     case 'cls':
     case 'sty':
     case 'ins':
-      return { icon: Braces, color: 'text-foreground/70' };
+      return ICON_CLS;
     case 'md':
     case 'txt':
-      return { icon: FileType, color: 'text-muted-foreground' };
+      return ICON_TXT;
+    case 'png':
+    case 'jpg':
+    case 'jpeg':
+    case 'svg':
+    case 'pdf':
+      return ICON_IMG;
     default:
-      return { icon: FileCode2, color: 'text-muted-foreground' };
+      return ICON_DEFAULT;
   }
 }
 
@@ -68,12 +88,7 @@ function formatDeletedTime(dateStr?: string | null): string {
   try {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return 'Recently';
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(d);
+    return DELETED_DATE_FORMATTER.format(d);
   } catch {
     return 'Recently';
   }

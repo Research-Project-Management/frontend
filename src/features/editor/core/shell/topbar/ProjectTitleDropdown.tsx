@@ -14,11 +14,10 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import {
   Pencil,
   Copy,
-  Download,
   FileArchive,
   FileText,
   Settings,
@@ -31,7 +30,6 @@ import {
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { toast } from 'sonner';
 
 import {
   DropdownMenu,
@@ -48,15 +46,12 @@ import {
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 
 import { usePageStore } from '@/features/editor/core';
 import { useSettingsStore } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { useProject } from '@/features/projects/shell/hooks/use-project';
-import { useProjectExport } from '@/features/editor/ui/hooks/useExport';
-import { duplicateProjectApi } from '@/features/projects/shell/services/project.service';
 import { editorCommandBus } from '@/features/editor/core';
 
 import { projectRenameSchema, type ProjectRenameInput } from '@/features/editor/domain/types/forms.types';
@@ -65,14 +60,16 @@ import { useProjectTitleActions } from './useProjectTitleActions';
 
 export function ProjectTitleDropdown() {
   const params = useParams<{ projectId?: string; pageId?: string }>();
-  const router = useRouter();
-  const currentPage = usePageStore((s) => s.currentPage);
-  const activeFilePage = usePageStore((s) => s.activeFilePage);
+  const currentPageId = usePageStore((s) => s.currentPage?.id ?? undefined);
+  const currentPageTitle = usePageStore((s) => s.currentPage?.title ?? undefined);
+  const currentPageProjectId = usePageStore((s) => extractProjectId(s.currentPage) ?? undefined);
+  const activeFileId = usePageStore((s) => s.activeFilePage?.id ?? undefined);
+  const activeFileTitle = usePageStore((s) => s.activeFilePage?.title ?? undefined);
   const storeProjectId = usePageStore((s) => s.projectId);
 
   const effectiveProjectId =
     params?.projectId ||
-    extractProjectId(currentPage) ||
+    currentPageProjectId ||
     storeProjectId ||
     '';
 
@@ -82,30 +79,31 @@ export function ProjectTitleDropdown() {
 
   const displayTitle =
     project?.name ||
-    currentPage?.title ||
+    currentPageTitle ||
     'Untitled Project';
 
   const { getContent } = useEditorInstance();
   const pdfUrl = useCompileStore((s) => s.pdfUrl);
 
   const [isRenameOpen, setIsRenameOpen] = useState(false);
-  const [isCopying, setIsCopying] = useState(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
-  const { isSubmittingAction, handleApplyRename } = useProjectTitleActions({
+  const {
+    isSubmittingAction,
+    isCopying,
+    handleApplyRename,
+    handleMakeCopy,
+    handleDownloadZip,
+    handleDownloadPdf,
+  } = useProjectTitleActions({
     effectiveProjectId,
     displayTitle,
-    currentPage,
-    activeFilePage,
+    currentPage: currentPageId ? ({ id: currentPageId, title: currentPageTitle || '' } as never) : null,
+    activeFilePage: activeFileId ? ({ id: activeFileId, title: activeFileTitle || '' } as never) : null,
     getContent,
+    pdfUrl,
     fallbackRootId: params?.pageId,
   });
-
-  const {
-    downloadPdf,
-    downloadCopy,
-    exportZip,
-  } = useProjectExport();
 
   const renameForm = useForm<ProjectRenameInput>({
     resolver: zodResolver(projectRenameSchema),
@@ -129,48 +127,6 @@ export function ProjectTitleDropdown() {
       setIsRenameOpen(false);
     }
   });
-
-  const handleMakeCopy = async () => {
-    if (effectiveProjectId) {
-      const toastId = toast.loading('Duplicating project...');
-      setIsCopying(true);
-      try {
-        const res = (await duplicateProjectApi(effectiveProjectId)) as {
-          project?: { id?: string };
-          id?: string;
-        } | null;
-        const newProjId = res?.project?.id || res?.id;
-        toast.success('Project duplicated successfully!', { id: toastId });
-        if (newProjId) {
-          router.push(`/projects/${newProjId}/pages`);
-        }
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Failed to duplicate project.';
-        toast.error(message, { id: toastId });
-        downloadCopy(getContent(), activeFilePage?.title || currentPage?.title);
-      } finally {
-        setIsCopying(false);
-      }
-    } else {
-      downloadCopy(getContent(), activeFilePage?.title || currentPage?.title);
-    }
-  };
-
-  const handleDownloadZip = () => {
-    const rootId = params?.pageId || params?.projectId || currentPage?.id;
-    if (!rootId) return;
-    exportZip({
-      parentPageId: rootId,
-      projectTitle: currentPage?.title,
-      currentContent: getContent(),
-      activeFileId: activeFilePage?.id,
-      activeFileTitle: activeFilePage?.title,
-    });
-  };
-
-  const handleDownloadPdf = () => {
-    downloadPdf(pdfUrl, currentPage?.title);
-  };
 
   const handleOpenSettings = () => {
     useSettingsStore.getState().setSettingsPanelOpen(true);
@@ -209,7 +165,7 @@ export function ProjectTitleDropdown() {
           sideOffset={6}
           className="w-56 p-1 bg-popover text-popover-foreground border border-border shadow-md rounded-md text-xs z-50 select-none"
         >
-          <div className="px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
+          <div className="px-2.5 py-1.5 text-12 font-medium text-muted-foreground select-none truncate">
             {displayTitle}
           </div>
 

@@ -31,8 +31,8 @@ import {
   acceptDiffEffect,
   rejectDiffEffect,
   diffProposalField,
-} from '@/features/editor/subsystems/review';
-import { dispatchEditorCommand } from './editor-command-port';
+} from '@/features/editor/core/engine/extensions/inline-diff';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 
 // Effect to trigger line flash/highlight for SyncTeX or compiler errors
 export const highlightLineEffect = StateEffect.define<{ line: number; type: 'synctex' | 'error' }>();
@@ -160,11 +160,11 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
         effects: [acceptDiffEffect.of(current.proposal.id)],
         userEvent: 'ai.accept-diff',
       });
-      dispatchEditorCommand(this.view, {
+      editorCommandBus.dispatch({
         type: 'ai:diff-resolved',
         action: 'accept',
+        proposalId: current.proposal.id,
         proposal: current.proposal,
-        payload: { action: 'accept', proposal: current.proposal },
       });
       this.view.focus();
     }
@@ -177,11 +177,10 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
       effects: [rejectDiffEffect.of(targetId)],
       userEvent: 'ai.reject-diff',
     });
-    dispatchEditorCommand(this.view, {
+    editorCommandBus.dispatch({
       type: 'ai:diff-resolved',
       action: 'reject',
       proposalId: targetId,
-      payload: { action: 'reject', proposalId: targetId },
     });
     this.view.focus();
   }
@@ -246,24 +245,16 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
         break;
       case 'normal': {
         const { from, to } = this.view.state.selection.main;
-        if (from !== to) {
-          const selected = this.view.state.sliceDoc(from, to);
-          const unformatted = selected
-            .replace(/\\(?:sub){0,2}section\*?\{([^}]*)\}/g, '$1')
-            .replace(/\\(?:sub)?paragraph\*?\{([^}]*)\}/g, '$1');
+        const hasSelection = from !== to;
+        const range = hasSelection ? { from, to } : this.view.state.doc.lineAt(from);
+        const sourceText = hasSelection ? this.view.state.sliceDoc(from, to) : (range as { text: string }).text;
+        const unformatted = sourceText
+          .replace(/\\(?:sub){0,2}section\*?\{([^}]*)\}/g, '$1')
+          .replace(/\\(?:sub)?paragraph\*?\{([^}]*)\}/g, '$1');
+        if (hasSelection || unformatted !== sourceText) {
           this.view.dispatch({
-            changes: { from, to, insert: unformatted },
+            changes: { from: range.from, to: range.to, insert: unformatted },
           });
-        } else {
-          const line = this.view.state.doc.lineAt(from);
-          const unformatted = line.text
-            .replace(/\\(?:sub){0,2}section\*?\{([^}]*)\}/g, '$1')
-            .replace(/\\(?:sub)?paragraph\*?\{([^}]*)\}/g, '$1');
-          if (unformatted !== line.text) {
-            this.view.dispatch({
-              changes: { from: line.from, to: line.to, insert: unformatted },
-            });
-          }
         }
         break;
       }

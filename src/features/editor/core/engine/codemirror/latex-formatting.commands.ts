@@ -1,12 +1,31 @@
 /**
  * latex-formatting.commands.ts
  *
- * CodeMirror 6 text transformation commands for Overleaf LaTeX parity:
+ * CodeMirror 6 text transformation commands and Overleaf-parity keybindings:
  * - Wrap selected text with LaTeX format tags (\textbf, \textit, \underline, etc.)
  * - Auto-close \begin{<env>} on Enter with proper LaTeX indentation
+ * - Auto-close inline math ($...$) and Backspace between $$
+ * - Case conversion (Mod-u / Mod-Shift-u) and Overleaf keymap bindings
  */
 
-import type { EditorView } from '@codemirror/view';
+import { EditorSelection } from '@codemirror/state';
+import { type EditorView, type KeyBinding } from '@codemirror/view';
+import {
+  toggleComment,
+  addCursorAbove,
+  addCursorBelow,
+  deleteLine,
+} from '@codemirror/commands';
+import {
+  foldCode,
+  unfoldCode,
+  foldAll,
+  unfoldAll,
+} from '@codemirror/language';
+import { gotoLine, selectNextOccurrence } from '@codemirror/search';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
+import { useDocumentCollaborationStore } from '@/features/editor/core/store/collaboration.store';
+import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 
 /**
@@ -25,6 +44,25 @@ export function wrapFormatting(view: EditorView, prefix: string, suffix: string)
     },
     userEvent: 'input.format',
   });
+  return true;
+}
+
+/**
+ * Converts selected text to uppercase or lowercase across all selection ranges.
+ */
+export function changeCase(view: EditorView, toUpper: boolean): boolean {
+  const { state } = view;
+  const tr = state.changeByRange((range) => {
+    if (range.empty) return { range };
+    const text = state.sliceDoc(range.from, range.to);
+    const newText = toUpper ? text.toUpperCase() : text.toLowerCase();
+    return {
+      changes: { from: range.from, to: range.to, insert: newText },
+      range: EditorSelection.range(range.from, range.from + newText.length),
+    };
+  });
+  if (tr.changes.empty) return false;
+  view.dispatch(tr);
   return true;
 }
 
@@ -134,3 +172,210 @@ export function handleBackspaceBetweenMath(view: EditorView): boolean {
   }
   return false;
 }
+
+/**
+ * Overleaf-parity LaTeX formatting and editor navigation keybindings.
+ */
+export const latexFormattingKeymap: readonly KeyBinding[] = [
+  {
+    key: 'Mod-Enter',
+    run: () => {
+      editorCommandBus.dispatch({ type: 'compiler:trigger', reason: 'shortcut' });
+      return true;
+    },
+  },
+  {
+    key: 'Mod-b',
+    run: (view) => wrapFormatting(view, '\\textbf{', '}'),
+  },
+  {
+    key: 'Mod-i',
+    run: (view) => wrapFormatting(view, '\\textit{', '}'),
+  },
+  {
+    key: 'Mod-u',
+    run: (view) => {
+      const hasSelection = view.state.selection.ranges.some((r) => !r.empty);
+      if (hasSelection) {
+        return changeCase(view, true);
+      }
+      return wrapFormatting(view, '\\underline{', '}');
+    },
+  },
+  {
+    key: 'Mod-Shift-u',
+    run: (view) => changeCase(view, false),
+  },
+  {
+    key: 'Enter',
+    run: (view) => handleAutoCloseEnvironment(view),
+  },
+  {
+    key: '$',
+    run: (view) => handleAutoCloseMath(view),
+  },
+  {
+    key: 'Backspace',
+    run: (view) => handleBackspaceBetweenMath(view),
+  },
+  {
+    key: 'Mod-Shift-t',
+    run: () => {
+      editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'table-wizard' });
+      return true;
+    },
+  },
+  {
+    key: 'Mod-Shift-v',
+    run: () => {
+      useSettingsStore.getState().toggleEditorMode();
+      return true;
+    },
+  },
+  {
+    key: 'Mod-Shift-w',
+    run: () => {
+      editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'word-count' });
+      return true;
+    },
+  },
+  {
+    key: 'F1',
+    run: () => {
+      editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'shortcuts' });
+      return true;
+    },
+    preventDefault: true,
+  },
+  {
+    key: 'F8',
+    run: () => {
+      editorCommandBus.dispatch({ type: 'navigation:next-error' });
+      return true;
+    },
+  },
+  {
+    key: 'Shift-F8',
+    run: () => {
+      editorCommandBus.dispatch({ type: 'navigation:prev-error' });
+      return true;
+    },
+  },
+  {
+    key: 'Mod-Shift-f',
+    run: (view) => {
+      const { from, to } = view.state.selection.main;
+      const selectedText = from < to ? view.state.sliceDoc(from, to) : undefined;
+      useWorkspaceStore.getState().setSidebarLeftOpen(true);
+      useWorkspaceStore.getState().setActiveSidebarTab('search');
+      editorCommandBus.dispatch({
+        type: 'sidebar:open-panel',
+        panel: 'Search',
+        query: selectedText,
+      });
+      return true;
+    },
+  },
+  {
+    key: 'Mod-Shift-h',
+    run: (view) => {
+      const { from, to } = view.state.selection.main;
+      const selectedText = from < to ? view.state.sliceDoc(from, to) : undefined;
+      useWorkspaceStore.getState().setSidebarLeftOpen(true);
+      useWorkspaceStore.getState().setActiveSidebarTab('search');
+      editorCommandBus.dispatch({
+        type: 'sidebar:open-panel',
+        panel: 'Search',
+        query: selectedText,
+        showReplace: true,
+      });
+      return true;
+    },
+  },
+  {
+    key: 'Mod-Alt-m',
+    run: (view) => {
+      const { from, to } = view.state.selection.main;
+      const selectedText = view.state.sliceDoc(from, to);
+      const startLine = view.state.doc.lineAt(from).number;
+      const endLine = view.state.doc.lineAt(to).number;
+
+      useDocumentCollaborationStore.getState().setPendingComment({
+        startLine,
+        endLine,
+        selectedText: selectedText || '',
+      });
+
+      useWorkspaceStore.getState().setSidebarLeftOpen(true);
+      useWorkspaceStore.getState().setActiveSidebarTab('review');
+      editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
+      return true;
+    },
+  },
+  { key: 'Mod-/', run: toggleComment },
+  { key: 'Mod-Shift-l', run: gotoLine },
+  { key: 'Mod-g', run: gotoLine },
+  { key: 'Mod-Alt-[', run: foldCode },
+  { key: 'Mod-Alt-]', run: unfoldCode },
+  { key: 'Mod-Alt-Shift-[', run: foldAll },
+  { key: 'Mod-Alt-Shift-]', run: unfoldAll },
+  {
+    key: 'Mod-Shift-k',
+    run: () => {
+      editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'citation-picker' });
+      return true;
+    },
+  },
+  {
+    key: 'Mod-Alt-j',
+    run: (view) => {
+      const pos = view.state.selection.main.from;
+      const lineObj = view.state.doc.lineAt(pos);
+      editorCommandBus.dispatch({
+        type: 'synctex:forward',
+        line: lineObj.number,
+        column: pos - lineObj.from,
+      });
+      return true;
+    },
+  },
+  {
+    key: 'Ctrl-Alt-j',
+    run: (view) => {
+      const pos = view.state.selection.main.from;
+      const lineObj = view.state.doc.lineAt(pos);
+      editorCommandBus.dispatch({
+        type: 'synctex:forward',
+        line: lineObj.number,
+        column: pos - lineObj.from,
+      });
+      return true;
+    },
+  },
+  {
+    key: 'Mod-d',
+    run: deleteLine,
+    preventDefault: true,
+  },
+  {
+    key: 'Alt-d',
+    run: selectNextOccurrence,
+    preventDefault: true,
+  },
+  {
+    key: 'Alt-Shift-ArrowUp',
+    run: addCursorAbove,
+  },
+  {
+    key: 'Alt-Shift-ArrowDown',
+    run: addCursorBelow,
+  },
+  {
+    key: 'Ctrl-Alt-ArrowUp',
+    run: addCursorAbove,
+  },
+  {
+    key: 'Ctrl-Alt-ArrowDown',
+    run: addCursorBelow,
+  },
+];

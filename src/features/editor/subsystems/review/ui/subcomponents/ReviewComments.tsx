@@ -38,7 +38,7 @@ import {
   useUpdateComment,
 } from '@/features/editor/subsystems/review/ui/hooks/useComment';
 import type { PageComment, CommentReply, CreateReplyInput, CreateCommentInput } from '@/features/editor/domain/types/comment.types';
-import { createReplySchema, createCommentSchema } from '@/features/editor/domain/types/comment.types';;
+import { createReplySchema, createCommentSchema } from '@/features/editor/domain/types/comment.types';
 import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
 import { MentionRenderer } from './ReviewBadges';
 import { MentionTextarea } from './MentionTextarea';
@@ -211,6 +211,7 @@ export const CommentCard = React.memo(function CommentCard({
   currentUserId,
   onNavigate,
   isHighlighted = false,
+  members = [],
   membersMap,
 }: CommentCardProps) {
   const resolveMutation = useResolveComment();
@@ -221,18 +222,12 @@ export const CommentCard = React.memo(function CommentCard({
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
 
-  const isAuthor = Boolean(
-    currentUserId && (
-      currentUserId === comment.author?.id ||
-      comment.createdById === currentUserId ||
-      comment.authorId === currentUserId ||
-      comment.userId === currentUserId
-    ),
-  );
+  const authorId = comment.author?.id || comment.authorId || comment.createdById || comment.userId;
+  const isAuthor = Boolean(currentUserId && authorId === currentUserId);
 
   const authorDisplay = useMemo(
-    () => resolveAuthorDisplay(comment.author, membersMap, comment.authorId || comment.userId),
-    [comment, membersMap],
+    () => resolveAuthorDisplay(comment.author, membersMap, authorId),
+    [comment.author, membersMap, authorId],
   );
 
   const isResolved = comment.status === 'resolved';
@@ -357,9 +352,10 @@ export const CommentCard = React.memo(function CommentCard({
       {/* Row 3: Comment Body (or Edit Form) */}
       {isEditing ? (
         <div className="mt-2 space-y-1.5">
-          <textarea
+          <MentionTextarea
             value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
+            onChange={setEditContent}
+            members={members}
             rows={2}
             className="w-full text-xs p-2 rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-y"
             autoFocus

@@ -72,10 +72,56 @@ const sessionIgnoredWords = new Set<string>([
   'fig', 'tab', 'eq', 'sec', 'algo', 'auth', 'init', 'impl', 'repo',
 ]);
 
+const MAX_WORD_VALIDITY_CACHE_SIZE = 5000;
+const MAX_WORD_SUGGESTIONS_CACHE_SIZE = 1000;
+
 const wordValidityCache = new Map<string, boolean>();
 const wordSuggestionsCache = new Map<string, string[]>();
 
+export function setWordValidityBounded(word: string, isValid: boolean): void {
+  if (wordValidityCache.size >= MAX_WORD_VALIDITY_CACHE_SIZE && !wordValidityCache.has(word)) {
+    const oldestKey = wordValidityCache.keys().next().value;
+    if (oldestKey) wordValidityCache.delete(oldestKey);
+  }
+  wordValidityCache.set(word, isValid);
+}
+
+export function setWordSuggestionsBounded(word: string, suggestions: string[]): void {
+  if (wordSuggestionsCache.size >= MAX_WORD_SUGGESTIONS_CACHE_SIZE && !wordSuggestionsCache.has(word)) {
+    const oldestKey = wordSuggestionsCache.keys().next().value;
+    if (oldestKey) wordSuggestionsCache.delete(oldestKey);
+  }
+  wordSuggestionsCache.set(word, suggestions);
+}
+
+export function clearSpellingCaches(): void {
+  wordValidityCache.clear();
+  wordSuggestionsCache.clear();
+}
+
+// Reusable Uint8Array buffer pool to eliminate high-frequency allocations during typing
+let sharedMaskBuffer = new Uint8Array(65536);
+
+function getMaskBuffer(len: number): Uint8Array {
+  if (sharedMaskBuffer.length < len) {
+    const nextSize = Math.max(len, sharedMaskBuffer.length * 2);
+    sharedMaskBuffer = new Uint8Array(nextSize);
+  }
+  const mask = sharedMaskBuffer.subarray(0, len);
+  mask.fill(0);
+  return mask;
+}
+
 // ── LaTeX Word Filter & Tokenizer ─────────────────────────────────────────────
+
+const SPELL_MATH_REGEX = /(?<!\\)\$\$[\s\S]*?(?<!\\)\$\$|(?<!\\)\$[^$\n]+(?<!\\)\$|\\\(.*?\\\)|\s*\\\[[\s\S]*?\\\]/g;
+const SPELL_ENV_REGEX = /\\begin\{(equation\*?|align\*?|gather\*?|multline\*?|verbatim|lstlisting|minted)\}[\s\S]*?\\end\{\1\}/g;
+const SPELL_CMD_ARG_REGEX = /\\(?:cite[a-z]*|ref|eqref|label|input|include|usepackage|documentclass|bibliographystyle|bibliography)\*?(?:\[[^\]]*\])*\{([^}]+)\}/gi;
+const SPELL_GENERIC_CMD_REGEX = /\\[a-zA-Z@]+(?:\*?)/g;
+const SPELL_BIB_ENTRY_REGEX = /@[a-zA-Z]+\s*\{[^,\s]+,/g;
+const SPELL_BIB_FIELD_KEY_REGEX = /(?:^|[\n,])\s*([a-zA-Z_][a-zA-Z0-9_-]*)\s*=/g;
+const SPELL_BIB_IGNORED_FIELD_REGEX = /(?:author|editor|doi|url|eprint|isbn|issn|biburl|file|archiveprefix|primaryclass)\s*=\s*(?:\{[\s\S]*?\}|"[^"]*")/gi;
+const SPELL_WORD_REGEX = /[\p{L}]{2,}(?:['’][\p{L}]+)?/gu;
 
 /**
  * Extracts natural language words from LaTeX document while skipping
@@ -84,9 +130,10 @@ const wordSuggestionsCache = new Map<string, string[]>();
 export function extractLatexWords(text: string): Array<{ word: string; from: number; to: number }> {
   const words: Array<{ word: string; from: number; to: number }> = [];
   const len = text.length;
+  if (len === 0) return words;
 
-  // Mask non-text ranges: comments, math, verbatim, and commands
-  const mask = new Uint8Array(len); // 1 = skip
+  // Mask non-text ranges: comments, math, verbatim, and commands (pooled buffer)
+  const mask = getMaskBuffer(len); // 1 = skip
 
   // 1. Mask comments: % until end of line (unless escaped as \%)
   let i = 0;
@@ -112,65 +159,65 @@ export function extractLatexWords(text: string): Array<{ word: string; from: num
   }
 
   // 2. Mask display math ($$ ... $$) and inline math ($ ... $) (ignoring escaped \$)
-  const mathRegex = /(?<!\\)\$\$[\s\S]*?(?<!\\)\$\$|(?<!\\)\$[^$\n]+(?<!\\)\$|\\\(.*?\\\)|\s*\\\[[\s\S]*?\\\]/g;
+  SPELL_MATH_REGEX.lastIndex = 0;
   let m: RegExpExecArray | null;
-  while ((m = mathRegex.exec(text)) !== null) {
+  while ((m = SPELL_MATH_REGEX.exec(text)) !== null) {
     for (let k = m.index; k < m.index + m[0].length; k++) {
       if (k < len) mask[k] = 1;
     }
   }
 
   // 3. Mask math & code environments: \begin{equation}... \end{equation}, etc.
-  const envRegex = /\\begin\{(equation\*?|align\*?|gather\*?|multline\*?|verbatim|lstlisting|minted)\}[\s\S]*?\\end\{\1\}/g;
-  while ((m = envRegex.exec(text)) !== null) {
+  SPELL_ENV_REGEX.lastIndex = 0;
+  while ((m = SPELL_ENV_REGEX.exec(text)) !== null) {
     for (let k = m.index; k < m.index + m[0].length; k++) {
       if (k < len) mask[k] = 1;
     }
   }
 
   // 4. Mask commands and their macro arguments: \cite{...}, \ref{...}, \label{...}, \input{...}, \usepackage{...}
-  const cmdArgRegex = /\\(?:cite[a-z]*|ref|eqref|label|input|include|usepackage|documentclass|bibliographystyle|bibliography)\*?(?:\[[^\]]*\])*\{([^}]+)\}/gi;
-  while ((m = cmdArgRegex.exec(text)) !== null) {
+  SPELL_CMD_ARG_REGEX.lastIndex = 0;
+  while ((m = SPELL_CMD_ARG_REGEX.exec(text)) !== null) {
     for (let k = m.index; k < m.index + m[0].length; k++) {
       if (k < len) mask[k] = 1;
     }
   }
 
   // 5. Mask generic commands: \textbf, \section, \item, etc.
-  const genericCmdRegex = /\\[a-zA-Z@]+(?:\*?)/g;
-  while ((m = genericCmdRegex.exec(text)) !== null) {
+  SPELL_GENERIC_CMD_REGEX.lastIndex = 0;
+  while ((m = SPELL_GENERIC_CMD_REGEX.exec(text)) !== null) {
     for (let k = m.index; k < m.index + m[0].length; k++) {
       if (k < len) mask[k] = 1;
     }
   }
 
   // 5b. Mask BibTeX entry declarations and citation keys: @article{loshchilov2017decoupled, etc.
-  const bibEntryRegex = /@[a-zA-Z]+\s*\{[^,\s]+,/g;
-  while ((m = bibEntryRegex.exec(text)) !== null) {
+  SPELL_BIB_ENTRY_REGEX.lastIndex = 0;
+  while ((m = SPELL_BIB_ENTRY_REGEX.exec(text)) !== null) {
     for (let k = m.index; k < m.index + m[0].length; k++) {
       if (k < len) mask[k] = 1;
     }
   }
 
   // 5c. Mask BibTeX field names: author =, title =, journal =, etc.
-  const bibFieldKeyRegex = /(?:^|[\n,])\s*([a-zA-Z_][a-zA-Z0-9_-]*)\s*=/g;
-  while ((m = bibFieldKeyRegex.exec(text)) !== null) {
+  SPELL_BIB_FIELD_KEY_REGEX.lastIndex = 0;
+  while ((m = SPELL_BIB_FIELD_KEY_REGEX.exec(text)) !== null) {
     for (let k = m.index; k < m.index + m[0].length; k++) {
       if (k < len) mask[k] = 1;
     }
   }
 
   // 5d. Mask BibTeX identifier/metadata field contents (authors, URLs, DOIs, eprints, etc.)
-  const bibIgnoredFieldRegex = /(?:author|editor|doi|url|eprint|isbn|issn|biburl|file|archiveprefix|primaryclass)\s*=\s*(?:\{[\s\S]*?\}|"[^"]*")/gi;
-  while ((m = bibIgnoredFieldRegex.exec(text)) !== null) {
+  SPELL_BIB_IGNORED_FIELD_REGEX.lastIndex = 0;
+  while ((m = SPELL_BIB_IGNORED_FIELD_REGEX.exec(text)) !== null) {
     for (let k = m.index; k < m.index + m[0].length; k++) {
       if (k < len) mask[k] = 1;
     }
   }
 
   // 6. Tokenize remaining natural language words (Unicode-aware for multi-language & Vietnamese)
-  const wordRegex = /[\p{L}]{2,}(?:['’][\p{L}]+)?/gu;
-  while ((m = wordRegex.exec(text)) !== null) {
+  SPELL_WORD_REGEX.lastIndex = 0;
+  while ((m = SPELL_WORD_REGEX.exec(text)) !== null) {
     const from = m.index;
     const to = from + m[0].length;
     // Ensure no character of this word was masked
@@ -219,7 +266,7 @@ export const spellingStateField = StateField.define<DecorationSet>({
         errors = builder.finish();
       } else if (effect.is(addIgnoredWordEffect)) {
         sessionIgnoredWords.add(effect.value.toLowerCase());
-        wordValidityCache.set(effect.value.toLowerCase(), true);
+        setWordValidityBounded(effect.value.toLowerCase(), true);
         wordSuggestionsCache.delete(effect.value.toLowerCase());
         // Filter out decorations for the now-ignored word
         const newBuilder = new RangeSetBuilder<Decoration>();
@@ -390,6 +437,8 @@ export interface LatexSpellingOptions {
   notifier?: SpellingNotificationPort;
 }
 
+let lastSpellingLanguage: string | null = null;
+
 export function createSpellingViewPlugin(options: LatexSpellingOptions = {}) {
   const { projectId, language = 'en_US', enabled = true, spellingService: customService } = options;
 
@@ -400,6 +449,11 @@ export function createSpellingViewPlugin(options: LatexSpellingOptions = {}) {
 
       constructor(readonly view: EditorView) {
         if (enabled) {
+          if (lastSpellingLanguage !== null && lastSpellingLanguage !== language) {
+            clearSpellingCaches();
+          }
+          lastSpellingLanguage = language;
+
           const svc = resolveSpellingService(view, customService);
           // Pre-hydrate project and user custom dictionaries into session caches
           if (projectId) {
@@ -408,7 +462,7 @@ export function createSpellingViewPlugin(options: LatexSpellingOptions = {}) {
                 dictWords.forEach((w) => {
                   const lower = w.toLowerCase();
                   sessionIgnoredWords.add(lower);
-                  wordValidityCache.set(lower, true);
+                  setWordValidityBounded(lower, true);
                   wordSuggestionsCache.delete(lower);
                 });
               }
@@ -419,7 +473,7 @@ export function createSpellingViewPlugin(options: LatexSpellingOptions = {}) {
               dictWords.forEach((w) => {
                 const lower = w.toLowerCase();
                 sessionIgnoredWords.add(lower);
-                wordValidityCache.set(lower, true);
+                setWordValidityBounded(lower, true);
                 wordSuggestionsCache.delete(lower);
               });
             }
@@ -512,15 +566,15 @@ export function createSpellingViewPlugin(options: LatexSpellingOptions = {}) {
           report.errors.forEach((err) => {
             const lower = err.word.toLowerCase();
             errorMap.set(lower, err.suggestions || []);
-            wordSuggestionsCache.set(lower, err.suggestions || []);
-            wordValidityCache.set(lower, false);
+            setWordSuggestionsBounded(lower, err.suggestions || []);
+            setWordValidityBounded(lower, false);
           });
 
           // Mark checked unverified words that had no errors as valid in cache
           unverifiedWords.forEach(({ word }) => {
             const lower = word.toLowerCase();
             if (!errorMap.has(lower)) {
-              wordValidityCache.set(lower, true);
+              setWordValidityBounded(lower, true);
             }
           });
 
@@ -555,24 +609,36 @@ export function createSpellingContextMenu(
   ports?: { spellingService?: SpellingServicePort; notifier?: SpellingNotificationPort }
 ): Extension {
   let activeMenuEl: HTMLDivElement | null = null;
+  let listenersAttached = false;
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') removeMenu();
+  };
 
   const removeMenu = () => {
     if (activeMenuEl) {
       activeMenuEl.remove();
       activeMenuEl = null;
     }
+    if (listenersAttached && typeof window !== 'undefined') {
+      window.removeEventListener('click', removeMenu, { capture: true });
+      window.removeEventListener('keydown', handleKeyDown);
+      listenersAttached = false;
+    }
   };
 
-  if (typeof window !== 'undefined') {
-    window.addEventListener('click', removeMenu, { capture: true });
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') removeMenu();
-    });
-  }
+  const attachWindowListeners = () => {
+    if (!listenersAttached && typeof window !== 'undefined') {
+      window.addEventListener('click', removeMenu, { capture: true });
+      window.addEventListener('keydown', handleKeyDown);
+      listenersAttached = true;
+    }
+  };
 
-  return EditorView.domEventHandlers({
-    contextmenu(e, view) {
-      removeMenu();
+  return [
+    EditorView.domEventHandlers({
+      contextmenu(e, view) {
+        removeMenu();
 
       const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
       if (pos === null) return false;
@@ -704,9 +770,18 @@ export function createSpellingContextMenu(
 
       document.body.appendChild(menu);
       activeMenuEl = menu;
+      attachWindowListeners();
       return true;
     },
-  });
+  }),
+  ViewPlugin.fromClass(
+    class {
+      destroy() {
+        removeMenu();
+      }
+    }
+  ),
+];
 }
 
 // ── Typography & Theme ────────────────────────────────────────────────────────

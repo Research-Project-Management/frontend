@@ -23,7 +23,7 @@ import {
   isRichTextHtml,
   parseHtmlToLatex,
 } from '@/features/editor/domain/latex/smart-paste';
-import { getDefaultCommandDispatcher } from '@/features/editor/core/engine/adapters/editor-command-port';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { getDefaultFileUploader } from '@/features/editor/core/engine/adapters/editor-filestore-port';
 
 export interface LatexSmartPasteOptions {
@@ -38,7 +38,7 @@ export function createLatexSmartPasteExtension(options: LatexSmartPasteOptions =
     projectId,
     enableSmartPaste = true,
     uploadFile = (pId, f, n) => getDefaultFileUploader()(pId, f, n),
-    onFileTreeUpdated = () => getDefaultCommandDispatcher()({ type: 'filetree:updated' }),
+    onFileTreeUpdated = () => editorCommandBus.dispatch({ type: 'filetree:updated' }),
   } = options;
 
   return EditorView.domEventHandlers({

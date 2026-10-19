@@ -161,6 +161,33 @@ export function buildEditorState(options: BuildEditorStateOptions): EditorState 
   });
 }
 
+function findDiffRange(
+  currentDoc: string,
+  nextText: string
+): { from: number; to: number; insert: string } | null {
+  if (currentDoc === nextText) return null;
+  let start = 0;
+  const minLen = Math.min(currentDoc.length, nextText.length);
+  while (start < minLen && currentDoc.charCodeAt(start) === nextText.charCodeAt(start)) {
+    start++;
+  }
+  let endCur = currentDoc.length;
+  let endNext = nextText.length;
+  while (
+    endCur > start &&
+    endNext > start &&
+    currentDoc.charCodeAt(endCur - 1) === nextText.charCodeAt(endNext - 1)
+  ) {
+    endCur--;
+    endNext--;
+  }
+  return {
+    from: start,
+    to: endCur,
+    insert: nextText.slice(start, endNext),
+  };
+}
+
 function flushViewState(view: EditorView, targetFileId: string): void {
   const latestDoc = view.state.doc.toString();
   if (lruDocumentCache.getModel(targetFileId)?.content !== latestDoc) {
@@ -432,6 +459,7 @@ export function CodeMirrorView({
     reviewMode: boolean;
     trackChangesViewMode: string;
   } | null>(null);
+  const boundYTextRef = useRef<Y.Text | null>(yText ?? null);
 
   // ── Persistent Editor View Mount Lifecycle (Runs ONCE per container) ───────
   useEffect(() => {
@@ -439,6 +467,7 @@ export function CodeMirrorView({
 
     currentFileIdRef.current = fileId;
     currentFilePathRef.current = filePath;
+    boundYTextRef.current = yText ?? null;
 
     const state = createStateForDocument(fileId, filePath, value);
     const view = new EditorView({
@@ -520,21 +549,30 @@ export function CodeMirrorView({
     view.scrollDOM.addEventListener('scroll', handleScroll, { passive: true });
 
     const unsubContentUpdated = editorCommandBus.subscribe('document:content-updated', (cmd) => {
+      const activeFileId = currentFileIdRef.current;
       const matchesDoc =
-        cmd.docId === currentFileIdRef.current ||
+        cmd.docId === activeFileId ||
         (Boolean(currentFilePathRef.current) &&
           (cmd.docId === currentFilePathRef.current ||
             cmd.docId.replace(/^\//, '') === currentFilePathRef.current.replace(/^\//, '')));
       if (matchesDoc && viewRef.current) {
-        if (sessionCoordinator.getConflict(currentFileIdRef.current) || lruDocumentCache.getModel(currentFileIdRef.current)?.isDirty) {
+        if (
+          sessionCoordinator.getConflict(activeFileId) ||
+          lruDocumentCache.getModel(activeFileId)?.isDirty
+        ) {
+          return;
+        }
+        if (yTextRef.current) {
+          lruDocumentCache.updateContent(activeFileId, cmd.content, false);
           return;
         }
         const currentDoc = viewRef.current.state.doc.toString();
-        if (currentDoc !== cmd.content) {
+        const diff = findDiffRange(currentDoc, cmd.content);
+        if (diff) {
           const sel = viewRef.current.state.selection.main;
           const newLen = cmd.content.length;
           viewRef.current.dispatch({
-            changes: { from: 0, to: currentDoc.length, insert: cmd.content },
+            changes: diff,
             selection: {
               anchor: Math.min(sel.anchor, newLen),
               head: Math.min(sel.head, newLen),
@@ -547,12 +585,34 @@ export function CodeMirrorView({
     const unsubSetContent = editorCommandBus.subscribe('editor:set-content', (cmd) => {
       const anyCmd = cmd as { type: string; content: string; fileId?: string };
       if ((!anyCmd.fileId || anyCmd.fileId === currentFileIdRef.current) && viewRef.current) {
+        const liveYText = yTextRef.current;
+        if (liveYText) {
+          const currentYDocText = liveYText.toString();
+          const diff = findDiffRange(currentYDocText, anyCmd.content);
+          if (diff) {
+            const applyYjsDiff = () => {
+              if (diff.to > diff.from) {
+                liveYText.delete(diff.from, diff.to - diff.from);
+              }
+              if (diff.insert.length > 0) {
+                liveYText.insert(diff.from, diff.insert);
+              }
+            };
+            if (liveYText.doc) {
+              liveYText.doc.transact(applyYjsDiff, 'local-set-content');
+            } else {
+              applyYjsDiff();
+            }
+          }
+          return;
+        }
         const currentDoc = viewRef.current.state.doc.toString();
-        if (currentDoc !== anyCmd.content) {
+        const diff = findDiffRange(currentDoc, anyCmd.content);
+        if (diff) {
           const sel = viewRef.current.state.selection.main;
           const newLen = anyCmd.content.length;
           viewRef.current.dispatch({
-            changes: { from: 0, to: currentDoc.length, insert: anyCmd.content },
+            changes: diff,
             selection: {
               anchor: Math.min(sel.anchor, newLen),
               head: Math.min(sel.head, newLen),
@@ -604,19 +664,33 @@ export function CodeMirrorView({
 
     const prevFileId = currentFileIdRef.current;
     const prevFilePath = currentFilePathRef.current;
+    const isSameDoc = prevFileId === fileId && prevFilePath === filePath;
+    const yTextBecameReady =
+      isSameDoc && Boolean(yText) && boundYTextRef.current !== yText;
 
-    // Skip if target document matches currently loaded document
-    if (prevFileId === fileId && prevFilePath === filePath) return;
+    // Skip if target document matches currently loaded document and yText binding is already current
+    if (isSameDoc && !yTextBecameReady) return;
 
     // 1. Flush previous document content & viewState to LRU Cache
-    flushViewState(view, prevFileId);
-    reviewCoordinator.bindEditorView(null, prevFileId);
+    if (!isSameDoc) {
+      flushViewState(view, prevFileId);
+      reviewCoordinator.bindEditorView(null, prevFileId);
+    } else {
+      const mainSel = view.state.selection.main;
+      const scrollDOM = view.scrollDOM;
+      lruDocumentCache.updateViewState(
+        fileId,
+        { anchor: mainSel.anchor, head: mainSel.head },
+        { top: scrollDOM.scrollTop, left: scrollDOM.scrollLeft }
+      );
+    }
 
-    // 2. Build new EditorState for the target document
+    // 2. Build new EditorState for the target document (bound to current yText & awareness)
     const nextState = createStateForDocument(fileId, filePath, value);
 
     // 3. 0ms Zero-Remount State Swap (Preserves DOM container & event listeners)
     view.setState(nextState);
+    boundYTextRef.current = yText ?? null;
     prevConfigRef.current = {
       runtime: currentRuntimeConfig,
       reviewMode: Boolean(reviewMode),
@@ -643,7 +717,7 @@ export function CodeMirrorView({
         navigationCoordinator.registerEditorView(fileId, filePath);
       }
     }
-  }, [fileId, filePath, value, createStateForDocument, currentRuntimeConfig, reviewMode, trackChangesViewMode, syncErrorLens]);
+  }, [fileId, filePath, value, yText, awareness, createStateForDocument, currentRuntimeConfig, reviewMode, trackChangesViewMode, syncErrorLens]);
 
   // Sync active engine when pane active status updates
   useEffect(() => {
@@ -657,20 +731,24 @@ export function CodeMirrorView({
     if (!viewRef.current || value === undefined) return;
     // Guard against applying external value meant for a previous document during swap
     if (currentFileIdRef.current !== fileId) return;
+    // Do not overwrite live Yjs-backed CodeMirror buffer when REST value prop refetches
+    if (yText && yText.length > 0) return;
+    if (yTextRef.current) return;
 
     const currentDoc = viewRef.current.state.doc.toString();
-    if (currentDoc !== value) {
+    const diff = findDiffRange(currentDoc, value);
+    if (diff) {
       const sel = viewRef.current.state.selection.main;
       const newLen = value.length;
       viewRef.current.dispatch({
-        changes: { from: 0, to: currentDoc.length, insert: value },
+        changes: diff,
         selection: {
           anchor: Math.min(sel.anchor, newLen),
           head: Math.min(sel.head, newLen),
         },
       });
     }
-  }, [value, fileId]);
+  }, [value, fileId, yText]);
 
   // ── 0ms Batched Dynamic Compartment Reconfiguration Seam (No View Re-mount) ──
   useEffect(() => {
@@ -704,7 +782,8 @@ export function CodeMirrorView({
 
   // Reconfigure Yjs collab extension on prop change
   useEffect(() => {
-    if (viewRef.current) {
+    if (viewRef.current && boundYTextRef.current !== (yText ?? null)) {
+      boundYTextRef.current = yText ?? null;
       viewRef.current.dispatch({
         effects: collabAdapter.reconfigure({
           yText: yText ?? null,

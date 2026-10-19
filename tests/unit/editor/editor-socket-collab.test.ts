@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as Y from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as encoding from 'lib0/encoding';
@@ -276,7 +276,7 @@ describe('Editor Real-Time Socket.IO & Yjs Collaboration Subsystem', () => {
       expect(p1.isDestroyed).toBe(true);
     });
 
-    it('should handle simulated server SyncStep2 + SyncStep1 payload and produce doc:sync-step-2 reply', () => {
+    it('should handle simulated server SyncStep2 + SyncStep1 payload and produce doc:sync:step2 reply', () => {
       const clientDoc = new Y.Doc();
       const serverDoc = new Y.Doc();
 

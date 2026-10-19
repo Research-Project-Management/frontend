@@ -41,7 +41,7 @@ export type DialogName =
   | 'github-sync'
   | 'project-settings';
 
-import type { EditorDiagnosticItem } from '@/features/editor/domain/diagnostics/diagnostics-port';
+import type { EditorDiagnosticItem } from '@/features/editor/domain/diagnostics/diagnostic-types';
 export type { EditorDiagnosticItem };
 
 export type EditorCommand =
@@ -104,7 +104,7 @@ export type EditorCommand =
   | { type: 'viewer:find'; query?: string; open?: boolean; caseSensitive?: boolean; wholeWord?: boolean; regex?: boolean }
   | { type: 'viewer:find-next' }
   | { type: 'viewer:find-prev' }
-  | { type: 'preview:detach' }
+  | { type: 'preview:detach'; projectId?: string }
   | { type: 'preview:attach' }
   | { type: 'sidebar:toggle-panel'; panel: SidebarPanelName; forceOpen?: boolean }
   | { type: 'sidebar:open-panel'; panel: SidebarPanelName; query?: string; showReplace?: boolean; commentId?: string; suggestionId?: string; forceOpen?: boolean }
@@ -152,10 +152,9 @@ export type EditorCommand =
   | { type: 'ai:autofix-diagnostic'; diagnostic: EditorDiagnosticItem }
   | {
       type: 'ai:diff-resolved';
-      action?: 'accept' | 'reject';
+      action: 'accept' | 'reject';
       proposalId?: string;
       proposal?: DiffProposal;
-      payload?: { action: 'accept' | 'reject'; proposalId?: string; proposal?: DiffProposal };
     }
   | { type: 'lifecycle:state-change'; state: 'hibernated' | 'active'; durationMs?: number }
   | { type: 'review:navigate-to-comment'; commentId: string; line?: number }

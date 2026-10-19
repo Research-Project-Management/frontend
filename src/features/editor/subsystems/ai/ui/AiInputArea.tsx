@@ -27,29 +27,13 @@ import {
   DropdownMenuSeparator,
 } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
+import { QUICK_ACTIONS } from '@/features/editor/domain/ai/ai-prompts';
 import {
   ACCEPTED_TYPES,
   getFileMeta,
-  QUICK_ACTIONS,
   type AttachedFile,
   type UploadingFileItem,
 } from './ai-attachments';
-
-export interface SelectedLibraryPaper {
-  id: string;
-  name: string;
-  size: number;
-}
-export interface SelectedStorageItem {
-  id: string;
-  name: string;
-  size: number;
-}
-export interface SelectedUploadedDoc {
-  id: string;
-  name: string;
-  size: number;
-}
 
 const LibraryPickerModal = nextDynamic(
   () =>
@@ -90,9 +74,9 @@ export interface AiInputAreaProps {
   webSearchEnabled: boolean;
   setWebSearchEnabled: (val: boolean) => void;
   currentProjectId: string | null;
-  onLibraryAttached: (items: SelectedLibraryPaper[]) => void;
-  onStorageAttached: (items: SelectedStorageItem[]) => void;
-  onDocumentsAttached: (items: SelectedUploadedDoc[]) => void;
+  onLibraryAttached: (items: AttachedFile[]) => void;
+  onStorageAttached: (items: AttachedFile[]) => void;
+  onDocumentsAttached: (items: AttachedFile[]) => void;
   isLibraryModalOpen: boolean;
   setIsLibraryModalOpen: (open: boolean) => void;
   isStorageModalOpen: boolean;

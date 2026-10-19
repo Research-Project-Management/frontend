@@ -34,17 +34,23 @@ describe('Editor Architecture Directness & Clean Design', () => {
       expect(state.getActiveDocumentTitle()).toBe('chapter1.tex');
     });
 
-    it('setActiveFilePage atomically updates currentPage, activeFilePage, and activePageId', () => {
-      const mockDoc = { id: 'file-456', title: 'appendix.tex', content: '\\section{App}' };
-      usePageStore.getState().setActiveFilePage(mockDoc as any);
+    it('setActiveFilePage updates activeFilePage and activePageId without clobbering currentPage', () => {
+      const rootDoc = { id: 'root-doc', title: 'main.tex', content: '\\documentclass{article}' };
+      const subFile = { id: 'file-456', title: 'appendix.tex', content: '\\section{App}' };
+
+      usePageStore.getState().setCurrentPage(rootDoc as any);
+      usePageStore.getState().setActiveFilePage(subFile as any);
 
       const state = usePageStore.getState();
-      expect(state.currentPage).toEqual(mockDoc);
-      expect(state.activeFilePage).toEqual(mockDoc);
+      expect(state.currentPage).toEqual(rootDoc);
+      expect(state.activeFilePage).toEqual(subFile);
       expect(state.activePageId).toBe('file-456');
+      expect(state.getActiveDocument()).toEqual(subFile);
+      expect(state.getActiveDocumentId()).toBe('file-456');
+      expect(state.getActiveDocumentTitle()).toBe('appendix.tex');
     });
 
-    it('setActiveDocument updates both pointers simultaneously', () => {
+    it('setActiveDocument updates activeFilePage and initializes currentPage only if not already set', () => {
       const mockDoc = { id: 'main-doc', title: 'main.tex', content: '\\documentclass{article}' };
       usePageStore.getState().setActiveDocument(mockDoc as any);
 
@@ -52,6 +58,14 @@ describe('Editor Architecture Directness & Clean Design', () => {
       expect(state.currentPage).toEqual(mockDoc);
       expect(state.activeFilePage).toEqual(mockDoc);
       expect(state.activePageId).toBe('main-doc');
+
+      const childDoc = { id: 'child-doc', title: 'intro.tex', content: '\\section{Intro}' };
+      usePageStore.getState().setActiveDocument(childDoc as any);
+
+      const nextState = usePageStore.getState();
+      expect(nextState.currentPage).toEqual(mockDoc);
+      expect(nextState.activeFilePage).toEqual(childDoc);
+      expect(nextState.activePageId).toBe('child-doc');
     });
   });
 

@@ -93,12 +93,47 @@ export interface YjsSocketIOProviderOptions {
 }
 
 /**
- * Maps a (row, column) coordinate (1-indexed) in text to an absolute character offset.
+ * Precomputes a 0-indexed table of character offsets where each line starts.
+ * Time Complexity: O(N) once per document mutation.
+ * Space Complexity: O(L) where L is the number of lines.
  */
-export function getOffsetFromRowCol(text: string, row: number, column: number): number {
+export function buildLineStartsIndex(text: string): number[] {
+  const starts: number[] = [0];
+  for (let i = 0; i < text.length; i++) {
+    if (text.charCodeAt(i) === 10) {
+      starts.push(i + 1);
+    }
+  }
+  return starts;
+}
+
+/**
+ * Maps a (row, column) coordinate (1-indexed) in text to an absolute character offset.
+ * - With `lineStarts` index: O(1) direct array lookup.
+ * - Without `lineStarts` index: O(N) linear scan fallback.
+ */
+export function getOffsetFromRowCol(
+  text: string,
+  row: number,
+  column: number,
+  lineStarts?: number[],
+): number {
   if (!text || text.length === 0) return 0;
   const targetLine = Math.max(1, row);
   const targetCol = Math.max(1, column);
+
+  if (lineStarts && lineStarts.length > 0) {
+    if (targetLine > lineStarts.length) {
+      return text.length;
+    }
+    const lineIdx = targetLine - 1;
+    const lineStartOffset = lineStarts[lineIdx];
+    const nextNewline =
+      lineIdx + 1 < lineStarts.length ? lineStarts[lineIdx + 1] - 1 : text.length;
+    const lineLength = nextNewline - lineStartOffset;
+    const colOffset = Math.min(Math.max(0, targetCol - 1), lineLength);
+    return Math.min(text.length, lineStartOffset + colOffset);
+  }
 
   let currentLine = 1;
   let lineStartOffset = 0;
@@ -126,9 +161,34 @@ export function getOffsetFromRowCol(text: string, row: number, column: number): 
 
 /**
  * Maps an absolute character offset in text to a (row, column) coordinate (1-indexed).
+ * - With `lineStarts` index: O(log L) binary search (upper-bound).
+ * - Without `lineStarts` index: O(N) linear scan fallback.
  */
-export function getRowColFromOffset(text: string, offset: number): { row: number; col: number } {
+export function getRowColFromOffset(
+  text: string,
+  offset: number,
+  lineStarts?: number[],
+): { row: number; col: number } {
   const safeOffset = Math.max(0, Math.min(text.length, offset));
+
+  if (lineStarts && lineStarts.length > 0) {
+    let low = 0;
+    let high = lineStarts.length - 1;
+    while (low <= high) {
+      const mid = (low + high) >>> 1;
+      if (lineStarts[mid] <= safeOffset) {
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    const lineIdx = Math.max(0, high);
+    return {
+      row: lineIdx + 1,
+      col: safeOffset - lineStarts[lineIdx] + 1,
+    };
+  }
+
   let row = 1;
   let lastLineStart = 0;
 
@@ -144,7 +204,7 @@ export function getRowColFromOffset(text: string, offset: number): { row: number
 }
 
 /**
- * Applies the minimal prefix/suffix splice that turns yText into 	arget, as one transaction.
+ * Applies the minimal prefix/suffix splice that turns yText into target, as one transaction.
  */
 export function applyTextDiff(yText: Y.Text, target: string, origin: unknown = 'local'): boolean {
   const current = yText.toString();
@@ -183,12 +243,11 @@ export class YjsSocketIOProvider {
   private options: YjsSocketIOProviderOptions;
   private commandBus?: IEditorCommandBus;
   private socketToClientIdMap = new Map<string, number>();
-  private activeCollaborators: CollaborationPresence[] = [];
+  private collaboratorsMap = new Map<string, CollaborationPresence>();
   private destroyed = false;
   public get isDestroyed(): boolean {
     return this.destroyed;
   }
-  private cursorEmitDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private lastEmittedCoords: { row: number; col: number } | null = null;
   private pendingUpdates: Uint8Array[] = [];
   private updateBatchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -196,6 +255,8 @@ export class YjsSocketIOProvider {
   private pendingCursorData: { row: number; column: number; selection?: RemoteCursorSelection | null } | null = null;
   private cursorThrottleTimer: ReturnType<typeof setTimeout> | null = null;
   private handleOnline: (() => void) | null = null;
+  private cachedText: string | null = null;
+  private cachedLineStarts: number[] | null = null;
 
   constructor(
     projectId: string,
@@ -239,7 +300,7 @@ export class YjsSocketIOProvider {
     };
   }
 
-  /** Subscribe to real-time project chat messages (project:chat:message). */
+  /** Subscribe to real-time project chat messages (project:chat:new). */
   public subscribeChatMessages(listener: (message: ProjectChatMessage) => void): () => void {
     this.chatListeners.add(listener);
     return () => {
@@ -349,6 +410,26 @@ export class YjsSocketIOProvider {
     }
   }
 
+  private applySyncFrame(
+    data: Uint8Array | ArrayLike<number>,
+    targetDoc: Y.Doc,
+    emitStep2Reply: boolean,
+  ): void {
+    const rawData = data instanceof Uint8Array ? data : new Uint8Array(data);
+    const decoder = decoding.createDecoder(rawData);
+    const replyEncoder = encoding.createEncoder();
+    while (decoding.hasContent(decoder)) {
+      syncProtocol.readSyncMessage(decoder, replyEncoder, targetDoc, 'socket.io');
+    }
+    if (emitStep2Reply && encoding.length(replyEncoder) > 0) {
+      this.socket?.emit('doc:sync:step2', {
+        projectId: this.projectId,
+        docId: this.pageId,
+        data: encoding.toUint8Array(replyEncoder),
+      });
+    }
+  }
+
   private registerSocketEvents(): void {
     if (!this.socket) return;
 
@@ -393,7 +474,7 @@ export class YjsSocketIOProvider {
         removeAwarenessStates(this.awareness, remoteClientIds, 'socket.io');
         this.socketToClientIdMap.clear();
       }
-      this.activeCollaborators = [];
+      this.collaboratorsMap.clear();
       this.options.onCollaboratorsChange?.([]);
     });
 
@@ -405,39 +486,53 @@ export class YjsSocketIOProvider {
       }
     });
 
-    // Binary Yjs sync-update from server / remote collaborators
-    this.socket.on('doc:sync-update', (payload: { projectId: string; docId: string; data: Uint8Array | ArrayLike<number> }) => {
+    // Binary Yjs sync:update from server / remote collaborators
+    const handleIncomingSyncUpdate = (payload: {
+      projectId: string;
+      docId: string;
+      data: Uint8Array | ArrayLike<number>;
+    }) => {
       if (this.destroyed) return;
-      if (payload.projectId !== this.projectId || payload.docId !== this.pageId) return;
+      if (payload.projectId !== this.projectId || payload.docId !== this.pageId)
+        return;
       if (!payload.data) return;
 
       try {
-        const rawData =
-          payload.data instanceof Uint8Array
-            ? payload.data
-            : new Uint8Array(payload.data);
-
-        const decoder = decoding.createDecoder(rawData);
-        const replyEncoder = encoding.createEncoder();
-        while (decoding.hasContent(decoder)) {
-          syncProtocol.readSyncMessage(decoder, replyEncoder, this.doc, 'socket.io');
-        }
-        if (encoding.length(replyEncoder) > 0) {
-          this.socket?.emit('doc:sync-step-2', {
-            projectId: this.projectId,
-            docId: this.pageId,
-            data: encoding.toUint8Array(replyEncoder),
-          });
-        }
-      } catch (err) {
+        this.applySyncFrame(payload.data, this.doc, true);
+      } catch {
         try {
-          const raw = payload.data instanceof Uint8Array ? payload.data : new Uint8Array(payload.data);
+          const raw =
+            payload.data instanceof Uint8Array
+              ? payload.data
+              : new Uint8Array(payload.data);
           Y.applyUpdate(this.doc, raw, 'socket.io');
         } catch (applyErr) {
-          console.warn('[YjsSocketIOProvider] Error applying incoming sync-update:', applyErr);
+          console.warn(
+            '[YjsSocketIOProvider] Error applying incoming sync:update:',
+            applyErr,
+          );
         }
       }
-    });
+    };
+    this.socket.on('doc:sync:update', handleIncomingSyncUpdate);
+
+    const handleSyncStep2Push = (payload: {
+      docId: string;
+      data: Uint8Array | ArrayLike<number>;
+    }) => {
+      if (this.destroyed) return;
+      if (payload.docId !== this.pageId) return;
+      if (!payload.data) return;
+      try {
+        this.applySyncFrame(payload.data, this.doc, false);
+      } catch (err) {
+        console.warn(
+          '[YjsSocketIOProvider] Error applying incoming sync:step2:',
+          err,
+        );
+      }
+    };
+    this.socket.on('doc:sync:step2', handleSyncStep2Push);
 
     // Real-time LaTeX compilation streaming
     this.socket.on('compile:progress', (data: CompileProgressPayload | string) => {
@@ -480,9 +575,6 @@ export class YjsSocketIOProvider {
     this.socket.on('fileTree:update', (data: Record<string, unknown>) => {
       if (this.destroyed) return;
       this.commandBus?.dispatch({ type: 'filetree:updated', payload: data });
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flux:filetree-updated', { detail: data }));
-      }
     });
 
     // Real-time document content update from collaborator
@@ -494,9 +586,6 @@ export class YjsSocketIOProvider {
           docId: data.docId,
           content: data.content,
         });
-      }
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flux:doc-content-updated', { detail: data }));
       }
     });
 
@@ -556,7 +645,7 @@ export class YjsSocketIOProvider {
       });
     });
 
-    this.socket.on('project:chat:message', (msg: ProjectChatMessage) => {
+    const handleChatMessage = (msg: ProjectChatMessage) => {
       if (this.destroyed || !msg) return;
       this.options.onChatMessage?.(msg);
       for (const listener of this.chatListeners) {
@@ -566,10 +655,16 @@ export class YjsSocketIOProvider {
           console.warn('[YjsSocketIOProvider] chat listener error:', err);
         }
       }
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flux:project-chat-message', { detail: msg }));
-      }
-    });
+    };
+    this.socket.on('project:chat:new', handleChatMessage);
+  }
+
+  private getIndexedText(): { text: string; lineStarts: number[] } {
+    if (this.cachedText === null || this.cachedLineStarts === null) {
+      this.cachedText = this.yText.toString();
+      this.cachedLineStarts = buildLineStartsIndex(this.cachedText);
+    }
+    return { text: this.cachedText, lineStarts: this.cachedLineStarts };
   }
 
   private setupLocalDocListener(): void {
@@ -577,6 +672,8 @@ export class YjsSocketIOProvider {
     doc.on('update', (update: Uint8Array, origin: unknown) => {
       // Ignore updates from a replaced (stale) doc: they must never reach the server.
       if (doc !== this.doc) return;
+      this.cachedText = null;
+      this.cachedLineStarts = null;
       if (origin === 'socket.io' || this.destroyed) return;
 
       // Always queue local updates. When the socket is disconnected they are retained
@@ -642,7 +739,7 @@ export class YjsSocketIOProvider {
     syncProtocol.writeSyncStep1(encoder, freshDoc); // empty state vector => full server state
 
     this.socket.emit(
-      'doc:sync-step-1',
+      'doc:sync:step1',
       { projectId: this.projectId, docId: this.pageId, data: encoding.toUint8Array(encoder) },
       (res?: { success?: boolean; data?: Uint8Array | ArrayLike<number> | unknown; error?: string }) => {
         this.resyncInFlight = false;
@@ -658,12 +755,7 @@ export class YjsSocketIOProvider {
         }
         try {
           if (res.data) {
-            const rawData = res.data instanceof Uint8Array ? res.data : new Uint8Array(res.data as ArrayLike<number>);
-            const decoder = decoding.createDecoder(rawData);
-            const sink = encoding.createEncoder();
-            while (decoding.hasContent(decoder)) {
-              syncProtocol.readSyncMessage(decoder, sink, freshDoc, 'socket.io');
-            }
+            this.applySyncFrame(res.data as Uint8Array | ArrayLike<number>, freshDoc, false);
           }
         } catch (err) {
           console.warn('[YjsSocketIOProvider] Error applying server state during rebuild:', err);
@@ -684,6 +776,8 @@ export class YjsSocketIOProvider {
         }
         this.doc = freshDoc;
         this.yText = freshDoc.getText('latex');
+        this.cachedText = null;
+        this.cachedLineStarts = null;
         this.awareness = new Awareness(freshDoc);
         this.socketToClientIdMap.clear();
         if (this.options.user) this.setLocalUser(this.options.user);
@@ -740,7 +834,7 @@ export class YjsSocketIOProvider {
     syncProtocol.writeUpdate(encoder, mergedUpdate);
     const syncMessage = encoding.toUint8Array(encoder);
 
-    this.socket.emit('doc:sync-update', {
+    this.socket.emit('doc:sync:update', {
       projectId: this.projectId,
       docId: this.pageId,
       data: syncMessage,
@@ -756,13 +850,13 @@ export class YjsSocketIOProvider {
       return;
     }
 
-    // Send binary sync-step-1 with local state vector
+    // Send binary sync:step1 with local state vector
     const encoder = encoding.createEncoder();
     syncProtocol.writeSyncStep1(encoder, this.doc);
     const step1Payload = encoding.toUint8Array(encoder);
 
     this.socket.emit(
-      'doc:sync-step-1',
+      'doc:sync:step1',
       {
         projectId: this.projectId,
         docId: this.pageId,
@@ -772,24 +866,9 @@ export class YjsSocketIOProvider {
         if (this.destroyed) return;
         if (res?.success && res.data) {
           try {
-            const rawData =
-              res.data instanceof Uint8Array
-                ? res.data
-                : new Uint8Array(res.data as ArrayLike<number>);
-            const decoder = decoding.createDecoder(rawData);
-            const replyEncoder = encoding.createEncoder();
-            while (decoding.hasContent(decoder)) {
-              syncProtocol.readSyncMessage(decoder, replyEncoder, this.doc, 'socket.io');
-            }
-            if (encoding.length(replyEncoder) > 0) {
-              this.socket?.emit('doc:sync-step-2', {
-                projectId: this.projectId,
-                docId: this.pageId,
-                data: encoding.toUint8Array(replyEncoder),
-              });
-            }
+            this.applySyncFrame(res.data as Uint8Array | ArrayLike<number>, this.doc, true);
           } catch (err) {
-            console.warn('[YjsSocketIOProvider] Error processing sync-step-2 from server:', err);
+            console.warn('[YjsSocketIOProvider] Error processing sync:step2 from server:', err);
           }
         }
         if (this.yText.length === 0 && this.options.initialContent) {
@@ -805,45 +884,52 @@ export class YjsSocketIOProvider {
     );
   }
 
+  private toCollaborationPresence(
+    data: RemotePresencePayload,
+    existing?: CollaborationPresence,
+  ): CollaborationPresence {
+    return {
+      ...existing,
+      id: data.userId,
+      userId: data.userId,
+      socketId: data.socketId ?? existing?.socketId,
+      name: data.name || existing?.name || 'Collaborator',
+      avatar: data.avatar !== undefined ? data.avatar : existing?.avatar,
+      color: data.color || existing?.color || '#3b82f6',
+      role: data.role ?? existing?.role,
+      cursor: data.cursor
+        ? {
+            line: data.cursor.row,
+            column: data.cursor.column,
+            selection: data.cursor.selection
+              ? {
+                  startLineNumber: data.cursor.selection.anchor.row,
+                  startColumn: data.cursor.selection.anchor.column,
+                  endLineNumber: data.cursor.selection.head.row,
+                  endColumn: data.cursor.selection.head.column,
+                }
+              : undefined,
+          }
+        : existing?.cursor,
+      lastActiveAt: Date.now(),
+    };
+  }
+
   private handleInitialDocPresence(docPresence: RemotePresencePayload[]): void {
-    const remoteList: CollaborationPresence[] = [];
+    this.collaboratorsMap.clear();
 
     for (const p of docPresence) {
       if (!p || p.socketId === this.socket?.id) continue;
 
-      const presence: CollaborationPresence = {
-        id: p.userId,
-        userId: p.userId,
-        socketId: p.socketId,
-        name: p.name || 'Collaborator',
-        avatar: p.avatar,
-        color: p.color || '#3b82f6',
-        role: p.role,
-        cursor: p.cursor
-          ? {
-              line: p.cursor.row,
-              column: p.cursor.column,
-              selection: p.cursor.selection
-                ? {
-                    startLineNumber: p.cursor.selection.anchor.row,
-                    startColumn: p.cursor.selection.anchor.column,
-                    endLineNumber: p.cursor.selection.head.row,
-                    endColumn: p.cursor.selection.head.column,
-                  }
-                : undefined,
-            }
-          : undefined,
-        lastActiveAt: Date.now(),
-      };
-      remoteList.push(presence);
+      const key = p.socketId || p.userId;
+      this.collaboratorsMap.set(key, this.toCollaborationPresence(p));
 
       if (p.cursor) {
         this.handleRemoteCursor(p);
       }
     }
 
-    this.activeCollaborators = remoteList;
-    this.options.onCollaboratorsChange?.([...this.activeCollaborators]);
+    this.options.onCollaboratorsChange?.(Array.from(this.collaboratorsMap.values()));
   }
 
   private handleRemoteCursor(data: RemoteCursorPayload): void {
@@ -851,15 +937,15 @@ export class YjsSocketIOProvider {
     if (data.socketId && data.socketId === this.socket?.id) return;
 
     const clientId = this.getOrCreateClientId(data.socketId || data.userId);
-    const text = this.yText.toString();
+    const { text, lineStarts } = this.getIndexedText();
 
     const anchorRow = data.cursor.selection?.anchor?.row ?? data.cursor.row;
     const anchorCol = data.cursor.selection?.anchor?.column ?? data.cursor.column;
     const headRow = data.cursor.selection?.head?.row ?? data.cursor.row;
     const headCol = data.cursor.selection?.head?.column ?? data.cursor.column;
 
-    const anchorOffset = getOffsetFromRowCol(text, anchorRow, anchorCol);
-    const headOffset = getOffsetFromRowCol(text, headRow, headCol);
+    const anchorOffset = getOffsetFromRowCol(text, anchorRow, anchorCol, lineStarts);
+    const headOffset = getOffsetFromRowCol(text, headRow, headCol, lineStarts);
 
     const anchor = Y.createRelativePositionFromTypeIndex(this.yText, anchorOffset);
     const head = Y.createRelativePositionFromTypeIndex(this.yText, headOffset);
@@ -894,50 +980,35 @@ export class YjsSocketIOProvider {
   }
 
   private handleUserJoined(data: RemoteUserJoinedPayload): void {
-    const idx = this.activeCollaborators.findIndex(
-      (c) => c.userId === data.userId || (data.socketId && c.socketId === data.socketId),
-    );
-
-    const newUser: CollaborationPresence = {
-      id: data.userId,
-      userId: data.userId,
-      socketId: data.socketId,
-      name: data.name || 'Collaborator',
-      avatar: data.avatar,
-      color: data.color || '#3b82f6',
-      role: data.role,
-      cursor: data.cursor
-        ? {
-            line: data.cursor.row,
-            column: data.cursor.column,
-          }
-        : undefined,
-      lastActiveAt: Date.now(),
-    };
-
-    if (idx >= 0) {
-      this.activeCollaborators[idx] = { ...this.activeCollaborators[idx], ...newUser };
-    } else {
-      this.activeCollaborators.push(newUser);
+    const key = data.socketId || data.userId;
+    const existing =
+      this.collaboratorsMap.get(key) ||
+      (data.socketId ? this.collaboratorsMap.get(data.userId) : undefined);
+    if (data.socketId && existing && !this.collaboratorsMap.has(data.socketId)) {
+      this.collaboratorsMap.delete(data.userId);
     }
+
+    this.collaboratorsMap.set(key, this.toCollaborationPresence(data, existing));
 
     if (data.cursor) {
       this.handleRemoteCursor(data);
     }
 
-    this.options.onCollaboratorsChange?.([...this.activeCollaborators]);
+    this.options.onCollaboratorsChange?.(Array.from(this.collaboratorsMap.values()));
   }
 
   private handleUserLeft(data: { userId?: string; socketId?: string }): void {
-    this.activeCollaborators = this.activeCollaborators.filter((c) => {
-      if (data.userId && (c.userId === data.userId || c.id === data.userId)) {
-        return false;
+    if (data.socketId) {
+      this.collaboratorsMap.delete(data.socketId);
+    }
+    if (data.userId) {
+      this.collaboratorsMap.delete(data.userId);
+      for (const [k, c] of this.collaboratorsMap) {
+        if (c.userId === data.userId || c.id === data.userId) {
+          this.collaboratorsMap.delete(k);
+        }
       }
-      if (data.socketId && c.socketId === data.socketId) {
-        return false;
-      }
-      return true;
-    });
+    }
 
     const targetKey = data.socketId || data.userId;
     if (targetKey) {
@@ -948,47 +1019,21 @@ export class YjsSocketIOProvider {
       }
     }
 
-    this.options.onCollaboratorsChange?.([...this.activeCollaborators]);
+    this.options.onCollaboratorsChange?.(Array.from(this.collaboratorsMap.values()));
   }
 
   private updateCollaboratorCursor(data: RemoteCursorPayload): void {
     if (!data.cursor) return;
-    const idx = this.activeCollaborators.findIndex(
-      (c) => c.userId === data.userId || (data.socketId && c.socketId === data.socketId),
-    );
-
-    const updatedUser: CollaborationPresence = {
-      id: data.userId,
-      userId: data.userId,
-      socketId: data.socketId,
-      name: data.name || 'Collaborator',
-      color: data.color || '#3b82f6',
-      avatar: data.avatar,
-      cursor: {
-        line: data.cursor.row,
-        column: data.cursor.column,
-        selection: data.cursor.selection
-          ? {
-              startLineNumber: data.cursor.selection.anchor.row,
-              startColumn: data.cursor.selection.anchor.column,
-              endLineNumber: data.cursor.selection.head.row,
-              endColumn: data.cursor.selection.head.column,
-            }
-          : undefined,
-      },
-      lastActiveAt: Date.now(),
-    };
-
-    if (idx >= 0) {
-      this.activeCollaborators[idx] = {
-        ...this.activeCollaborators[idx],
-        ...updatedUser,
-      };
-    } else {
-      this.activeCollaborators.push(updatedUser);
+    const key = data.socketId || data.userId;
+    const existing =
+      this.collaboratorsMap.get(key) ||
+      (data.socketId ? this.collaboratorsMap.get(data.userId) : undefined);
+    if (data.socketId && existing && !this.collaboratorsMap.has(data.socketId)) {
+      this.collaboratorsMap.delete(data.userId);
     }
 
-    this.options.onCollaboratorsChange?.([...this.activeCollaborators]);
+    this.collaboratorsMap.set(key, this.toCollaborationPresence(data, existing));
+    this.options.onCollaboratorsChange?.(Array.from(this.collaboratorsMap.values()));
   }
 
   private getOrCreateClientId(key: string): number {
@@ -1023,49 +1068,45 @@ export class YjsSocketIOProvider {
   }
 
   private scheduleEmitLocalCursor(): void {
-    if (this.cursorEmitDebounceTimer) return;
-    this.cursorEmitDebounceTimer = setTimeout(() => {
-      this.cursorEmitDebounceTimer = null;
-      if (this.destroyed) return;
+    if (this.destroyed) return;
 
-      const localState = this.awareness.getLocalState();
-      if (!localState || !localState.cursor) return;
-      const { anchor, head } = localState.cursor;
-      if (!anchor || !head) return;
+    const localState = this.awareness.getLocalState();
+    if (!localState || !localState.cursor) return;
+    const { anchor, head } = localState.cursor;
+    if (!anchor || !head) return;
 
-      const anchorAbs = Y.createAbsolutePositionFromRelativePosition(anchor, this.doc);
-      const headAbs = Y.createAbsolutePositionFromRelativePosition(head, this.doc);
-      if (!anchorAbs || !headAbs || anchorAbs.type !== this.yText || headAbs.type !== this.yText) {
-        return;
-      }
+    const anchorAbs = Y.createAbsolutePositionFromRelativePosition(anchor, this.doc);
+    const headAbs = Y.createAbsolutePositionFromRelativePosition(head, this.doc);
+    if (!anchorAbs || !headAbs || anchorAbs.type !== this.yText || headAbs.type !== this.yText) {
+      return;
+    }
 
-      const text = this.yText.toString();
-      const anchorPos = getRowColFromOffset(text, anchorAbs.index);
-      const headPos = getRowColFromOffset(text, headAbs.index);
+    const { text, lineStarts } = this.getIndexedText();
+    const anchorPos = getRowColFromOffset(text, anchorAbs.index, lineStarts);
+    const headPos = getRowColFromOffset(text, headAbs.index, lineStarts);
 
-      // Avoid re-emitting identical position
-      if (
-        this.lastEmittedCoords &&
-        this.lastEmittedCoords.row === headPos.row &&
-        this.lastEmittedCoords.col === headPos.col &&
-        anchorAbs.index === headAbs.index
-      ) {
-        return;
-      }
-      this.lastEmittedCoords = { row: headPos.row, col: headPos.col };
+    // Avoid re-emitting identical position
+    if (
+      this.lastEmittedCoords &&
+      this.lastEmittedCoords.row === headPos.row &&
+      this.lastEmittedCoords.col === headPos.col &&
+      anchorAbs.index === headAbs.index
+    ) {
+      return;
+    }
+    this.lastEmittedCoords = { row: headPos.row, col: headPos.col };
 
-      const isPoint = anchorAbs.index === headAbs.index;
-      this.sendCursor(
-        headPos.row,
-        headPos.col,
-        isPoint
-          ? null
-          : {
-              anchor: { row: anchorPos.row, column: anchorPos.col },
-              head: { row: headPos.row, column: headPos.col },
-            },
-      );
-    }, 40);
+    const isPoint = anchorAbs.index === headAbs.index;
+    this.sendCursor(
+      headPos.row,
+      headPos.col,
+      isPoint
+        ? null
+        : {
+            anchor: { row: anchorPos.row, column: anchorPos.col },
+            head: { row: headPos.row, column: headPos.col },
+          },
+    );
   }
 
   /**
@@ -1147,11 +1188,6 @@ export class YjsSocketIOProvider {
       this.updateBatchTimer = null;
     }
 
-    if (this.cursorEmitDebounceTimer) {
-      clearTimeout(this.cursorEmitDebounceTimer);
-      this.cursorEmitDebounceTimer = null;
-    }
-
     if (typeof window !== 'undefined' && this.handleOnline) {
       window.removeEventListener('online', this.handleOnline);
       this.handleOnline = null;
@@ -1222,6 +1258,38 @@ export function releaseYjsProvider(projectId: string, pageId: string): void {
 export function markHttpSavedWhileDisconnected(pageId: string): void {
   for (const { provider } of providerPool.values()) {
     if (provider.pageId === pageId) provider.markHttpSaved();
+  }
+}
+
+/**
+ * Flushes pending Yjs updates for a specific project/document provider if present in the pool.
+ */
+export function flushYjsProvider(projectId: string | undefined, pageId: string): boolean {
+  let flushed = false;
+  if (projectId) {
+    const item = providerPool.get(`${projectId}:${pageId}`);
+    if (item && !item.provider.isDestroyed) {
+      item.provider.flushPendingUpdates();
+      return true;
+    }
+  }
+  for (const { provider } of providerPool.values()) {
+    if (!provider.isDestroyed && provider.pageId === pageId) {
+      provider.flushPendingUpdates();
+      flushed = true;
+    }
+  }
+  return flushed;
+}
+
+/**
+ * Flushes pending Yjs updates across all active pooled providers (optionally scoped to projectId).
+ */
+export function flushYjsProviders(projectId?: string): void {
+  for (const { provider } of providerPool.values()) {
+    if (!provider.isDestroyed && (!projectId || provider.projectId === projectId)) {
+      provider.flushPendingUpdates();
+    }
   }
 }
 

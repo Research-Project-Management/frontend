@@ -25,10 +25,8 @@ import {
   Link2Off,
   ExternalLink,
   Check,
-  ArrowLeft,
-  ArrowRight,
 } from 'lucide-react';
-import { editorCommandBus, getActiveEditorEngine } from '@/features/editor/core';
+import { editorCommandBus } from '@/features/editor/core';
 import {
   Tooltip,
   TooltipContent,
@@ -43,9 +41,6 @@ import { cn } from '@/shared/lib/utils';
 import { CompileButton } from './CompileButton';
 import { PdfPaginationControls } from './PdfPaginationControls';
 import { PdfZoomControls } from './PdfZoomControls';
-import { useViewerStore } from '@/features/editor/subsystems/compiler/coordinator/viewer.store';
-import type { CompileMode, CompileStatus } from '@/features/editor/domain/types/compiler.types';
-import type { PdfOutlineItem } from '@/features/editor/subsystems/compiler/synctex/pdf-outline';
 
 function InvertColorsIcon({ className }: { className?: string }) {
   return (
@@ -67,17 +62,9 @@ function InvertColorsIcon({ className }: { className?: string }) {
 }
 
 export interface PdfToolbarProps {
-  compileStatus: CompileStatus;
-  engine?: string;
-  setEngine?: (e: 'pdflatex' | 'xelatex' | 'lualatex') => void;
-  compileMode?: CompileMode;
-  setCompileMode?: (m: CompileMode) => void;
-  autoCompile?: boolean;
-  onToggleAutoCompile?: () => void;
   onCompile: () => void;
   onClearCacheAndCompile?: () => void;
   onStopCompilation?: () => void;
-  onForceSync?: () => void;
 
   // Zoom
   scale: number;
@@ -87,11 +74,7 @@ export interface PdfToolbarProps {
   onSetFitMode?: (mode: 'width' | 'height' | 'auto') => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
-  onResetZoom?: () => void;
   onSetScale?: (scale: number) => void;
-  showZoomGroup?: boolean;
-  showUtilityGroup?: boolean;
-  outline?: PdfOutlineItem[];
 
   // Pages
   pageNumber?: number;
@@ -112,16 +95,15 @@ export interface PdfToolbarProps {
 
   // Actions
   pdfUrl?: string | null;
-  compileLog?: string;
   showLog?: boolean;
   onToggleLog?: () => void;
   onDownload?: () => void;
   errorCount?: number;
   warningCount?: number;
+  isDetached?: boolean;
 }
 
 export const PdfToolbar = React.memo(function PdfToolbar({
-  compileStatus,
   onCompile,
   onClearCacheAndCompile,
   onStopCompilation,
@@ -152,6 +134,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
   onDownload,
   errorCount = 0,
   warningCount = 0,
+  isDetached = false,
 }: PdfToolbarProps) {
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [toolbarWidth, setToolbarWidth] = useState<number>(800);
@@ -190,62 +173,66 @@ export const PdfToolbar = React.memo(function PdfToolbar({
       aria-label="PDF viewer controls"
       className="h-9 bg-surface px-2 flex items-center justify-between gap-1.5 shrink-0 select-none border-b border-border overflow-x-auto overflow-y-hidden scrollbar-none"
     >
-      {/* 1. Left section: Compilation actions */}
+      {/* 1. Left section: Compilation & Download actions */}
       <div className="flex items-center gap-1.5 shrink-0">
-        <CompileButton
-          onCompile={onCompile}
-          onClearCacheAndCompile={onClearCacheAndCompile}
-          onStopCompilation={onStopCompilation}
-        />
+        {!isDetached && (
+          <>
+            <CompileButton
+              onCompile={onCompile}
+              onClearCacheAndCompile={onClearCacheAndCompile}
+              onStopCompilation={onStopCompilation}
+            />
 
-        {/* Overleaf Logs and output files */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={onToggleLog}
-              aria-label={
-                errorCount > 0
-                  ? `Logs and output files (${errorCount} error${errorCount > 1 ? 's' : ''})`
-                  : warningCount > 0
-                    ? `Logs and output files (${warningCount} warning${warningCount > 1 ? 's' : ''})`
-                    : 'Logs and output files'
-              }
-              className={cn(
-                'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
-                showLog
-                  ? 'bg-primary/10 text-primary font-medium'
-                  : 'text-foreground hover:bg-muted',
-              )}
-            >
-              <FileText className="size-3.5 shrink-0" />
-              {errorCount > 0 ? (
-                <span
-                  data-testid="compiler-error-badge"
-                  className="absolute -top-1.5 -right-1.5 flex min-w-4 h-4 px-1 items-center justify-center rounded-full text-11 font-mono font-semibold bg-destructive text-destructive-foreground leading-none animate-in zoom-in-50 duration-100"
+            {/* Overleaf Logs and output files */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onToggleLog}
+                  aria-label={
+                    errorCount > 0
+                      ? `Logs and output files (${errorCount} error${errorCount > 1 ? 's' : ''})`
+                      : warningCount > 0
+                        ? `Logs and output files (${warningCount} warning${warningCount > 1 ? 's' : ''})`
+                        : 'Logs and output files'
+                  }
+                  className={cn(
+                    'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
+                    showLog
+                      ? 'bg-primary/10 text-primary font-medium'
+                      : 'text-foreground hover:bg-muted',
+                  )}
                 >
-                  {errorCount > 99 ? '99+' : errorCount}
-                </span>
-              ) : warningCount > 0 ? (
-                <span
-                  data-testid="compiler-warning-badge"
-                  className="absolute -top-1.5 -right-1.5 flex min-w-4 h-4 px-1 items-center justify-center rounded-full text-11 font-mono font-semibold bg-warning text-warning-foreground leading-none animate-in zoom-in-50 duration-100"
-                >
-                  {warningCount > 99 ? '99+' : warningCount}
-                </span>
-              ) : null}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            {showLog
-              ? 'Back to PDF'
-              : errorCount > 0
-                ? `Logs and output files (${errorCount} error${errorCount > 1 ? 's' : ''})`
-                : warningCount > 0
-                  ? `Logs and output files (${warningCount} warning${warningCount > 1 ? 's' : ''})`
-                  : 'Logs and output files'}
-          </TooltipContent>
-        </Tooltip>
+                  <FileText className="size-3.5 shrink-0" />
+                  {errorCount > 0 ? (
+                    <span
+                      data-testid="compiler-error-badge"
+                      className="absolute -top-1.5 -right-1.5 flex min-w-4 h-4 px-1 items-center justify-center rounded-full text-11 font-mono font-semibold bg-destructive text-destructive-foreground leading-none animate-in zoom-in-50 duration-100"
+                    >
+                      {errorCount > 99 ? '99+' : errorCount}
+                    </span>
+                  ) : warningCount > 0 ? (
+                    <span
+                      data-testid="compiler-warning-badge"
+                      className="absolute -top-1.5 -right-1.5 flex min-w-4 h-4 px-1 items-center justify-center rounded-full text-11 font-mono font-semibold bg-warning text-warning-foreground leading-none animate-in zoom-in-50 duration-100"
+                    >
+                      {warningCount > 99 ? '99+' : warningCount}
+                    </span>
+                  ) : null}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {showLog
+                  ? 'Back to PDF'
+                  : errorCount > 0
+                    ? `Logs and output files (${errorCount} error${errorCount > 1 ? 's' : ''})`
+                    : warningCount > 0
+                      ? `Logs and output files (${warningCount} warning${warningCount > 1 ? 's' : ''})`
+                      : 'Logs and output files'}
+              </TooltipContent>
+            </Tooltip>
+          </>
+        )}
 
         {/* Overleaf Download PDF (Pure icon button with tooltip) */}
         <Tooltip>
@@ -262,54 +249,6 @@ export const PdfToolbar = React.memo(function PdfToolbar({
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">
             Download PDF
-          </TooltipContent>
-        </Tooltip>
-
-        {/* SyncTeX Navigation: Forward (Code -> PDF) and Backward (PDF -> Code) - Overleaf Parity */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={() => {
-                const activeEngine = getActiveEditorEngine();
-                const pos = activeEngine?.getCursorPosition?.() || { line: 1, column: 1 };
-                editorCommandBus.dispatch({
-                  type: 'synctex:forward',
-                  line: pos.line,
-                  column: pos.column,
-                });
-              }}
-              disabled={!pdfUrl}
-              aria-label="Go to code location in PDF (Forward Search)"
-              className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:cursor-not-allowed transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
-            >
-              <ArrowRight className="size-3.5 shrink-0" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            Go to code location in PDF (SyncTeX)
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={() => {
-                editorCommandBus.dispatch({
-                  type: 'synctex:backward',
-                  page: pageNumber || 1,
-                });
-              }}
-              disabled={!pdfUrl}
-              aria-label="Go to PDF location in code (Reverse Search)"
-              className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:cursor-not-allowed transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
-            >
-              <ArrowLeft className="size-3.5 shrink-0" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            Go to PDF location in code (SyncTeX)
           </TooltipContent>
         </Tooltip>
       </div>
@@ -424,23 +363,25 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                     )}
 
                     {/* Pop-out / Detached PDF Preview Window (Overleaf Parity) */}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            editorCommandBus.dispatch({ type: 'preview:detach' });
-                          }}
-                          aria-label="Open PDF in separate window"
-                          className="size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[''] text-foreground hover:bg-muted"
-                        >
-                          <ExternalLink className="size-3.5 shrink-0" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="text-xs">
-                        Open in separate window (Pop-out Preview)
-                      </TooltipContent>
-                    </Tooltip>
+                    {!isDetached && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              editorCommandBus.dispatch({ type: 'preview:detach' });
+                            }}
+                            aria-label="Open PDF in separate window"
+                            className="size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[''] text-foreground hover:bg-muted"
+                          >
+                            <ExternalLink className="size-3.5 shrink-0" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs">
+                          Open in separate window (Pop-out Preview)
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                   </>
                 )}
               </>
@@ -503,7 +444,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
               >
                 {/* Secondary Viewer Toggles */}
                 <div className="pb-1 mb-1 border-b border-border space-y-0.5">
-                  <div className="px-2 py-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  <div className="px-2 py-1 text-12 font-medium text-muted-foreground select-none">
                     Viewer options
                   </div>
                   {onToggleInvertColors && (
@@ -519,7 +460,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                         <InvertColorsIcon className="size-3.5" />
                         <span>Dark mode (Invert)</span>
                       </span>
-                      {invertColors && <Check className="size-3.5 text-primary" />}
+                      {invertColors && <Check className="size-3.5 text-foreground" />}
                     </button>
                   )}
                   {onToggleSpreadView && (
@@ -535,7 +476,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                         <BookOpen className="size-3.5" />
                         <span>Two-page spread</span>
                       </span>
-                      {isSpreadView && <Check className="size-3.5 text-primary" />}
+                      {isSpreadView && <Check className="size-3.5 text-foreground" />}
                     </button>
                   )}
                   {onToggleSyncScroll && (
@@ -551,22 +492,24 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                         <Link2 className="size-3.5" />
                         <span>Sync scrolling</span>
                       </span>
-                      {syncScroll && <Check className="size-3.5 text-primary" />}
+                      {syncScroll && <Check className="size-3.5 text-foreground" />}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      editorCommandBus.dispatch({ type: 'preview:detach' });
-                      setIsMenuOpen(false);
-                    }}
-                    className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
-                  >
-                    <span className="flex items-center gap-2">
-                      <ExternalLink className="size-3.5" />
-                      <span>Separate window</span>
-                    </span>
-                  </button>
+                  {!isDetached && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        editorCommandBus.dispatch({ type: 'preview:detach' });
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
+                    >
+                      <span className="flex items-center gap-2">
+                        <ExternalLink className="size-3.5" />
+                        <span>Separate window</span>
+                      </span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Scale / Zoom controls in popover */}

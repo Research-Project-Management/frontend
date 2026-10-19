@@ -27,7 +27,8 @@ import { jumpToEditorLine } from '@/features/editor/subsystems/navigation';
 
 export type { ReviewPendingCountResult } from './useReviewPendingCount';
 export { useReviewPendingCount } from './useReviewPendingCount';
-export type ReviewScope = 'current' | 'overview' | 'chat';
+import type { ReviewScope } from '../subcomponents/ReviewNav';
+export type { ReviewScope };
 
 function scrollToReviewItem(targetId: string, prefix: 'comment' | 'suggestion' = 'comment'): void {
   requestAnimationFrame(() => {
@@ -62,11 +63,13 @@ export function useReviewState() {
   const { pageId: routePageId, projectId: routeProjectId } = useParams<{ pageId: string; projectId?: string }>();
   const storeActivePageId = usePageStore((s) => s.activePageId);
   const storeParentPageId = usePageStore((s) => s.parentPageId);
-  const currentPage = usePageStore((s) => s.currentPage);
-  const rootPageId = routePageId || storeParentPageId || currentPage?.id;
-  const pageId = storeActivePageId || currentPage?.id || rootPageId;
+  const currentPageId = usePageStore((s) => s.currentPage?.id);
+  const currentPageTitle = usePageStore((s) => s.currentPage?.title);
+  const currentPageProjectId = usePageStore((s) => extractProjectId(s.currentPage));
+  const rootPageId = routePageId || storeParentPageId || currentPageId;
+  const pageId = storeActivePageId || currentPageId || rootPageId;
   const storeProjectId = usePageStore((s) => s.projectId);
-  const projectId = routeProjectId || storeProjectId || extractProjectId(currentPage) || '';
+  const projectId = routeProjectId || storeProjectId || currentPageProjectId || '';
 
   const { user } = useAuth();
   const { selectFile } = useActiveDocument();
@@ -231,10 +234,10 @@ export function useReviewState() {
     }));
     const targetRoot = rootPageId || pageId;
     if (targetRoot && !list.some((f) => f.id === targetRoot)) {
-      list.unshift({ id: targetRoot, title: currentPage?.title || 'main.tex' });
+      list.unshift({ id: targetRoot, title: currentPageTitle || 'main.tex' });
     }
     return list;
-  }, [projectFiles, rootPageId, pageId, currentPage]);
+  }, [projectFiles, rootPageId, pageId, currentPageTitle]);
 
   // Calculations
   const openComments = useMemo(() => comments.filter((c) => c.status === 'open'), [comments]);

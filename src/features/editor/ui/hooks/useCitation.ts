@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * use-citation.ts
@@ -11,6 +11,9 @@ import { useEffect, useMemo, useCallback } from 'react';
 import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
 import type { Item } from '@/features/library/domain/types/library.types';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
+import { workspaceCoordinator } from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import {
   extractCitationKeys,
   formatCitationSnippet,
@@ -43,7 +46,7 @@ export function useEditorCitations({
   content = '',
   enabled = true,
 }: UseEditorCitationsOptions): UseEditorCitationsResult {
-  const { data, isLoading, isError } = useViewItems(projectId || 'me', 'all');
+  const { data, isLoading, isError } = useViewItems(projectId || 'user', 'all');
   const libraryItems: Item[] = useMemo(() => data?.items ?? [], [data?.items]);
 
   useEffect(() => {
@@ -51,6 +54,32 @@ export function useEditorCitations({
       latexSymbolsIndex.setLibraryCitations(libraryItems);
     }
   }, [libraryItems]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const seenIds = new Set<string>();
+    const wsFiles = workspaceCoordinator.getProjectFiles() || [];
+    for (const wf of wsFiles) {
+      const fileName = (wf.path || wf.title || '').trim();
+      if (!fileName.toLowerCase().endsWith('.bib')) continue;
+      const id = wf.id || fileName;
+      if (seenIds.has(id)) continue;
+      seenIds.add(id);
+      const cached = wf.id ? lruDocumentCache.get(wf.id) : undefined;
+      const bibText = cached?.content ?? extractDocumentContentString(wf.content);
+      if (bibText) {
+        latexSymbolsIndex.indexFile(id, fileName, bibText, true);
+      }
+    }
+    for (const model of lruDocumentCache.getAllModels()) {
+      const fileName = (model.filePath || '').trim();
+      if (!fileName.toLowerCase().endsWith('.bib') || seenIds.has(model.fileId)) continue;
+      seenIds.add(model.fileId);
+      if (model.content) {
+        latexSymbolsIndex.indexFile(model.fileId, fileName, model.content, true);
+      }
+    }
+  }, [projectId, enabled]);
 
   const documentKeys = useMemo(() => {
     if (!content || !enabled) return [];
@@ -97,7 +126,7 @@ export function useEditorCitations({
         if (item.title?.toLowerCase().includes(q)) return true;
         if (item.authors?.some((a) => a.toLowerCase().includes(q))) return true;
         if (item.year && String(item.year).includes(q)) return true;
-        if (item.journal?.toLowerCase().includes(q)) return true;
+        if (item.publicationTitle?.toLowerCase().includes(q)) return true;
         if (item.doi?.toLowerCase().includes(q)) return true;
         return false;
       });
@@ -118,5 +147,4 @@ export function useEditorCitations({
   };
 }
 
-export const useDocumentCitation = useEditorCitations;
 

@@ -84,27 +84,71 @@ export function pointToAabbDistSq(
   return dx * dx + dy * dy;
 }
 
-/**
- * Constructs a 2D k-d Tree from an array of SyncTeX page nodes.
- * Alternates partitioning between X and Y axes with subtree bounding box computation for O(N log N) build.
- */
-export function buildKdTree2D(
-  nodes: SyncTeXNode[],
-  depth = 0,
+function buildKdTreeFromPresorted(
+  byX: SyncTeXNode[],
+  byY: SyncTeXNode[],
+  scratch: SyncTeXNode[],
+  start: number,
+  end: number,
+  depth: number,
 ): KdTreeNode | null {
-  if (!nodes || nodes.length === 0) return null;
+  if (start > end) return null;
 
-  const axis = depth % 2; // 0: X-axis, 1: Y-axis
-  const sorted = nodes.slice().sort((a, b) => {
-    return axis === 0 ? a.x - b.x : a.y - b.y;
-  });
+  const axis = depth & 1; // 0: X-axis, 1: Y-axis
 
-  const mid = Math.floor(sorted.length / 2);
-  const current = sorted[mid];
+  if (start === end) {
+    const current = axis === 0 ? byX[start] : byY[start];
+    const bounds = getNodeBounds(current);
+    return {
+      node: current,
+      left: null,
+      right: null,
+      axis,
+      minX: bounds.minX,
+      maxX: bounds.maxX,
+      minY: bounds.minY,
+      maxY: bounds.maxY,
+      subMinX: bounds.minX,
+      subMaxX: bounds.maxX,
+      subMinY: bounds.minY,
+      subMaxY: bounds.maxY,
+    };
+  }
+
+  const len = end - start + 1;
+  const mid = start + (len >> 1);
+
+  const primary = axis === 0 ? byX : byY;
+  const secondary = axis === 0 ? byY : byX;
+
+  const current = primary[mid];
+
+  // Mark which elements belong to the left partition [start .. mid - 1]
+  // Using a Set of object references for exact O(1) membership while preserving secondary sort order
+  const leftSet = new Set<SyncTeXNode>();
+  for (let i = start; i < mid; i++) {
+    leftSet.add(primary[i]);
+  }
+
+  let leftWrite = start;
+  let rightWrite = mid + 1;
+  for (let i = start; i <= end; i++) {
+    const item = secondary[i];
+    if (item === current) continue;
+    if (leftSet.has(item)) {
+      scratch[leftWrite++] = item;
+    } else {
+      scratch[rightWrite++] = item;
+    }
+  }
+  scratch[mid] = current;
+  for (let i = start; i <= end; i++) {
+    secondary[i] = scratch[i];
+  }
+
   const bounds = getNodeBounds(current);
-
-  const left = buildKdTree2D(sorted.slice(0, mid), depth + 1);
-  const right = buildKdTree2D(sorted.slice(mid + 1), depth + 1);
+  const left = buildKdTreeFromPresorted(byX, byY, scratch, start, mid - 1, depth + 1);
+  const right = buildKdTreeFromPresorted(byX, byY, scratch, mid + 1, end, depth + 1);
 
   let subMinX = bounds.minX;
   let subMaxX = bounds.maxX;
@@ -112,17 +156,17 @@ export function buildKdTree2D(
   let subMaxY = bounds.maxY;
 
   if (left) {
-    subMinX = Math.min(subMinX, left.subMinX);
-    subMaxX = Math.max(subMaxX, left.subMaxX);
-    subMinY = Math.min(subMinY, left.subMinY);
-    subMaxY = Math.max(subMaxY, left.subMaxY);
+    if (left.subMinX < subMinX) subMinX = left.subMinX;
+    if (left.subMaxX > subMaxX) subMaxX = left.subMaxX;
+    if (left.subMinY < subMinY) subMinY = left.subMinY;
+    if (left.subMaxY > subMaxY) subMaxY = left.subMaxY;
   }
 
   if (right) {
-    subMinX = Math.min(subMinX, right.subMinX);
-    subMaxX = Math.max(subMaxX, right.subMaxX);
-    subMinY = Math.min(subMinY, right.subMinY);
-    subMaxY = Math.max(subMaxY, right.subMaxY);
+    if (right.subMinX < subMinX) subMinX = right.subMinX;
+    if (right.subMaxX > subMaxX) subMaxX = right.subMaxX;
+    if (right.subMinY < subMinY) subMinY = right.subMinY;
+    if (right.subMaxY > subMaxY) subMaxY = right.subMaxY;
   }
 
   return {
@@ -139,6 +183,22 @@ export function buildKdTree2D(
     subMinY,
     subMaxY,
   };
+}
+
+/**
+ * Constructs a 2D k-d Tree from an array of SyncTeX page nodes.
+ * Uses pre-sorted dual-axis arrays (Wald / Brown algorithm) for O(N log N) build
+ * while preserving secondary-axis spatial locality for optimal branch-and-bound pruning.
+ */
+export function buildKdTree2D(
+  nodes: SyncTeXNode[],
+  depth = 0,
+): KdTreeNode | null {
+  if (!nodes || nodes.length === 0) return null;
+  const byX = nodes.slice().sort((a, b) => a.x - b.x);
+  const byY = nodes.slice().sort((a, b) => a.y - b.y);
+  const scratch = new Array<SyncTeXNode>(nodes.length);
+  return buildKdTreeFromPresorted(byX, byY, scratch, 0, nodes.length - 1, depth);
 }
 
 export interface KdTreeSearchResult {
@@ -163,75 +223,67 @@ export function searchKdTreeNearest(
   let bestArea = Infinity;
   let visitedCount = 0;
 
-  function traverse(curr: KdTreeNode | null) {
-    if (!curr) return;
+  const stack: KdTreeNode[] = [root];
+  let stackTop = 1;
+
+  while (stackTop > 0) {
+    const curr = stack[--stackTop]!;
 
     // Prune branch if minimum distance to the entire subtree bounding box exceeds current best
-    const subtreeMinDistSq = pointToAabbDistSq(
-      px,
-      py,
-      curr.subMinX,
-      curr.subMaxX,
-      curr.subMinY,
-      curr.subMaxY,
-    );
+    const dxSub = px < curr.subMinX ? curr.subMinX - px : px > curr.subMaxX ? px - curr.subMaxX : 0;
+    const dySub = py < curr.subMinY ? curr.subMinY - py : py > curr.subMaxY ? py - curr.subMaxY : 0;
+    const subtreeMinDistSq = dxSub * dxSub + dySub * dySub;
 
     if (subtreeMinDistSq > bestDistSq || (bestDistSq === 0 && subtreeMinDistSq > 0)) {
-      return;
+      continue;
     }
 
     visitedCount++;
 
     // Distance from query point to current node's bounding box
-    const distSq = pointToAabbDistSq(px, py, curr.minX, curr.maxX, curr.minY, curr.maxY);
-    const currArea = Math.max(1, (curr.maxX - curr.minX) * (curr.maxY - curr.minY));
+    const dx = px < curr.minX ? curr.minX - px : px > curr.maxX ? px - curr.maxX : 0;
+    const dy = py < curr.minY ? curr.minY - py : py > curr.maxY ? py - curr.maxY : 0;
+    const distSq = dx * dx + dy * dy;
 
     if (distSq < bestDistSq) {
       bestDistSq = distSq;
       bestNode = curr.node;
-      bestArea = currArea;
-    } else if (distSq === bestDistSq && distSq === 0 && currArea < bestArea) {
-      // Containment tie-breaker: prioritize tighter inner box (e.g., inline math/token over line)
-      bestNode = curr.node;
-      bestArea = currArea;
+      const area = (curr.maxX - curr.minX) * (curr.maxY - curr.minY);
+      bestArea = area > 1 ? area : 1;
+    } else if (distSq === bestDistSq && distSq === 0) {
+      const area = (curr.maxX - curr.minX) * (curr.maxY - curr.minY);
+      const currArea = area > 1 ? area : 1;
+      if (currArea < bestArea) {
+        // Containment tie-breaker: prioritize tighter inner box (e.g., inline math/token over line)
+        bestNode = curr.node;
+        bestArea = currArea;
+      }
     }
 
     // Traverse closest child subtree first for faster branch-and-bound pruning
-    const queryCoord = curr.axis === 0 ? px : py;
-    const nodeCoord = curr.axis === 0 ? curr.node.x : curr.node.y;
+    // Since we use a LIFO stack, push `second` first and `first` last so `first` is popped first.
+    const goLeftFirst = (curr.axis === 0 ? px : py) < (curr.axis === 0 ? curr.node.x : curr.node.y);
+    const first = goLeftFirst ? curr.left : curr.right;
+    const second = goLeftFirst ? curr.right : curr.left;
 
-    const [first, second] = queryCoord < nodeCoord ? [curr.left, curr.right] : [curr.right, curr.left];
-
-    if (first) {
-      const firstMinDistSq = pointToAabbDistSq(
-        px,
-        py,
-        first.subMinX,
-        first.subMaxX,
-        first.subMinY,
-        first.subMaxY,
-      );
-      if (firstMinDistSq <= bestDistSq || (bestDistSq === 0 && firstMinDistSq === 0)) {
-        traverse(first);
+    if (second) {
+      const sdx = px < second.subMinX ? second.subMinX - px : px > second.subMaxX ? px - second.subMaxX : 0;
+      const sdy = py < second.subMinY ? second.subMinY - py : py > second.subMaxY ? py - second.subMaxY : 0;
+      const secondMinDistSq = sdx * sdx + sdy * sdy;
+      if (secondMinDistSq <= bestDistSq) {
+        stack[stackTop++] = second;
       }
     }
 
-    if (second) {
-      const secondMinDistSq = pointToAabbDistSq(
-        px,
-        py,
-        second.subMinX,
-        second.subMaxX,
-        second.subMinY,
-        second.subMaxY,
-      );
-      if (secondMinDistSq <= bestDistSq || (bestDistSq === 0 && secondMinDistSq === 0)) {
-        traverse(second);
+    if (first) {
+      const fdx = px < first.subMinX ? first.subMinX - px : px > first.subMaxX ? px - first.subMaxX : 0;
+      const fdy = py < first.subMinY ? first.subMinY - py : py > first.subMaxY ? py - first.subMaxY : 0;
+      const firstMinDistSq = fdx * fdx + fdy * fdy;
+      if (firstMinDistSq <= bestDistSq) {
+        stack[stackTop++] = first;
       }
     }
   }
-
-  traverse(root);
 
   return { bestNode, bestDistSq, visitedCount };
 }
@@ -397,6 +449,9 @@ export async function decompressSyncTeXData(payload: string): Promise<string> {
   }
 }
 
+const PAGE_START_REGEX = /^\{(\d+)/;
+const NODE_LINE_REGEX = /^([\[\(\)hvgxk$])(\d+)[:,\.](\d+)(?:[:,\.](\d+))?:(-?\d+),(-?\d+)(?::(-?\d+),(-?\d+))?/;
+
 /**
  * Parse a decompressed SyncTeX text into a coordinate-aware map.
  */
@@ -461,7 +516,7 @@ export function parseSyncTeX(text: string): SyncTeXMap {
     const first = s.charCodeAt(0);
 
     if (first === 123 /* { */) {
-      const m = s.match(/^\{(\d+)/);
+      const m = PAGE_START_REGEX.exec(s);
       if (m) {
         currentPage = parseInt(m[1], 10);
         if (!pageToLines.has(currentPage)) pageToLines.set(currentPage, []);
@@ -477,7 +532,7 @@ export function parseSyncTeX(text: string): SyncTeXMap {
 
     if (currentPage === 0) return;
 
-    const m = s.match(/^([\[\(\)hvgxk$])(\d+)[:,\.](\d+)(?:[:,\.](\d+))?:(-?\d+),(-?\d+)(?::(-?\d+),(-?\d+))?/);
+    const m = NODE_LINE_REGEX.exec(s);
     if (m) {
       const tag = parseInt(m[2], 10);
       const line = parseInt(m[3], 10);

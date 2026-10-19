@@ -13,7 +13,7 @@
 
 import {
   editorCommandBus,
-  getActiveEditorInstance,
+  getActiveEditorEngine,
   sessionCoordinator,
   useWorkspaceStore,
   useDocumentCollaborationStore,
@@ -267,7 +267,7 @@ export class KeybindingCoordinatorRegistry {
         const isEditor = activeEl?.closest('.cm-editor');
         if (!isEditor) {
           e.preventDefault();
-          const engine = getActiveEditorInstance();
+          const engine = getActiveEditorEngine();
           if (engine && typeof engine.focus === 'function') {
             engine.focus();
           }
@@ -327,10 +327,11 @@ export class KeybindingCoordinatorRegistry {
     const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
     const mod = isMac ? e.metaKey : e.ctrlKey;
     const shift = e.shiftKey;
+    const alt = e.altKey;
     const keyLower = e.key.toLowerCase();
 
     for (const shortcut of this.shortcuts) {
-      if (this.matchesKey(shortcut.key, keyLower, mod, shift, e.key)) {
+      if (this.matchesKey(shortcut.key, keyLower, mod, shift, alt, e.key)) {
         if (this.isScopeActive(shortcut.scope)) {
           shortcut.handler(e);
           return;
@@ -344,15 +345,18 @@ export class KeybindingCoordinatorRegistry {
     keyLower: string,
     mod: boolean,
     shift: boolean,
+    alt: boolean,
     rawKey: string
   ): boolean {
     const parts = pattern.split('-');
     const targetKey = parts[parts.length - 1].toLowerCase();
     const needsMod = parts.includes('Mod');
     const needsShift = parts.includes('Shift');
+    const needsAlt = parts.includes('Alt');
 
     if (needsMod !== mod) return false;
     if (needsShift !== shift) return false;
+    if (needsAlt !== alt) return false;
 
     if (targetKey === 'enter' && keyLower === 'enter') return true;
     if (targetKey.startsWith('f') && rawKey.toLowerCase() === targetKey) return true;

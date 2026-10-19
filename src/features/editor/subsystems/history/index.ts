@@ -34,11 +34,7 @@ export {
 // 2. Presentation Layer (Pages & Views)
 export {
   default as HistoryPage,
-  ProjectHistoryPage,
-  ProjectHistoryView,
-  ProjectHistoryModal,
   type HistoryPageProps,
-  type ProjectHistoryModalProps,
 } from './ui/HistoryPage';
 export {
   SideBySideDiffViewer,
@@ -48,7 +44,9 @@ export {
 } from './ui/SideBySideDiffViewer';
 export {
   UnifiedDiffViewer,
+  DiffHunkHeader,
   type UnifiedDiffViewerProps,
+  type DiffHunkHeaderProps,
 } from './ui/UnifiedDiffViewer';
 export {
   VersionTimelineSidebar,
@@ -59,11 +57,3 @@ export {
   DiffContentPane,
   type DiffContentPaneProps,
 } from './ui/DiffContentPane';
-
-// 3. Subsystem Deep Interface Port (The Seam)
-export interface HistorySubsystemPort {
-  readonly name: 'history';
-  openHistoryPage(projectId?: string, initialVersion?: number): void;
-  compareVersions(baseVersion: number, targetVersion: number): void;
-  restoreVersion(versionId: number): Promise<boolean>;
-}

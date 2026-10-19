@@ -14,25 +14,59 @@
 import type { CompileError } from '@/features/editor/domain/types/compiler.types';
 import { normalizeLatexPath } from '@/features/editor/domain/latex/latex-dag-engine';
 import { heuristicLatexErrorFix } from '@/features/editor/domain/ai/ai-error-assist';
-import type { EditorDiagnosticItem } from '@/features/editor/core/bus/command-bus.port';
+import type { EditorDiagnosticItem } from '@/features/editor/domain/diagnostics/diagnostic-types';
 import { type WarningFilterOptions, filterDiagnostics } from '@/features/editor/domain/latex/warning-filter';
-import {
-  type IndexedDiagnosticItem,
-  type FileDiagnosticsSummary,
-  type DiagnosticsTelemetry,
-  type DiagnosticsSnapshot,
-  type IDiagnosticsCoordinator,
-} from '@/features/editor/domain/diagnostics/diagnostics-port';
+import { useSettingsStore, type DocumentSettingsState } from '@/features/editor/core/store/settings.store';
 
-export type {
-  IndexedDiagnosticItem,
-  FileDiagnosticsSummary,
-  DiagnosticsTelemetry,
-  DiagnosticsSnapshot,
-  IDiagnosticsCoordinator,
-};
+export interface IndexedDiagnosticItem extends EditorDiagnosticItem {
+  id: string;
+  file: string;
+  fileKey?: string;
+  rawFile?: string;
+  normalizedPath: string;
+  line: number;
+  column?: number;
+  endLine?: number;
+  endColumn?: number;
+  severity: 'error' | 'warning' | 'info';
+  message: string;
+  source?: 'compiler' | 'static' | 'chktex' | 'bibtex' | 'linter' | string;
+  code?: string;
+  context?: string;
+  suggestion?: string;
+  fixedSnippet?: string;
+  originalSnippet?: string;
+  confidence?: 'high' | 'medium' | 'low' | number;
+}
 
-export class DiagnosticsCoordinatorRegistry implements IDiagnosticsCoordinator {
+export interface FileDiagnosticsSummary {
+  errorCount: number;
+  warningCount: number;
+  badboxCount?: number;
+  infoCount: number;
+  total: number;
+  totalCount: number;
+}
+
+export interface DiagnosticsTelemetry {
+  totalIngested: number;
+  linterIngested: number;
+  binarySearchQueries: number;
+  queryHits: number;
+  cacheHits: number;
+}
+
+export interface DiagnosticsSnapshot {
+  fileCount: number;
+  totalDiagnostics: number;
+  summary: FileDiagnosticsSummary;
+  fileIndex?: Map<string, IndexedDiagnosticItem[]>;
+  unmappedDiagnostics?: IndexedDiagnosticItem[];
+  projectSummary?: FileDiagnosticsSummary;
+  telemetry?: DiagnosticsTelemetry;
+}
+
+export class DiagnosticsCoordinatorRegistry {
   private fileIndex = new Map<string, IndexedDiagnosticItem[]>();
   private linterIndex = new Map<string, IndexedDiagnosticItem[]>();
   private unmappedDiagnostics: IndexedDiagnosticItem[] = [];
@@ -187,11 +221,6 @@ export class DiagnosticsCoordinatorRegistry implements IDiagnosticsCoordinator {
       const fixedSnippet = err.fixedSnippet || heuristic?.fixedSnippet;
       const originalSnippet = err.originalSnippet || heuristic?.originalSnippet;
       const confidence = heuristic?.confidence;
-
-      // In-place enrichment for store consumers
-      err.suggestion = suggestion;
-      err.fixedSnippet = fixedSnippet;
-      err.originalSnippet = originalSnippet;
 
       const item: IndexedDiagnosticItem = {
         id: `comp-${i}-${err.line ?? 0}`,
@@ -378,7 +407,8 @@ export class DiagnosticsCoordinatorRegistry implements IDiagnosticsCoordinator {
       else infoCount++;
     }
 
-    const summary: FileDiagnosticsSummary = { errorCount, warningCount, infoCount, total: items.length };
+    const total = items.length;
+    const summary: FileDiagnosticsSummary = { errorCount, warningCount, infoCount, total, totalCount: total };
     this.fileSummaryCache.set(cacheKey, summary);
     return summary;
   }
@@ -413,7 +443,7 @@ export class DiagnosticsCoordinatorRegistry implements IDiagnosticsCoordinator {
       }
     }
 
-    const summary: FileDiagnosticsSummary = { errorCount, warningCount, infoCount, total };
+    const summary: FileDiagnosticsSummary = { errorCount, warningCount, infoCount, total, totalCount: total };
     this.folderSummaryCache.set(cacheKey, summary);
     return summary;
   }
@@ -439,7 +469,7 @@ export class DiagnosticsCoordinatorRegistry implements IDiagnosticsCoordinator {
       total += summary.total;
     }
 
-    const summary: FileDiagnosticsSummary = { errorCount, warningCount, infoCount, total };
+    const summary: FileDiagnosticsSummary = { errorCount, warningCount, infoCount, total, totalCount: total };
     this.projectSummaryCache.set(applyFilter, summary);
     return summary;
   }
@@ -522,4 +552,16 @@ export class DiagnosticsCoordinatorRegistry implements IDiagnosticsCoordinator {
 }
 
 export const diagnosticsCoordinator = new DiagnosticsCoordinatorRegistry();
+
+const syncFilterOptions = (state: DocumentSettingsState) => {
+  diagnosticsCoordinator.setFilterOptions({
+    suppressBadBoxes: state.suppressBadBoxes,
+    suppressFontWarnings: state.suppressFontWarnings,
+    suppressPackageWarnings: state.suppressPackageWarnings,
+    customPatterns: state.customSuppressedWarnings,
+  });
+};
+
+syncFilterOptions(useSettingsStore.getState());
+useSettingsStore.subscribe(syncFilterOptions);
 

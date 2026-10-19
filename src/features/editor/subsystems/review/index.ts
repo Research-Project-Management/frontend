@@ -10,18 +10,11 @@
  * - Review Sidebar Tab (Overview, Comments list, Suggestions list).
  */
 
-// 1. Coordinators & Port Contracts
+// 1. Coordinators
 export {
   reviewCoordinator,
-  defaultReviewServicePort,
   ReviewCoordinatorRegistry,
 } from './coordinator/review.coordinator';
-export {
-  type ReviewServicePort,
-  type ReviewNotificationPort,
-  type ReviewPendingComment,
-  type ReviewStorePort,
-} from './model/review-service-port';
 
 // 2. CodeMirror Extensions
 export {
@@ -51,7 +44,7 @@ export {
 } from './extensions/inline-diff';
 
 // 3. UI Presentation Layer
-export { default as ReviewTab, ReviewTab as NamedReviewTab } from './ui/ReviewTab';
+export { default as ReviewTab } from './ui/ReviewTab';
 export { MentionTextarea } from './ui/subcomponents/MentionTextarea';
 export {
   OverviewView,
@@ -81,13 +74,13 @@ export {
   ReviewHeader,
   ReviewBottomNav,
   EmptyReviewState,
+  type ReviewScope,
   type ReviewHeaderProps,
   type ReviewBottomNavProps,
   type EmptyReviewStateProps,
 } from './ui/subcomponents/ReviewNav';
 export {
   OverleafReviewIcon,
-  OverleafReviewSolidIcon,
   OverleafResolvedCommentsIcon,
   MentionBadge,
   MentionRenderer,
@@ -121,14 +114,9 @@ export {
   useReviewPendingCount,
   type ReviewPendingCountResult,
 } from './ui/hooks/useReviewPendingCount';
+export {
+  useSafeQueryClient,
+  fallbackQueryClient,
+} from './ui/hooks/safeQueryClient';
 
-// 4. Subsystem Deep Interface Port (The Seam)
-export interface ReviewSubsystemPort {
-  readonly name: 'review';
-  acceptSuggestion(pageId: string, suggestionId: string): Promise<boolean>;
-  rejectSuggestion(pageId: string, suggestionId: string): Promise<boolean>;
-  acceptAll(pageId: string): Promise<boolean>;
-  rejectAll(pageId: string): Promise<boolean>;
-  setViewMode(mode: 'changes' | 'clean' | 'original'): void;
-  setReviewMode(enabled: boolean): void;
-}
+

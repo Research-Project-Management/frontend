@@ -41,7 +41,12 @@ import { useViewerStore } from '@/features/editor/subsystems/compiler/coordinato
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-import { setupPdfWorker } from '@/shared/lib/pdfjs-worker';
+import {
+  setupPdfWorker,
+  getSharedPdfDocumentOptions,
+  getCappedDevicePixelRatio,
+  releaseCanvasMemory,
+} from '@/shared/lib/pdfjs-worker';
 
 // Ensure PDF.js worker is registered with absolute origin URL
 setupPdfWorker();
@@ -205,6 +210,9 @@ interface OptimizedPDFPageProps {
   onRenderTextLayer?: () => void;
 }
 
+const normalizePdfTextItem = (item: { str: string }) =>
+  item.str && item.str.includes('—') ? item.str.replace(/—/g, '-') : item.str;
+
 const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
   pageIndex,
   scale,
@@ -241,6 +249,11 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
       ? pageDimensions.heightPt
       : DEFAULT_PDF_PAGE_HEIGHT_PT;
 
+  const resolvedPageDimensions = useMemo<PdfPageDimensions>(
+    () => ({ widthPt, heightPt }),
+    [widthPt, heightPt],
+  );
+
   const pageNum = pageIndex + 1;
   const pageWidth = isSpreadView && containerWidth
     ? Math.floor((containerWidth - 8) / 2)
@@ -273,6 +286,12 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
   };
 
   useEffect(() => {
+    if (!isVisible && containerRef.current) {
+      releaseCanvasMemory(containerRef.current);
+    }
+  }, [isVisible]);
+
+  useEffect(() => {
     const pageRefs = pageElemRefs.current;
     const container = containerRef.current;
     return () => {
@@ -280,13 +299,7 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
       delete pageRefs[pageNum];
 
       // 2. Explicitly release GPU canvas pixel buffers
-      if (container) {
-        const canvases = container.querySelectorAll('canvas');
-        canvases.forEach((canvas) => {
-          canvas.width = 0;
-          canvas.height = 0;
-        });
-      }
+      releaseCanvasMemory(container);
     };
   }, [pageNum, pageElemRefs]);
 
@@ -320,26 +333,15 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
           scale={autoFit ? undefined : scale}
           renderTextLayer
           renderAnnotationLayer
+          customTextRenderer={normalizePdfTextItem}
           onLoadSuccess={(page) => {
             if (onPageDimensionsResolved) {
               const dims = extractPageDimensionsPt(page);
               onPageDimensionsResolved(pageNum, dims);
             }
           }}
-          onRenderTextLayerSuccess={() => {
-            if (containerRef.current) {
-              const textLayers = containerRef.current.querySelectorAll('.textLayer, .react-pdf__Page__textContent');
-              textLayers.forEach((tl) => {
-                tl.querySelectorAll('span').forEach((span) => {
-                  if (span.textContent && span.textContent.includes('—')) {
-                    span.textContent = span.textContent.replace(/—/g, '-');
-                  }
-                });
-              });
-            }
-            onRenderTextLayer?.();
-          }}
-          devicePixelRatio={typeof window !== 'undefined' ? Math.min(2, Math.max(1, window.devicePixelRatio || 1)) : 1}
+          onRenderTextLayerSuccess={onRenderTextLayer}
+          devicePixelRatio={getCappedDevicePixelRatio(2)}
           loading={
             <div className="absolute inset-0 flex items-center justify-center bg-canvas dark:bg-card">
               <Loader2 className="size-5 animate-spin motion-reduce:animate-none text-muted-foreground/30 shrink-0" />
@@ -356,7 +358,7 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
           indicator={clickIndicator}
           pageWidth={pageWidth}
           scale={scale}
-          pageDimensions={{ widthPt, heightPt }}
+          pageDimensions={resolvedPageDimensions}
         />
       )}
     </div>
@@ -365,7 +367,7 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
 
 // ── Surface Imperative Handle ─────────────────────────────────────────────────
 
-export interface SurfaceHandle {
+export interface PdfSurfaceHandle {
   scrollToPage: (pageNum: number) => void;
   scrollToCoords?: (page: number, y: number, behavior?: ScrollBehavior) => void;
   highlightTarget?: (page: number, x: number, y: number, w?: number, h?: number) => void;
@@ -373,11 +375,9 @@ export interface SurfaceHandle {
   getContainer: () => HTMLDivElement | null;
 }
 
-export type PdfSurfaceHandle = SurfaceHandle;
-
 // ── Surface Props ─────────────────────────────────────────────────────────────
 
-export interface SurfaceProps {
+export interface PdfSurfaceProps {
   pdfUrl: string | null;
   synctexMap: SyncTeXMap | null;
   scale: number;
@@ -406,9 +406,7 @@ export interface SurfaceProps {
   onRenderTextLayer?: () => void;
 }
 
-export type PdfSurfaceProps = SurfaceProps;
-
-export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(function Surface(
+export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProps>(function PdfSurface(
   {
     pdfUrl,
     synctexMap,
@@ -484,17 +482,10 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
     setupPdfWorker();
   }, []);
 
-  const documentOptions = useMemo(() => {
-    const pdfjsVersion = pdfjs.version || '5.4.296';
-    const cdnBase =
-      (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_PDFJS_CDN_BASE) ||
-      `https://unpkg.com/pdfjs-dist@${pdfjsVersion}`;
-    const normalizedBase = cdnBase.replace(/\/+$/, '');
-    return {
-      cMapUrl: `${normalizedBase}/cmaps/`,
-      standardFontDataUrl: `${normalizedBase}/standard_fonts/`,
-    };
-  }, []);
+  const documentOptions = useMemo(
+    () => getSharedPdfDocumentOptions(pdfjs.version || '5.4.296'),
+    [],
+  );
 
   const scrollRafRef = useRef<number | null>(null);
   const lastScrollTopRef = useRef<number>(0);
@@ -608,21 +599,48 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
       const containerHeight = container.clientHeight;
       const scrollFocus = containerTop + containerHeight / 4;
 
-      for (let p = 1; p <= numPages; p++) {
+      let low = 1;
+      let high = numPages;
+      let candidatePage = 1;
+
+      while (low <= high) {
+        const mid = (low + high) >>> 1;
+        const midEl = pageElemRefs.current[mid];
+        if (!midEl) {
+          break;
+        }
+        if (midEl.offsetTop <= scrollFocus) {
+          candidatePage = mid;
+          low = mid + 1;
+        } else {
+          high = mid - 1;
+        }
+      }
+
+      // Check candidatePage first (O(1) in sorted vertical layout), fallback to linear scan if refs are sparse
+      const checkPage = (p: number): boolean => {
         const el = pageElemRefs.current[p];
-        if (el) {
-          const elTop = el.offsetTop;
-          const elHeight = el.offsetHeight;
-          if (scrollFocus >= elTop && scrollFocus <= elTop + elHeight) {
-            const relativeY = scrollFocus - elTop;
-            const pageDims = perPageDimensions[p] || effectiveDefaultDimensions;
-            const widthPt = pageDims.widthPt > 0 ? pageDims.widthPt : DEFAULT_PDF_PAGE_WIDTH_PT;
-            const effectiveScale = el.offsetWidth > 0 ? el.offsetWidth / widthPt : (scale > 0 ? scale : 1);
-            const ptY = relativeY / effectiveScale;
-            const fraction = elHeight > 0 ? relativeY / elHeight : 0;
-            onScroll({ page: p, y: ptY, fraction });
-            break;
-          }
+        if (!el) return false;
+        const elTop = el.offsetTop;
+        const elHeight = el.offsetHeight;
+        if (scrollFocus >= elTop && scrollFocus <= elTop + elHeight) {
+          const relativeY = scrollFocus - elTop;
+          const pageDims = perPageDimensions[p] || effectiveDefaultDimensions;
+          const widthPt = pageDims.widthPt > 0 ? pageDims.widthPt : DEFAULT_PDF_PAGE_WIDTH_PT;
+          const effectiveScale = el.offsetWidth > 0 ? el.offsetWidth / widthPt : (scale > 0 ? scale : 1);
+          const ptY = relativeY / effectiveScale;
+          const fraction = elHeight > 0 ? relativeY / elHeight : 0;
+          onScroll({ page: p, y: ptY, fraction });
+          return true;
+        }
+        return false;
+      };
+
+      if (!checkPage(candidatePage) && !checkPage(candidatePage + 1)) {
+        for (let p = 1; p <= numPages; p++) {
+          const el = pageElemRefs.current[p];
+          if (el && el.offsetTop > scrollFocus) break;
+          if (checkPage(p)) break;
         }
       }
     });
@@ -644,6 +662,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
           if (page) {
             const dims = extractPageDimensionsPt(page);
             handlePageDimensionsResolved(1, dims);
+            (page as { cleanup?: () => void })?.cleanup?.();
           }
         })
         .catch(() => {
@@ -755,48 +774,6 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
     };
   }, []);
 
-  // Sanitize em-dashes (—) in PDF text layers to standard hyphens (-)
-  useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-
-    const sanitizeText = (node: Node) => {
-      if (node.nodeType === Node.TEXT_NODE && node.nodeValue && node.nodeValue.includes('—')) {
-        node.nodeValue = node.nodeValue.replace(/—/g, '-');
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        const elem = node as HTMLElement;
-        if (
-          elem.classList?.contains('textLayer') ||
-          elem.closest?.('.textLayer') ||
-          elem.classList?.contains('react-pdf__Page__textContent') ||
-          elem.closest?.('.react-pdf__Page__textContent')
-        ) {
-          const walker = document.createTreeWalker(elem, NodeFilter.SHOW_TEXT);
-          let textNode: Text | null = null;
-          while ((textNode = walker.nextNode() as Text | null)) {
-            if (textNode.nodeValue && textNode.nodeValue.includes('—')) {
-              textNode.nodeValue = textNode.nodeValue.replace(/—/g, '-');
-            }
-          }
-        }
-      }
-    };
-
-    const observer = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        for (const added of Array.from(mutation.addedNodes)) {
-          sanitizeText(added);
-        }
-        if (mutation.type === 'characterData') {
-          sanitizeText(mutation.target);
-        }
-      }
-    });
-
-    observer.observe(el, { childList: true, subtree: true, characterData: true });
-    return () => observer.disconnect();
-  }, []);
-
   const currentContainerWidth =
     containerWidthState || containerWidth || scrollContainerRef.current?.clientWidth || 600;
 
@@ -865,7 +842,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
                         pageElemRefs={pageElemRefs}
                         approxHeightRef={approxHeightRef}
                         onDoubleClickPage={handleDoubleClickPage}
-                        clickIndicator={clickIndicator}
+                        clickIndicator={clickIndicator?.page === pageIdx + 1 ? clickIndicator : null}
                         onRenderTextLayer={onRenderTextLayer}
                       />
                     ))}
@@ -890,7 +867,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
                     pageElemRefs={pageElemRefs}
                     approxHeightRef={approxHeightRef}
                     onDoubleClickPage={handleDoubleClickPage}
-                    clickIndicator={clickIndicator}
+                    clickIndicator={clickIndicator?.page === i + 1 ? clickIndicator : null}
                     onRenderTextLayer={onRenderTextLayer}
                   />
                 ))}
@@ -924,25 +901,13 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
                 className=""
                 renderTextLayer
                 renderAnnotationLayer
+                customTextRenderer={normalizePdfTextItem}
                 onLoadSuccess={(page) => {
                   const dims = extractPageDimensionsPt(page);
                   handlePageDimensionsResolved(effectivePageNumber, dims);
                 }}
-                onRenderTextLayerSuccess={() => {
-                  const el = pageElemRefs.current[effectivePageNumber];
-                  if (el) {
-                    const textLayers = el.querySelectorAll('.textLayer, .react-pdf__Page__textContent');
-                    textLayers.forEach((tl) => {
-                      tl.querySelectorAll('span').forEach((span) => {
-                        if (span.textContent && span.textContent.includes('—')) {
-                          span.textContent = span.textContent.replace(/—/g, '-');
-                        }
-                      });
-                    });
-                  }
-                  onRenderTextLayer?.();
-                }}
-                devicePixelRatio={typeof window !== 'undefined' ? Math.min(2, Math.max(1, window.devicePixelRatio || 1)) : 1}
+                onRenderTextLayerSuccess={onRenderTextLayer}
+                devicePixelRatio={getCappedDevicePixelRatio(2)}
               />
               {clickIndicator && clickIndicator.page === effectivePageNumber && (
                 <PdfSyncTeXHighlightBox
@@ -960,5 +925,4 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
   );
 }));
 
-export const PdfSurface = Surface;
-export default Surface;
+export default PdfSurface;

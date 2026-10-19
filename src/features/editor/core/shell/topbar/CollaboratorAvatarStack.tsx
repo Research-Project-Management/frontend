@@ -37,7 +37,6 @@ import {
 } from '@/features/editor/ui/hooks/useCollaboration';
 import { getCollaboratorColor } from '@/features/editor/ui/editor/CollaboratorCursors';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
-import { editorCommandBus } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 
@@ -65,11 +64,12 @@ export function CollaboratorAvatarStack({
 }: CollaboratorAvatarStackProps) {
   const params = useParams<{ projectId?: string; pageId?: string }>();
   const storeActivePageId = usePageStore((s) => s.activePageId);
-  const currentPage = usePageStore((s) => s.currentPage);
+  const currentPageId = usePageStore((s) => s.currentPage?.id ?? null);
+  const currentPageProjectId = usePageStore((s) => extractProjectId(s.currentPage) ?? null);
   const storeProjectId = usePageStore((s) => s.projectId);
 
-  const pageId = storeActivePageId || currentPage?.id || params?.pageId || null;
-  const projectId = params?.projectId || storeProjectId || extractProjectId(currentPage) || null;
+  const pageId = storeActivePageId || currentPageId || params?.pageId || null;
+  const projectId = params?.projectId || storeProjectId || currentPageProjectId || null;
 
   const { data: presenceData } = useCollaborationPresence(pageId, projectId);
 
@@ -96,18 +96,7 @@ export function CollaboratorAvatarStack({
     const fileId = c.activeFileId;
     const filePath = c.activeFile;
 
-    // 1. Direct navigation coordinator jump
     navigationCoordinator.jumpToLine({
-      fileId,
-      filePath,
-      line,
-      column,
-      highlight: 'synctex',
-    });
-
-    // 2. Dispatch cross-pane event for editor listeners
-    editorCommandBus.dispatch({
-      type: 'navigation:jump-to-line',
       fileId,
       filePath,
       line,

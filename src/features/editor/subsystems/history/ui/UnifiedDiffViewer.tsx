@@ -18,6 +18,101 @@ import type {
   DiffLine,
 } from '@/features/editor/domain/types/history.types';
 
+export interface DiffHunkHeaderProps {
+  hunk: DiffHunk;
+  baseVersion: number;
+  targetVersion: number;
+  className?: string;
+}
+
+export const DiffHunkHeader = React.memo(function DiffHunkHeader({
+  hunk,
+  baseVersion,
+  targetVersion,
+  className,
+}: DiffHunkHeaderProps) {
+  const handleCopyHunk = () => {
+    const text = (hunk.lines || [])
+      .map((l) => (l.type === 'added' ? `+ ${l.text}` : l.type === 'deleted' ? `- ${l.text}` : `  ${l.text}`))
+      .join('\n');
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+    }
+    toast.success('Hunk diff copied to clipboard', { id: 'diff-copy-hunk' });
+  };
+
+  const handleCopyBaseHunk = () => {
+    const text = (hunk.lines || [])
+      .filter((l) => l.type !== 'added')
+      .map((l) => l.text)
+      .join('\n');
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+    }
+    toast.success(`Base v${baseVersion} snippet copied to clipboard`, { id: 'diff-copy-hunk' });
+  };
+
+  const handleCopyTargetHunk = () => {
+    const text = (hunk.lines || [])
+      .filter((l) => l.type !== 'deleted')
+      .map((l) => l.text)
+      .join('\n');
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+    }
+    toast.success(`Target v${targetVersion} snippet copied to clipboard`, { id: 'diff-copy-hunk' });
+  };
+
+  return (
+    <div
+      className={cn(
+        'bg-muted/70 px-3 py-1 text-muted-foreground font-semibold text-[11px] flex items-center justify-between select-none border-y first:border-t-0',
+        className,
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <span>
+          @@ -{hunk.oldStartLine},{hunk.oldLineCount} +{hunk.newStartLine},{hunk.newLineCount} @@
+        </span>
+        {hunk.header && <span className="text-foreground/70 truncate max-w-xs">{hunk.header}</span>}
+      </div>
+
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-5 px-1.5 text-[10px] gap-1 hover:bg-background/80 cursor-pointer"
+          onClick={handleCopyHunk}
+          title="Copy hunk diff"
+        >
+          <Copy className="size-2.5" />
+          <span>Hunk</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-5 px-1.5 text-[10px] gap-1 hover:bg-background/80 cursor-pointer"
+          onClick={handleCopyBaseHunk}
+          title={`Copy base v${baseVersion} snippet`}
+        >
+          <Copy className="size-2.5" />
+          <span>Base v{baseVersion}</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-5 px-1.5 text-[10px] gap-1 hover:bg-background/80 cursor-pointer"
+          onClick={handleCopyTargetHunk}
+          title={`Copy target v${targetVersion} snippet`}
+        >
+          <Copy className="size-2.5" />
+          <span>Target v{targetVersion}</span>
+        </Button>
+      </div>
+    </div>
+  );
+});
+
 export interface UnifiedDiffViewerProps {
   fileDiff: ProjectFileDiff;
   baseVersion?: number;
@@ -38,84 +133,16 @@ export const UnifiedDiffViewer = React.memo(function UnifiedDiffViewer({
     );
   }
 
-  const handleCopyHunk = (hunk: DiffHunk) => {
-    const text = (hunk.lines || [])
-      .map((l) => (l.type === 'added' ? `+ ${l.text}` : l.type === 'deleted' ? `- ${l.text}` : `  ${l.text}`))
-      .join('\n');
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(text);
-    }
-    toast.success('Hunk diff copied to clipboard', { id: 'diff-copy-hunk' });
-  };
-
-  const handleCopyBaseHunk = (hunk: DiffHunk) => {
-    const text = (hunk.lines || [])
-      .filter((l) => l.type !== 'added')
-      .map((l) => l.text)
-      .join('\n');
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(text);
-    }
-    toast.success(`Base v${baseVersion} snippet copied to clipboard`, { id: 'diff-copy-hunk' });
-  };
-
-  const handleCopyTargetHunk = (hunk: DiffHunk) => {
-    const text = (hunk.lines || [])
-      .filter((l) => l.type !== 'deleted')
-      .map((l) => l.text)
-      .join('\n');
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(text);
-    }
-    toast.success(`Target v${targetVersion} snippet copied to clipboard`, { id: 'diff-copy-hunk' });
-  };
-
   return (
     <div className="h-full w-full overflow-y-auto border rounded-md bg-background font-mono text-xs select-text">
       {fileDiff.hunks.map((hunk: DiffHunk, hIdx: number) => (
         <div key={hIdx} className="border-b last:border-b-0">
           {/* Hunk Header with Copy Controls */}
-          <div className="bg-muted/70 px-3 py-1 text-muted-foreground font-semibold text-[11px] flex items-center justify-between select-none border-y first:border-t-0">
-            <div className="flex items-center gap-2">
-              <span>
-                @@ -{hunk.oldStartLine},{hunk.oldLineCount} +{hunk.newStartLine},{hunk.newLineCount} @@
-              </span>
-              {hunk.header && <span className="text-foreground/70 truncate max-w-xs">{hunk.header}</span>}
-            </div>
-
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-5 px-1.5 text-[10px] gap-1 hover:bg-background/80 cursor-pointer"
-                onClick={() => handleCopyHunk(hunk)}
-                title="Copy hunk diff"
-              >
-                <Copy className="size-2.5" />
-                <span>Hunk</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-5 px-1.5 text-[10px] gap-1 hover:bg-background/80 cursor-pointer"
-                onClick={() => handleCopyBaseHunk(hunk)}
-                title={`Copy base v${baseVersion} snippet`}
-              >
-                <Copy className="size-2.5" />
-                <span>Base v{baseVersion}</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-5 px-1.5 text-[10px] gap-1 hover:bg-background/80 cursor-pointer"
-                onClick={() => handleCopyTargetHunk(hunk)}
-                title={`Copy target v${targetVersion} snippet`}
-              >
-                <Copy className="size-2.5" />
-                <span>Target v{targetVersion}</span>
-              </Button>
-            </div>
-          </div>
+          <DiffHunkHeader
+            hunk={hunk}
+            baseVersion={baseVersion}
+            targetVersion={targetVersion}
+          />
 
           {/* Hunk Lines */}
           <div className="divide-y divide-border/20">

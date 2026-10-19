@@ -36,6 +36,50 @@ const LOG_WRAP_LIMIT = 79;
 const FATAL_SUMMARY_ERROR_MESSAGE =
   '==> Fatal error occurred, no output PDF file produced!';
 
+const PKG_LOOKUP: Record<string, string> = {
+  includegraphics: 'graphicx',
+  includesvg: 'svg',
+  toprule: 'booktabs',
+  midrule: 'booktabs',
+  bottomrule: 'booktabs',
+  cmidrule: 'booktabs',
+  multirow: 'multirow',
+  justifying: 'ragged2e',
+  tag: 'amsmath',
+  notag: 'amsmath',
+  text: 'amsmath',
+  boldsymbol: 'amsmath',
+  eqref: 'amsmath',
+  iint: 'amsmath',
+  iiint: 'amsmath',
+  nmid: 'amssymb',
+  varnothing: 'amssymb',
+  Box: 'amssymb',
+  citep: 'natbib',
+  citet: 'natbib',
+  citepalias: 'natbib',
+  citetalias: 'natbib',
+  url: 'url',
+  href: 'hyperref',
+  texorpdfstring: 'hyperref',
+  phantomsection: 'hyperref',
+  arraybackslash: 'array',
+  textcolor: 'xcolor',
+};
+
+const ENV_PKG_LOOKUP: Record<string, string> = {
+  justify: 'ragged2e',
+  align: 'amsmath',
+  'align*': 'amsmath',
+  split: 'amsmath',
+  gather: 'amsmath',
+  cases: 'amsmath',
+  matrix: 'amsmath',
+  pmatrix: 'amsmath',
+  bmatrix: 'amsmath',
+  subequations: 'amsmath',
+};
+
 export function unwrapLatexLogLines(raw: string): string[] {
   const rawLines = raw.replace(/\r\n|\r/g, '\n').split('\n');
   if (rawLines.length === 0) return [];
@@ -82,7 +126,7 @@ export function parseLatexLog(raw: string): ParsedLog {
   const errors: LogEntry[] = [];
   const warnings: LogEntry[] = [];
   const badBoxes: LogEntry[] = [];
-  const seen = new Set<string>();
+  const indexMaps = new WeakMap<LogEntry[], Map<string, number>>();
   let seenEnvironmentError = false;
 
   const hasSpecificHardError = lines.some((l) => {
@@ -105,13 +149,16 @@ export function parseLatexLog(raw: string): ParsedLog {
       rawExcerpt: entry.rawExcerpt ? entry.rawExcerpt.replace(/—/g, '-') : undefined,
     };
     const normMsg = sanitizedEntry.message.replace(/\.$/, '').trim().toLowerCase();
-    const existingIdx = arr.findIndex(
-      (item) =>
-        (item.file || '') === (sanitizedEntry.file || '') &&
-        item.line === sanitizedEntry.line &&
-        item.message.replace(/\.$/, '').trim().toLowerCase() === normMsg
-    );
-    if (existingIdx !== -1) {
+    const dedupKey = `${sanitizedEntry.file ?? ''}|${sanitizedEntry.line ?? ''}|${normMsg}`;
+
+    let idxMap = indexMaps.get(arr);
+    if (!idxMap) {
+      idxMap = new Map<string, number>();
+      indexMaps.set(arr, idxMap);
+    }
+
+    const existingIdx = idxMap.get(dedupKey);
+    if (existingIdx !== undefined) {
       // Merge missing fields (e.g. file, detail, rawExcerpt) into existing entry
       const existing = arr[existingIdx];
       arr[existingIdx] = {
@@ -122,11 +169,9 @@ export function parseLatexLog(raw: string): ParsedLog {
       };
       return;
     }
-    const key = `${sanitizedEntry.file ?? ''}|${sanitizedEntry.line ?? ''}|${sanitizedEntry.message}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      arr.push(sanitizedEntry);
-    }
+
+    idxMap.set(dedupKey, arr.length);
+    arr.push(sanitizedEntry);
   };
 
   let openParens = 0;
@@ -330,38 +375,8 @@ export function parseLatexLog(raw: string): ParsedLog {
         const firstLineCmd = rawExcerpt.match(/^[^\n]*\\([a-zA-Z]+)\s*(?:\n|$)/);
         const anyLineCmd = rawExcerpt.match(/\\([a-zA-Z]+)\s*(?:\n|$)/m) || (detail ? detail.match(/\\([a-zA-Z]+)/) : null);
         const cmdName = firstLineCmd ? firstLineCmd[1] : anyLineCmd ? anyLineCmd[1] : '';
-        const pkgLookup: Record<string, string> = {
-          includegraphics: 'graphicx',
-          includesvg: 'svg',
-          toprule: 'booktabs',
-          midrule: 'booktabs',
-          bottomrule: 'booktabs',
-          cmidrule: 'booktabs',
-          multirow: 'multirow',
-          justifying: 'ragged2e',
-          tag: 'amsmath',
-          notag: 'amsmath',
-          text: 'amsmath',
-          boldsymbol: 'amsmath',
-          eqref: 'amsmath',
-          iint: 'amsmath',
-          iiint: 'amsmath',
-          nmid: 'amssymb',
-          varnothing: 'amssymb',
-          Box: 'amssymb',
-          citep: 'natbib',
-          citet: 'natbib',
-          citepalias: 'natbib',
-          citetalias: 'natbib',
-          url: 'url',
-          href: 'hyperref',
-          texorpdfstring: 'hyperref',
-          phantomsection: 'hyperref',
-          arraybackslash: 'array',
-          textcolor: 'xcolor',
-        };
-        if (cmdName && pkgLookup[cmdName]) {
-          const pkg = pkgLookup[cmdName];
+        if (cmdName && PKG_LOOKUP[cmdName]) {
+          const pkg = PKG_LOOKUP[cmdName];
           quickFix = {
             description: `Add \\usepackage{${pkg}} to preamble`,
             replacementText: `\\usepackage{${pkg}}`,
@@ -369,20 +384,8 @@ export function parseLatexLog(raw: string): ParsedLog {
         }
       } else {
         const undefEnvMatch = message.match(/LaTeX Error:\s*Environment\s+([^\s]+)\s+undefined/i);
-        const envPkgLookup: Record<string, string> = {
-          justify: 'ragged2e',
-          align: 'amsmath',
-          'align*': 'amsmath',
-          split: 'amsmath',
-          gather: 'amsmath',
-          cases: 'amsmath',
-          matrix: 'amsmath',
-          pmatrix: 'amsmath',
-          bmatrix: 'amsmath',
-          subequations: 'amsmath',
-        };
-        if (undefEnvMatch && envPkgLookup[undefEnvMatch[1]]) {
-          const pkg = envPkgLookup[undefEnvMatch[1]];
+        if (undefEnvMatch && ENV_PKG_LOOKUP[undefEnvMatch[1]]) {
+          const pkg = ENV_PKG_LOOKUP[undefEnvMatch[1]];
           quickFix = {
             description: `Add \\usepackage{${pkg}} to preamble`,
             replacementText: `\\usepackage{${pkg}}`,

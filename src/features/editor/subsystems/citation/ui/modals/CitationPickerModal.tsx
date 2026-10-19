@@ -25,17 +25,15 @@ import {
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
 import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, } from '@/shared/components/ui/dropdown-menu';
-import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, } from '@/shared/components/ui/alert-dialog';
 import {
-  Library, Folder, FolderOpen, ChevronRight, FileText, FileCode, BookMarked, Search, X, Copy, Loader2, Check, ExternalLink, Code2, SearchX, Binary, } from 'lucide-react';
+  Search, X, Loader2, Check, SearchX, Binary, } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { filesQuery, pageKeys } from '@/features/editor/ui/hooks/document.queries';
 import { useEditorCitations } from '@/features/editor/ui/hooks/useCitation';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import {
-  extractCitationKeys, formatCitationSnippet, formatBibEntryToBibtex, formatItemToBibtex, cleanAbstractText, } from '@/features/editor/subsystems/citation/model/citation-formatter';
+  extractCitationKeys, formatCitationSnippet, formatBibEntryToBibtex, formatItemToBibtex, } from '@/features/editor/subsystems/citation/model/citation-formatter';
 import { validateAcademicIdentifier } from '@/features/editor/subsystems/citation/model/citation.schema';
 import {
   buildRetractedCitationMap, type RetractedItemInfo, } from '@/features/editor/subsystems/citation/model/retracted-citations';
@@ -52,9 +50,16 @@ import {
   usePageStore,
   useSettingsStore,
 } from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import { toast } from 'sonner';
 import { useCitationPickerActions } from './useCitationPickerActions';
 import { CitationPickerCard } from './CitationPickerCard';
+import {
+  CitationCollectionTreePane,
+  type CollectionNode,
+} from '../subcomponents/CitationCollectionTreePane';
+import { CitationInspectorPane } from '../subcomponents/CitationInspectorPane';
 
 export type CitationStyle =
   | 'latex-cite'
@@ -76,20 +81,6 @@ export interface CitationPickerModalProps {
   citedKeys?: string[];
 }
 
-const STYLE_OPTIONS: { id: CitationStyle; label: string; preview: string }[] = [
-  { id: 'latex-cite', label: '\\cite', preview: '\\cite{key}' },
-  { id: 'latex-citep', label: '\\citep', preview: '\\citep{key}' },
-  { id: 'latex-citet', label: '\\citet', preview: '\\citet{key}' },
-  { id: 'latex-autocite', label: '\\autocite', preview: '\\autocite{key}' },
-  { id: 'markdown-bracket', label: 'Pandoc', preview: '[@key]' },
-];
-
-interface CollectionNode {
-  id: string;
-  name: string;
-  children?: CollectionNode[];
-}
-
 export default function CitationPickerModal({
   open,
   onOpenChange,
@@ -104,18 +95,20 @@ export default function CitationPickerModal({
   // Contextual project and document resolution
   const queryClient = useQueryClient();
   const params = useParams<{ pageId?: string; projectId?: string }>();
-  const currentPage = usePageStore((s) => s.currentPage);
+  const currentPageId = usePageStore((s) => s.currentPage?.id);
+  const currentPageProjectId = usePageStore((s) => {
+    const p = s.currentPage?.projectId;
+    return typeof p === 'string' ? p : p?.id || '';
+  });
   const storeParentPageId = usePageStore((s) => s.parentPageId);
   const storeProjectId = usePageStore((s) => s.projectId);
 
-  const rootId = params?.pageId || storeParentPageId || currentPage?.id || '';
+  const rootId = params?.pageId || storeParentPageId || currentPageId || '';
   const effectiveProjectId =
     propsProjectId ||
     params?.projectId ||
     storeProjectId ||
-    (typeof currentPage?.projectId === 'string'
-      ? currentPage.projectId
-      : currentPage?.projectId?.id) ||
+    currentPageProjectId ||
     '';
 
   const [selectedStyle, setSelectedStyle] = useState<CitationStyle>(defaultStyle);
@@ -123,7 +116,6 @@ export default function CitationPickerModal({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectedNav, setSelectedNav] = useState<string>('all');
   const [activeView, setActiveView] = useState<'tree' | 'list' | 'detail'>('list');
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [serverItems, setServerItems] = useState<BibEntry[]>([]);
   const [isSearchingServer, setIsSearchingServer] = useState(false);
 
@@ -135,15 +127,6 @@ export default function CitationPickerModal({
     copyDoi,
     resolveAcademicIdentifier,
   } = useCitationPickerActions();
-
-  const [isBibtexOpen, setIsBibtexOpen] = useState(true);
-  const [isAbstractExpanded, setIsAbstractExpanded] = useState(false);
-
-  // Copy feedback states
-  const [copiedSnippet, setCopiedSnippet] = useState(false);
-  const [copiedBibtex, setCopiedBibtex] = useState(false);
-  const [copiedKey, setCopiedKey] = useState(false);
-  const [copiedDoi, setCopiedDoi] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -163,18 +146,21 @@ export default function CitationPickerModal({
   // 3. Query collections from backend
   const { collections: serverCollections = [] } = useCollections(effectiveProjectId || 'user');
 
-  // 4. Resolve cited keys from document text if not explicitly provided
-  const rawContent = currentPage?.content;
-  const activeContent =
-    typeof rawContent === 'string'
-      ? rawContent
-      : typeof rawContent === 'object' && rawContent !== null
-        ? String(rawContent.source ?? rawContent.text ?? rawContent.content ?? '')
-        : '';
+  // 4. Resolve cited keys from document text if not explicitly provided (only when modal is open or propsCitedKeys passed)
   const citedKeys = useMemo(() => {
     if (propsCitedKeys && propsCitedKeys.length > 0) return propsCitedKeys;
+    if (!open) return [];
+    const engineContent = getActiveEditorEngine()?.getContent();
+    if (engineContent) return extractCitationKeys(engineContent);
+    const rawContent = usePageStore.getState().currentPage?.content;
+    const activeContent =
+      typeof rawContent === 'string'
+        ? rawContent
+        : typeof rawContent === 'object' && rawContent !== null
+          ? String(rawContent.source ?? rawContent.text ?? rawContent.content ?? '')
+          : '';
     return extractCitationKeys(activeContent);
-  }, [propsCitedKeys, activeContent]);
+  }, [propsCitedKeys, open]);
 
   const citedKeysSet = useMemo(() => {
     return new Set(citedKeys.map((k) => k.toLowerCase()));
@@ -192,7 +178,6 @@ export default function CitationPickerModal({
       type: c.type || 'article',
       title: c.title,
       authors: c.author ? [c.author] : undefined,
-      author: c.author,
       year: c.year,
       journal: c.journal,
       booktitle: c.booktitle,
@@ -211,23 +196,7 @@ export default function CitationPickerModal({
       const k = lib.citationKey || lib.id;
       if (!k) continue;
       const lowerKey = k.toLowerCase();
-      const extLib = lib as typeof lib & {
-        publicationTitle?: string;
-        collectionId?: string;
-        collectionIds?: string[];
-        collections?: Array<{ id: string }>;
-        collectionItems?: Array<{ collectionId?: string; collection?: { id: string } }>;
-      };
-      const resolvedCollectionIds = Array.from(
-        new Set(
-          [
-            ...(extLib.collectionIds || []),
-            ...(extLib.collections?.map((c) => c.id) || []),
-            ...(extLib.collectionItems?.map((ci) => ci.collectionId || ci.collection?.id) || []),
-            extLib.collectionId,
-          ].filter((id): id is string => Boolean(id)),
-        ),
-      );
+      const resolvedCollectionIds = lib.collectionIds ?? [];
 
       const existingIdx = indexByKey.get(lowerKey);
       if (existingIdx !== undefined) {
@@ -237,11 +206,11 @@ export default function CitationPickerModal({
           title: existing.title || lib.title,
           authors: existing.authors && existing.authors.length > 0 ? existing.authors : lib.authors,
           year: existing.year || (lib.year ? String(lib.year) : undefined),
-          journal: existing.journal || lib.journal || extLib.publicationTitle,
+          journal: existing.journal || lib.publicationTitle,
           doi: existing.doi || lib.doi,
           url: existing.url || lib.url,
-          abstract: existing.abstract || lib.abstract,
-          collectionId: extLib.collectionId || resolvedCollectionIds[0],
+          abstract: existing.abstract || lib.abstractNote,
+          collectionId: resolvedCollectionIds[0],
           collectionIds: resolvedCollectionIds.length > 0 ? resolvedCollectionIds : undefined,
         };
       } else {
@@ -252,13 +221,13 @@ export default function CitationPickerModal({
           title: lib.title,
           authors: lib.authors,
           year: lib.year ? String(lib.year) : undefined,
-          journal: lib.journal || extLib.publicationTitle,
+          journal: lib.publicationTitle,
           doi: lib.doi,
           url: lib.url,
-          abstract: lib.abstract,
+          abstract: lib.abstractNote,
           source: 'library',
           sourceFile: 'workspace-library',
-          collectionId: extLib.collectionId || resolvedCollectionIds[0],
+          collectionId: resolvedCollectionIds[0],
           collectionIds: resolvedCollectionIds.length > 0 ? resolvedCollectionIds : undefined,
         });
       }
@@ -266,12 +235,6 @@ export default function CitationPickerModal({
 
     return mapped;
   }, [propsItems, libraryItems]);
-
-  // Style selector
-  const selectedOption = useMemo(
-    () => STYLE_OPTIONS.find((opt) => opt.id === selectedStyle) || STYLE_OPTIONS[0],
-    [selectedStyle],
-  );
 
   // Reset and initialize states when modal is opened
   useEffect(() => {
@@ -309,12 +272,12 @@ export default function CitationPickerModal({
             type: r.type || 'article',
             title: r.title,
             authors: r.author ? [r.author] : undefined,
-            author: r.author,
             year: r.year,
             journal: r.journal,
             doi: r.doi,
             raw: r.rawBibtex,
             source: 'server',
+            sourceFile: 'server',
           }));
           setServerItems((prev) => {
             const merged = new Map<string, BibEntry>();
@@ -406,9 +369,8 @@ export default function CitationPickerModal({
   // Helper to check if an entry matches a collection node from database relation
   const entryMatchesCollection = useCallback(
     (entry: BibEntry, node: CollectionNode): boolean => {
-      const extEntry = entry as BibEntry & { collectionId?: string; collectionIds?: string[] };
-      const colId = extEntry.collectionId;
-      const colIds = extEntry.collectionIds;
+      const colId = entry.collectionId;
+      const colIds = entry.collectionIds;
       if (colId === node.id || colIds?.includes(node.id)) return true;
 
       if (node.children?.some((child) => entryMatchesCollection(entry, child))) {
@@ -485,9 +447,7 @@ export default function CitationPickerModal({
     return navFilteredItems.filter((entry) => {
       const keyMatch = entry.key?.toLowerCase().includes(query);
       const titleMatch = entry.title?.toLowerCase().includes(query);
-      const authorMatch =
-        entry.authors?.some((a) => a.toLowerCase().includes(query)) ||
-        entry.author?.toLowerCase().includes(query);
+      const authorMatch = entry.authors?.some((a) => a.toLowerCase().includes(query));
       const yearMatch = entry.year?.toString().includes(query);
       const doiMatch = entry.doi?.toLowerCase().includes(query);
       const venueMatch =
@@ -534,19 +494,38 @@ export default function CitationPickerModal({
     async (entry: BibEntry) => {
       if (!effectiveProjectId) return;
 
+      const candidateMap = new Map<string, { id: string; title: string; content: string }>();
+      for (const wf of workspaceCoordinator.getProjectFiles() || []) {
+        const title = (wf.path || wf.title || '').trim();
+        if (title.toLowerCase().endsWith('.bib')) {
+          const cached = wf.id ? lruDocumentCache.get(wf.id) : undefined;
+          candidateMap.set(wf.id || title.toLowerCase(), {
+            id: wf.id,
+            title,
+            content: cached?.content ?? extractDocumentContentString(wf.content),
+          });
+        }
+      }
       const files = Array.isArray(projectFiles) ? projectFiles : [];
-      const bibFiles = files.filter((f: { title?: string; name?: string }) => {
-        const title = (f.title || f.name || '').toLowerCase();
-        return title.endsWith('.bib');
-      });
+      for (const f of files as Array<{ id: string; title?: string; name?: string; content?: string }>) {
+        const title = (f.title || f.name || '').trim();
+        if (title.toLowerCase().endsWith('.bib')) {
+          const cached = f.id ? lruDocumentCache.get(f.id) : undefined;
+          candidateMap.set(f.id || title.toLowerCase(), {
+            id: f.id,
+            title,
+            content: cached?.content ?? f.content ?? '',
+          });
+        }
+      }
+      const bibFiles = Array.from(candidateMap.values());
 
       const storeBib = useSettingsStore.getState().mainBibFile;
       const preferredBib =
         storeBib && storeBib !== 'auto' ? storeBib : 'references.bib';
       const primaryBib =
         bibFiles.find(
-          (f: { title?: string; name?: string }) =>
-            (f.title || f.name || '').toLowerCase() === preferredBib.toLowerCase(),
+          (f) => f.title.toLowerCase() === preferredBib.toLowerCase(),
         ) || bibFiles[0];
 
       let bibCode = '';
@@ -571,6 +550,7 @@ export default function CitationPickerModal({
         const newContent = currentContent
           ? `${currentContent.trim()}\n\n${bibCode}\n`
           : `${bibCode}\n`;
+        lruDocumentCache.updateContent(primaryBib.id, newContent, true);
         sessionCoordinator.notifyContentChange(primaryBib.id, newContent);
         latexSymbolsIndex.indexFile(primaryBib.id, primaryBib.title || preferredBib, newContent);
         toast.success(`Synced @${entry.key} to ${primaryBib.title || preferredBib}`, {
@@ -597,9 +577,6 @@ export default function CitationPickerModal({
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       queryClient.invalidateQueries({ queryKey: ['project-citation-validation', effectiveProjectId] });
       editorCommandBus.dispatch({ type: 'filetree:updated' });
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
-      }
     },
     [effectiveProjectId, projectFiles, libraryItems, rootId, queryClient],
   );
@@ -708,46 +685,6 @@ export default function CitationPickerModal({
     }
   };
 
-  const toggleFolder = (folderId: string, e?: React.SyntheticEvent) => {
-    e?.stopPropagation();
-    setExpandedFolders((prev) => {
-      const next = new Set(prev);
-      if (next.has(folderId)) {
-        next.delete(folderId);
-      } else {
-        next.add(folderId);
-      }
-      return next;
-    });
-  };
-
-  const venueString = useMemo(() => {
-    if (!selectedEntry) return '';
-    return [
-      selectedEntry.journal || selectedEntry.booktitle || selectedEntry.publisher,
-      selectedEntry.volume ? `Vol. ${selectedEntry.volume}` : '',
-      selectedEntry.number ? `No. ${selectedEntry.number}` : '',
-      selectedEntry.pages ? `pp. ${selectedEntry.pages}` : '',
-    ]
-      .filter(Boolean)
-      .join(', ');
-  }, [selectedEntry]);
-
-  const doiUrl = useMemo(() => {
-    if (!selectedEntry?.doi) return null;
-    return selectedEntry.doi.startsWith('http')
-      ? selectedEntry.doi
-      : `https://doi.org/${selectedEntry.doi}`;
-  }, [selectedEntry]);
-
-  const cleanAbstract = useMemo(() => {
-    return cleanAbstractText(selectedEntry?.abstract);
-  }, [selectedEntry?.abstract]);
-
-  useEffect(() => {
-    setIsAbstractExpanded(false);
-  }, [selectedKey]);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -816,222 +753,17 @@ export default function CitationPickerModal({
 
         {/* ── 3-Column Cockpit Container ── */}
         <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden bg-background">
-          {/* ══════════════════════════════════════════════════════════════
-              COLUMN 1: Library Directory Tree
-             ══════════════════════════════════════════════════════════════ */}
-          <div
-            className={cn(
-              'w-full md:w-56 shrink-0 bg-muted/20 border-r border-border/70 flex flex-col min-h-0 overflow-hidden',
-              activeView !== 'tree' && 'hidden md:flex',
-            )}
-          >
-            <div
-              role="tree"
-              aria-label="Reference collections"
-              className="flex-1 min-h-0 overflow-y-auto p-2 space-y-4 sidebar-scrollbar"
-            >
-              {/* Scope & System Sections */}
-              <div className="space-y-0.5">
-                <div className="px-2 pb-1 text-11 font-medium text-foreground select-none">
-                  My Library
-                </div>
-
-                <button
-                  type="button"
-                  role="treeitem"
-                  aria-selected={selectedNav === 'all'}
-                  onClick={() => {
-                    setSelectedNav('all');
-                    setActiveView('list');
-                  }}
-                  className={cn(
-                    'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-left',
-                    selectedNav === 'all'
-                      ? 'bg-muted text-foreground font-medium'
-                      : 'text-foreground hover:bg-muted',
-                  )}
-                >
-                  <Library className="size-3.5 shrink-0 text-foreground" strokeWidth={1.75} />
-                  <span className="truncate flex-1">All References</span>
-                  <span className="text-10 font-mono opacity-70">{navCounts.all}</span>
-                </button>
-
-                <button
-                  type="button"
-                  role="treeitem"
-                  aria-selected={selectedNav === 'cited'}
-                  onClick={() => {
-                    setSelectedNav('cited');
-                    setActiveView('list');
-                  }}
-                  className={cn(
-                    'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-left',
-                    selectedNav === 'cited'
-                      ? 'bg-muted text-foreground font-medium'
-                      : 'text-foreground hover:bg-muted',
-                  )}
-                >
-                  <FileText className="size-3.5 shrink-0 text-foreground" strokeWidth={1.75} />
-                  <span className="truncate flex-1">In Document</span>
-                  <span className="text-10 font-mono opacity-70">{navCounts.cited}</span>
-                </button>
-
-                <button
-                  type="button"
-                  role="treeitem"
-                  aria-selected={selectedNav === 'library'}
-                  onClick={() => {
-                    setSelectedNav('library');
-                    setActiveView('list');
-                  }}
-                  className={cn(
-                    'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-left',
-                    selectedNav === 'library'
-                      ? 'bg-muted text-foreground font-medium'
-                      : 'text-foreground hover:bg-muted',
-                  )}
-                >
-                  <BookMarked className="size-3.5 shrink-0 text-foreground" strokeWidth={1.75} />
-                  <span className="truncate flex-1">Workspace Library</span>
-                  <span className="text-10 font-mono opacity-70">{navCounts.library}</span>
-                </button>
-
-                <button
-                  type="button"
-                  role="treeitem"
-                  aria-selected={selectedNav === 'bib'}
-                  onClick={() => {
-                    setSelectedNav('bib');
-                    setActiveView('list');
-                  }}
-                  className={cn(
-                    'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-left',
-                    selectedNav === 'bib'
-                      ? 'bg-muted text-foreground font-medium'
-                      : 'text-foreground hover:bg-muted',
-                  )}
-                >
-                  <FileCode className="size-3.5 shrink-0 text-foreground" strokeWidth={1.75} />
-                  <span className="truncate flex-1">Project .bib</span>
-                  <span className="text-10 font-mono opacity-70">{navCounts.bib}</span>
-                </button>
-              </div>
-
-              {/* Collections Tree Section */}
-              {collectionTree.length > 0 && (
-                <div className="space-y-0.5">
-                  <div className="px-2 pb-1 text-11 font-medium text-foreground select-none">
-                    Collections
-                  </div>
-
-                  {collectionTree.map((rootNode) => {
-                    const isExpanded = expandedFolders.has(rootNode.id);
-                    const isSelected = selectedNav === rootNode.id;
-                    const hasChildren = rootNode.children && rootNode.children.length > 0;
-                    const count = navCounts[rootNode.id] ?? 0;
-
-                    return (
-                      <div key={rootNode.id} className="space-y-0.5">
-                        <div
-                          role="treeitem"
-                          tabIndex={0}
-                          aria-expanded={hasChildren ? isExpanded : undefined}
-                          aria-selected={isSelected}
-                          onClick={() => {
-                            setSelectedNav(rootNode.id);
-                            setActiveView('list');
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              setSelectedNav(rootNode.id);
-                              setActiveView('list');
-                            } else if (e.key === 'ArrowRight' && hasChildren && !isExpanded) {
-                              e.preventDefault();
-                              toggleFolder(rootNode.id, e);
-                            } else if (e.key === 'ArrowLeft' && hasChildren && isExpanded) {
-                              e.preventDefault();
-                              toggleFolder(rootNode.id, e);
-                            }
-                          }}
-                          className={cn(
-                            'w-full h-7 px-2 flex items-center gap-1.5 rounded-md text-12 transition-colors cursor-pointer outline-none select-none text-left group focus-visible:ring-1 focus-visible:ring-primary',
-                            isSelected
-                              ? 'bg-muted text-foreground font-medium'
-                              : 'text-foreground hover:bg-muted',
-                          )}
-                        >
-                          {hasChildren ? (
-                            <button
-                              type="button"
-                              onClick={(e) => toggleFolder(rootNode.id, e)}
-                              className="p-0.5 hover:bg-muted rounded text-foreground"
-                              aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
-                            >
-                              <ChevronRight
-                                className={cn(
-                                  'size-3 transition-transform duration-150',
-                                  isExpanded && 'rotate-90',
-                                )}
-                              />
-                            </button>
-                          ) : (
-                            <span className="w-4 shrink-0" />
-                          )}
-
-                          {isExpanded ? (
-                            <FolderOpen className="size-3.5 shrink-0 text-foreground" />
-                          ) : (
-                            <Folder className="size-3.5 shrink-0 text-foreground" />
-                          )}
-
-                          <span className="truncate flex-1">{rootNode.name}</span>
-                          {count > 0 && (
-                            <span className="text-10 font-mono opacity-70">{count}</span>
-                          )}
-                        </div>
-
-                        {/* Sub-collections */}
-                        {hasChildren && isExpanded && (
-                          <div className="pl-4 space-y-0.5 border-l border-border/50 ml-3.5 my-0.5">
-                            {rootNode.children!.map((subNode) => {
-                              const isSubSelected = selectedNav === subNode.id;
-                              const subCount = navCounts[subNode.id] ?? 0;
-
-                              return (
-                                <button
-                                  key={subNode.id}
-                                  type="button"
-                                  role="treeitem"
-                                  aria-selected={isSubSelected}
-                                  onClick={() => {
-                                    setSelectedNav(subNode.id);
-                                    setActiveView('list');
-                                  }}
-                                  className={cn(
-                                    'w-full h-6 px-2 flex items-center gap-2 rounded-md text-11 transition-colors cursor-pointer outline-none select-none text-left focus-visible:ring-1 focus-visible:ring-primary',
-                                    isSubSelected
-                                      ? 'bg-muted text-foreground font-medium'
-                                      : 'text-foreground hover:bg-muted',
-                                  )}
-                                >
-                                  <Folder className="size-3 shrink-0 text-foreground" />
-                                  <span className="truncate flex-1">{subNode.name}</span>
-                                  {subCount > 0 && (
-                                    <span className="text-10 font-mono opacity-70">{subCount}</span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
+          {/* COLUMN 1: Library Directory Tree */}
+          <CitationCollectionTreePane
+            activeView={activeView}
+            selectedNav={selectedNav}
+            navCounts={navCounts}
+            collectionTree={collectionTree}
+            onSelectNav={(navId) => {
+              setSelectedNav(navId);
+              setActiveView('list');
+            }}
+          />
 
           {/* ══════════════════════════════════════════════════════════════
               COLUMN 2: Paper Cards List & Search
@@ -1192,299 +924,20 @@ export default function CitationPickerModal({
             </div>
           </div>
 
-          {/* ══════════════════════════════════════════════════════════════
-              COLUMN 3: Paper Details & Inspector
-             ══════════════════════════════════════════════════════════════ */}
-          <div
-            className={cn(
-              'flex-1 min-w-0 flex flex-col bg-background h-full overflow-y-auto p-4 sm:p-6 space-y-4 select-text sidebar-scrollbar',
-              activeView !== 'detail' && 'hidden md:flex',
-            )}
-          >
-            {/* Mobile Back Button to Return to List */}
-            <div className="md:hidden flex items-center justify-between pb-2 border-b border-border/60">
-              <button
-                type="button"
-                onClick={() => setActiveView('list')}
-                className="inline-flex items-center gap-1.5 text-xs text-foreground font-medium hover:underline cursor-pointer"
-              >
-                <span>← Back to references list</span>
-              </button>
-            </div>
-
-            {selectedEntry ? (
-              <>
-                {/* 1. Paper Header */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="inline-flex items-center gap-1 font-mono text-11 px-2 py-0.5 rounded bg-muted text-foreground border border-border font-medium">
-                      <span>@{selectedEntry.key}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          copyKey(selectedEntry.key);
-                          setCopiedKey(true);
-                          setTimeout(() => setCopiedKey(false), 1500);
-                        }}
-                        className="size-3.5 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                        title="Copy citation key"
-                        aria-label="Copy citation key"
-                      >
-                        {copiedKey ? (
-                          <Check className="size-2.5 text-primary" />
-                        ) : (
-                          <Copy className="size-2.5" />
-                        )}
-                      </button>
-                    </span>
-
-                    <span className="font-mono text-10 px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border font-medium">
-                      {(selectedEntry.type || 'article').toLowerCase()}
-                    </span>
-
-                    {selectedEntry.year && (
-                      <span className="font-mono text-10 px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
-                        {selectedEntry.year}
-                      </span>
-                    )}
-
-                    {(selectedEntry.source === 'library' ||
-                      selectedEntry.sourceFile === 'workspace-library') && (
-                      <span className="text-10 font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
-                        Library
-                      </span>
-                    )}
-                    {(selectedEntry.source === 'bib' ||
-                      (selectedEntry.sourceFile &&
-                        selectedEntry.sourceFile !== 'workspace-library')) && (
-                      <span className="text-10 font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
-                        .bib
-                      </span>
-                    )}
-                    {selectedEntry.key && citedKeysSet.has(selectedEntry.key.toLowerCase()) && (
-                      <span className="text-10 font-mono px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-medium">
-                        In Document
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Title */}
-                  <h3 className="text-15 font-semibold text-foreground leading-snug tracking-tight">
-                    {selectedEntry.title || 'Untitled reference'}
-                  </h3>
-
-                  {/* Authors */}
-                  {((selectedEntry.authors && selectedEntry.authors.length > 0) ||
-                    selectedEntry.author) && (
-                    <div className="text-xs text-muted-foreground leading-relaxed">
-                      <span className="font-medium text-foreground">Authors: </span>
-                      {selectedEntry.authors && selectedEntry.authors.length > 0
-                        ? selectedEntry.authors.join(', ')
-                        : selectedEntry.author}
-                    </div>
-                  )}
-
-                  {/* Venue / Publication */}
-                  {venueString && (
-                    <div className="text-xs text-muted-foreground leading-relaxed">
-                      <span className="font-medium text-foreground">Publication: </span>
-                      {venueString}
-                    </div>
-                  )}
-
-                  {/* DOI & URL links */}
-                  {(doiUrl || (selectedEntry.url && !selectedEntry.doi)) && (
-                    <div className="flex items-center gap-3 pt-0.5 flex-wrap">
-                      {selectedEntry.doi && doiUrl && (
-                        <div className="flex items-center gap-1.5 text-xs">
-                          <a
-                            href={doiUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 font-mono text-11 text-foreground hover:underline"
-                          >
-                            <span>DOI: {selectedEntry.doi}</span>
-                            <ExternalLink className="size-3 text-foreground" />
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              copyDoi(selectedEntry.doi!);
-                              setCopiedDoi(true);
-                              setTimeout(() => setCopiedDoi(false), 1500);
-                            }}
-                            className="p-1 rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
-                            title="Copy DOI"
-                            aria-label="Copy DOI"
-                          >
-                            {copiedDoi ? (
-                              <Check className="size-3 text-primary" />
-                            ) : (
-                              <Copy className="size-3 text-foreground" />
-                            )}
-                          </button>
-                        </div>
-                      )}
-
-                      {selectedEntry.url && !selectedEntry.doi && (
-                        <a
-                          href={selectedEntry.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-11 text-foreground hover:underline"
-                        >
-                          <span>Open link</span>
-                          <ExternalLink className="size-3 text-foreground" />
-                        </a>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* 2. Quick Actions Row (Citation snippet style selector) */}
-                <div className="flex items-center gap-2 pt-2 border-t border-border flex-wrap">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className="h-7 px-2.5 text-11 rounded border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 transition-colors cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
-                      >
-                        {copiedSnippet ? (
-                          <Check className="size-3 text-primary" />
-                        ) : (
-                          <Code2 className="size-3 text-foreground" />
-                        )}
-                        <span>Copy {selectedOption.label}</span>
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-48 p-1">
-                      {STYLE_OPTIONS.map((opt) => (
-                        <DropdownMenuItem
-                          key={opt.id}
-                          onClick={() => {
-                            setSelectedStyle(opt.id);
-                            const snippet = formatCitationSnippet(selectedEntry.key, opt.id);
-                            copyCitationSnippet(snippet);
-                            setCopiedSnippet(true);
-                            setTimeout(() => setCopiedSnippet(false), 1500);
-                          }}
-                          className={cn(
-                            'flex items-center justify-between px-2.5 py-1.5 text-xs font-mono rounded-md cursor-pointer text-foreground',
-                            selectedStyle === opt.id && 'bg-muted font-medium text-foreground',
-                          )}
-                        >
-                          <span>{opt.label}</span>
-                          <span className="text-10 text-muted-foreground font-sans">
-                            {opt.preview}
-                          </span>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  <button
-                    type="button"
-                    aria-label="Rename citation key"
-                    onClick={() => {
-                      onOpenChange(false);
-                      editorCommandBus.dispatch({
-                        type: 'dialog:open',
-                        dialog: 'rename-citation',
-                        payload: { oldKey: selectedEntry.key },
-                      });
-                    }}
-                    className="h-7 px-2.5 text-11 rounded border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 transition-colors cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
-                  >
-                    <span>Rename Key</span>
-                  </button>
-                </div>
-
-                {/* 3. Abstract Section */}
-                {cleanAbstract && (
-                  <div className="space-y-1.5 pt-2 border-t border-border">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-11 font-medium uppercase tracking-wider text-muted-foreground">
-                        Abstract
-                      </h4>
-                      {cleanAbstract.length > 250 && (
-                        <button
-                          type="button"
-                          onClick={() => setIsAbstractExpanded((prev) => !prev)}
-                          className="text-11 text-primary hover:underline cursor-pointer select-none font-medium"
-                        >
-                          {isAbstractExpanded ? 'Show less' : 'Read more'}
-                        </button>
-                      )}
-                    </div>
-                    <p
-                      className={cn(
-                        'text-12 text-muted-foreground leading-relaxed select-text font-sans',
-                        !isAbstractExpanded && cleanAbstract.length > 250 && 'line-clamp-4',
-                      )}
-                    >
-                      {cleanAbstract}
-                    </p>
-                  </div>
-                )}
-
-                {/* 4. BibTeX Source Section */}
-                <div className="space-y-1.5 pt-2 border-t border-border">
-                  <div className="flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setIsBibtexOpen((prev) => !prev)}
-                      className="text-11 font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors cursor-pointer select-none"
-                    >
-                      <ChevronRight
-                        className={cn(
-                          'size-3.5 transition-transform duration-150',
-                          isBibtexOpen && 'rotate-90',
-                        )}
-                      />
-                      <span>BibTeX</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        copyBibtex(selectedEntry);
-                        setCopiedBibtex(true);
-                        setTimeout(() => setCopiedBibtex(false), 1500);
-                      }}
-                      className="h-6 px-2 text-11 rounded border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1 transition-colors cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
-                    >
-                      {copiedBibtex ? (
-                        <>
-                          <Check className="size-3 text-primary" />
-                          <span className="text-primary font-medium">Copied</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="size-3 text-foreground" />
-                          <span>Copy BibTeX</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  {isBibtexOpen && (
-                    <pre className="p-3 rounded-md bg-muted/20 border border-border text-11 font-mono leading-relaxed text-foreground overflow-x-auto whitespace-pre select-text max-h-48 sidebar-scrollbar">
-                      <code>{formatBibEntryToBibtex(selectedEntry)}</code>
-                    </pre>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground px-6 py-16 space-y-3">
-                <div className="size-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                  <FileText className="size-5" />
-                </div>
-                <h4 className="text-xs font-semibold text-foreground">Select a Reference</h4>
-                <p className="text-11 text-muted-foreground max-w-xs leading-relaxed">
-                  Choose a paper from the list to inspect its details and insert citations into your
-                  document.
-                </p>
-              </div>
-            )}
-          </div>
+          {/* COLUMN 3: Paper Details & Inspector */}
+          <CitationInspectorPane
+            activeView={activeView}
+            selectedEntry={selectedEntry}
+            selectedStyle={selectedStyle}
+            citedKeysSet={citedKeysSet}
+            onSelectStyle={setSelectedStyle}
+            onBackToList={() => setActiveView('list')}
+            onCloseModal={() => onOpenChange(false)}
+            copyCitationSnippet={copyCitationSnippet}
+            copyBibtex={copyBibtex}
+            copyKey={copyKey}
+            copyDoi={copyDoi}
+          />
         </div>
 
         {/* ── Bottom Footer Toolbar: 2 Buttons Only (No divider line) ── */}

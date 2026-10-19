@@ -40,6 +40,7 @@ import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 
 const PdfViewer = dynamic(() => import('@/features/editor/subsystems/compiler').then(m => m.PdfViewer), { ssr: false });
+const DetachedPdfPlaceholder = dynamic(() => import('@/features/editor/subsystems/compiler').then(m => m.DetachedPdfPlaceholder), { ssr: false });
 const ProjectSettingsModal = dynamic(() => import('@/features/editor/ui/modals/project-settings/ProjectSettingsModal'), { ssr: false });
 const DeletedFilesModal = dynamic(() => import('@/features/editor/ui/modals/DeletedFilesModal'), { ssr: false });
 const WordCountModal = dynamic(() => import('@/features/editor/ui/modals/WordCountModal'), { ssr: false });
@@ -162,7 +163,7 @@ export function ModernWorkbenchLayout() {
   const [symbolPaletteOpen, setSymbolPaletteOpen] = useState(false);
 
   // Sync workspace library references into latexSymbolsIndex for instant autocomplete & hover
-  const { data: libraryData } = useViewItems(rawProjectId || 'me', 'all');
+  const { data: libraryData } = useViewItems(rawProjectId || 'user', 'all');
   useEffect(() => {
     if (libraryData?.items && libraryData.items.length > 0) {
       latexSymbolsIndex.setLibraryCitations(libraryData.items);
@@ -294,7 +295,13 @@ export function ModernWorkbenchLayout() {
         activityBar={<ActivityBar />}
         leftSidebar={<PrimarySidebar />}
         editor={!isViewerOnly ? <EditorArea /> : null}
-        preview={!isEditorOnly && !isPdfDetached ? <PdfViewer /> : null}
+        preview={
+          !isEditorOnly
+            ? isPdfDetached
+              ? <DetachedPdfPlaceholder />
+              : <PdfViewer />
+            : null
+        }
       />
 
       {/* Global Modals */}

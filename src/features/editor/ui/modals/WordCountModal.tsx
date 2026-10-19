@@ -39,16 +39,15 @@ import {
   countLatexWords,
   type TeXcountStats,
 } from '@/features/editor/domain/document/word-count';
+import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 
 export { countLatexWords, type TeXcountStats };
 
-export interface WordCountDialogFile {
+export interface WordCountModalFile {
   id: string;
   title: string;
   content?: unknown;
 }
-
-export type WordCountModalFile = WordCountDialogFile;
 
 export interface WordCountModalProps {
   open: boolean;
@@ -56,25 +55,11 @@ export interface WordCountModalProps {
   content?: string;
   selectedText?: string;
   activeFileName?: string;
-  projectFiles?: WordCountDialogFile[];
+  projectFiles?: WordCountModalFile[];
   onInsertSnippet?: (snippet: string) => void;
 }
 
-export type WordCountDialogProps = WordCountModalProps;
-
 export type WordCountScope = 'document' | 'project' | 'selection';
-
-function extractFileText(file?: WordCountDialogFile): string {
-  if (!file || !file.content) return '';
-  if (typeof file.content === 'string') return file.content;
-  if (typeof file.content === 'object') {
-    const obj = file.content as Record<string, unknown>;
-    if (typeof obj.source === 'string') return obj.source;
-    if (typeof obj.content === 'string') return obj.content;
-    if (typeof obj.text === 'string') return obj.text;
-  }
-  return '';
-}
 
 export function WordCountModal({
   open,
@@ -84,7 +69,7 @@ export function WordCountModal({
   activeFileName = 'main.tex',
   projectFiles = [],
   onInsertSnippet,
-}: WordCountDialogProps) {
+}: WordCountModalProps) {
   const hasSelection = Boolean(selectedText && selectedText.trim().length > 0);
 
   // Initialize scope based on active selection presence
@@ -115,7 +100,7 @@ export function WordCountModal({
   const aggregatedProjectContent = useMemo(() => {
     if (projectTexFiles.length === 0) return content;
     return projectTexFiles
-      .map((f) => extractFileText(f))
+      .map((f) => extractDocumentContentString(f?.content))
       .filter(Boolean)
       .join('\n\n');
   }, [projectTexFiles, content]);
@@ -153,7 +138,7 @@ export function WordCountModal({
   const perFileStats = useMemo(() => {
     if (scope !== 'project' || projectTexFiles.length <= 1) return [];
     return projectTexFiles.map((file) => {
-      const fileText = extractFileText(file);
+      const fileText = extractDocumentContentString(file?.content);
       const fileCount = countLatexWords(fileText);
       return {
         id: file.id,
@@ -490,5 +475,5 @@ export function WordCountModal({
   );
 }
 
-export const WordCountDialog = WordCountModal;
 export default WordCountModal;
+

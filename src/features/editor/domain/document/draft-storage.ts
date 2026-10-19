@@ -31,26 +31,6 @@ export interface ProjectFileSnapshot {
   updatedAt: number;
 }
 
-export type OfflineMutationType = 'update_content' | 'create_file' | 'delete_file' | 'rename_file';
-
-export interface OfflineMutation {
-  id?: number;
-  fileId: string;
-  projectId?: string;
-  type: OfflineMutationType;
-  payload: {
-    content?: string;
-    title?: string;
-    filePath?: string;
-    parentFolderId?: string;
-    [key: string]: unknown;
-  };
-  status: 'pending' | 'processing' | 'failed';
-  retryCount: number;
-  error?: string;
-  timestamp: number;
-}
-
 export interface IDraftStorageSink {
   saveDraft(fileId: string, content: string, projectId?: string, title?: string): Promise<void>;
   getDraft(fileId: string): Promise<DraftSnapshot | null>;
@@ -62,17 +42,32 @@ export interface IDraftStorageSink {
 const DB_NAME = 'flux_offline_drafts_v1';
 const STORE_DRAFTS = 'drafts';
 const STORE_PROJECT_FILES = 'project_files';
-const STORE_MUTATION_QUEUE = 'mutation_queue';
 const DB_VERSION = 2;
 const LOCAL_STORAGE_PREFIX = 'flux_draft:';
+const MAX_MEMORY_DRAFTS = 50;
+const MAX_PROJECT_FILES_CACHE = 50;
 
 export class DraftStorageServiceRegistry implements IDraftStorageSink {
   private dbPromise: Promise<IDBDatabase | null> | null = null;
   private readonly memoryCache = new Map<string, DraftSnapshot>();
   private readonly projectFilesMemoryCache = new Map<string, ProjectFileSnapshot>();
-  private readonly mutationQueueMemory: OfflineMutation[] = [];
-  private nextMutationId = 1;
   private isIndexedDbAvailable = false;
+
+  private setMemoryDraftBounded(fileId: string, snapshot: DraftSnapshot): void {
+    if (this.memoryCache.size >= MAX_MEMORY_DRAFTS && !this.memoryCache.has(fileId)) {
+      const oldestKey = this.memoryCache.keys().next().value;
+      if (oldestKey) this.memoryCache.delete(oldestKey);
+    }
+    this.memoryCache.set(fileId, snapshot);
+  }
+
+  private setProjectFileMemoryBounded(fileId: string, snapshot: ProjectFileSnapshot): void {
+    if (this.projectFilesMemoryCache.size >= MAX_PROJECT_FILES_CACHE && !this.projectFilesMemoryCache.has(fileId)) {
+      const oldestKey = this.projectFilesMemoryCache.keys().next().value;
+      if (oldestKey) this.projectFilesMemoryCache.delete(oldestKey);
+    }
+    this.projectFilesMemoryCache.set(fileId, snapshot);
+  }
 
   constructor() {
     if (typeof window !== 'undefined' && 'indexedDB' in window && process.env.NODE_ENV !== 'test') {
@@ -82,7 +77,7 @@ export class DraftStorageServiceRegistry implements IDraftStorageSink {
   }
 
   /**
-   * Initializes native IndexedDB connection with upgraded schema for Project Files and Mutation Queue.
+   * Initializes native IndexedDB connection with upgraded schema for Project Files.
    */
   private initDatabase(): Promise<IDBDatabase | null> {
     if (this.dbPromise) return this.dbPromise;
@@ -110,17 +105,6 @@ export class DraftStorageServiceRegistry implements IDraftStorageSink {
             const fileStore = db.createObjectStore(STORE_PROJECT_FILES, { keyPath: 'id' });
             fileStore.createIndex('projectId', 'projectId', { unique: false });
             fileStore.createIndex('updatedAt', 'updatedAt', { unique: false });
-          }
-
-          // Store 3: Offline Mutation Queue for Conflict-Free Replay
-          if (!db.objectStoreNames.contains(STORE_MUTATION_QUEUE)) {
-            const queueStore = db.createObjectStore(STORE_MUTATION_QUEUE, {
-              keyPath: 'id',
-              autoIncrement: true,
-            });
-            queueStore.createIndex('fileId', 'fileId', { unique: false });
-            queueStore.createIndex('status', 'status', { unique: false });
-            queueStore.createIndex('timestamp', 'timestamp', { unique: false });
           }
         };
 
@@ -166,7 +150,7 @@ export class DraftStorageServiceRegistry implements IDraftStorageSink {
       projectId,
       title,
     };
-    this.memoryCache.set(fileId, snapshot);
+    this.setMemoryDraftBounded(fileId, snapshot);
     return snapshot;
   }
 
@@ -222,7 +206,7 @@ export class DraftStorageServiceRegistry implements IDraftStorageSink {
       const raw = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}${fileId}`);
       if (raw) {
         const parsed = JSON.parse(raw) as DraftSnapshot;
-        this.memoryCache.set(fileId, parsed);
+        this.setMemoryDraftBounded(fileId, parsed);
         return parsed;
       }
     } catch {
@@ -255,7 +239,7 @@ export class DraftStorageServiceRegistry implements IDraftStorageSink {
         });
 
         if (snapshot) {
-          this.memoryCache.set(fileId, snapshot);
+          this.setMemoryDraftBounded(fileId, snapshot);
           return snapshot;
         }
       }
@@ -414,7 +398,7 @@ export class DraftStorageServiceRegistry implements IDraftStorageSink {
    */
   public async saveProjectFileSnapshot(file: ProjectFileSnapshot): Promise<void> {
     if (!file?.id) return;
-    this.projectFilesMemoryCache.set(file.id, { ...file });
+    this.setProjectFileMemoryBounded(file.id, { ...file });
 
     try {
       const db = await this.initDatabase();
@@ -436,7 +420,7 @@ export class DraftStorageServiceRegistry implements IDraftStorageSink {
 
     for (const file of files) {
       if (file?.id) {
-        this.projectFilesMemoryCache.set(file.id, { ...file });
+        this.setProjectFileMemoryBounded(file.id, { ...file });
       }
     }
 
@@ -477,7 +461,7 @@ export class DraftStorageServiceRegistry implements IDraftStorageSink {
         });
 
         if (snapshot) {
-          this.projectFilesMemoryCache.set(fileId, snapshot);
+          this.setProjectFileMemoryBounded(fileId, snapshot);
           return snapshot;
         }
       }
@@ -554,220 +538,14 @@ export class DraftStorageServiceRegistry implements IDraftStorageSink {
     }
   }
 
-  // =========================================================================
-  // TIER 3 STORE: OFFLINE MUTATION REPLAY QUEUE (ORDERED & COALESCING)
-  // =========================================================================
-
   /**
-   * Enqueues an offline mutation for later server synchronization.
-   *
-   * Write Coalescing Optimization:
-   * If an 'update_content' mutation is already pending for this fileId, update
-   * its payload and timestamp instead of creating redundant writes.
+   * Clears in-memory caches to release memory upon project switch or session close.
    */
-  public async enqueueMutation(
-    mutationData: Omit<OfflineMutation, 'id' | 'timestamp' | 'status' | 'retryCount'>
-  ): Promise<OfflineMutation> {
-    const now = Date.now();
-
-    // 1. Coalesce consecutive update_content mutations for the same fileId
-    if (mutationData.type === 'update_content') {
-      const existingIdx = this.mutationQueueMemory.findIndex(
-        (m) => m.fileId === mutationData.fileId && m.type === 'update_content' && m.status !== 'processing'
-      );
-
-      if (existingIdx !== -1) {
-        const existing = this.mutationQueueMemory[existingIdx];
-        existing.payload = { ...existing.payload, ...mutationData.payload };
-        existing.timestamp = now;
-        existing.status = 'pending';
-
-        // Update IndexedDB if persistent ID exists
-        if (existing.id) {
-          try {
-            const db = await this.initDatabase();
-            if (db) {
-              const tx = db.transaction(STORE_MUTATION_QUEUE, 'readwrite');
-              const store = tx.objectStore(STORE_MUTATION_QUEUE);
-              store.put(existing);
-            }
-          } catch {}
-        }
-
-        return existing;
-      }
-    }
-
-    // 2. Create new mutation entry
-    const newMutation: OfflineMutation = {
-      ...mutationData,
-      id: this.nextMutationId++,
-      status: 'pending',
-      retryCount: 0,
-      timestamp: now,
-    };
-
-    this.mutationQueueMemory.push(newMutation);
-
-    // Persist to IndexedDB
-    try {
-      const db = await this.initDatabase();
-      if (db) {
-        await new Promise<void>((resolve) => {
-          const tx = db.transaction(STORE_MUTATION_QUEUE, 'readwrite');
-          const store = tx.objectStore(STORE_MUTATION_QUEUE);
-          // Omit id if autoIncrement in IndexedDB, or write back the returned key
-          const { id, ...recordWithoutId } = newMutation;
-          const req = store.add(recordWithoutId);
-          req.onsuccess = (e) => {
-            const assignedId = (e.target as IDBRequest).result as number;
-            newMutation.id = assignedId;
-            resolve();
-          };
-          req.onerror = () => resolve();
-        });
-      }
-    } catch {
-      // Absorbed; in-memory queue will still serve as fallback
-    }
-
-    return newMutation;
-  }
-
-  /**
-   * Retrieves all pending or failed mutations sorted in FIFO sequence.
-   */
-  public async getPendingMutations(): Promise<OfflineMutation[]> {
-    // 1. In test or memory-only mode
-    if (typeof window === 'undefined' || !this.isIndexedDbAvailable || process.env.NODE_ENV === 'test') {
-      return [...this.mutationQueueMemory]
-        .filter((m) => m.status === 'pending' || m.status === 'failed')
-        .sort((a, b) => (a.id || 0) - (b.id || 0));
-    }
-
-    // 2. Retrieve from IndexedDB
-    try {
-      const db = await this.initDatabase();
-      if (db) {
-        const mutations = await new Promise<OfflineMutation[]>((resolve) => {
-          const tx = db.transaction(STORE_MUTATION_QUEUE, 'readonly');
-          const store = tx.objectStore(STORE_MUTATION_QUEUE);
-          const req = store.getAll();
-          req.onsuccess = () => {
-            const results = (req.result || []) as OfflineMutation[];
-            resolve(
-              results
-                .filter((m) => m.status === 'pending' || m.status === 'failed')
-                .sort((a, b) => (a.id || 0) - (b.id || 0))
-            );
-          };
-          req.onerror = () => resolve([]);
-        });
-
-        // Sync back into memory if available
-        if (mutations.length > 0) {
-          for (const m of mutations) {
-            if (!this.mutationQueueMemory.some((existing) => existing.id === m.id)) {
-              this.mutationQueueMemory.push(m);
-            }
-          }
-          return mutations;
-        }
-      }
-    } catch {
-      // Fallback to memory
-    }
-
-    return [...this.mutationQueueMemory]
-      .filter((m) => m.status === 'pending' || m.status === 'failed')
-      .sort((a, b) => (a.id || 0) - (b.id || 0));
-  }
-
-  /**
-   * Updates status of an in-flight mutation (e.g., 'processing' or 'failed').
-   */
-  public async updateMutationStatus(
-    id: number,
-    status: 'pending' | 'processing' | 'failed',
-    error?: string
-  ): Promise<void> {
-    const item = this.mutationQueueMemory.find((m) => m.id === id);
-    if (item) {
-      item.status = status;
-      if (status === 'failed') item.retryCount++;
-      if (error) item.error = error;
-    }
-
-    try {
-      const db = await this.initDatabase();
-      if (db) {
-        const tx = db.transaction(STORE_MUTATION_QUEUE, 'readwrite');
-        const store = tx.objectStore(STORE_MUTATION_QUEUE);
-        const req = store.get(id);
-        req.onsuccess = () => {
-          const record = req.result as OfflineMutation | undefined;
-          if (record) {
-            record.status = status;
-            if (status === 'failed') record.retryCount = (record.retryCount || 0) + 1;
-            if (error) record.error = error;
-            store.put(record);
-          }
-        };
-      }
-    } catch {
-      // Ignore
-    }
-  }
-
-  /**
-   * Removes a mutation after successful synchronization.
-   */
-  public async removeMutation(id: number): Promise<void> {
-    const idx = this.mutationQueueMemory.findIndex((m) => m.id === id);
-    if (idx !== -1) {
-      this.mutationQueueMemory.splice(idx, 1);
-    }
-
-    try {
-      const db = await this.initDatabase();
-      if (db) {
-        const tx = db.transaction(STORE_MUTATION_QUEUE, 'readwrite');
-        const store = tx.objectStore(STORE_MUTATION_QUEUE);
-        store.delete(id);
-      }
-    } catch {
-      // Ignore
-    }
-  }
-
-  /**
-   * Clears all pending mutations from memory and IndexedDB.
-   */
-  public async clearPendingMutations(): Promise<void> {
-    this.mutationQueueMemory.length = 0;
-
-    try {
-      const db = await this.initDatabase();
-      if (db) {
-        const tx = db.transaction(STORE_MUTATION_QUEUE, 'readwrite');
-        const store = tx.objectStore(STORE_MUTATION_QUEUE);
-        store.clear();
-      }
-    } catch {
-      // Ignore
-    }
-  }
-
-  /**
-   * Clears memory cache across drafts, project files, and mutations.
-   * Useful for testing or cache resets.
-   */
-  public clearMemory(): void {
+  public clearMemoryCaches(): void {
     this.memoryCache.clear();
     this.projectFilesMemoryCache.clear();
-    this.mutationQueueMemory.length = 0;
-    this.nextMutationId = 1;
   }
 }
 
 export const draftStorageService = new DraftStorageServiceRegistry();
+

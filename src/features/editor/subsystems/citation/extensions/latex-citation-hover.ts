@@ -14,32 +14,23 @@
  */
 
 import { hoverTooltip, type Tooltip, type EditorView } from '@codemirror/view';
-import { latexSymbolsIndex, type BibEntry } from '@/features/editor/domain/latex/latex-symbols-index';
+import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
+import type { BibEntry } from '../model/bib-parser';
 import {
+  LATEX_CITE_REGEX,
+  PANDOC_BRACKET_REGEX,
   isVietnameseAuthorName,
-  formatShortAuthor,
   formatInTextCitationPreview,
-  formatBibliographyPreview,
 } from '@/features/editor/subsystems/citation/model/citation-formatter';
 import { formatRetractionReason } from '@/features/library/domain/retraction';
-import { getDefaultCommandDispatcher } from '@/features/editor/core/engine/adapters/editor-command-port';
-
-/**
- * LaTeX citation command regex matching \cite, \citep, \citet, \autocite, \parencite, etc.
- * Supports optional * and bracketed arguments e.g. \citep[see][p. 10]{key1, key2}
- */
-const LATEX_CITE_REGEX =
-  /\\(?:auto|paren|text|foot|no|new|short)?cite(?:p|t|alt|alp|author|year|date|num|a)?\*?(?:\[[^\]]*\])*(?:\[[^\]]*\])*\{([^}]+)\}/gi;
-
-/**
- * Pandoc-style bracketed markdown citations e.g. [@key1; @key2] or [see @key, p. 12]
- */
-const PANDOC_BRACKET_REGEX = /\[([^\]]*@[a-zA-Z0-9_:-]+[^\]]*)\]/g;
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 
 /**
  * Standalone inline @citekey in markdown text
  */
 const INLINE_CITEKEY_REGEX = /(^|[\s(])@([a-zA-Z0-9_:-]+)/g;
+
+const PANDOC_AT_KEY_REGEX = /@([a-zA-Z0-9_:-]+)/g;
 
 export function citationHoverSource(
   view: EditorView,
@@ -48,9 +39,13 @@ export function citationHoverSource(
 ): Tooltip | null {
   const line = view.state.doc.lineAt(pos);
   const lineText = line.text;
+  if (lineText.indexOf('\\') === -1 && lineText.indexOf('@') === -1) {
+    return null;
+  }
   const col = pos - line.from;
 
   // 1. Check LaTeX citation macros on current line
+  if (lineText.indexOf('cite') !== -1) {
     LATEX_CITE_REGEX.lastIndex = 0;
     let match: RegExpExecArray | null;
     while ((match = LATEX_CITE_REGEX.exec(lineText)) !== null) {
@@ -84,8 +79,11 @@ export function citationHoverSource(
         }
       }
     }
+  }
 
-    // 2. Check Pandoc bracketed citations [@key1; @key2]
+  // 2. Check Pandoc bracketed citations [@key1; @key2] and inline @citekey
+  if (lineText.indexOf('@') !== -1) {
+    let match: RegExpExecArray | null;
     PANDOC_BRACKET_REGEX.lastIndex = 0;
     while ((match = PANDOC_BRACKET_REGEX.exec(lineText)) !== null) {
       const bracketContent = match[1];
@@ -93,9 +91,9 @@ export function citationHoverSource(
       const bracketEndCol = bracketStartCol + bracketContent.length;
 
       if (col >= bracketStartCol && col <= bracketEndCol) {
-        const atRegex = /@([a-zA-Z0-9_:-]+)/g;
+        PANDOC_AT_KEY_REGEX.lastIndex = 0;
         let atMatch: RegExpExecArray | null;
-        while ((atMatch = atRegex.exec(bracketContent)) !== null) {
+        while ((atMatch = PANDOC_AT_KEY_REGEX.exec(bracketContent)) !== null) {
           const key = atMatch[1];
           const keyStart = bracketStartCol + atMatch.index;
           const keyEnd = keyStart + 1 + key.length;
@@ -119,8 +117,9 @@ export function citationHoverSource(
         return createCitationTooltip(line.from + keyStart, line.from + keyEnd, key);
       }
     }
+  }
 
-    return null;
+  return null;
 }
 
 export const latexCitationHoverTooltip = hoverTooltip(citationHoverSource, { hideOnChange: true });
@@ -156,10 +155,9 @@ function createCitationTooltip(from: number, to: number, citeKey: string): Toolt
  */
 function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: string): void {
   const typeStr = (entry.type || 'article').toUpperCase();
-  const isVn = isVietnameseAuthorName(entry.author || '');
-  const authorShort = formatShortAuthor(entry.author);
+  const primaryAuthor = entry.authors?.[0] || '';
+  const isVn = isVietnameseAuthorName(primaryAuthor);
   const inTextPreview = formatInTextCitationPreview(entry);
-  const bibPreview = formatBibliographyPreview(entry);
 
   // 1. Header Row (Type badge, Citekey, Source)
   const header = document.createElement('div');
@@ -202,7 +200,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
     bibBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      getDefaultCommandDispatcher()({
+      editorCommandBus.dispatch({
         type: 'workspace:open-file',
         fileId: entry.sourceFile!,
         filePath: entry.sourceFile!,
@@ -255,12 +253,10 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
   }
 
   // 3. Authors
-  if (entry.author) {
+  if (entry.authors && entry.authors.length > 0) {
     const authorEl = document.createElement('div');
     authorEl.className = 'text-xs text-muted-foreground mb-2 line-clamp-2';
-    // Display all authors joined cleanly
-    const authorList = entry.author.split(/\s+and\s+|;\s*/i).join(', ');
-    authorEl.textContent = authorList;
+    authorEl.textContent = entry.authors.join(', ');
     container.appendChild(authorEl);
   }
 
@@ -333,10 +329,11 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
   renameBtn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    getDefaultCommandDispatcher()({
+    const targetKey = entry.key || citeKey;
+    editorCommandBus.dispatch({
       type: 'dialog:open',
       dialog: 'rename-symbol',
-      payload: { type: 'citation', oldKey: entry.key || citeKey },
+      payload: { symbolType: 'citation', symbolName: targetKey, oldKey: targetKey },
     });
   });
   footerRow.appendChild(renameBtn);
@@ -351,7 +348,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
     jumpBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      getDefaultCommandDispatcher()({
+      editorCommandBus.dispatch({
         type: 'workspace:open-file',
         fileId: entry.sourceFile!,
         filePath: entry.sourceFile!,
@@ -409,7 +406,7 @@ function renderUnresolvedCard(container: HTMLElement, citeKey: string): void {
   openBtn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    getDefaultCommandDispatcher()({ type: 'dialog:open', dialog: 'citation-picker' });
+    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'citation-picker' });
   });
   actionRow.appendChild(openBtn);
 

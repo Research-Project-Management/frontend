@@ -10,7 +10,7 @@ import {
   runLatexLinter,
   type RetractedItemInfo,
   type LatexLintDiagnostic,
-} from '@/features/editor/subsystems/diagnostics/linter/latex-linter';
+} from '@/features/editor/subsystems/diagnostics/linter/latex-linter.rules';
 import { lintLatexDocument } from '@/features/editor/subsystems/diagnostics/extensions/latex-linter-core';
 
 describe('LaTeX Syntax & Structural Diagnostics Engine (Overleaf Parity)', () => {

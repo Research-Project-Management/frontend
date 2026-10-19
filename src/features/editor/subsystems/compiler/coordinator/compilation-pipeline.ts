@@ -20,6 +20,7 @@ import {
   type ForwardSyncResult,
 } from '@/features/editor/sdk/manuscript.service';
 import { parseCompileErrors, type ParsedCompileError } from '@/features/editor/domain/latex/latex-structure';
+import { sessionCoordinator } from '@/features/editor/core';
 import { logger } from '@/shared/lib/utils';
 import {
   type SyncTeXNode,
@@ -55,43 +56,126 @@ export {
 
 export async function generateThumbnail(pdfBlob: Blob): Promise<string | null> {
   if (typeof window === 'undefined') return null;
+  let loadingOp: ReturnType<(typeof import('react-pdf'))['pdfjs']['getDocument']> | null = null;
+  let pdf: import('pdfjs-dist').PDFDocumentProxy | null = null;
+  let page: import('pdfjs-dist').PDFPageProxy | null = null;
+  let canvas: HTMLCanvasElement | null = null;
   try {
     const { setupPdfWorker } = await import('@/shared/lib/pdfjs-worker');
     setupPdfWorker();
     const { pdfjs } = await import('react-pdf');
     const arrayBuffer = await pdfBlob.arrayBuffer();
-    const loadingOp = pdfjs.getDocument({
+    loadingOp = pdfjs.getDocument({
       data: new Uint8Array(arrayBuffer),
     });
-    const pdf = await loadingOp.promise;
-    const page = await pdf.getPage(1);
-    const viewport = page.getViewport({ scale: 1.5 });
-    const canvas = document.createElement('canvas');
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
+    pdf = await loadingOp.promise;
+    page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 0.6 });
+    canvas = document.createElement('canvas');
+    canvas.width = Math.round(viewport.width);
+    canvas.height = Math.round(viewport.height);
     const ctx = canvas.getContext('2d')!;
     await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
     return dataUrl.split(',')[1];
   } catch {
     return null;
+  } finally {
+    try {
+      page?.cleanup();
+      await pdf?.cleanup();
+      await pdf?.destroy();
+      await loadingOp?.destroy();
+    } catch {
+      // Ignore worker destruction errors during shutdown
+    }
+    if (canvas) {
+      canvas.width = 0;
+      canvas.height = 0;
+    }
   }
 }
 
-// ── Compile Engine Execution Types (Pure Domain Re-exports) ─────────────────
+// ── Compile Engine Execution Types ────────────────────────────────────────────
 
-export type {
-  DirtyFileItem,
-  CompileExecutionOptions,
-  CompileExecutionResult,
-  CompilerExecutionPort,
-} from '@/features/editor/subsystems/compiler/coordinator/compiler-execution-port';
+export type { CompilerDiagnostic, ForwardSyncResult };
 
-import type {
-  CompileExecutionOptions,
-  CompileExecutionResult,
-  CompilerExecutionPort,
-} from '@/features/editor/subsystems/compiler/coordinator/compiler-execution-port';
+export interface DirtyFileItem {
+  fileId: string;
+  id?: string;
+  path?: string;
+  content: string;
+}
+
+export interface FlushBarrierDeps {
+  dirtyFiles: DirtyFileItem[];
+  projectId?: string;
+  pageId?: string;
+}
+
+export interface CompileExecutionOptions {
+  projectId: string;
+  pageId?: string;
+  content?: string;
+  source?: string;
+  files?: Record<string, string>;
+  mainFile?: string;
+  engine?: string;
+  texLiveVersion?: string;
+  draft?: boolean;
+  useCache?: boolean;
+  forceClean?: boolean;
+  stopOnFirstError?: boolean;
+  timeoutMs?: number;
+  signal?: AbortSignal;
+  dirtyFiles?: DirtyFileItem[];
+  onPhaseChange?: (phase: 'syncing' | 'compiling') => void;
+  onThumbnailGenerated?: (dataUrl: string) => void;
+}
+
+export interface CompileExecutionResult {
+  status?: 'success' | 'error' | 'aborted';
+  success: boolean;
+  aborted?: boolean;
+  pdfUrl?: string | null;
+  pdfBlob?: Blob | null;
+  rawLog?: string;
+  logs?: string;
+  error?: string | null;
+  errors?: ParsedCompileError[];
+  diagnostics?: CompilerDiagnostic[];
+  rawSynctex?: string | null;
+  synctexData?: string | null;
+  synctexPath?: string | null;
+  synctexMap?: SyncTeXMap | null;
+  synctexPromise?: Promise<SyncTeXMap | null>;
+  compileDurationMs?: number | null;
+  compiledAt?: Date | number | null;
+  buildId?: string;
+  cached?: boolean;
+  flushedFileIds?: string[];
+  flushErrors?: Array<{ fileId: string; error: unknown }>;
+}
+
+export interface CompilerExecutionEngine {
+  compile(opts: CompileExecutionOptions): Promise<CompileExecutionResult>;
+  cancelInFlightCompile(projectId?: string): void;
+  forceSync?(projectId: string): Promise<{ synced: string[] }>;
+  resolveForwardRemote?(
+    projectId: string,
+    file: string,
+    line: number,
+    column?: number,
+  ): Promise<ForwardSyncResult | null>;
+  resolveReverseRemote?(
+    projectId: string,
+    page: number,
+    x: number,
+    y: number,
+  ): Promise<{ sourcePath: string | null; line: number } | null>;
+}
+
+export type CompilerExecutionPort = CompilerExecutionEngine;
 
 // Active compile controller for in-flight cancellation (Overleaf debounce & anti-stacking)
 let activeCompileController: AbortController | null = null;
@@ -123,10 +207,10 @@ export const LatexCompilerEngine = {
       engine,
       draft,
       useCache,
-      dirtyFiles,
       onPhaseChange,
       onThumbnailGenerated,
     } = opts;
+    const dirtyFiles = opts.dirtyFiles ?? [];
 
     // 1. In-flight cancellation: Abort any previous compilation still running
     if (activeCompileController) {
@@ -140,31 +224,40 @@ export const LatexCompilerEngine = {
     activeCompileProjectId = projectId || null;
     const currentSignal = controller.signal;
 
-    // 2. Draft content assembly: Pass dirty files directly in payload to avoid blocking HTTP PUTs
-    const flushedFileIds: string[] = dirtyFiles.map((f) => f.fileId);
+    // 2. Pre-compile dirty-file sync: await non-realtime dirty file flushes before compileLatex
+    //    so POST /manuscripts/compiler/compile never races against in-flight PUT /manuscripts/docs/:id requests.
+    const flushedFileIds: string[] = [];
     const flushErrors: Array<{ fileId: string; error: unknown }> = [];
 
-    // Non-blocking background persistence: fires asynchronously without delaying compilation (0ms latency)
     if (dirtyFiles.length > 0 || projectId) {
       const flushTasks: Promise<unknown>[] = [];
       if (projectId) {
         flushTasks.push(manuscriptService.updater.flushProject(projectId).catch(() => {}));
       }
       for (const { fileId, content } of dirtyFiles) {
+        if (sessionCoordinator.isRealtimeConnected(fileId)) {
+          flushedFileIds.push(fileId);
+          continue;
+        }
         flushTasks.push(
-          flushPageContent(fileId, content).catch((err: unknown) => {
-            logger.debug(`[LatexCompilerEngine] Background flush notice on ${fileId}`, { error: err });
-          }),
+          flushPageContent(fileId, content)
+            .then(() => {
+              flushedFileIds.push(fileId);
+            })
+            .catch((err: unknown) => {
+              flushErrors.push({ fileId, error: err });
+              logger.debug(`[LatexCompilerEngine] Flush notice on ${fileId}`, { error: err });
+            }),
         );
       }
-      void Promise.allSettled(flushTasks);
+      await Promise.allSettled(flushTasks);
     }
 
-    // 3. Compile: Instantly enter compiling phase
+    // 3. Compile: Enter compiling phase
     onPhaseChange?.('compiling');
 
     // Resolve source content from dirtyFiles, options, or active page
-    let sourceContent = opts.source;
+    let sourceContent = opts.source ?? opts.content;
     const filesMap: Record<string, string> = { ...(opts.files || {}) };
 
     for (const item of dirtyFiles) {
@@ -177,13 +270,13 @@ export const LatexCompilerEngine = {
     const payload: CompileLatexPayload = {
       project_id: projectId || undefined,
       page_id: pageId || undefined,
-      main_file: mainFile,
+      main_file: mainFile ?? null,
       source: sourceContent || undefined,
       files: Object.keys(filesMap).length > 0 ? filesMap : undefined,
-      engine,
+      engine: engine ?? 'pdflatex',
       texLiveVersion: opts.texLiveVersion,
-      draft,
-      use_cache: useCache,
+      draft: draft ?? false,
+      use_cache: useCache ?? true,
       force_clean: opts.forceClean,
       stop_on_first_error: opts.stopOnFirstError,
     };
@@ -192,7 +285,9 @@ export const LatexCompilerEngine = {
       if (currentSignal.aborted) {
         logger.debug('[LatexCompilerEngine] Compile request was aborted before execution.');
         return {
+          status: 'aborted',
           success: false,
+          aborted: true,
           error: 'Compilation superseded',
           logs: '',
           errors: [],
@@ -206,7 +301,9 @@ export const LatexCompilerEngine = {
       if (currentSignal.aborted || data?.error?.toLowerCase().includes('aborted')) {
         logger.debug('[LatexCompilerEngine] Compile request aborted or superseded.');
         return {
+          status: 'aborted',
           success: false,
+          aborted: true,
           error: 'Compilation superseded',
           logs: '',
           errors: [],
@@ -255,12 +352,20 @@ export const LatexCompilerEngine = {
             : Promise.resolve<SyncTeXMap | null>(null);
 
           if (blob && onThumbnailGenerated) {
-            generateThumbnail(blob).then((base64) => {
-              if (base64) onThumbnailGenerated(base64);
-            });
+            const runGen = () => {
+              generateThumbnail(blob).then((base64) => {
+                if (base64) onThumbnailGenerated(base64);
+              });
+            };
+            if (typeof requestIdleCallback === 'function') {
+              requestIdleCallback(runGen, { timeout: 2000 });
+            } else {
+              setTimeout(runGen, 150);
+            }
           }
 
           return {
+            status: 'success',
             success: true,
             pdfUrl: url,
             pdfBlob: blob || undefined,
@@ -280,6 +385,7 @@ export const LatexCompilerEngine = {
       const parsedErrors = parseCompileErrors(log);
 
       return {
+        status: 'error',
         success: false,
         error: data?.error || 'LaTeX compilation failed to produce a PDF.',
         logs: log,
@@ -297,7 +403,9 @@ export const LatexCompilerEngine = {
       if (isAborted) {
         logger.debug('[LatexCompilerEngine] Previous compile request aborted in favor of newer request.');
         return {
+          status: 'aborted',
           success: false,
+          aborted: true,
           error: 'Compilation superseded',
           logs: '',
           errors: [],
@@ -310,6 +418,7 @@ export const LatexCompilerEngine = {
       const parsedErrors = parseCompileErrors(errStr);
 
       return {
+        status: 'error',
         success: false,
         error: errStr,
         logs: errStr,

@@ -19,7 +19,7 @@ import { LayoutGroup } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { X, FileText } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
-import { useTabsStore, useSettingsStore, type EditorTab, editorCommandBus, sessionCoordinator } from '@/features/editor/core';
+import { useWorkspaceStore, useSettingsStore, type EditorTab, editorCommandBus } from '@/features/editor/core';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 
 // ── Single Tab Item (Overleaf 1:1) ───────────────────────────────────────────
@@ -126,8 +126,7 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
   const searchParams = useSearchParams();
   const tabListRef = useRef<HTMLDivElement>(null);
 
-  const rawTabs = useTabsStore((s) => s.tabsByProject[rootPageId] ?? EMPTY_TABS);
-  const closeTab = useTabsStore((s) => s.closeTab);
+  const rawTabs = useWorkspaceStore((s) => s.tabsByProject[rootPageId] ?? EMPTY_TABS);
 
   // Guarantee no duplicate tabs are rendered, prune ghost tabs, and normalize root to main.tex
   const tabs = useMemo(() => {
@@ -166,18 +165,6 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
     }
     return result;
   }, [rawTabs, rootPageId, availableFiles]);
-
-  const updateQueryParams = useCallback((newFile: string | null) => {
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      if (newFile && newFile !== rootPageId && newFile !== `${rootPageId}-main`) {
-        url.searchParams.set('file', newFile);
-      } else {
-        url.searchParams.delete('file');
-      }
-      window.history.replaceState(window.history.state, '', url.pathname + url.search);
-    }
-  }, [rootPageId]);
 
   const currentParam = searchParams.get('file');
 
@@ -293,5 +280,5 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
   );
 }
 
-export const TabBar = EditorTabs;
 export default EditorTabs;
+

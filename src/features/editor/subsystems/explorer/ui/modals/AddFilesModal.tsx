@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/shared/components/ui/dialog';
-import { useFileActions } from '@/features/editor/ui/hooks/useFileActions';
+import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
 import { useEditorStorage } from '@/features/editor/ui/hooks/useStorage';
 import { usePageStore } from '@/features/editor/core';
 
@@ -77,7 +77,7 @@ export default function AddFilesModal({
     }
   }, [open, defaultTab]);
 
-  const { createFile } = useFileActions();
+  const { createFile } = usePageActions();
   const { uploadFile } = useEditorStorage(parentPageId, undefined);
   const effectiveProjectId = projectId || parentPageId || '';
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useSettingsStore } from '@/features/editor/core';
-import { EditorEventBus } from '@/features/editor/domain/latex/latex-structure';
+import { EditorEventBus } from '@/features/editor/core/bus/event-bus';
 
 describe('Source vs Visual Editor Mode (Overleaf 1:1 Parity)', () => {
   beforeEach(() => {

@@ -30,6 +30,7 @@ export {
   refactorCitationKeyInBibTeX,
   refactorCitationKeyInLatex,
   refactorCitationKeyAcrossFiles,
+  executeProjectCitekeyRefactor,
   type ValidateKeyResult,
   type RefactorFileResult,
   type ProjectRefactorResult,
@@ -39,6 +40,9 @@ export {
   type RetractedItemInfo,
 } from './model/retracted-citations';
 export {
+  LATEX_CITE_REGEX,
+  PANDOC_BRACKET_REGEX,
+  INLINE_CITEKEY_REGEX,
   extractCitationKeys,
   formatInTextCitationPreview,
   formatBibliographyPreview,
@@ -47,6 +51,7 @@ export {
   stripLatexComments,
   stripCodeBlocks,
   formatCitationSnippet,
+  formatBibEntryAuthorSummary,
   formatItemAuthorSummary,
   formatItemToBibtex,
   formatBibEntryToBibtex,
@@ -80,10 +85,3 @@ export {
   latexCitationHoverTooltip,
 } from './extensions/latex-citation-hover';
 
-// 4. Subsystem Deep Interface Port (The Seam)
-export interface CitationSubsystemPort {
-  readonly name: 'citation';
-  openPicker(initialQuery?: string): void;
-  insertCitation(key: string): void;
-  renameKey(oldKey: string, newKey: string): Promise<number>;
-}

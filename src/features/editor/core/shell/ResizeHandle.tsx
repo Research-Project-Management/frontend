@@ -19,8 +19,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 
 export interface ResizeHandleProps {
-  onMouseDown: (e: React.MouseEvent) => void;
-  onTouchStart: (e: React.TouchEvent) => void;
+  onMouseDown?: (e: React.MouseEvent) => void;
+  onTouchStart?: (e: React.TouchEvent) => void;
   onDoubleClick?: () => void;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   isDragging?: boolean;
@@ -38,6 +38,47 @@ export interface ResizeHandleProps {
   onToggleCollapse?: () => void;
   collapseDirection?: 'left' | 'right';
   showGripDots?: boolean;
+
+  // Optional declarative horizontal drag callback (receives current clientX and startClientX)
+  onDragX?: (clientX: number, startClientX: number) => void;
+}
+
+export function startHorizontalDrag(
+  startClientX: number,
+  onMove: (clientX: number, startClientX: number) => void
+): void {
+  let rafId: number | null = null;
+
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    if (rafId !== null) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
+      onMove(moveEvent.clientX, startClientX);
+    });
+  };
+
+  const onTouchMove = (moveEvent: TouchEvent) => {
+    if (moveEvent.touches.length === 0 || rafId !== null) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
+      onMove(moveEvent.touches[0].clientX, startClientX);
+    });
+  };
+
+  const cleanup = () => {
+    if (rafId !== null) cancelAnimationFrame(rafId);
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', cleanup);
+    window.removeEventListener('touchmove', onTouchMove);
+    window.removeEventListener('touchend', cleanup);
+    window.removeEventListener('touchcancel', cleanup);
+  };
+
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', cleanup);
+  window.addEventListener('touchmove', onTouchMove, { passive: true });
+  window.addEventListener('touchend', cleanup);
+  window.addEventListener('touchcancel', cleanup);
 }
 
 export function ResizeHandle({
@@ -58,8 +99,24 @@ export function ResizeHandle({
   onToggleCollapse,
   collapseDirection = 'left',
   showGripDots = true,
+  onDragX,
 }: ResizeHandleProps) {
   const isHorizontal = orientation === 'horizontal' || className?.includes('cursor-row-resize');
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (onDragX) {
+      e.preventDefault();
+      startHorizontalDrag(e.clientX, onDragX);
+    }
+    onMouseDown?.(e);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (onDragX && e.touches.length > 0) {
+      startHorizontalDrag(e.touches[0].clientX, onDragX);
+    }
+    onTouchStart?.(e);
+  };
 
   const handleToggleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -80,8 +137,8 @@ export function ResizeHandle({
       aria-valuenow={valueNow}
       aria-valuemin={valueMin}
       aria-valuemax={valueMax}
-      onMouseDown={onMouseDown}
-      onTouchStart={onTouchStart}
+      onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
       onDoubleClick={onDoubleClick}
       onKeyDown={onKeyDown}
       className={cn(

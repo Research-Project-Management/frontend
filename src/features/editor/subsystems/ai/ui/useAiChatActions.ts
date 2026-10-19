@@ -18,11 +18,14 @@
 
 import { useCallback } from 'react';
 import { toast } from 'sonner';
-import { editorCommandBus } from '@/features/editor/core';
-import type { EditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
+import { editorCommandBus, usePageStore } from '@/features/editor/core';
+import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
+import { aiCoordinator } from '../coordinator/ai.coordinator';
+
+export type AttachmentSource = 'library' | 'storage' | 'documents';
 
 export interface UseAiChatActionsOptions {
-  engine?: EditorEngine | null;
+  engine?: IEditorEngine | null;
 }
 
 export function useAiChatActions({ engine }: UseAiChatActionsOptions = {}) {
@@ -54,31 +57,9 @@ export function useAiChatActions({ engine }: UseAiChatActionsOptions = {}) {
         toast.error('Editor not ready', { id: 'ai-insert-code' });
         return;
       }
-
-      if (typeof engine.proposeDiff === 'function') {
-        const offsets = typeof engine.getSelectionOffsets === 'function' ? engine.getSelectionOffsets() : null;
-        const originalText = engine.getSelectedText ? engine.getSelectedText() : '';
-        const from = offsets?.from ?? 0;
-        const to = offsets?.to ?? from;
-
-        const proposal = {
-          id: `diff-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          from,
-          to,
-          originalText,
-          replacementText: code,
-          title: title || (to > from ? 'AI Selection Diff' : 'AI Suggested Insertion'),
-          createdAt: Date.now(),
-        };
-
-        editorCommandBus.dispatch({ type: 'ai:propose-diff', proposal });
-        engine.focus();
-        toast.info('Review AI diff proposal (Tab to Accept, Esc to Reject)', { id: 'ai-diff-proposal' });
-      } else {
-        engine.insertText(code);
-        engine.focus();
-        toast.success('Inserted AI code into document', { id: 'ai-diff-status' });
-      }
+      const fileId = usePageStore.getState().getActiveDocument()?.id || 'main.tex';
+      aiCoordinator.proposeDiff(fileId, code, { title });
+      engine.focus();
     },
     [engine],
   );
@@ -86,52 +67,53 @@ export function useAiChatActions({ engine }: UseAiChatActionsOptions = {}) {
   const copyCode = useCallback(async (code: string, onSuccess?: () => void) => {
     try {
       await navigator.clipboard.writeText(code);
-      if (onSuccess) onSuccess();
+      onSuccess?.();
       toast.success('Copied to clipboard', { id: 'copy-code' });
     } catch {
       toast.error('Failed to copy to clipboard', { id: 'copy-code' });
     }
   }, []);
 
-  const notifyFileAttached = useCallback((fileName: string) => {
-    toast.success(`Attached "${fileName}"`, { id: `attach-${fileName}` });
+  const notifyItemsAttached = useCallback((count: number, source: AttachmentSource) => {
+    const messages: Record<AttachmentSource, { text: string; id: string }> = {
+      library: { text: `Attached ${count} item(s) from Library`, id: 'attach-library' },
+      storage: { text: `Attached ${count} file(s) from Storage`, id: 'attach-storage' },
+      documents: { text: `Selected ${count} uploaded document(s)`, id: 'attach-docs' },
+    };
+    const { text, id } = messages[source];
+    toast.success(text, { id });
   }, []);
 
-  const notifyFileError = useCallback((fileName: string, errMessage?: string) => {
-    toast.error(errMessage || `Failed to upload "${fileName}"`, { id: `attach-${fileName}` });
-  }, []);
+  const notifyFileAttached = useCallback(
+    (fileName: string) => toast.success(`Attached "${fileName}"`, { id: `attach-${fileName}` }),
+    [],
+  );
 
-  const notifyChatError = useCallback((errMessage?: string) => {
-    toast.error(errMessage || 'Failed to send message to AI', { id: 'ai-chat-error' });
-  }, []);
+  const notifyFileError = useCallback(
+    (fileName: string, errMessage?: string) =>
+      toast.error(errMessage || `Failed to upload "${fileName}"`, { id: `attach-${fileName}` }),
+    [],
+  );
 
-  const notifyChatCleared = useCallback(() => {
-    toast.success('Conversation history cleared', { id: 'ai-chat-clear' });
-  }, []);
+  const notifyChatError = useCallback(
+    (errMessage?: string) => toast.error(errMessage || 'Failed to send message to AI', { id: 'ai-chat-error' }),
+    [],
+  );
 
-  const notifyLibraryAttached = useCallback((count: number) => {
-    toast.success(`Attached ${count} item(s) from Library`, { id: 'attach-library' });
-  }, []);
-
-  const notifyStorageAttached = useCallback((count: number) => {
-    toast.success(`Attached ${count} file(s) from Storage`, { id: 'attach-storage' });
-  }, []);
-
-  const notifyDocumentsAttached = useCallback((count: number) => {
-    toast.success(`Selected ${count} uploaded document(s)`, { id: 'attach-docs' });
-  }, []);
+  const notifyChatCleared = useCallback(
+    () => toast.success('Conversation history cleared', { id: 'ai-chat-clear' }),
+    [],
+  );
 
   return {
     insertAtCursor,
     replaceSelection,
     proposeDiff,
     copyCode,
+    notifyItemsAttached,
     notifyFileAttached,
     notifyFileError,
     notifyChatError,
     notifyChatCleared,
-    notifyLibraryAttached,
-    notifyStorageAttached,
-    notifyDocumentsAttached,
   };
 }

@@ -8,9 +8,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { CompilerEngine, CompileMode } from '@/features/editor/domain/types/compiler.types';
-import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
 
-export type LaTeXEngine = CompilerEngine;
 export type { CompilerEngine, CompileMode };
 export type LayoutMode = 'split' | 'editor-only' | 'viewer-only';
 export type EditorTheme =
@@ -307,20 +305,4 @@ export const useSettingsStore = create<DocumentSettingsState>()(
     },
   ),
 );
-
-// Sync warning suppression filter options with diagnosticsCoordinator
-const syncFilterOptions = (state: DocumentSettingsState) => {
-  diagnosticsCoordinator.setFilterOptions({
-    suppressBadBoxes: state.suppressBadBoxes,
-    suppressFontWarnings: state.suppressFontWarnings,
-    suppressPackageWarnings: state.suppressPackageWarnings,
-    customPatterns: state.customSuppressedWarnings,
-  });
-};
-
-// Initial sync
-syncFilterOptions(useSettingsStore.getState());
-
-// Dynamic sync on store updates
-useSettingsStore.subscribe(syncFilterOptions);
 

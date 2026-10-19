@@ -61,8 +61,9 @@ export default function TemplateGalleryModal() {
   const queryClient = useQueryClient();
   const isTemplateModalOpen = useSettingsStore((s) => s.isTemplateModalOpen);
   const setIsTemplateModalOpen = useSettingsStore((s) => s.setIsTemplateModalOpen);
-  const activeFilePage = usePageStore((s) => s.activeFilePage);
-  const currentPage = usePageStore((s) => s.currentPage);
+  const activeFileId = usePageStore((s) => s.activeFilePage?.id);
+  const activeFileTitle = usePageStore((s) => s.activeFilePage?.title);
+  const currentPageId = usePageStore((s) => s.currentPage?.id);
   const projectId = usePageStore((s) => s.projectId);
   const { engine } = useEditorInstance();
   const [selectedTemplate, setSelectedTemplate] = useState<AcademicTemplate>(ACADEMIC_TEMPLATES[0]);
@@ -163,13 +164,13 @@ export default function TemplateGalleryModal() {
   const applyTemplate = useCallback(async () => {
     if (!selectedTemplate) return;
     try {
-      const targetDocId = activeFilePage?.id || currentPage?.id;
+      const targetDocId = activeFileId || currentPageId;
       if (engine) {
         engine.setContent(selectedTemplate.mainTex);
         if (targetDocId) {
           sessionCoordinator.notifyContentChange(targetDocId, selectedTemplate.mainTex);
         }
-        toast.success(`Applied "${selectedTemplate.name}" to ${activeFilePage?.title || 'current document'}`, { id: 'apply-template' });
+        toast.success(`Applied "${selectedTemplate.name}" to ${activeFileTitle || 'current document'}`, { id: 'apply-template' });
         setIsTemplateModalOpen(false);
       } else {
         navigator.clipboard.writeText(selectedTemplate.mainTex);
@@ -179,7 +180,7 @@ export default function TemplateGalleryModal() {
     } catch {
       toast.error('Could not apply template', { id: 'apply-template' });
     }
-  }, [selectedTemplate, engine, activeFilePage?.id, activeFilePage?.title, currentPage?.id, setIsTemplateModalOpen]);
+  }, [selectedTemplate, engine, activeFileId, activeFileTitle, currentPageId, setIsTemplateModalOpen]);
 
   const scaffoldProject = useCallback(async () => {
     if (!selectedTemplate) return;
@@ -194,7 +195,7 @@ export default function TemplateGalleryModal() {
       if (engine) {
         engine.setContent(selectedTemplate.mainTex);
       }
-      const targetDocId = activeFilePage?.id || currentPage?.id;
+      const targetDocId = activeFileId || currentPageId;
       if (targetDocId) {
         sessionCoordinator.notifyContentChange(targetDocId, selectedTemplate.mainTex);
       }
@@ -202,9 +203,6 @@ export default function TemplateGalleryModal() {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       editorCommandBus.dispatch({ type: 'filetree:updated' });
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
-      }
       toast.success(`Project scaffolded successfully with "${selectedTemplate.name}"!`, { id: 'scaffold-template' });
       setIsTemplateModalOpen(false);
     } catch (err) {
@@ -213,7 +211,7 @@ export default function TemplateGalleryModal() {
     } finally {
       setIsScaffolding(false);
     }
-  }, [selectedTemplate, projectId, applyTemplate, engine, activeFilePage?.id, currentPage?.id, queryClient, setIsTemplateModalOpen]);
+  }, [selectedTemplate, projectId, applyTemplate, engine, activeFileId, currentPageId, queryClient, setIsTemplateModalOpen]);
 
   const copyCode = useCallback(() => {
     if (!selectedTemplate) return;
@@ -401,7 +399,7 @@ export default function TemplateGalleryModal() {
                       try {
                         await manuscriptService.templates.createCustom({
                           projectId,
-                          name: `${activeFilePage?.title?.replace(/\.tex$/i, '') || 'Custom'} Template`,
+                          name: `${activeFileTitle?.replace(/\.tex$/i, '') || 'Custom'} Template`,
                           description: 'Saved from active manuscript project',
                           category: 'Academic',
                           mainTex: engine?.getContent(),

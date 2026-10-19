@@ -11,7 +11,7 @@
  */
 
 import {
-  getActiveEditorInstance,
+  getActiveEditorEngine,
   getActiveEditorContent,
   editorCommandBus,
   usePageStore,
@@ -19,9 +19,11 @@ import {
   sessionCoordinator,
 } from '@/features/editor/core';
 import { diagnosticsCoordinator, type IndexedDiagnosticItem } from '@/features/editor/subsystems/diagnostics';
+import type { EditorDiagnosticItem } from '@/features/editor/domain/diagnostics/diagnostic-types';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import type { DiffProposal } from '@/features/editor/domain/types/ports/editor-engine.port';
+import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import { heuristicLatexErrorFix } from '@/features/editor/domain/ai/ai-error-assist';
 import { toast } from 'sonner';
 
@@ -62,29 +64,28 @@ export class AiCoordinatorRegistry {
     });
 
     editorCommandBus.subscribe('ai:propose-diff', (cmd) => {
-      const engine = getActiveEditorInstance();
+      const engine = getActiveEditorEngine();
       if (engine?.proposeDiff) {
         engine.proposeDiff(cmd.proposal);
       }
     });
 
     editorCommandBus.subscribe('ai:accept-diff', (cmd) => {
-      const engine = getActiveEditorInstance();
+      const engine = getActiveEditorEngine();
       if (engine?.acceptDiff) {
         engine.acceptDiff(cmd.diffId);
       }
     });
 
     editorCommandBus.subscribe('ai:reject-diff', (cmd) => {
-      const engine = getActiveEditorInstance();
+      const engine = getActiveEditorEngine();
       if (engine?.rejectDiff) {
         engine.rejectDiff(cmd.diffId);
       }
     });
 
     editorCommandBus.subscribe('ai:diff-resolved', (cmd) => {
-      const action = cmd.action || cmd.payload?.action;
-      if (action === 'accept') {
+      if (cmd.action === 'accept') {
         toast.success('Applied AI suggestion to document!', { id: 'ai-diff-status' });
         editorCommandBus.dispatch({ type: 'compiler:trigger', draft: true });
       }
@@ -98,9 +99,9 @@ export class AiCoordinatorRegistry {
     const pageStore = usePageStore.getState();
     const activeDoc = pageStore.getActiveDocument();
     const fileName = activeDoc?.title || 'main.tex';
-    const content = getActiveEditorContent() || (activeDoc?.content as string) || '';
+    const content = getActiveEditorContent() || extractDocumentContentString(activeDoc?.content);
 
-    const engine = getActiveEditorInstance();
+    const engine = getActiveEditorEngine();
     const selectedText = engine?.getSelectedText() || undefined;
     const cursor = engine?.getCursorPosition();
 
@@ -164,14 +165,14 @@ export class AiCoordinatorRegistry {
    * 1-Click AI AutoFix for compiler/linter diagnostics.
    * Calls LLM assist and immediately mounts an interactive inline diff for user review.
    */
-  public async autoFixDiagnostic(diagnostic: IndexedDiagnosticItem): Promise<boolean> {
+  public async autoFixDiagnostic(diagnostic: EditorDiagnosticItem | IndexedDiagnosticItem): Promise<boolean> {
     const pageStore = usePageStore.getState();
     const activeDoc = pageStore.getActiveDocument();
     const fileId = activeDoc?.id || 'main.tex';
     const fileName = activeDoc?.title || fileId;
 
-    const engine = getActiveEditorInstance();
-    const content = engine?.getContent() || (activeDoc?.content as string) || '';
+    const engine = getActiveEditorEngine();
+    const content = engine?.getContent() || extractDocumentContentString(activeDoc?.content);
 
     // Extract surrounding code context (5 lines)
     const lines = content.split('\n');
@@ -299,7 +300,7 @@ export class AiCoordinatorRegistry {
     options?: { line?: number; endLine?: number; title?: string }
   ): boolean {
     if (!replacement) return false;
-    const engine = getActiveEditorInstance();
+    const engine = getActiveEditorEngine();
     if (!engine || !engine.proposeDiff) {
       return this.applyDirect(fileId, options?.line, replacement);
     }
@@ -396,7 +397,7 @@ export class AiCoordinatorRegistry {
   public applyDirect(fileId: string, line?: number, replacement?: string): boolean {
     if (!replacement) return false;
 
-    const engine = getActiveEditorInstance();
+    const engine = getActiveEditorEngine();
 
     // If active document is open in CodeMirror, apply via engine
     if (engine) {

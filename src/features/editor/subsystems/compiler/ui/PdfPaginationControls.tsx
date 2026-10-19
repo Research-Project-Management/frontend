@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { useViewerStore, type DocumentViewerState } from '@/features/editor/subsystems/compiler/coordinator/viewer.store';
@@ -19,8 +19,6 @@ export interface PdfPaginationControlsProps {
   onPrevPage?: () => void;
   onNextPage?: () => void;
   onJumpToPage?: (page: number) => void;
-  onZoomIn?: () => void;
-  onZoomOut?: () => void;
   className?: string;
 }
 
@@ -30,8 +28,6 @@ export const PdfPaginationControls = React.memo(function PdfPaginationControls({
   onPrevPage: propOnPrevPage,
   onNextPage: propOnNextPage,
   onJumpToPage: propOnJumpToPage,
-  onZoomIn,
-  onZoomOut,
   className,
 }: PdfPaginationControlsProps) {
   const storePageNumber = useViewerStore((s: DocumentViewerState) => s.pageNumber);

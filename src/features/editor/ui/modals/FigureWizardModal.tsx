@@ -60,7 +60,9 @@ export function FigureWizardModal({
   parentPageId,
   onInsert,
 }: FigureWizardModalProps) {
-  const { files, isLoading, uploadFile } = useEditorStorage(parentPageId, undefined);
+  const { items: files, isLoading, uploadFile } = useEditorStorage(parentPageId, undefined, undefined, {
+    enabled: open,
+  });
 
   // Filter for image files
   const imageFiles = React.useMemo(() => {

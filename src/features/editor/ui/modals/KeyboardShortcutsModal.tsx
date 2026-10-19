@@ -7,7 +7,7 @@
  * Location: `features/editor/ui/modals/KeyboardShortcutsModal.tsx`
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Search,
   X,
@@ -291,6 +291,13 @@ export const SHORTCUT_LIST: ShortcutItem[] = [
   },
 ];
 
+const SHORTCUT_SEARCH_INDEX = SHORTCUT_LIST.map((item) => ({
+  item,
+  labelLower: item.label.toLowerCase(),
+  descLower: item.description ? item.description.toLowerCase() : '',
+  keysLower: item.keys.map((k) => k.toLowerCase()),
+}));
+
 interface KeyboardShortcutsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -303,16 +310,24 @@ export default function KeyboardShortcutsModal({
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<'All' | 'Compilation' | 'Editing' | 'Navigation' | 'Layout'>('All');
 
-  const filtered = SHORTCUT_LIST.filter((item) => {
-    const matchesCategory = activeCategory === 'All' || item.category === activeCategory;
+  const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const matchesQuery =
-      !q ||
-      item.label.toLowerCase().includes(q) ||
-      (item.description && item.description.toLowerCase().includes(q)) ||
-      item.keys.some((k) => k.toLowerCase().includes(q));
-    return matchesCategory && matchesQuery;
-  });
+    if (!q && activeCategory === 'All') return SHORTCUT_LIST;
+    const result: ShortcutItem[] = [];
+    for (let i = 0; i < SHORTCUT_SEARCH_INDEX.length; i++) {
+      const entry = SHORTCUT_SEARCH_INDEX[i];
+      if (activeCategory !== 'All' && entry.item.category !== activeCategory) continue;
+      if (
+        !q ||
+        entry.labelLower.includes(q) ||
+        (entry.descLower && entry.descLower.includes(q)) ||
+        entry.keysLower.some((k) => k.includes(q))
+      ) {
+        result.push(entry.item);
+      }
+    }
+    return result;
+  }, [search, activeCategory]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

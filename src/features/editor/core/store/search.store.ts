@@ -50,7 +50,7 @@ export interface DocumentSearchState {
   reset: () => void;
 }
 
-export const useDocumentSearchStore = create<DocumentSearchState>((set) => ({
+export const useSearchStore = create<DocumentSearchState>((set) => ({
   query: '',
   instantQuery: null,
   replaceText: '',
@@ -116,5 +116,3 @@ export const useDocumentSearchStore = create<DocumentSearchState>((set) => ({
       isSearching: false,
     }),
 }));
-
-export const useSearchStore = useDocumentSearchStore;

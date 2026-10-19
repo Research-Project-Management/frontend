@@ -11,10 +11,10 @@
  * - Soft translucent selection ranges matching collaborator palette.
  */
 
-'use client';
-
-import React, { useMemo } from 'react';
-import type { Awareness } from 'y-protocols/awareness';
+import {
+  AUTHOR_COLOR_PALETTE,
+  getHashColor,
+} from '@/features/editor/domain/collaboration/author-display';
 
 export interface CollaboratorInfo {
   id: string;
@@ -24,26 +24,8 @@ export interface CollaboratorInfo {
   isOnline: boolean;
 }
 
-export const COLLABORATOR_PALETTE = [
-  '#2563EB', // Blue
-  '#7C3AED', // Violet
-  '#DB2777', // Pink
-  '#EA580C', // Orange
-  '#059669', // Emerald
-  '#0284C7', // Sky
-  '#D97706', // Amber
-  '#DC2626', // Red
-];
-
-export function getCollaboratorColor(userId: string): string {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    hash = (hash << 5) - hash + userId.charCodeAt(i);
-    hash |= 0;
-  }
-  const index = Math.abs(hash) % COLLABORATOR_PALETTE.length;
-  return COLLABORATOR_PALETTE[index];
-}
+export const COLLABORATOR_PALETTE = AUTHOR_COLOR_PALETTE;
+export const getCollaboratorColor = getHashColor;
 
 export function buildCollaboratorCursorCss(): string {
   return `
@@ -124,41 +106,3 @@ export function buildCollaboratorCursorCss(): string {
   `;
 }
 
-export interface CollaboratorCursorsProps {
-  awareness?: Awareness | null;
-  collaborators?: CollaboratorInfo[];
-  className?: string;
-}
-
-export function CollaboratorCursors({
-  collaborators = [],
-  className,
-}: CollaboratorCursorsProps) {
-  const dynamicCss = useMemo(() => buildCollaboratorCursorCss(), []);
-
-  return (
-    <div className={className}>
-      <style dangerouslySetInnerHTML={{ __html: dynamicCss }} />
-      {collaborators.length > 0 && (
-        <div className="flex items-center -space-x-1.5 overflow-hidden p-1">
-          {collaborators.map((c) => (
-            <div
-              key={c.id}
-              title={`${c.name} (${c.isOnline ? 'Online' : 'Idle'})`}
-              style={{ borderColor: c.color }}
-              className="size-5 rounded-full border flex items-center justify-center text-[9px] font-semibold text-background bg-foreground shrink-0"
-            >
-              {c.avatar ? (
-                <img src={c.avatar} alt={c.name} className="size-full rounded-full object-cover" />
-              ) : (
-                c.name.slice(0, 1).toUpperCase()
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default CollaboratorCursors;

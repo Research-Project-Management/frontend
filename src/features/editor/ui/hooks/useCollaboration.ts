@@ -8,10 +8,10 @@
  * Guarantees zero unhandled network errors and zero polling spam when offline / disconnected.
  */
 
-import { useEffect, useMemo, useContext, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import type * as Y from 'yjs';
 import type { Awareness } from 'y-protocols/awareness';
-import { QueryClient, QueryClientContext, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   editorCommandBus,
   useDocumentCollaborationStore,
@@ -21,6 +21,7 @@ import { ProjectService } from '@/features/projects/shell/services/project.servi
 import { getCollaboratorColor } from '@/features/editor/ui/editor/CollaboratorCursors';
 import { getOrCreateYjsProvider, releaseYjsProvider, type YjsSocketIOProvider, type ConnectionStatus } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { getCachedUser } from '@/features/auth/services/auth.service';
+import { useSafeQueryClient } from '@/features/editor/subsystems/review/ui/hooks/safeQueryClient';
 
 export type { CollaboratorPresenceInfo };
 
@@ -36,18 +37,6 @@ interface MemberRecord {
     email?: string;
     avatar?: string;
   };
-}
-
-let _fallbackQueryClient: QueryClient | null = null;
-function getFallbackQueryClient(): QueryClient {
-  if (!_fallbackQueryClient) {
-    _fallbackQueryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false, staleTime: 5 * 60_000 },
-      },
-    });
-  }
-  return _fallbackQueryClient;
 }
 
 export function useCollaborationPresence(
@@ -100,8 +89,7 @@ export function useCollaborationPresence(
   }, [setCollaborators, updateCollaborator, removeCollaborator]);
 
   // Safely resolve query client (context client or fallback if rendered outside provider)
-  const contextClient = useContext(QueryClientContext);
-  const effectiveQueryClient = contextClient || getFallbackQueryClient();
+  const effectiveQueryClient = useSafeQueryClient();
 
   // Optionally augment with project members query for metadata (names, avatars, emails)
   const { data: projectMembers, isLoading } = useQuery(
@@ -161,10 +149,6 @@ export function useCollaborationPresence(
   };
 }
 
-export function useCollaborationStream(_projectId?: string | null, _pageId?: string | null) {
-  // Pure UI shell - no-op to eliminate legacy EventSource network errors
-}
-
 export interface UseEditorCollaborationProps {
   projectId?: string | null;
   fileId?: string | null;
@@ -192,18 +176,25 @@ export function useEditorCollaboration({
   initialValue,
   enabled = true,
 }: UseEditorCollaborationProps): UseEditorCollaborationReturn {
-  const [provider, setProvider] = useState<YjsSocketIOProvider | null>(null);
+  const [providerState, setProviderState] = useState<{
+    fileId: string;
+    provider: YjsSocketIOProvider;
+  } | null>(null);
   const [isSynced, setIsSynced] = useState<boolean>(false);
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const [, setDocGeneration] = useState(0);
+  const prevFileIdRef = useRef(fileId);
   const initialValueRef = useRef(initialValue);
-  if (!initialValueRef.current && initialValue) {
+  if (prevFileIdRef.current !== fileId) {
+    prevFileIdRef.current = fileId;
+    initialValueRef.current = initialValue;
+  } else if (!initialValueRef.current && initialValue) {
     initialValueRef.current = initialValue;
   }
 
   useEffect(() => {
     if (!enabled || !projectId || !fileId) {
-      setProvider(null);
+      setProviderState(null);
       setIsSynced(false);
       setStatus('disconnected');
       return;
@@ -227,7 +218,7 @@ export function useEditorCollaboration({
       onSynced: () => setIsSynced(true),
     });
 
-    setProvider(instance);
+    setProviderState({ fileId, provider: instance });
     setIsSynced(instance.isSynced);
     setStatus(instance.status);
     // Pooled providers keep the first caller's onStatusChange; subscribe explicitly so this
@@ -244,12 +235,15 @@ export function useEditorCollaboration({
     };
   }, [enabled, projectId, fileId]);
 
+  const activeProvider =
+    fileId && providerState?.fileId === fileId ? providerState.provider : null;
+
   return {
-    yText: provider ? provider.yText : null,
-    awareness: provider ? provider.awareness : null,
-    provider,
-    isSynced,
-    status,
+    yText: activeProvider ? activeProvider.yText : null,
+    awareness: activeProvider ? activeProvider.awareness : null,
+    provider: activeProvider,
+    isSynced: activeProvider ? isSynced : false,
+    status: activeProvider ? status : 'connecting',
   };
 }
 

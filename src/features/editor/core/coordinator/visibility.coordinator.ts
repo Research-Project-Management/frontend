@@ -16,11 +16,6 @@ import { editorCommandBus } from '@/features/editor/core';
 
 export type VisibilityLifecycleState = 'active' | 'hibernated';
 
-export interface HibernationOptions {
-  autoFlushOnHide?: boolean;
-  throttleIntervalMs?: number;
-}
-
 export class VisibilityCoordinatorRegistry {
   private currentState: VisibilityLifecycleState = 'active';
   private initialized = false;
@@ -42,13 +37,11 @@ export class VisibilityCoordinatorRegistry {
     this.currentState = document.visibilityState === 'visible' ? 'active' : 'hibernated';
 
     document.addEventListener('visibilitychange', this.handleVisibilityChange);
-    window.addEventListener('beforeunload', this.handleBeforeUnload);
   }
 
   public dispose(): void {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
-    window.removeEventListener('beforeunload', this.handleBeforeUnload);
     this.listeners.clear();
     this.initialized = false;
   }
@@ -108,10 +101,6 @@ export class VisibilityCoordinatorRegistry {
     }
 
     this.notify();
-  };
-
-  private handleBeforeUnload = (): void => {
-    void this.flushHandler?.();
   };
 
   private onTabHibernated(): void {

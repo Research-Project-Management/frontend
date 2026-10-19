@@ -8,11 +8,13 @@
  */
 
 import dynamic from 'next/dynamic';
-import React from 'react';
+import React, { useEffect } from 'react';
+import { TooltipProvider } from '@/shared/components/ui/tooltip';
+import { sessionCoordinator } from '@/features/editor/core';
 import EditorSkeleton from './EditorSkeleton';
 
-const EditorPage = dynamic(
-  () => import('./EditorPage'),
+const ModernWorkbenchLayout = dynamic(
+  () => import('./ModernWorkbenchLayout'),
   {
     ssr: false,
     loading: () => <EditorSkeleton />,
@@ -20,5 +22,16 @@ const EditorPage = dynamic(
 );
 
 export default function ClientEditor() {
-  return <EditorPage />;
+  useEffect(() => {
+    const unsubBeforeUnload = sessionCoordinator.initBeforeUnloadProtection();
+    return () => {
+      unsubBeforeUnload();
+    };
+  }, []);
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <ModernWorkbenchLayout />
+    </TooltipProvider>
+  );
 }

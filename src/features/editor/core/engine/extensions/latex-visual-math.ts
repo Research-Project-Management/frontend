@@ -20,6 +20,37 @@ import {
 import { RangeSetBuilder, type Extension } from '@codemirror/state';
 import katex from 'katex';
 
+// ── KaTeX Render Cache (LRU) ──────────────────────────────────────────────────
+
+const KATEX_CACHE_MAX = 250;
+const katexHtmlCache = new Map<string, string>();
+
+function renderKaTeXCached(formula: string, displayMode: boolean): string | null {
+  const key = `${displayMode ? 'D:' : 'I:'}${formula}`;
+  const cached = katexHtmlCache.get(key);
+  if (cached !== undefined) {
+    // Refresh LRU order
+    katexHtmlCache.delete(key);
+    katexHtmlCache.set(key, cached);
+    return cached;
+  }
+  try {
+    const html = katex.renderToString(formula, {
+      displayMode,
+      throwOnError: false,
+      output: 'htmlAndMathml',
+    });
+    if (katexHtmlCache.size >= KATEX_CACHE_MAX) {
+      const oldestKey = katexHtmlCache.keys().next().value;
+      if (oldestKey !== undefined) katexHtmlCache.delete(oldestKey);
+    }
+    katexHtmlCache.set(key, html);
+    return html;
+  } catch {
+    return null;
+  }
+}
+
 // ── KaTeX Math Widget ─────────────────────────────────────────────────────────
 
 class KaTeXWidget extends WidgetType {
@@ -35,9 +66,7 @@ class KaTeXWidget extends WidgetType {
   override eq(other: KaTeXWidget): boolean {
     return (
       this.formula === other.formula &&
-      this.displayMode === other.displayMode &&
-      this.from === other.from &&
-      this.to === other.to
+      this.displayMode === other.displayMode
     );
   }
 
@@ -53,21 +82,18 @@ class KaTeXWidget extends WidgetType {
       : 'cm-visual-math-inline';
     container.title = 'Click to edit LaTeX formula';
 
-    try {
-      katex.render(this.formula, container, {
-        displayMode: this.displayMode,
-        throwOnError: false,
-        output: 'htmlAndMathml',
-      });
-    } catch {
+    const renderedHtml = renderKaTeXCached(this.formula, this.displayMode);
+    if (renderedHtml !== null) {
+      container.innerHTML = renderedHtml;
+    } else {
       container.textContent = this.formula;
     }
 
     container.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      // Place cursor right after the opening delimiter
-      const targetPos = Math.min(this.from + (this.displayMode ? 2 : 1), this.to);
+      const currentPos = view.posAtDOM(container);
+      const targetPos = Math.max(0, currentPos + (this.displayMode ? 2 : 1));
       view.dispatch({
         selection: { anchor: targetPos, head: targetPos },
         scrollIntoView: true,
@@ -88,57 +114,76 @@ interface MathSpan {
   readonly to: number;
 }
 
+const DISPLAY_DOLLAR_REGEX = /\$\$([\s\S]*?)\$\$/g;
+const BRACKET_MATH_REGEX = /\\\[([\s\S]*?)\\\]/g;
+const ENV_MATH_REGEX = /\\begin\{(equation\*?|align\*?|gather\*?|multline\*?)\}([\s\S]*?)\\end\{\1\}/g;
+const INLINE_DOLLAR_REGEX = /(?<!\$)\$(?!\$)([^\$\n]+?)(?<!\$)\$(?!\$)/g;
+
 function findMathSpans(text: string, offset: number): MathSpan[] {
   const spans: MathSpan[] = [];
+  const hasDollar = text.indexOf('$') !== -1;
+  const hasBackslash = text.indexOf('\\') !== -1;
+
+  if (!hasDollar && !hasBackslash) {
+    return spans;
+  }
+
+  let match: RegExpExecArray | null;
 
   // 1. Double dollar $$ ... $$
-  const displayDollarRegex = /\$\$([\s\S]*?)\$\$/g;
-  let match: RegExpExecArray | null;
-  while ((match = displayDollarRegex.exec(text)) !== null) {
-    spans.push({
-      formula: match[1].trim(),
-      displayMode: true,
-      from: offset + match.index,
-      to: offset + match.index + match[0].length,
-    });
+  if (hasDollar) {
+    DISPLAY_DOLLAR_REGEX.lastIndex = 0;
+    while ((match = DISPLAY_DOLLAR_REGEX.exec(text)) !== null) {
+      spans.push({
+        formula: match[1].trim(),
+        displayMode: true,
+        from: offset + match.index,
+        to: offset + match.index + match[0].length,
+      });
+    }
   }
 
-  // 2. Bracket math \[ ... \]
-  const bracketRegex = /\\\[([\s\S]*?)\\\]/g;
-  while ((match = bracketRegex.exec(text)) !== null) {
-    spans.push({
-      formula: match[1].trim(),
-      displayMode: true,
-      from: offset + match.index,
-      to: offset + match.index + match[0].length,
-    });
-  }
+  // 2. Bracket math \[ ... \] & 3. Environment math \begin{equation} ... \end{equation}
+  if (hasBackslash) {
+    BRACKET_MATH_REGEX.lastIndex = 0;
+    while ((match = BRACKET_MATH_REGEX.exec(text)) !== null) {
+      spans.push({
+        formula: match[1].trim(),
+        displayMode: true,
+        from: offset + match.index,
+        to: offset + match.index + match[0].length,
+      });
+    }
 
-  // 3. Environment math \begin{equation} ... \end{equation}
-  const envRegex = /\\begin\{(equation\*?|align\*?|gather\*?|multline\*?)\}([\s\S]*?)\\end\{\1\}/g;
-  while ((match = envRegex.exec(text)) !== null) {
-    spans.push({
-      formula: match[0],
-      displayMode: true,
-      from: offset + match.index,
-      to: offset + match.index + match[0].length,
-    });
+    if (text.indexOf('\\begin{') !== -1) {
+      ENV_MATH_REGEX.lastIndex = 0;
+      while ((match = ENV_MATH_REGEX.exec(text)) !== null) {
+        spans.push({
+          formula: match[0],
+          displayMode: true,
+          from: offset + match.index,
+          to: offset + match.index + match[0].length,
+        });
+      }
+    }
   }
 
   // 4. Single dollar $ ... $ (exclude $$ ... $$)
-  const inlineDollarRegex = /(?<!\$)\$(?!\$)([^\$\n]+?)(?<!\$)\$(?!\$)/g;
-  while ((match = inlineDollarRegex.exec(text)) !== null) {
-    const from = offset + match.index;
-    const to = from + match[0].length;
-    // Ensure this span doesn't overlap with any display spans
-    const overlaps = spans.some((s) => s.from <= from && s.to >= to);
-    if (!overlaps) {
-      spans.push({
-        formula: match[1].trim(),
-        displayMode: false,
-        from,
-        to,
-      });
+  if (hasDollar) {
+    INLINE_DOLLAR_REGEX.lastIndex = 0;
+    while ((match = INLINE_DOLLAR_REGEX.exec(text)) !== null) {
+      const from = offset + match.index;
+      const to = from + match[0].length;
+      // Ensure this span doesn't overlap with any display spans
+      const overlaps = spans.some((s) => s.from <= from && s.to >= to);
+      if (!overlaps) {
+        spans.push({
+          formula: match[1].trim(),
+          displayMode: false,
+          from,
+          to,
+        });
+      }
     }
   }
 

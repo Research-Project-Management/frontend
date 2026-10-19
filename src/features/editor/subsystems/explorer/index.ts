@@ -71,18 +71,9 @@ export { default as FilesTab } from './ui/FilesTab';
 export { FileTreeContainer } from './ui/FileTreeContainer';
 export { TexFileRow } from './ui/subcomponents/TexFileRow';
 export { IndentGuides, InlineInput, RenameInput, RowActions } from './ui/subcomponents/FileTreePrimitives';
-export { StorageFileRow, StorageFolderNode, getStorageIcon } from './ui/subcomponents/FileTreeNodes';
+export { StorageFileRow, getStorageIcon } from './ui/subcomponents/FileTreeNodes';
 export { FileTreeFolderRow } from './ui/subcomponents/FileTreeFolderRow';
 export { default as AddFilesModal } from './ui/modals/AddFilesModal';
 export { DeleteFileDialog } from './ui/modals/DeleteFileDialog';
 export { UploadConflictDialog } from './ui/modals/UploadConflictDialog';
 
-// 3. Subsystem Deep Interface Port (The Seam)
-export interface ExplorerSubsystemPort {
-  readonly name: 'explorer';
-  openFile(fileId: string): Promise<boolean>;
-  createFile(name: string, content?: string): Promise<string>;
-  deleteFile(fileId: string): Promise<boolean>;
-  renameFile(fileId: string, newName: string): Promise<boolean>;
-  moveFile(fileId: string, targetFolderId?: string): Promise<boolean>;
-}

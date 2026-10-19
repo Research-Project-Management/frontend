@@ -41,7 +41,7 @@ import {
 import {
   runLatexLinter,
   lintLabelsAndReferences,
-} from '@/features/editor/subsystems/diagnostics/linter/latex-linter';
+} from '@/features/editor/subsystems/diagnostics/linter/latex-linter.rules';
 import {
   extractCitationKeys,
   detectCitationTrigger,

@@ -8,7 +8,6 @@
 import { create } from 'zustand';
 
 export type PdfFitMode = 'width' | 'height' | 'auto';
-export type PdfRotation = 0 | 90 | 180 | 270;
 
 export interface DocumentViewerState {
   // ── Pagination ──────────────────────────────────────────────────────────
@@ -23,12 +22,6 @@ export interface DocumentViewerState {
   // ── Presentation & Visuals ──────────────────────────────────────────────
   invertColors: boolean;
   isSpreadView: boolean;
-  pageRotation: PdfRotation;
-
-  // ── In-PDF Search ───────────────────────────────────────────────────────
-  isFindBarOpen: boolean;
-  findQuery: string;
-  findMatchesCount: { current: number; total: number };
 
   // ── Actions ─────────────────────────────────────────────────────────────
   setPageNumber: (page: number | ((prev: number) => number)) => void;
@@ -47,13 +40,6 @@ export interface DocumentViewerState {
   setInvertColors: (invert: boolean) => void;
   toggleSpreadView: () => void;
   setSpreadView: (spread: boolean) => void;
-  rotateClockwise: () => void;
-  setPageRotation: (rotation: PdfRotation) => void;
-
-  setIsFindBarOpen: (open: boolean) => void;
-  toggleFindBar: () => void;
-  setFindQuery: (query: string) => void;
-  setFindMatchesCount: (counts: { current: number; total: number }) => void;
 
   resetViewerState: () => void;
 }
@@ -68,11 +54,6 @@ export const useViewerStore = create<DocumentViewerState>((set) => ({
 
   invertColors: false,
   isSpreadView: false,
-  pageRotation: 0,
-
-  isFindBarOpen: false,
-  findQuery: '',
-  findMatchesCount: { current: 0, total: 0 },
 
   setPageNumber: (pageOrFn) =>
     set((s) => {
@@ -135,19 +116,6 @@ export const useViewerStore = create<DocumentViewerState>((set) => ({
   toggleSpreadView: () => set((s) => ({ isSpreadView: !s.isSpreadView })),
   setSpreadView: (isSpreadView) => set({ isSpreadView }),
 
-  rotateClockwise: () =>
-    set((s) => {
-      const nextRotation = ((s.pageRotation + 90) % 360) as PdfRotation;
-      return { pageRotation: nextRotation };
-    }),
-
-  setPageRotation: (pageRotation) => set({ pageRotation }),
-
-  setIsFindBarOpen: (isFindBarOpen) => set({ isFindBarOpen }),
-  toggleFindBar: () => set((s) => ({ isFindBarOpen: !s.isFindBarOpen })),
-  setFindQuery: (findQuery) => set({ findQuery }),
-  setFindMatchesCount: (findMatchesCount) => set({ findMatchesCount }),
-
   resetViewerState: () =>
     set({
       pageNumber: 1,
@@ -157,9 +125,5 @@ export const useViewerStore = create<DocumentViewerState>((set) => ({
       fitMode: 'width',
       invertColors: false,
       isSpreadView: false,
-      pageRotation: 0,
-      isFindBarOpen: false,
-      findQuery: '',
-      findMatchesCount: { current: 0, total: 0 },
     }),
 }));

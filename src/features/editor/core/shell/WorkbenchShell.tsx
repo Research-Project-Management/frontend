@@ -65,122 +65,27 @@ export function WorkbenchShell({
   }, []);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const startWidthRef = useRef(sidebarLeftWidth);
+  startWidthRef.current = sidebarLeftWidth;
 
-  // 1. Drag Handler for Left Sidebar (Mouse & Touch)
-  const handleLeftSidebarResize = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = sidebarLeftWidth;
-    let rafId: number | null = null;
+  const handleLeftSidebarDrag = useCallback(
+    (clientX: number, startX: number) => {
+      setSidebarLeftWidth(startWidthRef.current + (clientX - startX));
+    },
+    [setSidebarLeftWidth],
+  );
 
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        const delta = moveEvent.clientX - startX;
-        setSidebarLeftWidth(startWidth + delta);
-      });
-    };
-
-    const onMouseUp = () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  }, [sidebarLeftWidth, setSidebarLeftWidth]);
-
-  const handleLeftSidebarTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 0) return;
-    const startX = e.touches[0].clientX;
-    const startWidth = sidebarLeftWidth;
-    let rafId: number | null = null;
-
-    const onTouchMove = (moveEvent: TouchEvent) => {
-      if (moveEvent.touches.length === 0) return;
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        const delta = moveEvent.touches[0].clientX - startX;
-        setSidebarLeftWidth(startWidth + delta);
-      });
-    };
-
-    const onTouchEnd = () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      window.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('touchend', onTouchEnd);
-      window.removeEventListener('touchcancel', onTouchEnd);
-    };
-
-    window.addEventListener('touchmove', onTouchMove, { passive: true });
-    window.addEventListener('touchend', onTouchEnd);
-    window.addEventListener('touchcancel', onTouchEnd);
-  }, [sidebarLeftWidth, setSidebarLeftWidth]);
-
-  // 2. Drag Handler for Center Editor vs Preview Split (Mouse & Touch)
-  const handleCenterSplitResize = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    const container = containerRef.current;
-    if (!container) return;
-
-    const rect = container.getBoundingClientRect();
-    const totalWidth = rect.width;
-    let rafId: number | null = null;
-
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        const relativeX = moveEvent.clientX - rect.left;
-        const ratio = relativeX / totalWidth;
-        setSplitRatio(ratio);
-      });
-    };
-
-    const onMouseUp = () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  }, [setSplitRatio]);
-
-  const handleCenterSplitTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 0) return;
-    const container = containerRef.current;
-    if (!container) return;
-
-    const rect = container.getBoundingClientRect();
-    const totalWidth = rect.width;
-    let rafId: number | null = null;
-
-    const onTouchMove = (moveEvent: TouchEvent) => {
-      if (moveEvent.touches.length === 0) return;
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        const relativeX = moveEvent.touches[0].clientX - rect.left;
-        const ratio = relativeX / totalWidth;
-        setSplitRatio(ratio);
-      });
-    };
-
-    const onTouchEnd = () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      window.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('touchend', onTouchEnd);
-      window.removeEventListener('touchcancel', onTouchEnd);
-    };
-
-    window.addEventListener('touchmove', onTouchMove, { passive: true });
-    window.addEventListener('touchend', onTouchEnd);
-    window.addEventListener('touchcancel', onTouchEnd);
-  }, [setSplitRatio]);
+  const handleCenterSplitDrag = useCallback(
+    (clientX: number) => {
+      const container = containerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      if (rect.width > 0) {
+        setSplitRatio((clientX - rect.left) / rect.width);
+      }
+    },
+    [setSplitRatio],
+  );
 
   return (
     <div className={cn('h-screen w-screen flex flex-col bg-background select-none', className)}>
@@ -211,8 +116,7 @@ export function WorkbenchShell({
               </aside>
             )}
             <ResizeHandle
-              onMouseDown={sidebarLeftOpen ? handleLeftSidebarResize : () => {}}
-              onTouchStart={sidebarLeftOpen ? handleLeftSidebarTouchStart : () => {}}
+              onDragX={sidebarLeftOpen ? handleLeftSidebarDrag : undefined}
               label={sidebarLeftOpen ? 'Resize or collapse left sidebar' : 'Expand left sidebar'}
               showCollapseButton
               isCollapsed={!sidebarLeftOpen}
@@ -227,18 +131,19 @@ export function WorkbenchShell({
         <div ref={containerRef} className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
           <div className="flex-1 flex min-h-0 min-w-0">
             {/* ── Slot 4: Center Editor Area ────────────────────────────────── */}
-            <section
-              style={{ flex: isPreviewCollapsed ? '1 1 0%' : `${splitRatio} 1 0%` }}
-              className="h-full flex flex-col min-w-0 sm:min-w-[200px] min-h-0 bg-canvas relative"
-            >
-              {editor}
-            </section>
+            {editor && (
+              <section
+                style={{ flex: isPreviewCollapsed || !preview ? '1 1 0%' : `${splitRatio} 1 0%` }}
+                className="h-full flex flex-col min-w-0 sm:min-w-[200px] min-h-0 bg-canvas relative"
+              >
+                {editor}
+              </section>
+            )}
 
             {/* ── Slot 6: Center Splitter Handle between Editor and Preview ─── */}
-            {preview && (
+            {editor && preview && (
               <ResizeHandle
-                onMouseDown={isPreviewCollapsed ? () => {} : handleCenterSplitResize}
-                onTouchStart={isPreviewCollapsed ? () => {} : handleCenterSplitTouchStart}
+                onDragX={isPreviewCollapsed ? undefined : handleCenterSplitDrag}
                 onDoubleClick={() => {
                   setIsPreviewCollapsed(false);
                   setSplitRatio(0.5);
@@ -255,7 +160,7 @@ export function WorkbenchShell({
             {/* ── Slot 5: Right Document Preview Area ───────────────────────── */}
             {preview && !isPreviewCollapsed && (
               <section
-                style={{ flex: `${1 - splitRatio} 1 0%` }}
+                style={{ flex: !editor ? '1 1 0%' : `${1 - splitRatio} 1 0%` }}
                 className="h-full flex flex-col min-w-0 sm:min-w-[200px] min-h-0 bg-canvas relative"
               >
                 {preview}

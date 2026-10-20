@@ -3,7 +3,6 @@ import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
 import { useWorkspaceStore } from '@/features/editor/core';
-import { useWorkspaceStore } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/core';
 
 // In-memory BroadcastChannel simulator for cross-window testing
@@ -229,6 +228,7 @@ describe('Detached PDF Viewer Multi-Window SyncTeX & Dual-Scroll Bus', () => {
           compileStatus: 'done',
           lastCompiledAt: compiledDate.toISOString(),
           logs: 'Output written on main.pdf (1 page, 2841 bytes).',
+          synctexMap: null,
         },
       });
     });
@@ -256,6 +256,7 @@ describe('Detached PDF Viewer Multi-Window SyncTeX & Dual-Scroll Bus', () => {
           compileStatus: 'idle',
           lastCompiledAt: compiledDate.toISOString(),
           logs: 'Ready',
+          synctexMap: null,
         },
       });
     });
@@ -266,6 +267,16 @@ describe('Detached PDF Viewer Multi-Window SyncTeX & Dual-Scroll Bus', () => {
       useWorkspaceStore.setState({ isPdfDetached: true });
 
       detachedChannel.postMessage({ type: 'preview:window-closed' });
+
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      expect(useWorkspaceStore.getState().isPdfDetached).toBe(false);
+    });
+
+    it('sets isPdfDetached to false when preview:attached is received', async () => {
+      useWorkspaceStore.setState({ isPdfDetached: true });
+
+      detachedChannel.postMessage({ type: 'preview:attached' });
 
       await new Promise((resolve) => setTimeout(resolve, 20));
 

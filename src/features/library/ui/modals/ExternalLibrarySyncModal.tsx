@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { RefreshCw, Check, ExternalLink, FolderOpen, Sparkles } from 'lucide-react';
+import { Check, RefreshCw, ExternalLink, FolderOpen, GitCompare, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -30,6 +30,7 @@ import { integrationService } from '@/features/settings/services/integration.ser
 import { IngestionService } from '@/features/library/sdk/library.client';
 import { itemKeys } from '@/features/library/sdk/query-keys';
 import { invalidateCollections } from '@/features/library/sdk/queries/collections.queries';
+import { pollIngestionRunCompletion } from '@/features/library/sdk';
 import type { Collection } from '@/features/library/domain/types/library.types';
 
 export interface ExternalLibrarySyncModalProps {
@@ -117,19 +118,35 @@ export default function ExternalLibrarySyncModal({
           ? targetCollectionId
           : undefined;
 
-      await IngestionService.ingest(scopeId, {
+      const remoteColName =
+        remoteCollections.find((c) => c.id === selectedRemoteCollection)?.name ||
+        'selected collection';
+
+      const res = await IngestionService.ingest(scopeId, {
         source: 'bibtex',
         content: bibtex,
         collectionId: destinationCollectionId,
       });
 
+      const resRecord = res as {
+        data?: { runId?: string };
+        runId?: string;
+      } | null;
+      const runId = resRecord?.data?.runId || resRecord?.runId;
+
+      if (runId) {
+        const pollOutcome = await pollIngestionRunCompletion(scopeId, runId, {
+          fallbackTitle: remoteColName,
+          maxWaitMs: 90000,
+        });
+        if (!pollOutcome.ok) {
+          throw new Error(pollOutcome.error || 'Ingestion run failed to complete');
+        }
+      }
+
       await queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
       await queryClient.invalidateQueries({ queryKey: itemKeys.counts(scopeId) });
       invalidateCollections(queryClient, scopeId);
-
-      const remoteColName =
-        remoteCollections.find((c) => c.id === selectedRemoteCollection)?.name ||
-        'selected collection';
 
       toast.success(
         `Successfully synced "${remoteColName}" into your Library!`,
@@ -346,7 +363,7 @@ export default function ExternalLibrarySyncModal({
               </div>
 
               <div className="p-2.5 rounded-md bg-muted/40 border border-border/60 flex items-start gap-2 text-11 text-muted-foreground">
-                <Sparkles className="size-3.5 text-primary shrink-0 mt-0.5" />
+                <GitCompare className="size-3.5 text-primary shrink-0 mt-0.5" />
                 <span>
                   Existing items with matching DOIs or citation keys are automatically
                   deduplicated so you can safely re-sync at any time.

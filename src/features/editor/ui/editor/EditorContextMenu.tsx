@@ -44,7 +44,6 @@ import {
   Image as ImageIcon,
   BookMarked,
   CheckSquare,
-  Play,
   FileText,
   FileEdit,
 } from 'lucide-react';
@@ -173,10 +172,6 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
     engine?.focus?.();
   }, []);
 
-  const handleRecompile = useCallback(() => {
-    editorCommandBus.dispatch({ type: 'compiler:trigger', reason: 'shortcut' });
-  }, []);
-
   const handleWordCount = useCallback(() => {
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'word-count' });
   }, []);
@@ -196,7 +191,7 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
         <ContextMenuContent className="w-56 text-xs">
           {/* Back to Editing (Overleaf standard) */}
           <ContextMenuItem onClick={handleBackToEditing} className="gap-2 font-medium">
-            <FileEdit className="size-3.5 text-primary" />
+            <FileEdit className="size-3.5 text-foreground" />
             <span>Back to Editing</span>
           </ContextMenuItem>
 
@@ -204,54 +199,47 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
 
           {/* Clipboard Group */}
           <ContextMenuItem onClick={handleCut} disabled={!hasSelection} className="gap-2">
-            <Scissors className="size-3.5 text-muted-foreground" />
+            <Scissors className="size-3.5 text-foreground" />
             <span>Cut</span>
             <ContextMenuShortcut>Ctrl+X</ContextMenuShortcut>
           </ContextMenuItem>
 
           <ContextMenuItem onClick={handleCopy} disabled={!hasSelection} className="gap-2">
-            <Copy className="size-3.5 text-muted-foreground" />
+            <Copy className="size-3.5 text-foreground" />
             <span>Copy</span>
             <ContextMenuShortcut>Ctrl+C</ContextMenuShortcut>
           </ContextMenuItem>
 
           <ContextMenuItem onClick={handlePaste} className="gap-2">
-            <ClipboardPaste className="size-3.5 text-muted-foreground" />
+            <ClipboardPaste className="size-3.5 text-foreground" />
             <span>Paste</span>
             <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
           </ContextMenuItem>
 
-          <ContextMenuItem onClick={handleDelete} disabled={!hasSelection} className="gap-2 text-destructive focus:text-destructive">
-            <Trash2 className="size-3.5" />
+          <ContextMenuItem onClick={handleDelete} disabled={!hasSelection} className="gap-2">
+            <Trash2 className="size-3.5 text-foreground" />
             <span>Delete</span>
             <ContextMenuShortcut>Del</ContextMenuShortcut>
           </ContextMenuItem>
 
           <ContextMenuSeparator />
 
-          {/* SyncTeX & Compilation Group */}
-          <ContextMenuItem onClick={handleRecompile} className="gap-2 font-medium text-primary focus:text-primary">
-            <Play className="size-3.5 fill-primary text-primary" />
-            <span>Recompile Document</span>
-            <ContextMenuShortcut>Ctrl+Enter</ContextMenuShortcut>
-          </ContextMenuItem>
-
-          <ContextMenuItem onClick={handleJumpToPdf} className="gap-2 font-medium">
-            <ExternalLink className="size-3.5 text-primary" />
-            <span>Jump to location in PDF</span>
+          {/* SyncTeX & Comments Group (Overleaf Parity) */}
+          <ContextMenuItem onClick={handleJumpToPdf} className="gap-2">
+            <ExternalLink className="size-3.5 text-foreground" />
+            <span>Go to PDF location</span>
             <ContextMenuShortcut>Ctrl+Alt+J</ContextMenuShortcut>
           </ContextMenuItem>
 
-          {/* Comments Group */}
           <ContextMenuItem onClick={handleAddReviewComment} className="gap-2">
-            <MessageSquarePlus className="size-3.5 text-warning" />
-            <span>Add Review Comment</span>
+            <MessageSquarePlus className="size-3.5 text-foreground" />
+            <span>Add comment</span>
             <ContextMenuShortcut>Ctrl+Alt+M</ContextMenuShortcut>
           </ContextMenuItem>
 
           <ContextMenuItem onClick={handleToggleLineComment} className="gap-2">
-            <MessageSquareCode className="size-3.5 text-muted-foreground" />
-            <span>Toggle % Comment</span>
+            <MessageSquareCode className="size-3.5 text-foreground" />
+            <span>Toggle comment</span>
             <ContextMenuShortcut>Ctrl+/</ContextMenuShortcut>
           </ContextMenuItem>
 

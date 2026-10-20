@@ -22,7 +22,6 @@ import {
   TrackChangesControlBar,
 } from './subcomponents/ReviewSuggestions';
 import { OverviewView } from './subcomponents/ReviewOverview';
-import { ReviewProjectChat } from './subcomponents/ReviewProjectChat';
 import { reviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
 import { useSettingsStore } from '@/features/editor/core';
 
@@ -97,13 +96,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
       />
 
       {/* ── Content View Area ── */}
-      {scope === 'chat' ? (
-        <ReviewProjectChat
-          projectId={projectId}
-          pageId={pageId}
-          currentUserId={user?.id}
-        />
-      ) : isCommentsError || isSuggestionsError ? (
+      {isCommentsError || isSuggestionsError ? (
         <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center">
           <PlaneErrorState
             title="Unable to load reviews"
@@ -237,7 +230,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
         />
       )}
 
-      {/* ── Bottom Navigation Tabs: Current file vs Overview vs Chat ── */}
+      {/* ── Bottom Navigation Tabs: Current file vs Overview ── */}
       <ReviewBottomNav scope={scope} onScopeChange={setScope} />
     </div>
   );

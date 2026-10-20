@@ -149,16 +149,14 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     })),
   );
 
-  // Unified Library Inspector UI Store
-  const { isInspectorOpen, setIsInspectorOpen, toggleInspector, activeScope } =
-    useLibraryUIStore(
-      useShallow((s) => ({
-        isInspectorOpen: s.isInspectorOpen,
-        setIsInspectorOpen: s.setIsInspectorOpen,
-        toggleInspector: s.toggleInspector,
-        activeScope: s.activeScope,
-      })),
-    );
+  // Reader-specific local inspector toggle
+  const [isReaderInspectorOpen, setIsReaderInspectorOpen] = useState(false);
+  const handleToggleInspector = useCallback(() => {
+    setIsReaderInspectorOpen((prev) => !prev);
+  }, []);
+  const handleCloseInspector = useCallback(() => {
+    setIsReaderInspectorOpen(false);
+  }, []);
 
   // In-Document Search
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(
@@ -245,11 +243,6 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     setPageHistory((prev) => prev.slice(0, prev.length - 1));
     handleNavigateToPage(prevPage);
   }, [pageHistory, handleNavigateToPage]);
-
-  // Ensure panels are closed by default when entering the reader view
-  useEffect(() => {
-    setIsInspectorOpen(false);
-  }, [setIsInspectorOpen]);
 
   // Escape key exits distraction-free reading mode
   useEffect(() => {
@@ -577,8 +570,8 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           fitMode={fitMode}
           onSelectFitMode={setFitMode}
           onToggleSearch={handleToggleSearch}
-          isInspectorOpen={isInspectorOpen}
-          onToggleInspector={toggleInspector}
+          isInspectorOpen={isReaderInspectorOpen}
+          onToggleInspector={handleToggleInspector}
           isScanned={isScanned}
           ocrStatus={ocrStatus}
           onTriggerOcr={handleTriggerOcr}
@@ -589,7 +582,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       {paper?.isRetracted && (
         <div className="bg-destructive text-destructive-foreground px-4 py-2 flex items-center justify-between text-12 z-30 shrink-0 border-b border-destructive/20 select-none">
           <div className="flex items-center gap-2 min-w-0">
-            <ShieldAlert className="size-4 shrink-0 text-destructive-foreground animate-pulse" />
+            <ShieldAlert className="size-4 shrink-0 text-destructive-foreground" />
             <span className="font-semibold tracking-normal">
               {paper.retractionNature === "expression_of_concern"
                 ? "Expression of Concern"
@@ -728,7 +721,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
               description="No PDF, EPUB, or Web Snapshot attached to this entry. You can review metadata or notes using the side panel."
               action={{
                 label: "Open Details",
-                onClick: () => setIsInspectorOpen(true),
+                onClick: () => setIsReaderInspectorOpen(true),
               }}
             />
           )}
@@ -740,6 +733,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
             item={paper}
             scopeId={scopeId}
             canEdit={true}
+            defaultOpen={isReaderInspectorOpen}
             onClose={handleCloseInspector}
             onSelectItem={handleSelectItem}
             onNavigateToAnnotation={handleNavigateToPageWithHistory}

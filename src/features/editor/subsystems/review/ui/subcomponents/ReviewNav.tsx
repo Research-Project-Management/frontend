@@ -79,7 +79,7 @@ export function ReviewHeader({
 
 // ── Review Bottom Nav ───────────────────────────────────────────────────────
 
-export type ReviewScope = 'current' | 'overview' | 'chat';
+export type ReviewScope = 'current' | 'overview';
 
 export interface ReviewBottomNavProps {
   scope: ReviewScope;
@@ -123,24 +123,6 @@ export function ReviewBottomNav({ scope, onScopeChange }: ReviewBottomNavProps) 
         )}
         <List className="size-3.5 shrink-0" />
         <span className="leading-tight">Overview</span>
-      </button>
-
-      {/* Project Chat Tab (Overleaf Parity) */}
-      <button
-        type="button"
-        onClick={() => onScopeChange('chat')}
-        className={cn(
-          'relative flex flex-1 flex-col items-center justify-center gap-1 h-full transition-colors cursor-pointer text-xs font-medium',
-          scope === 'chat'
-            ? 'text-primary font-semibold'
-            : 'text-muted-foreground hover:text-foreground',
-        )}
-      >
-        {scope === 'chat' && (
-          <div className="absolute top-0 inset-x-0 h-[2px] bg-primary" />
-        )}
-        <MessageSquare className="size-3.5 shrink-0" />
-        <span className="leading-tight">Chat</span>
       </button>
     </nav>
   );

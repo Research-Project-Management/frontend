@@ -3,7 +3,6 @@
 import { useId, useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { motion, LayoutGroup } from 'framer-motion';
 import { Library, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -284,7 +283,6 @@ export function LibrarySidebar() {
           />
 
           {/* Navigation Links */}
-          <LayoutGroup id={`library-nav-${id}`}>
             <nav
               aria-label="Library Navigation"
               className="flex-1 overflow-x-hidden overflow-y-auto flex flex-col gap-0.5 sidebar-scrollbar scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
@@ -308,14 +306,7 @@ export function LibrarySidebar() {
                       : "text-foreground hover:bg-muted group-hover/root:bg-muted font-normal"
                   )}
                 >
-                  {isLibraryActive && (
-                    <motion.div
-                      layoutId={`library-nav-active-${id}`}
-                      className="absolute inset-0 rounded-md bg-muted"
-                      initial={false}
-                      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                    />
-                  )}
+                  
                   <Library
                     className="relative z-10 size-4 shrink-0 text-foreground"
                     strokeWidth={1.5}
@@ -486,7 +477,6 @@ export function LibrarySidebar() {
                 pathname={pathname}
               />
             </nav>
-          </LayoutGroup>
         </div>
 
 

@@ -297,7 +297,6 @@ export function CompilerLogs({
           highlight: 'error',
         });
       }
-      toast.info(`Jumped to line ${entry.line}${entry.file ? ` in ${entry.file}` : ''}`);
     }
   }, [onJumpToError]);
 
@@ -323,24 +322,6 @@ export function CompilerLogs({
     const el = document.getElementById(`log-entry-err-${prevIdx}`);
     el?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
   }, [currentErrorIdx, parsed.errors, handleEntryClick]);
-
-  // Global F8 / Shift+F8 keyboard shortcut for stepping through compilation errors
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'F8') {
-        e.preventDefault();
-        if (e.shiftKey) {
-          handlePrevError();
-        } else {
-          handleNextError();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [handleNextError, handlePrevError]);
 
   // Sync with external error-stepped events from navigation coordinator
   useEffect(() => {

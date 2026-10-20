@@ -282,8 +282,8 @@ export const errorLensTheme = EditorView.baseTheme({
     padding: '0 6px 0 8px',
     height: '22px',
     borderRadius: '9999px',
-    fontSize: '11.5px',
-    lineHeight: '1',
+    fontSize: 'var(--text-12, 12px)',
+    lineHeight: '1.35',
     fontFamily: 'var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif)',
     pointerEvents: 'auto',
     userSelect: 'none',
@@ -293,9 +293,6 @@ export const errorLensTheme = EditorView.baseTheme({
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     zIndex: '10',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
-    backdropFilter: 'blur(8px)',
-    transition: 'opacity 0.15s ease, transform 0.15s ease',
   },
   '.cm-error-lens-error': {
     backgroundColor: 'color-mix(in srgb, var(--destructive) 9%, var(--canvas, #ffffff))',
@@ -318,6 +315,8 @@ export const errorLensTheme = EditorView.baseTheme({
     flexShrink: '0',
   },
   '.cm-error-lens-msg': {
+    fontSize: 'var(--text-12, 12px)',
+    lineHeight: '1.35',
     fontWeight: '500',
     color: 'var(--foreground)',
     overflow: 'hidden',
@@ -338,18 +337,19 @@ export const errorLensTheme = EditorView.baseTheme({
     border: 'none',
     cursor: 'pointer',
     outline: 'none',
+    lineHeight: '1.35',
   },
   '.cm-error-lens-btn-fix': {
     gap: '3.5px',
-    padding: '2px 7px',
+    padding: '1px 7px',
     borderRadius: '9999px',
-    fontSize: '10.5px',
+    fontSize: 'var(--text-12, 12px)',
+    lineHeight: '1.35',
     fontWeight: '600',
     letterSpacing: '0.01em',
     border: '1px solid color-mix(in srgb, var(--ai, #8250DF) 30%, transparent)',
     backgroundColor: 'color-mix(in srgb, var(--ai, #8250DF) 12%, var(--canvas, #ffffff))',
     color: 'var(--ai, #8250DF)',
-    transition: 'all 0.15s ease',
     '&:hover': {
       backgroundColor: 'var(--ai, #8250DF)',
       color: '#FFFFFF',
@@ -365,22 +365,21 @@ export const errorLensTheme = EditorView.baseTheme({
     border: '1px solid transparent',
     backgroundColor: 'transparent',
     color: 'var(--text-secondary, #595959)',
-    transition: 'all 0.15s ease',
     '&:hover': {
       backgroundColor: 'color-mix(in srgb, var(--ai, #8250DF) 15%, transparent)',
       borderColor: 'color-mix(in srgb, var(--ai, #8250DF) 30%, transparent)',
       color: 'var(--ai, #8250DF)',
     },
   },
-  // Line highlighting with inset marker
+  // Line highlighting with subtle 1px hairline indicator (Craft Floor compliant)
   '.cm-error-lens-line-error': {
     backgroundColor: 'color-mix(in srgb, var(--destructive) 4.5%, transparent) !important',
-    boxShadow: 'inset 3px 0 0 0 var(--destructive)',
+    boxShadow: 'inset 1px 0 0 0 var(--destructive)',
     borderLeft: 'none !important',
   },
   '.cm-error-lens-line-warning': {
     backgroundColor: 'color-mix(in srgb, var(--warning) 4.5%, transparent) !important',
-    boxShadow: 'inset 3px 0 0 0 var(--warning)',
+    boxShadow: 'inset 1px 0 0 0 var(--warning)',
     borderLeft: 'none !important',
   },
 });

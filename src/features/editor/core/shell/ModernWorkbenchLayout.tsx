@@ -238,7 +238,7 @@ export function ModernWorkbenchLayout() {
         useWorkspaceStore.getState().setFileOutlineOpen(true);
         return 'files';
       }
-      if (lower === 'files' || lower === 'search' || lower === 'citations' || lower === 'review' || lower === 'ai') {
+      if (lower === 'files' || lower === 'search' || lower === 'citations' || lower === 'review' || lower === 'chat' || lower === 'ai') {
         return lower as ActivityBarTab;
       }
       return 'files';

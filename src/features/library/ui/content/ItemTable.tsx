@@ -239,7 +239,7 @@ export const ItemTable = React.memo(function ItemTable({
     }
   };
 
-  // Row click handler: activates the item to view in inspector, and toggles off if clicked again.
+  // Row click handler: activates the item to view in inspector, opens the inspector if closed, and toggles off if clicked again.
   // NEVER checks or shows the checkbox automatically (checkbox must be explicitly clicked by user).
   const handleRowClick = useCallback(
     (_e: React.MouseEvent, item: Item, index: number) => {
@@ -252,11 +252,12 @@ export const ItemTable = React.memo(function ItemTable({
         return;
       }
 
-      // Otherwise, activate this item without touching checkboxes
+      // Otherwise, activate this item and ensure inspector is open to give immediate feedback
       setActiveItem(item.id);
+      setIsInspectorOpen(true);
       lastSelectedIndexRef.current = index;
     },
-    [setActiveItem],
+    [setActiveItem, setIsInspectorOpen],
   );
 
   // Checkbox toggle handler: explicit user choice with Shift + Click range support
@@ -285,20 +286,22 @@ export const ItemTable = React.memo(function ItemTable({
         typeof window !== "undefined"
           ? new URLSearchParams(window.location.search).get("q")
           : null;
-      const currentProjectId =
-        typeof window !== "undefined"
-          ? new URLSearchParams(window.location.search).get("projectId")
-          : null;
+      const activeScope = useLibraryUIStore.getState().activeScope;
+      const targetItem = itemsById.get(itemId);
+      const effectiveProjectId =
+        targetItem?.projectId ||
+        (activeScope.type === "project" ? activeScope.id : null);
+
       const queryParts = [
-        currentProjectId
-          ? `projectId=${encodeURIComponent(currentProjectId)}`
+        effectiveProjectId
+          ? `projectId=${encodeURIComponent(effectiveProjectId)}`
           : "",
         currentQuery ? `q=${encodeURIComponent(currentQuery)}` : "",
       ].filter(Boolean);
       const qParam = queryParts.length ? `?${queryParts.join("&")}` : "";
       router.push(`/library/papers/${itemId}${qParam}`);
     },
-    [router, isTrash],
+    [router, isTrash, itemsById],
   );
 
   // O(1) lookup map by item ID for action guards

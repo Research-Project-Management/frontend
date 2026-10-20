@@ -114,10 +114,6 @@ export class NavigationCoordinatorRegistry {
 
   private executeLineJump(target: PendingLineJump): void {
     const { line, column, highlight = 'synctex' } = target;
-    const engine = getActiveEditorEngine();
-    if (engine && typeof engine.jumpToLine === 'function') {
-      engine.jumpToLine(line, highlight, column);
-    }
     editorCommandBus.dispatch({
       type: 'editor:jump-to-line',
       line,
@@ -699,7 +695,6 @@ export class NavigationCoordinatorRegistry {
           return;
         }
       }
-      this.notifier.info('No compilation errors in project', { id: 'compiler-diagnostic-step' });
       return;
     }
 
@@ -751,13 +746,6 @@ export class NavigationCoordinatorRegistry {
         line: target.line,
         highlight: 'error',
       });
-
-      this.notifier.info(
-        `Error ${targetIndex + 1}/${list.length}: ${target.message}${
-          target.file ? ` (${target.file}:${target.line})` : ` (line ${target.line})`
-        }`,
-        { id: 'compiler-diagnostic-step' }
-      );
 
       editorCommandBus.dispatch({
         type: 'editor:error-stepped',

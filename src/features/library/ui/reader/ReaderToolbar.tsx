@@ -27,7 +27,6 @@ import {
   Baseline,
   Hand,
   MousePointer,
-  Sparkles,
   Loader2,
 } from "lucide-react";
 import {
@@ -446,7 +445,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
                 strokeWidth={1.5}
               />
             ) : (
-              <Sparkles
+              <ScanText
                 className="size-3.5 text-primary shrink-0"
                 strokeWidth={1.5}
               />

@@ -1,3 +1,12 @@
+export interface ProjectStateDetail {
+  id: string;
+  name: string;
+  color?: string;
+  description?: string | null;
+  sequence?: number;
+  isDefault?: boolean;
+}
+
 export type ProjectState =
   | 'draft'
   | 'planning'
@@ -28,7 +37,7 @@ export interface ProjectMetadata {
   description: string | null;
   avatar: string | null;
   coverImage: string | null;
-  state: ProjectState;
+  state: ProjectState | ProjectStateDetail | null;
   priority: ProjectPriority;
   startDate: string | null;
   targetDate: string | null;

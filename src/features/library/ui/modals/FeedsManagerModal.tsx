@@ -9,18 +9,7 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
-import {
-  Rss,
-  Plus,
-  Trash2,
-  RefreshCw,
-  BookPlus,
-  ExternalLink,
-  Check,
-  Loader2,
-  Sparkles,
-  FileText,
-} from 'lucide-react';
+import { RefreshCw, Plus, Rss, Trash2, Loader2, CheckCircle2, ExternalLink, Check, BookPlus, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFetchAcademicFeed } from '@/features/library/sdk/queries/ingestion.queries';
 import { useItems } from '@/features/library/sdk/queries/catalog.queries';
@@ -30,13 +19,10 @@ import {
 } from '@/features/library/domain/feed-parser.domain';
 import type { Collection } from '@/features/library/domain/types/library.types';
 import { cn } from '@/shared/lib/utils';
+import { useFeedsStore } from '@/features/library/core/store/feeds.store';
+import type { SavedFeedSubscription } from '@/features/library/domain/types/feeds.types';
 
-export interface SavedFeedSubscription {
-  id: string;
-  name: string;
-  url: string;
-  lastRefreshed?: string;
-}
+export type { SavedFeedSubscription };
 
 interface FeedCreatorApiItem {
   firstName?: string;
@@ -109,23 +95,15 @@ export default function FeedsManagerModal({
 }: FeedsManagerModalProps) {
   const { mutateAsync: fetchAcademicFeed } = useFetchAcademicFeed();
   const { createItem } = useItems({ scopeId, enabled: false });
-  const [feeds, setFeeds] = useState<SavedFeedSubscription[]>(() => {
-    if (typeof window === 'undefined') return DEFAULT_ACADEMIC_FEEDS;
-    try {
-      const saved = window.localStorage.getItem(FEEDS_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {
-      // ignore storage errors
-    }
-    return DEFAULT_ACADEMIC_FEEDS;
-  });
+  const {
+    feeds,
+    activeFeedId,
+    loadFeeds,
+    setActiveFeedId,
+    addFeed,
+    removeFeed,
+  } = useFeedsStore();
 
-  const [activeFeedId, setActiveFeedId] = useState<string>(
-    feeds[0]?.id || 'arxiv-cs-ai',
-  );
   const [isAddingFeed, setIsAddingFeed] = useState(false);
   const [newFeedName, setNewFeedName] = useState('');
   const [newFeedUrl, setNewFeedUrl] = useState('');
@@ -143,16 +121,11 @@ export default function FeedsManagerModal({
     () => new Set(),
   );
 
-  const persistFeeds = (nextFeeds: SavedFeedSubscription[]) => {
-    setFeeds(nextFeeds);
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(FEEDS_STORAGE_KEY, JSON.stringify(nextFeeds));
-      } catch {
-        // ignore storage errors
-      }
+  useEffect(() => {
+    if (open) {
+      loadFeeds();
     }
-  };
+  }, [open, loadFeeds]);
 
   const activeFeed = feeds.find((f) => f.id === activeFeedId) || feeds[0];
 
@@ -212,24 +185,18 @@ export default function FeedsManagerModal({
     e.preventDefault();
     const url = newFeedUrl.trim();
     if (!url) return;
-    const name =
-      newFeedName.trim() ||
-      url.replace(/^https?:\/\/(www\.)?/i, '').slice(0, 42);
-    const id = `feed-${Date.now()}`;
-    const next = [...feeds, { id, name, url }];
-    persistFeeds(next);
-    setActiveFeedId(id);
+    const newFeed = addFeed(newFeedName, url);
     setNewFeedName('');
     setNewFeedUrl('');
     setIsAddingFeed(false);
-    toast.success(`Subscribed to "${name}"`);
+    toast.success(`Subscribed to "${newFeed.name}"`);
   };
 
   const handleRemoveFeed = (id: string) => {
-    const next = feeds.filter((f) => f.id !== id);
-    persistFeeds(next);
+    removeFeed(id);
     if (activeFeedId === id) {
-      setActiveFeedId(next[0]?.id || '');
+      const remaining = feeds.filter((f) => f.id !== id);
+      setActiveFeedId(remaining[0]?.id || null);
     }
   };
 
@@ -417,7 +384,7 @@ export default function FeedsManagerModal({
               </div>
             ) : entries.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-2 p-6 text-center text-muted-foreground">
-                <Sparkles className="size-6 stroke-1" />
+                <CheckCircle2 className="size-6 stroke-1" />
                 <p className="text-13 font-medium text-foreground">
                   No articles found in this feed
                 </p>

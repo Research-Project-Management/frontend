@@ -59,10 +59,19 @@ export function ProjectPropertiesSidebar({
   project,
   currentUpdate,
 }: ProjectPropertiesSidebarProps) {
-  const stateMeta = STATE_CONFIG[project.state] || {
-    label: project.state,
-    color: 'bg-muted text-foreground border border-border',
-  };
+  const stateLabel =
+    typeof project.state === 'object' && project.state !== null
+      ? project.state.name
+      : typeof project.state === 'string' && project.state in STATE_CONFIG
+        ? STATE_CONFIG[project.state as keyof typeof STATE_CONFIG].label
+        : typeof project.state === 'string'
+          ? project.state
+          : 'Unassigned';
+
+  const stateColor =
+    typeof project.state === 'object' && project.state !== null && project.state.color
+      ? project.state.color
+      : '#0284c7';
   const priorityMeta = PRIORITY_CONFIG[project.priority] || {
     label: project.priority,
     color: 'text-foreground',
@@ -87,10 +96,9 @@ export function ProjectPropertiesSidebar({
           <span className="text-foreground/70 font-medium flex items-center gap-1.5">
             <Clock className="size-3.5" /> State
           </span>
-          <span
-            className={`px-2 py-0.5 rounded-md font-medium text-11 ${stateMeta.color}`}
-          >
-            {stateMeta.label}
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-11 bg-muted text-foreground border border-border">
+            <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: stateColor }} />
+            {stateLabel}
           </span>
         </div>
 

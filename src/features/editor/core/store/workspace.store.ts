@@ -17,7 +17,7 @@ import type { WorkspaceTab } from '@/features/editor/domain/types/workspace.type
 
 // ── Layout Enums & Types ──────────────────────────────────────────────────────
 
-export type ActivityBarTab = 'files' | 'search' | 'citations' | 'review' | 'ai';
+export type ActivityBarTab = 'files' | 'search' | 'citations' | 'review' | 'chat' | 'ai';
 export type EditorSplitMode = 'none' | 'vertical' | 'horizontal';
 export type ActiveEditorPane = 'primary' | 'secondary';
 

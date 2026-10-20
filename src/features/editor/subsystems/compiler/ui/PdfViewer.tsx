@@ -41,7 +41,6 @@ import { editorCommandBus, setActivePdfViewer } from '@/features/editor/core';
 
 import { PdfToolbar } from './PdfToolbar';
 import { PdfFindBar } from './PdfFindBar';
-import { CompilationErrorBanner } from './CompilationErrorBanner';
 import PdfSurface, { type PdfSurfaceHandle } from './PdfSurface';
 import { CompilerLogs, parseLatexLog } from './CompilerLogs';
 import { filterDiagnostics } from '@/features/editor/domain/latex/warning-filter';
@@ -229,16 +228,6 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
     };
   }, [handleJumpToPage]);
 
-  // Jump to first compilation error (Overleaf 1:1 parity)
-  const firstError = parsedLog?.errors?.[0];
-  const handleJumpToFirstError = useCallback(() => {
-    const line = firstError?.line || 1;
-    const file = firstError?.file || null;
-    handleJumpToSource(file, line, undefined, undefined, undefined, 'error');
-    editorCommandBus.dispatch({ type: 'editor:jump-to-line', line, highlight: 'error' });
-    editorCommandBus.dispatch({ type: 'editor:focus' });
-  }, [firstError, handleJumpToSource]);
-
   // 4. In-Document PDF Search Controller
   const {
     isOpen: isSearchOpen,
@@ -373,15 +362,6 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
           />
 
           <a ref={downloadRef} className="hidden" aria-hidden="true" />
-
-          {/* ── Compilation Error Floating Banner (Overleaf 1:1 Parity) ── */}
-          {(parsedLog?.errors.length ?? 0) > 0 && (
-            <CompilationErrorBanner
-              errorCount={parsedLog!.errors.length}
-              onJumpToFirstError={handleJumpToFirstError}
-              onOpenLogs={handleToggleLog}
-            />
-          )}
 
           {/* PDF Viewer Surface (Overleaf 1:1 Parity) */}
           <div ref={pdfContainerRef} className="flex-1 min-h-0 relative flex flex-col overflow-hidden">

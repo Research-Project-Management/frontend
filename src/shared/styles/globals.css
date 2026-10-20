@@ -1387,13 +1387,17 @@
 }
 
 /* --------------------------------------------------------------------------
-   CODEMIRROR 6 FLUSH ACTIVE LINE & ZERO-OFFSET GUTTER
-   Eliminates top/horizontal gaps ("lỗi cách biên") so active line highlights
-   and line gutters touch surrounding pane borders seamlessly.
+   CODEMIRROR 6 TOP INSET & ACTIVE LINE
+   Provides balanced vertical breathing room (8px top inset) for editor content
+   and line gutters while keeping active line highlights crisp.
    -------------------------------------------------------------------------- */
 .cm-editor .cm-content {
-  padding-top: 0 !important;
+  padding-top: 8px !important;
   padding-bottom: 32px !important;
+}
+
+.cm-editor .cm-gutters {
+  padding-top: 8px !important;
 }
 
 .cm-editor .cm-activeLine {
@@ -1630,22 +1634,22 @@
 @keyframes cm-synctex-pulse {
   0% {
     background-color: hsl(var(--warning) / 0.40) !important;
-    border-left: 3px solid hsl(var(--warning)) !important;
+    border-left: 1px solid hsl(var(--warning)) !important;
     box-shadow: inset 0 0 0 1px hsl(var(--warning) / 0.25), 0 0 10px hsl(var(--warning) / 0.2) !important;
   }
   25% {
     background-color: hsl(var(--warning) / 0.30) !important;
-    border-left: 3px solid hsl(var(--warning)) !important;
+    border-left: 1px solid hsl(var(--warning)) !important;
     box-shadow: inset 0 0 0 1px hsl(var(--warning) / 0.15) !important;
   }
   65% {
     background-color: hsl(var(--warning) / 0.15) !important;
-    border-left: 2px solid hsl(var(--warning) / 0.8) !important;
+    border-left: 1px solid hsl(var(--warning) / 0.8) !important;
     box-shadow: none !important;
   }
   100% {
     background-color: transparent !important;
-    border-left: 2px solid transparent !important;
+    border-left: 1px solid transparent !important;
     box-shadow: none !important;
   }
 }
@@ -1653,16 +1657,16 @@
 @keyframes cm-error-pulse {
   0% {
     background-color: hsl(var(--destructive) / 0.30) !important;
-    border-left: 3px solid hsl(var(--destructive)) !important;
+    border-left: 1px solid hsl(var(--destructive)) !important;
     box-shadow: inset 0 0 0 1px hsl(var(--destructive) / 0.2) !important;
   }
   40% {
     background-color: hsl(var(--destructive) / 0.20) !important;
-    border-left: 2.5px solid hsl(var(--destructive)) !important;
+    border-left: 1px solid hsl(var(--destructive)) !important;
   }
   100% {
     background-color: hsl(var(--destructive) / 0.12) !important;
-    border-left: 2px solid hsl(var(--destructive)) !important;
+    border-left: 1px solid hsl(var(--destructive)) !important;
   }
 }
 

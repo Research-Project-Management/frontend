@@ -323,12 +323,13 @@ export default function AiTab({ onClose }: AiTabProps) {
 
   return (
     <TooltipProvider delayDuration={150}>
-      <aside
+      <div
+        role="region"
         aria-label="AI Research Assistant"
-        className="flex flex-col h-full bg-background select-none overflow-hidden"
+        className="flex flex-col h-full select-none overflow-hidden"
       >
         {/* ── Top Header ── */}
-        <div className="flex h-9 items-center justify-between px-3 border-b border-border bg-background shrink-0 select-none">
+        <div className="flex h-9 items-center justify-between px-3 border-b border-border shrink-0 select-none">
           <div className="flex items-center min-w-0">
             <h2 className="text-13 font-semibold text-foreground truncate">AI Assistant</h2>
           </div>
@@ -451,7 +452,7 @@ export default function AiTab({ onClose }: AiTabProps) {
           onStorageAttached={(items) => handleAttachItems(items, 'storage')}
           onDocumentsAttached={(items) => handleAttachItems(items, 'documents')}
         />
-      </aside>
+      </div>
     </TooltipProvider>
   );
 }

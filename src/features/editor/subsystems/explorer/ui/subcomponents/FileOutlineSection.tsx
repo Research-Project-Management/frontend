@@ -149,7 +149,6 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
       } else {
         editorCommandBus.dispatch({ type: 'editor:jump-to-line', line, highlight: 'synctex' });
       }
-      editorCommandBus.dispatch({ type: 'synctex:forward', line });
     },
     [engine],
   );

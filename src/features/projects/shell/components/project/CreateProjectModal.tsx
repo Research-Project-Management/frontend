@@ -200,9 +200,9 @@ export function CreateProjectModal({
     return (
       defaultStates.find((s) => s.isDefault) ||
       defaultStates[0] || {
-        name: 'Proposal & Literature Review',
-        color: '#0284c7',
-        description: 'Drafting research idea, literature review, methodology design, and core objectives.',
+        name: 'Ideation',
+        color: '#64748b',
+        description: 'Formulating research ideas, preliminary inquiry, hypothesis generation, and literature exploration.',
       }
     );
   }, [defaultStates]);

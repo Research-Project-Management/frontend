@@ -5,7 +5,6 @@ import {
   MinusCircle,
   Plus,
   StickyNote,
-  Sparkles,
   ChevronDown,
   ChevronUp,
   Pencil,
@@ -216,7 +215,7 @@ function NotesSectionContent({
                     {isExtractingFromAnnotations ? (
                       <Loader2 className="size-3 animate-spin shrink-0" />
                     ) : (
-                      <Sparkles className="size-3 shrink-0" />
+                      <FileText className="size-3 shrink-0" />
                     )}
                     <span>From Highlights</span>
                   </button>
@@ -261,7 +260,7 @@ function NotesSectionContent({
                 {isExtractingFromAnnotations ? (
                   <Loader2 className="size-3 animate-spin shrink-0" />
                 ) : (
-                  <Sparkles className="size-3 shrink-0 text-primary" />
+                  <FileText className="size-3 shrink-0 text-primary" />
                 )}
                 <span>Add Note from Annotations</span>
               </button>
@@ -346,7 +345,7 @@ function NotesSectionContent({
                     {isExtractingFromAnnotations ? (
                       <Loader2 className="size-3 animate-spin shrink-0" />
                     ) : (
-                      <Sparkles className="size-3 text-primary shrink-0" />
+                      <FileText className="size-3 text-primary shrink-0" />
                     )}
                     <span>From PDF Highlights</span>
                   </Button>

@@ -5,7 +5,6 @@ import {
   AlertCircle,
   AlertTriangle,
   Info,
-  CornerDownLeft,
   Wand2,
   Loader2,
 } from 'lucide-react';
@@ -88,21 +87,6 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
               {entry.message}
             </p>
             <div className="flex items-center flex-wrap gap-1.5 shrink-0">
-              {entry.line !== undefined && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onClick?.();
-                  }}
-                  aria-label={`Go to line ${entry.line}`}
-                  className="min-h-[28px] flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-medium text-foreground bg-muted hover:bg-muted/80 border border-border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors shrink-0 relative after:absolute after:-inset-1 after:content-['']"
-                  title={`Go to line ${entry.line}${entry.file ? ` in ${entry.file}` : ''}`}
-                >
-                  <CornerDownLeft className="size-3 text-muted-foreground" />
-                  <span>Line {entry.line}</span>
-                </button>
-              )}
 
               {entry.quickFix && onApplyQuickFix && (
                 <button

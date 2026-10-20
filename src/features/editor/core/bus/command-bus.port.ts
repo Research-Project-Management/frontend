@@ -14,6 +14,7 @@ export type SidebarPanelName =
   | 'Outline'
   | 'Search'
   | 'Review'
+  | 'Chat'
   | 'History'
   | 'AI'
   | 'Settings'

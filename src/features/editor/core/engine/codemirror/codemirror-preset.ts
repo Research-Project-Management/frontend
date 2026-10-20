@@ -73,7 +73,7 @@ export const editorBaseTheme = EditorView.theme({
     overflow: 'auto',
   },
   '.cm-content': {
-    padding: '8px 0 32px 0',
+    padding: '0 0 32px 0',
   },
   '.cm-line': {
     padding: '0 12px',
@@ -86,30 +86,71 @@ export const editorBaseTheme = EditorView.theme({
     backgroundColor: 'transparent',
     color: 'var(--muted-foreground, #57606a)',
     fontFamily: 'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-    padding: '8px 0 0 0',
+    padding: '0 0 32px 0',
   },
   '.cm-gutterElement': {
-    padding: '0 6px 0 10px',
+    display: 'flex !important',
+    alignItems: 'center',
     color: 'var(--muted-foreground, #57606a)',
     fontFamily: 'inherit',
+    boxSizing: 'border-box',
+  },
+  '.cm-lineNumbers .cm-gutterElement': {
+    justifyContent: 'flex-end',
+    padding: '0 4px 0 10px',
+    minWidth: '28px',
+    cursor: 'default',
   },
   '.cm-gutterElement.cm-foldGutter': {
-    padding: '0 6px 0 2px',
+    justifyContent: 'center',
+    padding: '0 2px',
+    width: '16px',
     cursor: 'pointer',
+  },
+  '.cm-fold-marker': {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '14px',
+    height: '14px',
+    borderRadius: '2px',
+    color: 'var(--muted-foreground, #57606a)',
+    opacity: '0.5',
+    transition: 'opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease',
+  },
+  '.cm-gutters:hover .cm-fold-marker': {
+    opacity: '0.75',
+  },
+  '.cm-fold-marker:hover': {
+    opacity: '1 !important',
+    color: 'var(--foreground)',
+    backgroundColor: 'var(--muted, rgba(125, 125, 125, 0.15))',
+  },
+  '.cm-fold-marker.cm-fold-closed': {
+    opacity: '0.9',
+    color: 'var(--primary, #0969DA)',
   },
   '.cm-foldGutter span': {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '12px',
-    height: '100%',
     lineHeight: '1',
-    userSelect: 'none',
-    opacity: '0.6',
-    transition: 'opacity 0.15s ease',
   },
-  '.cm-foldGutter span:hover': {
-    opacity: '1',
+  '.cm-foldPlaceholder': {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    verticalAlign: 'middle',
+    height: '1.15em',
+    lineHeight: '1',
+    padding: '0 4px',
+    margin: '0 2px',
+    border: '1px solid var(--border, #d0d7de)',
+    borderRadius: '3px',
+    backgroundColor: 'var(--muted, #f6f8fa)',
+    color: 'var(--muted-foreground, #57606a)',
+    fontSize: '0.85em',
+    cursor: 'pointer',
   },
   '.cm-activeLineGutter': {
     color: 'var(--primary, #0969DA)',
@@ -212,6 +253,30 @@ export function createTypographyExtension(
       lineHeight: lineHeight ? `${lineHeight}` : '1.54',
       fontFamily: fontStack,
     },
+  });
+}
+
+/**
+ * Creates SVG vector fold marker DOM for CodeMirror 6 foldGutter.
+ * Replaces crude text "v" / ">" with crisp, perfectly aligned vector chevrons (Overleaf / VS Code standard).
+ */
+export function createFoldMarkerDOM(open: boolean): HTMLElement {
+  if (typeof document === 'undefined') {
+    return {} as HTMLElement;
+  }
+  const marker = document.createElement('span');
+  marker.className = `cm-fold-marker ${open ? 'cm-fold-open' : 'cm-fold-closed'}`;
+  marker.setAttribute('aria-label', open ? 'Fold line' : 'Unfold line');
+  marker.title = open ? 'Fold line' : 'Unfold line';
+  marker.innerHTML = open
+    ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="cm-fold-chevron"><polyline points="6 9 12 15 18 9"></polyline></svg>'
+    : '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="cm-fold-chevron"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+  return marker;
+}
+
+export function createModernFoldGutter(): Extension {
+  return foldGutter({
+    markerDOM: (open) => createFoldMarkerDOM(open),
   });
 }
 
@@ -365,7 +430,7 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
         : []
     ),
     editorCompartments.lineNumbers.of(
-      showLineNumbers ? [lineNumbers(), highlightActiveLineGutter(), foldGutter()] : []
+      showLineNumbers ? [lineNumbers(), highlightActiveLineGutter(), createModernFoldGutter()] : []
     ),
     editorCompartments.lineWrapping.of(lineWrapping ? EditorView.lineWrapping : []),
     editorCompartments.bracketMatching.of(
@@ -434,7 +499,7 @@ export function reconfigureVisualMode(view: EditorView, enabled: boolean): void 
         enabled ? createVisualModeExtensions() : []
       ),
       editorCompartments.lineNumbers.reconfigure(
-        enabled ? [] : [lineNumbers(), highlightActiveLineGutter(), foldGutter()]
+        enabled ? [] : [lineNumbers(), highlightActiveLineGutter(), createModernFoldGutter()]
       ),
     ],
   });
@@ -520,7 +585,7 @@ export function computeCompartmentReconfigEffects(
   if (prevEffectiveLineNumbers !== nextEffectiveLineNumbers) {
     effects.push(
       editorCompartments.lineNumbers.reconfigure(
-        nextEffectiveLineNumbers ? [lineNumbers(), highlightActiveLineGutter(), foldGutter()] : []
+        nextEffectiveLineNumbers ? [lineNumbers(), highlightActiveLineGutter(), createModernFoldGutter()] : []
       )
     );
   }

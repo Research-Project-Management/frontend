@@ -238,10 +238,12 @@ export const ItemTableRow = React.memo(function ItemTableRow({
           }
         }}
         className={cn(
-          'cursor-pointer transition-colors duration-75 group text-13 h-8',
+          'cursor-pointer group text-13 h-8',
           !isLast && 'border-b border-border',
-          isRowActive || isSelected
-            ? 'bg-muted'
+          isSelected
+            ? 'bg-primary/10 ring-1 ring-inset ring-primary/30 font-medium'
+            : isRowActive
+              ? 'bg-muted'
             : isProcessing
               ? 'bg-primary/5 hover:bg-muted'
               : 'hover:bg-muted',

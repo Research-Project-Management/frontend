@@ -1,24 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  Rss,
-  ExternalLink,
-  BookPlus,
-  Check,
-  Loader2,
-  FileText,
-  Calendar,
-  Sparkles,
-  RefreshCw,
-  ChevronDown,
-  ChevronUp,
-  Folder,
-  CheckCheck,
-  Circle,
-  Eye,
-  EyeOff,
-} from 'lucide-react';
+import {} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
@@ -366,7 +349,7 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
           />
         ) : filteredEntries.length === 0 ? (
           <div className="flex-1 w-full h-full min-h-[300px] flex flex-col items-center justify-center p-8 text-center text-foreground">
-            <Sparkles className="size-8 stroke-1 mb-2 text-muted-foreground" />
+            <CheckCircle2 className="size-8 stroke-1 mb-2 text-muted-foreground" />
             <h4 className="text-14 font-semibold text-foreground mb-1">
               {readFilter === 'unread'
                 ? 'All caught up!'

@@ -649,7 +649,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
   return (
     <>
-      <div className="w-full h-full flex flex-col select-none text-sm bg-surface">
+      <div className="w-full h-full flex flex-col select-none text-sm">
         {/* Hidden upload inputs */}
         <input
           id="editor-combined-file-upload"

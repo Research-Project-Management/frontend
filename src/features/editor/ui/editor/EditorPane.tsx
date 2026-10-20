@@ -222,6 +222,20 @@ export function EditorPane({
           rootPageId={rootPageId || projectId}
           activeFileId={fileId}
           availableFiles={availableFiles as { id: string; title: string }[] | undefined}
+          rightSlot={
+            onSplitRight && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onSplitRight}
+                className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
+                title="Split editor right"
+                aria-label="Split editor right"
+              >
+                <Columns2 className="size-3.5" />
+              </Button>
+            )
+          }
         />
       ) : !showEditorTabs && fileId ? (
         <div className="flex items-center h-8 bg-surface border-b border-border px-3 shrink-0 gap-2">

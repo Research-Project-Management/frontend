@@ -31,6 +31,8 @@ import {
   resolveStateTitle,
 } from '../types/state.types';
 import { StateIcon } from '../components/state/StateIcon';
+import { ProjectStatesSection } from '../components/state/ProjectStatesSection';
+import { Layers } from 'lucide-react';
 
 export const STATE_PALETTE = [
   { id: 'slate', value: '#8A9093', label: 'Slate' },
@@ -49,6 +51,7 @@ export const STATE_PALETTE = [
 
 export default function StatePage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const [activeTab, setActiveTab] = useState<'project' | 'work-item'>('project');
 
   const {
     states,
@@ -239,7 +242,40 @@ export default function StatePage() {
 
       <PageContent maxWidth="md">
         <div className="space-y-6">
-          {/* Groups list */}
+          {/* Top Pill Tabs Switcher */}
+          <div className="flex items-center gap-1.5 p-1 rounded-lg bg-muted/60 border border-border/40 w-fit">
+            <button
+              type="button"
+              onClick={() => setActiveTab('project')}
+              className={
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-12 font-medium transition-colors cursor-pointer ' +
+                (activeTab === 'project'
+                  ? 'bg-background text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground')
+              }
+            >
+              <CircleDot className="size-3.5" />
+              Project Lifecycle
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('work-item')}
+              className={
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-12 font-medium transition-colors cursor-pointer ' +
+                (activeTab === 'work-item'
+                  ? 'bg-background text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground')
+              }
+            >
+              <Layers className="size-3.5" />
+              Work Item States
+            </button>
+          </div>
+
+          {activeTab === 'project' ? (
+            <ProjectStatesSection projectId={projectId} />
+          ) : (
+            /* Groups list */
           <div className="space-y-4">
             {STATE_GROUPS.map((groupKey) => {
               const groupConfig = STATE_GROUP_CONFIG[groupKey];
@@ -552,6 +588,7 @@ export default function StatePage() {
               );
             })}
           </div>
+          )}
         </div>
       </PageContent>
 

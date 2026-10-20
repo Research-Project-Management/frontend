@@ -65,7 +65,7 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
   }, [fileFilter]);
 
   return (
-    <div className="flex flex-col shrink-0 select-none border-b border-border bg-surface">
+    <div className="flex flex-col shrink-0 select-none border-b border-border">
       {/* ── Top Bar ── */}
       <div className="flex h-9 shrink-0 items-center justify-between px-3">
         <Tooltip delayDuration={300}>

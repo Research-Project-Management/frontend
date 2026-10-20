@@ -125,6 +125,7 @@ export interface CreateProjectStateInput {
   color?: string;
   description?: string;
   sequence?: number;
+  isDefault?: boolean;
 }
 
 export interface UpdateProjectStateItemInput {
@@ -132,6 +133,7 @@ export interface UpdateProjectStateItemInput {
   color?: string;
   description?: string;
   sequence?: number;
+  isDefault?: boolean;
 }
 
 export const fetchProjectStates = (projectId: string) =>
@@ -158,6 +160,9 @@ export const reorderProjectStatesApi = (
   states: Array<{ id: string; sequence: number }>,
 ) =>
   apiPut<ProjectState[]>(`/api/v1/projects/${projectId}/settings/states/reorder`, { states });
+
+export const resetProjectStatesApi = (projectId: string) =>
+  apiPost<ProjectState[]>(`/api/v1/projects/${projectId}/settings/states/reset`);
 
 export const deleteProjectStateApi = (
   projectId: string,

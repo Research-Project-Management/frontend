@@ -19,6 +19,7 @@ import {
   Search,
   BookMarked,
   MessageSquareText,
+  MessageSquare,
   Bot,
   Settings,
 } from 'lucide-react';
@@ -50,6 +51,7 @@ const PRIMARY_ACTIVITIES: ActivityItem[] = [
   { id: 'search', label: 'Search in Project', icon: Search, shortcut: 'Ctrl+Shift+F' },
   { id: 'citations', label: 'Citations & BibTeX', icon: BookMarked },
   { id: 'review', label: 'Review & Comments', icon: MessageSquareText },
+  { id: 'chat', label: 'Project Chat', icon: MessageSquare },
   { id: 'ai', label: 'AI Assistant', icon: Bot, shortcut: 'Ctrl+I' },
 ];
 

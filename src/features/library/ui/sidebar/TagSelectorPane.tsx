@@ -1,21 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import {
-  Tag as TagIcon,
-  ChevronDown,
-  ChevronRight,
-  Plus,
-  Search,
-  MoreHorizontal,
-  Palette,
-  Hash,
-  Pencil,
-  Trash2,
-  Sparkles,
-  X,
-  Check,
-} from 'lucide-react';
+import {} from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import {
   Tooltip,
@@ -284,7 +270,7 @@ export function TagSelectorPane({
                   onClick={() => deleteAutomaticTags()}
                   className="gap-2 text-xs text-destructive focus:text-destructive cursor-pointer"
                 >
-                  <Sparkles className="size-3.5" />
+                  <Tag className="size-3.5" />
                   <span>Delete Automatic Tags in Library</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>

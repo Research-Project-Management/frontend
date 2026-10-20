@@ -16,7 +16,7 @@
 
 import React, { useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { FileCode, LocateFixed, Users } from 'lucide-react';
+import { FileCode, Users } from 'lucide-react';
 
 import {
   Tooltip,
@@ -28,7 +28,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/shared/components/ui/popover';
-import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 
 import {
@@ -191,19 +190,13 @@ export function CollaboratorAvatarStack({
 
               {/* Active Document & Cursor */}
               <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] pt-0.5 border-t border-border/40">
-                <FileCode className="size-3 shrink-0 text-foreground/70" />
+                <FileCode className="size-3 shrink-0 text-foreground" />
                 <span className="truncate">{c.activeFile || 'Current Document'}</span>
                 {c.cursor && (
-                  <span className="font-mono text-11 text-primary font-semibold shrink-0 ml-auto">
+                  <span className="font-mono text-11 text-foreground font-semibold shrink-0 ml-auto">
                     L{c.cursor.line}:C{c.cursor.column}
                   </span>
                 )}
-              </div>
-
-              {/* Action Hint */}
-              <div className="text-11 text-muted-foreground/80 italic pt-1 border-t border-border/40 flex items-center gap-1">
-                <LocateFixed className="size-2.5 shrink-0 text-primary" />
-                <span>Click avatar to jump to cursor</span>
               </div>
             </TooltipContent>
           </Tooltip>
@@ -231,20 +224,22 @@ export function CollaboratorAvatarStack({
           >
             <div className="flex items-center justify-between pb-1.5 border-b border-border">
               <div className="flex items-center gap-1.5 font-medium text-foreground">
-                <Users className="size-3.5 text-primary" />
+                <Users className="size-3.5 text-foreground" />
                 <span>Active Collaborators ({collaborators.length})</span>
               </div>
             </div>
 
-            <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1 divide-y divide-border/30">
+            <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
               {collaborators.map((c) => {
                 const color = c.color || getCollaboratorColor(c.id);
                 const initials = getInitials(c.name);
 
                 return (
-                  <div
+                  <button
                     key={c.id}
-                    className="flex items-center justify-between gap-2 pt-1.5 first:pt-0"
+                    type="button"
+                    onClick={() => handleJump(c)}
+                    className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-sm text-left hover:bg-muted/60 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <div
@@ -280,26 +275,14 @@ export function CollaboratorAvatarStack({
                         <div className="text-11 text-muted-foreground truncate flex items-center gap-1">
                           <span className="truncate">{c.activeFile || 'Document'}</span>
                           {c.cursor && (
-                            <span className="font-mono text-primary shrink-0">
+                            <span className="font-mono text-foreground shrink-0">
                               (L{c.cursor.line})
                             </span>
                           )}
                         </div>
                       </div>
                     </div>
-
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleJump(c)}
-                      aria-label={`Jump to ${c.name}`}
-                      className="h-6 px-2 text-[11px] text-primary hover:text-primary hover:bg-primary/10 shrink-0 gap-1"
-                    >
-                      <LocateFixed className="size-3" />
-                      <span>Jump</span>
-                    </Button>
-                  </div>
+                  </button>
                 );
               })}
             </div>
